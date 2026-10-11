@@ -1,0 +1,4 @@
+{
+  "at": "2026-10-10T04:07:22.614132+00:00",
+  "prediction": "After narrowly parsing the witness exit1 JSON and including its historical fixture_oracle.js dependency, no-op should produce four FAIL rows and failed local delivery (ordinary incomplete product, no STOP); exact-time positive should pass public checks, four rows and local commit delivery. Original F23 request and selected-source assessment binding stay exact."
+}

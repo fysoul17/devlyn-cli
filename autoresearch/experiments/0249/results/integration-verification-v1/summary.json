@@ -1,0 +1,160 @@
+{
+  "at": "2026-10-10T23:20:34.322551+00:00",
+  "base": "d1f170ed3bd57441b95ea525156e80644543acb1",
+  "inputs_after": {
+    ".agents/skills/_shared/task-complete.py": "d7dc54a6094d82871875bc0a0d7379b13ed38a143c52748257ff721b464dcc59",
+    ".agents/skills/_shared/task-completion.md": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733",
+    ".github/workflows/portability.yml": "4f951740c37faff82e4b3470951c5bd300e36a4816de4c79a100b7aa925b3492",
+    "bin/instructions.js": "c2ef3fda7714efab8e1569a4d08ec17abc1a10469133b11b159d0884f7bb2532",
+    "config/skills/_shared/task-complete.py": "d7dc54a6094d82871875bc0a0d7379b13ed38a143c52748257ff721b464dcc59",
+    "config/skills/_shared/task-completion.md": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733",
+    "package-lock.json": "61bb21fc83191eab9fb5840967aec72338a71747d8a2e12e66ba63e935a3bc60",
+    "package.json": "71fa7e644b9be6c585f6af1b0645edef4323bf37884236e7c9cd7eb539f9c9a0",
+    "scripts/lint-skills.sh": "ee64d473c8de16504eb2dbb867b02433c8a15cc5ba9505bc8679a5b14343a892",
+    "scripts/test-ideate-loop.py": "b872e6bddb5c205394fbd4002ac4da48211c9155d5da6b1f779d22f05d4ba031",
+    "scripts/test-installer-menu.cjs": "d98b4fc6bbbb36e1a1b6d27d4d75a047c6130fe10b69374a9d9d7678ad5e64ad",
+    "scripts/test-windows-portability.py": "89c4e9a66914924c7b3cdd0473847108ddbea53da42d7b504a5957a05523f4b5"
+  },
+  "inputs_before": {
+    ".agents/skills/_shared/task-complete.py": "d7dc54a6094d82871875bc0a0d7379b13ed38a143c52748257ff721b464dcc59",
+    ".agents/skills/_shared/task-completion.md": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733",
+    ".github/workflows/portability.yml": "4f951740c37faff82e4b3470951c5bd300e36a4816de4c79a100b7aa925b3492",
+    "bin/instructions.js": "c2ef3fda7714efab8e1569a4d08ec17abc1a10469133b11b159d0884f7bb2532",
+    "config/skills/_shared/task-complete.py": "d7dc54a6094d82871875bc0a0d7379b13ed38a143c52748257ff721b464dcc59",
+    "config/skills/_shared/task-completion.md": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733",
+    "package-lock.json": "61bb21fc83191eab9fb5840967aec72338a71747d8a2e12e66ba63e935a3bc60",
+    "package.json": "71fa7e644b9be6c585f6af1b0645edef4323bf37884236e7c9cd7eb539f9c9a0",
+    "scripts/lint-skills.sh": "ee64d473c8de16504eb2dbb867b02433c8a15cc5ba9505bc8679a5b14343a892",
+    "scripts/test-ideate-loop.py": "b872e6bddb5c205394fbd4002ac4da48211c9155d5da6b1f779d22f05d4ba031",
+    "scripts/test-installer-menu.cjs": "d98b4fc6bbbb36e1a1b6d27d4d75a047c6130fe10b69374a9d9d7678ad5e64ad",
+    "scripts/test-windows-portability.py": "89c4e9a66914924c7b3cdd0473847108ddbea53da42d7b504a5957a05523f4b5"
+  },
+  "inputs_unchanged": true,
+  "results": {
+    "cleanup-targeted": {
+      "command": [
+        "python3",
+        "-c",
+        "import runpy,sys; m=runpy.run_path('config/skills/_shared/task-complete.py'); sys.exit(m['self_test'](['test_linux_writer_scan_accepts_confirmed_single_thread_zombie', 'test_linux_writer_scan_retains_denied_live_or_threaded_process', 'test_linux_writer_scan_retains_unknown_zombie_status', 'test_linux_missing_cwd_checks_threads_and_remaining_fds', 'test_linux_real_zombie_allows_only_attested_scratch_cleanup', 'test_linux_real_zombie_leader_retains_live_sibling_writer']))"
+      ],
+      "elapsed_seconds": 1.7822719160176348,
+      "finished_at": "2026-10-10T23:13:38.683492+00:00",
+      "returncode": 0,
+      "started_at": "2026-10-10T23:13:36.901221+00:00"
+    },
+    "diff-index": {
+      "command": [
+        "git",
+        "diff",
+        "--cached",
+        "--check"
+      ],
+      "elapsed_seconds": 0.009550541988573968,
+      "finished_at": "2026-10-10T23:20:34.316138+00:00",
+      "returncode": 0,
+      "started_at": "2026-10-10T23:20:34.306612+00:00"
+    },
+    "diff-worktree": {
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "elapsed_seconds": 0.023796833003871143,
+      "finished_at": "2026-10-10T23:20:34.306299+00:00",
+      "returncode": 0,
+      "started_at": "2026-10-10T23:20:34.282523+00:00"
+    },
+    "ideate-loop": {
+      "command": [
+        "python3",
+        "-B",
+        "scripts/test-ideate-loop.py"
+      ],
+      "elapsed_seconds": 387.7013237499923,
+      "finished_at": "2026-10-10T23:20:34.282164+00:00",
+      "returncode": 0,
+      "started_at": "2026-10-10T23:14:06.574845+00:00"
+    },
+    "lint": {
+      "command": [
+        "bash",
+        "scripts/lint-skills.sh"
+      ],
+      "elapsed_seconds": 145.81829958301387,
+      "finished_at": "2026-10-10T23:16:32.395348+00:00",
+      "returncode": 0,
+      "started_at": "2026-10-10T23:14:06.574799+00:00"
+    },
+    "linux-helper": {
+      "command": [
+        "docker",
+        "run",
+        "--rm",
+        "--init",
+        "--name",
+        "devlyn-integration-helper-0237-425-v1",
+        "--network",
+        "none",
+        "--user",
+        "0:0",
+        "--pids-limit",
+        "256",
+        "--memory",
+        "4g",
+        "--cpus",
+        "2",
+        "--mount",
+        "type=bind,src=/Users/aipalm/.local/share/nx01/0237-integration-425/config/skills/_shared,dst=/source,readonly",
+        "--workdir",
+        "/tmp",
+        "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998",
+        "python3",
+        "-B",
+        "/source/task-complete.py",
+        "--self-test"
+      ],
+      "elapsed_seconds": 35.668189083982725,
+      "finished_at": "2026-10-10T23:14:42.243456+00:00",
+      "returncode": 0,
+      "started_at": "2026-10-10T23:14:06.574737+00:00"
+    },
+    "menu": {
+      "command": [
+        "node",
+        "--test",
+        "scripts/test-installer-menu.cjs"
+      ],
+      "elapsed_seconds": 3.7901762920082547,
+      "finished_at": "2026-10-10T23:13:42.475590+00:00",
+      "returncode": 0,
+      "started_at": "2026-10-10T23:13:38.685391+00:00"
+    },
+    "npm-ci": {
+      "command": [
+        "npm",
+        "ci",
+        "--ignore-scripts",
+        "--no-audit",
+        "--no-fund"
+      ],
+      "elapsed_seconds": 0.31524254102259874,
+      "finished_at": "2026-10-10T23:13:36.900940+00:00",
+      "returncode": 0,
+      "started_at": "2026-10-10T23:13:36.585718+00:00"
+    },
+    "package": {
+      "command": [
+        "python3",
+        "-B",
+        "scripts/test-windows-portability.py",
+        "PackageTests"
+      ],
+      "elapsed_seconds": 27.888305125001352,
+      "finished_at": "2026-10-10T23:14:06.574040+00:00",
+      "returncode": 0,
+      "started_at": "2026-10-10T23:13:38.685320+00:00"
+    }
+  },
+  "status": "PASS"
+}

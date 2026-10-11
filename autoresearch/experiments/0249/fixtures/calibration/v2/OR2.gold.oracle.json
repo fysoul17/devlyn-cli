@@ -1,0 +1,25 @@
+{
+  "command": [
+    "python3",
+    "-B",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/fixtures/OR2/hidden/oracle.py",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/fixtures/OR2/gold"
+  ],
+  "cwd": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/fixtures/OR2/gold",
+  "started_at": "2026-10-10T23:30:51.521701+00:00",
+  "ended_at": "2026-10-10T23:30:51.582998+00:00",
+  "exit_code": 0,
+  "stdout": "{\"manifestations\": [{\"id\": \"coalescing-and-independent-keys\", \"passed\": true}, {\"id\": \"recursive-result-and-backend-isolation\", \"passed\": true}, {\"id\": \"one-waiter-cancellation-isolation\", \"passed\": true}, {\"id\": \"sole-waiter-cancel-and-rejoin\", \"passed\": true}, {\"id\": \"stale-success-keeps-new-flight\", \"passed\": true}, {\"id\": \"out-of-order-generations\", \"passed\": true}, {\"id\": \"shared-failure-can-retry\", \"passed\": true}, {\"id\": \"stale-failure-keeps-new-flight\", \"passed\": true}, {\"id\": \"backend-cancellation-can-retry\", \"passed\": true}, {\"id\": \"shutdown-owns-retired-operations\", \"passed\": true}, {\"id\": \"shutdown-awaits-cleanup\", \"passed\": true}, {\"id\": \"consumer-instance-isolation\", \"passed\": true}]}\n",
+  "stderr": "",
+  "source_sha256": {
+    "README.md": "bfa870c611cd80175281b6dfbba31e1b56057e74ce1a46508b9fecb12efc6ca0",
+    "checks/run_checks.py": "cbb387f1adb61e7050d32afdaa8207f4b826a89a5b62d078ab9e846ea9629d5a",
+    "checks/test_smoke.py": "5dda28971c9602777b3bc1ab34af8eb84f49be02ec377402e191f4695bb091c5",
+    "docs/contract.md": "cd8f9a5cde1ee40138e2ed970a870bf382f4ffa2a4655712e497c683e156fc3c",
+    "examples/catalog.py": "3a2522e119ca1f178e5a2a378fa3d6a75e7d2fc6fe0d3e70760f4980e222c397",
+    "relay/__init__.py": "d31610e5b016c47d07f37c360069ec83a1ff50207fffa31c1c34d91576ea3477",
+    "relay/loader.py": "9a7936592cad602b20c87d1a95c24502bb334bb8298e8613d465b90150918161"
+  },
+  "source_unchanged": true,
+  "prediction_sha256": "8112cc20c2ec96407d956e8e4e8e48d25654b596c4a5ae46237beb28ea69b416"
+}

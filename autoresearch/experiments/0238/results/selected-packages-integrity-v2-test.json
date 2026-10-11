@@ -1,0 +1,41 @@
+{
+  "started_at": "2026-10-10T12:39:00.448833+00:00",
+  "private_root": "/Users/aipalm/.local/share/nx01/0238-live/selected-package-audit-v2",
+  "private_mode": "0o700",
+  "prediction_sha256": "ec3f77f8806a2da75250712b92392340f3bbb78812cdad77fc4dd2f912cc5472",
+  "selected_B_sha256": "050bc8d6f3af071461903f0c7efd77ae445828f232152cd4f52b6e81faa967b3",
+  "test_source_sha256": "425231bc48b31287a2343c5c3986c7a8ced235571730addeb434ed96b1bf11bb",
+  "commands": [
+    {
+      "command": [
+        "node",
+        "--version"
+      ],
+      "cwd": "/Users/aipalm/.local/share/nx01/0238-live/selected-package-audit-v2",
+      "seconds": 0.011623124999459833,
+      "exit_code": 0,
+      "stdout": "v20.19.0\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "npm",
+        "--version"
+      ],
+      "cwd": "/Users/aipalm/.local/share/nx01/0238-live/selected-package-audit-v2",
+      "seconds": 0.061833625004510395,
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Exit prior to config file resolving\ncause\ndouble-loading config \"/dev/null\" as \"global\", previously loaded as \"user\"\n"
+    }
+  ],
+  "failed_command": [
+    "npm",
+    "--version"
+  ],
+  "ended_at": "2026-10-10T12:39:00.522928+00:00",
+  "complete": false,
+  "builder_not_invoked": true,
+  "archive_unchanged": true,
+  "test_source_unchanged": true
+}

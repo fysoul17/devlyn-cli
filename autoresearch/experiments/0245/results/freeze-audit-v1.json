@@ -1,0 +1,171 @@
+{
+  "schema": "0245-independent-dispatch-freeze-audit-v1",
+  "status": "PASS",
+  "at": "2026-10-10T18:30:16.667337+00:00",
+  "scope": "Read-only pre-dispatch binding audit for one operational smoke cell. No auth access, native/model launch, test replay, or product/source modification. No efficacy admission or prior result regrade.",
+  "freeze": {
+    "path": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0245/results/freeze-smoke-v2.json",
+    "sha256": "5c3b11b91c7c6fb2f6ec49ba1f20f04393946633b0978fad9e7e930f6b8bff08",
+    "inputs": 109,
+    "selected_artifacts": 304,
+    "unique_bound_files": 391,
+    "all_hashes_match": true,
+    "actual_Runner_inputs_exact": true,
+    "runtime_sha256": "639731856e5e17287e7915f7082eb5de7bbc0dfffe74912d26745b51f4cc522a"
+  },
+  "v1_provenance": {
+    "sha256": "10f61ec9ca44b4150fb3e997406c0f38bdfca749060ce0d44f78a486c895dbc2",
+    "v1_unchanged": true,
+    "inputs_identical": true,
+    "previous_selected_bindings_unchanged": true,
+    "only_added_selected_artifacts": [
+      "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0245/results/freeze-smoke-v1.json",
+      "/Users/aipalm/.local/share/nx01/0245-live/package-verification-v1/verify.py"
+    ]
+  },
+  "registration": {
+    "path": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0245/registration-smoke.md",
+    "sha256": "9cb82ceb231f990a7af3174be3157af30623a96b2ef80cad8899a898f0593da6",
+    "single_cell": {
+      "arm": "P",
+      "config": "codex",
+      "name": "s01-p-codex",
+      "task": "S2"
+    },
+    "phase": "smoke",
+    "staged_tasks_equal_registered": true,
+    "S2_request_hash_valid": true,
+    "original_request_before_interpretation_required": true,
+    "fresh_and_same_session_resume_required": true,
+    "actual_TemporaryDirectory_prompt_and_answer_copy_cleanup_for_both_required": true,
+    "canonical_attempt_completion_native_capture_stderr_answer_retention_required": true,
+    "exactly_one_canonical_set_per_call_required": true,
+    "stable_source_full_answers_owner_witnesses_required": true,
+    "no_record_copy_move_alter_delete_required": true,
+    "omitted_exercise_is_not_validation": true,
+    "stop_first_failed_gate_no_reroll_no_regrade": true
+  },
+  "review_and_tests": {
+    "review": "results/review-v1.md",
+    "review_status": "SHIP after installations/freeze/preflight, no CRITICAL/HIGH/MEDIUM",
+    "review_manifest_entries_verified": 77,
+    "install_and_freeze_conditions_checked_here": true,
+    "tests_status": "11/11 PASS",
+    "tests_exit_code": 0,
+    "tests_unittest_seconds": 27.811,
+    "tests_process_seconds": 27.874649249977665,
+    "test_source_and_raw_logs_bound": true,
+    "tests_replayed_by_audit": 0
+  },
+  "packages": {
+    "regular_payloads_verified": {
+      "B": 241,
+      "S": 242,
+      "H": 243,
+      "P": 243
+    },
+    "total_regular_payloads": 969,
+    "archive_payloads_equal_metadata": true,
+    "B_S_archives_byte_identical_to_0243": true,
+    "payload_mode_differences_from_0243": {
+      "B": [],
+      "S": [],
+      "H": [
+        "package/config/skills/_shared/pair.md",
+        "package/config/skills/_shared/peer.py"
+      ],
+      "P": [
+        "package/config/skills/_shared/pair.md",
+        "package/config/skills/_shared/peer.py"
+      ]
+    },
+    "integration_source_repository": "/Users/aipalm/.local/share/nx01/0237-integration",
+    "integration_HEAD_verified": "85004d8b3424488cb65bd593ea2d7354998ddb87",
+    "baseline_input_hashes_verified": 7,
+    "only_helper_run_main_changed": true,
+    "native_argv_answer_source_identity_process_functions_unchanged": true,
+    "collector_accounting_policy_inherited_from_0244_unchanged": true
+  },
+  "installations": {
+    "actual_runs": 4,
+    "routes": [
+      "H/claude",
+      "H/codex",
+      "P/claude",
+      "P/codex"
+    ],
+    "all_installer_exit_codes": 0,
+    "all_installer_raw_stdout_stderr_hashes_verified_and_frozen": true,
+    "all_help_exit_codes": 0,
+    "help_has_out_option": false,
+    "custody_root_gitignored_checks_exit_zero": true,
+    "installed_critical_bindings_checked": 30,
+    "core_files_per_installed_root": 24,
+    "offline_verification_script_directly_frozen_in_v2": true,
+    "verification_script_sha256": "74faf9fdf28a5dc11cb582e084e07c5fdcab7f8e4341717a1a35d0fc52d4eef5",
+    "prior_B_S_install_evidence_reused_only_for_identical_archives": true
+  },
+  "controls": {
+    "public_files": 64,
+    "oracle_files": 26,
+    "all_90_byte_identical_to_0243": true,
+    "all_969_staged_package_files_match_control_manifest": true,
+    "oracle_content_not_used_to_grade_any_cell": true
+  },
+  "constraints": {
+    "owner": {
+      "engine": "codex",
+      "model": "gpt-6-astra",
+      "effort": "max",
+      "child_model": "gpt-6-sol",
+      "child_effort": "high"
+    },
+    "peer": {
+      "engine": "claude",
+      "model": "claude-opus-5-5",
+      "effort": "max"
+    },
+    "native_owner_children": "gpt-6-sol/high retained",
+    "peer_tools": "Claude Read/Grep/Glob; no descendants required",
+    "watchdogs": {
+      "owner": 5400,
+      "review": 600,
+      "evaluator": 600,
+      "assessor": 600
+    },
+    "peer_watchdog_seconds": 540,
+    "image": "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998",
+    "recorded_image_inspect_bound": true,
+    "container": "--init, PID 256, memory 4g, CPU 2",
+    "auth_margin_source": "MIN_TOKEN_SECONDS = TASKS['watchdog_seconds']['owner'] + 900",
+    "auth_margin_seconds": 6300,
+    "registered_account_fingerprints_unchanged": true,
+    "auth_credentials_not_accessed": true,
+    "actual_supported_auth_preflight_not_run_by_this_auditor": true,
+    "serial_native_owner_no_concurrent_independent_review_or_heavy_test": true
+  },
+  "prior_evidence": {
+    "0243_d01": "Original CHECKS_PASS/COMPLETE verdict and integration proof bound; no regrade, no new counting",
+    "0243_d02": {
+      "status": "STOP",
+      "usage": "PARTIAL",
+      "input_lower_bound": 1796844,
+      "output_lower_bound": 69638,
+      "seconds": 807.6238686249999,
+      "unknown_residual_preserved": true
+    },
+    "0242_prior_STOPs": "Unchanged inherited provenance",
+    "remaining_0243_cells": "NOT_RUN; no authorization from this smoke freeze"
+  },
+  "source_integrity": {
+    "status": "PASS",
+    "frozen_files_checked_before_and_after": 391,
+    "changed": [],
+    "freeze_itself_sha256": "5c3b11b91c7c6fb2f6ec49ba1f20f04393946633b0978fad9e7e930f6b8bff08"
+  },
+  "findings": [],
+  "writes": [
+    "autoresearch/experiments/0245/results/freeze-audit-v1.json"
+  ],
+  "completion": "Audit complete; no further writes, idle before dispatch. Native behavior and live authentication remain prospective gates."
+}

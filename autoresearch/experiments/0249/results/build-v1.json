@@ -1,0 +1,19 @@
+{
+  "argv": [
+    "python3",
+    "-B",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/build_packages.py",
+    "/Users/aipalm/.local/share/nx01/0249-live/selected-packs-v1",
+    "--toolchain",
+    "/Users/aipalm/.nvm/versions/node/v20.19.0/bin",
+    "--source",
+    "/Users/aipalm/.local/share/nx01/0237-integration-425"
+  ],
+  "exit_code": 0,
+  "prediction_sha256": "a93f1128f40458bba71ead6b7033d2c94d09e0a5cc69a93bb158b6973806b366",
+  "seconds": 7.211991874995874,
+  "source_head_after": "d1f170ed3bd57441b95ea525156e80644543acb1",
+  "source_inputs_unchanged": true,
+  "stderr_sha256": "7657976608dd0eaf914c050ec1f2c1779230c59e18d3acf9b2f62e80a03c91c0",
+  "stdout_sha256": "c369c97a1dd21e67fb192b9439e9df969b6bad8e3c34ecbb3cc977f08fc1508a"
+}

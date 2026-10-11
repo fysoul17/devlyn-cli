@@ -1,0 +1,37 @@
+{
+  "recorded_at": "2026-10-10T12:27:33.615837+00:00",
+  "prediction": "Nine native-accounting tests pass: prior0239 short/long reconcile, retained d01 becomes UNKNOWN without changing its full reported costs; synthetic clean, terminal-provisional deduplication, explicitly bound failed request+recovery, resumed peer and native child accounting reconcile; missing/unbound attempts including matching aggregate fail closed. Integration STOP keeps known lower bound and never calls product evaluation. Existing local runner tests retain supported identity, policy, delivery and classification behavior with complete synthetic native owner carriers. No model/Docker calls or original-cell writes.",
+  "files": {
+    "claude-accounting-v1.py": "f9b9f1523bbe6871300c17c814b9bb528c712dff4025981ac4402a56f3d1c5e5",
+    "test_claude_accounting.py": "448e13a2428e5f5013053fefbdadaa167346afdacaafc1d5489d43238ccd5844",
+    "runner.py": "6dc231c42bd99b8f36b4836864020262435886a88e1184590eafbe9a721a0951",
+    "test_runner.py": "f4a811ad9c9e04e31a665fb2c67e14980b7b1931f2021149bf48416590f8974f"
+  },
+  "commands": [
+    [
+      "python3",
+      "-B",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "autoresearch/experiments/0238",
+      "-p",
+      "test_claude_accounting.py",
+      "-v"
+    ],
+    [
+      "python3",
+      "-B",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "autoresearch/experiments/0238",
+      "-p",
+      "test_runner.py",
+      "-v"
+    ]
+  ],
+  "constraints": "Only copied native fixtures and synthetic subprocess/mocked runner tests. Legacy accounting writes only disposable copies, never original results."
+}

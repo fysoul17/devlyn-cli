@@ -1,0 +1,14 @@
+{
+  "at": "2026-10-10T12:16:40.074117+00:00",
+  "cases": {
+    "code_span": "Use `@AGENTS.md` as a literal example.\n",
+    "exact": "@AGENTS.md\n\n# Claude rules\nKeep this.\n",
+    "fenced": "```md\n@AGENTS.md\n```\n",
+    "inline": "Read @AGENTS.md for team rules.\n\n# Claude rules\nKeep this.\n",
+    "relative": "@./AGENTS.md\n\n# Claude rules\nKeep this.\n"
+  },
+  "installer": "/Users/aipalm/.local/share/nx01/0239-live/staged-v1/control/packages/B/package/bin/devlyn.js",
+  "installer_sha256": "ef61d17255c7b77cd6968285e30669e588b9ba2486fded475063649337f4171a",
+  "native_import_recognition": "Officially documented; pinned native probe still pending. This installer count alone is not proof of native duplication.",
+  "prediction": "Baseline actual installer leaves one defaults block for exact import and two for relative/inline; code span/fence remain literals and require a block in CLAUDE.md. Every original CLAUDE prose string is preserved; second install is idempotent."
+}

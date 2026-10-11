@@ -1,0 +1,142 @@
+{
+  "elapsed_seconds": 1.2017072500020731,
+  "exception": null,
+  "prediction": {
+    "expected_pass": [
+      "legacy-removed",
+      "self-orphan-helper-removed",
+      "self-orphan-import-removed",
+      "preexisting-xml-kept",
+      "preexisting-helper-kept"
+    ],
+    "oracle_exit_expected": "0 for PASS; 1 with assertion for expected FAIL",
+    "overlay": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0233/calibration/B5/good",
+    "overlay_sha256": {
+      "src/exports.js": "7e87dd647107da7519dd469b33b27550ed3166cf4d9aaecad53c412184703b55"
+    },
+    "public_expected": "PASS",
+    "source": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0233/sources/B5",
+    "source_sha256": {
+      "src/exports.js": "8b1851505996f13d0d269ef1d8048e2ac35a20e712aaa1f658f1ec1b668f6478",
+      "src/exports.test.js": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "task": "B5",
+    "variant": "gold"
+  },
+  "result": {
+    "public": [
+      {
+        "argv": [
+          "sh",
+          "-c",
+          "mkdir /tmp/public-work && cp -a /cell/work/. /tmp/public-work/ && cd /tmp/public-work && node --check src/exports.js"
+        ],
+        "exit_code": 0,
+        "stderr": "",
+        "stdout": "",
+        "timeout": false
+      }
+    ],
+    "raw": [
+      {
+        "argv": [
+          "node",
+          "/control/autoresearch/experiments/0233/oracle.js",
+          "B5",
+          "legacy-removed",
+          "/cell/work"
+        ],
+        "exit_code": 0,
+        "stderr": "",
+        "stdout": "{\"row\":\"legacy-removed\",\"pass\":true}\n",
+        "timeout": false
+      },
+      {
+        "argv": [
+          "node",
+          "/control/autoresearch/experiments/0233/oracle.js",
+          "B5",
+          "self-orphan-helper-removed",
+          "/cell/work"
+        ],
+        "exit_code": 0,
+        "stderr": "",
+        "stdout": "{\"row\":\"self-orphan-helper-removed\",\"pass\":true}\n",
+        "timeout": false
+      },
+      {
+        "argv": [
+          "node",
+          "/control/autoresearch/experiments/0233/oracle.js",
+          "B5",
+          "self-orphan-import-removed",
+          "/cell/work"
+        ],
+        "exit_code": 0,
+        "stderr": "",
+        "stdout": "{\"row\":\"self-orphan-import-removed\",\"pass\":true}\n",
+        "timeout": false
+      },
+      {
+        "argv": [
+          "node",
+          "/control/autoresearch/experiments/0233/oracle.js",
+          "B5",
+          "preexisting-xml-kept",
+          "/cell/work"
+        ],
+        "exit_code": 0,
+        "stderr": "",
+        "stdout": "{\"row\":\"preexisting-xml-kept\",\"pass\":true}\n",
+        "timeout": false
+      },
+      {
+        "argv": [
+          "node",
+          "/control/autoresearch/experiments/0233/oracle.js",
+          "B5",
+          "preexisting-helper-kept",
+          "/cell/work"
+        ],
+        "exit_code": 0,
+        "stderr": "",
+        "stdout": "{\"row\":\"preexisting-helper-kept\",\"pass\":true}\n",
+        "timeout": false
+      }
+    ],
+    "rows": [
+      {
+        "id": "legacy-removed",
+        "status": "PASS"
+      },
+      {
+        "id": "self-orphan-helper-removed",
+        "status": "PASS"
+      },
+      {
+        "id": "self-orphan-import-removed",
+        "status": "PASS"
+      },
+      {
+        "id": "preexisting-xml-kept",
+        "status": "PASS"
+      },
+      {
+        "id": "preexisting-helper-kept",
+        "status": "PASS"
+      }
+    ]
+  },
+  "source_after": {
+    "src/exports.js": "7e87dd647107da7519dd469b33b27550ed3166cf4d9aaecad53c412184703b55:644",
+    "src/exports.test.js": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855:644"
+  },
+  "source_before": {
+    "src/exports.js": "7e87dd647107da7519dd469b33b27550ed3166cf4d9aaecad53c412184703b55:644",
+    "src/exports.test.js": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855:644"
+  },
+  "source_unchanged": true,
+  "status": "PASS",
+  "task": "B5",
+  "variant": "gold"
+}

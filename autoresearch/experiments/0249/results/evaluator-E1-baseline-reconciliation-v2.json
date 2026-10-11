@@ -1,0 +1,18 @@
+{
+  "expected_rows": {
+    "default-unchanged": "PASS",
+    "name-with-shout": "FAIL",
+    "shout": "FAIL"
+  },
+  "original_driver_status": "STOP_CALIBRATION_RETAINED",
+  "original_record": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/results/evaluator-E1-baseline-v1.json",
+  "original_sha256": "b66d6586064674bfcf12ed005cf8808af513f933eaa94b98a032f23e7f08c257",
+  "prediction_sha256": "c9d17a9eb6005dc12d0a5170365cbc51a7aae4d21d7f0dd57a1a3b0d53e7fe9b",
+  "public_tests_passed": 6,
+  "raw_rewritten": false,
+  "reason": "Original driver wrongly required AssertionError text. Unchanged JS oracle defines assert(ok, reason) to throw Error(reason). Exact registered row, exact oracle path, expected exit and matching assertion stack confirm expected baseline failures.",
+  "recorded_at": "2026-10-10T23:41:10.169288+00:00",
+  "rerun": false,
+  "schema": "0249-e1-calibration-raw-reconciliation-v2",
+  "status": "PASS_REUSED_RAW_NO_REPLAY"
+}

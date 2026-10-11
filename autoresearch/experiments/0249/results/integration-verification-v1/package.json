@@ -1,0 +1,12 @@
+{
+  "command": [
+    "python3",
+    "-B",
+    "scripts/test-windows-portability.py",
+    "PackageTests"
+  ],
+  "elapsed_seconds": 27.888305125001352,
+  "finished_at": "2026-10-10T23:14:06.574040+00:00",
+  "returncode": 0,
+  "started_at": "2026-10-10T23:13:38.685320+00:00"
+}

@@ -2,16 +2,43 @@
 
 This file is the single source of truth for the project's goal. Every other doc references this one. If a future session is uncertain about scope, contract, or direction, **read this file first** — do not infer from code, do not assume from older docs, and do not hallucinate intent.
 
-Current work: [0233](iterations/0233-installed-baseline-and-failure-paths.md) (2026-10-07): the installed 4.2.0 baseline against bare, and the first lazily loaded method, on the [0232 harness ladder](iterations/0232-harness-ladder.md) (2026-10-05, owner direction below); then [0234](iterations/0234-pair-reasoning.md), pair reasoning against 4.2.0.
-- **Stage 1 closed on 2026-10-06** (§7). Native A stays the admitted rung in both configurations. The instruction rung I is not admitted. Full resolve completes fewer cells than native at far higher cost.
-- **resolve is retired** as a product-scope decision (§8). The installed product becomes the principles plus ideate's loop.
-- **Next:** measure that installed baseline, then add mechanisms one rung at a time, only where they improve the measured outcome.
+Current work: [0237's final decision](experiments/0237/results/final-product-decision.md)
+accepts observed installer/delivery fixes on4.2.5 and keeps root instruction wording
+unchanged. Product checks/review pass; final PR+merge delivery is pending. Ideate
+remains outside this request.
+
+[0248 is closed](experiments/0248/results/screen-conclusion.md). Its Claude S/B
+resource signal is one exposed draw; native A remained cheaper and H/P earned no
+incremental mechanism. [0249 is closed](experiments/0249/results/closure-v1.md)
+after one valid Codex/B result and a pre-inference account/organization mismatch.
+S was not observed there, so no new S/B efficacy conclusion or admission follows.
+The current host login was left untouched. Preserve all old failures, unknown
+costs and version limits. No S instruction or pair surface is added, no schedule
+is resumed, and no global optimum or general bare superiority is established.
+See [HANDOFF](HANDOFF.md) for the publisher and delivery state.
+
+- **0232 stage 1 closed on 2026-10-06** (§7). Native A stayed the admitted rung in both configurations. The instruction rung I was not admitted. Full resolve completed fewer cells than native at far higher cost.
+- **resolve remains retired** as a product-scope decision (0232 §8). The installed product is the principles plus the ideate/engines skills; pair is not a shipped guarantee.
+- **0233–0236 closed without a new harness admission.** Their negative results remain evidence, not permission to rerun for a favorable outcome.
+- **0237 CF closed without admission.** Unsupported oracle assumptions and a no-init process failure invalidate that comparison; preserve raw results/costs and do not resume or regrade it.
+- **0239 closed without adoption.** d01 preserves source/delivery and safe child-lifetime evidence, but interrupted inference has unbound usage and whole cost is UNKNOWN. No d02 or favorable C rerun; the existing completion guide remains the admitted solo wording.
 - **Parked and superseded:** the 0230 bundle (`bundle/0225-steps-2-5`) is parked unmerged. The 0231 registration is superseded by 0232 and was never run.
-Latest closed unit: [0232 stage 1](iterations/0232-harness-ladder.md) (2026-10-06, §7).
 Priority: accuracy/completeness → verified-resolution speed → tokens; since 2026-10-05, harness mechanisms follow the per-success non-regression rule below.
 Tests carry no token budgets. The independent CLI core comes first; optional Pyx and
 OS/fleet are later. Historical gates, frozen results and current customer policy are not
 silently changed.
+
+**Owner direction 2026-10-10 (current work order):** defer ideate work. First
+extract the strongest quality and efficiency from minimal CLAUDE.md/AGENTS.md
+instructions, with engineering steps occurring without a special resolve
+command. Then test automatic pair for residual failures against that strongest
+solo. Continue through concrete improvements, using actual Opus Max and Grok
+advice while root owns the decision. Extra instructions, helpers and model calls
+must earn their place with supported evidence; a negative or inconclusive
+bounded comparison does not establish a global optimum. Forced transport
+checks, spontaneous activation, source correctness, delivery and whole cost
+are distinct observations. This supersedes older work sequencing, not frozen
+results or the measurement rules below.
 
 **Owner direction 2026-10-05 (harness redesign; recorded in [0232](iterations/0232-harness-ladder.md), superseding conflicting text below):**
 - **Product shape.** The installed CLAUDE.md/AGENTS.md instructions carry the harness wherever they suffice. `ideate` is the loop designer: the user injects only an intent, and ideate turns it into a meta-prompt plus split, self-contained tasks that agents then drain one by one without the user (loop engineering). `intent` succeeds `resolve` as the methodology layer, used only where instructions alone fall short: complex work, work that goes wrong under full autonomy, and above all missed cleanup and verification. If the instructions achieve that, `intent` need not exist. `design-ui` is retired.

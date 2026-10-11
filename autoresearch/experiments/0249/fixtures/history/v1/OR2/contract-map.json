@@ -1,0 +1,209 @@
+{
+  "scope": "Only public APIs, public backend protocol, files addressed through public FileStore(path), and asyncio events/futures are exercised. No private implementation state is read or altered.",
+  "manifestations": [
+    {
+      "id": "coalescing-and-independent-keys",
+      "contract": [
+        {
+          "path": "visible/docs/contract.md",
+          "start_line": 9,
+          "end_line": 13,
+          "quote": "C1 \u2014 Sharing. Concurrent get calls for the same key and current generation share\none fetch operation. Different keys progress independently. After success,\nfurther get calls use the cached value until invalidation. `snapshot()` never\nreports unfinished or failed loads. Generation means the period between\ninvalidations of that key; callers do not need to provide a generation number."
+        }
+      ]
+    },
+    {
+      "id": "recursive-result-and-backend-isolation",
+      "contract": [
+        {
+          "path": "visible/docs/contract.md",
+          "start_line": 9,
+          "end_line": 13,
+          "quote": "C1 \u2014 Sharing. Concurrent get calls for the same key and current generation share\none fetch operation. Different keys progress independently. After success,\nfurther get calls use the cached value until invalidation. `snapshot()` never\nreports unfinished or failed loads. Generation means the period between\ninvalidations of that key; callers do not need to provide a generation number."
+        },
+        {
+          "path": "visible/docs/contract.md",
+          "start_line": 15,
+          "end_line": 18,
+          "quote": "C2 \u2014 Ownership. Each get result and snapshot is a recursive detached copy,\nindependent of the cache, the object returned by fetch, all other callers, and\nlater results. Mutating any of those caller/backend-owned objects after\ncompletion cannot alter the cached value or other returned objects."
+        }
+      ]
+    },
+    {
+      "id": "one-waiter-cancellation-isolation",
+      "contract": [
+        {
+          "path": "visible/docs/contract.md",
+          "start_line": 9,
+          "end_line": 13,
+          "quote": "C1 \u2014 Sharing. Concurrent get calls for the same key and current generation share\none fetch operation. Different keys progress independently. After success,\nfurther get calls use the cached value until invalidation. `snapshot()` never\nreports unfinished or failed loads. Generation means the period between\ninvalidations of that key; callers do not need to provide a generation number."
+        },
+        {
+          "path": "visible/docs/contract.md",
+          "start_line": 28,
+          "end_line": 33,
+          "quote": "C4 \u2014 Caller cancellation. Cancelling one get caller raises CancelledError to\nthat caller only. It never cancels the shared fetch or other callers. This also\napplies when the cancelled caller was the sole waiter: the fetch still finishes\nand may populate the cache if its generation is current. A later caller may\njoin that ongoing operation. An abandoned fetch failure must be consumed so it\ndoes not become an event-loop 'Task exception was never retrieved' report."
+        }
+      ]
+    },
+    {
+      "id": "sole-waiter-cancel-and-rejoin",
+      "contract": [
+        {
+          "path": "visible/docs/contract.md",
+          "start_line": 9,
+          "end_line": 13,
+          "quote": "C1 \u2014 Sharing. Concurrent get calls for the same key and current generation share\none fetch operation. Different keys progress independently. After success,\nfurther get calls use the cached value until invalidation. `snapshot()` never\nreports unfinished or failed loads. Generation means the period between\ninvalidations of that key; callers do not need to provide a generation number."
+        },
+        {
+          "path": "visible/docs/contract.md",
+          "start_line": 28,
+          "end_line": 33,
+          "quote": "C4 \u2014 Caller cancellation. Cancelling one get caller raises CancelledError to\nthat caller only. It never cancels the shared fetch or other callers. This also\napplies when the cancelled caller was the sole waiter: the fetch still finishes\nand may populate the cache if its generation is current. A later caller may\njoin that ongoing operation. An abandoned fetch failure must be consumed so it\ndoes not become an event-loop 'Task exception was never retrieved' report."
+        }
+      ]
+    },
+    {
+      "id": "stale-success-keeps-new-flight",
+      "contract": [
+        {
+          "path": "visible/docs/contract.md",
+          "start_line": 9,
+          "end_line": 13,
+          "quote": "C1 \u2014 Sharing. Concurrent get calls for the same key and current generation share\none fetch operation. Different keys progress independently. After success,\nfurther get calls use the cached value until invalidation. `snapshot()` never\nreports unfinished or failed loads. Generation means the period between\ninvalidations of that key; callers do not need to provide a generation number."
+        },
+        {
+          "path": "visible/docs/contract.md",
+          "start_line": 20,
+          "end_line": 26,
+          "quote": "C3 \u2014 Invalidation. invalidate removes the key's cached value immediately and\nstarts a new generation even when a fetch is in progress. Existing callers keep\nwaiting for their original operation and receive its success/failure. A get\nstarted after invalidate uses a fresh operation; it must not join the retired\noperation. Retired operations may finish in any order but cannot publish a cached\nvalue for, remove, cancel, or otherwise disturb the current generation. Repeated\ninvalidations, including of unknown keys, are valid. Other keys are unaffected."
+        }
+      ]
+    },
+    {
+      "id": "out-of-order-generations",
+      "contract": [
+        {
+          "path": "visible/docs/contract.md",
+          "start_line": 9,
+          "end_line": 13,
+          "quote": "C1 \u2014 Sharing. Concurrent get calls for the same key and current generation share\none fetch operation. Different keys progress independently. After success,\nfurther get calls use the cached value until invalidation. `snapshot()` never\nreports unfinished or failed loads. Generation means the period between\ninvalidations of that key; callers do not need to provide a generation number."
+        },
+        {
+          "path": "visible/docs/contract.md",
+          "start_line": 20,
+          "end_line": 26,
+          "quote": "C3 \u2014 Invalidation. invalidate removes the key's cached value immediately and\nstarts a new generation even when a fetch is in progress. Existing callers keep\nwaiting for their original operation and receive its success/failure. A get\nstarted after invalidate uses a fresh operation; it must not join the retired\noperation. Retired operations may finish in any order but cannot publish a cached\nvalue for, remove, cancel, or otherwise disturb the current generation. Repeated\ninvalidations, including of unknown keys, are valid. Other keys are unaffected."
+        }
+      ]
+    },
+    {
+      "id": "shared-failure-can-retry",
+      "contract": [
+        {
+          "path": "visible/docs/contract.md",
+          "start_line": 9,
+          "end_line": 13,
+          "quote": "C1 \u2014 Sharing. Concurrent get calls for the same key and current generation share\none fetch operation. Different keys progress independently. After success,\nfurther get calls use the cached value until invalidation. `snapshot()` never\nreports unfinished or failed loads. Generation means the period between\ninvalidations of that key; callers do not need to provide a generation number."
+        },
+        {
+          "path": "visible/docs/contract.md",
+          "start_line": 35,
+          "end_line": 40,
+          "quote": "C5 \u2014 Failure and recovery. Fetch exceptions propagate with their original type\nand message to all waiting callers. Neither exceptions nor backend cancellation\nare cached. The next get in that same generation starts a fresh operation and\ncan recover. An old-generation failure or cancellation cannot remove a newer\nin-flight operation or completed cached value. Previously cached other keys\nremain available after a failure."
+        }
+      ]
+    },
+    {
+      "id": "stale-failure-keeps-new-flight",
+      "contract": [
+        {
+          "path": "visible/docs/contract.md",
+          "start_line": 9,
+          "end_line": 13,
+          "quote": "C1 \u2014 Sharing. Concurrent get calls for the same key and current generation share\none fetch operation. Different keys progress independently. After success,\nfurther get calls use the cached value until invalidation. `snapshot()` never\nreports unfinished or failed loads. Generation means the period between\ninvalidations of that key; callers do not need to provide a generation number."
+        },
+        {
+          "path": "visible/docs/contract.md",
+          "start_line": 20,
+          "end_line": 26,
+          "quote": "C3 \u2014 Invalidation. invalidate removes the key's cached value immediately and\nstarts a new generation even when a fetch is in progress. Existing callers keep\nwaiting for their original operation and receive its success/failure. A get\nstarted after invalidate uses a fresh operation; it must not join the retired\noperation. Retired operations may finish in any order but cannot publish a cached\nvalue for, remove, cancel, or otherwise disturb the current generation. Repeated\ninvalidations, including of unknown keys, are valid. Other keys are unaffected."
+        },
+        {
+          "path": "visible/docs/contract.md",
+          "start_line": 35,
+          "end_line": 40,
+          "quote": "C5 \u2014 Failure and recovery. Fetch exceptions propagate with their original type\nand message to all waiting callers. Neither exceptions nor backend cancellation\nare cached. The next get in that same generation starts a fresh operation and\ncan recover. An old-generation failure or cancellation cannot remove a newer\nin-flight operation or completed cached value. Previously cached other keys\nremain available after a failure."
+        }
+      ]
+    },
+    {
+      "id": "backend-cancellation-can-retry",
+      "contract": [
+        {
+          "path": "visible/docs/contract.md",
+          "start_line": 9,
+          "end_line": 13,
+          "quote": "C1 \u2014 Sharing. Concurrent get calls for the same key and current generation share\none fetch operation. Different keys progress independently. After success,\nfurther get calls use the cached value until invalidation. `snapshot()` never\nreports unfinished or failed loads. Generation means the period between\ninvalidations of that key; callers do not need to provide a generation number."
+        },
+        {
+          "path": "visible/docs/contract.md",
+          "start_line": 35,
+          "end_line": 40,
+          "quote": "C5 \u2014 Failure and recovery. Fetch exceptions propagate with their original type\nand message to all waiting callers. Neither exceptions nor backend cancellation\nare cached. The next get in that same generation starts a fresh operation and\ncan recover. An old-generation failure or cancellation cannot remove a newer\nin-flight operation or completed cached value. Previously cached other keys\nremain available after a failure."
+        }
+      ]
+    },
+    {
+      "id": "shutdown-owns-retired-operations",
+      "contract": [
+        {
+          "path": "visible/docs/contract.md",
+          "start_line": 20,
+          "end_line": 26,
+          "quote": "C3 \u2014 Invalidation. invalidate removes the key's cached value immediately and\nstarts a new generation even when a fetch is in progress. Existing callers keep\nwaiting for their original operation and receive its success/failure. A get\nstarted after invalidate uses a fresh operation; it must not join the retired\noperation. Retired operations may finish in any order but cannot publish a cached\nvalue for, remove, cancel, or otherwise disturb the current generation. Repeated\ninvalidations, including of unknown keys, are valid. Other keys are unaffected."
+        },
+        {
+          "path": "visible/docs/contract.md",
+          "start_line": 42,
+          "end_line": 49,
+          "quote": "C6 \u2014 Shutdown. close marks the instance closed, empties its cache, cancels and\nawaits all unfinished fetches it owns, including operations retired by\ninvalidation or abandoned by callers. Waiting callers observe cancellation when\ntheir fetch is cancelled. close is idempotent; on return no owned fetch remains\nrunning. get and invalidate on a closed loader raise ClosedError; snapshot is\nempty. No completion may repopulate it after close. Fetch functions cooperate\nwith cancellation, possibly after asynchronous cleanup; close waits for that\ncleanup. Closing an instance does not affect a different loader instance."
+        }
+      ]
+    },
+    {
+      "id": "shutdown-awaits-cleanup",
+      "contract": [
+        {
+          "path": "visible/docs/contract.md",
+          "start_line": 42,
+          "end_line": 49,
+          "quote": "C6 \u2014 Shutdown. close marks the instance closed, empties its cache, cancels and\nawaits all unfinished fetches it owns, including operations retired by\ninvalidation or abandoned by callers. Waiting callers observe cancellation when\ntheir fetch is cancelled. close is idempotent; on return no owned fetch remains\nrunning. get and invalidate on a closed loader raise ClosedError; snapshot is\nempty. No completion may repopulate it after close. Fetch functions cooperate\nwith cancellation, possibly after asynchronous cleanup; close waits for that\ncleanup. Closing an instance does not affect a different loader instance."
+        }
+      ]
+    },
+    {
+      "id": "consumer-instance-isolation",
+      "contract": [
+        {
+          "path": "visible/docs/contract.md",
+          "start_line": 9,
+          "end_line": 13,
+          "quote": "C1 \u2014 Sharing. Concurrent get calls for the same key and current generation share\none fetch operation. Different keys progress independently. After success,\nfurther get calls use the cached value until invalidation. `snapshot()` never\nreports unfinished or failed loads. Generation means the period between\ninvalidations of that key; callers do not need to provide a generation number."
+        },
+        {
+          "path": "visible/docs/contract.md",
+          "start_line": 20,
+          "end_line": 26,
+          "quote": "C3 \u2014 Invalidation. invalidate removes the key's cached value immediately and\nstarts a new generation even when a fetch is in progress. Existing callers keep\nwaiting for their original operation and receive its success/failure. A get\nstarted after invalidate uses a fresh operation; it must not join the retired\noperation. Retired operations may finish in any order but cannot publish a cached\nvalue for, remove, cancel, or otherwise disturb the current generation. Repeated\ninvalidations, including of unknown keys, are valid. Other keys are unaffected."
+        },
+        {
+          "path": "visible/docs/contract.md",
+          "start_line": 42,
+          "end_line": 49,
+          "quote": "C6 \u2014 Shutdown. close marks the instance closed, empties its cache, cancels and\nawaits all unfinished fetches it owns, including operations retired by\ninvalidation or abandoned by callers. Waiting callers observe cancellation when\ntheir fetch is cancelled. close is idempotent; on return no owned fetch remains\nrunning. get and invalidate on a closed loader raise ClosedError; snapshot is\nempty. No completion may repopulate it after close. Fetch functions cooperate\nwith cancellation, possibly after asynchronous cleanup; close waits for that\ncleanup. Closing an instance does not affect a different loader instance."
+        }
+      ]
+    }
+  ]
+}

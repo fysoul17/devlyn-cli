@@ -1,0 +1,168 @@
+{
+  "started_at": "2026-10-10T10:42:20.431078+00:00",
+  "python": "3.12.14 (main, Sep 19 2026, 01:11:14) [GCC 14.2.0]",
+  "platform": "Linux-6.10.14-linuxkit-aarch64-with-glibc2.41",
+  "prediction_sha256": "c14520180a23ecc970f302e001db592c09b4d800d55b5152838dabfc773d1a33",
+  "cases": [
+    {
+      "case": "baseline",
+      "public_exit": 0,
+      "oracle_exit": 0,
+      "oracle_passed": 1,
+      "oracle_total": 12,
+      "passed": [
+        "schema-errors-retain-include-chain"
+      ],
+      "failed": [
+        "loader-merge-value-kinds",
+        "relative-diamond-layer-order",
+        "transitive-change-same-size-and-mtime",
+        "nested-caller-isolation",
+        "semantic-generation-current-dependencies",
+        "failed-reload-preserves-and-recovers",
+        "failed-first-load-no-cache-poisoning",
+        "deleted-dependency-repair",
+        "canonical-cycle-after-success",
+        "repeated-include-public-freshness",
+        "independent-root-dependency-accuracy"
+      ]
+    },
+    {
+      "case": "gold",
+      "public_exit": 0,
+      "oracle_exit": 0,
+      "oracle_passed": 12,
+      "oracle_total": 12,
+      "passed": [
+        "loader-merge-value-kinds",
+        "relative-diamond-layer-order",
+        "transitive-change-same-size-and-mtime",
+        "nested-caller-isolation",
+        "semantic-generation-current-dependencies",
+        "failed-reload-preserves-and-recovers",
+        "failed-first-load-no-cache-poisoning",
+        "deleted-dependency-repair",
+        "canonical-cycle-after-success",
+        "repeated-include-public-freshness",
+        "independent-root-dependency-accuracy",
+        "schema-errors-retain-include-chain"
+      ],
+      "failed": []
+    },
+    {
+      "case": "sharing",
+      "public_exit": 0,
+      "oracle_exit": 0,
+      "oracle_passed": 12,
+      "oracle_total": 12,
+      "passed": [
+        "loader-merge-value-kinds",
+        "relative-diamond-layer-order",
+        "transitive-change-same-size-and-mtime",
+        "nested-caller-isolation",
+        "semantic-generation-current-dependencies",
+        "failed-reload-preserves-and-recovers",
+        "failed-first-load-no-cache-poisoning",
+        "deleted-dependency-repair",
+        "canonical-cycle-after-success",
+        "repeated-include-public-freshness",
+        "independent-root-dependency-accuracy",
+        "schema-errors-retain-include-chain"
+      ],
+      "failed": [],
+      "sharing-probe_exit": 0
+    },
+    {
+      "case": "metadata-open",
+      "public_exit": 0,
+      "oracle_exit": 0,
+      "oracle_passed": 12,
+      "oracle_total": 12,
+      "passed": [
+        "loader-merge-value-kinds",
+        "relative-diamond-layer-order",
+        "transitive-change-same-size-and-mtime",
+        "nested-caller-isolation",
+        "semantic-generation-current-dependencies",
+        "failed-reload-preserves-and-recovers",
+        "failed-first-load-no-cache-poisoning",
+        "deleted-dependency-repair",
+        "canonical-cycle-after-success",
+        "repeated-include-public-freshness",
+        "independent-root-dependency-accuracy",
+        "schema-errors-retain-include-chain"
+      ],
+      "failed": []
+    },
+    {
+      "case": "cycle-wording",
+      "public_exit": 0,
+      "oracle_exit": 0,
+      "oracle_passed": 12,
+      "oracle_total": 12,
+      "passed": [
+        "loader-merge-value-kinds",
+        "relative-diamond-layer-order",
+        "transitive-change-same-size-and-mtime",
+        "nested-caller-isolation",
+        "semantic-generation-current-dependencies",
+        "failed-reload-preserves-and-recovers",
+        "failed-first-load-no-cache-poisoning",
+        "deleted-dependency-repair",
+        "canonical-cycle-after-success",
+        "repeated-include-public-freshness",
+        "independent-root-dependency-accuracy",
+        "schema-errors-retain-include-chain"
+      ],
+      "failed": []
+    },
+    {
+      "case": "negative-shallow",
+      "public_exit": 0,
+      "oracle_exit": 0,
+      "oracle_passed": 10,
+      "oracle_total": 12,
+      "passed": [
+        "transitive-change-same-size-and-mtime",
+        "nested-caller-isolation",
+        "semantic-generation-current-dependencies",
+        "failed-reload-preserves-and-recovers",
+        "failed-first-load-no-cache-poisoning",
+        "deleted-dependency-repair",
+        "canonical-cycle-after-success",
+        "repeated-include-public-freshness",
+        "independent-root-dependency-accuracy",
+        "schema-errors-retain-include-chain"
+      ],
+      "failed": [
+        "loader-merge-value-kinds",
+        "relative-diamond-layer-order"
+      ]
+    },
+    {
+      "case": "negative-reread",
+      "public_exit": 0,
+      "oracle_exit": 0,
+      "oracle_passed": 12,
+      "oracle_total": 12,
+      "passed": [
+        "loader-merge-value-kinds",
+        "relative-diamond-layer-order",
+        "transitive-change-same-size-and-mtime",
+        "nested-caller-isolation",
+        "semantic-generation-current-dependencies",
+        "failed-reload-preserves-and-recovers",
+        "failed-first-load-no-cache-poisoning",
+        "deleted-dependency-repair",
+        "canonical-cycle-after-success",
+        "repeated-include-public-freshness",
+        "independent-root-dependency-accuracy",
+        "schema-errors-retain-include-chain"
+      ],
+      "failed": []
+    }
+  ],
+  "finished_at": "2026-10-10T10:42:21.066852+00:00",
+  "predictions_match": true,
+  "problems": []
+}

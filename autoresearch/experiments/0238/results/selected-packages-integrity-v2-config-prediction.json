@@ -1,0 +1,7 @@
+{
+  "recorded_at": "2026-10-10T12:39:17.769581+00:00",
+  "prior_result": "selected-packages-integrity-v2-test.json retains npm --version exit1 before install/test; no package test ran.",
+  "cause": "npm refuses to load the same /dev/null path for user and global config.",
+  "correction": "New private root and two distinct empty private config files. Do not reuse/delete previous root or alter npm auth/global configuration.",
+  "prediction": "Node20.19/npm10.8.2 version checks, offline bundled B installation and the one existing targeted parser test pass. Archive/source unchanged."
+}

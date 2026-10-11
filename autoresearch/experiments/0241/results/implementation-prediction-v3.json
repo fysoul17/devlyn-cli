@@ -1,0 +1,7 @@
+{
+  "changes": "Use pathlib normalization preserving dot-prefixed names; reject unresolved parent-traversal paths before reading outside the captured tree.",
+  "prediction": "All 36 targeted tests pass; existing genuine capture and UNKNOWN expectations unchanged.",
+  "prior_result": "v2: 35 pass, 1 real literal-path failure; lstrip('./') erased the leading dot of .devlyn and invented a missing carrier. Raw v2 retained.",
+  "recorded_at": "2026-10-10T15:21:10.834148+00:00",
+  "source_sha256": "abe2c0015387cf6f51ecdfba17379998d6372b0629e2f6cee1d09dd3b35263c6"
+}

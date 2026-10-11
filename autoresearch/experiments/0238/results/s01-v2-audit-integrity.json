@@ -1,0 +1,65 @@
+{
+  "at": "2026-10-10T14:07:42.543468+00:00",
+  "cell": "/Users/aipalm/.local/share/nx01/0238-live/staged-v1/out-smoke-v2/s01-h-claude-v2",
+  "checks": {
+    "control": {
+      "oracle": {
+        "count": 26,
+        "issues": [],
+        "matched": 26
+      },
+      "packages": {
+        "count": 969,
+        "issues": [],
+        "matched": 969
+      },
+      "public": {
+        "count": 64,
+        "issues": [],
+        "matched": 64
+      }
+    },
+    "evidence": {
+      "count": 706,
+      "issues": [],
+      "matched": 706
+    },
+    "evidence_declared_failures": [],
+    "freeze_inputs": {
+      "count": 75,
+      "issues": [],
+      "matched": 75
+    },
+    "freeze_seal_inputs_identical": true,
+    "prepared": {
+      "count": 5,
+      "issues": [],
+      "matched": 5
+    },
+    "seal_inputs": {
+      "count": 75,
+      "issues": [],
+      "matched": 75
+    },
+    "selected_artifacts": {
+      "count": 17,
+      "issues": [],
+      "matched": 17
+    },
+    "verdict_manifest_binding": true
+  },
+  "credential_handling": "Both manifest credential entries are zero-byte mount placeholders; verified size/type and empty hash without opening. No credential source read.",
+  "hashes": {
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0238/results/freeze-smoke-v2.json": "126a1903579270c90e431a336f600b7ce1aad085f03ee37fc58613f525f61cc8",
+    "/Users/aipalm/.local/share/nx01/0238-live/staged-v1/out-smoke-v2/verdict-s01-h-claude-v2.json": "2b5c0cd41d6903d625e530e012482f3b7f52d710ac989b38fcf1bf2ade48c851",
+    "claude-accounting.json": "7ad352f286546b99b82fdf99f3a4108f0a1417fb74f01bfcdda0843ca2beedd9",
+    "evidence.manifest.json": "5135dbeb55a955948dae8c9a6f9ac02d4fb6d07bbec4a3061695557ddffc6004",
+    "peer-policy.json": "f880c08294698ea8cf87e02530680f4974b426f01aa54d01b779ff0e31bd8b7a",
+    "run/result.json": "31cc5e7e2edd4085bf0ca4af928fcf5b7ef5e9b226fb8664c9d6914dd8215645",
+    "run/stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "run/stdout": "8569e1dde7d4a574ab2577718a357cc76ff59e4554b95414fccf7c19988a83ae",
+    "seal.json": "8621b6ad7a51a4a0b3a40f7c19a0db0707522bc03ad74ff8c29e1e35bd5a8bb8",
+    "usage.json": "0db351d6209009c80d7bd652f7e2001cf06663bbc9a153a148b2d9b49c42fc9b"
+  },
+  "schema": "0238-s01-v2-read-only-integrity-v1"
+}

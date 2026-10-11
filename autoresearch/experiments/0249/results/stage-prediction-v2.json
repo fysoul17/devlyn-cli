@@ -1,0 +1,21 @@
+{
+  "dispatch": "NOT_AUTHORIZED_OR_PERFORMED",
+  "prediction": [
+    "Unchanged 0247 stage verifies selected 4.2.5 packages and creates new isolated stage.",
+    "Fixture v2 exact goal/allowed/public/oracle and source hashes compose OR1/OR2; E1/B5 remain exact 0237 tasks with actual packet.tree/content symlink semantics.",
+    "Only OR1/OR2 hidden oracle files extend prior public/oracle controls; selected package controls match new archives.",
+    "Reviewed 0249 Runner inputs extend unchanged 0247 inputs by runner and builder; explicit A/B/S catalogs inherit 0248 and all auth/output/scratch directories remain empty.",
+    "No native run, prepare, preflight, credential or network calls occur."
+  ],
+  "preparation_history": "stage-attempt-v1.json preserves pre-write E1 symlink assertion; evaluator-B5-routing-v1.json preserves unsupported prior B5 route.",
+  "protected": {
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/fixtures/fixture-manifest-v2.json": "d246a3212afb190b4a3dc608fd3e6797ebe571c5362bf91da970088ac83f895a",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/results/fixture-review-v2.md": "216c0e153f468d87e9d86ff1976aba9754ac59f86a476c6a60ae832b246f2efb",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/results/runner-review-v1.md": "69fff839af2ff09cc5081ae29c44d574f98b8b252d9ca897e821d7fb95c236cf",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/results/runner-test-v1.json": "98c5a8630d843c9b7ae6742ebcc95fd6183bbf8ca3de5372f7cf92cec2a97b61",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/results/stage-build-v2.py": "911839e1a9ca0e5f6f7cef01605c78fe73d0e5961a626ffd67bf3f9f515b4596",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/runner.py": "a2b22bac4e2847580ceb58d337be80f49d9c28d9b45942fee74c2c96638cb41c"
+  },
+  "recorded_at": "2026-10-10T23:39:10.656271+00:00",
+  "schema": "0249-stage-prediction-v2"
+}

@@ -1,0 +1,79 @@
+{
+  "public": [
+    {
+      "argv": [
+        "sh",
+        "-c",
+        "mkdir /tmp/public-work && cp -a /cell/work/. /tmp/public-work/ && cd /tmp/public-work && cd visible && python3 -B checks/run_checks.py"
+      ],
+      "exit_code": 0,
+      "stderr": "test_empty_config (test_format.FormatSmoke.test_empty_config) ... ok\ntest_invalid_document_shapes (test_format.FormatSmoke.test_invalid_document_shapes) ... ok\ntest_flat_include_and_override (test_smoke.Smoke.test_flat_include_and_override) ... ok\ntest_initial_manager (test_smoke.Smoke.test_initial_manager) ... ok\ntest_missing_file (test_smoke.Smoke.test_missing_file) ... ok\n\n----------------------------------------------------------------------\nRan 5 tests in 0.002s\n\nOK\n",
+      "stdout": "",
+      "timeout": false
+    }
+  ],
+  "raw": [
+    {
+      "argv": [
+        "python3",
+        "-B",
+        "/control/autoresearch/eq3/CFG-LIFE/oracle.py",
+        "/cell/work/visible"
+      ],
+      "exit_code": 0,
+      "stderr": "",
+      "stdout": "{\"manifestations\": [{\"detail\": \"Traceback (most recent call last):\\n  File \\\"/control/autoresearch/eq3/CFG-LIFE/oracle.py\\\", line 10, in check\\n    fn()\\n  File \\\"/control/autoresearch/eq3/CFG-LIFE/oracle.py\\\", line 52, in loader_merge_value_kinds\\n    assert same_json(Loader().load(app).values, {\\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\\nAssertionError\\n\", \"id\": \"loader-merge-value-kinds\", \"passed\": false}, {\"detail\": \"Traceback (most recent call last):\\n  File \\\"/control/autoresearch/eq3/CFG-LIFE/oracle.py\\\", line 10, in check\\n    fn()\\n  File \\\"/control/autoresearch/eq3/CFG-LIFE/oracle.py\\\", line 82, in relative_diamond\\n    assert resolved.values == {'service': {'timeout': 5, 'workers': 4, 'host': 'localhost'}, 'color': 'base'}\\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\\nAssertionError\\n\", \"id\": \"relative-diamond-layer-order\", \"passed\": false}, {\"detail\": \"Traceback (most recent call last):\\n  File \\\"/control/autoresearch/eq3/CFG-LIFE/oracle.py\\\", line 10, in check\\n    fn()\\n  File \\\"/control/autoresearch/eq3/CFG-LIFE/oracle.py\\\", line 100, in transitive_same_stat\\n    assert second.values == {'port': 7022} and second.generation == 2\\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\\nAssertionError\\n\", \"id\": \"transitive-change-same-size-and-mtime\", \"passed\": false}, {\"detail\": \"Traceback (most recent call last):\\n  File \\\"/control/autoresearch/eq3/CFG-LIFE/oracle.py\\\", line 10, in check\\n    fn()\\n  File \\\"/control/autoresearch/eq3/CFG-LIFE/oracle.py\\\", line 111, in snapshot_isolation\\n    assert manager.current.values == {'service': {'tags': ['one']}}\\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\\nAssertionError\\n\", \"id\": \"nested-caller-isolation\", \"passed\": false}, {\"detail\": \"Traceback (most recent call last):\\n  File \\\"/control/autoresearch/eq3/CFG-LIFE/oracle.py\\\", line 10, in check\\n    fn()\\n  File \\\"/control/autoresearch/eq3/CFG-LIFE/oracle.py\\\", line 130, in generation_and_dependencies\\n    assert manager.reload().generation == 1\\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\\nAssertionError\\n\", \"id\": \"semantic-generation-current-dependencies\", \"passed\": false}, {\"detail\": \"Traceback (most recent call last):\\n  File \\\"/control/autoresearch/eq3/CFG-LIFE/oracle.py\\\", line 10, in check\\n    fn()\\n  File \\\"/control/autoresearch/eq3/CFG-LIFE/oracle.py\\\", line 156, in failed_reload_recovery\\n    raise AssertionError('failed graph published')\\nAssertionError: failed graph published\\n\", \"id\": \"failed-reload-preserves-and-recovers\", \"passed\": false}, {\"detail\": \"Traceback (most recent call last):\\n  File \\\"/control/autoresearch/eq3/CFG-LIFE/oracle.py\\\", line 10, in check\\n    fn()\\n  File \\\"/control/autoresearch/eq3/CFG-LIFE/oracle.py\\\", line 181, in failed_initial_no_cached_branch\\n    assert snapshot.generation == 1 and snapshot.values == {'mode': 'new', 'ready': True}\\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\\nAssertionError\\n\", \"id\": \"failed-first-load-no-cache-poisoning\", \"passed\": false}, {\"detail\": \"Traceback (most recent call last):\\n  File \\\"/control/autoresearch/eq3/CFG-LIFE/oracle.py\\\", line 10, in check\\n    fn()\\n  File \\\"/control/autoresearch/eq3/CFG-LIFE/oracle.py\\\", line 197, in removed_dependency\\n    raise AssertionError('deleted dependency served from cache')\\nAssertionError: deleted dependency served from cache\\n\", \"id\": \"deleted-dependency-repair\", \"passed\": false}, {\"detail\": \"Traceback (most recent call last):\\n  File \\\"/control/autoresearch/eq3/CFG-LIFE/oracle.py\\\", line 10, in check\\n    fn()\\n  File \\\"/control/autoresearch/eq3/CFG-LIFE/oracle.py\\\", line 217, in cycle_after_success\\n    raise AssertionError('cycle introduced after success accepted')\\nAssertionError: cycle introduced after success accepted\\n\", \"id\": \"canonical-cycle-after-success\", \"passed\": false}, {\"detail\": \"Traceback (most recent call last):\\n  File \\\"/control/autoresearch/eq3/CFG-LIFE/oracle.py\\\", line 10, in check\\n    fn()\\n  File \\\"/control/autoresearch/eq3/CFG-LIFE/oracle.py\\\", line 235, in repeated_include_freshness\\n    assert second.values == {'nested': {'a': 2}}\\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\\nAssertionError\\n\", \"id\": \"repeated-include-public-freshness\", \"passed\": false}, {\"detail\": \"Traceback (most recent call last):\\n  File \\\"/control/autoresearch/eq3/CFG-LIFE/oracle.py\\\", line 10, in check\\n    fn()\\n  File \\\"/control/autoresearch/eq3/CFG-LIFE/oracle.py\\\", line 249, in sibling_dependency_accuracy\\n    assert right_alone.dependencies == (right,)\\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\\nAssertionError\\n\", \"id\": \"independent-root-dependency-accuracy\", \"passed\": false}, {\"id\": \"schema-errors-retain-include-chain\", \"passed\": true}]}\n",
+      "timeout": false
+    }
+  ],
+  "rows": [
+    {
+      "id": "loader-merge-value-kinds",
+      "status": "FAIL"
+    },
+    {
+      "id": "relative-diamond-layer-order",
+      "status": "FAIL"
+    },
+    {
+      "id": "transitive-change-same-size-and-mtime",
+      "status": "FAIL"
+    },
+    {
+      "id": "nested-caller-isolation",
+      "status": "FAIL"
+    },
+    {
+      "id": "semantic-generation-current-dependencies",
+      "status": "FAIL"
+    },
+    {
+      "id": "failed-reload-preserves-and-recovers",
+      "status": "FAIL"
+    },
+    {
+      "id": "failed-first-load-no-cache-poisoning",
+      "status": "FAIL"
+    },
+    {
+      "id": "deleted-dependency-repair",
+      "status": "FAIL"
+    },
+    {
+      "id": "canonical-cycle-after-success",
+      "status": "FAIL"
+    },
+    {
+      "id": "repeated-include-public-freshness",
+      "status": "FAIL"
+    },
+    {
+      "id": "independent-root-dependency-accuracy",
+      "status": "FAIL"
+    },
+    {
+      "id": "schema-errors-retain-include-chain",
+      "status": "PASS"
+    }
+  ]
+}

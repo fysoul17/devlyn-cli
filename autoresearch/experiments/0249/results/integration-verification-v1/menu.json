@@ -1,0 +1,11 @@
+{
+  "command": [
+    "node",
+    "--test",
+    "scripts/test-installer-menu.cjs"
+  ],
+  "elapsed_seconds": 3.7901762920082547,
+  "finished_at": "2026-10-10T23:13:42.475590+00:00",
+  "returncode": 0,
+  "started_at": "2026-10-10T23:13:38.685391+00:00"
+}

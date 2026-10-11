@@ -1,0 +1,7 @@
+{
+  "time": "2026-10-10T07:16:49.558831+00:00",
+  "key": "e389e1e77cc2da32214e95451b25b45402b1b586b26f5688bb373c492db3fcfb",
+  "prediction": "In isolated copies of the actual migration module, original versus first-parent regenerated manifests produce identical upgrades for tagged v4.1.0/v4.2.0 legacy source and an intact managed 7e2eef0a block. For a modified managed 7e2eef0a block, regeneration preserves the unknown old delivery paragraph as custom text while the original manifest removes that known paragraph; both retain the explicit custom addition. This is conditional branch-install behavior, not proof that any release shipped it.",
+  "network": "none",
+  "mutations": "fresh temporary fixtures and new result evidence only"
+}

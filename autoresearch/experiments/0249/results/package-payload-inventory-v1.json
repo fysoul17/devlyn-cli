@@ -1,0 +1,4855 @@
+{
+  "B": {
+    "package/AGENTS.md": {
+      "bytes": 4049,
+      "mode": 420,
+      "sha256": "4823ba898cdf99ce24366a3d1983af63cdb14d2e1b95b5bdafea49097f457ff5"
+    },
+    "package/CLAUDE.md": {
+      "bytes": 4049,
+      "mode": 420,
+      "sha256": "4823ba898cdf99ce24366a3d1983af63cdb14d2e1b95b5bdafea49097f457ff5"
+    },
+    "package/LICENSE": {
+      "bytes": 1081,
+      "mode": 420,
+      "sha256": "ce7eb6efd00f74955f0d20451e39d182c7d9bcacc6b08440fa8fadad640aa897"
+    },
+    "package/README.md": {
+      "bytes": 21445,
+      "mode": 420,
+      "sha256": "f1f90dd8ad0c7a45b383c4097fea6f7368d3a9b14d6781a35a0162059a474d60"
+    },
+    "package/bin/devlyn.js": {
+      "bytes": 49230,
+      "mode": 493,
+      "sha256": "ab1555f8b1f6c2ee82d0caddf1eebc11371d6e479724d421cfafe50983b640b9"
+    },
+    "package/bin/instruction-templates.json": {
+      "bytes": 69599,
+      "mode": 420,
+      "sha256": "3b71a41dd8689cc33fe9567d83eac2b4b0e1aca7ad774488632e860c1aed316a"
+    },
+    "package/bin/instructions.js": {
+      "bytes": 16071,
+      "mode": 420,
+      "sha256": "c2ef3fda7714efab8e1569a4d08ec17abc1a10469133b11b159d0884f7bb2532"
+    },
+    "package/bin/skill-history.json": {
+      "bytes": 6386,
+      "mode": 420,
+      "sha256": "de0466c1a8aaeeab47c49d303f734882fc9462d7d8891e53f596e17d6b7aca94"
+    },
+    "package/bin/skill-ownership.js": {
+      "bytes": 3212,
+      "mode": 420,
+      "sha256": "4e3080a68aa8d3188b14dec99e0a0df85f59d6a6d1fe7e520ae3c3003ab2a42d"
+    },
+    "package/config/skills/_shared/.ruff.toml": {
+      "bytes": 82,
+      "mode": 420,
+      "sha256": "adec089c6c3bc0c63fb6a8d9acbf9d1dc3d8a287d1d32f086340d4b90ee9d9e1"
+    },
+    "package/config/skills/_shared/adapters/claude.md": {
+      "bytes": 709,
+      "mode": 420,
+      "sha256": "1e7440575b30019066209e1ea5423a3fd9af86311c73257e9f7dd814354bcdf7"
+    },
+    "package/config/skills/_shared/adapters/codex.md": {
+      "bytes": 918,
+      "mode": 420,
+      "sha256": "fe7b13c816f3c67dad1cf87ae816259090e7a3fb44f0274b59b013b2022036c1"
+    },
+    "package/config/skills/_shared/adapters/omp.md": {
+      "bytes": 52,
+      "mode": 420,
+      "sha256": "25c2dfad40e3acd3b23f26ec9b5811da2a36b9d803c9795ef36af5ef5c03d33c"
+    },
+    "package/config/skills/_shared/codex-monitored.sh": {
+      "bytes": 10038,
+      "mode": 493,
+      "sha256": "3d0658c042684c0323c2c4d691f5ca9cd544df6ffc3cbe54eccd54e8a1654d77"
+    },
+    "package/config/skills/_shared/engine-doctor.sh": {
+      "bytes": 2329,
+      "mode": 493,
+      "sha256": "cb9b253f64180334e0b2a2056e3e79d8be43244256c45c1c45dd1a5af099b982"
+    },
+    "package/config/skills/_shared/engine-preflight.md": {
+      "bytes": 2022,
+      "mode": 420,
+      "sha256": "ecb552f4dd74e986bde2d7deb51dd719a16691d6c2672d6880e675de1204dca0"
+    },
+    "package/config/skills/_shared/expected-contract.py": {
+      "bytes": 10478,
+      "mode": 420,
+      "sha256": "1a7dd6da07c3b4cd59e8f8135820ec808be695d763e3f0e265f069c12d0b59f0"
+    },
+    "package/config/skills/_shared/expected.schema.json": {
+      "bytes": 5332,
+      "mode": 420,
+      "sha256": "911c2f5f43ef70ee4ee3852a55b876d68b2ceb2b38e5799a58035c4d6b9bba2c"
+    },
+    "package/config/skills/_shared/invocation-receipt.py": {
+      "bytes": 20451,
+      "mode": 420,
+      "sha256": "0adde04a9df851062dab94bed1babd0f7e973f893275070312eb85c6c6c0cf3d"
+    },
+    "package/config/skills/_shared/platform-support.py": {
+      "bytes": 19061,
+      "mode": 420,
+      "sha256": "a8e1472b792000bd21ef5d359eba2ae49555adcc198198f2625b51ebb94bbc66"
+    },
+    "package/config/skills/_shared/role-config.py": {
+      "bytes": 11194,
+      "mode": 420,
+      "sha256": "d858805d022152a18d01516df02735d47a68225f955454dcfe952f216c9877f3"
+    },
+    "package/config/skills/_shared/runtime-principles.md": {
+      "bytes": 3011,
+      "mode": 420,
+      "sha256": "6c615346159ead0473da08bbc9645f3807b7265d91b3671620c79bff3abaa407"
+    },
+    "package/config/skills/_shared/task-complete.py": {
+      "bytes": 138449,
+      "mode": 420,
+      "sha256": "d7dc54a6094d82871875bc0a0d7379b13ed38a143c52748257ff721b464dcc59"
+    },
+    "package/config/skills/_shared/task-completion.md": {
+      "bytes": 14434,
+      "mode": 420,
+      "sha256": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733"
+    },
+    "package/config/skills/devlyn-engines/SKILL.md": {
+      "bytes": 3627,
+      "mode": 420,
+      "sha256": "ee82fa921c0fb0e237794a60b400c3e34c16f38091a023d6c1606aa365ddbe48"
+    },
+    "package/config/skills/devlyn-ideate/SKILL.md": {
+      "bytes": 11614,
+      "mode": 420,
+      "sha256": "3f8b29c15ef931b8ac2314e2a9a65b5cd55adde8fbd7db13bc31fb40f7a5e866"
+    },
+    "package/config/skills/devlyn-ideate/references/elicitation.md": {
+      "bytes": 2410,
+      "mode": 420,
+      "sha256": "b836f98710f82b973212fd4406575fb3b16a299cee5edc98e555e82b2fbcad47"
+    },
+    "package/config/skills/devlyn-ideate/references/loop.md": {
+      "bytes": 17919,
+      "mode": 420,
+      "sha256": "a0fa17d174d141950927a0c33e9edc63d4f97b5f98b0dedfd34782dd77612c86"
+    },
+    "package/config/skills/devlyn-ideate/references/package-format.md": {
+      "bytes": 10727,
+      "mode": 420,
+      "sha256": "b52cd176ed2a440039d6327d29ac8ac3cc80020b2549f2c9cd8f6e6010b688a5"
+    },
+    "package/config/skills/devlyn-ideate/scripts/acceptance.py": {
+      "bytes": 47412,
+      "mode": 420,
+      "sha256": "bf569c1f9f90957d4cad5ef91b8f30957d09a5587686c04512f88eec46a7c6a5"
+    },
+    "package/config/skills/devlyn-ideate/scripts/queue.py": {
+      "bytes": 104790,
+      "mode": 420,
+      "sha256": "e8f59a58bc37647d284c09db86f701b2e6ebfaefeffd9de2ca2d9394757664dd"
+    },
+    "package/node_modules/@inquirer/ansi/LICENSE": {
+      "bytes": 1058,
+      "mode": 420,
+      "sha256": "85aca0b12ce5ade4ff76e9cbbe7e0d5a4cdde979e3930727c272e1fa04b8cc23"
+    },
+    "package/node_modules/@inquirer/ansi/README.md": {
+      "bytes": 2016,
+      "mode": 420,
+      "sha256": "acac7e39e8085c850d9d14b65ba2ff90ffaca5f487ce08e1eb922578994b20f5"
+    },
+    "package/node_modules/@inquirer/ansi/dist/index.d.ts": {
+      "bytes": 620,
+      "mode": 420,
+      "sha256": "48bc69e9c25e4995e462c08b0d264f1e13b188694f12c8f38a6aefb3994d6ef4"
+    },
+    "package/node_modules/@inquirer/ansi/dist/index.js": {
+      "bytes": 866,
+      "mode": 420,
+      "sha256": "adeb11d734b61dfe27f35860cdd9026cd1b10c4c0c5c63a9a12c5332e4b0ee19"
+    },
+    "package/node_modules/@inquirer/ansi/package.json": {
+      "bytes": 1465,
+      "mode": 420,
+      "sha256": "cab1c0b6189d6817ecf9cee0c087acaffebf8ebeccc2556026a5dd01ca36c191"
+    },
+    "package/node_modules/@inquirer/checkbox/LICENSE": {
+      "bytes": 1058,
+      "mode": 420,
+      "sha256": "85aca0b12ce5ade4ff76e9cbbe7e0d5a4cdde979e3930727c272e1fa04b8cc23"
+    },
+    "package/node_modules/@inquirer/checkbox/README.md": {
+      "bytes": 8290,
+      "mode": 420,
+      "sha256": "319b510c0ef22ba509306a94a8715635ce4070221047ce598af09378af27bbcc"
+    },
+    "package/node_modules/@inquirer/checkbox/dist/index.d.ts": {
+      "bytes": 2252,
+      "mode": 420,
+      "sha256": "a62624c7f04fc4566f8f8b96f6d39110125263e4f79c6b496cef28c51975ad0f"
+    },
+    "package/node_modules/@inquirer/checkbox/dist/index.js": {
+      "bytes": 8304,
+      "mode": 420,
+      "sha256": "d8318ce8bc4cb429f31556cd935acff9991e929d9dbc0f1d2e6a97de2cbfcf73"
+    },
+    "package/node_modules/@inquirer/checkbox/package.json": {
+      "bytes": 1799,
+      "mode": 420,
+      "sha256": "40417769237d48d389178653cda6bb07f895b57f6c47e8b02399c269be9bdd61"
+    },
+    "package/node_modules/@inquirer/core/LICENSE": {
+      "bytes": 1058,
+      "mode": 420,
+      "sha256": "85aca0b12ce5ade4ff76e9cbbe7e0d5a4cdde979e3930727c272e1fa04b8cc23"
+    },
+    "package/node_modules/@inquirer/core/README.md": {
+      "bytes": 12152,
+      "mode": 420,
+      "sha256": "3755b653465b536e1f5fedccc71985ce26c2b669f95f71028d46e0f1f338e2ca"
+    },
+    "package/node_modules/@inquirer/core/dist/index.d.ts": {
+      "bytes": 756,
+      "mode": 420,
+      "sha256": "e1d6ddd0c300ba35bd166063d5b2456e9d84fe96bdb7c16ad9379e50dca5dcda"
+    },
+    "package/node_modules/@inquirer/core/dist/index.js": {
+      "bytes": 666,
+      "mode": 420,
+      "sha256": "465298a818b5ba4332579195a2f9a93b648db2a87d0bdd9608e5804955106c29"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/Separator.d.ts": {
+      "bytes": 261,
+      "mode": 420,
+      "sha256": "ab37b1199441c7ecb602defe46f72099d3d4555f7911bd865f51657f419779ab"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/Separator.js": {
+      "bytes": 578,
+      "mode": 420,
+      "sha256": "f75aa2252ef60c62410bd604bf7c0688c678c947d446cfcef7946884db0a78e6"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/__probe/p1.d.ts": {
+      "bytes": 120,
+      "mode": 420,
+      "sha256": "708667d0be2b7c761d85d3fcd27ffd86af6d9b07285b844e4c89460dcd7a7136"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/__probe/p1.js": {
+      "bytes": 107,
+      "mode": 420,
+      "sha256": "b29c4a6673c41a76fbaf5a7dd4ee76ca1dc621713d35c6d1361c325e696415d5"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/__probe/p2.d.ts": {
+      "bytes": 120,
+      "mode": 420,
+      "sha256": "708667d0be2b7c761d85d3fcd27ffd86af6d9b07285b844e4c89460dcd7a7136"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/__probe/p2.js": {
+      "bytes": 98,
+      "mode": 420,
+      "sha256": "5664b041803cbeb6cd286c8fa242d5c5c6ebf7ad1f9c0c72613c84c07a3ee1a0"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/__probe/p3.d.ts": {
+      "bytes": 120,
+      "mode": 420,
+      "sha256": "708667d0be2b7c761d85d3fcd27ffd86af6d9b07285b844e4c89460dcd7a7136"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/__probe/p3.js": {
+      "bytes": 152,
+      "mode": 420,
+      "sha256": "08f8d9af8c032fa4db6c7b8dceb3f4365e99e6a369151ca33e8f6d0a992f30f1"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/create-prompt.d.ts": {
+      "bytes": 528,
+      "mode": 420,
+      "sha256": "673acd99a4a6296577959626d31fe5cabf5bb3441e973e3e8cea71ffece1ff81"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/create-prompt.js": {
+      "bytes": 9352,
+      "mode": 420,
+      "sha256": "281fea27f5d664d26748c79b3c95442dbd7ffa4cb7e81671a2e7eeb20075284e"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/errors.d.ts": {
+      "bytes": 465,
+      "mode": 420,
+      "sha256": "cc2d9ba9d5434882cfb9bc2954fe433b5538fa78a40be504c9833a45d1a732ad"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/errors.js": {
+      "bytes": 539,
+      "mode": 420,
+      "sha256": "e853af7060009a0d0cc4634431c28d9b5ff43f0084982c1700b75b943b27a278"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/hook-engine.d.ts": {
+      "bytes": 762,
+      "mode": 420,
+      "sha256": "a93432b560099da85aadbb687183ac0d2e9d2719dff542a7db3d0cf296cdf0ac"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/hook-engine.js": {
+      "bytes": 3341,
+      "mode": 420,
+      "sha256": "03abfab3475cb8f7d5feee2ce6bf7ca77327042d0e50bb1b362866c8667bd2b4"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/key.d.ts": {
+      "bytes": 817,
+      "mode": 420,
+      "sha256": "10043f2974346ba2baca701cd0a2bca1bda974d626a5d7eb92b741757a42443e"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/key.js": {
+      "bytes": 1481,
+      "mode": 420,
+      "sha256": "23a8ce908654922f130da62b1b0146c2107dd939019d3ee67c69ef5bb56b336f"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/make-theme.d.ts": {
+      "bytes": 272,
+      "mode": 420,
+      "sha256": "5a7fe6ef136e88ee70d3cd0b1aa0d6875178b2682542ca340875a2711c81d779"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/make-theme.js": {
+      "bytes": 1114,
+      "mode": 420,
+      "sha256": "434600c202a94ae6ba3b90ce9820e92aa7d629f894bfa4cdddde8fd0834cb870"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/pagination/use-pagination.d.ts": {
+      "bytes": 504,
+      "mode": 420,
+      "sha256": "6efe6725728024c1b6cf22b47fe1dcaecc951444e7cb6fe0037d96123bb75667"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/pagination/use-pagination.js": {
+      "bytes": 6358,
+      "mode": 420,
+      "sha256": "0cbe099c4e7581198e6d18ea051cf9508b5d24c34b566ba45eae7a16286ff588"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/screen-manager.d.ts": {
+      "bytes": 432,
+      "mode": 420,
+      "sha256": "681cac7cfb615498ee2cf79c930d8b55e2da6c9a3c58971b3324205e218cf838"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/screen-manager.js": {
+      "bytes": 3744,
+      "mode": 420,
+      "sha256": "39dc3d968f515138a35a46c89f0abea24c83ef0ebdad81eba482d605dbbf9499"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/theme.d.ts": {
+      "bytes": 5288,
+      "mode": 420,
+      "sha256": "c8c43f3c6f59572906c077ddd96a1856fc5c6519c30f356d6c9c511b9dadc9c0"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/theme.js": {
+      "bytes": 1014,
+      "mode": 420,
+      "sha256": "321d96b2968d279502f04d1e711e4b1de50dbc25daba2c78041a0560e2e7db73"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/use-effect.d.ts": {
+      "bytes": 182,
+      "mode": 420,
+      "sha256": "8da95d257be3f2d83c21c555dedda9c96869e5f855652523cf52dc98ca8c57de"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/use-effect.js": {
+      "bytes": 403,
+      "mode": 420,
+      "sha256": "001c995aba7c77aee1c0043516327b7f4a2aadf0c94a3d7f00dfe171dce052bf"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/use-keypress.d.ts": {
+      "bytes": 229,
+      "mode": 420,
+      "sha256": "ce6ada7f4eb4cda3ccfe28a0201608828fc6ee2d3204101976831100d9550d47"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/use-keypress.js": {
+      "bytes": 637,
+      "mode": 420,
+      "sha256": "943a6d1ad799f073cea21eb155c193990b0802640aa5210e4f20ef18485f25e3"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/use-memo.d.ts": {
+      "bytes": 102,
+      "mode": 420,
+      "sha256": "aa9494cb36743567c0f6ce385ce869358b59193c9b61612e0d70e4de500424c3"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/use-memo.js": {
+      "bytes": 496,
+      "mode": 420,
+      "sha256": "70a292e170d545a5d28c87f579dafbf1f1ec8389fcb12f598ccf3ca87d73a757"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/use-prefix.d.ts": {
+      "bytes": 157,
+      "mode": 420,
+      "sha256": "988be2b47c162ddfc4ac289de0bc50b52fd425d4408cb4bc40fcc9b81f4957c6"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/use-prefix.js": {
+      "bytes": 1357,
+      "mode": 420,
+      "sha256": "9ace5f806e90dd13a21fbdaaae9678af60b31f2202985be983a8b082290ae6a6"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/use-ref.d.ts": {
+      "bytes": 165,
+      "mode": 420,
+      "sha256": "904964129f1ef4797282d4ea4411eaf26d4b22bb481b8b8ab3e920d4cfc79ecf"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/use-ref.js": {
+      "bytes": 117,
+      "mode": 420,
+      "sha256": "b76dccca2579a01f21b77a437bb0177aca843b56b6f4727eb62ee8b18d7da81a"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/use-state.d.ts": {
+      "bytes": 574,
+      "mode": 420,
+      "sha256": "bf2b86c4d2d7db6fdbb14098c247526ef334ee62e8f06e3d790891b5d0d10090"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/use-state.js": {
+      "bytes": 1024,
+      "mode": 420,
+      "sha256": "0bd91dcc4ba24d7f1eb657a3c4aab35f264c3faf4e59b8159411c1a4f67b0fdc"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/utils.d.ts": {
+      "bytes": 442,
+      "mode": 420,
+      "sha256": "7c8e5a4aaee3a6e83251ac295ab33a9e0aa2891c97674b9844128a8335aadc6b"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/utils.js": {
+      "bytes": 795,
+      "mode": 420,
+      "sha256": "951d0b5bb378664a26890fdc30951c72795bcc3988c44f2668ded27cc7162eba"
+    },
+    "package/node_modules/@inquirer/core/package.json": {
+      "bytes": 1942,
+      "mode": 420,
+      "sha256": "d89bbfddc2f85ca72948ee68e76545516cf32176c30aaac6329452072c16c9d4"
+    },
+    "package/node_modules/@inquirer/figures/LICENSE": {
+      "bytes": 1058,
+      "mode": 420,
+      "sha256": "85aca0b12ce5ade4ff76e9cbbe7e0d5a4cdde979e3930727c272e1fa04b8cc23"
+    },
+    "package/node_modules/@inquirer/figures/dist/index.d.ts": {
+      "bytes": 8111,
+      "mode": 420,
+      "sha256": "816b8fa6e2e8c9a02d5fff5b3ac395da52f9fcf09cb5d6f971b66a018e87e059"
+    },
+    "package/node_modules/@inquirer/figures/dist/index.js": {
+      "bytes": 9336,
+      "mode": 420,
+      "sha256": "a9726aa6667509460fe6e64c05739b2dfa094dc621d5efbc35ba333b99e3d125"
+    },
+    "package/node_modules/@inquirer/figures/package.json": {
+      "bytes": 1496,
+      "mode": 420,
+      "sha256": "5445e0055b8bb76698640b4472b9d15c192fe385d1ead476e84973c4116c4487"
+    },
+    "package/node_modules/@inquirer/select/LICENSE": {
+      "bytes": 1058,
+      "mode": 420,
+      "sha256": "85aca0b12ce5ade4ff76e9cbbe7e0d5a4cdde979e3930727c272e1fa04b8cc23"
+    },
+    "package/node_modules/@inquirer/select/README.md": {
+      "bytes": 6860,
+      "mode": 420,
+      "sha256": "930c0e65f4a1ae8257a838c4f246ab3dcd49fccf946bd303b202d92eb28dcfaa"
+    },
+    "package/node_modules/@inquirer/select/dist/index.d.ts": {
+      "bytes": 1302,
+      "mode": 420,
+      "sha256": "a432730d0b21d8482d94d49853107fc26f01b97dcfea82accd3fbb80f3b108ad"
+    },
+    "package/node_modules/@inquirer/select/dist/index.js": {
+      "bytes": 7515,
+      "mode": 420,
+      "sha256": "4536a0168d00771ed9ac01f41659b70454262a9d5a7d47424d2a85af52697b00"
+    },
+    "package/node_modules/@inquirer/select/package.json": {
+      "bytes": 1798,
+      "mode": 420,
+      "sha256": "cf5bde03695203d341212b8daf812378ccaa31becb1b2dcb55aa37ff31875ca3"
+    },
+    "package/node_modules/@inquirer/type/LICENSE": {
+      "bytes": 1058,
+      "mode": 420,
+      "sha256": "85aca0b12ce5ade4ff76e9cbbe7e0d5a4cdde979e3930727c272e1fa04b8cc23"
+    },
+    "package/node_modules/@inquirer/type/dist/index.d.ts": {
+      "bytes": 59,
+      "mode": 420,
+      "sha256": "4e3592aed54bd51d840e6d078794b45a8388d0accf38efa3267a16742ce88041"
+    },
+    "package/node_modules/@inquirer/type/dist/index.js": {
+      "bytes": 59,
+      "mode": 420,
+      "sha256": "303e3ba5e5f2add2706ca909f4f5131cf712d39d7d3994bf259a9f4dcad60a26"
+    },
+    "package/node_modules/@inquirer/type/dist/inquirer.d.ts": {
+      "bytes": 1318,
+      "mode": 420,
+      "sha256": "f496804f1238bfdf19b67ac9ce7825d50920a958994fc29a80697b8a63eeed6d"
+    },
+    "package/node_modules/@inquirer/type/dist/inquirer.js": {
+      "bytes": 11,
+      "mode": 420,
+      "sha256": "8e609bb71c20b858c77f0e9f90bb1319db8477b13f9f965f1a1e18524bf50881"
+    },
+    "package/node_modules/@inquirer/type/dist/utils.d.ts": {
+      "bytes": 1814,
+      "mode": 420,
+      "sha256": "1de74d27c48e696d95e2fcfcd116e868a5479d7b175180e628448d3e99413af7"
+    },
+    "package/node_modules/@inquirer/type/dist/utils.js": {
+      "bytes": 509,
+      "mode": 420,
+      "sha256": "bc2c6130a24db301e539666e913eb8820811b91df01cf4a73fb1b7d6c83f0f5f"
+    },
+    "package/node_modules/@inquirer/type/package.json": {
+      "bytes": 1573,
+      "mode": 420,
+      "sha256": "f1480a8c6e0a37e38ed0650c56c376197ca3592120b46081bca38f6deab8108a"
+    },
+    "package/node_modules/cli-width/LICENSE": {
+      "bytes": 757,
+      "mode": 420,
+      "sha256": "31493c14dc0b4eb1e06fe5d4bab3ca4e3b40f8749433455c713863238600cf1a"
+    },
+    "package/node_modules/cli-width/README.md": {
+      "bytes": 1863,
+      "mode": 420,
+      "sha256": "13b3d927e157b1f5428c2d025c804b202284ceae9268a149c3ded7efb52b633a"
+    },
+    "package/node_modules/cli-width/index.d.ts": {
+      "bytes": 267,
+      "mode": 420,
+      "sha256": "465b5cc11c21f3fc08d7924d06b9fde39048be18df7eef3a4ad0b5e0fc3b5c64"
+    },
+    "package/node_modules/cli-width/index.js": {
+      "bytes": 903,
+      "mode": 420,
+      "sha256": "2dab4c960425df4af8ac9fbdf784c86a1e0c64924b7e28dd65fc8faee6f92a7f"
+    },
+    "package/node_modules/cli-width/package.json": {
+      "bytes": 977,
+      "mode": 420,
+      "sha256": "6fdfc702f4eb668937462fafc1ab3f8514baea43ce58fed9d545a4d40e214967"
+    },
+    "package/node_modules/fast-string-truncated-width/dist/index.d.ts": {
+      "bytes": 306,
+      "mode": 420,
+      "sha256": "fdfc96d5bac6c14e6ac4fdcdd89f6a4d5e02cab2306999e80ab2fb147b0ab84e"
+    },
+    "package/node_modules/fast-string-truncated-width/dist/index.js": {
+      "bytes": 5047,
+      "mode": 420,
+      "sha256": "5e7ee74641239c2fff739890ecc9b019872d6dee7615afb0924893fa4956e9dc"
+    },
+    "package/node_modules/fast-string-truncated-width/dist/types.d.ts": {
+      "bytes": 413,
+      "mode": 420,
+      "sha256": "6d3c8c054c221c49c4dbd5a4690425e35993684c2b075c92c753a86875daeddc"
+    },
+    "package/node_modules/fast-string-truncated-width/dist/types.js": {
+      "bytes": 22,
+      "mode": 420,
+      "sha256": "d99f969d7455894d5b3ee7632c54f4ffb79d666c0dd8dc49dfa6e7815f74196c"
+    },
+    "package/node_modules/fast-string-truncated-width/dist/utils.d.ts": {
+      "bytes": 242,
+      "mode": 420,
+      "sha256": "f468edeadf2ddaf71c7871248f28fe1713e753be8efa90edc9ee29d1c9ad8167"
+    },
+    "package/node_modules/fast-string-truncated-width/dist/utils.js": {
+      "bytes": 1197,
+      "mode": 420,
+      "sha256": "6909b1628b2aafa77427b5ac519307e1b30a9ea7b30d26d1c5622c8eb77b7acc"
+    },
+    "package/node_modules/fast-string-truncated-width/license": {
+      "bytes": 1091,
+      "mode": 420,
+      "sha256": "2547dead17a32b1e49a588e943d52420b4d75f1349d9afd9ecb567b2dc8911c0"
+    },
+    "package/node_modules/fast-string-truncated-width/package.json": {
+      "bytes": 946,
+      "mode": 420,
+      "sha256": "68f98cd59ee3f050e88ad1924dd29dd6a3522199cb480e9ae08f95fd7f8c6f4a"
+    },
+    "package/node_modules/fast-string-truncated-width/readme.md": {
+      "bytes": 2875,
+      "mode": 420,
+      "sha256": "213b7c87c3609a0af4980d7c3d88877520af3bdf4849f166bf730cab8f7e9453"
+    },
+    "package/node_modules/fast-string-width/dist/index.d.ts": {
+      "bytes": 210,
+      "mode": 420,
+      "sha256": "cab492f3f728526efe351794948a23ccbf4f1d2572a1eea95f4f9cebde42d345"
+    },
+    "package/node_modules/fast-string-width/dist/index.js": {
+      "bytes": 367,
+      "mode": 420,
+      "sha256": "3f5556b4288f58e506ccf41b13a437d746c7945cdc88f0485e94ecd129c054b4"
+    },
+    "package/node_modules/fast-string-width/license": {
+      "bytes": 1091,
+      "mode": 420,
+      "sha256": "2547dead17a32b1e49a588e943d52420b4d75f1349d9afd9ecb567b2dc8911c0"
+    },
+    "package/node_modules/fast-string-width/package.json": {
+      "bytes": 836,
+      "mode": 420,
+      "sha256": "2c49e010864a982bf0084dc4c7c267672f38462446e9911a64d0383e16e02712"
+    },
+    "package/node_modules/fast-string-width/readme.md": {
+      "bytes": 1011,
+      "mode": 420,
+      "sha256": "cb774a871c7b7f07531909b28a56191650cdc7c3043a50371e2eb300f57122fb"
+    },
+    "package/node_modules/fast-wrap-ansi/LICENSE": {
+      "bytes": 1151,
+      "mode": 420,
+      "sha256": "9235f5ebfd80d41920fae7a0317caa3914f2a9249837bc486d7706f73080e375"
+    },
+    "package/node_modules/fast-wrap-ansi/README.md": {
+      "bytes": 381,
+      "mode": 420,
+      "sha256": "9640e741075331af785c50532ac8f2856d1f2dc009b56c553f7bbe73515ad302"
+    },
+    "package/node_modules/fast-wrap-ansi/lib/main.d.ts": {
+      "bytes": 187,
+      "mode": 420,
+      "sha256": "ef10b1ba93c67f43ab63adb4033f79a2702e9bfaee8dc981f263876e10df2a45"
+    },
+    "package/node_modules/fast-wrap-ansi/lib/main.js": {
+      "bytes": 7634,
+      "mode": 420,
+      "sha256": "21e620e9d39cdd8a9cb64dee440b83ffa40c3cdb7b5dc242644ac6df73d7154b"
+    },
+    "package/node_modules/fast-wrap-ansi/package.json": {
+      "bytes": 1357,
+      "mode": 420,
+      "sha256": "faec2e80d1e1a395112ffaced479b858905ee233b5630d970a170666aa99c9fc"
+    },
+    "package/node_modules/marked/LICENSE.md": {
+      "bytes": 2942,
+      "mode": 420,
+      "sha256": "8e3a3f82f59a60958f56ca08f445647c32a4733dc7ca6c2c46f6eb898471ab9c"
+    },
+    "package/node_modules/marked/README.md": {
+      "bytes": 2976,
+      "mode": 420,
+      "sha256": "e55052ba5aa47e7559f67494719cf46762c8c09205736483ff52593860d4f33c"
+    },
+    "package/node_modules/marked/bin/main.js": {
+      "bytes": 6609,
+      "mode": 420,
+      "sha256": "88b4b0eac09204ac6fcd343fe41d54329aff351bac71472716a0227dc7eacd46"
+    },
+    "package/node_modules/marked/bin/marked.js": {
+      "bytes": 215,
+      "mode": 493,
+      "sha256": "e4ec45ee17631a5f3a837b98580f8ad47686181c7e4aaf24ecd9de7231357920"
+    },
+    "package/node_modules/marked/lib/marked.cjs": {
+      "bytes": 72991,
+      "mode": 420,
+      "sha256": "0a8051a2b02f5ef70b6e3e1f00baded1522cbbf48b975b6ac64a8f226a8a0965"
+    },
+    "package/node_modules/marked/lib/marked.cjs.map": {
+      "bytes": 145727,
+      "mode": 420,
+      "sha256": "796693c2d76e01b0f8065d5516e366de2b828812fb0f57bc2c78c9d761fba738"
+    },
+    "package/node_modules/marked/lib/marked.d.cts": {
+      "bytes": 20942,
+      "mode": 420,
+      "sha256": "2f9501a28443c63187a4a868f2e33807640191569144bc65c9127ed0a6ee9f3b"
+    },
+    "package/node_modules/marked/lib/marked.d.ts": {
+      "bytes": 20942,
+      "mode": 420,
+      "sha256": "2f9501a28443c63187a4a868f2e33807640191569144bc65c9127ed0a6ee9f3b"
+    },
+    "package/node_modules/marked/lib/marked.esm.js": {
+      "bytes": 71905,
+      "mode": 420,
+      "sha256": "29e25cdf1a06075c90e9885af06ddd23fb22a5424ed23a61dda986c73a8af641"
+    },
+    "package/node_modules/marked/lib/marked.esm.js.map": {
+      "bytes": 145597,
+      "mode": 420,
+      "sha256": "7c071e67c5460850d5b3065b2577c67e0090ec888e7c7a3f39887364ea9f3004"
+    },
+    "package/node_modules/marked/lib/marked.umd.js": {
+      "bytes": 73384,
+      "mode": 420,
+      "sha256": "d7931d1cd7bf727dd756c871637edcc9e0f8538003b927368400ec1ee47a9dd9"
+    },
+    "package/node_modules/marked/lib/marked.umd.js.map": {
+      "bytes": 145727,
+      "mode": 420,
+      "sha256": "796693c2d76e01b0f8065d5516e366de2b828812fb0f57bc2c78c9d761fba738"
+    },
+    "package/node_modules/marked/man/marked.1": {
+      "bytes": 2375,
+      "mode": 420,
+      "sha256": "a5a759fd23da964e6f7cafbf42d954c84987e2fb3b0f21650310efce945e2532"
+    },
+    "package/node_modules/marked/man/marked.1.md": {
+      "bytes": 1925,
+      "mode": 420,
+      "sha256": "356fded5d8067b9e2e4e0aa4deb6b612393b1cdb6dba53167fedd13c53bd4f1e"
+    },
+    "package/node_modules/marked/marked.min.js": {
+      "bytes": 39903,
+      "mode": 420,
+      "sha256": "3e7e7d7feb3e5d58cb6c804f68ab5c24cc7e5eb6270fd6e5cbb9124739217d0c"
+    },
+    "package/node_modules/marked/package.json": {
+      "bytes": 3763,
+      "mode": 420,
+      "sha256": "f568906109ceacc114fabf9dabcb3782d3bc0f2e2a6b2b8c7edc6878e3c3215b"
+    },
+    "package/node_modules/mute-stream/LICENSE": {
+      "bytes": 765,
+      "mode": 420,
+      "sha256": "4ec3d4c66cd87f5c8d8ad911b10f99bf27cb00cdfcff82621956e379186b016b"
+    },
+    "package/node_modules/mute-stream/README.md": {
+      "bytes": 1661,
+      "mode": 420,
+      "sha256": "cd697c4cfbb68439d1423c2abccec8c8c17f919b13d9a284aea3ec6cbdf074bf"
+    },
+    "package/node_modules/mute-stream/lib/index.js": {
+      "bytes": 2841,
+      "mode": 420,
+      "sha256": "f64dddb569e875fe5f0cb0aa8ac824fdcad7717293fe15b9a58159a61f60921c"
+    },
+    "package/node_modules/mute-stream/package.json": {
+      "bytes": 1231,
+      "mode": 420,
+      "sha256": "6a6d1be985f01f39158d63da75c2350bbf095306ba5f7ffdfb22f5cfdc054506"
+    },
+    "package/node_modules/signal-exit/LICENSE.txt": {
+      "bytes": 790,
+      "mode": 420,
+      "sha256": "b173e19b9a78df305577ace0e52ef45a4bcc915ea28b47b256dc3b68dcb1f7e7"
+    },
+    "package/node_modules/signal-exit/README.md": {
+      "bytes": 2426,
+      "mode": 420,
+      "sha256": "253e9122e9e5eaf8dc9b0fccb36d2011fc8e844d11c7249991edfec2be7fde71"
+    },
+    "package/node_modules/signal-exit/dist/cjs/browser.d.ts": {
+      "bytes": 393,
+      "mode": 420,
+      "sha256": "7b023021bc8e493240cc8117d490d55b4f6b62e08854ddbe1f53a35dfd40e355"
+    },
+    "package/node_modules/signal-exit/dist/cjs/browser.d.ts.map": {
+      "bytes": 349,
+      "mode": 420,
+      "sha256": "f46fc1cf3cae357be4e69317ae3c132f2597dc8ed31d208701053782fa03a09d"
+    },
+    "package/node_modules/signal-exit/dist/cjs/browser.js": {
+      "bytes": 322,
+      "mode": 420,
+      "sha256": "aa5f9f7f969e92b30d2d3288e8927b47faf38663f626c8e9afc7f5a3b901c816"
+    },
+    "package/node_modules/signal-exit/dist/cjs/browser.js.map": {
+      "bytes": 703,
+      "mode": 420,
+      "sha256": "cc48aa8c7132663b411f2bb14199e3e5ca7270399917f2640e1983614919d0ab"
+    },
+    "package/node_modules/signal-exit/dist/cjs/index.d.ts": {
+      "bytes": 1744,
+      "mode": 420,
+      "sha256": "1d63579e68cf6fc4b8a5ae13748efe38584f8eea7dddc320c276b30b1856d0b0"
+    },
+    "package/node_modules/signal-exit/dist/cjs/index.d.ts.map": {
+      "bytes": 460,
+      "mode": 420,
+      "sha256": "1dde4dce41849712db4203f346ca85435af909777b0653baf3339440bb487e42"
+    },
+    "package/node_modules/signal-exit/dist/cjs/index.js": {
+      "bytes": 9435,
+      "mode": 420,
+      "sha256": "7dba9354040ed0ddea0e3029e6f4690b1ea5b0275491a217d9704737a9cebe35"
+    },
+    "package/node_modules/signal-exit/dist/cjs/index.js.map": {
+      "bytes": 17544,
+      "mode": 420,
+      "sha256": "5d1a773080f60ad15c0f442fa5d59070910e87c109f7939800b2a4fe6b866f77"
+    },
+    "package/node_modules/signal-exit/dist/cjs/package.json": {
+      "bytes": 25,
+      "mode": 420,
+      "sha256": "8005a3491db7d92f36ac66369861589f9c47123d3a7c71e643fc2c06168cd45a"
+    },
+    "package/node_modules/signal-exit/dist/cjs/signals.d.ts": {
+      "bytes": 1083,
+      "mode": 420,
+      "sha256": "ed5b63eecb5ba65247f8c0a85602540a96fad19719005d59610c190c0ad59a9c"
+    },
+    "package/node_modules/signal-exit/dist/cjs/signals.d.ts.map": {
+      "bytes": 196,
+      "mode": 420,
+      "sha256": "ac18b4636c5aa4f7bb383d3ca971cce3c659d68198a7c477411a8ee23a0944d8"
+    },
+    "package/node_modules/signal-exit/dist/cjs/signals.js": {
+      "bytes": 1560,
+      "mode": 420,
+      "sha256": "84f6f2218e3a5dd61e38c9498bcb5465fb90f3900afde73956b1855b1e46af09"
+    },
+    "package/node_modules/signal-exit/dist/cjs/signals.js.map": {
+      "bytes": 2091,
+      "mode": 420,
+      "sha256": "f4b1aad11f5b1da3469353c19ce29c9f159efc878cc2b885aa4977dd8b7e31bb"
+    },
+    "package/node_modules/signal-exit/dist/mjs/browser.d.ts": {
+      "bytes": 393,
+      "mode": 420,
+      "sha256": "7b023021bc8e493240cc8117d490d55b4f6b62e08854ddbe1f53a35dfd40e355"
+    },
+    "package/node_modules/signal-exit/dist/mjs/browser.d.ts.map": {
+      "bytes": 349,
+      "mode": 420,
+      "sha256": "f46fc1cf3cae357be4e69317ae3c132f2597dc8ed31d208701053782fa03a09d"
+    },
+    "package/node_modules/signal-exit/dist/mjs/browser.js": {
+      "bytes": 138,
+      "mode": 420,
+      "sha256": "57498e3448998c32a94f884f500ac7a2c8b54872f648bebf1be1704303a5522c"
+    },
+    "package/node_modules/signal-exit/dist/mjs/browser.js.map": {
+      "bytes": 668,
+      "mode": 420,
+      "sha256": "24ff3c6a566cf59691d542f15d7aa3ba4511909acd307db7e8a09a768b83e2b5"
+    },
+    "package/node_modules/signal-exit/dist/mjs/index.d.ts": {
+      "bytes": 1744,
+      "mode": 420,
+      "sha256": "1d63579e68cf6fc4b8a5ae13748efe38584f8eea7dddc320c276b30b1856d0b0"
+    },
+    "package/node_modules/signal-exit/dist/mjs/index.d.ts.map": {
+      "bytes": 460,
+      "mode": 420,
+      "sha256": "1dde4dce41849712db4203f346ca85435af909777b0653baf3339440bb487e42"
+    },
+    "package/node_modules/signal-exit/dist/mjs/index.js": {
+      "bytes": 9090,
+      "mode": 420,
+      "sha256": "a2f8e19d69ab443b496c203c46c47853f885f3e852aca6daa248191bf3f1ccbb"
+    },
+    "package/node_modules/signal-exit/dist/mjs/index.js.map": {
+      "bytes": 17592,
+      "mode": 420,
+      "sha256": "fbaadc2cb63860ea1aa06746caa01490e4fa2d0458a94416503e77001c5f164b"
+    },
+    "package/node_modules/signal-exit/dist/mjs/package.json": {
+      "bytes": 23,
+      "mode": 420,
+      "sha256": "3ca9d4afd21425087cf31893b8f9f63c81b0b8408db5e343ca76e5f8aa26ab9a"
+    },
+    "package/node_modules/signal-exit/dist/mjs/signals.d.ts": {
+      "bytes": 1083,
+      "mode": 420,
+      "sha256": "ed5b63eecb5ba65247f8c0a85602540a96fad19719005d59610c190c0ad59a9c"
+    },
+    "package/node_modules/signal-exit/dist/mjs/signals.d.ts.map": {
+      "bytes": 196,
+      "mode": 420,
+      "sha256": "ac18b4636c5aa4f7bb383d3ca971cce3c659d68198a7c477411a8ee23a0944d8"
+    },
+    "package/node_modules/signal-exit/dist/mjs/signals.js": {
+      "bytes": 1438,
+      "mode": 420,
+      "sha256": "12044052d2037fbb19637c6fb216b1c80c28664134453b9a0fc32fa2fe352c27"
+    },
+    "package/node_modules/signal-exit/dist/mjs/signals.js.map": {
+      "bytes": 2098,
+      "mode": 420,
+      "sha256": "9ac7cde2118302bfce1fb14e0f0c04112a7f0ad6fa8a18d5d950ec530aa2654f"
+    },
+    "package/node_modules/signal-exit/package.json": {
+      "bytes": 2573,
+      "mode": 420,
+      "sha256": "cd1c6cfa95782e432dd2affaa88c3a6dda7f46c8088d91f3acc0fba79dce5075"
+    },
+    "package/optional-skills/asset-creator/CATALOG-SCHEMA.md": {
+      "bytes": 3259,
+      "mode": 420,
+      "sha256": "59486626689b1e9b534133baf1d421548f23df83d231feae0bcf23d8e07b5732"
+    },
+    "package/optional-skills/asset-creator/SKILL.md": {
+      "bytes": 10588,
+      "mode": 420,
+      "sha256": "42a8f0b9cbfeda03735f087c5ab887888fe098757a0eba4600f125e400cac9e9"
+    },
+    "package/optional-skills/asset-creator/STYLE-GUIDE.md": {
+      "bytes": 7665,
+      "mode": 420,
+      "sha256": "a7a36a642e7c9f50cea02e7b06345984cbe236cce9db483f93a515ecbd89c021"
+    },
+    "package/optional-skills/better-auth-setup/SKILL.md": {
+      "bytes": 26656,
+      "mode": 420,
+      "sha256": "2d41cfc5fd825e654b0b852dc43c4b8b1c4dd4b06a592d08702a821f0466c566"
+    },
+    "package/optional-skills/better-auth-setup/references/api-keys.md": {
+      "bytes": 7964,
+      "mode": 420,
+      "sha256": "be3b931600a0bd6d926d7ba8148480f4e8effec7d424aa8a15d14ba274c0f181"
+    },
+    "package/optional-skills/better-auth-setup/references/config-and-entry.md": {
+      "bytes": 7482,
+      "mode": 420,
+      "sha256": "228375ebcb993f3ff2e2bd76d9659e905e57b1205ffc6e954fc5f532eecb2c17"
+    },
+    "package/optional-skills/better-auth-setup/references/middleware.md": {
+      "bytes": 12608,
+      "mode": 420,
+      "sha256": "666e7e9bcd909d56d51af450ff85b6d9ae8d4af731bd230c6d72d168c3daf7a1"
+    },
+    "package/optional-skills/better-auth-setup/references/proxy-gotchas.md": {
+      "bytes": 8344,
+      "mode": 420,
+      "sha256": "9959cfa654c012289fac34b497e5d6d722c0dd9b19a3c0755c829aa193436a08"
+    },
+    "package/optional-skills/better-auth-setup/references/proxy-setup.md": {
+      "bytes": 10463,
+      "mode": 420,
+      "sha256": "ba964e2130ec7511fe1dbc99b0379fb91b34691ff2916dc641e6a098722ed61f"
+    },
+    "package/optional-skills/better-auth-setup/references/schema.md": {
+      "bytes": 9505,
+      "mode": 420,
+      "sha256": "9b80fd168b407f21ca3363b08b137be51ed7b076e10708e75b19598090f00c90"
+    },
+    "package/optional-skills/better-auth-setup/references/testing.md": {
+      "bytes": 7362,
+      "mode": 420,
+      "sha256": "600dd99d2f18d76b7d06ac397790a3d467a104fd2326a925f5d4b5a13d90b705"
+    },
+    "package/optional-skills/cloudflare-nextjs-setup/SKILL.md": {
+      "bytes": 11194,
+      "mode": 420,
+      "sha256": "610d75ce0008ed2a3d840be7628a33422d36d4ef038ae44d3650a673ee1a4604"
+    },
+    "package/optional-skills/code-health-standards/SKILL.md": {
+      "bytes": 3127,
+      "mode": 420,
+      "sha256": "58e8c1e240f8a9c3c3a51935bf61a4fc70ca76049b50044e465f633da6b85fe6"
+    },
+    "package/optional-skills/code-review-standards/SKILL.md": {
+      "bytes": 1844,
+      "mode": 420,
+      "sha256": "3f11f84adb7d3016c4d71bce743c40e35e682d09bc9376b03be957fc9c8d2b62"
+    },
+    "package/optional-skills/devlyn-pencil-pull/SKILL.md": {
+      "bytes": 6862,
+      "mode": 420,
+      "sha256": "d619bcb503108dc8eb7d757d7e8cf1720742bb16c3b8ea8c01878cfdf1cdb0b8"
+    },
+    "package/optional-skills/devlyn-pencil-push/SKILL.md": {
+      "bytes": 4289,
+      "mode": 420,
+      "sha256": "4571773e02846c2b2bc4ff4c1717b843ed5b7319ec9ee9d91ecab2a77d4af4c9"
+    },
+    "package/optional-skills/devlyn-reap/SKILL.md": {
+      "bytes": 7238,
+      "mode": 420,
+      "sha256": "51ee3be1e1dccde90471331d60fbdd162773412819dbcd6a6ce86d2cec42198b"
+    },
+    "package/optional-skills/devlyn-reap/scripts/reap.sh": {
+      "bytes": 4835,
+      "mode": 493,
+      "sha256": "ad06953be260e3bec10b6891c30337594bfbe5ff6db1d82e8c59c13ac102c89d"
+    },
+    "package/optional-skills/devlyn-reap/scripts/scan.sh": {
+      "bytes": 6330,
+      "mode": 493,
+      "sha256": "23eaa9655d9614e441c34637fee568a8ed737497559a2d2bf31e10472c02dda2"
+    },
+    "package/optional-skills/dokkit/ANALYSIS.md": {
+      "bytes": 8662,
+      "mode": 420,
+      "sha256": "7503acd8be895fb0adf6a55df2a65509932f74261460c2d10d15abb0a211e0d7"
+    },
+    "package/optional-skills/dokkit/COMMANDS.md": {
+      "bytes": 14132,
+      "mode": 420,
+      "sha256": "2c0e1ef6f1016d34de42b002e13ddce7c5fff931c4a9c0dd27bf4808ee3b2bbd"
+    },
+    "package/optional-skills/dokkit/DOCX-XML.md": {
+      "bytes": 2125,
+      "mode": 420,
+      "sha256": "d6737cca5d96ace034a62a106e776085154ebfdb2d443799866866522786d75c"
+    },
+    "package/optional-skills/dokkit/EXPORT.md": {
+      "bytes": 3253,
+      "mode": 420,
+      "sha256": "c4429521a7a59547da922670d68e03aa77f074d0cb937f46ea8f84dfbe342e70"
+    },
+    "package/optional-skills/dokkit/FILLING.md": {
+      "bytes": 14453,
+      "mode": 420,
+      "sha256": "7373c23c25bb6f3fd9b0c58de30d54daf787c4fabe87b6542fb1567e8e3e2631"
+    },
+    "package/optional-skills/dokkit/HWPX-XML.md": {
+      "bytes": 2425,
+      "mode": 420,
+      "sha256": "1852b1dba9c2d6d54057726cb5ddfbac169c0c07a994f5f5cfafd24caba1455f"
+    },
+    "package/optional-skills/dokkit/IMAGE-SOURCING.md": {
+      "bytes": 5521,
+      "mode": 420,
+      "sha256": "1a9e6e03b85b8e6bb0b53081648cff0428d5ec51ec73f3fa46586d94d42dd1a5"
+    },
+    "package/optional-skills/dokkit/INGESTION.md": {
+      "bytes": 2101,
+      "mode": 420,
+      "sha256": "71db1451ae3e45e2152ba749e3bdd9455f21a8a6b2738203815b2c507f64fea1"
+    },
+    "package/optional-skills/dokkit/PIPELINE.md": {
+      "bytes": 14967,
+      "mode": 420,
+      "sha256": "e9906861ee058a71e874b02affd47685c1738ef3d18473545a3f7a4b75467a56"
+    },
+    "package/optional-skills/dokkit/SKILL.md": {
+      "bytes": 11838,
+      "mode": 420,
+      "sha256": "48d26f0db262df326145cfded42d1f2ea73a45393299209471555aea4d78995e"
+    },
+    "package/optional-skills/dokkit/STATE.md": {
+      "bytes": 1876,
+      "mode": 420,
+      "sha256": "1be4d80ebc577a65e909f64291302473a95076a02dfce4ca39e70952d97da1e8"
+    },
+    "package/optional-skills/dokkit/references/docx-field-patterns.md": {
+      "bytes": 4304,
+      "mode": 420,
+      "sha256": "e918d757edf90b91a86ac626892cb27db692f2131d5e1df0a2e6f2e326209fc8"
+    },
+    "package/optional-skills/dokkit/references/docx-section-range-detection.md": {
+      "bytes": 6532,
+      "mode": 420,
+      "sha256": "ad6051bf8689b1e14af02e85c755828d710a2bcd209fa5a0ae171e27ea4ec91c"
+    },
+    "package/optional-skills/dokkit/references/docx-structure.md": {
+      "bytes": 1808,
+      "mode": 420,
+      "sha256": "871d046768a3515efbb40767e2ff83c77487c8264c84e6b04cd4aae9a41812d0"
+    },
+    "package/optional-skills/dokkit/references/field-detection-patterns.md": {
+      "bytes": 4644,
+      "mode": 420,
+      "sha256": "439ea29d4d4fba3c32dcfb71adf3843baab3dc163a18da62d30a9b95fe47ef89"
+    },
+    "package/optional-skills/dokkit/references/hwpx-field-patterns.md": {
+      "bytes": 15587,
+      "mode": 420,
+      "sha256": "a3a15626119e06a6228c87be23ff3934114961b02fc051156c8ecf403b24086e"
+    },
+    "package/optional-skills/dokkit/references/hwpx-structure.md": {
+      "bytes": 6368,
+      "mode": 420,
+      "sha256": "2d86188c398aa8ea559e13c9b1a2626eb748e8b86ada722829ce5075293da675"
+    },
+    "package/optional-skills/dokkit/references/image-opportunity-heuristics.md": {
+      "bytes": 5789,
+      "mode": 420,
+      "sha256": "0131c59ff0351d150029df91268e35ad005e5a0780e2f382ebbb30a9178d7b6f"
+    },
+    "package/optional-skills/dokkit/references/image-xml-patterns.md": {
+      "bytes": 14362,
+      "mode": 420,
+      "sha256": "a3100b3fb3134b85d8358dc46ef277d9be02dd22488efb347c46d7a369cbfa26"
+    },
+    "package/optional-skills/dokkit/references/section-image-interleaving.md": {
+      "bytes": 13234,
+      "mode": 420,
+      "sha256": "a50c88ff57433125e9d51118e4b79280ac84a18e9e65abad86b6be6e4d6932cb"
+    },
+    "package/optional-skills/dokkit/references/section-range-detection.md": {
+      "bytes": 5180,
+      "mode": 420,
+      "sha256": "06221fc657ab53ebce9c3d6412f6fbf138fc178927d223f3ce8619b87cdbc13f"
+    },
+    "package/optional-skills/dokkit/references/state-schema.md": {
+      "bytes": 4733,
+      "mode": 420,
+      "sha256": "efa8901c7873a9ebdbf297b1dfe39906fa53ea0097d2d047af394008c36251fa"
+    },
+    "package/optional-skills/dokkit/references/supported-formats.md": {
+      "bytes": 1677,
+      "mode": 420,
+      "sha256": "2bb08b28d8c2142bfe2535eaf6e9634ec5b5428531491a2d4795e1b39e697a11"
+    },
+    "package/optional-skills/dokkit/scripts/compile_hwpx.py": {
+      "bytes": 4961,
+      "mode": 420,
+      "sha256": "3de0583e519eedd4b1f6c0c0a99a27cc27d24d73b6988032121d39ef31e89b0e"
+    },
+    "package/optional-skills/dokkit/scripts/detect_fields.py": {
+      "bytes": 10944,
+      "mode": 420,
+      "sha256": "186d9684461c819dacf75aa03212f8b70a6bbe4a08a60dd16b050e964986b916"
+    },
+    "package/optional-skills/dokkit/scripts/detect_fields_hwpx.py": {
+      "bytes": 10579,
+      "mode": 420,
+      "sha256": "40c4d4e1182e2ec6a9e24f6e705e739cd0b767244231af6c3cfea1371ba049e3"
+    },
+    "package/optional-skills/dokkit/scripts/export_pdf.py": {
+      "bytes": 2769,
+      "mode": 420,
+      "sha256": "1257598d7dcfe1ca8f956f71800579abe3dacc7ae38f635d2200341a64ff5071"
+    },
+    "package/optional-skills/dokkit/scripts/fill_docx.py": {
+      "bytes": 33918,
+      "mode": 420,
+      "sha256": "e8954636979ccb34aada17b902a8aea22c56aa03bdf92d76466b17b0c0b4f1e0"
+    },
+    "package/optional-skills/dokkit/scripts/parse_hwpx.py": {
+      "bytes": 5838,
+      "mode": 420,
+      "sha256": "83ab2088f8b4cc534301d6eaa06b9cce83e7663046942b97a1083d02a33cb81e"
+    },
+    "package/optional-skills/dokkit/scripts/parse_image_with_gemini.py": {
+      "bytes": 5146,
+      "mode": 420,
+      "sha256": "eaa54d17079e887b71e053ceead73692496ff00bc3879dedf253ed591ab95656"
+    },
+    "package/optional-skills/dokkit/scripts/parse_xlsx.py": {
+      "bytes": 2756,
+      "mode": 420,
+      "sha256": "6e75ffb166314568ef2e2f4087aed490d219dbfef32f4c9289d6b53c76aa48e8"
+    },
+    "package/optional-skills/dokkit/scripts/source_images.py": {
+      "bytes": 13501,
+      "mode": 420,
+      "sha256": "00f66bb3f0134e0dd1a84c709aa4d1ff830b1cceef76e5ca290d305b2ab413d9"
+    },
+    "package/optional-skills/dokkit/scripts/validate_docx.py": {
+      "bytes": 4815,
+      "mode": 420,
+      "sha256": "56a3969646af27cc8838d70e272e6898d30e3fc32b0317801d8146743c4d731e"
+    },
+    "package/optional-skills/dokkit/scripts/validate_hwpx.py": {
+      "bytes": 10100,
+      "mode": 420,
+      "sha256": "3e21ec8138c6ba0ffb85981980295614f4658aea6a81aa5f65b34bf14d2fbcea"
+    },
+    "package/optional-skills/dokkit/scripts/validate_state.py": {
+      "bytes": 5125,
+      "mode": 420,
+      "sha256": "38b4de24aeac33aa64a9f4d5a4c02f8a1f0ed3987bd495f08b06341e647ba816"
+    },
+    "package/optional-skills/generate-skill/CHECKLIST.md": {
+      "bytes": 2552,
+      "mode": 420,
+      "sha256": "3985853af6a01d9f4608527081835b44ee9dfb499ae5fc46c96d083de4d4046a"
+    },
+    "package/optional-skills/generate-skill/PROMPT-PATTERNS.md": {
+      "bytes": 9700,
+      "mode": 420,
+      "sha256": "67f75dea52971a511fa25f3ae8b8c2f37d1d46f5ac0abf3819de144fa3773844"
+    },
+    "package/optional-skills/generate-skill/REFERENCE.md": {
+      "bytes": 5304,
+      "mode": 420,
+      "sha256": "91a1322a1dac328804b9e82f10b75e7e09f1bd3f75f79e5226c5b373769665f3"
+    },
+    "package/optional-skills/generate-skill/SKILL.md": {
+      "bytes": 6806,
+      "mode": 420,
+      "sha256": "d093e7f333c69ca12eed9f4bc0a5f1d507d42be28910c255475ed4d32492030d"
+    },
+    "package/optional-skills/polar-billing-setup/SKILL.md": {
+      "bytes": 7782,
+      "mode": 420,
+      "sha256": "39b093c32e0aa48484c77e79152458e8f98498dd82682bc64f35356e74bb218d"
+    },
+    "package/optional-skills/polar-billing-setup/references/gotchas.md": {
+      "bytes": 7045,
+      "mode": 420,
+      "sha256": "9ef050e813eadda4f478c7821976812d366f28f3268de4bad8c620ccb59d6702"
+    },
+    "package/optional-skills/polar-billing-setup/references/setup.md": {
+      "bytes": 4457,
+      "mode": 420,
+      "sha256": "cbb43d6f7c49c6a0d5ddc96ef351ccd67ae43dc8940e529f8ecd302d64408ee1"
+    },
+    "package/optional-skills/polar-billing-setup/scripts/diagnose.mjs": {
+      "bytes": 10514,
+      "mode": 420,
+      "sha256": "616ed10ddb6a56fafb75fa21f75e46bb2a78848b8581f6fa7988320f2140f24e"
+    },
+    "package/optional-skills/prompt-engineering/SKILL.md": {
+      "bytes": 8236,
+      "mode": 420,
+      "sha256": "eb9c6f10d0f1b13ff80aa6bd9a4b558a4e044d2dc0239980766123aeadb824e2"
+    },
+    "package/optional-skills/pyx-scan/SKILL.md": {
+      "bytes": 5719,
+      "mode": 420,
+      "sha256": "4db43fa0a694888cc7142c68e29a0ffd43b77eace4b6feacb953a9274bed5695"
+    },
+    "package/optional-skills/root-cause-analysis/SKILL.md": {
+      "bytes": 2996,
+      "mode": 420,
+      "sha256": "bd3523d223284dee2ba43dd6bce2cef27b31b8212d6164e7e6b0ede504376cba"
+    },
+    "package/optional-skills/ui-implementation-standards/SKILL.md": {
+      "bytes": 3889,
+      "mode": 420,
+      "sha256": "2d8cadc8889dba1ae191cf66c87594379a48801d6a2b5bc4bfedf2e74d8fde39"
+    },
+    "package/package.json": {
+      "bytes": 1867,
+      "mode": 420,
+      "sha256": "71fa7e644b9be6c585f6af1b0645edef4323bf37884236e7c9cd7eb539f9c9a0"
+    }
+  },
+  "H": {
+    "package/AGENTS.md": {
+      "bytes": 4262,
+      "mode": 420,
+      "sha256": "d602c2ca03f0bc4e2ce328fdf8edf3f06248e2f125daf8721fbe21d12b2cc888"
+    },
+    "package/CLAUDE.md": {
+      "bytes": 4262,
+      "mode": 420,
+      "sha256": "d602c2ca03f0bc4e2ce328fdf8edf3f06248e2f125daf8721fbe21d12b2cc888"
+    },
+    "package/LICENSE": {
+      "bytes": 1081,
+      "mode": 420,
+      "sha256": "ce7eb6efd00f74955f0d20451e39d182c7d9bcacc6b08440fa8fadad640aa897"
+    },
+    "package/README.md": {
+      "bytes": 21445,
+      "mode": 420,
+      "sha256": "f1f90dd8ad0c7a45b383c4097fea6f7368d3a9b14d6781a35a0162059a474d60"
+    },
+    "package/bin/devlyn.js": {
+      "bytes": 49230,
+      "mode": 493,
+      "sha256": "ab1555f8b1f6c2ee82d0caddf1eebc11371d6e479724d421cfafe50983b640b9"
+    },
+    "package/bin/instruction-templates.json": {
+      "bytes": 69747,
+      "mode": 420,
+      "sha256": "8b6133866bdf8b3fe962639aaf501993dfffdca62fb0375d5af1f48e81967a64"
+    },
+    "package/bin/instructions.js": {
+      "bytes": 16071,
+      "mode": 420,
+      "sha256": "c2ef3fda7714efab8e1569a4d08ec17abc1a10469133b11b159d0884f7bb2532"
+    },
+    "package/bin/skill-history.json": {
+      "bytes": 6386,
+      "mode": 420,
+      "sha256": "de0466c1a8aaeeab47c49d303f734882fc9462d7d8891e53f596e17d6b7aca94"
+    },
+    "package/bin/skill-ownership.js": {
+      "bytes": 3212,
+      "mode": 420,
+      "sha256": "4e3080a68aa8d3188b14dec99e0a0df85f59d6a6d1fe7e520ae3c3003ab2a42d"
+    },
+    "package/config/skills/_shared/.ruff.toml": {
+      "bytes": 82,
+      "mode": 420,
+      "sha256": "adec089c6c3bc0c63fb6a8d9acbf9d1dc3d8a287d1d32f086340d4b90ee9d9e1"
+    },
+    "package/config/skills/_shared/adapters/claude.md": {
+      "bytes": 709,
+      "mode": 420,
+      "sha256": "1e7440575b30019066209e1ea5423a3fd9af86311c73257e9f7dd814354bcdf7"
+    },
+    "package/config/skills/_shared/adapters/codex.md": {
+      "bytes": 918,
+      "mode": 420,
+      "sha256": "fe7b13c816f3c67dad1cf87ae816259090e7a3fb44f0274b59b013b2022036c1"
+    },
+    "package/config/skills/_shared/adapters/omp.md": {
+      "bytes": 52,
+      "mode": 420,
+      "sha256": "25c2dfad40e3acd3b23f26ec9b5811da2a36b9d803c9795ef36af5ef5c03d33c"
+    },
+    "package/config/skills/_shared/codex-monitored.sh": {
+      "bytes": 10038,
+      "mode": 493,
+      "sha256": "3d0658c042684c0323c2c4d691f5ca9cd544df6ffc3cbe54eccd54e8a1654d77"
+    },
+    "package/config/skills/_shared/engine-doctor.sh": {
+      "bytes": 2329,
+      "mode": 493,
+      "sha256": "cb9b253f64180334e0b2a2056e3e79d8be43244256c45c1c45dd1a5af099b982"
+    },
+    "package/config/skills/_shared/engine-preflight.md": {
+      "bytes": 2022,
+      "mode": 420,
+      "sha256": "ecb552f4dd74e986bde2d7deb51dd719a16691d6c2672d6880e675de1204dca0"
+    },
+    "package/config/skills/_shared/expected-contract.py": {
+      "bytes": 10478,
+      "mode": 420,
+      "sha256": "1a7dd6da07c3b4cd59e8f8135820ec808be695d763e3f0e265f069c12d0b59f0"
+    },
+    "package/config/skills/_shared/expected.schema.json": {
+      "bytes": 5332,
+      "mode": 420,
+      "sha256": "911c2f5f43ef70ee4ee3852a55b876d68b2ceb2b38e5799a58035c4d6b9bba2c"
+    },
+    "package/config/skills/_shared/invocation-receipt.py": {
+      "bytes": 20451,
+      "mode": 420,
+      "sha256": "0adde04a9df851062dab94bed1babd0f7e973f893275070312eb85c6c6c0cf3d"
+    },
+    "package/config/skills/_shared/pair.md": {
+      "bytes": 2662,
+      "mode": 420,
+      "sha256": "18ccf362d107eca2b8549e0dc51b4459751ae7e22e0e7ded200a5257546582b6"
+    },
+    "package/config/skills/_shared/peer.py": {
+      "bytes": 8354,
+      "mode": 420,
+      "sha256": "fcd21c454a61135b6d571bfda928efbe78771a30e29f52946e19dd3b7c0e8266"
+    },
+    "package/config/skills/_shared/platform-support.py": {
+      "bytes": 19061,
+      "mode": 420,
+      "sha256": "a8e1472b792000bd21ef5d359eba2ae49555adcc198198f2625b51ebb94bbc66"
+    },
+    "package/config/skills/_shared/role-config.py": {
+      "bytes": 11194,
+      "mode": 420,
+      "sha256": "d858805d022152a18d01516df02735d47a68225f955454dcfe952f216c9877f3"
+    },
+    "package/config/skills/_shared/runtime-principles.md": {
+      "bytes": 3224,
+      "mode": 420,
+      "sha256": "9573704f913a22ce450f9618200e68188d107b6ff7909c6c9f363ea401a8d583"
+    },
+    "package/config/skills/_shared/task-complete.py": {
+      "bytes": 138449,
+      "mode": 420,
+      "sha256": "d7dc54a6094d82871875bc0a0d7379b13ed38a143c52748257ff721b464dcc59"
+    },
+    "package/config/skills/_shared/task-completion.md": {
+      "bytes": 14434,
+      "mode": 420,
+      "sha256": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733"
+    },
+    "package/config/skills/devlyn-engines/SKILL.md": {
+      "bytes": 3627,
+      "mode": 420,
+      "sha256": "ee82fa921c0fb0e237794a60b400c3e34c16f38091a023d6c1606aa365ddbe48"
+    },
+    "package/config/skills/devlyn-ideate/SKILL.md": {
+      "bytes": 11614,
+      "mode": 420,
+      "sha256": "3f8b29c15ef931b8ac2314e2a9a65b5cd55adde8fbd7db13bc31fb40f7a5e866"
+    },
+    "package/config/skills/devlyn-ideate/references/elicitation.md": {
+      "bytes": 2410,
+      "mode": 420,
+      "sha256": "b836f98710f82b973212fd4406575fb3b16a299cee5edc98e555e82b2fbcad47"
+    },
+    "package/config/skills/devlyn-ideate/references/loop.md": {
+      "bytes": 17919,
+      "mode": 420,
+      "sha256": "a0fa17d174d141950927a0c33e9edc63d4f97b5f98b0dedfd34782dd77612c86"
+    },
+    "package/config/skills/devlyn-ideate/references/package-format.md": {
+      "bytes": 10727,
+      "mode": 420,
+      "sha256": "b52cd176ed2a440039d6327d29ac8ac3cc80020b2549f2c9cd8f6e6010b688a5"
+    },
+    "package/config/skills/devlyn-ideate/scripts/acceptance.py": {
+      "bytes": 47412,
+      "mode": 420,
+      "sha256": "bf569c1f9f90957d4cad5ef91b8f30957d09a5587686c04512f88eec46a7c6a5"
+    },
+    "package/config/skills/devlyn-ideate/scripts/queue.py": {
+      "bytes": 104790,
+      "mode": 420,
+      "sha256": "e8f59a58bc37647d284c09db86f701b2e6ebfaefeffd9de2ca2d9394757664dd"
+    },
+    "package/node_modules/@inquirer/ansi/LICENSE": {
+      "bytes": 1058,
+      "mode": 420,
+      "sha256": "85aca0b12ce5ade4ff76e9cbbe7e0d5a4cdde979e3930727c272e1fa04b8cc23"
+    },
+    "package/node_modules/@inquirer/ansi/README.md": {
+      "bytes": 2016,
+      "mode": 420,
+      "sha256": "acac7e39e8085c850d9d14b65ba2ff90ffaca5f487ce08e1eb922578994b20f5"
+    },
+    "package/node_modules/@inquirer/ansi/dist/index.d.ts": {
+      "bytes": 620,
+      "mode": 420,
+      "sha256": "48bc69e9c25e4995e462c08b0d264f1e13b188694f12c8f38a6aefb3994d6ef4"
+    },
+    "package/node_modules/@inquirer/ansi/dist/index.js": {
+      "bytes": 866,
+      "mode": 420,
+      "sha256": "adeb11d734b61dfe27f35860cdd9026cd1b10c4c0c5c63a9a12c5332e4b0ee19"
+    },
+    "package/node_modules/@inquirer/ansi/package.json": {
+      "bytes": 1465,
+      "mode": 420,
+      "sha256": "cab1c0b6189d6817ecf9cee0c087acaffebf8ebeccc2556026a5dd01ca36c191"
+    },
+    "package/node_modules/@inquirer/checkbox/LICENSE": {
+      "bytes": 1058,
+      "mode": 420,
+      "sha256": "85aca0b12ce5ade4ff76e9cbbe7e0d5a4cdde979e3930727c272e1fa04b8cc23"
+    },
+    "package/node_modules/@inquirer/checkbox/README.md": {
+      "bytes": 8290,
+      "mode": 420,
+      "sha256": "319b510c0ef22ba509306a94a8715635ce4070221047ce598af09378af27bbcc"
+    },
+    "package/node_modules/@inquirer/checkbox/dist/index.d.ts": {
+      "bytes": 2252,
+      "mode": 420,
+      "sha256": "a62624c7f04fc4566f8f8b96f6d39110125263e4f79c6b496cef28c51975ad0f"
+    },
+    "package/node_modules/@inquirer/checkbox/dist/index.js": {
+      "bytes": 8304,
+      "mode": 420,
+      "sha256": "d8318ce8bc4cb429f31556cd935acff9991e929d9dbc0f1d2e6a97de2cbfcf73"
+    },
+    "package/node_modules/@inquirer/checkbox/package.json": {
+      "bytes": 1799,
+      "mode": 420,
+      "sha256": "40417769237d48d389178653cda6bb07f895b57f6c47e8b02399c269be9bdd61"
+    },
+    "package/node_modules/@inquirer/core/LICENSE": {
+      "bytes": 1058,
+      "mode": 420,
+      "sha256": "85aca0b12ce5ade4ff76e9cbbe7e0d5a4cdde979e3930727c272e1fa04b8cc23"
+    },
+    "package/node_modules/@inquirer/core/README.md": {
+      "bytes": 12152,
+      "mode": 420,
+      "sha256": "3755b653465b536e1f5fedccc71985ce26c2b669f95f71028d46e0f1f338e2ca"
+    },
+    "package/node_modules/@inquirer/core/dist/index.d.ts": {
+      "bytes": 756,
+      "mode": 420,
+      "sha256": "e1d6ddd0c300ba35bd166063d5b2456e9d84fe96bdb7c16ad9379e50dca5dcda"
+    },
+    "package/node_modules/@inquirer/core/dist/index.js": {
+      "bytes": 666,
+      "mode": 420,
+      "sha256": "465298a818b5ba4332579195a2f9a93b648db2a87d0bdd9608e5804955106c29"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/Separator.d.ts": {
+      "bytes": 261,
+      "mode": 420,
+      "sha256": "ab37b1199441c7ecb602defe46f72099d3d4555f7911bd865f51657f419779ab"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/Separator.js": {
+      "bytes": 578,
+      "mode": 420,
+      "sha256": "f75aa2252ef60c62410bd604bf7c0688c678c947d446cfcef7946884db0a78e6"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/__probe/p1.d.ts": {
+      "bytes": 120,
+      "mode": 420,
+      "sha256": "708667d0be2b7c761d85d3fcd27ffd86af6d9b07285b844e4c89460dcd7a7136"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/__probe/p1.js": {
+      "bytes": 107,
+      "mode": 420,
+      "sha256": "b29c4a6673c41a76fbaf5a7dd4ee76ca1dc621713d35c6d1361c325e696415d5"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/__probe/p2.d.ts": {
+      "bytes": 120,
+      "mode": 420,
+      "sha256": "708667d0be2b7c761d85d3fcd27ffd86af6d9b07285b844e4c89460dcd7a7136"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/__probe/p2.js": {
+      "bytes": 98,
+      "mode": 420,
+      "sha256": "5664b041803cbeb6cd286c8fa242d5c5c6ebf7ad1f9c0c72613c84c07a3ee1a0"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/__probe/p3.d.ts": {
+      "bytes": 120,
+      "mode": 420,
+      "sha256": "708667d0be2b7c761d85d3fcd27ffd86af6d9b07285b844e4c89460dcd7a7136"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/__probe/p3.js": {
+      "bytes": 152,
+      "mode": 420,
+      "sha256": "08f8d9af8c032fa4db6c7b8dceb3f4365e99e6a369151ca33e8f6d0a992f30f1"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/create-prompt.d.ts": {
+      "bytes": 528,
+      "mode": 420,
+      "sha256": "673acd99a4a6296577959626d31fe5cabf5bb3441e973e3e8cea71ffece1ff81"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/create-prompt.js": {
+      "bytes": 9352,
+      "mode": 420,
+      "sha256": "281fea27f5d664d26748c79b3c95442dbd7ffa4cb7e81671a2e7eeb20075284e"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/errors.d.ts": {
+      "bytes": 465,
+      "mode": 420,
+      "sha256": "cc2d9ba9d5434882cfb9bc2954fe433b5538fa78a40be504c9833a45d1a732ad"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/errors.js": {
+      "bytes": 539,
+      "mode": 420,
+      "sha256": "e853af7060009a0d0cc4634431c28d9b5ff43f0084982c1700b75b943b27a278"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/hook-engine.d.ts": {
+      "bytes": 762,
+      "mode": 420,
+      "sha256": "a93432b560099da85aadbb687183ac0d2e9d2719dff542a7db3d0cf296cdf0ac"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/hook-engine.js": {
+      "bytes": 3341,
+      "mode": 420,
+      "sha256": "03abfab3475cb8f7d5feee2ce6bf7ca77327042d0e50bb1b362866c8667bd2b4"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/key.d.ts": {
+      "bytes": 817,
+      "mode": 420,
+      "sha256": "10043f2974346ba2baca701cd0a2bca1bda974d626a5d7eb92b741757a42443e"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/key.js": {
+      "bytes": 1481,
+      "mode": 420,
+      "sha256": "23a8ce908654922f130da62b1b0146c2107dd939019d3ee67c69ef5bb56b336f"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/make-theme.d.ts": {
+      "bytes": 272,
+      "mode": 420,
+      "sha256": "5a7fe6ef136e88ee70d3cd0b1aa0d6875178b2682542ca340875a2711c81d779"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/make-theme.js": {
+      "bytes": 1114,
+      "mode": 420,
+      "sha256": "434600c202a94ae6ba3b90ce9820e92aa7d629f894bfa4cdddde8fd0834cb870"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/pagination/use-pagination.d.ts": {
+      "bytes": 504,
+      "mode": 420,
+      "sha256": "6efe6725728024c1b6cf22b47fe1dcaecc951444e7cb6fe0037d96123bb75667"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/pagination/use-pagination.js": {
+      "bytes": 6358,
+      "mode": 420,
+      "sha256": "0cbe099c4e7581198e6d18ea051cf9508b5d24c34b566ba45eae7a16286ff588"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/screen-manager.d.ts": {
+      "bytes": 432,
+      "mode": 420,
+      "sha256": "681cac7cfb615498ee2cf79c930d8b55e2da6c9a3c58971b3324205e218cf838"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/screen-manager.js": {
+      "bytes": 3744,
+      "mode": 420,
+      "sha256": "39dc3d968f515138a35a46c89f0abea24c83ef0ebdad81eba482d605dbbf9499"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/theme.d.ts": {
+      "bytes": 5288,
+      "mode": 420,
+      "sha256": "c8c43f3c6f59572906c077ddd96a1856fc5c6519c30f356d6c9c511b9dadc9c0"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/theme.js": {
+      "bytes": 1014,
+      "mode": 420,
+      "sha256": "321d96b2968d279502f04d1e711e4b1de50dbc25daba2c78041a0560e2e7db73"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/use-effect.d.ts": {
+      "bytes": 182,
+      "mode": 420,
+      "sha256": "8da95d257be3f2d83c21c555dedda9c96869e5f855652523cf52dc98ca8c57de"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/use-effect.js": {
+      "bytes": 403,
+      "mode": 420,
+      "sha256": "001c995aba7c77aee1c0043516327b7f4a2aadf0c94a3d7f00dfe171dce052bf"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/use-keypress.d.ts": {
+      "bytes": 229,
+      "mode": 420,
+      "sha256": "ce6ada7f4eb4cda3ccfe28a0201608828fc6ee2d3204101976831100d9550d47"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/use-keypress.js": {
+      "bytes": 637,
+      "mode": 420,
+      "sha256": "943a6d1ad799f073cea21eb155c193990b0802640aa5210e4f20ef18485f25e3"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/use-memo.d.ts": {
+      "bytes": 102,
+      "mode": 420,
+      "sha256": "aa9494cb36743567c0f6ce385ce869358b59193c9b61612e0d70e4de500424c3"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/use-memo.js": {
+      "bytes": 496,
+      "mode": 420,
+      "sha256": "70a292e170d545a5d28c87f579dafbf1f1ec8389fcb12f598ccf3ca87d73a757"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/use-prefix.d.ts": {
+      "bytes": 157,
+      "mode": 420,
+      "sha256": "988be2b47c162ddfc4ac289de0bc50b52fd425d4408cb4bc40fcc9b81f4957c6"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/use-prefix.js": {
+      "bytes": 1357,
+      "mode": 420,
+      "sha256": "9ace5f806e90dd13a21fbdaaae9678af60b31f2202985be983a8b082290ae6a6"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/use-ref.d.ts": {
+      "bytes": 165,
+      "mode": 420,
+      "sha256": "904964129f1ef4797282d4ea4411eaf26d4b22bb481b8b8ab3e920d4cfc79ecf"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/use-ref.js": {
+      "bytes": 117,
+      "mode": 420,
+      "sha256": "b76dccca2579a01f21b77a437bb0177aca843b56b6f4727eb62ee8b18d7da81a"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/use-state.d.ts": {
+      "bytes": 574,
+      "mode": 420,
+      "sha256": "bf2b86c4d2d7db6fdbb14098c247526ef334ee62e8f06e3d790891b5d0d10090"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/use-state.js": {
+      "bytes": 1024,
+      "mode": 420,
+      "sha256": "0bd91dcc4ba24d7f1eb657a3c4aab35f264c3faf4e59b8159411c1a4f67b0fdc"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/utils.d.ts": {
+      "bytes": 442,
+      "mode": 420,
+      "sha256": "7c8e5a4aaee3a6e83251ac295ab33a9e0aa2891c97674b9844128a8335aadc6b"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/utils.js": {
+      "bytes": 795,
+      "mode": 420,
+      "sha256": "951d0b5bb378664a26890fdc30951c72795bcc3988c44f2668ded27cc7162eba"
+    },
+    "package/node_modules/@inquirer/core/package.json": {
+      "bytes": 1942,
+      "mode": 420,
+      "sha256": "d89bbfddc2f85ca72948ee68e76545516cf32176c30aaac6329452072c16c9d4"
+    },
+    "package/node_modules/@inquirer/figures/LICENSE": {
+      "bytes": 1058,
+      "mode": 420,
+      "sha256": "85aca0b12ce5ade4ff76e9cbbe7e0d5a4cdde979e3930727c272e1fa04b8cc23"
+    },
+    "package/node_modules/@inquirer/figures/dist/index.d.ts": {
+      "bytes": 8111,
+      "mode": 420,
+      "sha256": "816b8fa6e2e8c9a02d5fff5b3ac395da52f9fcf09cb5d6f971b66a018e87e059"
+    },
+    "package/node_modules/@inquirer/figures/dist/index.js": {
+      "bytes": 9336,
+      "mode": 420,
+      "sha256": "a9726aa6667509460fe6e64c05739b2dfa094dc621d5efbc35ba333b99e3d125"
+    },
+    "package/node_modules/@inquirer/figures/package.json": {
+      "bytes": 1496,
+      "mode": 420,
+      "sha256": "5445e0055b8bb76698640b4472b9d15c192fe385d1ead476e84973c4116c4487"
+    },
+    "package/node_modules/@inquirer/select/LICENSE": {
+      "bytes": 1058,
+      "mode": 420,
+      "sha256": "85aca0b12ce5ade4ff76e9cbbe7e0d5a4cdde979e3930727c272e1fa04b8cc23"
+    },
+    "package/node_modules/@inquirer/select/README.md": {
+      "bytes": 6860,
+      "mode": 420,
+      "sha256": "930c0e65f4a1ae8257a838c4f246ab3dcd49fccf946bd303b202d92eb28dcfaa"
+    },
+    "package/node_modules/@inquirer/select/dist/index.d.ts": {
+      "bytes": 1302,
+      "mode": 420,
+      "sha256": "a432730d0b21d8482d94d49853107fc26f01b97dcfea82accd3fbb80f3b108ad"
+    },
+    "package/node_modules/@inquirer/select/dist/index.js": {
+      "bytes": 7515,
+      "mode": 420,
+      "sha256": "4536a0168d00771ed9ac01f41659b70454262a9d5a7d47424d2a85af52697b00"
+    },
+    "package/node_modules/@inquirer/select/package.json": {
+      "bytes": 1798,
+      "mode": 420,
+      "sha256": "cf5bde03695203d341212b8daf812378ccaa31becb1b2dcb55aa37ff31875ca3"
+    },
+    "package/node_modules/@inquirer/type/LICENSE": {
+      "bytes": 1058,
+      "mode": 420,
+      "sha256": "85aca0b12ce5ade4ff76e9cbbe7e0d5a4cdde979e3930727c272e1fa04b8cc23"
+    },
+    "package/node_modules/@inquirer/type/dist/index.d.ts": {
+      "bytes": 59,
+      "mode": 420,
+      "sha256": "4e3592aed54bd51d840e6d078794b45a8388d0accf38efa3267a16742ce88041"
+    },
+    "package/node_modules/@inquirer/type/dist/index.js": {
+      "bytes": 59,
+      "mode": 420,
+      "sha256": "303e3ba5e5f2add2706ca909f4f5131cf712d39d7d3994bf259a9f4dcad60a26"
+    },
+    "package/node_modules/@inquirer/type/dist/inquirer.d.ts": {
+      "bytes": 1318,
+      "mode": 420,
+      "sha256": "f496804f1238bfdf19b67ac9ce7825d50920a958994fc29a80697b8a63eeed6d"
+    },
+    "package/node_modules/@inquirer/type/dist/inquirer.js": {
+      "bytes": 11,
+      "mode": 420,
+      "sha256": "8e609bb71c20b858c77f0e9f90bb1319db8477b13f9f965f1a1e18524bf50881"
+    },
+    "package/node_modules/@inquirer/type/dist/utils.d.ts": {
+      "bytes": 1814,
+      "mode": 420,
+      "sha256": "1de74d27c48e696d95e2fcfcd116e868a5479d7b175180e628448d3e99413af7"
+    },
+    "package/node_modules/@inquirer/type/dist/utils.js": {
+      "bytes": 509,
+      "mode": 420,
+      "sha256": "bc2c6130a24db301e539666e913eb8820811b91df01cf4a73fb1b7d6c83f0f5f"
+    },
+    "package/node_modules/@inquirer/type/package.json": {
+      "bytes": 1573,
+      "mode": 420,
+      "sha256": "f1480a8c6e0a37e38ed0650c56c376197ca3592120b46081bca38f6deab8108a"
+    },
+    "package/node_modules/cli-width/LICENSE": {
+      "bytes": 757,
+      "mode": 420,
+      "sha256": "31493c14dc0b4eb1e06fe5d4bab3ca4e3b40f8749433455c713863238600cf1a"
+    },
+    "package/node_modules/cli-width/README.md": {
+      "bytes": 1863,
+      "mode": 420,
+      "sha256": "13b3d927e157b1f5428c2d025c804b202284ceae9268a149c3ded7efb52b633a"
+    },
+    "package/node_modules/cli-width/index.d.ts": {
+      "bytes": 267,
+      "mode": 420,
+      "sha256": "465b5cc11c21f3fc08d7924d06b9fde39048be18df7eef3a4ad0b5e0fc3b5c64"
+    },
+    "package/node_modules/cli-width/index.js": {
+      "bytes": 903,
+      "mode": 420,
+      "sha256": "2dab4c960425df4af8ac9fbdf784c86a1e0c64924b7e28dd65fc8faee6f92a7f"
+    },
+    "package/node_modules/cli-width/package.json": {
+      "bytes": 977,
+      "mode": 420,
+      "sha256": "6fdfc702f4eb668937462fafc1ab3f8514baea43ce58fed9d545a4d40e214967"
+    },
+    "package/node_modules/fast-string-truncated-width/dist/index.d.ts": {
+      "bytes": 306,
+      "mode": 420,
+      "sha256": "fdfc96d5bac6c14e6ac4fdcdd89f6a4d5e02cab2306999e80ab2fb147b0ab84e"
+    },
+    "package/node_modules/fast-string-truncated-width/dist/index.js": {
+      "bytes": 5047,
+      "mode": 420,
+      "sha256": "5e7ee74641239c2fff739890ecc9b019872d6dee7615afb0924893fa4956e9dc"
+    },
+    "package/node_modules/fast-string-truncated-width/dist/types.d.ts": {
+      "bytes": 413,
+      "mode": 420,
+      "sha256": "6d3c8c054c221c49c4dbd5a4690425e35993684c2b075c92c753a86875daeddc"
+    },
+    "package/node_modules/fast-string-truncated-width/dist/types.js": {
+      "bytes": 22,
+      "mode": 420,
+      "sha256": "d99f969d7455894d5b3ee7632c54f4ffb79d666c0dd8dc49dfa6e7815f74196c"
+    },
+    "package/node_modules/fast-string-truncated-width/dist/utils.d.ts": {
+      "bytes": 242,
+      "mode": 420,
+      "sha256": "f468edeadf2ddaf71c7871248f28fe1713e753be8efa90edc9ee29d1c9ad8167"
+    },
+    "package/node_modules/fast-string-truncated-width/dist/utils.js": {
+      "bytes": 1197,
+      "mode": 420,
+      "sha256": "6909b1628b2aafa77427b5ac519307e1b30a9ea7b30d26d1c5622c8eb77b7acc"
+    },
+    "package/node_modules/fast-string-truncated-width/license": {
+      "bytes": 1091,
+      "mode": 420,
+      "sha256": "2547dead17a32b1e49a588e943d52420b4d75f1349d9afd9ecb567b2dc8911c0"
+    },
+    "package/node_modules/fast-string-truncated-width/package.json": {
+      "bytes": 946,
+      "mode": 420,
+      "sha256": "68f98cd59ee3f050e88ad1924dd29dd6a3522199cb480e9ae08f95fd7f8c6f4a"
+    },
+    "package/node_modules/fast-string-truncated-width/readme.md": {
+      "bytes": 2875,
+      "mode": 420,
+      "sha256": "213b7c87c3609a0af4980d7c3d88877520af3bdf4849f166bf730cab8f7e9453"
+    },
+    "package/node_modules/fast-string-width/dist/index.d.ts": {
+      "bytes": 210,
+      "mode": 420,
+      "sha256": "cab492f3f728526efe351794948a23ccbf4f1d2572a1eea95f4f9cebde42d345"
+    },
+    "package/node_modules/fast-string-width/dist/index.js": {
+      "bytes": 367,
+      "mode": 420,
+      "sha256": "3f5556b4288f58e506ccf41b13a437d746c7945cdc88f0485e94ecd129c054b4"
+    },
+    "package/node_modules/fast-string-width/license": {
+      "bytes": 1091,
+      "mode": 420,
+      "sha256": "2547dead17a32b1e49a588e943d52420b4d75f1349d9afd9ecb567b2dc8911c0"
+    },
+    "package/node_modules/fast-string-width/package.json": {
+      "bytes": 836,
+      "mode": 420,
+      "sha256": "2c49e010864a982bf0084dc4c7c267672f38462446e9911a64d0383e16e02712"
+    },
+    "package/node_modules/fast-string-width/readme.md": {
+      "bytes": 1011,
+      "mode": 420,
+      "sha256": "cb774a871c7b7f07531909b28a56191650cdc7c3043a50371e2eb300f57122fb"
+    },
+    "package/node_modules/fast-wrap-ansi/LICENSE": {
+      "bytes": 1151,
+      "mode": 420,
+      "sha256": "9235f5ebfd80d41920fae7a0317caa3914f2a9249837bc486d7706f73080e375"
+    },
+    "package/node_modules/fast-wrap-ansi/README.md": {
+      "bytes": 381,
+      "mode": 420,
+      "sha256": "9640e741075331af785c50532ac8f2856d1f2dc009b56c553f7bbe73515ad302"
+    },
+    "package/node_modules/fast-wrap-ansi/lib/main.d.ts": {
+      "bytes": 187,
+      "mode": 420,
+      "sha256": "ef10b1ba93c67f43ab63adb4033f79a2702e9bfaee8dc981f263876e10df2a45"
+    },
+    "package/node_modules/fast-wrap-ansi/lib/main.js": {
+      "bytes": 7634,
+      "mode": 420,
+      "sha256": "21e620e9d39cdd8a9cb64dee440b83ffa40c3cdb7b5dc242644ac6df73d7154b"
+    },
+    "package/node_modules/fast-wrap-ansi/package.json": {
+      "bytes": 1357,
+      "mode": 420,
+      "sha256": "faec2e80d1e1a395112ffaced479b858905ee233b5630d970a170666aa99c9fc"
+    },
+    "package/node_modules/marked/LICENSE.md": {
+      "bytes": 2942,
+      "mode": 420,
+      "sha256": "8e3a3f82f59a60958f56ca08f445647c32a4733dc7ca6c2c46f6eb898471ab9c"
+    },
+    "package/node_modules/marked/README.md": {
+      "bytes": 2976,
+      "mode": 420,
+      "sha256": "e55052ba5aa47e7559f67494719cf46762c8c09205736483ff52593860d4f33c"
+    },
+    "package/node_modules/marked/bin/main.js": {
+      "bytes": 6609,
+      "mode": 420,
+      "sha256": "88b4b0eac09204ac6fcd343fe41d54329aff351bac71472716a0227dc7eacd46"
+    },
+    "package/node_modules/marked/bin/marked.js": {
+      "bytes": 215,
+      "mode": 493,
+      "sha256": "e4ec45ee17631a5f3a837b98580f8ad47686181c7e4aaf24ecd9de7231357920"
+    },
+    "package/node_modules/marked/lib/marked.cjs": {
+      "bytes": 72991,
+      "mode": 420,
+      "sha256": "0a8051a2b02f5ef70b6e3e1f00baded1522cbbf48b975b6ac64a8f226a8a0965"
+    },
+    "package/node_modules/marked/lib/marked.cjs.map": {
+      "bytes": 145727,
+      "mode": 420,
+      "sha256": "796693c2d76e01b0f8065d5516e366de2b828812fb0f57bc2c78c9d761fba738"
+    },
+    "package/node_modules/marked/lib/marked.d.cts": {
+      "bytes": 20942,
+      "mode": 420,
+      "sha256": "2f9501a28443c63187a4a868f2e33807640191569144bc65c9127ed0a6ee9f3b"
+    },
+    "package/node_modules/marked/lib/marked.d.ts": {
+      "bytes": 20942,
+      "mode": 420,
+      "sha256": "2f9501a28443c63187a4a868f2e33807640191569144bc65c9127ed0a6ee9f3b"
+    },
+    "package/node_modules/marked/lib/marked.esm.js": {
+      "bytes": 71905,
+      "mode": 420,
+      "sha256": "29e25cdf1a06075c90e9885af06ddd23fb22a5424ed23a61dda986c73a8af641"
+    },
+    "package/node_modules/marked/lib/marked.esm.js.map": {
+      "bytes": 145597,
+      "mode": 420,
+      "sha256": "7c071e67c5460850d5b3065b2577c67e0090ec888e7c7a3f39887364ea9f3004"
+    },
+    "package/node_modules/marked/lib/marked.umd.js": {
+      "bytes": 73384,
+      "mode": 420,
+      "sha256": "d7931d1cd7bf727dd756c871637edcc9e0f8538003b927368400ec1ee47a9dd9"
+    },
+    "package/node_modules/marked/lib/marked.umd.js.map": {
+      "bytes": 145727,
+      "mode": 420,
+      "sha256": "796693c2d76e01b0f8065d5516e366de2b828812fb0f57bc2c78c9d761fba738"
+    },
+    "package/node_modules/marked/man/marked.1": {
+      "bytes": 2375,
+      "mode": 420,
+      "sha256": "a5a759fd23da964e6f7cafbf42d954c84987e2fb3b0f21650310efce945e2532"
+    },
+    "package/node_modules/marked/man/marked.1.md": {
+      "bytes": 1925,
+      "mode": 420,
+      "sha256": "356fded5d8067b9e2e4e0aa4deb6b612393b1cdb6dba53167fedd13c53bd4f1e"
+    },
+    "package/node_modules/marked/marked.min.js": {
+      "bytes": 39903,
+      "mode": 420,
+      "sha256": "3e7e7d7feb3e5d58cb6c804f68ab5c24cc7e5eb6270fd6e5cbb9124739217d0c"
+    },
+    "package/node_modules/marked/package.json": {
+      "bytes": 3763,
+      "mode": 420,
+      "sha256": "f568906109ceacc114fabf9dabcb3782d3bc0f2e2a6b2b8c7edc6878e3c3215b"
+    },
+    "package/node_modules/mute-stream/LICENSE": {
+      "bytes": 765,
+      "mode": 420,
+      "sha256": "4ec3d4c66cd87f5c8d8ad911b10f99bf27cb00cdfcff82621956e379186b016b"
+    },
+    "package/node_modules/mute-stream/README.md": {
+      "bytes": 1661,
+      "mode": 420,
+      "sha256": "cd697c4cfbb68439d1423c2abccec8c8c17f919b13d9a284aea3ec6cbdf074bf"
+    },
+    "package/node_modules/mute-stream/lib/index.js": {
+      "bytes": 2841,
+      "mode": 420,
+      "sha256": "f64dddb569e875fe5f0cb0aa8ac824fdcad7717293fe15b9a58159a61f60921c"
+    },
+    "package/node_modules/mute-stream/package.json": {
+      "bytes": 1231,
+      "mode": 420,
+      "sha256": "6a6d1be985f01f39158d63da75c2350bbf095306ba5f7ffdfb22f5cfdc054506"
+    },
+    "package/node_modules/signal-exit/LICENSE.txt": {
+      "bytes": 790,
+      "mode": 420,
+      "sha256": "b173e19b9a78df305577ace0e52ef45a4bcc915ea28b47b256dc3b68dcb1f7e7"
+    },
+    "package/node_modules/signal-exit/README.md": {
+      "bytes": 2426,
+      "mode": 420,
+      "sha256": "253e9122e9e5eaf8dc9b0fccb36d2011fc8e844d11c7249991edfec2be7fde71"
+    },
+    "package/node_modules/signal-exit/dist/cjs/browser.d.ts": {
+      "bytes": 393,
+      "mode": 420,
+      "sha256": "7b023021bc8e493240cc8117d490d55b4f6b62e08854ddbe1f53a35dfd40e355"
+    },
+    "package/node_modules/signal-exit/dist/cjs/browser.d.ts.map": {
+      "bytes": 349,
+      "mode": 420,
+      "sha256": "f46fc1cf3cae357be4e69317ae3c132f2597dc8ed31d208701053782fa03a09d"
+    },
+    "package/node_modules/signal-exit/dist/cjs/browser.js": {
+      "bytes": 322,
+      "mode": 420,
+      "sha256": "aa5f9f7f969e92b30d2d3288e8927b47faf38663f626c8e9afc7f5a3b901c816"
+    },
+    "package/node_modules/signal-exit/dist/cjs/browser.js.map": {
+      "bytes": 703,
+      "mode": 420,
+      "sha256": "cc48aa8c7132663b411f2bb14199e3e5ca7270399917f2640e1983614919d0ab"
+    },
+    "package/node_modules/signal-exit/dist/cjs/index.d.ts": {
+      "bytes": 1744,
+      "mode": 420,
+      "sha256": "1d63579e68cf6fc4b8a5ae13748efe38584f8eea7dddc320c276b30b1856d0b0"
+    },
+    "package/node_modules/signal-exit/dist/cjs/index.d.ts.map": {
+      "bytes": 460,
+      "mode": 420,
+      "sha256": "1dde4dce41849712db4203f346ca85435af909777b0653baf3339440bb487e42"
+    },
+    "package/node_modules/signal-exit/dist/cjs/index.js": {
+      "bytes": 9435,
+      "mode": 420,
+      "sha256": "7dba9354040ed0ddea0e3029e6f4690b1ea5b0275491a217d9704737a9cebe35"
+    },
+    "package/node_modules/signal-exit/dist/cjs/index.js.map": {
+      "bytes": 17544,
+      "mode": 420,
+      "sha256": "5d1a773080f60ad15c0f442fa5d59070910e87c109f7939800b2a4fe6b866f77"
+    },
+    "package/node_modules/signal-exit/dist/cjs/package.json": {
+      "bytes": 25,
+      "mode": 420,
+      "sha256": "8005a3491db7d92f36ac66369861589f9c47123d3a7c71e643fc2c06168cd45a"
+    },
+    "package/node_modules/signal-exit/dist/cjs/signals.d.ts": {
+      "bytes": 1083,
+      "mode": 420,
+      "sha256": "ed5b63eecb5ba65247f8c0a85602540a96fad19719005d59610c190c0ad59a9c"
+    },
+    "package/node_modules/signal-exit/dist/cjs/signals.d.ts.map": {
+      "bytes": 196,
+      "mode": 420,
+      "sha256": "ac18b4636c5aa4f7bb383d3ca971cce3c659d68198a7c477411a8ee23a0944d8"
+    },
+    "package/node_modules/signal-exit/dist/cjs/signals.js": {
+      "bytes": 1560,
+      "mode": 420,
+      "sha256": "84f6f2218e3a5dd61e38c9498bcb5465fb90f3900afde73956b1855b1e46af09"
+    },
+    "package/node_modules/signal-exit/dist/cjs/signals.js.map": {
+      "bytes": 2091,
+      "mode": 420,
+      "sha256": "f4b1aad11f5b1da3469353c19ce29c9f159efc878cc2b885aa4977dd8b7e31bb"
+    },
+    "package/node_modules/signal-exit/dist/mjs/browser.d.ts": {
+      "bytes": 393,
+      "mode": 420,
+      "sha256": "7b023021bc8e493240cc8117d490d55b4f6b62e08854ddbe1f53a35dfd40e355"
+    },
+    "package/node_modules/signal-exit/dist/mjs/browser.d.ts.map": {
+      "bytes": 349,
+      "mode": 420,
+      "sha256": "f46fc1cf3cae357be4e69317ae3c132f2597dc8ed31d208701053782fa03a09d"
+    },
+    "package/node_modules/signal-exit/dist/mjs/browser.js": {
+      "bytes": 138,
+      "mode": 420,
+      "sha256": "57498e3448998c32a94f884f500ac7a2c8b54872f648bebf1be1704303a5522c"
+    },
+    "package/node_modules/signal-exit/dist/mjs/browser.js.map": {
+      "bytes": 668,
+      "mode": 420,
+      "sha256": "24ff3c6a566cf59691d542f15d7aa3ba4511909acd307db7e8a09a768b83e2b5"
+    },
+    "package/node_modules/signal-exit/dist/mjs/index.d.ts": {
+      "bytes": 1744,
+      "mode": 420,
+      "sha256": "1d63579e68cf6fc4b8a5ae13748efe38584f8eea7dddc320c276b30b1856d0b0"
+    },
+    "package/node_modules/signal-exit/dist/mjs/index.d.ts.map": {
+      "bytes": 460,
+      "mode": 420,
+      "sha256": "1dde4dce41849712db4203f346ca85435af909777b0653baf3339440bb487e42"
+    },
+    "package/node_modules/signal-exit/dist/mjs/index.js": {
+      "bytes": 9090,
+      "mode": 420,
+      "sha256": "a2f8e19d69ab443b496c203c46c47853f885f3e852aca6daa248191bf3f1ccbb"
+    },
+    "package/node_modules/signal-exit/dist/mjs/index.js.map": {
+      "bytes": 17592,
+      "mode": 420,
+      "sha256": "fbaadc2cb63860ea1aa06746caa01490e4fa2d0458a94416503e77001c5f164b"
+    },
+    "package/node_modules/signal-exit/dist/mjs/package.json": {
+      "bytes": 23,
+      "mode": 420,
+      "sha256": "3ca9d4afd21425087cf31893b8f9f63c81b0b8408db5e343ca76e5f8aa26ab9a"
+    },
+    "package/node_modules/signal-exit/dist/mjs/signals.d.ts": {
+      "bytes": 1083,
+      "mode": 420,
+      "sha256": "ed5b63eecb5ba65247f8c0a85602540a96fad19719005d59610c190c0ad59a9c"
+    },
+    "package/node_modules/signal-exit/dist/mjs/signals.d.ts.map": {
+      "bytes": 196,
+      "mode": 420,
+      "sha256": "ac18b4636c5aa4f7bb383d3ca971cce3c659d68198a7c477411a8ee23a0944d8"
+    },
+    "package/node_modules/signal-exit/dist/mjs/signals.js": {
+      "bytes": 1438,
+      "mode": 420,
+      "sha256": "12044052d2037fbb19637c6fb216b1c80c28664134453b9a0fc32fa2fe352c27"
+    },
+    "package/node_modules/signal-exit/dist/mjs/signals.js.map": {
+      "bytes": 2098,
+      "mode": 420,
+      "sha256": "9ac7cde2118302bfce1fb14e0f0c04112a7f0ad6fa8a18d5d950ec530aa2654f"
+    },
+    "package/node_modules/signal-exit/package.json": {
+      "bytes": 2573,
+      "mode": 420,
+      "sha256": "cd1c6cfa95782e432dd2affaa88c3a6dda7f46c8088d91f3acc0fba79dce5075"
+    },
+    "package/optional-skills/asset-creator/CATALOG-SCHEMA.md": {
+      "bytes": 3259,
+      "mode": 420,
+      "sha256": "59486626689b1e9b534133baf1d421548f23df83d231feae0bcf23d8e07b5732"
+    },
+    "package/optional-skills/asset-creator/SKILL.md": {
+      "bytes": 10588,
+      "mode": 420,
+      "sha256": "42a8f0b9cbfeda03735f087c5ab887888fe098757a0eba4600f125e400cac9e9"
+    },
+    "package/optional-skills/asset-creator/STYLE-GUIDE.md": {
+      "bytes": 7665,
+      "mode": 420,
+      "sha256": "a7a36a642e7c9f50cea02e7b06345984cbe236cce9db483f93a515ecbd89c021"
+    },
+    "package/optional-skills/better-auth-setup/SKILL.md": {
+      "bytes": 26656,
+      "mode": 420,
+      "sha256": "2d41cfc5fd825e654b0b852dc43c4b8b1c4dd4b06a592d08702a821f0466c566"
+    },
+    "package/optional-skills/better-auth-setup/references/api-keys.md": {
+      "bytes": 7964,
+      "mode": 420,
+      "sha256": "be3b931600a0bd6d926d7ba8148480f4e8effec7d424aa8a15d14ba274c0f181"
+    },
+    "package/optional-skills/better-auth-setup/references/config-and-entry.md": {
+      "bytes": 7482,
+      "mode": 420,
+      "sha256": "228375ebcb993f3ff2e2bd76d9659e905e57b1205ffc6e954fc5f532eecb2c17"
+    },
+    "package/optional-skills/better-auth-setup/references/middleware.md": {
+      "bytes": 12608,
+      "mode": 420,
+      "sha256": "666e7e9bcd909d56d51af450ff85b6d9ae8d4af731bd230c6d72d168c3daf7a1"
+    },
+    "package/optional-skills/better-auth-setup/references/proxy-gotchas.md": {
+      "bytes": 8344,
+      "mode": 420,
+      "sha256": "9959cfa654c012289fac34b497e5d6d722c0dd9b19a3c0755c829aa193436a08"
+    },
+    "package/optional-skills/better-auth-setup/references/proxy-setup.md": {
+      "bytes": 10463,
+      "mode": 420,
+      "sha256": "ba964e2130ec7511fe1dbc99b0379fb91b34691ff2916dc641e6a098722ed61f"
+    },
+    "package/optional-skills/better-auth-setup/references/schema.md": {
+      "bytes": 9505,
+      "mode": 420,
+      "sha256": "9b80fd168b407f21ca3363b08b137be51ed7b076e10708e75b19598090f00c90"
+    },
+    "package/optional-skills/better-auth-setup/references/testing.md": {
+      "bytes": 7362,
+      "mode": 420,
+      "sha256": "600dd99d2f18d76b7d06ac397790a3d467a104fd2326a925f5d4b5a13d90b705"
+    },
+    "package/optional-skills/cloudflare-nextjs-setup/SKILL.md": {
+      "bytes": 11194,
+      "mode": 420,
+      "sha256": "610d75ce0008ed2a3d840be7628a33422d36d4ef038ae44d3650a673ee1a4604"
+    },
+    "package/optional-skills/code-health-standards/SKILL.md": {
+      "bytes": 3127,
+      "mode": 420,
+      "sha256": "58e8c1e240f8a9c3c3a51935bf61a4fc70ca76049b50044e465f633da6b85fe6"
+    },
+    "package/optional-skills/code-review-standards/SKILL.md": {
+      "bytes": 1844,
+      "mode": 420,
+      "sha256": "3f11f84adb7d3016c4d71bce743c40e35e682d09bc9376b03be957fc9c8d2b62"
+    },
+    "package/optional-skills/devlyn-pencil-pull/SKILL.md": {
+      "bytes": 6862,
+      "mode": 420,
+      "sha256": "d619bcb503108dc8eb7d757d7e8cf1720742bb16c3b8ea8c01878cfdf1cdb0b8"
+    },
+    "package/optional-skills/devlyn-pencil-push/SKILL.md": {
+      "bytes": 4289,
+      "mode": 420,
+      "sha256": "4571773e02846c2b2bc4ff4c1717b843ed5b7319ec9ee9d91ecab2a77d4af4c9"
+    },
+    "package/optional-skills/devlyn-reap/SKILL.md": {
+      "bytes": 7238,
+      "mode": 420,
+      "sha256": "51ee3be1e1dccde90471331d60fbdd162773412819dbcd6a6ce86d2cec42198b"
+    },
+    "package/optional-skills/devlyn-reap/scripts/reap.sh": {
+      "bytes": 4835,
+      "mode": 493,
+      "sha256": "ad06953be260e3bec10b6891c30337594bfbe5ff6db1d82e8c59c13ac102c89d"
+    },
+    "package/optional-skills/devlyn-reap/scripts/scan.sh": {
+      "bytes": 6330,
+      "mode": 493,
+      "sha256": "23eaa9655d9614e441c34637fee568a8ed737497559a2d2bf31e10472c02dda2"
+    },
+    "package/optional-skills/dokkit/ANALYSIS.md": {
+      "bytes": 8662,
+      "mode": 420,
+      "sha256": "7503acd8be895fb0adf6a55df2a65509932f74261460c2d10d15abb0a211e0d7"
+    },
+    "package/optional-skills/dokkit/COMMANDS.md": {
+      "bytes": 14132,
+      "mode": 420,
+      "sha256": "2c0e1ef6f1016d34de42b002e13ddce7c5fff931c4a9c0dd27bf4808ee3b2bbd"
+    },
+    "package/optional-skills/dokkit/DOCX-XML.md": {
+      "bytes": 2125,
+      "mode": 420,
+      "sha256": "d6737cca5d96ace034a62a106e776085154ebfdb2d443799866866522786d75c"
+    },
+    "package/optional-skills/dokkit/EXPORT.md": {
+      "bytes": 3253,
+      "mode": 420,
+      "sha256": "c4429521a7a59547da922670d68e03aa77f074d0cb937f46ea8f84dfbe342e70"
+    },
+    "package/optional-skills/dokkit/FILLING.md": {
+      "bytes": 14453,
+      "mode": 420,
+      "sha256": "7373c23c25bb6f3fd9b0c58de30d54daf787c4fabe87b6542fb1567e8e3e2631"
+    },
+    "package/optional-skills/dokkit/HWPX-XML.md": {
+      "bytes": 2425,
+      "mode": 420,
+      "sha256": "1852b1dba9c2d6d54057726cb5ddfbac169c0c07a994f5f5cfafd24caba1455f"
+    },
+    "package/optional-skills/dokkit/IMAGE-SOURCING.md": {
+      "bytes": 5521,
+      "mode": 420,
+      "sha256": "1a9e6e03b85b8e6bb0b53081648cff0428d5ec51ec73f3fa46586d94d42dd1a5"
+    },
+    "package/optional-skills/dokkit/INGESTION.md": {
+      "bytes": 2101,
+      "mode": 420,
+      "sha256": "71db1451ae3e45e2152ba749e3bdd9455f21a8a6b2738203815b2c507f64fea1"
+    },
+    "package/optional-skills/dokkit/PIPELINE.md": {
+      "bytes": 14967,
+      "mode": 420,
+      "sha256": "e9906861ee058a71e874b02affd47685c1738ef3d18473545a3f7a4b75467a56"
+    },
+    "package/optional-skills/dokkit/SKILL.md": {
+      "bytes": 11838,
+      "mode": 420,
+      "sha256": "48d26f0db262df326145cfded42d1f2ea73a45393299209471555aea4d78995e"
+    },
+    "package/optional-skills/dokkit/STATE.md": {
+      "bytes": 1876,
+      "mode": 420,
+      "sha256": "1be4d80ebc577a65e909f64291302473a95076a02dfce4ca39e70952d97da1e8"
+    },
+    "package/optional-skills/dokkit/references/docx-field-patterns.md": {
+      "bytes": 4304,
+      "mode": 420,
+      "sha256": "e918d757edf90b91a86ac626892cb27db692f2131d5e1df0a2e6f2e326209fc8"
+    },
+    "package/optional-skills/dokkit/references/docx-section-range-detection.md": {
+      "bytes": 6532,
+      "mode": 420,
+      "sha256": "ad6051bf8689b1e14af02e85c755828d710a2bcd209fa5a0ae171e27ea4ec91c"
+    },
+    "package/optional-skills/dokkit/references/docx-structure.md": {
+      "bytes": 1808,
+      "mode": 420,
+      "sha256": "871d046768a3515efbb40767e2ff83c77487c8264c84e6b04cd4aae9a41812d0"
+    },
+    "package/optional-skills/dokkit/references/field-detection-patterns.md": {
+      "bytes": 4644,
+      "mode": 420,
+      "sha256": "439ea29d4d4fba3c32dcfb71adf3843baab3dc163a18da62d30a9b95fe47ef89"
+    },
+    "package/optional-skills/dokkit/references/hwpx-field-patterns.md": {
+      "bytes": 15587,
+      "mode": 420,
+      "sha256": "a3a15626119e06a6228c87be23ff3934114961b02fc051156c8ecf403b24086e"
+    },
+    "package/optional-skills/dokkit/references/hwpx-structure.md": {
+      "bytes": 6368,
+      "mode": 420,
+      "sha256": "2d86188c398aa8ea559e13c9b1a2626eb748e8b86ada722829ce5075293da675"
+    },
+    "package/optional-skills/dokkit/references/image-opportunity-heuristics.md": {
+      "bytes": 5789,
+      "mode": 420,
+      "sha256": "0131c59ff0351d150029df91268e35ad005e5a0780e2f382ebbb30a9178d7b6f"
+    },
+    "package/optional-skills/dokkit/references/image-xml-patterns.md": {
+      "bytes": 14362,
+      "mode": 420,
+      "sha256": "a3100b3fb3134b85d8358dc46ef277d9be02dd22488efb347c46d7a369cbfa26"
+    },
+    "package/optional-skills/dokkit/references/section-image-interleaving.md": {
+      "bytes": 13234,
+      "mode": 420,
+      "sha256": "a50c88ff57433125e9d51118e4b79280ac84a18e9e65abad86b6be6e4d6932cb"
+    },
+    "package/optional-skills/dokkit/references/section-range-detection.md": {
+      "bytes": 5180,
+      "mode": 420,
+      "sha256": "06221fc657ab53ebce9c3d6412f6fbf138fc178927d223f3ce8619b87cdbc13f"
+    },
+    "package/optional-skills/dokkit/references/state-schema.md": {
+      "bytes": 4733,
+      "mode": 420,
+      "sha256": "efa8901c7873a9ebdbf297b1dfe39906fa53ea0097d2d047af394008c36251fa"
+    },
+    "package/optional-skills/dokkit/references/supported-formats.md": {
+      "bytes": 1677,
+      "mode": 420,
+      "sha256": "2bb08b28d8c2142bfe2535eaf6e9634ec5b5428531491a2d4795e1b39e697a11"
+    },
+    "package/optional-skills/dokkit/scripts/compile_hwpx.py": {
+      "bytes": 4961,
+      "mode": 420,
+      "sha256": "3de0583e519eedd4b1f6c0c0a99a27cc27d24d73b6988032121d39ef31e89b0e"
+    },
+    "package/optional-skills/dokkit/scripts/detect_fields.py": {
+      "bytes": 10944,
+      "mode": 420,
+      "sha256": "186d9684461c819dacf75aa03212f8b70a6bbe4a08a60dd16b050e964986b916"
+    },
+    "package/optional-skills/dokkit/scripts/detect_fields_hwpx.py": {
+      "bytes": 10579,
+      "mode": 420,
+      "sha256": "40c4d4e1182e2ec6a9e24f6e705e739cd0b767244231af6c3cfea1371ba049e3"
+    },
+    "package/optional-skills/dokkit/scripts/export_pdf.py": {
+      "bytes": 2769,
+      "mode": 420,
+      "sha256": "1257598d7dcfe1ca8f956f71800579abe3dacc7ae38f635d2200341a64ff5071"
+    },
+    "package/optional-skills/dokkit/scripts/fill_docx.py": {
+      "bytes": 33918,
+      "mode": 420,
+      "sha256": "e8954636979ccb34aada17b902a8aea22c56aa03bdf92d76466b17b0c0b4f1e0"
+    },
+    "package/optional-skills/dokkit/scripts/parse_hwpx.py": {
+      "bytes": 5838,
+      "mode": 420,
+      "sha256": "83ab2088f8b4cc534301d6eaa06b9cce83e7663046942b97a1083d02a33cb81e"
+    },
+    "package/optional-skills/dokkit/scripts/parse_image_with_gemini.py": {
+      "bytes": 5146,
+      "mode": 420,
+      "sha256": "eaa54d17079e887b71e053ceead73692496ff00bc3879dedf253ed591ab95656"
+    },
+    "package/optional-skills/dokkit/scripts/parse_xlsx.py": {
+      "bytes": 2756,
+      "mode": 420,
+      "sha256": "6e75ffb166314568ef2e2f4087aed490d219dbfef32f4c9289d6b53c76aa48e8"
+    },
+    "package/optional-skills/dokkit/scripts/source_images.py": {
+      "bytes": 13501,
+      "mode": 420,
+      "sha256": "00f66bb3f0134e0dd1a84c709aa4d1ff830b1cceef76e5ca290d305b2ab413d9"
+    },
+    "package/optional-skills/dokkit/scripts/validate_docx.py": {
+      "bytes": 4815,
+      "mode": 420,
+      "sha256": "56a3969646af27cc8838d70e272e6898d30e3fc32b0317801d8146743c4d731e"
+    },
+    "package/optional-skills/dokkit/scripts/validate_hwpx.py": {
+      "bytes": 10100,
+      "mode": 420,
+      "sha256": "3e21ec8138c6ba0ffb85981980295614f4658aea6a81aa5f65b34bf14d2fbcea"
+    },
+    "package/optional-skills/dokkit/scripts/validate_state.py": {
+      "bytes": 5125,
+      "mode": 420,
+      "sha256": "38b4de24aeac33aa64a9f4d5a4c02f8a1f0ed3987bd495f08b06341e647ba816"
+    },
+    "package/optional-skills/generate-skill/CHECKLIST.md": {
+      "bytes": 2552,
+      "mode": 420,
+      "sha256": "3985853af6a01d9f4608527081835b44ee9dfb499ae5fc46c96d083de4d4046a"
+    },
+    "package/optional-skills/generate-skill/PROMPT-PATTERNS.md": {
+      "bytes": 9700,
+      "mode": 420,
+      "sha256": "67f75dea52971a511fa25f3ae8b8c2f37d1d46f5ac0abf3819de144fa3773844"
+    },
+    "package/optional-skills/generate-skill/REFERENCE.md": {
+      "bytes": 5304,
+      "mode": 420,
+      "sha256": "91a1322a1dac328804b9e82f10b75e7e09f1bd3f75f79e5226c5b373769665f3"
+    },
+    "package/optional-skills/generate-skill/SKILL.md": {
+      "bytes": 6806,
+      "mode": 420,
+      "sha256": "d093e7f333c69ca12eed9f4bc0a5f1d507d42be28910c255475ed4d32492030d"
+    },
+    "package/optional-skills/polar-billing-setup/SKILL.md": {
+      "bytes": 7782,
+      "mode": 420,
+      "sha256": "39b093c32e0aa48484c77e79152458e8f98498dd82682bc64f35356e74bb218d"
+    },
+    "package/optional-skills/polar-billing-setup/references/gotchas.md": {
+      "bytes": 7045,
+      "mode": 420,
+      "sha256": "9ef050e813eadda4f478c7821976812d366f28f3268de4bad8c620ccb59d6702"
+    },
+    "package/optional-skills/polar-billing-setup/references/setup.md": {
+      "bytes": 4457,
+      "mode": 420,
+      "sha256": "cbb43d6f7c49c6a0d5ddc96ef351ccd67ae43dc8940e529f8ecd302d64408ee1"
+    },
+    "package/optional-skills/polar-billing-setup/scripts/diagnose.mjs": {
+      "bytes": 10514,
+      "mode": 420,
+      "sha256": "616ed10ddb6a56fafb75fa21f75e46bb2a78848b8581f6fa7988320f2140f24e"
+    },
+    "package/optional-skills/prompt-engineering/SKILL.md": {
+      "bytes": 8236,
+      "mode": 420,
+      "sha256": "eb9c6f10d0f1b13ff80aa6bd9a4b558a4e044d2dc0239980766123aeadb824e2"
+    },
+    "package/optional-skills/pyx-scan/SKILL.md": {
+      "bytes": 5719,
+      "mode": 420,
+      "sha256": "4db43fa0a694888cc7142c68e29a0ffd43b77eace4b6feacb953a9274bed5695"
+    },
+    "package/optional-skills/root-cause-analysis/SKILL.md": {
+      "bytes": 2996,
+      "mode": 420,
+      "sha256": "bd3523d223284dee2ba43dd6bce2cef27b31b8212d6164e7e6b0ede504376cba"
+    },
+    "package/optional-skills/ui-implementation-standards/SKILL.md": {
+      "bytes": 3889,
+      "mode": 420,
+      "sha256": "2d8cadc8889dba1ae191cf66c87594379a48801d6a2b5bc4bfedf2e74d8fde39"
+    },
+    "package/package.json": {
+      "bytes": 1867,
+      "mode": 420,
+      "sha256": "71fa7e644b9be6c585f6af1b0645edef4323bf37884236e7c9cd7eb539f9c9a0"
+    }
+  },
+  "P": {
+    "package/AGENTS.md": {
+      "bytes": 4262,
+      "mode": 420,
+      "sha256": "d602c2ca03f0bc4e2ce328fdf8edf3f06248e2f125daf8721fbe21d12b2cc888"
+    },
+    "package/CLAUDE.md": {
+      "bytes": 4262,
+      "mode": 420,
+      "sha256": "d602c2ca03f0bc4e2ce328fdf8edf3f06248e2f125daf8721fbe21d12b2cc888"
+    },
+    "package/LICENSE": {
+      "bytes": 1081,
+      "mode": 420,
+      "sha256": "ce7eb6efd00f74955f0d20451e39d182c7d9bcacc6b08440fa8fadad640aa897"
+    },
+    "package/README.md": {
+      "bytes": 21445,
+      "mode": 420,
+      "sha256": "f1f90dd8ad0c7a45b383c4097fea6f7368d3a9b14d6781a35a0162059a474d60"
+    },
+    "package/bin/devlyn.js": {
+      "bytes": 49230,
+      "mode": 493,
+      "sha256": "ab1555f8b1f6c2ee82d0caddf1eebc11371d6e479724d421cfafe50983b640b9"
+    },
+    "package/bin/instruction-templates.json": {
+      "bytes": 69747,
+      "mode": 420,
+      "sha256": "8b6133866bdf8b3fe962639aaf501993dfffdca62fb0375d5af1f48e81967a64"
+    },
+    "package/bin/instructions.js": {
+      "bytes": 16071,
+      "mode": 420,
+      "sha256": "c2ef3fda7714efab8e1569a4d08ec17abc1a10469133b11b159d0884f7bb2532"
+    },
+    "package/bin/skill-history.json": {
+      "bytes": 6386,
+      "mode": 420,
+      "sha256": "de0466c1a8aaeeab47c49d303f734882fc9462d7d8891e53f596e17d6b7aca94"
+    },
+    "package/bin/skill-ownership.js": {
+      "bytes": 3212,
+      "mode": 420,
+      "sha256": "4e3080a68aa8d3188b14dec99e0a0df85f59d6a6d1fe7e520ae3c3003ab2a42d"
+    },
+    "package/config/skills/_shared/.ruff.toml": {
+      "bytes": 82,
+      "mode": 420,
+      "sha256": "adec089c6c3bc0c63fb6a8d9acbf9d1dc3d8a287d1d32f086340d4b90ee9d9e1"
+    },
+    "package/config/skills/_shared/adapters/claude.md": {
+      "bytes": 709,
+      "mode": 420,
+      "sha256": "1e7440575b30019066209e1ea5423a3fd9af86311c73257e9f7dd814354bcdf7"
+    },
+    "package/config/skills/_shared/adapters/codex.md": {
+      "bytes": 918,
+      "mode": 420,
+      "sha256": "fe7b13c816f3c67dad1cf87ae816259090e7a3fb44f0274b59b013b2022036c1"
+    },
+    "package/config/skills/_shared/adapters/omp.md": {
+      "bytes": 52,
+      "mode": 420,
+      "sha256": "25c2dfad40e3acd3b23f26ec9b5811da2a36b9d803c9795ef36af5ef5c03d33c"
+    },
+    "package/config/skills/_shared/codex-monitored.sh": {
+      "bytes": 10038,
+      "mode": 493,
+      "sha256": "3d0658c042684c0323c2c4d691f5ca9cd544df6ffc3cbe54eccd54e8a1654d77"
+    },
+    "package/config/skills/_shared/engine-doctor.sh": {
+      "bytes": 2329,
+      "mode": 493,
+      "sha256": "cb9b253f64180334e0b2a2056e3e79d8be43244256c45c1c45dd1a5af099b982"
+    },
+    "package/config/skills/_shared/engine-preflight.md": {
+      "bytes": 2022,
+      "mode": 420,
+      "sha256": "ecb552f4dd74e986bde2d7deb51dd719a16691d6c2672d6880e675de1204dca0"
+    },
+    "package/config/skills/_shared/expected-contract.py": {
+      "bytes": 10478,
+      "mode": 420,
+      "sha256": "1a7dd6da07c3b4cd59e8f8135820ec808be695d763e3f0e265f069c12d0b59f0"
+    },
+    "package/config/skills/_shared/expected.schema.json": {
+      "bytes": 5332,
+      "mode": 420,
+      "sha256": "911c2f5f43ef70ee4ee3852a55b876d68b2ceb2b38e5799a58035c4d6b9bba2c"
+    },
+    "package/config/skills/_shared/invocation-receipt.py": {
+      "bytes": 20451,
+      "mode": 420,
+      "sha256": "0adde04a9df851062dab94bed1babd0f7e973f893275070312eb85c6c6c0cf3d"
+    },
+    "package/config/skills/_shared/pair.md": {
+      "bytes": 2690,
+      "mode": 420,
+      "sha256": "fa782da81c1da4c310d6dd22d2e2c5e560a30e8b50b3642181b85246fa7757a0"
+    },
+    "package/config/skills/_shared/peer.py": {
+      "bytes": 8354,
+      "mode": 420,
+      "sha256": "fcd21c454a61135b6d571bfda928efbe78771a30e29f52946e19dd3b7c0e8266"
+    },
+    "package/config/skills/_shared/platform-support.py": {
+      "bytes": 19061,
+      "mode": 420,
+      "sha256": "a8e1472b792000bd21ef5d359eba2ae49555adcc198198f2625b51ebb94bbc66"
+    },
+    "package/config/skills/_shared/role-config.py": {
+      "bytes": 11194,
+      "mode": 420,
+      "sha256": "d858805d022152a18d01516df02735d47a68225f955454dcfe952f216c9877f3"
+    },
+    "package/config/skills/_shared/runtime-principles.md": {
+      "bytes": 3224,
+      "mode": 420,
+      "sha256": "9573704f913a22ce450f9618200e68188d107b6ff7909c6c9f363ea401a8d583"
+    },
+    "package/config/skills/_shared/task-complete.py": {
+      "bytes": 138449,
+      "mode": 420,
+      "sha256": "d7dc54a6094d82871875bc0a0d7379b13ed38a143c52748257ff721b464dcc59"
+    },
+    "package/config/skills/_shared/task-completion.md": {
+      "bytes": 14434,
+      "mode": 420,
+      "sha256": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733"
+    },
+    "package/config/skills/devlyn-engines/SKILL.md": {
+      "bytes": 3627,
+      "mode": 420,
+      "sha256": "ee82fa921c0fb0e237794a60b400c3e34c16f38091a023d6c1606aa365ddbe48"
+    },
+    "package/config/skills/devlyn-ideate/SKILL.md": {
+      "bytes": 11614,
+      "mode": 420,
+      "sha256": "3f8b29c15ef931b8ac2314e2a9a65b5cd55adde8fbd7db13bc31fb40f7a5e866"
+    },
+    "package/config/skills/devlyn-ideate/references/elicitation.md": {
+      "bytes": 2410,
+      "mode": 420,
+      "sha256": "b836f98710f82b973212fd4406575fb3b16a299cee5edc98e555e82b2fbcad47"
+    },
+    "package/config/skills/devlyn-ideate/references/loop.md": {
+      "bytes": 17919,
+      "mode": 420,
+      "sha256": "a0fa17d174d141950927a0c33e9edc63d4f97b5f98b0dedfd34782dd77612c86"
+    },
+    "package/config/skills/devlyn-ideate/references/package-format.md": {
+      "bytes": 10727,
+      "mode": 420,
+      "sha256": "b52cd176ed2a440039d6327d29ac8ac3cc80020b2549f2c9cd8f6e6010b688a5"
+    },
+    "package/config/skills/devlyn-ideate/scripts/acceptance.py": {
+      "bytes": 47412,
+      "mode": 420,
+      "sha256": "bf569c1f9f90957d4cad5ef91b8f30957d09a5587686c04512f88eec46a7c6a5"
+    },
+    "package/config/skills/devlyn-ideate/scripts/queue.py": {
+      "bytes": 104790,
+      "mode": 420,
+      "sha256": "e8f59a58bc37647d284c09db86f701b2e6ebfaefeffd9de2ca2d9394757664dd"
+    },
+    "package/node_modules/@inquirer/ansi/LICENSE": {
+      "bytes": 1058,
+      "mode": 420,
+      "sha256": "85aca0b12ce5ade4ff76e9cbbe7e0d5a4cdde979e3930727c272e1fa04b8cc23"
+    },
+    "package/node_modules/@inquirer/ansi/README.md": {
+      "bytes": 2016,
+      "mode": 420,
+      "sha256": "acac7e39e8085c850d9d14b65ba2ff90ffaca5f487ce08e1eb922578994b20f5"
+    },
+    "package/node_modules/@inquirer/ansi/dist/index.d.ts": {
+      "bytes": 620,
+      "mode": 420,
+      "sha256": "48bc69e9c25e4995e462c08b0d264f1e13b188694f12c8f38a6aefb3994d6ef4"
+    },
+    "package/node_modules/@inquirer/ansi/dist/index.js": {
+      "bytes": 866,
+      "mode": 420,
+      "sha256": "adeb11d734b61dfe27f35860cdd9026cd1b10c4c0c5c63a9a12c5332e4b0ee19"
+    },
+    "package/node_modules/@inquirer/ansi/package.json": {
+      "bytes": 1465,
+      "mode": 420,
+      "sha256": "cab1c0b6189d6817ecf9cee0c087acaffebf8ebeccc2556026a5dd01ca36c191"
+    },
+    "package/node_modules/@inquirer/checkbox/LICENSE": {
+      "bytes": 1058,
+      "mode": 420,
+      "sha256": "85aca0b12ce5ade4ff76e9cbbe7e0d5a4cdde979e3930727c272e1fa04b8cc23"
+    },
+    "package/node_modules/@inquirer/checkbox/README.md": {
+      "bytes": 8290,
+      "mode": 420,
+      "sha256": "319b510c0ef22ba509306a94a8715635ce4070221047ce598af09378af27bbcc"
+    },
+    "package/node_modules/@inquirer/checkbox/dist/index.d.ts": {
+      "bytes": 2252,
+      "mode": 420,
+      "sha256": "a62624c7f04fc4566f8f8b96f6d39110125263e4f79c6b496cef28c51975ad0f"
+    },
+    "package/node_modules/@inquirer/checkbox/dist/index.js": {
+      "bytes": 8304,
+      "mode": 420,
+      "sha256": "d8318ce8bc4cb429f31556cd935acff9991e929d9dbc0f1d2e6a97de2cbfcf73"
+    },
+    "package/node_modules/@inquirer/checkbox/package.json": {
+      "bytes": 1799,
+      "mode": 420,
+      "sha256": "40417769237d48d389178653cda6bb07f895b57f6c47e8b02399c269be9bdd61"
+    },
+    "package/node_modules/@inquirer/core/LICENSE": {
+      "bytes": 1058,
+      "mode": 420,
+      "sha256": "85aca0b12ce5ade4ff76e9cbbe7e0d5a4cdde979e3930727c272e1fa04b8cc23"
+    },
+    "package/node_modules/@inquirer/core/README.md": {
+      "bytes": 12152,
+      "mode": 420,
+      "sha256": "3755b653465b536e1f5fedccc71985ce26c2b669f95f71028d46e0f1f338e2ca"
+    },
+    "package/node_modules/@inquirer/core/dist/index.d.ts": {
+      "bytes": 756,
+      "mode": 420,
+      "sha256": "e1d6ddd0c300ba35bd166063d5b2456e9d84fe96bdb7c16ad9379e50dca5dcda"
+    },
+    "package/node_modules/@inquirer/core/dist/index.js": {
+      "bytes": 666,
+      "mode": 420,
+      "sha256": "465298a818b5ba4332579195a2f9a93b648db2a87d0bdd9608e5804955106c29"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/Separator.d.ts": {
+      "bytes": 261,
+      "mode": 420,
+      "sha256": "ab37b1199441c7ecb602defe46f72099d3d4555f7911bd865f51657f419779ab"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/Separator.js": {
+      "bytes": 578,
+      "mode": 420,
+      "sha256": "f75aa2252ef60c62410bd604bf7c0688c678c947d446cfcef7946884db0a78e6"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/__probe/p1.d.ts": {
+      "bytes": 120,
+      "mode": 420,
+      "sha256": "708667d0be2b7c761d85d3fcd27ffd86af6d9b07285b844e4c89460dcd7a7136"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/__probe/p1.js": {
+      "bytes": 107,
+      "mode": 420,
+      "sha256": "b29c4a6673c41a76fbaf5a7dd4ee76ca1dc621713d35c6d1361c325e696415d5"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/__probe/p2.d.ts": {
+      "bytes": 120,
+      "mode": 420,
+      "sha256": "708667d0be2b7c761d85d3fcd27ffd86af6d9b07285b844e4c89460dcd7a7136"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/__probe/p2.js": {
+      "bytes": 98,
+      "mode": 420,
+      "sha256": "5664b041803cbeb6cd286c8fa242d5c5c6ebf7ad1f9c0c72613c84c07a3ee1a0"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/__probe/p3.d.ts": {
+      "bytes": 120,
+      "mode": 420,
+      "sha256": "708667d0be2b7c761d85d3fcd27ffd86af6d9b07285b844e4c89460dcd7a7136"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/__probe/p3.js": {
+      "bytes": 152,
+      "mode": 420,
+      "sha256": "08f8d9af8c032fa4db6c7b8dceb3f4365e99e6a369151ca33e8f6d0a992f30f1"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/create-prompt.d.ts": {
+      "bytes": 528,
+      "mode": 420,
+      "sha256": "673acd99a4a6296577959626d31fe5cabf5bb3441e973e3e8cea71ffece1ff81"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/create-prompt.js": {
+      "bytes": 9352,
+      "mode": 420,
+      "sha256": "281fea27f5d664d26748c79b3c95442dbd7ffa4cb7e81671a2e7eeb20075284e"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/errors.d.ts": {
+      "bytes": 465,
+      "mode": 420,
+      "sha256": "cc2d9ba9d5434882cfb9bc2954fe433b5538fa78a40be504c9833a45d1a732ad"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/errors.js": {
+      "bytes": 539,
+      "mode": 420,
+      "sha256": "e853af7060009a0d0cc4634431c28d9b5ff43f0084982c1700b75b943b27a278"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/hook-engine.d.ts": {
+      "bytes": 762,
+      "mode": 420,
+      "sha256": "a93432b560099da85aadbb687183ac0d2e9d2719dff542a7db3d0cf296cdf0ac"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/hook-engine.js": {
+      "bytes": 3341,
+      "mode": 420,
+      "sha256": "03abfab3475cb8f7d5feee2ce6bf7ca77327042d0e50bb1b362866c8667bd2b4"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/key.d.ts": {
+      "bytes": 817,
+      "mode": 420,
+      "sha256": "10043f2974346ba2baca701cd0a2bca1bda974d626a5d7eb92b741757a42443e"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/key.js": {
+      "bytes": 1481,
+      "mode": 420,
+      "sha256": "23a8ce908654922f130da62b1b0146c2107dd939019d3ee67c69ef5bb56b336f"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/make-theme.d.ts": {
+      "bytes": 272,
+      "mode": 420,
+      "sha256": "5a7fe6ef136e88ee70d3cd0b1aa0d6875178b2682542ca340875a2711c81d779"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/make-theme.js": {
+      "bytes": 1114,
+      "mode": 420,
+      "sha256": "434600c202a94ae6ba3b90ce9820e92aa7d629f894bfa4cdddde8fd0834cb870"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/pagination/use-pagination.d.ts": {
+      "bytes": 504,
+      "mode": 420,
+      "sha256": "6efe6725728024c1b6cf22b47fe1dcaecc951444e7cb6fe0037d96123bb75667"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/pagination/use-pagination.js": {
+      "bytes": 6358,
+      "mode": 420,
+      "sha256": "0cbe099c4e7581198e6d18ea051cf9508b5d24c34b566ba45eae7a16286ff588"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/screen-manager.d.ts": {
+      "bytes": 432,
+      "mode": 420,
+      "sha256": "681cac7cfb615498ee2cf79c930d8b55e2da6c9a3c58971b3324205e218cf838"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/screen-manager.js": {
+      "bytes": 3744,
+      "mode": 420,
+      "sha256": "39dc3d968f515138a35a46c89f0abea24c83ef0ebdad81eba482d605dbbf9499"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/theme.d.ts": {
+      "bytes": 5288,
+      "mode": 420,
+      "sha256": "c8c43f3c6f59572906c077ddd96a1856fc5c6519c30f356d6c9c511b9dadc9c0"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/theme.js": {
+      "bytes": 1014,
+      "mode": 420,
+      "sha256": "321d96b2968d279502f04d1e711e4b1de50dbc25daba2c78041a0560e2e7db73"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/use-effect.d.ts": {
+      "bytes": 182,
+      "mode": 420,
+      "sha256": "8da95d257be3f2d83c21c555dedda9c96869e5f855652523cf52dc98ca8c57de"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/use-effect.js": {
+      "bytes": 403,
+      "mode": 420,
+      "sha256": "001c995aba7c77aee1c0043516327b7f4a2aadf0c94a3d7f00dfe171dce052bf"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/use-keypress.d.ts": {
+      "bytes": 229,
+      "mode": 420,
+      "sha256": "ce6ada7f4eb4cda3ccfe28a0201608828fc6ee2d3204101976831100d9550d47"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/use-keypress.js": {
+      "bytes": 637,
+      "mode": 420,
+      "sha256": "943a6d1ad799f073cea21eb155c193990b0802640aa5210e4f20ef18485f25e3"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/use-memo.d.ts": {
+      "bytes": 102,
+      "mode": 420,
+      "sha256": "aa9494cb36743567c0f6ce385ce869358b59193c9b61612e0d70e4de500424c3"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/use-memo.js": {
+      "bytes": 496,
+      "mode": 420,
+      "sha256": "70a292e170d545a5d28c87f579dafbf1f1ec8389fcb12f598ccf3ca87d73a757"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/use-prefix.d.ts": {
+      "bytes": 157,
+      "mode": 420,
+      "sha256": "988be2b47c162ddfc4ac289de0bc50b52fd425d4408cb4bc40fcc9b81f4957c6"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/use-prefix.js": {
+      "bytes": 1357,
+      "mode": 420,
+      "sha256": "9ace5f806e90dd13a21fbdaaae9678af60b31f2202985be983a8b082290ae6a6"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/use-ref.d.ts": {
+      "bytes": 165,
+      "mode": 420,
+      "sha256": "904964129f1ef4797282d4ea4411eaf26d4b22bb481b8b8ab3e920d4cfc79ecf"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/use-ref.js": {
+      "bytes": 117,
+      "mode": 420,
+      "sha256": "b76dccca2579a01f21b77a437bb0177aca843b56b6f4727eb62ee8b18d7da81a"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/use-state.d.ts": {
+      "bytes": 574,
+      "mode": 420,
+      "sha256": "bf2b86c4d2d7db6fdbb14098c247526ef334ee62e8f06e3d790891b5d0d10090"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/use-state.js": {
+      "bytes": 1024,
+      "mode": 420,
+      "sha256": "0bd91dcc4ba24d7f1eb657a3c4aab35f264c3faf4e59b8159411c1a4f67b0fdc"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/utils.d.ts": {
+      "bytes": 442,
+      "mode": 420,
+      "sha256": "7c8e5a4aaee3a6e83251ac295ab33a9e0aa2891c97674b9844128a8335aadc6b"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/utils.js": {
+      "bytes": 795,
+      "mode": 420,
+      "sha256": "951d0b5bb378664a26890fdc30951c72795bcc3988c44f2668ded27cc7162eba"
+    },
+    "package/node_modules/@inquirer/core/package.json": {
+      "bytes": 1942,
+      "mode": 420,
+      "sha256": "d89bbfddc2f85ca72948ee68e76545516cf32176c30aaac6329452072c16c9d4"
+    },
+    "package/node_modules/@inquirer/figures/LICENSE": {
+      "bytes": 1058,
+      "mode": 420,
+      "sha256": "85aca0b12ce5ade4ff76e9cbbe7e0d5a4cdde979e3930727c272e1fa04b8cc23"
+    },
+    "package/node_modules/@inquirer/figures/dist/index.d.ts": {
+      "bytes": 8111,
+      "mode": 420,
+      "sha256": "816b8fa6e2e8c9a02d5fff5b3ac395da52f9fcf09cb5d6f971b66a018e87e059"
+    },
+    "package/node_modules/@inquirer/figures/dist/index.js": {
+      "bytes": 9336,
+      "mode": 420,
+      "sha256": "a9726aa6667509460fe6e64c05739b2dfa094dc621d5efbc35ba333b99e3d125"
+    },
+    "package/node_modules/@inquirer/figures/package.json": {
+      "bytes": 1496,
+      "mode": 420,
+      "sha256": "5445e0055b8bb76698640b4472b9d15c192fe385d1ead476e84973c4116c4487"
+    },
+    "package/node_modules/@inquirer/select/LICENSE": {
+      "bytes": 1058,
+      "mode": 420,
+      "sha256": "85aca0b12ce5ade4ff76e9cbbe7e0d5a4cdde979e3930727c272e1fa04b8cc23"
+    },
+    "package/node_modules/@inquirer/select/README.md": {
+      "bytes": 6860,
+      "mode": 420,
+      "sha256": "930c0e65f4a1ae8257a838c4f246ab3dcd49fccf946bd303b202d92eb28dcfaa"
+    },
+    "package/node_modules/@inquirer/select/dist/index.d.ts": {
+      "bytes": 1302,
+      "mode": 420,
+      "sha256": "a432730d0b21d8482d94d49853107fc26f01b97dcfea82accd3fbb80f3b108ad"
+    },
+    "package/node_modules/@inquirer/select/dist/index.js": {
+      "bytes": 7515,
+      "mode": 420,
+      "sha256": "4536a0168d00771ed9ac01f41659b70454262a9d5a7d47424d2a85af52697b00"
+    },
+    "package/node_modules/@inquirer/select/package.json": {
+      "bytes": 1798,
+      "mode": 420,
+      "sha256": "cf5bde03695203d341212b8daf812378ccaa31becb1b2dcb55aa37ff31875ca3"
+    },
+    "package/node_modules/@inquirer/type/LICENSE": {
+      "bytes": 1058,
+      "mode": 420,
+      "sha256": "85aca0b12ce5ade4ff76e9cbbe7e0d5a4cdde979e3930727c272e1fa04b8cc23"
+    },
+    "package/node_modules/@inquirer/type/dist/index.d.ts": {
+      "bytes": 59,
+      "mode": 420,
+      "sha256": "4e3592aed54bd51d840e6d078794b45a8388d0accf38efa3267a16742ce88041"
+    },
+    "package/node_modules/@inquirer/type/dist/index.js": {
+      "bytes": 59,
+      "mode": 420,
+      "sha256": "303e3ba5e5f2add2706ca909f4f5131cf712d39d7d3994bf259a9f4dcad60a26"
+    },
+    "package/node_modules/@inquirer/type/dist/inquirer.d.ts": {
+      "bytes": 1318,
+      "mode": 420,
+      "sha256": "f496804f1238bfdf19b67ac9ce7825d50920a958994fc29a80697b8a63eeed6d"
+    },
+    "package/node_modules/@inquirer/type/dist/inquirer.js": {
+      "bytes": 11,
+      "mode": 420,
+      "sha256": "8e609bb71c20b858c77f0e9f90bb1319db8477b13f9f965f1a1e18524bf50881"
+    },
+    "package/node_modules/@inquirer/type/dist/utils.d.ts": {
+      "bytes": 1814,
+      "mode": 420,
+      "sha256": "1de74d27c48e696d95e2fcfcd116e868a5479d7b175180e628448d3e99413af7"
+    },
+    "package/node_modules/@inquirer/type/dist/utils.js": {
+      "bytes": 509,
+      "mode": 420,
+      "sha256": "bc2c6130a24db301e539666e913eb8820811b91df01cf4a73fb1b7d6c83f0f5f"
+    },
+    "package/node_modules/@inquirer/type/package.json": {
+      "bytes": 1573,
+      "mode": 420,
+      "sha256": "f1480a8c6e0a37e38ed0650c56c376197ca3592120b46081bca38f6deab8108a"
+    },
+    "package/node_modules/cli-width/LICENSE": {
+      "bytes": 757,
+      "mode": 420,
+      "sha256": "31493c14dc0b4eb1e06fe5d4bab3ca4e3b40f8749433455c713863238600cf1a"
+    },
+    "package/node_modules/cli-width/README.md": {
+      "bytes": 1863,
+      "mode": 420,
+      "sha256": "13b3d927e157b1f5428c2d025c804b202284ceae9268a149c3ded7efb52b633a"
+    },
+    "package/node_modules/cli-width/index.d.ts": {
+      "bytes": 267,
+      "mode": 420,
+      "sha256": "465b5cc11c21f3fc08d7924d06b9fde39048be18df7eef3a4ad0b5e0fc3b5c64"
+    },
+    "package/node_modules/cli-width/index.js": {
+      "bytes": 903,
+      "mode": 420,
+      "sha256": "2dab4c960425df4af8ac9fbdf784c86a1e0c64924b7e28dd65fc8faee6f92a7f"
+    },
+    "package/node_modules/cli-width/package.json": {
+      "bytes": 977,
+      "mode": 420,
+      "sha256": "6fdfc702f4eb668937462fafc1ab3f8514baea43ce58fed9d545a4d40e214967"
+    },
+    "package/node_modules/fast-string-truncated-width/dist/index.d.ts": {
+      "bytes": 306,
+      "mode": 420,
+      "sha256": "fdfc96d5bac6c14e6ac4fdcdd89f6a4d5e02cab2306999e80ab2fb147b0ab84e"
+    },
+    "package/node_modules/fast-string-truncated-width/dist/index.js": {
+      "bytes": 5047,
+      "mode": 420,
+      "sha256": "5e7ee74641239c2fff739890ecc9b019872d6dee7615afb0924893fa4956e9dc"
+    },
+    "package/node_modules/fast-string-truncated-width/dist/types.d.ts": {
+      "bytes": 413,
+      "mode": 420,
+      "sha256": "6d3c8c054c221c49c4dbd5a4690425e35993684c2b075c92c753a86875daeddc"
+    },
+    "package/node_modules/fast-string-truncated-width/dist/types.js": {
+      "bytes": 22,
+      "mode": 420,
+      "sha256": "d99f969d7455894d5b3ee7632c54f4ffb79d666c0dd8dc49dfa6e7815f74196c"
+    },
+    "package/node_modules/fast-string-truncated-width/dist/utils.d.ts": {
+      "bytes": 242,
+      "mode": 420,
+      "sha256": "f468edeadf2ddaf71c7871248f28fe1713e753be8efa90edc9ee29d1c9ad8167"
+    },
+    "package/node_modules/fast-string-truncated-width/dist/utils.js": {
+      "bytes": 1197,
+      "mode": 420,
+      "sha256": "6909b1628b2aafa77427b5ac519307e1b30a9ea7b30d26d1c5622c8eb77b7acc"
+    },
+    "package/node_modules/fast-string-truncated-width/license": {
+      "bytes": 1091,
+      "mode": 420,
+      "sha256": "2547dead17a32b1e49a588e943d52420b4d75f1349d9afd9ecb567b2dc8911c0"
+    },
+    "package/node_modules/fast-string-truncated-width/package.json": {
+      "bytes": 946,
+      "mode": 420,
+      "sha256": "68f98cd59ee3f050e88ad1924dd29dd6a3522199cb480e9ae08f95fd7f8c6f4a"
+    },
+    "package/node_modules/fast-string-truncated-width/readme.md": {
+      "bytes": 2875,
+      "mode": 420,
+      "sha256": "213b7c87c3609a0af4980d7c3d88877520af3bdf4849f166bf730cab8f7e9453"
+    },
+    "package/node_modules/fast-string-width/dist/index.d.ts": {
+      "bytes": 210,
+      "mode": 420,
+      "sha256": "cab492f3f728526efe351794948a23ccbf4f1d2572a1eea95f4f9cebde42d345"
+    },
+    "package/node_modules/fast-string-width/dist/index.js": {
+      "bytes": 367,
+      "mode": 420,
+      "sha256": "3f5556b4288f58e506ccf41b13a437d746c7945cdc88f0485e94ecd129c054b4"
+    },
+    "package/node_modules/fast-string-width/license": {
+      "bytes": 1091,
+      "mode": 420,
+      "sha256": "2547dead17a32b1e49a588e943d52420b4d75f1349d9afd9ecb567b2dc8911c0"
+    },
+    "package/node_modules/fast-string-width/package.json": {
+      "bytes": 836,
+      "mode": 420,
+      "sha256": "2c49e010864a982bf0084dc4c7c267672f38462446e9911a64d0383e16e02712"
+    },
+    "package/node_modules/fast-string-width/readme.md": {
+      "bytes": 1011,
+      "mode": 420,
+      "sha256": "cb774a871c7b7f07531909b28a56191650cdc7c3043a50371e2eb300f57122fb"
+    },
+    "package/node_modules/fast-wrap-ansi/LICENSE": {
+      "bytes": 1151,
+      "mode": 420,
+      "sha256": "9235f5ebfd80d41920fae7a0317caa3914f2a9249837bc486d7706f73080e375"
+    },
+    "package/node_modules/fast-wrap-ansi/README.md": {
+      "bytes": 381,
+      "mode": 420,
+      "sha256": "9640e741075331af785c50532ac8f2856d1f2dc009b56c553f7bbe73515ad302"
+    },
+    "package/node_modules/fast-wrap-ansi/lib/main.d.ts": {
+      "bytes": 187,
+      "mode": 420,
+      "sha256": "ef10b1ba93c67f43ab63adb4033f79a2702e9bfaee8dc981f263876e10df2a45"
+    },
+    "package/node_modules/fast-wrap-ansi/lib/main.js": {
+      "bytes": 7634,
+      "mode": 420,
+      "sha256": "21e620e9d39cdd8a9cb64dee440b83ffa40c3cdb7b5dc242644ac6df73d7154b"
+    },
+    "package/node_modules/fast-wrap-ansi/package.json": {
+      "bytes": 1357,
+      "mode": 420,
+      "sha256": "faec2e80d1e1a395112ffaced479b858905ee233b5630d970a170666aa99c9fc"
+    },
+    "package/node_modules/marked/LICENSE.md": {
+      "bytes": 2942,
+      "mode": 420,
+      "sha256": "8e3a3f82f59a60958f56ca08f445647c32a4733dc7ca6c2c46f6eb898471ab9c"
+    },
+    "package/node_modules/marked/README.md": {
+      "bytes": 2976,
+      "mode": 420,
+      "sha256": "e55052ba5aa47e7559f67494719cf46762c8c09205736483ff52593860d4f33c"
+    },
+    "package/node_modules/marked/bin/main.js": {
+      "bytes": 6609,
+      "mode": 420,
+      "sha256": "88b4b0eac09204ac6fcd343fe41d54329aff351bac71472716a0227dc7eacd46"
+    },
+    "package/node_modules/marked/bin/marked.js": {
+      "bytes": 215,
+      "mode": 493,
+      "sha256": "e4ec45ee17631a5f3a837b98580f8ad47686181c7e4aaf24ecd9de7231357920"
+    },
+    "package/node_modules/marked/lib/marked.cjs": {
+      "bytes": 72991,
+      "mode": 420,
+      "sha256": "0a8051a2b02f5ef70b6e3e1f00baded1522cbbf48b975b6ac64a8f226a8a0965"
+    },
+    "package/node_modules/marked/lib/marked.cjs.map": {
+      "bytes": 145727,
+      "mode": 420,
+      "sha256": "796693c2d76e01b0f8065d5516e366de2b828812fb0f57bc2c78c9d761fba738"
+    },
+    "package/node_modules/marked/lib/marked.d.cts": {
+      "bytes": 20942,
+      "mode": 420,
+      "sha256": "2f9501a28443c63187a4a868f2e33807640191569144bc65c9127ed0a6ee9f3b"
+    },
+    "package/node_modules/marked/lib/marked.d.ts": {
+      "bytes": 20942,
+      "mode": 420,
+      "sha256": "2f9501a28443c63187a4a868f2e33807640191569144bc65c9127ed0a6ee9f3b"
+    },
+    "package/node_modules/marked/lib/marked.esm.js": {
+      "bytes": 71905,
+      "mode": 420,
+      "sha256": "29e25cdf1a06075c90e9885af06ddd23fb22a5424ed23a61dda986c73a8af641"
+    },
+    "package/node_modules/marked/lib/marked.esm.js.map": {
+      "bytes": 145597,
+      "mode": 420,
+      "sha256": "7c071e67c5460850d5b3065b2577c67e0090ec888e7c7a3f39887364ea9f3004"
+    },
+    "package/node_modules/marked/lib/marked.umd.js": {
+      "bytes": 73384,
+      "mode": 420,
+      "sha256": "d7931d1cd7bf727dd756c871637edcc9e0f8538003b927368400ec1ee47a9dd9"
+    },
+    "package/node_modules/marked/lib/marked.umd.js.map": {
+      "bytes": 145727,
+      "mode": 420,
+      "sha256": "796693c2d76e01b0f8065d5516e366de2b828812fb0f57bc2c78c9d761fba738"
+    },
+    "package/node_modules/marked/man/marked.1": {
+      "bytes": 2375,
+      "mode": 420,
+      "sha256": "a5a759fd23da964e6f7cafbf42d954c84987e2fb3b0f21650310efce945e2532"
+    },
+    "package/node_modules/marked/man/marked.1.md": {
+      "bytes": 1925,
+      "mode": 420,
+      "sha256": "356fded5d8067b9e2e4e0aa4deb6b612393b1cdb6dba53167fedd13c53bd4f1e"
+    },
+    "package/node_modules/marked/marked.min.js": {
+      "bytes": 39903,
+      "mode": 420,
+      "sha256": "3e7e7d7feb3e5d58cb6c804f68ab5c24cc7e5eb6270fd6e5cbb9124739217d0c"
+    },
+    "package/node_modules/marked/package.json": {
+      "bytes": 3763,
+      "mode": 420,
+      "sha256": "f568906109ceacc114fabf9dabcb3782d3bc0f2e2a6b2b8c7edc6878e3c3215b"
+    },
+    "package/node_modules/mute-stream/LICENSE": {
+      "bytes": 765,
+      "mode": 420,
+      "sha256": "4ec3d4c66cd87f5c8d8ad911b10f99bf27cb00cdfcff82621956e379186b016b"
+    },
+    "package/node_modules/mute-stream/README.md": {
+      "bytes": 1661,
+      "mode": 420,
+      "sha256": "cd697c4cfbb68439d1423c2abccec8c8c17f919b13d9a284aea3ec6cbdf074bf"
+    },
+    "package/node_modules/mute-stream/lib/index.js": {
+      "bytes": 2841,
+      "mode": 420,
+      "sha256": "f64dddb569e875fe5f0cb0aa8ac824fdcad7717293fe15b9a58159a61f60921c"
+    },
+    "package/node_modules/mute-stream/package.json": {
+      "bytes": 1231,
+      "mode": 420,
+      "sha256": "6a6d1be985f01f39158d63da75c2350bbf095306ba5f7ffdfb22f5cfdc054506"
+    },
+    "package/node_modules/signal-exit/LICENSE.txt": {
+      "bytes": 790,
+      "mode": 420,
+      "sha256": "b173e19b9a78df305577ace0e52ef45a4bcc915ea28b47b256dc3b68dcb1f7e7"
+    },
+    "package/node_modules/signal-exit/README.md": {
+      "bytes": 2426,
+      "mode": 420,
+      "sha256": "253e9122e9e5eaf8dc9b0fccb36d2011fc8e844d11c7249991edfec2be7fde71"
+    },
+    "package/node_modules/signal-exit/dist/cjs/browser.d.ts": {
+      "bytes": 393,
+      "mode": 420,
+      "sha256": "7b023021bc8e493240cc8117d490d55b4f6b62e08854ddbe1f53a35dfd40e355"
+    },
+    "package/node_modules/signal-exit/dist/cjs/browser.d.ts.map": {
+      "bytes": 349,
+      "mode": 420,
+      "sha256": "f46fc1cf3cae357be4e69317ae3c132f2597dc8ed31d208701053782fa03a09d"
+    },
+    "package/node_modules/signal-exit/dist/cjs/browser.js": {
+      "bytes": 322,
+      "mode": 420,
+      "sha256": "aa5f9f7f969e92b30d2d3288e8927b47faf38663f626c8e9afc7f5a3b901c816"
+    },
+    "package/node_modules/signal-exit/dist/cjs/browser.js.map": {
+      "bytes": 703,
+      "mode": 420,
+      "sha256": "cc48aa8c7132663b411f2bb14199e3e5ca7270399917f2640e1983614919d0ab"
+    },
+    "package/node_modules/signal-exit/dist/cjs/index.d.ts": {
+      "bytes": 1744,
+      "mode": 420,
+      "sha256": "1d63579e68cf6fc4b8a5ae13748efe38584f8eea7dddc320c276b30b1856d0b0"
+    },
+    "package/node_modules/signal-exit/dist/cjs/index.d.ts.map": {
+      "bytes": 460,
+      "mode": 420,
+      "sha256": "1dde4dce41849712db4203f346ca85435af909777b0653baf3339440bb487e42"
+    },
+    "package/node_modules/signal-exit/dist/cjs/index.js": {
+      "bytes": 9435,
+      "mode": 420,
+      "sha256": "7dba9354040ed0ddea0e3029e6f4690b1ea5b0275491a217d9704737a9cebe35"
+    },
+    "package/node_modules/signal-exit/dist/cjs/index.js.map": {
+      "bytes": 17544,
+      "mode": 420,
+      "sha256": "5d1a773080f60ad15c0f442fa5d59070910e87c109f7939800b2a4fe6b866f77"
+    },
+    "package/node_modules/signal-exit/dist/cjs/package.json": {
+      "bytes": 25,
+      "mode": 420,
+      "sha256": "8005a3491db7d92f36ac66369861589f9c47123d3a7c71e643fc2c06168cd45a"
+    },
+    "package/node_modules/signal-exit/dist/cjs/signals.d.ts": {
+      "bytes": 1083,
+      "mode": 420,
+      "sha256": "ed5b63eecb5ba65247f8c0a85602540a96fad19719005d59610c190c0ad59a9c"
+    },
+    "package/node_modules/signal-exit/dist/cjs/signals.d.ts.map": {
+      "bytes": 196,
+      "mode": 420,
+      "sha256": "ac18b4636c5aa4f7bb383d3ca971cce3c659d68198a7c477411a8ee23a0944d8"
+    },
+    "package/node_modules/signal-exit/dist/cjs/signals.js": {
+      "bytes": 1560,
+      "mode": 420,
+      "sha256": "84f6f2218e3a5dd61e38c9498bcb5465fb90f3900afde73956b1855b1e46af09"
+    },
+    "package/node_modules/signal-exit/dist/cjs/signals.js.map": {
+      "bytes": 2091,
+      "mode": 420,
+      "sha256": "f4b1aad11f5b1da3469353c19ce29c9f159efc878cc2b885aa4977dd8b7e31bb"
+    },
+    "package/node_modules/signal-exit/dist/mjs/browser.d.ts": {
+      "bytes": 393,
+      "mode": 420,
+      "sha256": "7b023021bc8e493240cc8117d490d55b4f6b62e08854ddbe1f53a35dfd40e355"
+    },
+    "package/node_modules/signal-exit/dist/mjs/browser.d.ts.map": {
+      "bytes": 349,
+      "mode": 420,
+      "sha256": "f46fc1cf3cae357be4e69317ae3c132f2597dc8ed31d208701053782fa03a09d"
+    },
+    "package/node_modules/signal-exit/dist/mjs/browser.js": {
+      "bytes": 138,
+      "mode": 420,
+      "sha256": "57498e3448998c32a94f884f500ac7a2c8b54872f648bebf1be1704303a5522c"
+    },
+    "package/node_modules/signal-exit/dist/mjs/browser.js.map": {
+      "bytes": 668,
+      "mode": 420,
+      "sha256": "24ff3c6a566cf59691d542f15d7aa3ba4511909acd307db7e8a09a768b83e2b5"
+    },
+    "package/node_modules/signal-exit/dist/mjs/index.d.ts": {
+      "bytes": 1744,
+      "mode": 420,
+      "sha256": "1d63579e68cf6fc4b8a5ae13748efe38584f8eea7dddc320c276b30b1856d0b0"
+    },
+    "package/node_modules/signal-exit/dist/mjs/index.d.ts.map": {
+      "bytes": 460,
+      "mode": 420,
+      "sha256": "1dde4dce41849712db4203f346ca85435af909777b0653baf3339440bb487e42"
+    },
+    "package/node_modules/signal-exit/dist/mjs/index.js": {
+      "bytes": 9090,
+      "mode": 420,
+      "sha256": "a2f8e19d69ab443b496c203c46c47853f885f3e852aca6daa248191bf3f1ccbb"
+    },
+    "package/node_modules/signal-exit/dist/mjs/index.js.map": {
+      "bytes": 17592,
+      "mode": 420,
+      "sha256": "fbaadc2cb63860ea1aa06746caa01490e4fa2d0458a94416503e77001c5f164b"
+    },
+    "package/node_modules/signal-exit/dist/mjs/package.json": {
+      "bytes": 23,
+      "mode": 420,
+      "sha256": "3ca9d4afd21425087cf31893b8f9f63c81b0b8408db5e343ca76e5f8aa26ab9a"
+    },
+    "package/node_modules/signal-exit/dist/mjs/signals.d.ts": {
+      "bytes": 1083,
+      "mode": 420,
+      "sha256": "ed5b63eecb5ba65247f8c0a85602540a96fad19719005d59610c190c0ad59a9c"
+    },
+    "package/node_modules/signal-exit/dist/mjs/signals.d.ts.map": {
+      "bytes": 196,
+      "mode": 420,
+      "sha256": "ac18b4636c5aa4f7bb383d3ca971cce3c659d68198a7c477411a8ee23a0944d8"
+    },
+    "package/node_modules/signal-exit/dist/mjs/signals.js": {
+      "bytes": 1438,
+      "mode": 420,
+      "sha256": "12044052d2037fbb19637c6fb216b1c80c28664134453b9a0fc32fa2fe352c27"
+    },
+    "package/node_modules/signal-exit/dist/mjs/signals.js.map": {
+      "bytes": 2098,
+      "mode": 420,
+      "sha256": "9ac7cde2118302bfce1fb14e0f0c04112a7f0ad6fa8a18d5d950ec530aa2654f"
+    },
+    "package/node_modules/signal-exit/package.json": {
+      "bytes": 2573,
+      "mode": 420,
+      "sha256": "cd1c6cfa95782e432dd2affaa88c3a6dda7f46c8088d91f3acc0fba79dce5075"
+    },
+    "package/optional-skills/asset-creator/CATALOG-SCHEMA.md": {
+      "bytes": 3259,
+      "mode": 420,
+      "sha256": "59486626689b1e9b534133baf1d421548f23df83d231feae0bcf23d8e07b5732"
+    },
+    "package/optional-skills/asset-creator/SKILL.md": {
+      "bytes": 10588,
+      "mode": 420,
+      "sha256": "42a8f0b9cbfeda03735f087c5ab887888fe098757a0eba4600f125e400cac9e9"
+    },
+    "package/optional-skills/asset-creator/STYLE-GUIDE.md": {
+      "bytes": 7665,
+      "mode": 420,
+      "sha256": "a7a36a642e7c9f50cea02e7b06345984cbe236cce9db483f93a515ecbd89c021"
+    },
+    "package/optional-skills/better-auth-setup/SKILL.md": {
+      "bytes": 26656,
+      "mode": 420,
+      "sha256": "2d41cfc5fd825e654b0b852dc43c4b8b1c4dd4b06a592d08702a821f0466c566"
+    },
+    "package/optional-skills/better-auth-setup/references/api-keys.md": {
+      "bytes": 7964,
+      "mode": 420,
+      "sha256": "be3b931600a0bd6d926d7ba8148480f4e8effec7d424aa8a15d14ba274c0f181"
+    },
+    "package/optional-skills/better-auth-setup/references/config-and-entry.md": {
+      "bytes": 7482,
+      "mode": 420,
+      "sha256": "228375ebcb993f3ff2e2bd76d9659e905e57b1205ffc6e954fc5f532eecb2c17"
+    },
+    "package/optional-skills/better-auth-setup/references/middleware.md": {
+      "bytes": 12608,
+      "mode": 420,
+      "sha256": "666e7e9bcd909d56d51af450ff85b6d9ae8d4af731bd230c6d72d168c3daf7a1"
+    },
+    "package/optional-skills/better-auth-setup/references/proxy-gotchas.md": {
+      "bytes": 8344,
+      "mode": 420,
+      "sha256": "9959cfa654c012289fac34b497e5d6d722c0dd9b19a3c0755c829aa193436a08"
+    },
+    "package/optional-skills/better-auth-setup/references/proxy-setup.md": {
+      "bytes": 10463,
+      "mode": 420,
+      "sha256": "ba964e2130ec7511fe1dbc99b0379fb91b34691ff2916dc641e6a098722ed61f"
+    },
+    "package/optional-skills/better-auth-setup/references/schema.md": {
+      "bytes": 9505,
+      "mode": 420,
+      "sha256": "9b80fd168b407f21ca3363b08b137be51ed7b076e10708e75b19598090f00c90"
+    },
+    "package/optional-skills/better-auth-setup/references/testing.md": {
+      "bytes": 7362,
+      "mode": 420,
+      "sha256": "600dd99d2f18d76b7d06ac397790a3d467a104fd2326a925f5d4b5a13d90b705"
+    },
+    "package/optional-skills/cloudflare-nextjs-setup/SKILL.md": {
+      "bytes": 11194,
+      "mode": 420,
+      "sha256": "610d75ce0008ed2a3d840be7628a33422d36d4ef038ae44d3650a673ee1a4604"
+    },
+    "package/optional-skills/code-health-standards/SKILL.md": {
+      "bytes": 3127,
+      "mode": 420,
+      "sha256": "58e8c1e240f8a9c3c3a51935bf61a4fc70ca76049b50044e465f633da6b85fe6"
+    },
+    "package/optional-skills/code-review-standards/SKILL.md": {
+      "bytes": 1844,
+      "mode": 420,
+      "sha256": "3f11f84adb7d3016c4d71bce743c40e35e682d09bc9376b03be957fc9c8d2b62"
+    },
+    "package/optional-skills/devlyn-pencil-pull/SKILL.md": {
+      "bytes": 6862,
+      "mode": 420,
+      "sha256": "d619bcb503108dc8eb7d757d7e8cf1720742bb16c3b8ea8c01878cfdf1cdb0b8"
+    },
+    "package/optional-skills/devlyn-pencil-push/SKILL.md": {
+      "bytes": 4289,
+      "mode": 420,
+      "sha256": "4571773e02846c2b2bc4ff4c1717b843ed5b7319ec9ee9d91ecab2a77d4af4c9"
+    },
+    "package/optional-skills/devlyn-reap/SKILL.md": {
+      "bytes": 7238,
+      "mode": 420,
+      "sha256": "51ee3be1e1dccde90471331d60fbdd162773412819dbcd6a6ce86d2cec42198b"
+    },
+    "package/optional-skills/devlyn-reap/scripts/reap.sh": {
+      "bytes": 4835,
+      "mode": 493,
+      "sha256": "ad06953be260e3bec10b6891c30337594bfbe5ff6db1d82e8c59c13ac102c89d"
+    },
+    "package/optional-skills/devlyn-reap/scripts/scan.sh": {
+      "bytes": 6330,
+      "mode": 493,
+      "sha256": "23eaa9655d9614e441c34637fee568a8ed737497559a2d2bf31e10472c02dda2"
+    },
+    "package/optional-skills/dokkit/ANALYSIS.md": {
+      "bytes": 8662,
+      "mode": 420,
+      "sha256": "7503acd8be895fb0adf6a55df2a65509932f74261460c2d10d15abb0a211e0d7"
+    },
+    "package/optional-skills/dokkit/COMMANDS.md": {
+      "bytes": 14132,
+      "mode": 420,
+      "sha256": "2c0e1ef6f1016d34de42b002e13ddce7c5fff931c4a9c0dd27bf4808ee3b2bbd"
+    },
+    "package/optional-skills/dokkit/DOCX-XML.md": {
+      "bytes": 2125,
+      "mode": 420,
+      "sha256": "d6737cca5d96ace034a62a106e776085154ebfdb2d443799866866522786d75c"
+    },
+    "package/optional-skills/dokkit/EXPORT.md": {
+      "bytes": 3253,
+      "mode": 420,
+      "sha256": "c4429521a7a59547da922670d68e03aa77f074d0cb937f46ea8f84dfbe342e70"
+    },
+    "package/optional-skills/dokkit/FILLING.md": {
+      "bytes": 14453,
+      "mode": 420,
+      "sha256": "7373c23c25bb6f3fd9b0c58de30d54daf787c4fabe87b6542fb1567e8e3e2631"
+    },
+    "package/optional-skills/dokkit/HWPX-XML.md": {
+      "bytes": 2425,
+      "mode": 420,
+      "sha256": "1852b1dba9c2d6d54057726cb5ddfbac169c0c07a994f5f5cfafd24caba1455f"
+    },
+    "package/optional-skills/dokkit/IMAGE-SOURCING.md": {
+      "bytes": 5521,
+      "mode": 420,
+      "sha256": "1a9e6e03b85b8e6bb0b53081648cff0428d5ec51ec73f3fa46586d94d42dd1a5"
+    },
+    "package/optional-skills/dokkit/INGESTION.md": {
+      "bytes": 2101,
+      "mode": 420,
+      "sha256": "71db1451ae3e45e2152ba749e3bdd9455f21a8a6b2738203815b2c507f64fea1"
+    },
+    "package/optional-skills/dokkit/PIPELINE.md": {
+      "bytes": 14967,
+      "mode": 420,
+      "sha256": "e9906861ee058a71e874b02affd47685c1738ef3d18473545a3f7a4b75467a56"
+    },
+    "package/optional-skills/dokkit/SKILL.md": {
+      "bytes": 11838,
+      "mode": 420,
+      "sha256": "48d26f0db262df326145cfded42d1f2ea73a45393299209471555aea4d78995e"
+    },
+    "package/optional-skills/dokkit/STATE.md": {
+      "bytes": 1876,
+      "mode": 420,
+      "sha256": "1be4d80ebc577a65e909f64291302473a95076a02dfce4ca39e70952d97da1e8"
+    },
+    "package/optional-skills/dokkit/references/docx-field-patterns.md": {
+      "bytes": 4304,
+      "mode": 420,
+      "sha256": "e918d757edf90b91a86ac626892cb27db692f2131d5e1df0a2e6f2e326209fc8"
+    },
+    "package/optional-skills/dokkit/references/docx-section-range-detection.md": {
+      "bytes": 6532,
+      "mode": 420,
+      "sha256": "ad6051bf8689b1e14af02e85c755828d710a2bcd209fa5a0ae171e27ea4ec91c"
+    },
+    "package/optional-skills/dokkit/references/docx-structure.md": {
+      "bytes": 1808,
+      "mode": 420,
+      "sha256": "871d046768a3515efbb40767e2ff83c77487c8264c84e6b04cd4aae9a41812d0"
+    },
+    "package/optional-skills/dokkit/references/field-detection-patterns.md": {
+      "bytes": 4644,
+      "mode": 420,
+      "sha256": "439ea29d4d4fba3c32dcfb71adf3843baab3dc163a18da62d30a9b95fe47ef89"
+    },
+    "package/optional-skills/dokkit/references/hwpx-field-patterns.md": {
+      "bytes": 15587,
+      "mode": 420,
+      "sha256": "a3a15626119e06a6228c87be23ff3934114961b02fc051156c8ecf403b24086e"
+    },
+    "package/optional-skills/dokkit/references/hwpx-structure.md": {
+      "bytes": 6368,
+      "mode": 420,
+      "sha256": "2d86188c398aa8ea559e13c9b1a2626eb748e8b86ada722829ce5075293da675"
+    },
+    "package/optional-skills/dokkit/references/image-opportunity-heuristics.md": {
+      "bytes": 5789,
+      "mode": 420,
+      "sha256": "0131c59ff0351d150029df91268e35ad005e5a0780e2f382ebbb30a9178d7b6f"
+    },
+    "package/optional-skills/dokkit/references/image-xml-patterns.md": {
+      "bytes": 14362,
+      "mode": 420,
+      "sha256": "a3100b3fb3134b85d8358dc46ef277d9be02dd22488efb347c46d7a369cbfa26"
+    },
+    "package/optional-skills/dokkit/references/section-image-interleaving.md": {
+      "bytes": 13234,
+      "mode": 420,
+      "sha256": "a50c88ff57433125e9d51118e4b79280ac84a18e9e65abad86b6be6e4d6932cb"
+    },
+    "package/optional-skills/dokkit/references/section-range-detection.md": {
+      "bytes": 5180,
+      "mode": 420,
+      "sha256": "06221fc657ab53ebce9c3d6412f6fbf138fc178927d223f3ce8619b87cdbc13f"
+    },
+    "package/optional-skills/dokkit/references/state-schema.md": {
+      "bytes": 4733,
+      "mode": 420,
+      "sha256": "efa8901c7873a9ebdbf297b1dfe39906fa53ea0097d2d047af394008c36251fa"
+    },
+    "package/optional-skills/dokkit/references/supported-formats.md": {
+      "bytes": 1677,
+      "mode": 420,
+      "sha256": "2bb08b28d8c2142bfe2535eaf6e9634ec5b5428531491a2d4795e1b39e697a11"
+    },
+    "package/optional-skills/dokkit/scripts/compile_hwpx.py": {
+      "bytes": 4961,
+      "mode": 420,
+      "sha256": "3de0583e519eedd4b1f6c0c0a99a27cc27d24d73b6988032121d39ef31e89b0e"
+    },
+    "package/optional-skills/dokkit/scripts/detect_fields.py": {
+      "bytes": 10944,
+      "mode": 420,
+      "sha256": "186d9684461c819dacf75aa03212f8b70a6bbe4a08a60dd16b050e964986b916"
+    },
+    "package/optional-skills/dokkit/scripts/detect_fields_hwpx.py": {
+      "bytes": 10579,
+      "mode": 420,
+      "sha256": "40c4d4e1182e2ec6a9e24f6e705e739cd0b767244231af6c3cfea1371ba049e3"
+    },
+    "package/optional-skills/dokkit/scripts/export_pdf.py": {
+      "bytes": 2769,
+      "mode": 420,
+      "sha256": "1257598d7dcfe1ca8f956f71800579abe3dacc7ae38f635d2200341a64ff5071"
+    },
+    "package/optional-skills/dokkit/scripts/fill_docx.py": {
+      "bytes": 33918,
+      "mode": 420,
+      "sha256": "e8954636979ccb34aada17b902a8aea22c56aa03bdf92d76466b17b0c0b4f1e0"
+    },
+    "package/optional-skills/dokkit/scripts/parse_hwpx.py": {
+      "bytes": 5838,
+      "mode": 420,
+      "sha256": "83ab2088f8b4cc534301d6eaa06b9cce83e7663046942b97a1083d02a33cb81e"
+    },
+    "package/optional-skills/dokkit/scripts/parse_image_with_gemini.py": {
+      "bytes": 5146,
+      "mode": 420,
+      "sha256": "eaa54d17079e887b71e053ceead73692496ff00bc3879dedf253ed591ab95656"
+    },
+    "package/optional-skills/dokkit/scripts/parse_xlsx.py": {
+      "bytes": 2756,
+      "mode": 420,
+      "sha256": "6e75ffb166314568ef2e2f4087aed490d219dbfef32f4c9289d6b53c76aa48e8"
+    },
+    "package/optional-skills/dokkit/scripts/source_images.py": {
+      "bytes": 13501,
+      "mode": 420,
+      "sha256": "00f66bb3f0134e0dd1a84c709aa4d1ff830b1cceef76e5ca290d305b2ab413d9"
+    },
+    "package/optional-skills/dokkit/scripts/validate_docx.py": {
+      "bytes": 4815,
+      "mode": 420,
+      "sha256": "56a3969646af27cc8838d70e272e6898d30e3fc32b0317801d8146743c4d731e"
+    },
+    "package/optional-skills/dokkit/scripts/validate_hwpx.py": {
+      "bytes": 10100,
+      "mode": 420,
+      "sha256": "3e21ec8138c6ba0ffb85981980295614f4658aea6a81aa5f65b34bf14d2fbcea"
+    },
+    "package/optional-skills/dokkit/scripts/validate_state.py": {
+      "bytes": 5125,
+      "mode": 420,
+      "sha256": "38b4de24aeac33aa64a9f4d5a4c02f8a1f0ed3987bd495f08b06341e647ba816"
+    },
+    "package/optional-skills/generate-skill/CHECKLIST.md": {
+      "bytes": 2552,
+      "mode": 420,
+      "sha256": "3985853af6a01d9f4608527081835b44ee9dfb499ae5fc46c96d083de4d4046a"
+    },
+    "package/optional-skills/generate-skill/PROMPT-PATTERNS.md": {
+      "bytes": 9700,
+      "mode": 420,
+      "sha256": "67f75dea52971a511fa25f3ae8b8c2f37d1d46f5ac0abf3819de144fa3773844"
+    },
+    "package/optional-skills/generate-skill/REFERENCE.md": {
+      "bytes": 5304,
+      "mode": 420,
+      "sha256": "91a1322a1dac328804b9e82f10b75e7e09f1bd3f75f79e5226c5b373769665f3"
+    },
+    "package/optional-skills/generate-skill/SKILL.md": {
+      "bytes": 6806,
+      "mode": 420,
+      "sha256": "d093e7f333c69ca12eed9f4bc0a5f1d507d42be28910c255475ed4d32492030d"
+    },
+    "package/optional-skills/polar-billing-setup/SKILL.md": {
+      "bytes": 7782,
+      "mode": 420,
+      "sha256": "39b093c32e0aa48484c77e79152458e8f98498dd82682bc64f35356e74bb218d"
+    },
+    "package/optional-skills/polar-billing-setup/references/gotchas.md": {
+      "bytes": 7045,
+      "mode": 420,
+      "sha256": "9ef050e813eadda4f478c7821976812d366f28f3268de4bad8c620ccb59d6702"
+    },
+    "package/optional-skills/polar-billing-setup/references/setup.md": {
+      "bytes": 4457,
+      "mode": 420,
+      "sha256": "cbb43d6f7c49c6a0d5ddc96ef351ccd67ae43dc8940e529f8ecd302d64408ee1"
+    },
+    "package/optional-skills/polar-billing-setup/scripts/diagnose.mjs": {
+      "bytes": 10514,
+      "mode": 420,
+      "sha256": "616ed10ddb6a56fafb75fa21f75e46bb2a78848b8581f6fa7988320f2140f24e"
+    },
+    "package/optional-skills/prompt-engineering/SKILL.md": {
+      "bytes": 8236,
+      "mode": 420,
+      "sha256": "eb9c6f10d0f1b13ff80aa6bd9a4b558a4e044d2dc0239980766123aeadb824e2"
+    },
+    "package/optional-skills/pyx-scan/SKILL.md": {
+      "bytes": 5719,
+      "mode": 420,
+      "sha256": "4db43fa0a694888cc7142c68e29a0ffd43b77eace4b6feacb953a9274bed5695"
+    },
+    "package/optional-skills/root-cause-analysis/SKILL.md": {
+      "bytes": 2996,
+      "mode": 420,
+      "sha256": "bd3523d223284dee2ba43dd6bce2cef27b31b8212d6164e7e6b0ede504376cba"
+    },
+    "package/optional-skills/ui-implementation-standards/SKILL.md": {
+      "bytes": 3889,
+      "mode": 420,
+      "sha256": "2d8cadc8889dba1ae191cf66c87594379a48801d6a2b5bc4bfedf2e74d8fde39"
+    },
+    "package/package.json": {
+      "bytes": 1867,
+      "mode": 420,
+      "sha256": "71fa7e644b9be6c585f6af1b0645edef4323bf37884236e7c9cd7eb539f9c9a0"
+    }
+  },
+  "S": {
+    "package/AGENTS.md": {
+      "bytes": 4262,
+      "mode": 420,
+      "sha256": "d602c2ca03f0bc4e2ce328fdf8edf3f06248e2f125daf8721fbe21d12b2cc888"
+    },
+    "package/CLAUDE.md": {
+      "bytes": 4262,
+      "mode": 420,
+      "sha256": "d602c2ca03f0bc4e2ce328fdf8edf3f06248e2f125daf8721fbe21d12b2cc888"
+    },
+    "package/LICENSE": {
+      "bytes": 1081,
+      "mode": 420,
+      "sha256": "ce7eb6efd00f74955f0d20451e39d182c7d9bcacc6b08440fa8fadad640aa897"
+    },
+    "package/README.md": {
+      "bytes": 21445,
+      "mode": 420,
+      "sha256": "f1f90dd8ad0c7a45b383c4097fea6f7368d3a9b14d6781a35a0162059a474d60"
+    },
+    "package/bin/devlyn.js": {
+      "bytes": 49230,
+      "mode": 493,
+      "sha256": "ab1555f8b1f6c2ee82d0caddf1eebc11371d6e479724d421cfafe50983b640b9"
+    },
+    "package/bin/instruction-templates.json": {
+      "bytes": 69747,
+      "mode": 420,
+      "sha256": "8b6133866bdf8b3fe962639aaf501993dfffdca62fb0375d5af1f48e81967a64"
+    },
+    "package/bin/instructions.js": {
+      "bytes": 16071,
+      "mode": 420,
+      "sha256": "c2ef3fda7714efab8e1569a4d08ec17abc1a10469133b11b159d0884f7bb2532"
+    },
+    "package/bin/skill-history.json": {
+      "bytes": 6386,
+      "mode": 420,
+      "sha256": "de0466c1a8aaeeab47c49d303f734882fc9462d7d8891e53f596e17d6b7aca94"
+    },
+    "package/bin/skill-ownership.js": {
+      "bytes": 3212,
+      "mode": 420,
+      "sha256": "4e3080a68aa8d3188b14dec99e0a0df85f59d6a6d1fe7e520ae3c3003ab2a42d"
+    },
+    "package/config/skills/_shared/.ruff.toml": {
+      "bytes": 82,
+      "mode": 420,
+      "sha256": "adec089c6c3bc0c63fb6a8d9acbf9d1dc3d8a287d1d32f086340d4b90ee9d9e1"
+    },
+    "package/config/skills/_shared/adapters/claude.md": {
+      "bytes": 709,
+      "mode": 420,
+      "sha256": "1e7440575b30019066209e1ea5423a3fd9af86311c73257e9f7dd814354bcdf7"
+    },
+    "package/config/skills/_shared/adapters/codex.md": {
+      "bytes": 918,
+      "mode": 420,
+      "sha256": "fe7b13c816f3c67dad1cf87ae816259090e7a3fb44f0274b59b013b2022036c1"
+    },
+    "package/config/skills/_shared/adapters/omp.md": {
+      "bytes": 52,
+      "mode": 420,
+      "sha256": "25c2dfad40e3acd3b23f26ec9b5811da2a36b9d803c9795ef36af5ef5c03d33c"
+    },
+    "package/config/skills/_shared/codex-monitored.sh": {
+      "bytes": 10038,
+      "mode": 493,
+      "sha256": "3d0658c042684c0323c2c4d691f5ca9cd544df6ffc3cbe54eccd54e8a1654d77"
+    },
+    "package/config/skills/_shared/engine-doctor.sh": {
+      "bytes": 2329,
+      "mode": 493,
+      "sha256": "cb9b253f64180334e0b2a2056e3e79d8be43244256c45c1c45dd1a5af099b982"
+    },
+    "package/config/skills/_shared/engine-preflight.md": {
+      "bytes": 2022,
+      "mode": 420,
+      "sha256": "ecb552f4dd74e986bde2d7deb51dd719a16691d6c2672d6880e675de1204dca0"
+    },
+    "package/config/skills/_shared/expected-contract.py": {
+      "bytes": 10478,
+      "mode": 420,
+      "sha256": "1a7dd6da07c3b4cd59e8f8135820ec808be695d763e3f0e265f069c12d0b59f0"
+    },
+    "package/config/skills/_shared/expected.schema.json": {
+      "bytes": 5332,
+      "mode": 420,
+      "sha256": "911c2f5f43ef70ee4ee3852a55b876d68b2ceb2b38e5799a58035c4d6b9bba2c"
+    },
+    "package/config/skills/_shared/invocation-receipt.py": {
+      "bytes": 20451,
+      "mode": 420,
+      "sha256": "0adde04a9df851062dab94bed1babd0f7e973f893275070312eb85c6c6c0cf3d"
+    },
+    "package/config/skills/_shared/pair.md": {
+      "bytes": 987,
+      "mode": 420,
+      "sha256": "34287e59aa0e32ba09dacb92115715466e1408de0f0620f92fb6ff2db1e9acc3"
+    },
+    "package/config/skills/_shared/platform-support.py": {
+      "bytes": 19061,
+      "mode": 420,
+      "sha256": "a8e1472b792000bd21ef5d359eba2ae49555adcc198198f2625b51ebb94bbc66"
+    },
+    "package/config/skills/_shared/role-config.py": {
+      "bytes": 11194,
+      "mode": 420,
+      "sha256": "d858805d022152a18d01516df02735d47a68225f955454dcfe952f216c9877f3"
+    },
+    "package/config/skills/_shared/runtime-principles.md": {
+      "bytes": 3224,
+      "mode": 420,
+      "sha256": "9573704f913a22ce450f9618200e68188d107b6ff7909c6c9f363ea401a8d583"
+    },
+    "package/config/skills/_shared/task-complete.py": {
+      "bytes": 138449,
+      "mode": 420,
+      "sha256": "d7dc54a6094d82871875bc0a0d7379b13ed38a143c52748257ff721b464dcc59"
+    },
+    "package/config/skills/_shared/task-completion.md": {
+      "bytes": 14434,
+      "mode": 420,
+      "sha256": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733"
+    },
+    "package/config/skills/devlyn-engines/SKILL.md": {
+      "bytes": 3627,
+      "mode": 420,
+      "sha256": "ee82fa921c0fb0e237794a60b400c3e34c16f38091a023d6c1606aa365ddbe48"
+    },
+    "package/config/skills/devlyn-ideate/SKILL.md": {
+      "bytes": 11614,
+      "mode": 420,
+      "sha256": "3f8b29c15ef931b8ac2314e2a9a65b5cd55adde8fbd7db13bc31fb40f7a5e866"
+    },
+    "package/config/skills/devlyn-ideate/references/elicitation.md": {
+      "bytes": 2410,
+      "mode": 420,
+      "sha256": "b836f98710f82b973212fd4406575fb3b16a299cee5edc98e555e82b2fbcad47"
+    },
+    "package/config/skills/devlyn-ideate/references/loop.md": {
+      "bytes": 17919,
+      "mode": 420,
+      "sha256": "a0fa17d174d141950927a0c33e9edc63d4f97b5f98b0dedfd34782dd77612c86"
+    },
+    "package/config/skills/devlyn-ideate/references/package-format.md": {
+      "bytes": 10727,
+      "mode": 420,
+      "sha256": "b52cd176ed2a440039d6327d29ac8ac3cc80020b2549f2c9cd8f6e6010b688a5"
+    },
+    "package/config/skills/devlyn-ideate/scripts/acceptance.py": {
+      "bytes": 47412,
+      "mode": 420,
+      "sha256": "bf569c1f9f90957d4cad5ef91b8f30957d09a5587686c04512f88eec46a7c6a5"
+    },
+    "package/config/skills/devlyn-ideate/scripts/queue.py": {
+      "bytes": 104790,
+      "mode": 420,
+      "sha256": "e8f59a58bc37647d284c09db86f701b2e6ebfaefeffd9de2ca2d9394757664dd"
+    },
+    "package/node_modules/@inquirer/ansi/LICENSE": {
+      "bytes": 1058,
+      "mode": 420,
+      "sha256": "85aca0b12ce5ade4ff76e9cbbe7e0d5a4cdde979e3930727c272e1fa04b8cc23"
+    },
+    "package/node_modules/@inquirer/ansi/README.md": {
+      "bytes": 2016,
+      "mode": 420,
+      "sha256": "acac7e39e8085c850d9d14b65ba2ff90ffaca5f487ce08e1eb922578994b20f5"
+    },
+    "package/node_modules/@inquirer/ansi/dist/index.d.ts": {
+      "bytes": 620,
+      "mode": 420,
+      "sha256": "48bc69e9c25e4995e462c08b0d264f1e13b188694f12c8f38a6aefb3994d6ef4"
+    },
+    "package/node_modules/@inquirer/ansi/dist/index.js": {
+      "bytes": 866,
+      "mode": 420,
+      "sha256": "adeb11d734b61dfe27f35860cdd9026cd1b10c4c0c5c63a9a12c5332e4b0ee19"
+    },
+    "package/node_modules/@inquirer/ansi/package.json": {
+      "bytes": 1465,
+      "mode": 420,
+      "sha256": "cab1c0b6189d6817ecf9cee0c087acaffebf8ebeccc2556026a5dd01ca36c191"
+    },
+    "package/node_modules/@inquirer/checkbox/LICENSE": {
+      "bytes": 1058,
+      "mode": 420,
+      "sha256": "85aca0b12ce5ade4ff76e9cbbe7e0d5a4cdde979e3930727c272e1fa04b8cc23"
+    },
+    "package/node_modules/@inquirer/checkbox/README.md": {
+      "bytes": 8290,
+      "mode": 420,
+      "sha256": "319b510c0ef22ba509306a94a8715635ce4070221047ce598af09378af27bbcc"
+    },
+    "package/node_modules/@inquirer/checkbox/dist/index.d.ts": {
+      "bytes": 2252,
+      "mode": 420,
+      "sha256": "a62624c7f04fc4566f8f8b96f6d39110125263e4f79c6b496cef28c51975ad0f"
+    },
+    "package/node_modules/@inquirer/checkbox/dist/index.js": {
+      "bytes": 8304,
+      "mode": 420,
+      "sha256": "d8318ce8bc4cb429f31556cd935acff9991e929d9dbc0f1d2e6a97de2cbfcf73"
+    },
+    "package/node_modules/@inquirer/checkbox/package.json": {
+      "bytes": 1799,
+      "mode": 420,
+      "sha256": "40417769237d48d389178653cda6bb07f895b57f6c47e8b02399c269be9bdd61"
+    },
+    "package/node_modules/@inquirer/core/LICENSE": {
+      "bytes": 1058,
+      "mode": 420,
+      "sha256": "85aca0b12ce5ade4ff76e9cbbe7e0d5a4cdde979e3930727c272e1fa04b8cc23"
+    },
+    "package/node_modules/@inquirer/core/README.md": {
+      "bytes": 12152,
+      "mode": 420,
+      "sha256": "3755b653465b536e1f5fedccc71985ce26c2b669f95f71028d46e0f1f338e2ca"
+    },
+    "package/node_modules/@inquirer/core/dist/index.d.ts": {
+      "bytes": 756,
+      "mode": 420,
+      "sha256": "e1d6ddd0c300ba35bd166063d5b2456e9d84fe96bdb7c16ad9379e50dca5dcda"
+    },
+    "package/node_modules/@inquirer/core/dist/index.js": {
+      "bytes": 666,
+      "mode": 420,
+      "sha256": "465298a818b5ba4332579195a2f9a93b648db2a87d0bdd9608e5804955106c29"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/Separator.d.ts": {
+      "bytes": 261,
+      "mode": 420,
+      "sha256": "ab37b1199441c7ecb602defe46f72099d3d4555f7911bd865f51657f419779ab"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/Separator.js": {
+      "bytes": 578,
+      "mode": 420,
+      "sha256": "f75aa2252ef60c62410bd604bf7c0688c678c947d446cfcef7946884db0a78e6"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/__probe/p1.d.ts": {
+      "bytes": 120,
+      "mode": 420,
+      "sha256": "708667d0be2b7c761d85d3fcd27ffd86af6d9b07285b844e4c89460dcd7a7136"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/__probe/p1.js": {
+      "bytes": 107,
+      "mode": 420,
+      "sha256": "b29c4a6673c41a76fbaf5a7dd4ee76ca1dc621713d35c6d1361c325e696415d5"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/__probe/p2.d.ts": {
+      "bytes": 120,
+      "mode": 420,
+      "sha256": "708667d0be2b7c761d85d3fcd27ffd86af6d9b07285b844e4c89460dcd7a7136"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/__probe/p2.js": {
+      "bytes": 98,
+      "mode": 420,
+      "sha256": "5664b041803cbeb6cd286c8fa242d5c5c6ebf7ad1f9c0c72613c84c07a3ee1a0"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/__probe/p3.d.ts": {
+      "bytes": 120,
+      "mode": 420,
+      "sha256": "708667d0be2b7c761d85d3fcd27ffd86af6d9b07285b844e4c89460dcd7a7136"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/__probe/p3.js": {
+      "bytes": 152,
+      "mode": 420,
+      "sha256": "08f8d9af8c032fa4db6c7b8dceb3f4365e99e6a369151ca33e8f6d0a992f30f1"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/create-prompt.d.ts": {
+      "bytes": 528,
+      "mode": 420,
+      "sha256": "673acd99a4a6296577959626d31fe5cabf5bb3441e973e3e8cea71ffece1ff81"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/create-prompt.js": {
+      "bytes": 9352,
+      "mode": 420,
+      "sha256": "281fea27f5d664d26748c79b3c95442dbd7ffa4cb7e81671a2e7eeb20075284e"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/errors.d.ts": {
+      "bytes": 465,
+      "mode": 420,
+      "sha256": "cc2d9ba9d5434882cfb9bc2954fe433b5538fa78a40be504c9833a45d1a732ad"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/errors.js": {
+      "bytes": 539,
+      "mode": 420,
+      "sha256": "e853af7060009a0d0cc4634431c28d9b5ff43f0084982c1700b75b943b27a278"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/hook-engine.d.ts": {
+      "bytes": 762,
+      "mode": 420,
+      "sha256": "a93432b560099da85aadbb687183ac0d2e9d2719dff542a7db3d0cf296cdf0ac"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/hook-engine.js": {
+      "bytes": 3341,
+      "mode": 420,
+      "sha256": "03abfab3475cb8f7d5feee2ce6bf7ca77327042d0e50bb1b362866c8667bd2b4"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/key.d.ts": {
+      "bytes": 817,
+      "mode": 420,
+      "sha256": "10043f2974346ba2baca701cd0a2bca1bda974d626a5d7eb92b741757a42443e"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/key.js": {
+      "bytes": 1481,
+      "mode": 420,
+      "sha256": "23a8ce908654922f130da62b1b0146c2107dd939019d3ee67c69ef5bb56b336f"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/make-theme.d.ts": {
+      "bytes": 272,
+      "mode": 420,
+      "sha256": "5a7fe6ef136e88ee70d3cd0b1aa0d6875178b2682542ca340875a2711c81d779"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/make-theme.js": {
+      "bytes": 1114,
+      "mode": 420,
+      "sha256": "434600c202a94ae6ba3b90ce9820e92aa7d629f894bfa4cdddde8fd0834cb870"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/pagination/use-pagination.d.ts": {
+      "bytes": 504,
+      "mode": 420,
+      "sha256": "6efe6725728024c1b6cf22b47fe1dcaecc951444e7cb6fe0037d96123bb75667"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/pagination/use-pagination.js": {
+      "bytes": 6358,
+      "mode": 420,
+      "sha256": "0cbe099c4e7581198e6d18ea051cf9508b5d24c34b566ba45eae7a16286ff588"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/screen-manager.d.ts": {
+      "bytes": 432,
+      "mode": 420,
+      "sha256": "681cac7cfb615498ee2cf79c930d8b55e2da6c9a3c58971b3324205e218cf838"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/screen-manager.js": {
+      "bytes": 3744,
+      "mode": 420,
+      "sha256": "39dc3d968f515138a35a46c89f0abea24c83ef0ebdad81eba482d605dbbf9499"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/theme.d.ts": {
+      "bytes": 5288,
+      "mode": 420,
+      "sha256": "c8c43f3c6f59572906c077ddd96a1856fc5c6519c30f356d6c9c511b9dadc9c0"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/theme.js": {
+      "bytes": 1014,
+      "mode": 420,
+      "sha256": "321d96b2968d279502f04d1e711e4b1de50dbc25daba2c78041a0560e2e7db73"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/use-effect.d.ts": {
+      "bytes": 182,
+      "mode": 420,
+      "sha256": "8da95d257be3f2d83c21c555dedda9c96869e5f855652523cf52dc98ca8c57de"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/use-effect.js": {
+      "bytes": 403,
+      "mode": 420,
+      "sha256": "001c995aba7c77aee1c0043516327b7f4a2aadf0c94a3d7f00dfe171dce052bf"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/use-keypress.d.ts": {
+      "bytes": 229,
+      "mode": 420,
+      "sha256": "ce6ada7f4eb4cda3ccfe28a0201608828fc6ee2d3204101976831100d9550d47"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/use-keypress.js": {
+      "bytes": 637,
+      "mode": 420,
+      "sha256": "943a6d1ad799f073cea21eb155c193990b0802640aa5210e4f20ef18485f25e3"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/use-memo.d.ts": {
+      "bytes": 102,
+      "mode": 420,
+      "sha256": "aa9494cb36743567c0f6ce385ce869358b59193c9b61612e0d70e4de500424c3"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/use-memo.js": {
+      "bytes": 496,
+      "mode": 420,
+      "sha256": "70a292e170d545a5d28c87f579dafbf1f1ec8389fcb12f598ccf3ca87d73a757"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/use-prefix.d.ts": {
+      "bytes": 157,
+      "mode": 420,
+      "sha256": "988be2b47c162ddfc4ac289de0bc50b52fd425d4408cb4bc40fcc9b81f4957c6"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/use-prefix.js": {
+      "bytes": 1357,
+      "mode": 420,
+      "sha256": "9ace5f806e90dd13a21fbdaaae9678af60b31f2202985be983a8b082290ae6a6"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/use-ref.d.ts": {
+      "bytes": 165,
+      "mode": 420,
+      "sha256": "904964129f1ef4797282d4ea4411eaf26d4b22bb481b8b8ab3e920d4cfc79ecf"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/use-ref.js": {
+      "bytes": 117,
+      "mode": 420,
+      "sha256": "b76dccca2579a01f21b77a437bb0177aca843b56b6f4727eb62ee8b18d7da81a"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/use-state.d.ts": {
+      "bytes": 574,
+      "mode": 420,
+      "sha256": "bf2b86c4d2d7db6fdbb14098c247526ef334ee62e8f06e3d790891b5d0d10090"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/use-state.js": {
+      "bytes": 1024,
+      "mode": 420,
+      "sha256": "0bd91dcc4ba24d7f1eb657a3c4aab35f264c3faf4e59b8159411c1a4f67b0fdc"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/utils.d.ts": {
+      "bytes": 442,
+      "mode": 420,
+      "sha256": "7c8e5a4aaee3a6e83251ac295ab33a9e0aa2891c97674b9844128a8335aadc6b"
+    },
+    "package/node_modules/@inquirer/core/dist/lib/utils.js": {
+      "bytes": 795,
+      "mode": 420,
+      "sha256": "951d0b5bb378664a26890fdc30951c72795bcc3988c44f2668ded27cc7162eba"
+    },
+    "package/node_modules/@inquirer/core/package.json": {
+      "bytes": 1942,
+      "mode": 420,
+      "sha256": "d89bbfddc2f85ca72948ee68e76545516cf32176c30aaac6329452072c16c9d4"
+    },
+    "package/node_modules/@inquirer/figures/LICENSE": {
+      "bytes": 1058,
+      "mode": 420,
+      "sha256": "85aca0b12ce5ade4ff76e9cbbe7e0d5a4cdde979e3930727c272e1fa04b8cc23"
+    },
+    "package/node_modules/@inquirer/figures/dist/index.d.ts": {
+      "bytes": 8111,
+      "mode": 420,
+      "sha256": "816b8fa6e2e8c9a02d5fff5b3ac395da52f9fcf09cb5d6f971b66a018e87e059"
+    },
+    "package/node_modules/@inquirer/figures/dist/index.js": {
+      "bytes": 9336,
+      "mode": 420,
+      "sha256": "a9726aa6667509460fe6e64c05739b2dfa094dc621d5efbc35ba333b99e3d125"
+    },
+    "package/node_modules/@inquirer/figures/package.json": {
+      "bytes": 1496,
+      "mode": 420,
+      "sha256": "5445e0055b8bb76698640b4472b9d15c192fe385d1ead476e84973c4116c4487"
+    },
+    "package/node_modules/@inquirer/select/LICENSE": {
+      "bytes": 1058,
+      "mode": 420,
+      "sha256": "85aca0b12ce5ade4ff76e9cbbe7e0d5a4cdde979e3930727c272e1fa04b8cc23"
+    },
+    "package/node_modules/@inquirer/select/README.md": {
+      "bytes": 6860,
+      "mode": 420,
+      "sha256": "930c0e65f4a1ae8257a838c4f246ab3dcd49fccf946bd303b202d92eb28dcfaa"
+    },
+    "package/node_modules/@inquirer/select/dist/index.d.ts": {
+      "bytes": 1302,
+      "mode": 420,
+      "sha256": "a432730d0b21d8482d94d49853107fc26f01b97dcfea82accd3fbb80f3b108ad"
+    },
+    "package/node_modules/@inquirer/select/dist/index.js": {
+      "bytes": 7515,
+      "mode": 420,
+      "sha256": "4536a0168d00771ed9ac01f41659b70454262a9d5a7d47424d2a85af52697b00"
+    },
+    "package/node_modules/@inquirer/select/package.json": {
+      "bytes": 1798,
+      "mode": 420,
+      "sha256": "cf5bde03695203d341212b8daf812378ccaa31becb1b2dcb55aa37ff31875ca3"
+    },
+    "package/node_modules/@inquirer/type/LICENSE": {
+      "bytes": 1058,
+      "mode": 420,
+      "sha256": "85aca0b12ce5ade4ff76e9cbbe7e0d5a4cdde979e3930727c272e1fa04b8cc23"
+    },
+    "package/node_modules/@inquirer/type/dist/index.d.ts": {
+      "bytes": 59,
+      "mode": 420,
+      "sha256": "4e3592aed54bd51d840e6d078794b45a8388d0accf38efa3267a16742ce88041"
+    },
+    "package/node_modules/@inquirer/type/dist/index.js": {
+      "bytes": 59,
+      "mode": 420,
+      "sha256": "303e3ba5e5f2add2706ca909f4f5131cf712d39d7d3994bf259a9f4dcad60a26"
+    },
+    "package/node_modules/@inquirer/type/dist/inquirer.d.ts": {
+      "bytes": 1318,
+      "mode": 420,
+      "sha256": "f496804f1238bfdf19b67ac9ce7825d50920a958994fc29a80697b8a63eeed6d"
+    },
+    "package/node_modules/@inquirer/type/dist/inquirer.js": {
+      "bytes": 11,
+      "mode": 420,
+      "sha256": "8e609bb71c20b858c77f0e9f90bb1319db8477b13f9f965f1a1e18524bf50881"
+    },
+    "package/node_modules/@inquirer/type/dist/utils.d.ts": {
+      "bytes": 1814,
+      "mode": 420,
+      "sha256": "1de74d27c48e696d95e2fcfcd116e868a5479d7b175180e628448d3e99413af7"
+    },
+    "package/node_modules/@inquirer/type/dist/utils.js": {
+      "bytes": 509,
+      "mode": 420,
+      "sha256": "bc2c6130a24db301e539666e913eb8820811b91df01cf4a73fb1b7d6c83f0f5f"
+    },
+    "package/node_modules/@inquirer/type/package.json": {
+      "bytes": 1573,
+      "mode": 420,
+      "sha256": "f1480a8c6e0a37e38ed0650c56c376197ca3592120b46081bca38f6deab8108a"
+    },
+    "package/node_modules/cli-width/LICENSE": {
+      "bytes": 757,
+      "mode": 420,
+      "sha256": "31493c14dc0b4eb1e06fe5d4bab3ca4e3b40f8749433455c713863238600cf1a"
+    },
+    "package/node_modules/cli-width/README.md": {
+      "bytes": 1863,
+      "mode": 420,
+      "sha256": "13b3d927e157b1f5428c2d025c804b202284ceae9268a149c3ded7efb52b633a"
+    },
+    "package/node_modules/cli-width/index.d.ts": {
+      "bytes": 267,
+      "mode": 420,
+      "sha256": "465b5cc11c21f3fc08d7924d06b9fde39048be18df7eef3a4ad0b5e0fc3b5c64"
+    },
+    "package/node_modules/cli-width/index.js": {
+      "bytes": 903,
+      "mode": 420,
+      "sha256": "2dab4c960425df4af8ac9fbdf784c86a1e0c64924b7e28dd65fc8faee6f92a7f"
+    },
+    "package/node_modules/cli-width/package.json": {
+      "bytes": 977,
+      "mode": 420,
+      "sha256": "6fdfc702f4eb668937462fafc1ab3f8514baea43ce58fed9d545a4d40e214967"
+    },
+    "package/node_modules/fast-string-truncated-width/dist/index.d.ts": {
+      "bytes": 306,
+      "mode": 420,
+      "sha256": "fdfc96d5bac6c14e6ac4fdcdd89f6a4d5e02cab2306999e80ab2fb147b0ab84e"
+    },
+    "package/node_modules/fast-string-truncated-width/dist/index.js": {
+      "bytes": 5047,
+      "mode": 420,
+      "sha256": "5e7ee74641239c2fff739890ecc9b019872d6dee7615afb0924893fa4956e9dc"
+    },
+    "package/node_modules/fast-string-truncated-width/dist/types.d.ts": {
+      "bytes": 413,
+      "mode": 420,
+      "sha256": "6d3c8c054c221c49c4dbd5a4690425e35993684c2b075c92c753a86875daeddc"
+    },
+    "package/node_modules/fast-string-truncated-width/dist/types.js": {
+      "bytes": 22,
+      "mode": 420,
+      "sha256": "d99f969d7455894d5b3ee7632c54f4ffb79d666c0dd8dc49dfa6e7815f74196c"
+    },
+    "package/node_modules/fast-string-truncated-width/dist/utils.d.ts": {
+      "bytes": 242,
+      "mode": 420,
+      "sha256": "f468edeadf2ddaf71c7871248f28fe1713e753be8efa90edc9ee29d1c9ad8167"
+    },
+    "package/node_modules/fast-string-truncated-width/dist/utils.js": {
+      "bytes": 1197,
+      "mode": 420,
+      "sha256": "6909b1628b2aafa77427b5ac519307e1b30a9ea7b30d26d1c5622c8eb77b7acc"
+    },
+    "package/node_modules/fast-string-truncated-width/license": {
+      "bytes": 1091,
+      "mode": 420,
+      "sha256": "2547dead17a32b1e49a588e943d52420b4d75f1349d9afd9ecb567b2dc8911c0"
+    },
+    "package/node_modules/fast-string-truncated-width/package.json": {
+      "bytes": 946,
+      "mode": 420,
+      "sha256": "68f98cd59ee3f050e88ad1924dd29dd6a3522199cb480e9ae08f95fd7f8c6f4a"
+    },
+    "package/node_modules/fast-string-truncated-width/readme.md": {
+      "bytes": 2875,
+      "mode": 420,
+      "sha256": "213b7c87c3609a0af4980d7c3d88877520af3bdf4849f166bf730cab8f7e9453"
+    },
+    "package/node_modules/fast-string-width/dist/index.d.ts": {
+      "bytes": 210,
+      "mode": 420,
+      "sha256": "cab492f3f728526efe351794948a23ccbf4f1d2572a1eea95f4f9cebde42d345"
+    },
+    "package/node_modules/fast-string-width/dist/index.js": {
+      "bytes": 367,
+      "mode": 420,
+      "sha256": "3f5556b4288f58e506ccf41b13a437d746c7945cdc88f0485e94ecd129c054b4"
+    },
+    "package/node_modules/fast-string-width/license": {
+      "bytes": 1091,
+      "mode": 420,
+      "sha256": "2547dead17a32b1e49a588e943d52420b4d75f1349d9afd9ecb567b2dc8911c0"
+    },
+    "package/node_modules/fast-string-width/package.json": {
+      "bytes": 836,
+      "mode": 420,
+      "sha256": "2c49e010864a982bf0084dc4c7c267672f38462446e9911a64d0383e16e02712"
+    },
+    "package/node_modules/fast-string-width/readme.md": {
+      "bytes": 1011,
+      "mode": 420,
+      "sha256": "cb774a871c7b7f07531909b28a56191650cdc7c3043a50371e2eb300f57122fb"
+    },
+    "package/node_modules/fast-wrap-ansi/LICENSE": {
+      "bytes": 1151,
+      "mode": 420,
+      "sha256": "9235f5ebfd80d41920fae7a0317caa3914f2a9249837bc486d7706f73080e375"
+    },
+    "package/node_modules/fast-wrap-ansi/README.md": {
+      "bytes": 381,
+      "mode": 420,
+      "sha256": "9640e741075331af785c50532ac8f2856d1f2dc009b56c553f7bbe73515ad302"
+    },
+    "package/node_modules/fast-wrap-ansi/lib/main.d.ts": {
+      "bytes": 187,
+      "mode": 420,
+      "sha256": "ef10b1ba93c67f43ab63adb4033f79a2702e9bfaee8dc981f263876e10df2a45"
+    },
+    "package/node_modules/fast-wrap-ansi/lib/main.js": {
+      "bytes": 7634,
+      "mode": 420,
+      "sha256": "21e620e9d39cdd8a9cb64dee440b83ffa40c3cdb7b5dc242644ac6df73d7154b"
+    },
+    "package/node_modules/fast-wrap-ansi/package.json": {
+      "bytes": 1357,
+      "mode": 420,
+      "sha256": "faec2e80d1e1a395112ffaced479b858905ee233b5630d970a170666aa99c9fc"
+    },
+    "package/node_modules/marked/LICENSE.md": {
+      "bytes": 2942,
+      "mode": 420,
+      "sha256": "8e3a3f82f59a60958f56ca08f445647c32a4733dc7ca6c2c46f6eb898471ab9c"
+    },
+    "package/node_modules/marked/README.md": {
+      "bytes": 2976,
+      "mode": 420,
+      "sha256": "e55052ba5aa47e7559f67494719cf46762c8c09205736483ff52593860d4f33c"
+    },
+    "package/node_modules/marked/bin/main.js": {
+      "bytes": 6609,
+      "mode": 420,
+      "sha256": "88b4b0eac09204ac6fcd343fe41d54329aff351bac71472716a0227dc7eacd46"
+    },
+    "package/node_modules/marked/bin/marked.js": {
+      "bytes": 215,
+      "mode": 493,
+      "sha256": "e4ec45ee17631a5f3a837b98580f8ad47686181c7e4aaf24ecd9de7231357920"
+    },
+    "package/node_modules/marked/lib/marked.cjs": {
+      "bytes": 72991,
+      "mode": 420,
+      "sha256": "0a8051a2b02f5ef70b6e3e1f00baded1522cbbf48b975b6ac64a8f226a8a0965"
+    },
+    "package/node_modules/marked/lib/marked.cjs.map": {
+      "bytes": 145727,
+      "mode": 420,
+      "sha256": "796693c2d76e01b0f8065d5516e366de2b828812fb0f57bc2c78c9d761fba738"
+    },
+    "package/node_modules/marked/lib/marked.d.cts": {
+      "bytes": 20942,
+      "mode": 420,
+      "sha256": "2f9501a28443c63187a4a868f2e33807640191569144bc65c9127ed0a6ee9f3b"
+    },
+    "package/node_modules/marked/lib/marked.d.ts": {
+      "bytes": 20942,
+      "mode": 420,
+      "sha256": "2f9501a28443c63187a4a868f2e33807640191569144bc65c9127ed0a6ee9f3b"
+    },
+    "package/node_modules/marked/lib/marked.esm.js": {
+      "bytes": 71905,
+      "mode": 420,
+      "sha256": "29e25cdf1a06075c90e9885af06ddd23fb22a5424ed23a61dda986c73a8af641"
+    },
+    "package/node_modules/marked/lib/marked.esm.js.map": {
+      "bytes": 145597,
+      "mode": 420,
+      "sha256": "7c071e67c5460850d5b3065b2577c67e0090ec888e7c7a3f39887364ea9f3004"
+    },
+    "package/node_modules/marked/lib/marked.umd.js": {
+      "bytes": 73384,
+      "mode": 420,
+      "sha256": "d7931d1cd7bf727dd756c871637edcc9e0f8538003b927368400ec1ee47a9dd9"
+    },
+    "package/node_modules/marked/lib/marked.umd.js.map": {
+      "bytes": 145727,
+      "mode": 420,
+      "sha256": "796693c2d76e01b0f8065d5516e366de2b828812fb0f57bc2c78c9d761fba738"
+    },
+    "package/node_modules/marked/man/marked.1": {
+      "bytes": 2375,
+      "mode": 420,
+      "sha256": "a5a759fd23da964e6f7cafbf42d954c84987e2fb3b0f21650310efce945e2532"
+    },
+    "package/node_modules/marked/man/marked.1.md": {
+      "bytes": 1925,
+      "mode": 420,
+      "sha256": "356fded5d8067b9e2e4e0aa4deb6b612393b1cdb6dba53167fedd13c53bd4f1e"
+    },
+    "package/node_modules/marked/marked.min.js": {
+      "bytes": 39903,
+      "mode": 420,
+      "sha256": "3e7e7d7feb3e5d58cb6c804f68ab5c24cc7e5eb6270fd6e5cbb9124739217d0c"
+    },
+    "package/node_modules/marked/package.json": {
+      "bytes": 3763,
+      "mode": 420,
+      "sha256": "f568906109ceacc114fabf9dabcb3782d3bc0f2e2a6b2b8c7edc6878e3c3215b"
+    },
+    "package/node_modules/mute-stream/LICENSE": {
+      "bytes": 765,
+      "mode": 420,
+      "sha256": "4ec3d4c66cd87f5c8d8ad911b10f99bf27cb00cdfcff82621956e379186b016b"
+    },
+    "package/node_modules/mute-stream/README.md": {
+      "bytes": 1661,
+      "mode": 420,
+      "sha256": "cd697c4cfbb68439d1423c2abccec8c8c17f919b13d9a284aea3ec6cbdf074bf"
+    },
+    "package/node_modules/mute-stream/lib/index.js": {
+      "bytes": 2841,
+      "mode": 420,
+      "sha256": "f64dddb569e875fe5f0cb0aa8ac824fdcad7717293fe15b9a58159a61f60921c"
+    },
+    "package/node_modules/mute-stream/package.json": {
+      "bytes": 1231,
+      "mode": 420,
+      "sha256": "6a6d1be985f01f39158d63da75c2350bbf095306ba5f7ffdfb22f5cfdc054506"
+    },
+    "package/node_modules/signal-exit/LICENSE.txt": {
+      "bytes": 790,
+      "mode": 420,
+      "sha256": "b173e19b9a78df305577ace0e52ef45a4bcc915ea28b47b256dc3b68dcb1f7e7"
+    },
+    "package/node_modules/signal-exit/README.md": {
+      "bytes": 2426,
+      "mode": 420,
+      "sha256": "253e9122e9e5eaf8dc9b0fccb36d2011fc8e844d11c7249991edfec2be7fde71"
+    },
+    "package/node_modules/signal-exit/dist/cjs/browser.d.ts": {
+      "bytes": 393,
+      "mode": 420,
+      "sha256": "7b023021bc8e493240cc8117d490d55b4f6b62e08854ddbe1f53a35dfd40e355"
+    },
+    "package/node_modules/signal-exit/dist/cjs/browser.d.ts.map": {
+      "bytes": 349,
+      "mode": 420,
+      "sha256": "f46fc1cf3cae357be4e69317ae3c132f2597dc8ed31d208701053782fa03a09d"
+    },
+    "package/node_modules/signal-exit/dist/cjs/browser.js": {
+      "bytes": 322,
+      "mode": 420,
+      "sha256": "aa5f9f7f969e92b30d2d3288e8927b47faf38663f626c8e9afc7f5a3b901c816"
+    },
+    "package/node_modules/signal-exit/dist/cjs/browser.js.map": {
+      "bytes": 703,
+      "mode": 420,
+      "sha256": "cc48aa8c7132663b411f2bb14199e3e5ca7270399917f2640e1983614919d0ab"
+    },
+    "package/node_modules/signal-exit/dist/cjs/index.d.ts": {
+      "bytes": 1744,
+      "mode": 420,
+      "sha256": "1d63579e68cf6fc4b8a5ae13748efe38584f8eea7dddc320c276b30b1856d0b0"
+    },
+    "package/node_modules/signal-exit/dist/cjs/index.d.ts.map": {
+      "bytes": 460,
+      "mode": 420,
+      "sha256": "1dde4dce41849712db4203f346ca85435af909777b0653baf3339440bb487e42"
+    },
+    "package/node_modules/signal-exit/dist/cjs/index.js": {
+      "bytes": 9435,
+      "mode": 420,
+      "sha256": "7dba9354040ed0ddea0e3029e6f4690b1ea5b0275491a217d9704737a9cebe35"
+    },
+    "package/node_modules/signal-exit/dist/cjs/index.js.map": {
+      "bytes": 17544,
+      "mode": 420,
+      "sha256": "5d1a773080f60ad15c0f442fa5d59070910e87c109f7939800b2a4fe6b866f77"
+    },
+    "package/node_modules/signal-exit/dist/cjs/package.json": {
+      "bytes": 25,
+      "mode": 420,
+      "sha256": "8005a3491db7d92f36ac66369861589f9c47123d3a7c71e643fc2c06168cd45a"
+    },
+    "package/node_modules/signal-exit/dist/cjs/signals.d.ts": {
+      "bytes": 1083,
+      "mode": 420,
+      "sha256": "ed5b63eecb5ba65247f8c0a85602540a96fad19719005d59610c190c0ad59a9c"
+    },
+    "package/node_modules/signal-exit/dist/cjs/signals.d.ts.map": {
+      "bytes": 196,
+      "mode": 420,
+      "sha256": "ac18b4636c5aa4f7bb383d3ca971cce3c659d68198a7c477411a8ee23a0944d8"
+    },
+    "package/node_modules/signal-exit/dist/cjs/signals.js": {
+      "bytes": 1560,
+      "mode": 420,
+      "sha256": "84f6f2218e3a5dd61e38c9498bcb5465fb90f3900afde73956b1855b1e46af09"
+    },
+    "package/node_modules/signal-exit/dist/cjs/signals.js.map": {
+      "bytes": 2091,
+      "mode": 420,
+      "sha256": "f4b1aad11f5b1da3469353c19ce29c9f159efc878cc2b885aa4977dd8b7e31bb"
+    },
+    "package/node_modules/signal-exit/dist/mjs/browser.d.ts": {
+      "bytes": 393,
+      "mode": 420,
+      "sha256": "7b023021bc8e493240cc8117d490d55b4f6b62e08854ddbe1f53a35dfd40e355"
+    },
+    "package/node_modules/signal-exit/dist/mjs/browser.d.ts.map": {
+      "bytes": 349,
+      "mode": 420,
+      "sha256": "f46fc1cf3cae357be4e69317ae3c132f2597dc8ed31d208701053782fa03a09d"
+    },
+    "package/node_modules/signal-exit/dist/mjs/browser.js": {
+      "bytes": 138,
+      "mode": 420,
+      "sha256": "57498e3448998c32a94f884f500ac7a2c8b54872f648bebf1be1704303a5522c"
+    },
+    "package/node_modules/signal-exit/dist/mjs/browser.js.map": {
+      "bytes": 668,
+      "mode": 420,
+      "sha256": "24ff3c6a566cf59691d542f15d7aa3ba4511909acd307db7e8a09a768b83e2b5"
+    },
+    "package/node_modules/signal-exit/dist/mjs/index.d.ts": {
+      "bytes": 1744,
+      "mode": 420,
+      "sha256": "1d63579e68cf6fc4b8a5ae13748efe38584f8eea7dddc320c276b30b1856d0b0"
+    },
+    "package/node_modules/signal-exit/dist/mjs/index.d.ts.map": {
+      "bytes": 460,
+      "mode": 420,
+      "sha256": "1dde4dce41849712db4203f346ca85435af909777b0653baf3339440bb487e42"
+    },
+    "package/node_modules/signal-exit/dist/mjs/index.js": {
+      "bytes": 9090,
+      "mode": 420,
+      "sha256": "a2f8e19d69ab443b496c203c46c47853f885f3e852aca6daa248191bf3f1ccbb"
+    },
+    "package/node_modules/signal-exit/dist/mjs/index.js.map": {
+      "bytes": 17592,
+      "mode": 420,
+      "sha256": "fbaadc2cb63860ea1aa06746caa01490e4fa2d0458a94416503e77001c5f164b"
+    },
+    "package/node_modules/signal-exit/dist/mjs/package.json": {
+      "bytes": 23,
+      "mode": 420,
+      "sha256": "3ca9d4afd21425087cf31893b8f9f63c81b0b8408db5e343ca76e5f8aa26ab9a"
+    },
+    "package/node_modules/signal-exit/dist/mjs/signals.d.ts": {
+      "bytes": 1083,
+      "mode": 420,
+      "sha256": "ed5b63eecb5ba65247f8c0a85602540a96fad19719005d59610c190c0ad59a9c"
+    },
+    "package/node_modules/signal-exit/dist/mjs/signals.d.ts.map": {
+      "bytes": 196,
+      "mode": 420,
+      "sha256": "ac18b4636c5aa4f7bb383d3ca971cce3c659d68198a7c477411a8ee23a0944d8"
+    },
+    "package/node_modules/signal-exit/dist/mjs/signals.js": {
+      "bytes": 1438,
+      "mode": 420,
+      "sha256": "12044052d2037fbb19637c6fb216b1c80c28664134453b9a0fc32fa2fe352c27"
+    },
+    "package/node_modules/signal-exit/dist/mjs/signals.js.map": {
+      "bytes": 2098,
+      "mode": 420,
+      "sha256": "9ac7cde2118302bfce1fb14e0f0c04112a7f0ad6fa8a18d5d950ec530aa2654f"
+    },
+    "package/node_modules/signal-exit/package.json": {
+      "bytes": 2573,
+      "mode": 420,
+      "sha256": "cd1c6cfa95782e432dd2affaa88c3a6dda7f46c8088d91f3acc0fba79dce5075"
+    },
+    "package/optional-skills/asset-creator/CATALOG-SCHEMA.md": {
+      "bytes": 3259,
+      "mode": 420,
+      "sha256": "59486626689b1e9b534133baf1d421548f23df83d231feae0bcf23d8e07b5732"
+    },
+    "package/optional-skills/asset-creator/SKILL.md": {
+      "bytes": 10588,
+      "mode": 420,
+      "sha256": "42a8f0b9cbfeda03735f087c5ab887888fe098757a0eba4600f125e400cac9e9"
+    },
+    "package/optional-skills/asset-creator/STYLE-GUIDE.md": {
+      "bytes": 7665,
+      "mode": 420,
+      "sha256": "a7a36a642e7c9f50cea02e7b06345984cbe236cce9db483f93a515ecbd89c021"
+    },
+    "package/optional-skills/better-auth-setup/SKILL.md": {
+      "bytes": 26656,
+      "mode": 420,
+      "sha256": "2d41cfc5fd825e654b0b852dc43c4b8b1c4dd4b06a592d08702a821f0466c566"
+    },
+    "package/optional-skills/better-auth-setup/references/api-keys.md": {
+      "bytes": 7964,
+      "mode": 420,
+      "sha256": "be3b931600a0bd6d926d7ba8148480f4e8effec7d424aa8a15d14ba274c0f181"
+    },
+    "package/optional-skills/better-auth-setup/references/config-and-entry.md": {
+      "bytes": 7482,
+      "mode": 420,
+      "sha256": "228375ebcb993f3ff2e2bd76d9659e905e57b1205ffc6e954fc5f532eecb2c17"
+    },
+    "package/optional-skills/better-auth-setup/references/middleware.md": {
+      "bytes": 12608,
+      "mode": 420,
+      "sha256": "666e7e9bcd909d56d51af450ff85b6d9ae8d4af731bd230c6d72d168c3daf7a1"
+    },
+    "package/optional-skills/better-auth-setup/references/proxy-gotchas.md": {
+      "bytes": 8344,
+      "mode": 420,
+      "sha256": "9959cfa654c012289fac34b497e5d6d722c0dd9b19a3c0755c829aa193436a08"
+    },
+    "package/optional-skills/better-auth-setup/references/proxy-setup.md": {
+      "bytes": 10463,
+      "mode": 420,
+      "sha256": "ba964e2130ec7511fe1dbc99b0379fb91b34691ff2916dc641e6a098722ed61f"
+    },
+    "package/optional-skills/better-auth-setup/references/schema.md": {
+      "bytes": 9505,
+      "mode": 420,
+      "sha256": "9b80fd168b407f21ca3363b08b137be51ed7b076e10708e75b19598090f00c90"
+    },
+    "package/optional-skills/better-auth-setup/references/testing.md": {
+      "bytes": 7362,
+      "mode": 420,
+      "sha256": "600dd99d2f18d76b7d06ac397790a3d467a104fd2326a925f5d4b5a13d90b705"
+    },
+    "package/optional-skills/cloudflare-nextjs-setup/SKILL.md": {
+      "bytes": 11194,
+      "mode": 420,
+      "sha256": "610d75ce0008ed2a3d840be7628a33422d36d4ef038ae44d3650a673ee1a4604"
+    },
+    "package/optional-skills/code-health-standards/SKILL.md": {
+      "bytes": 3127,
+      "mode": 420,
+      "sha256": "58e8c1e240f8a9c3c3a51935bf61a4fc70ca76049b50044e465f633da6b85fe6"
+    },
+    "package/optional-skills/code-review-standards/SKILL.md": {
+      "bytes": 1844,
+      "mode": 420,
+      "sha256": "3f11f84adb7d3016c4d71bce743c40e35e682d09bc9376b03be957fc9c8d2b62"
+    },
+    "package/optional-skills/devlyn-pencil-pull/SKILL.md": {
+      "bytes": 6862,
+      "mode": 420,
+      "sha256": "d619bcb503108dc8eb7d757d7e8cf1720742bb16c3b8ea8c01878cfdf1cdb0b8"
+    },
+    "package/optional-skills/devlyn-pencil-push/SKILL.md": {
+      "bytes": 4289,
+      "mode": 420,
+      "sha256": "4571773e02846c2b2bc4ff4c1717b843ed5b7319ec9ee9d91ecab2a77d4af4c9"
+    },
+    "package/optional-skills/devlyn-reap/SKILL.md": {
+      "bytes": 7238,
+      "mode": 420,
+      "sha256": "51ee3be1e1dccde90471331d60fbdd162773412819dbcd6a6ce86d2cec42198b"
+    },
+    "package/optional-skills/devlyn-reap/scripts/reap.sh": {
+      "bytes": 4835,
+      "mode": 493,
+      "sha256": "ad06953be260e3bec10b6891c30337594bfbe5ff6db1d82e8c59c13ac102c89d"
+    },
+    "package/optional-skills/devlyn-reap/scripts/scan.sh": {
+      "bytes": 6330,
+      "mode": 493,
+      "sha256": "23eaa9655d9614e441c34637fee568a8ed737497559a2d2bf31e10472c02dda2"
+    },
+    "package/optional-skills/dokkit/ANALYSIS.md": {
+      "bytes": 8662,
+      "mode": 420,
+      "sha256": "7503acd8be895fb0adf6a55df2a65509932f74261460c2d10d15abb0a211e0d7"
+    },
+    "package/optional-skills/dokkit/COMMANDS.md": {
+      "bytes": 14132,
+      "mode": 420,
+      "sha256": "2c0e1ef6f1016d34de42b002e13ddce7c5fff931c4a9c0dd27bf4808ee3b2bbd"
+    },
+    "package/optional-skills/dokkit/DOCX-XML.md": {
+      "bytes": 2125,
+      "mode": 420,
+      "sha256": "d6737cca5d96ace034a62a106e776085154ebfdb2d443799866866522786d75c"
+    },
+    "package/optional-skills/dokkit/EXPORT.md": {
+      "bytes": 3253,
+      "mode": 420,
+      "sha256": "c4429521a7a59547da922670d68e03aa77f074d0cb937f46ea8f84dfbe342e70"
+    },
+    "package/optional-skills/dokkit/FILLING.md": {
+      "bytes": 14453,
+      "mode": 420,
+      "sha256": "7373c23c25bb6f3fd9b0c58de30d54daf787c4fabe87b6542fb1567e8e3e2631"
+    },
+    "package/optional-skills/dokkit/HWPX-XML.md": {
+      "bytes": 2425,
+      "mode": 420,
+      "sha256": "1852b1dba9c2d6d54057726cb5ddfbac169c0c07a994f5f5cfafd24caba1455f"
+    },
+    "package/optional-skills/dokkit/IMAGE-SOURCING.md": {
+      "bytes": 5521,
+      "mode": 420,
+      "sha256": "1a9e6e03b85b8e6bb0b53081648cff0428d5ec51ec73f3fa46586d94d42dd1a5"
+    },
+    "package/optional-skills/dokkit/INGESTION.md": {
+      "bytes": 2101,
+      "mode": 420,
+      "sha256": "71db1451ae3e45e2152ba749e3bdd9455f21a8a6b2738203815b2c507f64fea1"
+    },
+    "package/optional-skills/dokkit/PIPELINE.md": {
+      "bytes": 14967,
+      "mode": 420,
+      "sha256": "e9906861ee058a71e874b02affd47685c1738ef3d18473545a3f7a4b75467a56"
+    },
+    "package/optional-skills/dokkit/SKILL.md": {
+      "bytes": 11838,
+      "mode": 420,
+      "sha256": "48d26f0db262df326145cfded42d1f2ea73a45393299209471555aea4d78995e"
+    },
+    "package/optional-skills/dokkit/STATE.md": {
+      "bytes": 1876,
+      "mode": 420,
+      "sha256": "1be4d80ebc577a65e909f64291302473a95076a02dfce4ca39e70952d97da1e8"
+    },
+    "package/optional-skills/dokkit/references/docx-field-patterns.md": {
+      "bytes": 4304,
+      "mode": 420,
+      "sha256": "e918d757edf90b91a86ac626892cb27db692f2131d5e1df0a2e6f2e326209fc8"
+    },
+    "package/optional-skills/dokkit/references/docx-section-range-detection.md": {
+      "bytes": 6532,
+      "mode": 420,
+      "sha256": "ad6051bf8689b1e14af02e85c755828d710a2bcd209fa5a0ae171e27ea4ec91c"
+    },
+    "package/optional-skills/dokkit/references/docx-structure.md": {
+      "bytes": 1808,
+      "mode": 420,
+      "sha256": "871d046768a3515efbb40767e2ff83c77487c8264c84e6b04cd4aae9a41812d0"
+    },
+    "package/optional-skills/dokkit/references/field-detection-patterns.md": {
+      "bytes": 4644,
+      "mode": 420,
+      "sha256": "439ea29d4d4fba3c32dcfb71adf3843baab3dc163a18da62d30a9b95fe47ef89"
+    },
+    "package/optional-skills/dokkit/references/hwpx-field-patterns.md": {
+      "bytes": 15587,
+      "mode": 420,
+      "sha256": "a3a15626119e06a6228c87be23ff3934114961b02fc051156c8ecf403b24086e"
+    },
+    "package/optional-skills/dokkit/references/hwpx-structure.md": {
+      "bytes": 6368,
+      "mode": 420,
+      "sha256": "2d86188c398aa8ea559e13c9b1a2626eb748e8b86ada722829ce5075293da675"
+    },
+    "package/optional-skills/dokkit/references/image-opportunity-heuristics.md": {
+      "bytes": 5789,
+      "mode": 420,
+      "sha256": "0131c59ff0351d150029df91268e35ad005e5a0780e2f382ebbb30a9178d7b6f"
+    },
+    "package/optional-skills/dokkit/references/image-xml-patterns.md": {
+      "bytes": 14362,
+      "mode": 420,
+      "sha256": "a3100b3fb3134b85d8358dc46ef277d9be02dd22488efb347c46d7a369cbfa26"
+    },
+    "package/optional-skills/dokkit/references/section-image-interleaving.md": {
+      "bytes": 13234,
+      "mode": 420,
+      "sha256": "a50c88ff57433125e9d51118e4b79280ac84a18e9e65abad86b6be6e4d6932cb"
+    },
+    "package/optional-skills/dokkit/references/section-range-detection.md": {
+      "bytes": 5180,
+      "mode": 420,
+      "sha256": "06221fc657ab53ebce9c3d6412f6fbf138fc178927d223f3ce8619b87cdbc13f"
+    },
+    "package/optional-skills/dokkit/references/state-schema.md": {
+      "bytes": 4733,
+      "mode": 420,
+      "sha256": "efa8901c7873a9ebdbf297b1dfe39906fa53ea0097d2d047af394008c36251fa"
+    },
+    "package/optional-skills/dokkit/references/supported-formats.md": {
+      "bytes": 1677,
+      "mode": 420,
+      "sha256": "2bb08b28d8c2142bfe2535eaf6e9634ec5b5428531491a2d4795e1b39e697a11"
+    },
+    "package/optional-skills/dokkit/scripts/compile_hwpx.py": {
+      "bytes": 4961,
+      "mode": 420,
+      "sha256": "3de0583e519eedd4b1f6c0c0a99a27cc27d24d73b6988032121d39ef31e89b0e"
+    },
+    "package/optional-skills/dokkit/scripts/detect_fields.py": {
+      "bytes": 10944,
+      "mode": 420,
+      "sha256": "186d9684461c819dacf75aa03212f8b70a6bbe4a08a60dd16b050e964986b916"
+    },
+    "package/optional-skills/dokkit/scripts/detect_fields_hwpx.py": {
+      "bytes": 10579,
+      "mode": 420,
+      "sha256": "40c4d4e1182e2ec6a9e24f6e705e739cd0b767244231af6c3cfea1371ba049e3"
+    },
+    "package/optional-skills/dokkit/scripts/export_pdf.py": {
+      "bytes": 2769,
+      "mode": 420,
+      "sha256": "1257598d7dcfe1ca8f956f71800579abe3dacc7ae38f635d2200341a64ff5071"
+    },
+    "package/optional-skills/dokkit/scripts/fill_docx.py": {
+      "bytes": 33918,
+      "mode": 420,
+      "sha256": "e8954636979ccb34aada17b902a8aea22c56aa03bdf92d76466b17b0c0b4f1e0"
+    },
+    "package/optional-skills/dokkit/scripts/parse_hwpx.py": {
+      "bytes": 5838,
+      "mode": 420,
+      "sha256": "83ab2088f8b4cc534301d6eaa06b9cce83e7663046942b97a1083d02a33cb81e"
+    },
+    "package/optional-skills/dokkit/scripts/parse_image_with_gemini.py": {
+      "bytes": 5146,
+      "mode": 420,
+      "sha256": "eaa54d17079e887b71e053ceead73692496ff00bc3879dedf253ed591ab95656"
+    },
+    "package/optional-skills/dokkit/scripts/parse_xlsx.py": {
+      "bytes": 2756,
+      "mode": 420,
+      "sha256": "6e75ffb166314568ef2e2f4087aed490d219dbfef32f4c9289d6b53c76aa48e8"
+    },
+    "package/optional-skills/dokkit/scripts/source_images.py": {
+      "bytes": 13501,
+      "mode": 420,
+      "sha256": "00f66bb3f0134e0dd1a84c709aa4d1ff830b1cceef76e5ca290d305b2ab413d9"
+    },
+    "package/optional-skills/dokkit/scripts/validate_docx.py": {
+      "bytes": 4815,
+      "mode": 420,
+      "sha256": "56a3969646af27cc8838d70e272e6898d30e3fc32b0317801d8146743c4d731e"
+    },
+    "package/optional-skills/dokkit/scripts/validate_hwpx.py": {
+      "bytes": 10100,
+      "mode": 420,
+      "sha256": "3e21ec8138c6ba0ffb85981980295614f4658aea6a81aa5f65b34bf14d2fbcea"
+    },
+    "package/optional-skills/dokkit/scripts/validate_state.py": {
+      "bytes": 5125,
+      "mode": 420,
+      "sha256": "38b4de24aeac33aa64a9f4d5a4c02f8a1f0ed3987bd495f08b06341e647ba816"
+    },
+    "package/optional-skills/generate-skill/CHECKLIST.md": {
+      "bytes": 2552,
+      "mode": 420,
+      "sha256": "3985853af6a01d9f4608527081835b44ee9dfb499ae5fc46c96d083de4d4046a"
+    },
+    "package/optional-skills/generate-skill/PROMPT-PATTERNS.md": {
+      "bytes": 9700,
+      "mode": 420,
+      "sha256": "67f75dea52971a511fa25f3ae8b8c2f37d1d46f5ac0abf3819de144fa3773844"
+    },
+    "package/optional-skills/generate-skill/REFERENCE.md": {
+      "bytes": 5304,
+      "mode": 420,
+      "sha256": "91a1322a1dac328804b9e82f10b75e7e09f1bd3f75f79e5226c5b373769665f3"
+    },
+    "package/optional-skills/generate-skill/SKILL.md": {
+      "bytes": 6806,
+      "mode": 420,
+      "sha256": "d093e7f333c69ca12eed9f4bc0a5f1d507d42be28910c255475ed4d32492030d"
+    },
+    "package/optional-skills/polar-billing-setup/SKILL.md": {
+      "bytes": 7782,
+      "mode": 420,
+      "sha256": "39b093c32e0aa48484c77e79152458e8f98498dd82682bc64f35356e74bb218d"
+    },
+    "package/optional-skills/polar-billing-setup/references/gotchas.md": {
+      "bytes": 7045,
+      "mode": 420,
+      "sha256": "9ef050e813eadda4f478c7821976812d366f28f3268de4bad8c620ccb59d6702"
+    },
+    "package/optional-skills/polar-billing-setup/references/setup.md": {
+      "bytes": 4457,
+      "mode": 420,
+      "sha256": "cbb43d6f7c49c6a0d5ddc96ef351ccd67ae43dc8940e529f8ecd302d64408ee1"
+    },
+    "package/optional-skills/polar-billing-setup/scripts/diagnose.mjs": {
+      "bytes": 10514,
+      "mode": 420,
+      "sha256": "616ed10ddb6a56fafb75fa21f75e46bb2a78848b8581f6fa7988320f2140f24e"
+    },
+    "package/optional-skills/prompt-engineering/SKILL.md": {
+      "bytes": 8236,
+      "mode": 420,
+      "sha256": "eb9c6f10d0f1b13ff80aa6bd9a4b558a4e044d2dc0239980766123aeadb824e2"
+    },
+    "package/optional-skills/pyx-scan/SKILL.md": {
+      "bytes": 5719,
+      "mode": 420,
+      "sha256": "4db43fa0a694888cc7142c68e29a0ffd43b77eace4b6feacb953a9274bed5695"
+    },
+    "package/optional-skills/root-cause-analysis/SKILL.md": {
+      "bytes": 2996,
+      "mode": 420,
+      "sha256": "bd3523d223284dee2ba43dd6bce2cef27b31b8212d6164e7e6b0ede504376cba"
+    },
+    "package/optional-skills/ui-implementation-standards/SKILL.md": {
+      "bytes": 3889,
+      "mode": 420,
+      "sha256": "2d8cadc8889dba1ae191cf66c87594379a48801d6a2b5bc4bfedf2e74d8fde39"
+    },
+    "package/package.json": {
+      "bytes": 1867,
+      "mode": 420,
+      "sha256": "71fa7e644b9be6c585f6af1b0645edef4323bf37884236e7c9cd7eb539f9c9a0"
+    }
+  }
+}

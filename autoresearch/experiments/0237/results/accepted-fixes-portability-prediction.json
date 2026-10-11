@@ -1,0 +1,19 @@
+{
+  "at": "2026-10-10T10:49:32.329874+00:00",
+  "prediction": "The accepted helper/doc bytes pass the existing portability checks. npm ci was already completed with unchanged package inputs; focused helper suites already passed. These local tests overlap only the explicitly unmeasured foreground transport smoke, not an efficacy owner.",
+  "commands": [
+    [
+      "node",
+      "--test",
+      "scripts/test-installer-menu.cjs"
+    ],
+    [
+      "bash",
+      "scripts/lint-skills.sh"
+    ],
+    [
+      "python3",
+      "scripts/test-ideate-loop.py"
+    ]
+  ]
+}

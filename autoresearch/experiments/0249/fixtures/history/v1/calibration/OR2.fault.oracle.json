@@ -1,0 +1,25 @@
+{
+  "command": [
+    "python3",
+    "-B",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/fixtures/OR2/hidden/oracle.py",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/fixtures/calibration/controls/OR2"
+  ],
+  "cwd": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/fixtures/calibration/controls/OR2",
+  "started_at": "2026-10-10T23:22:35.188616+00:00",
+  "ended_at": "2026-10-10T23:22:35.248294+00:00",
+  "exit_code": 0,
+  "stdout": "{\"manifestations\": [{\"id\": \"coalescing-and-independent-keys\", \"passed\": true}, {\"id\": \"recursive-result-and-backend-isolation\", \"passed\": true}, {\"id\": \"one-waiter-cancellation-isolation\", \"passed\": true}, {\"id\": \"sole-waiter-cancel-and-rejoin\", \"passed\": true}, {\"id\": \"stale-success-keeps-new-flight\", \"passed\": false, \"detail\": \"Traceback (most recent call last):\\n  File \\\"/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/fixtures/OR2/hidden/oracle.py\\\", line 328, in <module>\\n    asyncio.run(asyncio.wait_for(function(), timeout=3))\\n    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\\n  File \\\"/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/asyncio/runners.py\\\", line 205, in run\\n    return runner.run(main)\\n           ~~~~~~~~~~^^^^^^\\n  File \\\"/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/asyncio/runners.py\\\", line 128, in run\\n    return self._loop.run_until_complete(task)\\n           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^\\n  File \\\"/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/asyncio/base_events.py\\\", line 720, in run_until_complete\\n    return future.result()\\n           ~~~~~~~~~~~~~^^\\n  File \\\"/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/asyncio/tasks.py\\\", line 488, in wait_for\\n    return await fut\\n           ^^^^^^^^^\\n  File \\\"/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/fixtures/OR2/hidden/oracle.py\\\", line 186, in stale_success\\n    assert h.loader.snapshot() == {}\\n           ^^^^^^^^^^^^^^^^^^^^^^^^^\\nAssertionError\\n\"}, {\"id\": \"out-of-order-generations\", \"passed\": false, \"detail\": \"Traceback (most recent call last):\\n  File \\\"/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/fixtures/OR2/hidden/oracle.py\\\", line 328, in <module>\\n    asyncio.run(asyncio.wait_for(function(), timeout=3))\\n    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\\n  File \\\"/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/asyncio/runners.py\\\", line 205, in run\\n    return runner.run(main)\\n           ~~~~~~~~~~^^^^^^\\n  File \\\"/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/asyncio/runners.py\\\", line 128, in run\\n    return self._loop.run_until_complete(task)\\n           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^\\n  File \\\"/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/asyncio/base_events.py\\\", line 720, in run_until_complete\\n    return future.result()\\n           ~~~~~~~~~~~~~^^\\n  File \\\"/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/lib/python3.14/asyncio/tasks.py\\\", line 488, in wait_for\\n    return await fut\\n           ^^^^^^^^^\\n  File \\\"/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/fixtures/OR2/hidden/oracle.py\\\", line 208, in out_of_order\\n    assert await h.loader.get('a') == {'generation': 2}\\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\\nAssertionError\\n\"}, {\"id\": \"shared-failure-can-retry\", \"passed\": true}, {\"id\": \"stale-failure-keeps-new-flight\", \"passed\": true}, {\"id\": \"backend-cancellation-can-retry\", \"passed\": true}, {\"id\": \"shutdown-owns-retired-operations\", \"passed\": true}, {\"id\": \"shutdown-awaits-cleanup\", \"passed\": true}, {\"id\": \"consumer-instance-isolation\", \"passed\": true}]}\n",
+  "stderr": "",
+  "source_sha256": {
+    "README.md": "bfa870c611cd80175281b6dfbba31e1b56057e74ce1a46508b9fecb12efc6ca0",
+    "checks/run_checks.py": "cbb387f1adb61e7050d32afdaa8207f4b826a89a5b62d078ab9e846ea9629d5a",
+    "checks/test_smoke.py": "5dda28971c9602777b3bc1ab34af8eb84f49be02ec377402e191f4695bb091c5",
+    "docs/contract.md": "cd8f9a5cde1ee40138e2ed970a870bf382f4ffa2a4655712e497c683e156fc3c",
+    "examples/catalog.py": "3a2522e119ca1f178e5a2a378fa3d6a75e7d2fc6fe0d3e70760f4980e222c397",
+    "relay/__init__.py": "d31610e5b016c47d07f37c360069ec83a1ff50207fffa31c1c34d91576ea3477",
+    "relay/loader.py": "de71ac3f1c67207dcaef0fb526ffad050c6beb7a78f6b6b6f0832a57b0516beb"
+  },
+  "source_unchanged": true,
+  "prediction_sha256": "76e3612ee880540a59ff96f2875ba1706e6affa53ff80193e9bc1a81abe7aebb"
+}

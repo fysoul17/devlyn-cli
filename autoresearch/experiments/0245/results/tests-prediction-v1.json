@@ -1,0 +1,18 @@
+{
+  "at": "2026-10-10T18:23:46.768587+00:00",
+  "prediction": "All 11 focused custody tests should pass: caller scratch cleanup preserves one canonical complete set per invocation; both engines retain unchanged native flags and fresh/resume binding; nonzero/timeout/SIGTERM and source mutation preserve records; invalid root and removed --out reject before dispatch. No model CLI is called; fresh isolated fake-native fixture setup only. Prior broad suites are not rerun.",
+  "argv": [
+    "/opt/homebrew/opt/python@3.14/bin/python3.14",
+    "-B",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0245/test_peer.py"
+  ],
+  "sources_before": {
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0245/design-prediction-v1.md": "d60019610de799b154ceb68f4bb049710c4610c271c108e1876f502f5d1e8c06",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0245/peer.py": "b51b8c9db0b0d6c1b95e0134e6e3b9f83f27d4b63f6fece79b8e852d3d49d095",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0245/test_peer.py": "fee0931dbbe2087ae3b8972c0386ebc1b6e17040fe41466c97594e6c20843e8c",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0238/test_peer.py": "c06be9e3fa81275b420f305de76aa686d22bc250d5c165aa0aa959aefff02a27",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0242/peer.py": "f3f4c878847e6d33149cb9d6ebfe6a78dd12eba82d5ce417fdef79ee6af28d95",
+    "/Users/aipalm/.local/share/nx01/0237-harness/config/skills/_shared/platform-support.py": "a8e1472b792000bd21ef5d359eba2ae49555adcc198198f2625b51ebb94bbc66",
+    "/Users/aipalm/.local/share/nx01/0243-live/staged-v1/out-measured/verdict-d02-f23-codex-p.json": "5dae1c69e1c90024962e08aacc7524598b7e2f4944b9429b370725ad6456f51b"
+  }
+}

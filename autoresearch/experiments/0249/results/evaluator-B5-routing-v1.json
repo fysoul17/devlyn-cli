@@ -1,0 +1,17 @@
+{
+  "schema": "0249-b5-routing-observation-v1",
+  "recorded_at": "2026-10-10T23:31:03.236850+00:00",
+  "status": "BLOCKED_PREPARATION",
+  "observation": "0247 inherits 0238 Runner replacing check with 0234/check.py; its ROWS excludes B5. Fallback 0222.evaluate would run generic 0185 heldout and CLI replay oracles, not five registered B5 rows.",
+  "evidence": {
+    "autoresearch/experiments/0238/runner.py": "5370feb1a9e46dc5abd67e6954cb2019b1ba246d216da7254270e79b17781997",
+    "autoresearch/experiments/0234/check.py": "278d62147f5b706b1b203f3a4d2d9b3387863f49ee4e91451b2fafdf4ccf75bc",
+    "autoresearch/experiments/0222/check.py": "7035e18e3876c5d80bc8177bff61979a5a8862a376078ec1ac41e3b969dd99d9",
+    "autoresearch/experiments/0233/check.py": "59f08d3c5ac1a507b1f40385c97e11edb9aad37bbb470418549f2df4038b8b33",
+    "autoresearch/experiments/0233/oracle.js": "56382044cc2a285ca0d25e3cf4f7df70648a215015269ac45ecc3748d96b01dc"
+  },
+  "native_result": "NOT_RUN",
+  "product_result": "NOT_GRADED",
+  "action": "No unrelated suites executed. Parent owns prospective 0249 narrow adapter and review; calibration waits for READY.",
+  "original_B5_sources": "UNCHANGED"
+}

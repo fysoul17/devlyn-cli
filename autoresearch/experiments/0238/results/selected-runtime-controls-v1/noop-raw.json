@@ -1,0 +1,51 @@
+[
+  {
+    "argv": [
+      "sh",
+      "-c",
+      "mkdir /tmp/public-work && cp -a /cell/work/. /tmp/public-work/ && cd /tmp/public-work && node --test tests/cli.test.js"
+    ],
+    "exit_code": 0,
+    "stderr": "",
+    "stdout": "TAP version 13\n# Subtest: hello default\nok 1 - hello default\n  ---\n  duration_ms: 12.9565\n  type: 'test'\n  ...\n# Subtest: hello with --name\nok 2 - hello with --name\n  ---\n  duration_ms: 12.149\n  type: 'test'\n  ...\n# Subtest: version prints package version\nok 3 - version prints package version\n  ---\n  duration_ms: 11.137334\n  type: 'test'\n  ...\n1..3\n# tests 3\n# suites 0\n# pass 3\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 60.8365\n",
+    "timeout": false
+  },
+  {
+    "argv": [
+      "node",
+      "/control/autoresearch/experiments/0234/oracle.js",
+      "F23",
+      "priority-rollback",
+      "/cell/work"
+    ],
+    "exit_code": 1,
+    "stderr": "Error: non-JSON fulfill-wave:  Unknown command: fulfill-wave\nUsage: bench-cli <command> [options]\n\nCommands:\n  hello [--name NAME]        Print a greeting (default name: \"world\")\n  version                    Print the CLI version from package.json\n  --help, -h                 Show this help\n\nExamples:\n  bench-cli hello\n  bench-cli hello --name alice\n  bench-cli version\n\n    at run (/control/autoresearch/experiments/0234/fixture_oracle.js:14:17)\n    at f23 (/control/autoresearch/experiments/0234/fixture_oracle.js:137:18)\n    at module.exports (/control/autoresearch/experiments/0234/fixture_oracle.js:148:30)\n    at main (/control/autoresearch/experiments/0234/oracle.js:114:41)\n    at Object.<anonymous> (/control/autoresearch/experiments/0234/oracle.js:158:1)\n    at Module._compile (node:internal/modules/cjs/loader:1781:14)\n    at Object..js (node:internal/modules/cjs/loader:1913:10)\n    at Module.load (node:internal/modules/cjs/loader:1505:32)\n    at Function._load (node:internal/modules/cjs/loader:1309:12)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)\n",
+    "stdout": "",
+    "timeout": false
+  },
+  {
+    "argv": [
+      "node",
+      "/control/autoresearch/experiments/0234/oracle.js",
+      "F23",
+      "single-warehouse-fefo",
+      "/cell/work"
+    ],
+    "exit_code": 1,
+    "stderr": "Error: non-JSON fulfill-wave:  Unknown command: fulfill-wave\nUsage: bench-cli <command> [options]\n\nCommands:\n  hello [--name NAME]        Print a greeting (default name: \"world\")\n  version                    Print the CLI version from package.json\n  --help, -h                 Show this help\n\nExamples:\n  bench-cli hello\n  bench-cli hello --name alice\n  bench-cli version\n\n    at run (/control/autoresearch/experiments/0234/fixture_oracle.js:14:17)\n    at f23 (/control/autoresearch/experiments/0234/fixture_oracle.js:137:18)\n    at module.exports (/control/autoresearch/experiments/0234/fixture_oracle.js:148:30)\n    at main (/control/autoresearch/experiments/0234/oracle.js:114:41)\n    at Object.<anonymous> (/control/autoresearch/experiments/0234/oracle.js:158:1)\n    at Module._compile (node:internal/modules/cjs/loader:1781:14)\n    at Object..js (node:internal/modules/cjs/loader:1913:10)\n    at Module.load (node:internal/modules/cjs/loader:1505:32)\n    at Function._load (node:internal/modules/cjs/loader:1309:12)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)\n",
+    "stdout": "",
+    "timeout": false
+  },
+  {
+    "argv": [
+      "python3",
+      "-B",
+      "/control/autoresearch/experiments/0238/f23_precision.py",
+      "/cell/work"
+    ],
+    "exit_code": 1,
+    "stderr": "",
+    "stdout": "{\"schema\": \"0238-f23-precision-v1\", \"source\": \"/cell/work\", \"rows\": [{\"id\": \"submillisecond-order\", \"status\": \"FAIL\", \"input\": {\"warehouses\": [{\"id\": \"w\", \"distance\": 0, \"lots\": [{\"sku\": \"s\", \"lot\": \"l\", \"qty\": 1, \"expires\": \"2028-01-01\"}]}], \"orders\": [{\"id\": \"a-later\", \"priority\": 1, \"submitted_at\": \"2027-01-01T00:00:00.0002Z\", \"lines\": [{\"sku\": \"s\", \"qty\": 1, \"single_warehouse\": false}]}, {\"id\": \"z-earlier\", \"priority\": 1, \"submitted_at\": \"2027-01-01T00:00:00.0001Z\", \"lines\": [{\"sku\": \"s\", \"qty\": 1, \"single_warehouse\": false}]}]}, \"expected\": {\"accepted\": [{\"id\": \"z-earlier\", \"allocations\": [{\"sku\": \"s\", \"warehouse\": \"w\", \"lot\": \"l\", \"qty\": 1}]}], \"rejected\": [{\"id\": \"a-later\", \"reason\": \"insufficient_stock\"}]}, \"errors\": [\"successful valid input must exit 0\", \"successful valid input must have empty stderr\", \"stdout is not exactly one parseable JSON value\"], \"raw\": {\"exit_code\": 1, \"stdout\": \"\", \"stderr\": \"Unknown command: fulfill-wave\\nUsage: bench-cli <command> [options]\\n\\nCommands:\\n  hello [--name NAME]        Print a greeting (default name: \\\"world\\\")\\n  version                    Print the CLI version from package.json\\n  --help, -h                 Show this help\\n\\nExamples:\\n  bench-cli hello\\n  bench-cli hello --name alice\\n  bench-cli version\\n\"}}, {\"id\": \"offset-equivalence\", \"status\": \"FAIL\", \"input\": {\"warehouses\": [{\"id\": \"w\", \"distance\": 0, \"lots\": [{\"sku\": \"s\", \"lot\": \"l\", \"qty\": 2, \"expires\": \"2028-01-01\"}]}], \"orders\": [{\"id\": \"a-later\", \"priority\": 1, \"submitted_at\": \"2027-01-01T00:00:00.0002Z\", \"lines\": [{\"sku\": \"s\", \"qty\": 1, \"single_warehouse\": false}]}, {\"id\": \"z-earlier\", \"priority\": 1, \"submitted_at\": \"2027-01-01T00:00:00.0001Z\", \"lines\": [{\"sku\": \"s\", \"qty\": 1, \"single_warehouse\": false}]}, {\"id\": \"b-equivalent\", \"priority\": 1, \"submitted_at\": \"2027-01-01T01:00:00.000100+01:00\", \"lines\": [{\"sku\": \"s\", \"qty\": 1, \"single_warehouse\": false}]}]}, \"expected\": {\"accepted\": [{\"id\": \"b-equivalent\", \"allocations\": [{\"sku\": \"s\", \"warehouse\": \"w\", \"lot\": \"l\", \"qty\": 1}]}, {\"id\": \"z-earlier\", \"allocations\": [{\"sku\": \"s\", \"warehouse\": \"w\", \"lot\": \"l\", \"qty\": 1}]}], \"rejected\": [{\"id\": \"a-later\", \"reason\": \"insufficient_stock\"}]}, \"errors\": [\"successful valid input must exit 0\", \"successful valid input must have empty stderr\", \"stdout is not exactly one parseable JSON value\"], \"raw\": {\"exit_code\": 1, \"stdout\": \"\", \"stderr\": \"Unknown command: fulfill-wave\\nUsage: bench-cli <command> [options]\\n\\nCommands:\\n  hello [--name NAME]        Print a greeting (default name: \\\"world\\\")\\n  version                    Print the CLI version from package.json\\n  --help, -h                 Show this help\\n\\nExamples:\\n  bench-cli hello\\n  bench-cli hello --name alice\\n  bench-cli version\\n\"}}], \"cli_sha256\": \"b8f5c3c9015c8c8491430b4be3001c03d123008518cb0c25a4ecdec8fbaa640b\", \"status\": \"FAIL\"}\n",
+    "timeout": false
+  }
+]

@@ -1,0 +1,25 @@
+{
+  "checked_at": "2026-10-10T12:31:59.478795+00:00",
+  "method": "Read-only AST comparison; constant-only BASELINE_INPUTS evaluation. Builder never imported or called; no clone/npm/package build/model/auth operation.",
+  "prediction_before_check": "Seven copied baseline inputs; ROOTS/BASE/TRIGGER/FIXES and complete B/S/H/P mutation/history-generator/pack loop unchanged; exact copied clone hashes included in packages.json. Stated in tool commentary before first check.",
+  "initial_check_failure": {
+    "exit_code": 1,
+    "error": "NameError: name 'FIXES' is not defined",
+    "cause": "Audit expression evaluation supplied FIXES only as locals; generator comprehension resolves it in globals. Audit-only namespace corrected; builder was not called or modified."
+  },
+  "checks": {
+    "v1_matches_old_preparation_manifest": true,
+    "baseline_inputs_exact_seven": true,
+    "base_roots_trigger_fixes_unchanged": true,
+    "sha_helper_unchanged": true,
+    "all_arm_mutation_history_generator_and_pack_steps_unchanged": true,
+    "environment_unchanged": true,
+    "hashes_record_copied_clone_bytes": true,
+    "packages_metadata_has_baseline_input_map": true
+  },
+  "sha256": {
+    "autoresearch/experiments/0238/results/build-packages-v1.py": "ace193402c46436c2b4c07e8c0dca34138f3adb0354748257c45d9ac04960b6b",
+    "autoresearch/experiments/0238/build_packages.py": "197d92ae282ba7693d8e6584eba6a3ecd4687b25f5d3d6e36903390db6bb1a51",
+    "autoresearch/experiments/0239/STATUS.md": "c1b5fcc8f178030d5f1e1b7059884a0fb7d202ce158e020ea3f8eeaeef14d71e"
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "at": "2026-10-10T14:59:12.672002+00:00",
+  "checks": [
+    {
+      "arm": "B",
+      "archive_match": true,
+      "payload_match": true,
+      "files": 241
+    },
+    {
+      "arm": "H",
+      "archive_match": true,
+      "payload_match": true,
+      "files": 243
+    },
+    {
+      "arm": "P",
+      "archive_match": true,
+      "payload_match": true,
+      "files": 243
+    },
+    {
+      "arm": "S",
+      "archive_match": true,
+      "payload_match": true,
+      "files": 242
+    }
+  ],
+  "changed_payloads": {
+    "B": [],
+    "H": [
+      "package/config/skills/_shared/pair.md",
+      "package/config/skills/_shared/peer.py"
+    ],
+    "P": [
+      "package/config/skills/_shared/pair.md",
+      "package/config/skills/_shared/peer.py"
+    ],
+    "S": []
+  },
+  "root_templates_equal_HEAD": {
+    "AGENTS.md": true,
+    "CLAUDE.md": true,
+    "config/skills/_shared/runtime-principles.md": true,
+    ".agents/skills/_shared/runtime-principles.md": true
+  },
+  "baseline_inputs_unchanged": true,
+  "packages_metadata_sha256": "8735e476ca6afa960119556c27bcee05d58b7215fda0fcc4b5470fa321bb134c",
+  "status": "PASS"
+}

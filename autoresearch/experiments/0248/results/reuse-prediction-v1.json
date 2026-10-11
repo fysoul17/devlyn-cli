@@ -1,0 +1,11 @@
+{
+  "at": "2026-10-10T20:49:16.974057+00:00",
+  "method": "Read-only old/new inventory and boot-catalog extraction, package/task/runtime/control metadata comparison; no run/prepare/record/evaluator/assessor calls and no source regrade.",
+  "prediction": "Exact tasks/F23/public/oracles/model routes/caps remain unchanged; B/S package bytes exact and changed H/P helper was never activated in reused Codex observations. Old and new read-only inventories and startup catalogs on four preserved valid outputs are identical. Existing native LF comparison found zero dropped rows. Every original verdict/cost remains unchanged and single-counted.",
+  "reuse": [
+    "0243d01ClaudeS",
+    "0246d02CodexP",
+    "0246d03ClaudeA",
+    "0246d04CodexH"
+  ]
+}

@@ -1,0 +1,54 @@
+{
+  "control_manifest_sha256": "bb4e5d99c4d0bded88370a7c6165348099f590538c2c22813cd18b163e64c88a",
+  "expected": {
+    "CF-CONFIG": {
+      "baseline": {
+        "canonical-cycle-after-success": false,
+        "deleted-dependency-repair": false,
+        "failed-first-load-no-cache-poisoning": false,
+        "failed-reload-preserves-and-recovers": false,
+        "independent-root-dependency-accuracy": false,
+        "nested-caller-isolation": false,
+        "recursive-merge-value-kinds": false,
+        "relative-diamond-layer-order": false,
+        "schema-errors-retain-include-chain": true,
+        "semantic-generation-current-dependencies": false,
+        "shared-file-once-per-load": false,
+        "transitive-change-same-size-and-mtime": false
+      },
+      "gold_hidden": "all pass",
+      "public_baseline": "pass",
+      "public_gold": "pass"
+    },
+    "CF-LEASE": {
+      "baseline": {
+        "eligibility-and-stable-order": true,
+        "expired-unclaimed-settlement": false,
+        "expiry-boundary": false,
+        "idempotent-producer-every-state": false,
+        "independent-concurrent-claims": true,
+        "invalid-input-no-mutation": true,
+        "process-interruption-retains-lease": true,
+        "retry-lifecycle-clean-settlement": false,
+        "retry-uses-settlement-clock": false,
+        "settlement-errors-not-handler-errors": false,
+        "stale-receipt-reopen": false,
+        "worker-failure-after-takeover": false,
+        "worker-success-after-takeover": false
+      },
+      "gold_hidden": "all pass",
+      "public_baseline": "pass",
+      "public_gold": "pass"
+    }
+  },
+  "image": "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998",
+  "method": "Unchanged 0237 Runner.evaluate, pinned image, network none, read-only disposable source mounts and evaluator-only hidden control. No model/auth calls.",
+  "original_fixture_inventory_sha256": "06fbb93ef7bbee470c2848e0650573055d692dfff2364f41c298e75e7394643d",
+  "registered_at": "2026-10-10T04:27:03.619666+00:00",
+  "runtime_sha256": "1b78414a98612553f2f8d0289be048a7ca7260b76e14f4d4740e13e9f475e83e",
+  "source_manifests": {
+    "CF-CONFIG": "e3e4c3944b1ccef272fa198d91238ca3ed9d71bb98fc1488aaa1275f55581e4e",
+    "CF-LEASE": "8f6630d7d105c9f8aa25b1e013c167e0970080469f5db0b12440c071bb56ab2d"
+  },
+  "tasks_sha256": "6587ce7b69fec2e1148aba5fe39ba7fdb1c5e0a9e11661bcb7e6881377f2fed4"
+}

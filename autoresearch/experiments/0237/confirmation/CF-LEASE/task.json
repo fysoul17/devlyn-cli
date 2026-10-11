@@ -1,0 +1,39 @@
+{
+  "id": "CF-LEASE",
+  "format": "confirmation-v1",
+  "goal": "Fix the durable delivery bugs in Parcel relay. After a worker times out and a new\nworker takes its job, a late success or failure from the original worker can\ncurrently settle the new attempt. Producer retries can also revive a completed\njob. Make retries, lease expiry, and worker results obey the existing delivery\nand persistence contracts, including recovery through a newly opened database\nconnection. Preserve the public APIs and keep errors visible to callers. Inspect\nthe package's operational docs and call sites, make the repair, and run\n`python3 -B checks/run_checks.py` plus focused tests for the repaired behavior.",
+  "language": "python",
+  "runtime": "Python 3.11+ standard library",
+  "visible_files": [
+    "visible/README.md",
+    "visible/checks/run_checks.py",
+    "visible/checks/test_smoke.py",
+    "visible/checks/test_storage.py",
+    "visible/docs/delivery.md",
+    "visible/docs/incident.md",
+    "visible/docs/storage.md",
+    "visible/examples/retry_demo.py",
+    "visible/parcel/__init__.py",
+    "visible/parcel/codec.py",
+    "visible/parcel/enqueue.py",
+    "visible/parcel/errors.py",
+    "visible/parcel/leases.py",
+    "visible/parcel/model.py",
+    "visible/parcel/query.py",
+    "visible/parcel/schema.py",
+    "visible/parcel/storage.py",
+    "visible/parcel/worker.py"
+  ],
+  "public_command": [
+    "python3",
+    "-B",
+    "checks/run_checks.py"
+  ],
+  "oracle_command": [
+    "python3",
+    "-B",
+    "hidden/oracle.py",
+    "<visible-root>"
+  ],
+  "gold_reference": "gold/"
+}

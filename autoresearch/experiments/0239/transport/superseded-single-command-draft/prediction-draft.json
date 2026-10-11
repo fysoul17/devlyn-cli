@@ -1,0 +1,10 @@
+{
+  "recorded_at": "2026-10-10T10:35:54.189257+00:00",
+  "status": "PROSPECTIVE_DRAFT_NOT_DISPATCH_AUTHORIZATION",
+  "prediction": "Both Claude foreground transport smokes complete their sole child, consume its terminal result, save a passing receipt and make a matching local commit before finalizing. FG-LONG keeps the foreground child alive across a >=610s tool command without a print-mode background-ceiling kill. Root and child native identity/effort match claude-opus-5-5/max and whole usage is complete.",
+  "runtime": null,
+  "packages": null,
+  "dispatch_order": "Proposed FG-SHORT then FG-LONG; root must freeze order, arm, output names and runtime before any native call.",
+  "local_validation_prediction": "Both fixtures compile; missing receipt fails, synthetic valid payload passes, wrong marker and too-short elapsed fail. Validation will not run either gate or sleep610s and will not claim native transport evidence.",
+  "manifest_sha256": "d2f2b2583111ad13a55f6557131be2d093acd0e3f4d716d74e09243dcbac04fb"
+}

@@ -1,0 +1,12 @@
+{
+  "command": [
+    "python3",
+    "-B",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/fixtures/calibration/v2/constant_probe.py",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/fixtures/OR1/gold"
+  ],
+  "cwd": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/fixtures",
+  "exit_code": 0,
+  "stdout": "{\"constants\": [{\"constant\": \"NaN\", \"read\": \"StorageError\", \"refresh\": \"StorageError\", \"bad_bytes_preserved\": true, \"prior_view_preserved\": true, \"recovered_view\": true}, {\"constant\": \"Infinity\", \"read\": \"StorageError\", \"refresh\": \"StorageError\", \"bad_bytes_preserved\": true, \"prior_view_preserved\": true, \"recovered_view\": true}, {\"constant\": \"-Infinity\", \"read\": \"StorageError\", \"refresh\": \"StorageError\", \"bad_bytes_preserved\": true, \"prior_view_preserved\": true, \"recovered_view\": true}], \"recovered_no_edit_commit\": {\"revision\": 2, \"documents\": {\"good\": {\"value\": 7}}}}\n",
+  "stderr": ""
+}

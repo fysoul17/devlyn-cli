@@ -1,0 +1,18 @@
+{
+  "at": "2026-10-10T12:38:23.111360+00:00",
+  "command": [
+    "python3",
+    "-B",
+    "autoresearch/experiments/0238/results/stage.py",
+    "/Users/aipalm/.local/share/nx01/0238-live/staged-v1",
+    "--packs",
+    "/Users/aipalm/.local/share/nx01/0238-live/selected-packs-v2",
+    "--tasks",
+    "autoresearch/experiments/0238/tasks-smoke.json",
+    "--template-runtime",
+    "/Users/aipalm/.local/share/nx01/0237-live/runtime-discovery-max-smoke.json",
+    "--review-manifest",
+    "autoresearch/experiments/0238/results/apparatus-review-manifest-v5.json"
+  ],
+  "prediction": "Reviewed v5 sources/native bindings and accepted prospective package payloads validate; stage creates a fresh sealed control and phase=smoke runtime without credential reads or model calls. Actual model-free controls still required."
+}

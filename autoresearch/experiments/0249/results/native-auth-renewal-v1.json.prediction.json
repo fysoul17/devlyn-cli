@@ -1,0 +1,5 @@
+{
+  "at": "2026-10-10T23:21:28.102Z",
+  "prediction": "The native CLI renews the same host account under its two cooperative refresh locks; persisted identity/scopes stay equal and lifetime exceeds 6300 seconds. No browser, inference, custom grant request or manual credential write.",
+  "mutations": "Only native claude auth login may persist credentials."
+}

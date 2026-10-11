@@ -1,0 +1,187 @@
+{
+  "changed_from_v1": [
+    "OR1/gold/folio/storage.py",
+    "OR1/hidden/oracle.py",
+    "OR1/visible/folio/storage.py"
+  ],
+  "files": {
+    "OR1/GOLD.md": {
+      "bytes": 118,
+      "sha256": "4719a63b0a5c87839cd9751a3691a3b3b7e02375f71cd9d79f6fedb56eb5b0c3"
+    },
+    "OR1/contract-map.json": {
+      "bytes": 21397,
+      "sha256": "fa138110b07660ecb0f8243ea5c4b9339309cfde9e95410a1989984fea47bd73"
+    },
+    "OR1/gold/README.md": {
+      "bytes": 712,
+      "sha256": "62914dbb5b6f52868a163a978d8d85919e2a13770c5fe5f1da12ab5745e488dc"
+    },
+    "OR1/gold/checks/run_checks.py": {
+      "bytes": 401,
+      "sha256": "cbb387f1adb61e7050d32afdaa8207f4b826a89a5b62d078ab9e846ea9629d5a"
+    },
+    "OR1/gold/checks/test_smoke.py": {
+      "bytes": 1505,
+      "sha256": "c003d1d5d0b0f747af5601ca5572ad809a4b34a781933827a1729baff2f7c8b1"
+    },
+    "OR1/gold/docs/contract.md": {
+      "bytes": 4031,
+      "sha256": "34ef6d091ce4a045ef986878fe9b7d12f0de6347c6a1da3c97786dfdef907960"
+    },
+    "OR1/gold/examples/editor.py": {
+      "bytes": 579,
+      "sha256": "52cd078bcf31507451ade0de97534604f79ef8ba92ff646ac3b8828d01fbaea8"
+    },
+    "OR1/gold/folio/__init__.py": {
+      "bytes": 259,
+      "sha256": "022e71a1d374648796e2e3c7d0257344faf1c96e9f1dce226b66a676d6fb2530"
+    },
+    "OR1/gold/folio/storage.py": {
+      "bytes": 2594,
+      "sha256": "69f1a876669f78a3f394f028e89de2c3f8f59a1d6aa0bb8dedf8c9c415da9b5d"
+    },
+    "OR1/gold/folio/workspace.py": {
+      "bytes": 2454,
+      "sha256": "a18f95a76947b417c3f93d18ea206f0c882a54854095968d43a2536f10b8fefc"
+    },
+    "OR1/hidden/oracle.py": {
+      "bytes": 10900,
+      "sha256": "616987477897d0234e78c7749879ba2ba039eca0524498042fd763cbe4d0678c"
+    },
+    "OR1/task.json": {
+      "bytes": 1745,
+      "sha256": "517ec0d64bdf20eabc29a632a476458ec8427a81c78ca338f426bc8bac88d793"
+    },
+    "OR1/visible/README.md": {
+      "bytes": 712,
+      "sha256": "62914dbb5b6f52868a163a978d8d85919e2a13770c5fe5f1da12ab5745e488dc"
+    },
+    "OR1/visible/checks/run_checks.py": {
+      "bytes": 401,
+      "sha256": "cbb387f1adb61e7050d32afdaa8207f4b826a89a5b62d078ab9e846ea9629d5a"
+    },
+    "OR1/visible/checks/test_smoke.py": {
+      "bytes": 1505,
+      "sha256": "c003d1d5d0b0f747af5601ca5572ad809a4b34a781933827a1729baff2f7c8b1"
+    },
+    "OR1/visible/docs/contract.md": {
+      "bytes": 4031,
+      "sha256": "34ef6d091ce4a045ef986878fe9b7d12f0de6347c6a1da3c97786dfdef907960"
+    },
+    "OR1/visible/examples/editor.py": {
+      "bytes": 579,
+      "sha256": "52cd078bcf31507451ade0de97534604f79ef8ba92ff646ac3b8828d01fbaea8"
+    },
+    "OR1/visible/folio/__init__.py": {
+      "bytes": 259,
+      "sha256": "022e71a1d374648796e2e3c7d0257344faf1c96e9f1dce226b66a676d6fb2530"
+    },
+    "OR1/visible/folio/storage.py": {
+      "bytes": 2594,
+      "sha256": "69f1a876669f78a3f394f028e89de2c3f8f59a1d6aa0bb8dedf8c9c415da9b5d"
+    },
+    "OR1/visible/folio/workspace.py": {
+      "bytes": 2135,
+      "sha256": "1e0e0c1c379fdaaf00e1e6f97f6586229fd79cc0abb5cfda172afae5be5f73cb"
+    },
+    "OR2/GOLD.md": {
+      "bytes": 115,
+      "sha256": "3182fe943fa8b5272a141013fadcb8a147403509228205543061c137f0df145a"
+    },
+    "OR2/contract-map.json": {
+      "bytes": 15859,
+      "sha256": "d8fbaefd7c4847148047d5b9408f3fbeae9a72164e9a3fe41c3664e4e9b8b5b4"
+    },
+    "OR2/gold/README.md": {
+      "bytes": 643,
+      "sha256": "bfa870c611cd80175281b6dfbba31e1b56057e74ce1a46508b9fecb12efc6ca0"
+    },
+    "OR2/gold/checks/run_checks.py": {
+      "bytes": 401,
+      "sha256": "cbb387f1adb61e7050d32afdaa8207f4b826a89a5b62d078ab9e846ea9629d5a"
+    },
+    "OR2/gold/checks/test_smoke.py": {
+      "bytes": 1186,
+      "sha256": "5dda28971c9602777b3bc1ab34af8eb84f49be02ec377402e191f4695bb091c5"
+    },
+    "OR2/gold/docs/contract.md": {
+      "bytes": 3167,
+      "sha256": "cd8f9a5cde1ee40138e2ed970a870bf382f4ffa2a4655712e497c683e156fc3c"
+    },
+    "OR2/gold/examples/catalog.py": {
+      "bytes": 533,
+      "sha256": "3a2522e119ca1f178e5a2a378fa3d6a75e7d2fc6fe0d3e70760f4980e222c397"
+    },
+    "OR2/gold/relay/__init__.py": {
+      "bytes": 86,
+      "sha256": "d31610e5b016c47d07f37c360069ec83a1ff50207fffa31c1c34d91576ea3477"
+    },
+    "OR2/gold/relay/loader.py": {
+      "bytes": 1831,
+      "sha256": "9a7936592cad602b20c87d1a95c24502bb334bb8298e8613d465b90150918161"
+    },
+    "OR2/hidden/oracle.py": {
+      "bytes": 11916,
+      "sha256": "cc52f5e8f399f707febe5f6e772520bc7b2280495a018e2920238133c60eb78b"
+    },
+    "OR2/task.json": {
+      "bytes": 1790,
+      "sha256": "2b290682b6a5e184868884c3bc60c2150bc3ba9afef89cc6a8ff6312cba2f6f2"
+    },
+    "OR2/visible/README.md": {
+      "bytes": 643,
+      "sha256": "bfa870c611cd80175281b6dfbba31e1b56057e74ce1a46508b9fecb12efc6ca0"
+    },
+    "OR2/visible/checks/run_checks.py": {
+      "bytes": 401,
+      "sha256": "cbb387f1adb61e7050d32afdaa8207f4b826a89a5b62d078ab9e846ea9629d5a"
+    },
+    "OR2/visible/checks/test_smoke.py": {
+      "bytes": 1186,
+      "sha256": "5dda28971c9602777b3bc1ab34af8eb84f49be02ec377402e191f4695bb091c5"
+    },
+    "OR2/visible/docs/contract.md": {
+      "bytes": 3167,
+      "sha256": "cd8f9a5cde1ee40138e2ed970a870bf382f4ffa2a4655712e497c683e156fc3c"
+    },
+    "OR2/visible/examples/catalog.py": {
+      "bytes": 533,
+      "sha256": "3a2522e119ca1f178e5a2a378fa3d6a75e7d2fc6fe0d3e70760f4980e222c397"
+    },
+    "OR2/visible/relay/__init__.py": {
+      "bytes": 86,
+      "sha256": "d31610e5b016c47d07f37c360069ec83a1ff50207fffa31c1c34d91576ea3477"
+    },
+    "OR2/visible/relay/loader.py": {
+      "bytes": 1249,
+      "sha256": "7d349e963800e279adbb5f326ab36d51bca2b99bbbdda9df4250a1a3c1171074"
+    }
+  },
+  "format": "0249-fixture-manifest-v2",
+  "prior_full_snapshot": "history/v1/",
+  "revision": 2,
+  "runner_source_sha256": {
+    "OR1": {
+      "visible/README.md": "62914dbb5b6f52868a163a978d8d85919e2a13770c5fe5f1da12ab5745e488dc",
+      "visible/checks/run_checks.py": "cbb387f1adb61e7050d32afdaa8207f4b826a89a5b62d078ab9e846ea9629d5a",
+      "visible/checks/test_smoke.py": "c003d1d5d0b0f747af5601ca5572ad809a4b34a781933827a1729baff2f7c8b1",
+      "visible/docs/contract.md": "34ef6d091ce4a045ef986878fe9b7d12f0de6347c6a1da3c97786dfdef907960",
+      "visible/examples/editor.py": "52cd078bcf31507451ade0de97534604f79ef8ba92ff646ac3b8828d01fbaea8",
+      "visible/folio/__init__.py": "022e71a1d374648796e2e3c7d0257344faf1c96e9f1dce226b66a676d6fb2530",
+      "visible/folio/storage.py": "69f1a876669f78a3f394f028e89de2c3f8f59a1d6aa0bb8dedf8c9c415da9b5d",
+      "visible/folio/workspace.py": "1e0e0c1c379fdaaf00e1e6f97f6586229fd79cc0abb5cfda172afae5be5f73cb"
+    },
+    "OR2": {
+      "visible/README.md": "bfa870c611cd80175281b6dfbba31e1b56057e74ce1a46508b9fecb12efc6ca0",
+      "visible/checks/run_checks.py": "cbb387f1adb61e7050d32afdaa8207f4b826a89a5b62d078ab9e846ea9629d5a",
+      "visible/checks/test_smoke.py": "5dda28971c9602777b3bc1ab34af8eb84f49be02ec377402e191f4695bb091c5",
+      "visible/docs/contract.md": "cd8f9a5cde1ee40138e2ed970a870bf382f4ffa2a4655712e497c683e156fc3c",
+      "visible/examples/catalog.py": "3a2522e119ca1f178e5a2a378fa3d6a75e7d2fc6fe0d3e70760f4980e222c397",
+      "visible/relay/__init__.py": "d31610e5b016c47d07f37c360069ec83a1ff50207fffa31c1c34d91576ea3477",
+      "visible/relay/loader.py": "7d349e963800e279adbb5f326ab36d51bca2b99bbbdda9df4250a1a3c1171074"
+    }
+  },
+  "scope": "Complete immutable OR1/ and OR2/ task packages; calibration and authoring helpers are retained separately.",
+  "supersedes_manifest_sha256": "d398372f7da50144c285281a1572417fc58ca0affd96f8a1d198d74866303c38"
+}

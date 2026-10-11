@@ -1,0 +1,214 @@
+{
+  "schema": "0240-s01-native-protocol-audit-v1",
+  "audited_at": "2026-10-10T15:14:02.165578+00:00",
+  "cell": "/Users/aipalm/.local/share/nx01/0240-live/staged-v1/out-smoke/s01-h-codex",
+  "scope": "Read-only audit of captured execution; no evaluator replay, model call, accounting repair or result regrade. Root separately owns frozen-integrity audit.",
+  "raw_verdict": {
+    "status": "STOP",
+    "reason": "ValueError: whole-run usage PARTIAL",
+    "measurement_eligible": false,
+    "owner_status": "EXITED_0",
+    "owner_seconds": 422.45709574999637,
+    "teardown": "CLEAN",
+    "known_usage_lower_bound": {
+      "input_tokens": 1175250,
+      "output_tokens": 17382
+    }
+  },
+  "required_catalog_gate": "FAIL",
+  "original_request": {
+    "characters": 2386,
+    "exact_occurrences_in_fresh_packet": 1,
+    "packet_equals_cli_and_native_user_message": true,
+    "native_message_line": 9,
+    "before_diff_and_raw_checks": true,
+    "raw_public_output_in_packet": true
+  },
+  "turns": [
+    {
+      "label": "fresh",
+      "session": "01a12657-256e-7581-8c0b-9d27a83616d9",
+      "model": "gpt-6-astra",
+      "effort": "max",
+      "resume": null,
+      "seconds": 49.68794173099741,
+      "exit_code": 0,
+      "source_unchanged": true,
+      "flag_present": true,
+      "capture": "cell/work/.devlyn/pair/fresh/peer1791644607812460421.jsonl"
+    },
+    {
+      "label": "resume",
+      "session": "01a12657-256e-7581-8c0b-9d27a83616d9",
+      "model": "gpt-6-astra",
+      "effort": "max",
+      "resume": "01a12657-256e-7581-8c0b-9d27a83616d9",
+      "seconds": 10.00316925500374,
+      "exit_code": 0,
+      "source_unchanged": true,
+      "flag_present": true,
+      "capture": "cell/work/.devlyn/pair/resume/peer1791644694801217919.jsonl"
+    }
+  ],
+  "all_four_source_snapshots_identical": true,
+  "source_snapshot_files": 29,
+  "catalogs": [
+    {
+      "trace": "trace-2722469f-c56f-47da-bc9e-7d4bb189d970-01a12657-256e-7581-8c0b-9d27a83616d9",
+      "role": "fresh_peer",
+      "request_payload": "cell/trace/trace-2722469f-c56f-47da-bc9e-7d4bb189d970-01a12657-256e-7581-8c0b-9d27a83616d9/payloads/4.json",
+      "request_sha256": "12d664312b9f926ec6d980844714001db14a8ae3a3b2053dd13f56aaa9c76575",
+      "collaboration_tools": [
+        "followup_task",
+        "interrupt_agent",
+        "list_agents",
+        "send_message",
+        "spawn_agent",
+        "wait_agent"
+      ],
+      "threads": [
+        {
+          "thread_id": "01a12657-256e-7581-8c0b-9d27a83616d9",
+          "agent_path": "/root"
+        }
+      ],
+      "inference_started_count": 3
+    },
+    {
+      "trace": "trace-738c1b20-d32a-4aa6-86fe-c99b8de10437-01a12655-325a-7da2-a965-c8842b71b084",
+      "role": "owner",
+      "request_payload": "cell/trace/trace-738c1b20-d32a-4aa6-86fe-c99b8de10437-01a12655-325a-7da2-a965-c8842b71b084/payloads/4.json",
+      "request_sha256": "b60389f0e84b3de51251246bcbfc65d72d2d726debb5b90f9e11d39159683a95",
+      "collaboration_tools": [
+        "followup_task",
+        "interrupt_agent",
+        "list_agents",
+        "send_message",
+        "spawn_agent",
+        "wait_agent"
+      ],
+      "threads": [
+        {
+          "thread_id": "01a12655-325a-7da2-a965-c8842b71b084",
+          "agent_path": "/root"
+        }
+      ],
+      "inference_started_count": 27
+    },
+    {
+      "trace": "trace-ea13db5f-eb9f-4669-930c-01d3665a7869-01a12657-256e-7581-8c0b-9d27a83616d9",
+      "role": "resumed_peer",
+      "request_payload": "cell/trace/trace-ea13db5f-eb9f-4669-930c-01d3665a7869-01a12657-256e-7581-8c0b-9d27a83616d9/payloads/4.json",
+      "request_sha256": "ab03b59added803ee023f474b3d5cd6a678c32d05e787289be3b0f475a7e8b00",
+      "collaboration_tools": [
+        "followup_task",
+        "interrupt_agent",
+        "list_agents",
+        "send_message",
+        "spawn_agent",
+        "wait_agent"
+      ],
+      "threads": [
+        {
+          "thread_id": "01a12657-256e-7581-8c0b-9d27a83616d9",
+          "agent_path": "/root"
+        }
+      ],
+      "inference_started_count": 2
+    }
+  ],
+  "peer_calls": [
+    {
+      "line": 13,
+      "timestamp": "2026-10-10T15:03:36.461Z",
+      "name": "exec",
+      "input": "const results = await Promise.allSettled([\n  tools.exec_command({cmd:\"pwd\",\"workdir\":\"/cell/work\",\"max_output_tokens\":1000}),\n  tools.exec_command({cmd:\"rg --files -g AGENTS.md -g '*calculate_total*' -g '!__pycache__/**' -g '!**/.devlyn/**' -g '!**/.git/**'\",\"workdir\":\"/cell/work\",\"max_output_tokens\":2000}),\n  tools.exec_command({cmd:\"nl -ba calculate_total.py\",\"workdir\":\"/cell/work\",\"max_output_tokens\":2000}),\n  tools.exec_command({cmd:\"nl -ba test_calculate_total.py\",\"workdir\":\"/cell/work\",\"max_output_tokens\":3000}),\n  tools.exec_command({cmd:\"cat /harness/caller.json\",\"workdir\":\"/cell/work\",\"max_output_tokens\":4000})\n]);\nfor (let i=0;i<results.length;i++) text({read:i,result:results[i]});\n"
+    },
+    {
+      "line": 24,
+      "timestamp": "2026-10-10T15:03:56.656Z",
+      "name": "exec",
+      "input": "const results = await Promise.allSettled([\n  tools.exec_command({cmd:\"DEVLYN_SKILL_DIR=/cell/work/.agents/skills/devlyn-engines DEVLYN_SHARED_DIR=/cell/work/.agents/skills/_shared cat AGENTS.md\",\"workdir\":\"/cell/work\",\"max_output_tokens\":5000}),\n  tools.exec_command({cmd:\"rg -n --glob '*.py' --glob '!**/.devlyn/**' --glob '!**/.agents/**' --glob '!**/__pycache__/**' 'calculate_total|discount_percent|tax_percent' .\",\"workdir\":\"/cell/work\",\"max_output_tokens\":3000})\n]);\nfor (let i=0;i<results.length;i++) text({read:i,result:results[i]});\n"
+    },
+    {
+      "line": 45,
+      "timestamp": "2026-10-10T15:05:00.073Z",
+      "name": "exec",
+      "input": "text(await tools.exec_command({cmd:\"DEVLYN_SKILL_DIR=/cell/work/.agents/skills/devlyn-engines DEVLYN_SHARED_DIR=/cell/work/.agents/skills/_shared cat /cell/work/calculate_total.py\",\"workdir\":\"/cell/work\",\"max_output_tokens\":2000}));\n"
+    }
+  ],
+  "observed_peer_descendants": [],
+  "owner_read_answer_lines": {
+    "fresh": 118,
+    "resume": 143
+  },
+  "marker_present": false,
+  "observed_checks": {
+    "public_tests": 7,
+    "public_exit_code": 0,
+    "witness": "calculate_total(9, 50, 10) == 6",
+    "witness_exit_code": 0,
+    "product_evaluation": "NOT_REACHED; no retrospective product verdict"
+  },
+  "local_delivery": {
+    "commit": "a013a1bcaefdf394c5fc1d4d2a4362a14de0546c",
+    "parent": "922f25a89e3714ab66745b138d2219a8464aa8f7",
+    "changed_files": [
+      "calculate_total.py",
+      "test_calculate_total.py"
+    ],
+    "source_hashes": {
+      "calculate_total.py": "08a78b25950bb23d75f583eb3a8d798b5de309939bdfe6e29e2a65d3a8684617",
+      "test_calculate_total.py": "affea32c8287914238d707cf38cb7d37886ca21aaa14aaa8f1c49c0efb526e41"
+    },
+    "caller_unchanged": true,
+    "clean_main": true,
+    "temporary_branch_absent": true,
+    "temporary_worktree_absent": true,
+    "delivery_status": "LOCAL_ONLY"
+  },
+  "cleanup": [
+    {
+      "kind": "container",
+      "name": "devlyn-0231-23c5793fc5f24c8498a0b56e086553e8",
+      "exit_code": 1,
+      "stderr": "Error response from daemon: No such container: devlyn-0231-23c5793fc5f24c8498a0b56e086553e8"
+    },
+    {
+      "kind": "volume",
+      "name": "devlyn-0234-tmp-f85f1efc7c394115a9ce0243d0c42226",
+      "exit_code": 1,
+      "stderr": "Error response from daemon: get devlyn-0234-tmp-f85f1efc7c394115a9ce0243d0c42226: no such volume"
+    }
+  ],
+  "source_sha256": {
+    "../verdict-s01-h-codex.json": "7202d4e01be2132b21b5175e845c10dfe280cb08b0b1336ba586bab1b25114bc",
+    "run/result.json": "a3aa079373cf43cb3388b6871b828f7345ddbe1b5d422635ace3a9fb28029ed3",
+    "evidence.manifest.json": "6de54619b330dbb7d0ee0ed0d17dcefc350e202b592e6b8771213c5219194692",
+    "harness/caller.json": "8ac7a46faf798a9ac1a9c6ad62f42de1291da79ce4e80fd55518001c59541c20",
+    "home/.codex/config.toml": "759f98328bc74c56797593442860ba0a0e6e4bdcdbd11ac2b01e88e18499e825",
+    "home/.codex/sessions/2026/10/10/rollout-2026-10-10T15-01-20-01a12655-325a-7da2-a965-c8842b71b084.jsonl": "9358f17ee8bda373f3b9d9ac5647363d842e5fdf125023f4c936f985a4844bd7",
+    "home/.codex/sessions/2026/10/10/rollout-2026-10-10T15-03-27-01a12657-256e-7581-8c0b-9d27a83616d9.jsonl": "996ef6a928cba776bbe3f70c3f6af4055d04695922d26f40f8938302a5b2c346",
+    "cell/work/.devlyn/pair/request.md": "e2e6affe55e03c1e57f80e598935b89dd7ead875e11c03be7f1ee99d492f8bf5",
+    "cell/work/.devlyn/pair/resume-request.md": "eda83d75a306927dadfe13ae08af1a066e526b93510d91b07ee7487b818830ba",
+    "cell/work/.devlyn/pair/precheck.json": "73c84a4dc0ca6ae34dd7201f57e361054791b8ba5e3ac47bca0843f94fdb7d6a",
+    "cell/work/.devlyn/pair/public-check.json": "80f0e933bf8b6f97f6141a91f55f59b4bf7e59f22ce55d972f6132969411fdc3",
+    "cell/work/.devlyn/pair/public-check.raw.log": "54ff4552b695f882276f4ff4ae0ca8c54b6ddd0138c674a0961ce3d3742f4054",
+    "cell/work/.devlyn/pair/peer-check.json": "603c605d11a97e27cc983ddd3cd5da0fe787efd48368b68d70f48b63158c29f2",
+    "cell/work/.devlyn/pair/peer-check.py": "ae6a21458c7e433170336cb3fa7d87f155104eac7b3efb177f0afc7ffa6bd192",
+    "cell/work/.devlyn/pair/peer-check.prediction.txt": "78ece6ac2f5a6047cd740d75fa71f9ce3595eb1a2fcf20b6170e7e1237fb25d7",
+    "cell/work/.devlyn/pair/peer-check.raw.log": "ec588d448b8aa3d1cb4d821164368c56a91e1694fff3719768a38124133016ad",
+    "cell/work/.devlyn/pair/owner-verification.json": "6f5aa5c64dd30afcd13648b9e5f44cabd4e32be43b81e8498e219881840e67da",
+    "cell/work/.devlyn/pair/final-status.json": "46b44841094434bca891a3785fb091b51c022d13591a669f6cb52516a478ff55",
+    "cell/work/.devlyn/pair/delivery.json": "4b3d541af7da5d41452f8e254cfb5d1ec5c7286217279592411fd3bf2964ff02",
+    "cell/work/.devlyn/pair/reconciliation.raw.log": "8f7591fa8ebc63bd634fb15a922ea9630cba37eff149cdf0511c46b72a497c6f",
+    "cell/work/.devlyn/pair/fresh/attempt.json": "e04f82568644a5676d12ba18dd73f295439e667500cf316f8d0bf77be1241e4b",
+    "cell/work/.devlyn/pair/fresh/completion.json": "5b1364632a87b29c80bb3565300e27965ad627eb0f44b47c08f96aff9f8c4896",
+    "cell/work/.devlyn/pair/fresh/finalanswer.txt": "6e7b9d4402be5f442e7ecf5907546c721763ec86359c5bed78ec1dc303def408",
+    "cell/work/.devlyn/pair/fresh/peer1791644607812460421.jsonl": "1f45657438f4f3c766e2c22b1da89da5a4aa7cfdab44edb61fb88257a825045d",
+    "cell/work/.devlyn/pair/resume/attempt.json": "0e60a0161077cfdedaeb3ef8dc170f4797277d0dbd8651e97a0b8352141bdfd2",
+    "cell/work/.devlyn/pair/resume/completion.json": "8dd5cd88198950c435cf65a3311e3c758f0cdc73acfa04426c8498dc3aad4019",
+    "cell/work/.devlyn/pair/resume/finalanswer.txt": "f3e09528e36825f28b109f921074fe19f31d160bdf08dd168b943531d8827534",
+    "cell/work/.devlyn/pair/resume/peer1791644694801217919.jsonl": "ed9cbdb7f1cb88322be3dd870d43ec6ba4223ec2c76a4825a3462d35c4cd2fd6"
+  }
+}

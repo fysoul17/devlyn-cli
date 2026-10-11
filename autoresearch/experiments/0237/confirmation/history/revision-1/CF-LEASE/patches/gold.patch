@@ -1,0 +1,73 @@
+--- a/parcel/enqueue.py
++++ b/parcel/enqueue.py
+@@ -5,12 +5,10 @@
+     encoded = encode(payload)
+     with store.transaction() as db:
+         existing = db.execute('SELECT payload FROM jobs WHERE job_id = ?', (job_id,)).fetchone()
+-        if existing is not None and existing['payload'] != encoded:
+-            raise PayloadConflict(job_id)
++        if existing is not None:
++            if existing['payload'] != encoded:
++                raise PayloadConflict(job_id)
++            return False
+         db.execute("""INSERT INTO jobs(job_id, payload, state, available_at)
+-                      VALUES (?, ?, 'ready', ?)
+-                      ON CONFLICT(job_id) DO UPDATE SET
+-                      state='ready', available_at=excluded.available_at,
+-                      owner=NULL, token=NULL, lease_until=NULL""",
+-                   (job_id, encoded, available_at))
+-        return existing is None
++                      VALUES (?, ?, 'ready', ?)""", (job_id, encoded, available_at))
++        return True
+--- a/parcel/leases.py
++++ b/parcel/leases.py
+@@ -8,7 +8,7 @@
+     with store.transaction() as db:
+         row = db.execute("""SELECT * FROM jobs
+             WHERE (state='ready' AND available_at <= ?)
+-               OR (state='leased' AND lease_until < ?)
++               OR (state='leased' AND lease_until <= ?)
+             ORDER BY available_at, seq LIMIT 1""", (now, now)).fetchone()
+         if row is None:
+             return None
+@@ -23,7 +23,9 @@
+ def complete(store, receipt, now):
+     with store.transaction() as db:
+         cursor = db.execute("""UPDATE jobs SET state='done', owner=NULL,
+-            token=NULL, lease_until=NULL WHERE job_id=?""", (receipt.job_id,))
++            token=NULL, lease_until=NULL, last_error=NULL
++            WHERE job_id=? AND state='leased' AND token=? AND lease_until > ?""",
++            (receipt.job_id, receipt.token, now))
+         return cursor.rowcount == 1
+ 
+ def retry(store, receipt, now, delay, error):
+@@ -32,5 +34,6 @@
+     with store.transaction() as db:
+         cursor = db.execute("""UPDATE jobs SET state='ready', available_at=?,
+             owner=NULL, token=NULL, lease_until=NULL, last_error=?
+-            WHERE job_id=?""", (now + delay, str(error), receipt.job_id))
++            WHERE job_id=? AND state='leased' AND token=? AND lease_until > ?""",
++            (now + delay, str(error), receipt.job_id, receipt.token, now))
+         return cursor.rowcount == 1
+--- a/parcel/worker.py
++++ b/parcel/worker.py
+@@ -2,14 +2,13 @@
+ from .model import ProcessResult
+ 
+ def process_one(store, owner, handler, clock, lease_seconds=30, retry_delay=5):
+-    now = clock()
+-    receipt = claim(store, owner, now, lease_seconds)
++    receipt = claim(store, owner, clock(), lease_seconds)
+     if receipt is None:
+         return ProcessResult('idle')
+     try:
+         handler(receipt.payload)
+-        complete(store, receipt, now)
+     except Exception as exc:
+-        retry(store, receipt, now, retry_delay, str(exc))
+-        return ProcessResult('retried', receipt.job_id)
+-    return ProcessResult('completed', receipt.job_id)
++        settled = retry(store, receipt, clock(), retry_delay, str(exc))
++        return ProcessResult('retried' if settled else 'lost', receipt.job_id)
++    settled = complete(store, receipt, clock())
++    return ProcessResult('completed' if settled else 'lost', receipt.job_id)

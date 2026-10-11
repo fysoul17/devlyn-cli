@@ -1,0 +1,50 @@
+[
+  {
+    "task": "EQ3-UA1",
+    "argv": [
+      "python3",
+      "benchmark/executor-quality/scripts/validate-discovery-task.py",
+      "--task",
+      "benchmark/executor-quality/tasks-0102/EQ3-UA1"
+    ],
+    "exit_code": 0,
+    "stdout": "EQ3-UA1 unsupported_assumption visible/loan_desk visible/circulation/fee_escalator.py visible/checks/hold_expiry_case.py\n",
+    "stderr": ""
+  },
+  {
+    "task": "EQ3-MI1",
+    "argv": [
+      "python3",
+      "benchmark/executor-quality/scripts/validate-discovery-task.py",
+      "--task",
+      "benchmark/executor-quality/tasks-0102/EQ3-MI1"
+    ],
+    "exit_code": 0,
+    "stdout": "EQ3-MI1 missed_repo_invariant visible/clerk visible/calendar/hearing_scheduler.py visible/checks/continuance_rollback_test.py\n",
+    "stderr": ""
+  },
+  {
+    "task": "EQ3-AF1",
+    "argv": [
+      "python3",
+      "benchmark/executor-quality/scripts/validate-discovery-task.py",
+      "--task",
+      "benchmark/executor-quality/tasks-0102/EQ3-AF1"
+    ],
+    "exit_code": 0,
+    "stdout": "EQ3-AF1 absent_failure_mode visible/intake visible/matching/crossmatch_reserver.py visible/qa/expiry_release.py\n",
+    "stderr": ""
+  },
+  {
+    "task": "EQ3-BD1",
+    "argv": [
+      "python3",
+      "benchmark/executor-quality/scripts/validate-discovery-task.py",
+      "--task",
+      "benchmark/executor-quality/tasks-0102/EQ3-BD1"
+    ],
+    "exit_code": 0,
+    "stdout": "EQ3-BD1 broken_dependency visible/gate visible/stowage/deck_load_balancer.py visible/verification/bumped_vehicle_test.py\n",
+    "stderr": ""
+  }
+]

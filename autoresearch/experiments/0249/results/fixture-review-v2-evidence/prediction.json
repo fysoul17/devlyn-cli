@@ -1,0 +1,4 @@
+{
+  "prediction": "Shared OR1 reader rejects NaN, Infinity, -Infinity as StorageError, preserves file bytes and prior view, still accepts quoted constant strings and ordinary nested finite numbers, and permits no-edit commit after repair.",
+  "scope": "One targeted public API check of changed lines; no magnitude policy or full-suite repetition."
+}

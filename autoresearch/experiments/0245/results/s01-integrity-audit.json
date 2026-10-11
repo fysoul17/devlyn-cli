@@ -1,0 +1,282 @@
+{
+  "at": "2026-10-10T18:44:30.253504+00:00",
+  "checks": {
+    "all_hashes_match": true,
+    "checks_delivery_bound": true,
+    "container_absent": true,
+    "control_inventory_exact": true,
+    "cost_matches_original_usage": true,
+    "empty_gaps": true,
+    "evidence_collection_clean": true,
+    "evidence_manifest_matches_verdict": true,
+    "freeze_unchanged": true,
+    "historical_verdicts_manifests_evidence_preserved": true,
+    "identity_policy_accounting_match": true,
+    "image_resources_config_consistent": true,
+    "original_verdict_expected": true,
+    "owner_wall_matches": true,
+    "policy_accounting_equal_verdict": true,
+    "remaining_eight_cells_unrun": true,
+    "runtime_hash_equal_freeze": true,
+    "seal_inputs_equal_freeze": true,
+    "source_public_product_delivery_pass": true,
+    "teardown_clean": true,
+    "two_retained_custody_sets": true,
+    "verdict_unchanged": true,
+    "volume_absent": true
+  },
+  "claude_accounting_status": "MATCH",
+  "container_absent": true,
+  "control_manifest_sha256": "ace8951f2b8d934bfb86a608f8e26011207ef25ff34630bc1b0aa649f901ff1c",
+  "credential_evidence_handling": "Only opaque SHA256 of bytes, identical to every other listed manifest file; no content parsed or emitted.",
+  "custody_evidence_sets": [
+    {
+      "all_files_in_evidence_manifest": true,
+      "attempt_and_completion_equal_policy": true,
+      "directory": "cell/work/.devlyn/pair/peer-nysoz0xg",
+      "exit_code": 0,
+      "files": {
+        "cell/work/.devlyn/pair/peer-nysoz0xg/attempt.json": "b2ad1b37d532504f474ea7772f8d5be8e5f7fccc71a1cb126d573c4791c87fa2",
+        "cell/work/.devlyn/pair/peer-nysoz0xg/completion.json": "c2ad17bdb78ecb4098884a468a51815eb353a5e0ca5c6840aa11eab99e2986ad",
+        "cell/work/.devlyn/pair/peer-nysoz0xg/finalanswer.txt": "ada3b352d9dc118f1ed492649470dc09e721b99bf99c519340b3af75678e57bd",
+        "cell/work/.devlyn/pair/peer-nysoz0xg/peer1791657163152015969.json": "0a0b51ccf784f76b88c54e5b2cd7143feb6de72bd5bb69b6006a5686b680280e",
+        "cell/work/.devlyn/pair/peer-nysoz0xg/stderr": "8726793233ff9771e3ed901eaf27e2e8a096b3bb5b178514eeda87ad55be33bb"
+      },
+      "resume": null,
+      "session": "dc2ac749-87e8-4825-b6d7-7f1b75d89d72",
+      "source_unchanged": true,
+      "status": "EXITED"
+    },
+    {
+      "all_files_in_evidence_manifest": true,
+      "attempt_and_completion_equal_policy": true,
+      "directory": "cell/work/.devlyn/pair/peer-aayeukjv",
+      "exit_code": 0,
+      "files": {
+        "cell/work/.devlyn/pair/peer-aayeukjv/attempt.json": "94e3c17d70900b3e3a7ae682830ecaab5a305cb9043afb8e70d39fdceeaaf228",
+        "cell/work/.devlyn/pair/peer-aayeukjv/completion.json": "807345b88ed0b8f6c46f6d40ae986fb483d58f2efd42f918960388600f6ab1c0",
+        "cell/work/.devlyn/pair/peer-aayeukjv/finalanswer.txt": "cd642c59a3c7b0410db8103c5a3a6296c786546c728eb5d501bdbef4f5b0f3d9",
+        "cell/work/.devlyn/pair/peer-aayeukjv/peer1791657448132715461.json": "a0bf7dde2271eb7b7a9d73d3013ded20b4fdec358a231194c000404a4f363737",
+        "cell/work/.devlyn/pair/peer-aayeukjv/stderr": "cb7292b1cec30601353400c1da7d283feedd5cb210e8ff70aa53dc31a0657c33"
+      },
+      "resume": "dc2ac749-87e8-4825-b6d7-7f1b75d89d72",
+      "session": "dc2ac749-87e8-4825-b6d7-7f1b75d89d72",
+      "source_unchanged": true,
+      "status": "EXITED"
+    }
+  ],
+  "delivery_commit": "e0088294b0acdcde794834740a56d2b78025f00f",
+  "delivery_pass": true,
+  "evidence_manifest_collection_failures": [],
+  "evidence_manifest_sha256": "7e7ea4de72978f0f38fc2c4db655c805fab87cff1a15123bcf285d0ee7219da4",
+  "freeze_sha256_after": "5c3b11b91c7c6fb2f6ec49ba1f20f04393946633b0978fad9e7e930f6b8bff08",
+  "freeze_sha256_before": "5c3b11b91c7c6fb2f6ec49ba1f20f04393946633b0978fad9e7e930f6b8bff08",
+  "historical_0243": {
+    "d01-f23-claude-s": {
+      "collection_failures": [],
+      "evidence": {
+        "count": 2052,
+        "mismatches": []
+      },
+      "evidence_manifest_sha256": "a3ee9ad87750edbcb1ab5b524a4ac135e82352a3e6bd87c43083a8d33481b50d",
+      "manifest_matches_original_verdict": true,
+      "original_status_usage_preserved": true,
+      "status": "CHECKS_PASS",
+      "usage": "COMPLETE",
+      "verdict_matches_current_freeze": true,
+      "verdict_matches_original": true,
+      "verdict_sha256": "dc50789bcb12813d57e53ea14cd66203b938a6e1d91d40804b598347f5c1db89"
+    },
+    "d02-f23-codex-p": {
+      "collection_failures": [],
+      "evidence": {
+        "count": 2353,
+        "mismatches": []
+      },
+      "evidence_manifest_sha256": "cc39d330a8078aea680a734a0662e812c18c7bc9ec3acf187bbda8639b60f20a",
+      "input_tokens": null,
+      "known_usage_lower_bound": {
+        "input_tokens": 1796844,
+        "output_tokens": 69638
+      },
+      "manifest_matches_original_verdict": true,
+      "manifest_matches_prior_audit": true,
+      "original_status_usage_preserved": true,
+      "output_tokens": null,
+      "post_stop_check_artifacts_absent": true,
+      "source_public_delivery_status": "NOT_GRADED_AFTER_STOP",
+      "status": "STOP",
+      "usage": "PARTIAL",
+      "verdict_matches_current_freeze": true,
+      "verdict_matches_original": true,
+      "verdict_sha256": "5dae1c69e1c90024962e08aacc7524598b7e2f4944b9429b370725ad6456f51b",
+      "whole_run_cost": "UNKNOWN"
+    }
+  },
+  "identity_status": "MATCH",
+  "initial_scope_guard": {
+    "detail": "First audit pass stopped before hashing the first sealed credential evidence entry. Parent then confirmed opaque hashing of both credential entries is included in all-evidence audit scope; no parsing, disclosure, auth command, renewal or network.",
+    "status": "PENDING_BEFORE_CREDENTIAL_HASH"
+  },
+  "input_tokens": 1360918,
+  "integrity": {
+    "checked_snapshot": {
+      "count": 29,
+      "mismatches": []
+    },
+    "control": {
+      "count": 1059,
+      "mismatches": []
+    },
+    "evidence": {
+      "count": 1053,
+      "mismatches": []
+    },
+    "execution_inputs": {
+      "count": 109,
+      "mismatches": []
+    },
+    "prepared": {
+      "count": 5,
+      "mismatches": []
+    },
+    "selected_artifacts": {
+      "count": 304,
+      "mismatches": []
+    }
+  },
+  "integrity_status": "PASS",
+  "measurement_eligible_raw_flag": false,
+  "native_owner_config_identity": {
+    "cell_mount_matches": true,
+    "claude_config_matches": true,
+    "docker_image_inspect_matches": true,
+    "expected_image": "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998",
+    "home_mount_matches": true,
+    "native_identity_status": "MATCH",
+    "owner_config_matches": true,
+    "owner_watchdog_matches": true,
+    "owner_watchdog_seconds": 5400,
+    "plan_config": "codex",
+    "plan_effort": "max",
+    "plan_engine": "codex",
+    "plan_environment_matches_launch": true,
+    "plan_model": "gpt-6-astra",
+    "resources": {
+      "cpus": "2",
+      "init": true,
+      "memory": "4g",
+      "pids": "256",
+      "read_only": true,
+      "restart": true
+    },
+    "resources_match_registration": true,
+    "run_and_verdict_identity_equal": true,
+    "run_argv_has_expected_image": true,
+    "run_owner_argv_equal_sealed_plan": true,
+    "runtime_plan_seal_images_match": true,
+    "source_sha256_bound_to_frozen_cell": true,
+    "started_result_create_argv_equal": true,
+    "started_result_metadata_equal": true,
+    "temporary_volume_mount_matches": true
+  },
+  "output_tokens": 48745,
+  "owner_seconds": 590.173871957988,
+  "owner_status": "EXITED_0",
+  "peer_policy_status": "MATCH",
+  "prediction": {
+    "prediction": "All 109 execution inputs, 304 selected artifacts, five prepared files and every retained evidence/control entry match recorded hashes. Sealed/runtime/started/result image, resources and owner config agree; exact Docker container and temporary volume are absent. Original CHECKS_PASS/COMPLETE verdict stays byte-identical, with empty identity/policy/accounting/usage gaps. Historical 0243 d01 PASS and d02 STOP/PARTIAL plus original evidence stay unchanged, and remaining eight cells remain unrun. No tests, models, auth reads, accounting replay or regrade.",
+    "recorded_at": "2026-10-10T18:41:28.540439+00:00"
+  },
+  "product_check_pass": true,
+  "public_pass": true,
+  "remaining_cell_observations": {
+    "d03-f23-claude-a": {
+      "output_absent": true,
+      "verdict_absent": true
+    },
+    "d04-f23-codex-h": {
+      "output_absent": true,
+      "verdict_absent": true
+    },
+    "d05-f23-claude-p": {
+      "output_absent": true,
+      "verdict_absent": true
+    },
+    "d06-f23-codex-b": {
+      "output_absent": true,
+      "verdict_absent": true
+    },
+    "d07-f23-claude-h": {
+      "output_absent": true,
+      "verdict_absent": true
+    },
+    "d08-f23-codex-a": {
+      "output_absent": true,
+      "verdict_absent": true
+    },
+    "d09-f23-claude-b": {
+      "output_absent": true,
+      "verdict_absent": true
+    },
+    "d10-f23-codex-s": {
+      "output_absent": true,
+      "verdict_absent": true
+    }
+  },
+  "remaining_eight_cells_unrun": true,
+  "scope": "Bounded independent integrity audit of existing artifacts only. No tests, models, auth operations, credential-content inspection/disclosure, accounting replay, source edits or historical regrade. Native custody behavior protocol audit is separate.",
+  "seal_sha256": "55a5df8815c7d48094a15bea215c44af902415b7732ea8f4c1c82d2e272d0e3b",
+  "source_check_pass": true,
+  "status": "CHECKS_PASS",
+  "teardown": "CLEAN",
+  "teardown_and_image_observations": [
+    {
+      "command": [
+        "docker",
+        "container",
+        "ls",
+        "--all",
+        "--filter",
+        "name=devlyn-0231-facc23050b46402f93f3498d1ed824cc",
+        "--format",
+        "{{.Names}}"
+      ],
+      "returncode": 0,
+      "stderr": "",
+      "stdout": ""
+    },
+    {
+      "command": [
+        "docker",
+        "volume",
+        "ls",
+        "--filter",
+        "name=devlyn-0234-tmp-abe3b7ac3ccb4ed695c81f94df256859",
+        "--format",
+        "{{.Name}}"
+      ],
+      "returncode": 0,
+      "stderr": "",
+      "stdout": ""
+    },
+    {
+      "command": [
+        "docker",
+        "image",
+        "inspect",
+        "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998",
+        "--format",
+        "{{.Id}}"
+      ],
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998\n"
+    }
+  ],
+  "usage": "COMPLETE",
+  "usage_gaps": [],
+  "verdict_sha256": "e3f14bf09088422acb42554fe89a746b927eb46341b1ba4e4717001590576dec",
+  "verdict_unchanged_after_audit": true,
+  "volume_absent": true
+}

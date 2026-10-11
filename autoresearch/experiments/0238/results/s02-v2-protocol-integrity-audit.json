@@ -1,0 +1,86 @@
+{
+  "at": "2026-10-10T14:46:12.000685+00:00",
+  "cell": "/Users/aipalm/.local/share/nx01/0238-live/staged-v1/out-smoke-v2/s02-h-codex-v2",
+  "checks": {
+    "control": {
+      "oracle": {
+        "count": 26,
+        "issues": [],
+        "matched": 26
+      },
+      "packages": {
+        "count": 969,
+        "issues": [],
+        "matched": 969
+      },
+      "public": {
+        "count": 64,
+        "issues": [],
+        "matched": 64
+      }
+    },
+    "evidence": {
+      "count": 1196,
+      "issues": [],
+      "matched": 1196
+    },
+    "evidence_declared_failures": [],
+    "evidence_manifest_binding": true,
+    "freeze-smoke-v2.json": {
+      "inputs": {
+        "count": 75,
+        "issues": [],
+        "matched": 75
+      },
+      "selected_artifacts": {
+        "count": 17,
+        "issues": [],
+        "matched": 17
+      },
+      "sha256": "126a1903579270c90e431a336f600b7ce1aad085f03ee37fc58613f525f61cc8"
+    },
+    "freeze-smoke-v3.json": {
+      "inputs": {
+        "count": 75,
+        "issues": [],
+        "matched": 75
+      },
+      "recovery_artifacts": {
+        "count": 6,
+        "issues": [],
+        "matched": 6
+      },
+      "selected_artifacts": {
+        "count": 17,
+        "issues": [],
+        "matched": 17
+      },
+      "sha256": "1069d837258440cc1f9aba1f8f12496d5263f9d8bb905d3774a3a15bee6e4314"
+    },
+    "prepared": {
+      "count": 5,
+      "issues": [],
+      "matched": 5
+    },
+    "sealed_inputs": {
+      "count": 75,
+      "issues": [],
+      "matched": 75
+    }
+  },
+  "credential_handling": "Zero-byte credential placeholders verified by stat/type and the empty hash, without opening credentials.",
+  "hashes": {
+    "/Users/aipalm/.local/share/nx01/0238-live/staged-v1/out-smoke-v2/verdict-s02-h-codex-v2.json": "9353c70df6e054735df8ee97c621e216ede8603e2a2e4cd7f737257f72e6e248",
+    "evidence.manifest.json": "a276e6b82cba9fdb89d60c65c82518538276be3320848be3f845f8c1c2062ba9",
+    "peer-policy.json": "09d2e862a4067cd60749d892e29bf8e0f4cd52af42fc19e716d4be8509508514",
+    "run/result.json": "b29c817277f5df0998527573c7664dffed4863754d0558a0db6d70d230c62810",
+    "run/stderr": "1aa26269eb1cc57f86b235a03cda53c004edb5b1e9fc99d4da4f00843293d721",
+    "run/stdout": "98e131df651eaf23e07580ad34d7ea060eee27499caf66b954c4698f2e7c649c",
+    "seal.json": "338c57608cb966f9f61e0ed8de3e6367641b99a673b95a01d0dbd7ce0839c1b2"
+  },
+  "original_reason": "ValueError: whole-run usage PARTIAL",
+  "original_status": "STOP",
+  "schema": "0238-s02-v2-read-only-integrity-v1",
+  "scope": "Integrity and protocol only; no source evaluation or usage reconciliation",
+  "whole_run_cost": "UNKNOWN"
+}

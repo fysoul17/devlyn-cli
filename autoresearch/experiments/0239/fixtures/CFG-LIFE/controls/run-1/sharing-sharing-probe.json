@@ -1,0 +1,12 @@
+{
+  "command": [
+    "/opt/homebrew/opt/python@3.14/bin/python3.14",
+    "-B",
+    "-c",
+    "from beacon.merge import merge; base={\"kept\": [1]}; later={\"new\": [2]}; result=merge(base,later); assert result[\"kept\"] is base[\"kept\"]; assert result[\"new\"] is later[\"new\"]; assert base=={\"kept\":[1]} and later=={\"new\":[2]}; print(\"internal input lists shared; merge did not mutate inputs\")"
+  ],
+  "cwd": "/var/folders/l8/3dwz4xpx761bj1z0r_pyhh100000gn/T/cfg-life-control-3j885tax/work",
+  "returncode": 0,
+  "stdout": "internal input lists shared; merge did not mutate inputs\n",
+  "stderr": ""
+}

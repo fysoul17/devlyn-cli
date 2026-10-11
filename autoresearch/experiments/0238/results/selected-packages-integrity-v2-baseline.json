@@ -1,0 +1,106 @@
+{
+  "recorded_at": "2026-10-10T12:38:37.029364+00:00",
+  "packages_metadata_sha256": "85f90c64181bc41b8f071d4017dc97d4e19c19d858477696a552b93ecf7ab8f7",
+  "previous_packages_metadata_sha256": "23e8fff27f7a56a31a1f274c8145b0e8f9ff25fccc646497471170eac620d12d",
+  "builder_matches": true,
+  "baseline_inputs": {
+    ".agents/skills/_shared/task-complete.py": {
+      "recorded": "60e101dd720348207a6001432a2b6f66f3c861846b1e768af5456804a402ac8a",
+      "source": "60e101dd720348207a6001432a2b6f66f3c861846b1e768af5456804a402ac8a",
+      "copied": "60e101dd720348207a6001432a2b6f66f3c861846b1e768af5456804a402ac8a",
+      "match": true
+    },
+    ".agents/skills/_shared/task-completion.md": {
+      "recorded": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733",
+      "source": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733",
+      "copied": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733",
+      "match": true
+    },
+    "bin/instructions.js": {
+      "recorded": "c2ef3fda7714efab8e1569a4d08ec17abc1a10469133b11b159d0884f7bb2532",
+      "source": "c2ef3fda7714efab8e1569a4d08ec17abc1a10469133b11b159d0884f7bb2532",
+      "copied": "c2ef3fda7714efab8e1569a4d08ec17abc1a10469133b11b159d0884f7bb2532",
+      "match": true
+    },
+    "config/skills/_shared/task-complete.py": {
+      "recorded": "60e101dd720348207a6001432a2b6f66f3c861846b1e768af5456804a402ac8a",
+      "source": "60e101dd720348207a6001432a2b6f66f3c861846b1e768af5456804a402ac8a",
+      "copied": "60e101dd720348207a6001432a2b6f66f3c861846b1e768af5456804a402ac8a",
+      "match": true
+    },
+    "config/skills/_shared/task-completion.md": {
+      "recorded": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733",
+      "source": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733",
+      "copied": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733",
+      "match": true
+    },
+    "package-lock.json": {
+      "recorded": "673daed9c547a038027950cfd31a1fa2144639982a8299a37184d5f0d2c7ae8d",
+      "source": "673daed9c547a038027950cfd31a1fa2144639982a8299a37184d5f0d2c7ae8d",
+      "copied": "673daed9c547a038027950cfd31a1fa2144639982a8299a37184d5f0d2c7ae8d",
+      "match": true
+    },
+    "package.json": {
+      "recorded": "ffaaffe502f9c77faa7c0e3dfa2c261373e15ff907d15acf16e96bc604919c07",
+      "source": "ffaaffe502f9c77faa7c0e3dfa2c261373e15ff907d15acf16e96bc604919c07",
+      "copied": "ffaaffe502f9c77faa7c0e3dfa2c261373e15ff907d15acf16e96bc604919c07",
+      "match": true
+    }
+  },
+  "published_baseline_inputs": {
+    "bin/instructions.js": {
+      "recorded": "c2ef3fda7714efab8e1569a4d08ec17abc1a10469133b11b159d0884f7bb2532",
+      "payload": "c2ef3fda7714efab8e1569a4d08ec17abc1a10469133b11b159d0884f7bb2532",
+      "match": true
+    },
+    "config/skills/_shared/task-complete.py": {
+      "recorded": "60e101dd720348207a6001432a2b6f66f3c861846b1e768af5456804a402ac8a",
+      "payload": "60e101dd720348207a6001432a2b6f66f3c861846b1e768af5456804a402ac8a",
+      "match": true
+    },
+    "config/skills/_shared/task-completion.md": {
+      "recorded": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733",
+      "payload": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733",
+      "match": true
+    },
+    "package.json": {
+      "recorded": "ffaaffe502f9c77faa7c0e3dfa2c261373e15ff907d15acf16e96bc604919c07",
+      "payload": "ffaaffe502f9c77faa7c0e3dfa2c261373e15ff907d15acf16e96bc604919c07",
+      "match": true
+    }
+  },
+  "nonpublished_baseline_inputs": [
+    ".agents/skills/_shared/task-complete.py",
+    ".agents/skills/_shared/task-completion.md",
+    "package-lock.json"
+  ],
+  "B_vs_previous_B": {
+    "added": [
+      "package/node_modules/marked/LICENSE.md",
+      "package/node_modules/marked/README.md",
+      "package/node_modules/marked/bin/main.js",
+      "package/node_modules/marked/bin/marked.js",
+      "package/node_modules/marked/lib/marked.cjs",
+      "package/node_modules/marked/lib/marked.cjs.map",
+      "package/node_modules/marked/lib/marked.d.cts",
+      "package/node_modules/marked/lib/marked.d.ts",
+      "package/node_modules/marked/lib/marked.esm.js",
+      "package/node_modules/marked/lib/marked.esm.js.map",
+      "package/node_modules/marked/lib/marked.umd.js",
+      "package/node_modules/marked/lib/marked.umd.js.map",
+      "package/node_modules/marked/man/marked.1",
+      "package/node_modules/marked/man/marked.1.md",
+      "package/node_modules/marked/marked.min.js",
+      "package/node_modules/marked/package.json"
+    ],
+    "removed": [],
+    "changed": [
+      "package/bin/instructions.js",
+      "package/package.json"
+    ],
+    "expected_boundary_matches": true,
+    "instruction_history_equal": true
+  },
+  "B_archive_sha256": "050bc8d6f3af071461903f0c7efd77ae445828f232152cd4f52b6e81faa967b3",
+  "previous_B_archive_sha256": "8c4dcdfa79ba7fed8541418f09475aa9edd5bbaaa010690b26254ed42e34a6e8"
+}

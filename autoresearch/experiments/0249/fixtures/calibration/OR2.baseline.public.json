@@ -1,0 +1,24 @@
+{
+  "command": [
+    "python3",
+    "-B",
+    "checks/run_checks.py"
+  ],
+  "cwd": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/fixtures/OR2/visible",
+  "started_at": "2026-10-10T23:22:28.809579+00:00",
+  "ended_at": "2026-10-10T23:22:28.883431+00:00",
+  "exit_code": 0,
+  "stdout": "{\"public_passed\": true, \"tests\": 2}\n",
+  "stderr": "test_cache_and_completed_invalidation (test_smoke.Smoke.test_cache_and_completed_invalidation) ... ok\ntest_other_keys (test_smoke.Smoke.test_other_keys) ... ok\n\n----------------------------------------------------------------------\nRan 2 tests in 0.005s\n\nOK\n",
+  "source_sha256": {
+    "README.md": "bfa870c611cd80175281b6dfbba31e1b56057e74ce1a46508b9fecb12efc6ca0",
+    "checks/run_checks.py": "cbb387f1adb61e7050d32afdaa8207f4b826a89a5b62d078ab9e846ea9629d5a",
+    "checks/test_smoke.py": "5dda28971c9602777b3bc1ab34af8eb84f49be02ec377402e191f4695bb091c5",
+    "docs/contract.md": "cd8f9a5cde1ee40138e2ed970a870bf382f4ffa2a4655712e497c683e156fc3c",
+    "examples/catalog.py": "3a2522e119ca1f178e5a2a378fa3d6a75e7d2fc6fe0d3e70760f4980e222c397",
+    "relay/__init__.py": "d31610e5b016c47d07f37c360069ec83a1ff50207fffa31c1c34d91576ea3477",
+    "relay/loader.py": "7d349e963800e279adbb5f326ab36d51bca2b99bbbdda9df4250a1a3c1171074"
+  },
+  "source_unchanged": true,
+  "prediction_sha256": "76e3612ee880540a59ff96f2875ba1706e6affa53ff80193e9bc1a81abe7aebb"
+}

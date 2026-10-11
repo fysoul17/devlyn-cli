@@ -1,0 +1,69 @@
+{
+  "registered_at": "2026-10-10T01:55:43.341029+00:00",
+  "revision": 2,
+  "reason": "Independent audit found method-coupled read_text oracle and macOS noncanonical public temp-path expectations. Revision preserves the original bundle and audit reproduction in history/revision-1. Only oracle observation and a public expected-path setup are changed; gold/baseline production behavior is unchanged.",
+  "prior_predictions_sha256": "aa652bf27091f780a3c083d319243a9173fd21e3bb384bfaf4b7d3b1ff4102ec",
+  "unchanged_fixture_controls": {
+    "CF-LEASE": {
+      "public_baseline": "pass",
+      "public_gold": "pass",
+      "gold_hidden": "all pass",
+      "baseline": {
+        "expiry-boundary": false,
+        "expired-unclaimed-settlement": false,
+        "stale-receipt-reopen": false,
+        "idempotent-producer-every-state": false,
+        "retry-lifecycle-clean-settlement": false,
+        "eligibility-and-stable-order": true,
+        "independent-concurrent-claims": true,
+        "worker-success-after-takeover": false,
+        "worker-failure-after-takeover": false,
+        "retry-uses-settlement-clock": false,
+        "settlement-errors-not-handler-errors": false,
+        "process-interruption-retains-lease": true,
+        "invalid-input-no-mutation": true
+      }
+    },
+    "CF-CONFIG": {
+      "public_baseline": "pass",
+      "public_gold": "pass",
+      "gold_hidden": "all pass",
+      "baseline": {
+        "recursive-merge-value-kinds": false,
+        "relative-diamond-layer-order": false,
+        "transitive-change-same-size-and-mtime": false,
+        "nested-caller-isolation": false,
+        "semantic-generation-current-dependencies": false,
+        "failed-reload-preserves-and-recovers": false,
+        "failed-first-load-no-cache-poisoning": false,
+        "deleted-dependency-repair": false,
+        "canonical-cycle-after-success": false,
+        "shared-file-once-per-load": false,
+        "independent-root-dependency-accuracy": false,
+        "schema-errors-retain-include-chain": true
+      }
+    }
+  },
+  "audit_controls": {
+    "public-symlink-tmp-visible": {
+      "returncode": 0
+    },
+    "public-symlink-tmp-gold": {
+      "returncode": 0
+    },
+    "read_text": {
+      "failed_manifestations": []
+    },
+    "read_bytes": {
+      "failed_manifestations": []
+    },
+    "open": {
+      "failed_manifestations": []
+    },
+    "repeated-read-negative-control": {
+      "failed_manifestations": [
+        "shared-file-once-per-load"
+      ]
+    }
+  }
+}

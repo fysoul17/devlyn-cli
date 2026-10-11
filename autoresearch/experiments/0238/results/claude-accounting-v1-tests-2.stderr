@@ -1,0 +1,14 @@
+test_clean_and_provisional_snapshot_are_counted_once (test_claude_accounting.ClosureTests.test_clean_and_provisional_snapshot_are_counted_once) ... ok
+test_explicitly_bound_terminal_request_can_close_retry (test_claude_accounting.ClosureTests.test_explicitly_bound_terminal_request_can_close_retry) ... ok
+test_missing_terminal_or_entire_carrier_is_unknown (test_claude_accounting.ClosureTests.test_missing_terminal_or_entire_carrier_is_unknown) ... ok
+test_native_child_same_or_distinct_session_is_in_owner_scope (test_claude_accounting.ClosureTests.test_native_child_same_or_distinct_session_is_in_owner_scope) ... ok
+test_peer_failed_complete_turn_then_resume_preserves_cost (test_claude_accounting.ClosureTests.test_peer_failed_complete_turn_then_resume_preserves_cost) ... ok
+test_real_retained_short_long_and_d01_are_read_only_controls (test_claude_accounting.ClosureTests.test_real_retained_short_long_and_d01_are_read_only_controls) ... ok
+test_reasoning_counter_must_reconcile_without_double_counting_output (test_claude_accounting.ClosureTests.test_reasoning_counter_must_reconcile_without_double_counting_output) ... ok
+test_stream_only_retry_is_not_closed_by_later_success (test_claude_accounting.ClosureTests.test_stream_only_retry_is_not_closed_by_later_success) ... ok
+test_unbound_retry_is_unknown_even_if_aggregate_matches (test_claude_accounting.ClosureTests.test_unbound_retry_is_unknown_even_if_aggregate_matches) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.232s
+
+OK

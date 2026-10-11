@@ -1,0 +1,124 @@
+{
+  "manifestations": [
+    {
+      "id": "recursive-merge-value-kinds",
+      "contract_bindings": [
+        {
+          "file": "visible/docs/format.md",
+          "sha256": "39d56a51e84bcff689c91935802cdd4535172aeb681043771782b884f6f63959",
+          "quote": "When both values at a key are objects, merge recursively; otherwise the"
+        }
+      ]
+    },
+    {
+      "id": "relative-diamond-layer-order",
+      "contract_bindings": [
+        {
+          "file": "visible/docs/format.md",
+          "sha256": "39d56a51e84bcff689c91935802cdd4535172aeb681043771782b884f6f63959",
+          "quote": "a shared base is applied in each branch's position, not skipped globally."
+        }
+      ]
+    },
+    {
+      "id": "transitive-change-same-size-and-mtime",
+      "contract_bindings": [
+        {
+          "file": "visible/docs/reload.md",
+          "sha256": "a256fd4b9f2e03315c22a7f9337d0332482557acce49956c5f2f786ec20f4524",
+          "quote": "Atomic file\nreplacement may preserve size and mtime"
+        }
+      ]
+    },
+    {
+      "id": "nested-caller-isolation",
+      "contract_bindings": [
+        {
+          "file": "visible/docs/reload.md",
+          "sha256": "a256fd4b9f2e03315c22a7f9337d0332482557acce49956c5f2f786ec20f4524",
+          "quote": "All returned values are detached:"
+        }
+      ]
+    },
+    {
+      "id": "semantic-generation-current-dependencies",
+      "contract_bindings": [
+        {
+          "file": "visible/docs/reload.md",
+          "sha256": "a256fd4b9f2e03315c22a7f9337d0332482557acce49956c5f2f786ec20f4524",
+          "quote": "only when the effective merged values change."
+        }
+      ]
+    },
+    {
+      "id": "failed-reload-preserves-and-recovers",
+      "contract_bindings": [
+        {
+          "file": "visible/docs/reload.md",
+          "sha256": "a256fd4b9f2e03315c22a7f9337d0332482557acce49956c5f2f786ec20f4524",
+          "quote": "A failed reload raises ConfigError and leaves `current` exactly"
+        }
+      ]
+    },
+    {
+      "id": "failed-first-load-no-cache-poisoning",
+      "contract_bindings": [
+        {
+          "file": "visible/docs/reload.md",
+          "sha256": "a256fd4b9f2e03315c22a7f9337d0332482557acce49956c5f2f786ec20f4524",
+          "quote": "An invocation must not reuse values resolved from an earlier invocation."
+        }
+      ]
+    },
+    {
+      "id": "deleted-dependency-repair",
+      "contract_bindings": [
+        {
+          "file": "visible/docs/reload.md",
+          "sha256": "a256fd4b9f2e03315c22a7f9337d0332482557acce49956c5f2f786ec20f4524",
+          "quote": "Dependencies may be added, removed, missing, or repaired"
+        }
+      ]
+    },
+    {
+      "id": "canonical-cycle-after-success",
+      "contract_bindings": [
+        {
+          "file": "visible/docs/format.md",
+          "sha256": "39d56a51e84bcff689c91935802cdd4535172aeb681043771782b884f6f63959",
+          "quote": "A cycle exists only when a canonical file is already on the current include"
+        }
+      ]
+    },
+    {
+      "id": "shared-file-once-per-load",
+      "contract_bindings": [
+        {
+          "file": "visible/docs/format.md",
+          "sha256": "39d56a51e84bcff689c91935802cdd4535172aeb681043771782b884f6f63959",
+          "quote": "Read each distinct document no more than once per Loader.load call:"
+        }
+      ]
+    },
+    {
+      "id": "independent-root-dependency-accuracy",
+      "contract_bindings": [
+        {
+          "file": "visible/docs/format.md",
+          "sha256": "39d56a51e84bcff689c91935802cdd4535172aeb681043771782b884f6f63959",
+          "quote": "Dependencies contain\nevery distinct canonical file reached, including the root, sorted by path text."
+        }
+      ]
+    },
+    {
+      "id": "schema-errors-retain-include-chain",
+      "contract_bindings": [
+        {
+          "file": "visible/docs/format.md",
+          "sha256": "39d56a51e84bcff689c91935802cdd4535172aeb681043771782b884f6f63959",
+          "quote": "A ConfigError identifies the failing canonical path and the root-to-failure"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "at": "2026-10-10T18:10:58.925404+00:00",
+  "next_check": "After the owner exits, inspect the untouched emitted verdict and final evidence inventory. Do not intervene, copy transient records into the cell, weaken collection, or regrade.",
+  "observation": "The owner launches the required peer.py inside a TemporaryDirectory context and puts --out at scratch/review. It prints the helper receipt and final answer but has no copy of the typed attempt/completion/native capture before leaving the context.",
+  "prediction": "On normal return, that context removes the peer receipt and native capture before the apparatus collects the final evidence. Expected capture/receipt discovery should remain fail-closed rather than credit the printed answer as retained custody.",
+  "scope": "Reactive read-only custody observation during the registered owner; not a pre-registered efficacy hypothesis or verdict.",
+  "source_event": {
+    "command_sha256": "63d2d04d01cfb2903716b96b050a5b7bf8cf08612cab3672ad27cf2e35ce61cc",
+    "event_sha256": "fed09f462a414c81d7c4c8d7f0d59439bd3a3192d274d808387073d6db089143",
+    "line": 40
+  },
+  "stdout": "/Users/aipalm/.local/share/nx01/0243-live/staged-v1/out-measured/d02-f23-codex-p/run/stdout"
+}

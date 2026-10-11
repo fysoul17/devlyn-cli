@@ -1,0 +1,17 @@
+{
+  "written_at": "2026-10-10T20:21:25.560093+00:00",
+  "designs": {
+    "autoresearch/experiments/0247/design-prediction-v1.md": "a7704bab7924f84921dfe7b5ce84451d221164ddccd063c12649ab19e7a1c8c9",
+    "autoresearch/experiments/0247/design-prediction-v2.md": "de373e0ecc4514f9b1ed50fb68d9b852623990154224b7e37bdb576c2de94ca8"
+  },
+  "supersedes": "No historical prediction/result edited. Extends tests-prediction-v1 with exact 101-row rollout readers and byte-exact command witness.",
+  "baseline_v1_observation": "Three expected invariant failures (1 failure, 2 errors). Helper capture serialized the exact decoded fixture again, changing spacing only; v2 will prefix its original bytes and is predicted to show original JSON column 554.",
+  "candidate_prediction": "Same focused suite and 11 custody regressions pass; all 101 retained rollout records preserved at actual bound readers; native model/evaluator/auth never invoked.",
+  "source_hashes_before": {
+    "autoresearch/experiments/0247/test_machinery.py": "460577cc30e7ec6986b26893c4ab7864f1c1f876f80c45a30a7c7734d728bad5",
+    "autoresearch/experiments/0247/fixtures/d05-init-pair.jsonl": "3f24318e0816d6a376c8a598c09616e28263bb094bfaa419a090b62e7c512b50",
+    "autoresearch/experiments/0247/fixtures/provenance.json": "aa4e4a2dbb5c0ad5c6e180f6f14c146831499a9ddcc65c502dbd7890d95d10d2",
+    "autoresearch/experiments/0247/fixtures/d05-rollout-unicode-records.jsonl": "7c00c21ff51ff292a5a78357caa20019c025513972ddef73c89c0bf561da6960",
+    "autoresearch/experiments/0247/fixtures/d05-unicode-command.jsonl": "7483c22835e047d1e1de5449475d5dcedcc4ebfbdff51479fa848857ca6b13be"
+  }
+}

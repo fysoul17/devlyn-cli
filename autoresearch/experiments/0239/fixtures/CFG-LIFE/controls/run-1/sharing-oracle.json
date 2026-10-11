@@ -1,0 +1,12 @@
+{
+  "command": [
+    "/opt/homebrew/opt/python@3.14/bin/python3.14",
+    "-B",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0239/fixtures/CFG-LIFE/hidden/oracle.py",
+    "/var/folders/l8/3dwz4xpx761bj1z0r_pyhh100000gn/T/cfg-life-control-3j885tax/work"
+  ],
+  "cwd": "/var/folders/l8/3dwz4xpx761bj1z0r_pyhh100000gn/T/cfg-life-control-3j885tax/work",
+  "returncode": 0,
+  "stdout": "{\"manifestations\": [{\"id\": \"loader-merge-value-kinds\", \"passed\": true}, {\"id\": \"relative-diamond-layer-order\", \"passed\": true}, {\"id\": \"transitive-change-same-size-and-mtime\", \"passed\": true}, {\"id\": \"nested-caller-isolation\", \"passed\": true}, {\"id\": \"semantic-generation-current-dependencies\", \"passed\": true}, {\"id\": \"failed-reload-preserves-and-recovers\", \"passed\": true}, {\"id\": \"failed-first-load-no-cache-poisoning\", \"passed\": true}, {\"id\": \"deleted-dependency-repair\", \"passed\": true}, {\"id\": \"canonical-cycle-after-success\", \"passed\": true}, {\"id\": \"repeated-include-public-freshness\", \"passed\": true}, {\"id\": \"independent-root-dependency-accuracy\", \"passed\": true}, {\"id\": \"schema-errors-retain-include-chain\", \"passed\": true}]}\n",
+  "stderr": ""
+}

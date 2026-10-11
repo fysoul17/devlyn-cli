@@ -1,0 +1,28 @@
+{
+  "at": "2026-10-10T17:15:23.651Z",
+  "prediction": "The native CLI renews the same host account under its two cooperative refresh locks; persisted identity/scopes stay equal and lifetime exceeds 6300 seconds. No browser, inference, custom grant request or manual credential write.",
+  "mutations": "Only native claude auth login may persist credentials.",
+  "cli_sha256": "c9b5341637becbd423ddffc5b254afb645682a3868cb708bbc6cc0e7bb419937",
+  "operator_sha256": "d8400df438d9ecd5695a8a3d80fc9d92a306d745f40d716b25c4e05a6a0c6c7d",
+  "dependency_lock_sha256": "a3d2a43eaace35f0fff517261cd9bed5a62d829611c8cd09e6e86a5c1fb5d36c",
+  "identity_before": [
+    "230ea92eea12",
+    "584a8a8f163a"
+  ],
+  "seconds_before": 5102,
+  "native_seconds": 2.527,
+  "native_stdout_sha256": "3b6abe1ddf6c7499cbe44f0d4ba4da87c7661d0b4785fdc54ab3f5219ec45e9a",
+  "native_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "native_login_success_message": true,
+  "identity_after": [
+    "230ea92eea12",
+    "584a8a8f163a"
+  ],
+  "same_account": true,
+  "same_scopes": true,
+  "seconds_after": 28797,
+  "status": "PASS",
+  "lock_compromised": false,
+  "release_failures": 0,
+  "finished_at": "2026-10-10T17:15:27.432Z"
+}

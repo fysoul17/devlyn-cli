@@ -1,0 +1,13 @@
+{
+  "scope": "Bind complete immutable stdout files after the installed0242s02 owner finalized; original startup line observations remain unchanged. No inference or behavioral regrade.",
+  "sources": {
+    "A": {
+      "seal_sha256": "591a7a1e600d5fd538d3a4f1d87be632f0cd4563c535ed7186c5074e979ff905",
+      "stdout_sha256": "3cf334d2e77b6d091747841460e752f68c7a544f4cec6d80bb9428c29bfa9a35"
+    },
+    "installed": {
+      "seal_sha256": "ca017570f3cc92ea18a861c3a2565ceaeb424ab9322c7d14fc1a547c9c19f67e",
+      "stdout_sha256": "437f9d29e3f96fd77a3c44455b0bf82ecb239af4c8ad324faeabbebc04b68ea0"
+    }
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "measured": false,
+  "endpoint": "implicit per-installation default; source checks only",
+  "results": [
+    {
+      "name": "smoke-E1-A-claude",
+      "raw_verdict": "/Users/aipalm/.local/share/nx01/0237-live/out/verdict-smoke-E1-A-claude.json",
+      "sha256": "49158738f08ce1b4bd8fe6ca33617334e309d73ffd6911e807994e8550fec2f7",
+      "status": "CHECKS_PASS",
+      "phase": "smoke",
+      "owner_seconds": 220.62291187499068,
+      "usage": "COMPLETE",
+      "input_tokens": 752675,
+      "output_tokens": 22621,
+      "usage_gaps": []
+    },
+    {
+      "name": "smoke-E1-B-claude",
+      "raw_verdict": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/verdict-smoke-E1-B-claude.json",
+      "sha256": "b06192877224e2d8a4b2a86b6a12a760584970c0c913d6491c3ed3a498e81f94",
+      "status": "CHECKS_PASS",
+      "phase": "smoke",
+      "owner_seconds": 586.3521584160044,
+      "usage": "COMPLETE",
+      "input_tokens": 2787502,
+      "output_tokens": 58050,
+      "usage_gaps": []
+    },
+    {
+      "name": "smoke-E1-B-codex",
+      "raw_verdict": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/verdict-smoke-E1-B-codex.json",
+      "sha256": "965adc4d0eadbe3a207e78245a141a83db657d819444bd221781b02bab9b7739",
+      "status": "STOP",
+      "phase": "smoke",
+      "owner_seconds": 67.16952579200733,
+      "usage": "PARTIAL",
+      "input_tokens": null,
+      "output_tokens": null,
+      "reason": "ValueError: whole-run usage PARTIAL",
+      "known_usage_lower_bound": {
+        "input_tokens": 305335,
+        "output_tokens": 2875
+      },
+      "usage_gaps": [
+        "trace-4f083aee-e921-462b-a9b1-1dba74286326-01a12385-3e16-78e0-b77b-befb87ed57bd: inference 654986b7-26fe-4961-b04f-895ff29d3732 started without completed usage",
+        "trace-4f083aee-e921-462b-a9b1-1dba74286326-01a12385-3e16-78e0-b77b-befb87ed57bd: inference 201682d1-c1d9-423c-a4d6-5d2d8cfa241c started without completed usage"
+      ]
+    }
+  ]
+}

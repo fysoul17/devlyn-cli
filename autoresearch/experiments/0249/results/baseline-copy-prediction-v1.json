@@ -1,0 +1,8 @@
+{
+  "at": "2026-10-10T23:45:37.567169+00:00",
+  "prediction": "Copy exact reviewed425 baseline source/modes before native freeze; new immutable copies remain available if publisher is edited for admittedS or removed by delivery. Native packages/runtime/source fixtures remain unchanged.",
+  "source": "/Users/aipalm/.local/share/nx01/0237-integration-425",
+  "destination": "/Users/aipalm/.local/share/nx01/0249-live/baseline-source-v1",
+  "source_head": "d1f170ed3bd57441b95ea525156e80644543acb1",
+  "files": {}
+}

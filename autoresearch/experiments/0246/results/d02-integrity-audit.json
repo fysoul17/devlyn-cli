@@ -1,0 +1,294 @@
+{
+  "at": "2026-10-10T19:00:06.542250+00:00",
+  "checks": {
+    "all_hashes_match": true,
+    "checks_delivery_bound": true,
+    "container_absent": true,
+    "control_inventory_exact": true,
+    "cost_matches_original_usage": true,
+    "empty_gaps": true,
+    "evidence_collection_clean": true,
+    "evidence_manifest_matches_verdict": true,
+    "exact_failed_oracle_rows_preserved": true,
+    "freeze_unchanged": true,
+    "historical_0243_proof_preserved": true,
+    "historical_0245_proof_preserved": true,
+    "historical_eight_cells_unrun": true,
+    "identity_policy_accounting_match": true,
+    "image_resources_config_consistent": true,
+    "nonactivation_preserved": true,
+    "original_verdict_expected": true,
+    "owner_wall_matches": true,
+    "policy_accounting_equal_verdict": true,
+    "product_source_failure_public_delivery_success": true,
+    "public_51_pass_preserved": true,
+    "remaining_eight_cells_unrun": true,
+    "runtime_hash_equal_freeze": true,
+    "seal_inputs_equal_freeze": true,
+    "teardown_clean": true,
+    "verdict_unchanged": true,
+    "volume_absent": true
+  },
+  "claude_accounting_status": "MATCH",
+  "container_absent": true,
+  "control_manifest_sha256": "ace8951f2b8d934bfb86a608f8e26011207ef25ff34630bc1b0aa649f901ff1c",
+  "credential_evidence_handling": "Opaque SHA256 of bytes only for any credential file already listed in the evidence manifest; no parsing, disclosure or authentication operation.",
+  "delivery_commit": "c1f4e18e303aa7ec0435dde2b28b0224d97bdafc",
+  "delivery_pass": true,
+  "evidence_manifest_collection_failures": [],
+  "evidence_manifest_sha256": "0ebe702941a6db7076fb7cd06719ccd1642a94c31dd8750974158045a3e556b1",
+  "freeze_sha256_after": "fd3dcf7415e580b9c6b243148e61f5e7745cdb44be562458aeb37f003f74adab",
+  "freeze_sha256_before": "fd3dcf7415e580b9c6b243148e61f5e7745cdb44be562458aeb37f003f74adab",
+  "historical_0243": {
+    "d01-f23-claude-s": {
+      "evidence_manifest_sha256": "a3ee9ad87750edbcb1ab5b524a4ac135e82352a3e6bd87c43083a8d33481b50d",
+      "manifest_matches_original_verdict": true,
+      "matches_original": true,
+      "status": "CHECKS_PASS",
+      "status_usage_preserved": true,
+      "usage": "COMPLETE",
+      "verdict_sha256": "dc50789bcb12813d57e53ea14cd66203b938a6e1d91d40804b598347f5c1db89"
+    },
+    "d02-f23-codex-p": {
+      "evidence_manifest_sha256": "cc39d330a8078aea680a734a0662e812c18c7bc9ec3acf187bbda8639b60f20a",
+      "known_usage_lower_bound": {
+        "input_tokens": 1796844,
+        "output_tokens": 69638
+      },
+      "manifest_matches_original_verdict": true,
+      "matches_original": true,
+      "source_public_delivery_status": "NOT_GRADED_AFTER_STOP",
+      "status": "STOP",
+      "status_usage_preserved": true,
+      "usage": "PARTIAL",
+      "verdict_sha256": "5dae1c69e1c90024962e08aacc7524598b7e2f4944b9429b370725ad6456f51b",
+      "whole_run_cost": "UNKNOWN"
+    }
+  },
+  "historical_0245": {
+    "both_audits_PASS": true,
+    "custody_audit_sha256": "31adf55e52cb511093b762505b90d29af723d408ab1bd547f72f5fc276450d1f",
+    "integrity_audit_sha256": "a0dcf313d2177bbf296d2dc2d472ef7c79f1daf8b7e926961d2bebab8fd06d9a",
+    "manifest_matches_original": true,
+    "raw_verdict_sha256": "e3f14bf09088422acb42554fe89a746b927eb46341b1ba4e4717001590576dec",
+    "seal_matches_original": true,
+    "verdict_matches_original": true
+  },
+  "historical_remaining_cell_observations": {
+    "d03-f23-claude-a": {
+      "output_absent": true,
+      "verdict_absent": true
+    },
+    "d04-f23-codex-h": {
+      "output_absent": true,
+      "verdict_absent": true
+    },
+    "d05-f23-claude-p": {
+      "output_absent": true,
+      "verdict_absent": true
+    },
+    "d06-f23-codex-b": {
+      "output_absent": true,
+      "verdict_absent": true
+    },
+    "d07-f23-claude-h": {
+      "output_absent": true,
+      "verdict_absent": true
+    },
+    "d08-f23-codex-a": {
+      "output_absent": true,
+      "verdict_absent": true
+    },
+    "d09-f23-claude-b": {
+      "output_absent": true,
+      "verdict_absent": true
+    },
+    "d10-f23-codex-s": {
+      "output_absent": true,
+      "verdict_absent": true
+    }
+  },
+  "identity_status": "MATCH",
+  "input_tokens": 632441,
+  "integrity": {
+    "checked_snapshot": {
+      "count": 654,
+      "mismatches": []
+    },
+    "control": {
+      "count": 1059,
+      "mismatches": []
+    },
+    "evidence": {
+      "count": 2233,
+      "mismatches": []
+    },
+    "execution_inputs": {
+      "count": 109,
+      "mismatches": []
+    },
+    "prepared": {
+      "count": 5,
+      "mismatches": []
+    },
+    "selected_artifacts": {
+      "count": 328,
+      "mismatches": []
+    }
+  },
+  "integrity_status": "PASS",
+  "measurement_eligible_raw_flag": true,
+  "native_owner_config_identity": {
+    "cell_mount_matches": true,
+    "claude_config_matches": true,
+    "docker_image_inspect_matches": true,
+    "expected_image": "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998",
+    "home_mount_matches": true,
+    "native_identity_status": "MATCH",
+    "owner_config_matches": true,
+    "owner_watchdog_matches": true,
+    "owner_watchdog_seconds": 5400,
+    "plan_config": "codex",
+    "plan_effort": "max",
+    "plan_engine": "codex",
+    "plan_environment_matches_launch": true,
+    "plan_model": "gpt-6-astra",
+    "resources": {
+      "cpus": "2",
+      "init": true,
+      "memory": "4g",
+      "pids": "256",
+      "read_only": true,
+      "restart": true
+    },
+    "resources_match_registration": true,
+    "run_and_verdict_identity_equal": true,
+    "run_argv_has_expected_image": true,
+    "run_owner_argv_equal_sealed_plan": true,
+    "runtime_plan_seal_images_match": true,
+    "source_sha256_bound_to_frozen_cell": true,
+    "started_result_create_argv_equal": true,
+    "started_result_metadata_equal": true,
+    "temporary_volume_mount_matches": true
+  },
+  "oracle_rows": [
+    {
+      "id": "priority-rollback",
+      "status": "PASS"
+    },
+    {
+      "id": "single-warehouse-fefo",
+      "status": "PASS"
+    },
+    {
+      "id": "submillisecond-order",
+      "status": "FAIL"
+    },
+    {
+      "id": "offset-equivalence",
+      "status": "FAIL"
+    }
+  ],
+  "output_tokens": 19184,
+  "owner_seconds": 404.69662925001467,
+  "owner_status": "EXITED_0",
+  "peer_activated": false,
+  "peer_policy_status": "MATCH",
+  "peer_validation_completion": "NOT_ACTIVATED",
+  "prediction": {
+    "prediction": "All 109 frozen execution inputs, 328 selected artifacts, prepared files, retained evidence and control entries match. Sealed/runtime/started/result image, resource limits and owner config agree, and container/temporary volume are absent. Original PRODUCT_INCOMPLETE/COMPLETE remains unchanged: public checks and local delivery pass; source/product fail due to submillisecond-order and offset-equivalence, with no peer activation. Earlier 0243 and 0245 proof stay bound and eight next 0246 cells remain unrun. No tests, models, authentication operations, source repair or regrade.",
+    "recorded_at": "2026-10-10T18:58:07.908909+00:00"
+  },
+  "product_check_pass": false,
+  "public_pass": true,
+  "public_test_count": 51,
+  "remaining_cell_observations": {
+    "d03-f23-claude-a": {
+      "output_absent": true,
+      "verdict_absent": true
+    },
+    "d04-f23-codex-h": {
+      "output_absent": true,
+      "verdict_absent": true
+    },
+    "d05-f23-claude-p": {
+      "output_absent": true,
+      "verdict_absent": true
+    },
+    "d06-f23-codex-b": {
+      "output_absent": true,
+      "verdict_absent": true
+    },
+    "d07-f23-claude-h": {
+      "output_absent": true,
+      "verdict_absent": true
+    },
+    "d08-f23-codex-a": {
+      "output_absent": true,
+      "verdict_absent": true
+    },
+    "d09-f23-claude-b": {
+      "output_absent": true,
+      "verdict_absent": true
+    },
+    "d10-f23-codex-s": {
+      "output_absent": true,
+      "verdict_absent": true
+    }
+  },
+  "remaining_eight_cells_unrun": true,
+  "scope": "Bounded independent integrity audit of retained artifacts only. No tests, models, authentication operations, source repair, accounting replay or regrade. Existing 0245 integrity/protocol proof is reused through exact bindings; nonactivation interpretation is separate.",
+  "seal_sha256": "9cd88aae37f33159b5ed8514cb5ec5756de81343be15d7ec9484bf794208d732",
+  "source_check_pass": false,
+  "status": "PRODUCT_INCOMPLETE",
+  "teardown": "CLEAN",
+  "teardown_and_image_observations": [
+    {
+      "command": [
+        "docker",
+        "container",
+        "ls",
+        "--all",
+        "--filter",
+        "name=devlyn-0231-b4ee70d913a64d04a81525394d18927f",
+        "--format",
+        "{{.Names}}"
+      ],
+      "returncode": 0,
+      "stderr": "",
+      "stdout": ""
+    },
+    {
+      "command": [
+        "docker",
+        "volume",
+        "ls",
+        "--filter",
+        "name=devlyn-0234-tmp-176cc27be7aa4877af5e2233de30fedd",
+        "--format",
+        "{{.Name}}"
+      ],
+      "returncode": 0,
+      "stderr": "",
+      "stdout": ""
+    },
+    {
+      "command": [
+        "docker",
+        "image",
+        "inspect",
+        "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998",
+        "--format",
+        "{{.Id}}"
+      ],
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998\n"
+    }
+  ],
+  "usage": "COMPLETE",
+  "usage_gaps": [],
+  "verdict_sha256": "4dd81587abbb27528ccc70a594d0e5cb6dd5a7a31aa8fd33a7fa499a600c7dc9",
+  "verdict_unchanged_after_audit": true,
+  "volume_absent": true
+}

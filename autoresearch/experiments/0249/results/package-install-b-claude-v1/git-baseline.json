@@ -1,0 +1,18 @@
+{
+  "argv": [
+    "git",
+    "-c",
+    "commit.gpgsign=false",
+    "commit",
+    "--allow-empty",
+    "-qm",
+    "package installation fixture"
+  ],
+  "cwd": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/results/package-install-b-claude-v1/work",
+  "exit_code": 0,
+  "seconds": 0.01971854199655354,
+  "stderr": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/results/package-install-b-claude-v1/git-baseline.stderr",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stdout": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/results/package-install-b-claude-v1/git-baseline.stdout",
+  "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

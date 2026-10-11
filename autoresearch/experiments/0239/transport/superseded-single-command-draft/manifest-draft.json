@@ -1,0 +1,32 @@
+{
+  "status": "DRAFT_NOT_REGISTERED_RUNTIME_AND_PACKAGES_UNSELECTED",
+  "scope": "CLAUDE_ONLY_EXPLICIT_FOREGROUND_TRANSPORT_NOT_COMPLIANCE_OR_EFFICACY",
+  "tasks": {
+    "FG-SHORT": {
+      "source_dir": "autoresearch/experiments/0239/transport/FG-SHORT/visible",
+      "source_sha256": {
+        "README.md": "455145bfe668f606a660715099d8f50d841fb4fc726c16488346cacbe43e968e",
+        "check_receipt.py": "afa3c277070ab8d041693c4246dc20bf890b345ed37572adc1099a1fd45dd406",
+        "child_gate.py": "b6af99007ebc67e3de02e6e4aec4ac3b26ab9cd8c594ac50886361004a406152",
+        "scenario.json": "a54e33fcb5e2483a8c1e3dbfd466a1484e5429745e564e12f6796c95520ef599"
+      },
+      "request_sha256": "dd2390e4f05e67c8a482877eaf4788c008a3028804cf5b5c3ddf828284450e00",
+      "child_wait_seconds": 1
+    },
+    "FG-LONG": {
+      "source_dir": "autoresearch/experiments/0239/transport/FG-LONG/visible",
+      "source_sha256": {
+        "README.md": "455145bfe668f606a660715099d8f50d841fb4fc726c16488346cacbe43e968e",
+        "check_receipt.py": "afa3c277070ab8d041693c4246dc20bf890b345ed37572adc1099a1fd45dd406",
+        "child_gate.py": "b6af99007ebc67e3de02e6e4aec4ac3b26ab9cd8c594ac50886361004a406152",
+        "scenario.json": "66bc1aba014d7fcc257f83484c01da08dc0774f31bbd8777a371270566a04eac"
+      },
+      "request_sha256": "3f5781ceb879f1a7a4d14db32b96f3fd9883c90c094d045780f5f155e14303d7",
+      "child_wait_seconds": 610
+    }
+  },
+  "tasks_sha256": "f8dd62fda9197ae7201967a8aebe143c26833f9857d9b93a35bbf6ba205a8bfe",
+  "route_source": "autoresearch/experiments/0237/tasks-confirmation-max.json",
+  "runner": "autoresearch/experiments/0237/runner-init-v1.py",
+  "image": "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998"
+}

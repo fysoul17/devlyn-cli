@@ -1,0 +1,29 @@
+E..
+======================================================================
+ERROR: test_linux_writer_scan_accepts_confirmed_single_thread_zombie (<run_path>.CompletionTests.test_linux_writer_scan_accepts_confirmed_single_thread_zombie)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/aipalm/Documents/GitHub/devlyn-cli/.git/devlyn-completion/af297540908da33bb44bcebd/scratch/zombie-proposal/proposed/task-complete.py", line 449, in stopped_writers
+    links = [process / "cwd", *(process / "fd").iterdir()]
+                               ~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/Users/aipalm/Documents/GitHub/devlyn-cli/.git/devlyn-completion/af297540908da33bb44bcebd/scratch/zombie-proposal/proposed/task-complete.py", line 1133, in entries
+    raise PermissionError(path)
+PermissionError: /proc/95704/fd
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/aipalm/Documents/GitHub/devlyn-cli/.git/devlyn-completion/af297540908da33bb44bcebd/scratch/zombie-proposal/proposed/task-complete.py", line 1145, in test_linux_writer_scan_accepts_confirmed_single_thread_zombie
+    self.linux_denied_process("Name:\tgit\nState:\tZ (zombie)\nThreads:\t1\n")
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/aipalm/Documents/GitHub/devlyn-cli/.git/devlyn-completion/af297540908da33bb44bcebd/scratch/zombie-proposal/proposed/task-complete.py", line 1142, in linux_denied_process
+    stopped_writers(self.work)
+    ~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "/Users/aipalm/Documents/GitHub/devlyn-cli/.git/devlyn-completion/af297540908da33bb44bcebd/scratch/zombie-proposal/proposed/task-complete.py", line 462, in stopped_writers
+    raise WritersUnobservable("unknown process access; retain tree until writer cessation can be established") from exc
+<run_path>.WritersUnobservable: unknown process access; retain tree until writer cessation can be established
+
+----------------------------------------------------------------------
+Ran 3 tests in 1.286s
+
+FAILED (errors=1)

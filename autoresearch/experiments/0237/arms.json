@@ -1,0 +1,14 @@
+{
+  "base_commit": "975a01e6200750b75ca4b77b4fcbb95521ed1214",
+  "candidate": "contract-discovery",
+  "packages": {
+    "B": "d9d723b1bad27b1dc28834b9b5551cecc43e0c6e4ddec0b002f2c2c217c24d28",
+    "C": "c942ef2e5a8b942dd74241f46effd37bd49a0361d0cd8405e8c7c2e1a09c7b3d"
+  },
+  "changed_package_files": [
+    "package/AGENTS.md",
+    "package/CLAUDE.md",
+    "package/config/skills/_shared/runtime-principles.md"
+  ],
+  "control_manifest_sha256": "f54b10234ddc5d876aeca2a200168ca8621d8c7c666e0a6a1c2ea6ad6a3e37e5"
+}

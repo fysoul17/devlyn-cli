@@ -1,0 +1,18 @@
+{
+  "at": "2026-10-10T15:36:09.891370+00:00",
+  "prediction": "Final custody-corrected source stages with unchanged selected packages. Prior model-free stages remain undispatched. No auth/model call.",
+  "command": [
+    "python3",
+    "-B",
+    "autoresearch/experiments/0241/results/stage.py",
+    "/Users/aipalm/.local/share/nx01/0241-live/staged-v3",
+    "--packs",
+    "/Users/aipalm/.local/share/nx01/0241-live/selected-packs-v1",
+    "--tasks",
+    "autoresearch/experiments/0241/tasks-smoke.json",
+    "--template-runtime",
+    "/Users/aipalm/.local/share/nx01/0240-live/staged-v1/runtime-smoke.json",
+    "--review-manifest",
+    "autoresearch/experiments/0241/results/review-manifest-v3.json"
+  ]
+}

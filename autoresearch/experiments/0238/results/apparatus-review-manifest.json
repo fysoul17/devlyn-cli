@@ -1,0 +1,17 @@
+{
+  "created_at": "2026-10-10T04:02:04.176499+00:00",
+  "files": {
+    "peer.py": "d500dc6ca46c5ab1528c6d419530ad89094f36443461979c6aa1d27933fa3294",
+    "policy.py": "fb3887a2a897395fa07145f148bb11f4cb10ab535c10241ef8bda5fec5b8f2eb",
+    "runner.py": "6ea62d004ed29221652ee6f1fdfebbf950693d8a13cf6590d045d037f353d360",
+    "test_peer.py": "c06be9e3fa81275b420f305de76aa686d22bc250d5c165aa0aa959aefff02a27",
+    "test_runner.py": "a4b55b99fd4233f37eddeefbfcbedf6f8df08b2413615a78dcd57db6369032b4",
+    "f23_precision.py": "8face9ace542d944889bfff8802b352de0a3063d85ae0a8f9ccdbe4133f7f3e2"
+  },
+  "shared_process_dependency": {
+    "path": "config/skills/_shared/platform-support.py",
+    "sha256": "a8e1472b792000bd21ef5d359eba2ae49555adcc198198f2625b51ebb94bbc66"
+  },
+  "validation": "26/26 tests pass in 17.835s; no model/network calls",
+  "log": "results/apparatus-tests-2.log"
+}

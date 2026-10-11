@@ -1,0 +1,4 @@
+{
+  "at": "2026-10-10T12:32:50.941791+00:00",
+  "prediction": "The published-history manifest recognizes the original shared tree but cannot recognize this unreleased changed shared tree. The future-upgrade test incorrectly seeds today's unpublished tree as historical. Incomplete-source lint copy lacks new required node_modules/marked, so fails before intended missing-skill guard."
+}

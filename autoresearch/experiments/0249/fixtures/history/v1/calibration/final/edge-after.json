@@ -1,0 +1,11 @@
+{
+  "command": [
+    "python3",
+    "-B",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/fixtures/calibration/edge_probe.py"
+  ],
+  "cwd": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/fixtures",
+  "exit_code": 0,
+  "stdout": "{\"OR1\": {\"type\": \"StorageError\", \"bytes_preserved\": true}, \"OR2\": {\"cleanup_finished_before_release\": false, \"cleanup_completed\": true}}\n",
+  "stderr": ""
+}

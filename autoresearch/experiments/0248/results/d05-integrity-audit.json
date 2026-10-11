@@ -1,0 +1,368 @@
+{
+  "at": "2026-10-10T21:34:05.972052+00:00",
+  "checked_sha256": "3b8a6c6ee77d147515dda1276e3c7cc41158845ef3b6181a0e6054c080d7151d",
+  "checks": {
+    "actual_image_matches": true,
+    "all_four_original_oracles_pass": true,
+    "all_gaps_and_violations_empty": true,
+    "all_hashes_match": true,
+    "all_source_public_product_delivery_gates_pass": true,
+    "checked_source_checks_delivery_hashes_bound": true,
+    "container_absent": true,
+    "control_inventory_exact": true,
+    "cost_matches_original_usage": true,
+    "delivery_exact_two_allowed_files": true,
+    "effective_v2_freeze_and_inputs_exact": true,
+    "evidence_collection_clean": true,
+    "evidence_manifest_matches_original_verdict": true,
+    "freeze_inputs_selected_unchanged_after": true,
+    "identity_policy_accounting_match": true,
+    "image_resources_config_consistent": true,
+    "local_commit_exact_two_file_diff_and_snapshot_bytes": true,
+    "measured_startup_catalog_matches_frozen_P": true,
+    "no_extra_current_cells": true,
+    "old_STOPs_not_regraded": true,
+    "old_four_observations_unchanged": true,
+    "ordinary_peer_completed_and_custody_bound": true,
+    "original_expected_measured_outcome": true,
+    "owner_seconds_match": true,
+    "remaining_five_current_cells_unrun": true,
+    "retained_evidence_inventory_exact": true,
+    "runtime_hash_equal_freeze": true,
+    "teardown_CLEAN_owner_exited": true,
+    "usage_counters_sum_once": true,
+    "v2_old_Codex_H_P_limits_preserved": true,
+    "verdict_unchanged_after": true,
+    "volume_absent": true
+  },
+  "claude_accounting_status": "MATCH",
+  "completion": "Bounded integrity audit complete; no further work running. Idle before next owner.",
+  "container_absent": true,
+  "control_manifest_sha256": "41b9eca8739f0638567f8bd4e927f782f667aa7fa835951128b0322099ffe457",
+  "credential_evidence_handling": "Opaque byte hashing only for sealed credential evidence. No credential content parsing/disclosure, auth calls, environment inspection or native invocation.",
+  "custody_evidence_sets": [
+    {
+      "all_manifest_bound": true,
+      "attempt_completion_equal_policy": true,
+      "exact_five_files": true,
+      "exit_code": 0,
+      "files": {
+        "cell/work/.devlyn/pair/peer-o71uk85w/attempt.json": "203bdf7c677ac8be1caff877f1d6d019ebb88e1548a1f7f2183107eb50ff1dd9",
+        "cell/work/.devlyn/pair/peer-o71uk85w/completion.json": "8f52e49399420fcc264dc826be6f82a78f8a025d1a8af18d0f05b61765d6d295",
+        "cell/work/.devlyn/pair/peer-o71uk85w/finalanswer.txt": "572e695bca1dedadd0d3a4fc17669782eb0bd35e3b1c410fcab16d55df442895",
+        "cell/work/.devlyn/pair/peer-o71uk85w/peer1791667495534882042.jsonl": "f02cda4c7706f6ca8bb80eb7f33059f433b1f759897f485a153805603b218a83",
+        "cell/work/.devlyn/pair/peer-o71uk85w/stderr": "7150c22629951a22edb4cfef86b5bc8e86f706f5bf26669066a9dadbf6e63e17"
+      },
+      "path": "cell/work/.devlyn/pair/peer-o71uk85w",
+      "resume": null,
+      "session": "01a127b4-62df-7ba2-a03c-229ea7201b2e",
+      "source_unchanged": true,
+      "status": "EXITED"
+    }
+  ],
+  "delivery_changed": [
+    "bin/cli.js",
+    "tests/cli.test.js"
+  ],
+  "delivery_commit": "42a1ae50f1d543b4018aedd821cce8a63c1f8d6e",
+  "delivery_pass": true,
+  "delivery_sha256": "fc648016b2d48d4ef83802f6a0a55f2b2001b18aaf40372eedfeb9b5016bb2bb",
+  "evidence_manifest_collection_failures": [],
+  "evidence_manifest_sha256": "07edc1b96385a50d9ec48475c9918d62e8274570d4eeac54a96919eceba1a9a7",
+  "findings": [],
+  "freeze_sha256_after": "16b49370e62922eed63aa3396102f89cfb258c7cc001503a407d6bf6045e00d3",
+  "freeze_sha256_before": "16b49370e62922eed63aa3396102f89cfb258c7cc001503a407d6bf6045e00d3",
+  "historical_four": [
+    {
+      "current_0247_treatment_outcome": null,
+      "experiment": "0243",
+      "name": "d01-f23-claude-s",
+      "reuse_kind": "UNCHANGED_RELEVANT_TREATMENT_HISTORICAL",
+      "sha256": "dc50789bcb12813d57e53ea14cd66203b938a6e1d91d40804b598347f5c1db89",
+      "unchanged": true
+    },
+    {
+      "current_0247_treatment_outcome": "NOT_OBSERVED",
+      "experiment": "0246",
+      "name": "d02-f23-codex-p",
+      "reuse_kind": "VERSION_QUALIFIED_HISTORICAL_NEGATIVE",
+      "sha256": "4dd81587abbb27528ccc70a594d0e5cb6dd5a7a31aa8fd33a7fa499a600c7dc9",
+      "unchanged": true
+    },
+    {
+      "current_0247_treatment_outcome": null,
+      "experiment": "0246",
+      "name": "d03-f23-claude-a",
+      "reuse_kind": "UNCHANGED_RELEVANT_TREATMENT_HISTORICAL",
+      "sha256": "6f1f0b98a4d84a6a009a634bd1a49576b7ce14358324f85fbc0f08082feb69af",
+      "unchanged": true
+    },
+    {
+      "current_0247_treatment_outcome": "NOT_OBSERVED",
+      "experiment": "0246",
+      "name": "d04-f23-codex-h",
+      "reuse_kind": "VERSION_QUALIFIED_HISTORICAL_NEGATIVE",
+      "sha256": "662087c33d44095cd708e7060926ec22420ae92580f477669108de8efe32045a",
+      "unchanged": true
+    }
+  ],
+  "identity_status": "MATCH",
+  "inference_limits": "Current result is Claude/P under 0247 machinery. Old Codex H/P stay 0245-helper version-qualified negatives; current Codex H/P remain NOT_OBSERVED with no outcome imputation or pooled current efficacy. No adoption claim or old regrade.",
+  "input_tokens": 10593254,
+  "integrity": {
+    "checked_snapshot": {
+      "count": 680,
+      "mismatches": []
+    },
+    "control": {
+      "count": 1059,
+      "mismatches": []
+    },
+    "evidence": {
+      "count": 2196,
+      "mismatches": []
+    },
+    "execution_inputs": {
+      "count": 117,
+      "mismatches": []
+    },
+    "prepared": {
+      "count": 5,
+      "mismatches": []
+    },
+    "selected_artifacts": {
+      "count": 486,
+      "mismatches": []
+    }
+  },
+  "integrity_status": "PASS",
+  "local_commit_integrity": {
+    "ancestry_exit_code": 0,
+    "blobs": {
+      "bin/cli.js": {
+        "commit_blob_sha256": "c4259abb3c7c759583ac028717f9a5341fdfe44f483acd090c9fa2a932212fc2",
+        "exit_code": 0,
+        "snapshot_sha256": "c4259abb3c7c759583ac028717f9a5341fdfe44f483acd090c9fa2a932212fc2"
+      },
+      "tests/cli.test.js": {
+        "commit_blob_sha256": "75764a343dbe7e9b8937c6a5c87a74bdca8488a7bdced1a2cb1b5db8a9a1044e",
+        "exit_code": 0,
+        "snapshot_sha256": "75764a343dbe7e9b8937c6a5c87a74bdca8488a7bdced1a2cb1b5db8a9a1044e"
+      }
+    },
+    "changed_files": [
+      "bin/cli.js",
+      "tests/cli.test.js"
+    ],
+    "read_only_git_observations": [
+      {
+        "argv": [
+          "git",
+          "--no-pager",
+          "-C",
+          "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d05-f23-claude-p/cell/work",
+          "merge-base",
+          "--is-ancestor",
+          "8414826b8cba4ae2264eb2220bb776815bd6bc3e",
+          "42a1ae50f1d543b4018aedd821cce8a63c1f8d6e"
+        ],
+        "exit_code": 0,
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "argv": [
+          "git",
+          "--no-pager",
+          "-C",
+          "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d05-f23-claude-p/cell/work",
+          "diff",
+          "--no-ext-diff",
+          "--name-only",
+          "-z",
+          "8414826b8cba4ae2264eb2220bb776815bd6bc3e",
+          "42a1ae50f1d543b4018aedd821cce8a63c1f8d6e"
+        ],
+        "exit_code": 0,
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stdout_sha256": "51b497e8a2977ecbb1506a0eea87279608833e3f251e918726daa417caba59ca"
+      },
+      {
+        "argv": [
+          "git",
+          "--no-pager",
+          "-C",
+          "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d05-f23-claude-p/cell/work",
+          "cat-file",
+          "blob",
+          "42a1ae50f1d543b4018aedd821cce8a63c1f8d6e:bin/cli.js"
+        ],
+        "exit_code": 0,
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stdout_sha256": "c4259abb3c7c759583ac028717f9a5341fdfe44f483acd090c9fa2a932212fc2"
+      },
+      {
+        "argv": [
+          "git",
+          "--no-pager",
+          "-C",
+          "/Users/aipalm/.local/share/nx01/0248-live/out-measured/d05-f23-claude-p/cell/work",
+          "cat-file",
+          "blob",
+          "42a1ae50f1d543b4018aedd821cce8a63c1f8d6e:tests/cli.test.js"
+        ],
+        "exit_code": 0,
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "stdout_sha256": "75764a343dbe7e9b8937c6a5c87a74bdca8488a7bdced1a2cb1b5db8a9a1044e"
+      }
+    ]
+  },
+  "native_owner_config_identity": {
+    "cell_mount": true,
+    "codex_config": true,
+    "home_mount": true,
+    "image_equals_runtime_plan_seal": true,
+    "init_resource_caps": true,
+    "owner_model_effort": true,
+    "owner_wall": true,
+    "resources": {
+      "--cpus": "2",
+      "--memory": "4g",
+      "--pids-limit": "256"
+    },
+    "sealed_environment_matches": true,
+    "sealed_owner_argv_matches": true,
+    "source_bound_to_frozen_cell": true,
+    "started_result_equal": true,
+    "tmp_mount": true
+  },
+  "old_STOPs_preserved": [
+    {
+      "experiment": "0243",
+      "input_tokens": null,
+      "known_usage_lower_bound": {
+        "input_tokens": 1796844,
+        "output_tokens": 69638
+      },
+      "name": "d02-f23-codex-p",
+      "output_tokens": null,
+      "owner_seconds": 807.6238686249999,
+      "preserved_ungraded": true,
+      "usage": "PARTIAL",
+      "verdict_sha256": "5dae1c69e1c90024962e08aacc7524598b7e2f4944b9429b370725ad6456f51b"
+    },
+    {
+      "experiment": "0246",
+      "input_tokens": 12316264,
+      "known_usage_lower_bound": null,
+      "name": "d05-f23-claude-p",
+      "output_tokens": 196529,
+      "owner_seconds": 2138.6585267500195,
+      "preserved_ungraded": true,
+      "usage": "COMPLETE",
+      "verdict_sha256": "d7f1de56e6d2f0d7ead917788099c1586848a6ea80506e75256e4318a5ba1c6e"
+    }
+  ],
+  "oracle": [
+    {
+      "id": "priority-rollback",
+      "status": "PASS"
+    },
+    {
+      "id": "single-warehouse-fefo",
+      "status": "PASS"
+    },
+    {
+      "id": "submillisecond-order",
+      "status": "PASS"
+    },
+    {
+      "id": "offset-equivalence",
+      "status": "PASS"
+    }
+  ],
+  "output_tokens": 193245,
+  "owner_seconds": 1751.5711559999909,
+  "owner_session": "f2d492ec-107d-4a74-b2c9-f7d77208dacb",
+  "owner_status": "EXITED_0",
+  "peer_activated": true,
+  "peer_policy_status": "MATCH",
+  "peer_session": "01a127b4-62df-7ba2-a03c-229ea7201b2e",
+  "peer_validation_completion": "COMPLETED",
+  "prediction": {
+    "prediction": "The new ordinary d05 remains CHECKS_PASS/COMPLETE with the announced cost; all 117 effective-v2 inputs, 486 selected artifacts, prepared files, raw evidence and controls match, exact two-file committed delivery matches the checked snapshot, and the named Docker container/volume are absent. Historical four observations and v2 version-qualified H/P limits remain unchanged, with later five cells unrun.",
+    "recorded_at": "2026-10-10T21:32:24.490598+00:00"
+  },
+  "product_check_pass": true,
+  "protocol_audit_scope": "Separate independent audit covers ordinary automatic activation, request fidelity, answer consumption, witnesses and actual model behavior. This report verifies retained evidence and recorded gates without re-evaluation.",
+  "public_pass": true,
+  "public_test_count": 10,
+  "remaining_cells": {
+    "d06-f23-codex-b": "NOT_RUN",
+    "d07-f23-claude-h": "NOT_RUN",
+    "d08-f23-codex-a": "NOT_RUN",
+    "d09-f23-claude-b": "NOT_RUN",
+    "d10-f23-codex-s": "NOT_RUN"
+  },
+  "schema": "0248-d05-independent-native-integrity-audit-v1",
+  "scope": "Bounded read-only independent integrity audit. No native/model/authentication operation, test/evaluator replay, source repair or regrade. Sealed credential bytes, if listed, are hashed opaquely without parsing or disclosure.",
+  "seal_sha256": "0aaaa19a11d8e58dbb84af43a46260247d413a871644605cb8f9b1a7fff896f4",
+  "source_check_pass": true,
+  "status": "CHECKS_PASS",
+  "teardown": "CLEAN",
+  "teardown_and_image_observations": [
+    {
+      "argv": [
+        "docker",
+        "container",
+        "inspect",
+        "--format",
+        "{{.Id}}",
+        "devlyn-0231-27c33d5f43a9431b811b7c2a09e17a1a"
+      ],
+      "exit_code": 1,
+      "stderr": "Error response from daemon: No such container: devlyn-0231-27c33d5f43a9431b811b7c2a09e17a1a\n",
+      "stdout": "\n"
+    },
+    {
+      "argv": [
+        "docker",
+        "volume",
+        "inspect",
+        "--format",
+        "{{.Name}}",
+        "devlyn-0234-tmp-01ac091754d6486598a4bd62d08b7987"
+      ],
+      "exit_code": 1,
+      "stderr": "Error response from daemon: get devlyn-0234-tmp-01ac091754d6486598a4bd62d08b7987: no such volume\n",
+      "stdout": "\n"
+    },
+    {
+      "argv": [
+        "docker",
+        "image",
+        "inspect",
+        "--format",
+        "{{.Id}}",
+        "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998"
+      ],
+      "exit_code": 0,
+      "stderr": "",
+      "stdout": "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998\n"
+    }
+  ],
+  "usage": "COMPLETE",
+  "usage_arithmetic": {
+    "accounting_replayed": false,
+    "cached_input_not_added_again": true,
+    "input_sum": 10593254,
+    "output_sum": 193245,
+    "thinking_reasoning_not_added_to_output": true
+  },
+  "usage_gaps": [],
+  "verdict_sha256": "7ebc4cbafd44f16c41027becc3c4b3dcb8cb917ce4ab426fbe290ae150ebd028",
+  "volume_absent": true,
+  "writes": [
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/results/d05-integrity-audit.json"
+  ]
+}

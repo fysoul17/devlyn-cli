@@ -1,0 +1,72 @@
+{
+  "prediction": "No sealed/prepared/evidence/checked/commit mismatches; original QA unchanged. Read-only hashes and Git object inspection only.",
+  "cell": "/Users/aipalm/.local/share/nx01/0237-live/out-confirmation/f04-CF-CONFIG-claude-B-r1",
+  "evidence": {
+    "count": 754,
+    "failures": [],
+    "mismatches": [],
+    "manifest_sha256": "449d2b46bb8726db125058863cca76812471e5ebbef439cfd5570066883d6897"
+  },
+  "seal": {
+    "inputs_count": 54,
+    "inputs_mismatches": [],
+    "prepared_count": 4,
+    "prepared_mismatches": []
+  },
+  "checked": {
+    "count": 70,
+    "mismatches": [],
+    "checks_match": true,
+    "delivery_match": true
+  },
+  "git": {
+    "commit": "d50ce2ad09c4b7b453d252583c152ab0cc53f26f",
+    "head": "d50ce2ad09c4b7b453d252583c152ab0cc53f26f",
+    "parent": "2f96110c2cbd7c96b3ac1dc6875bba57bd058e08",
+    "tree_count": 70,
+    "mismatches": []
+  },
+  "qa": {
+    "checks/helpers.py": {
+      "sha256": "2373801c0e1de90c10489cfb0a9089c8e2e70cdf7e947245ec634370aa17f11a",
+      "baseline_match": true,
+      "fixture_match": true
+    },
+    "checks/run_checks.py": {
+      "sha256": "89da316d92c61568f7224f22774807668ea5053132a9bf22178fed0ab822d107",
+      "baseline_match": true,
+      "fixture_match": true
+    },
+    "checks/test_format.py": {
+      "sha256": "b82f886e5a8b709350d7aaa127e1b7cd8ac508c6b20c05b4701abe24e2a633ff",
+      "baseline_match": true,
+      "fixture_match": true
+    },
+    "checks/test_smoke.py": {
+      "sha256": "815d4fde5374fddf3de1a5c65e4ec1892afc657542a2e89e0eb3af9e1e5429a4",
+      "baseline_match": true,
+      "fixture_match": true
+    }
+  },
+  "new_test_methods": {
+    "test_includes.py": 9,
+    "test_merge.py": 3,
+    "test_reload.py": 6
+  },
+  "artifact_sha256": {
+    "checks-raw.json": "2ae81df7f1ae557125c8c059e194e44bb1be46a6cad84f9bea14b5af1ac31e4c",
+    "checks.json": "ffc88158178639cef4caf778c8c5530588f0fc5512f67e3766d1222088ed7c1e",
+    "checked.json": "d90213a890bd9958a89d0ca45e08f9acfab1d42254ef33e7e53165b17feb5c0a",
+    "delivery.json": "390afae6a8f61eba48759168d71ca5f9781985ed16eba8257e38a4b7550477e7",
+    "snapshot/visible/beacon/merge.py": "a5f5188985653023a4cefdb4f44bd035e867c2fab86f30830f9c3a5e2494d3cb",
+    "snapshot/visible/beacon/loader.py": "b6fc010f8ff50d84412f2716ad2cd43c301686693d380d39bbef46175cd55622",
+    "snapshot/visible/beacon/manager.py": "9dc274656b260f6969fe52257803f7e17fc61a44a39cb3e4894b6e09d6bad0a2",
+    "snapshot/visible/beacon/paths.py": "d728d03c8651a8ba419e9bb0e19b13bf548262343f921fab32bdced1ebbdc9ff"
+  },
+  "oracle_sha256": "e980b231416219da7fe94ad25df845f0131d69cf18d2ad682c6cb7bcd5418053",
+  "control_oracle": {
+    "path": "/Users/aipalm/.local/share/nx01/0237-live/confirmation-control-v1/oracle/eq3/CF-CONFIG/oracle.py",
+    "sha256": "e980b231416219da7fe94ad25df845f0131d69cf18d2ad682c6cb7bcd5418053",
+    "fixture_match": true
+  }
+}

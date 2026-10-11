@@ -1,0 +1,11 @@
+{
+  "command": [
+    "python3",
+    "-B",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/fixtures/verify_fixtures.py"
+  ],
+  "cwd": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/fixtures",
+  "exit_code": 0,
+  "stdout": "{\"passed\": true, \"checks\": [\"predictions\", \"exact contract quotes\", \"oracle IDs\", \"full gold mappings\", \"unchanged final source hashes\"]}\n",
+  "stderr": ""
+}

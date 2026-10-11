@@ -1,0 +1,10 @@
+{
+  "command": [
+    "python3",
+    "-B",
+    "autoresearch/experiments/0241/results/replay.py"
+  ],
+  "exit_code": 0,
+  "seconds": 0.7179467089881655,
+  "completed_at": "2026-10-10T15:23:42.289130+00:00"
+}

@@ -1,0 +1,33 @@
+{
+  "command": [
+    "python3",
+    "-B",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "autoresearch/experiments/0241",
+    "-p",
+    "test_*.py",
+    "-v"
+  ],
+  "predictions": [
+    "All 36 focused tests pass using inherited fixture gates and fake peer executables.",
+    "Only the Codex peer configuration literal changes; Claude argv, owner preparation, all routes, task and guide bytes remain unchanged.",
+    "Owner witness JSON and custody copies do not create Claude accounting gaps; typed/dispatch/literal-redirect captures still produce STOP when missing, malformed, sessionless or counterless.",
+    "Unregistered native envelopes remain visible, unresolved real launch without a carrier remains STOP, and interrupted Claude/Codex work remains UNKNOWN/PARTIAL with retained lower bounds.",
+    "Every snapshotted 0238/0240 execution input retains its pre-edit hash."
+  ],
+  "recorded_at": "2026-10-10T15:19:39.085921+00:00",
+  "scope": "0241 only; no package build, staging, auth, native CLI or model dispatch",
+  "source_sha256": {
+    "autoresearch/experiments/0241/build_packages.py": "7378de371e30c4bbbc7796d5161a320e82e7fcf042f7e224a269532a727d3c39",
+    "autoresearch/experiments/0241/capture_discovery.py": "9d775298f48192001148fb43d2543459b39d46dd6e5ab4fd1897736fb9afc96a",
+    "autoresearch/experiments/0241/peer.py": "379fd2890b402ba9351d9a922ce0e11dcb33fe986bb095a191fb354e4246c96b",
+    "autoresearch/experiments/0241/results/stage.py": "0217f2364da868305d676a5583677a5482e55d8aa7ca4307705873da8c864ec1",
+    "autoresearch/experiments/0241/runner.py": "4cca2cde73b28aa34ded4d347facf76225513990248faa279c3870875d228188",
+    "autoresearch/experiments/0241/test_adapters.py": "a8375922687e0727c243fa256df0aee532e932fed81ce3bf63852f284f06daa0",
+    "autoresearch/experiments/0241/test_peer.py": "ac05eb7199a77a17d1a8235e6022319a1f497ba2643fafa658e8975f1e9353db",
+    "autoresearch/experiments/0241/test_runner.py": "bb108b0498da3c395d38ca95a3e929e378e8e8fc7c5e6b010f3aa27603e98c27"
+  }
+}

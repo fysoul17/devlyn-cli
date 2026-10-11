@@ -1,0 +1,8 @@
+{
+  "at": "2026-10-10T23:58:25.569034+00:00",
+  "prediction": "If the refusal is actual host account drift, current Keychain and freshly copied d02 auth profile fingerprints differ from frozen account, while d01 prepared auth still identifies the frozen account. If not, retain exact observed mismatch without guessing a changed account. Read-only security lookup and OAuth profile requests only; no refresh/login/write/restore/model invocation.",
+  "expected": [
+    "230ea92eea12",
+    "584a8a8f163a"
+  ]
+}

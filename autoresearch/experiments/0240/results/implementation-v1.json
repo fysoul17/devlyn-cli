@@ -1,0 +1,65 @@
+{
+  "actual_staging": "NOT_RUN",
+  "at": "2026-10-10T14:57:55.770087+00:00",
+  "direct_inherited_dependencies": {
+    "autoresearch/experiments/0238/build_packages.py": "197d92ae282ba7693d8e6584eba6a3ecd4687b25f5d3d6e36903390db6bb1a51",
+    "autoresearch/experiments/0238/policy.py": "d02be3a1700c0a78aab0d141580da7eacc97be97a60ea7cfc27e9bd31b154606",
+    "autoresearch/experiments/0238/results/stage.py": "9c288dd37a20f114a9ef2d6167da23502748b634b0d6b08870a95c4626d17500",
+    "autoresearch/experiments/0238/runner.py": "5370feb1a9e46dc5abd67e6954cb2019b1ba246d216da7254270e79b17781997",
+    "autoresearch/experiments/0238/test_peer.py": "c06be9e3fa81275b420f305de76aa686d22bc250d5c165aa0aa959aefff02a27",
+    "autoresearch/experiments/0238/test_runner.py": "6db017e16cf5822ed3f240834670f1bd357e84bc62210ac59b49bbb9ff013b48"
+  },
+  "files": {
+    "build_packages.py": "7378de371e30c4bbbc7796d5161a320e82e7fcf042f7e224a269532a727d3c39",
+    "guides/H.md": "e8b73b4edda4b2476605a34b2535ee79085f09883256950fcde49556d668ff84",
+    "guides/P.md": "9523319d650db1d5176261cb00d254e6216915b86d9d222bfacc85cefa23993a",
+    "guides/S.md": "34287e59aa0e32ba09dacb92115715466e1408de0f0620f92fb6ff2db1e9acc3",
+    "peer.py": "b863d9879c7ef717cfab4c915d277bce822b7ed4887a0eb2c5e9a13afe28c43a",
+    "results/stage.py": "0217f2364da868305d676a5583677a5482e55d8aa7ca4307705873da8c864ec1",
+    "runner.py": "b0a1ea36de6033db71625f1b265e31fa2acb31addf3e29ac1e79169f96bb84af",
+    "tasks-smoke.json": "0f8f531228bbe4e29e3c58b51d226b3c3fe21cbf01ae8ecf7d6b7ca6e86a6e93",
+    "test_adapters.py": "a8375922687e0727c243fa256df0aee532e932fed81ce3bf63852f284f06daa0",
+    "test_peer.py": "c17fbd9e1411bbc8fddb37707c6b7492787dbc440a78c0c455f5675ee278786e",
+    "test_runner.py": "09425562022d100b13d1817ebb7b797a38f5020f7fa25636ce469d96a28ed296"
+  },
+  "inherited_preservation": {
+    "before_manifest_sha256": "c2df941c6a2f620023a7eda88bf2d70a85a753cb4a127e5f467c1fd26ad6e258",
+    "changed": [],
+    "count": 245
+  },
+  "limits": [
+    "Actual pinned native tool removal and real fresh/resume accounting remain unverified.",
+    "Existing 0238 STOP and UNKNOWN costs remain unchanged; disabling peer children does not close other accounting gaps.",
+    "No product adoption or effect claim."
+  ],
+  "model_auth_docker_calls": "NONE",
+  "package_build": "NOT_RUN",
+  "scope": "Implementation handoff, not review or dispatch authorization",
+  "test_log_sha256": {
+    "implementation-prediction-v1.json": "7fa8fdc50f5064338c2732215705c6ee0b0843b5634fdf08ce8de43fc5b11ef6",
+    "tests-v1.json": "625b1b1f2ec19cee0b731911a428d638a043936f4bb918e54d026a948cf6878c",
+    "tests-v1.stderr": "4d8d0fd387fd03c103174956964cbfeb9ea4258fdc542782d2a203f8683f9ab6",
+    "tests-v1.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "test_result": {
+    "command": [
+      "python3",
+      "-B",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "autoresearch/experiments/0240",
+      "-p",
+      "test_*.py",
+      "-v"
+    ],
+    "ended_at": "2026-10-10T14:57:17.970750+00:00",
+    "exit_code": 0,
+    "seconds": 4.515329167013988,
+    "started_at": "2026-10-10T14:57:13.455156+00:00",
+    "stderr": "autoresearch/experiments/0240/results/tests-v1.stderr",
+    "stdout": "autoresearch/experiments/0240/results/tests-v1.stdout"
+  },
+  "transitive_dependencies": "0238 Runner.inputs retains 0237 and matched 0234 cell/evidence/accounting/evaluator plus 0238 owner init, Claude accounting, F23 witness and existing immutable control checks. No historical module bytes changed. New Runner.inputs additionally seals new wrappers, helper, guides and inherited builder/stage."
+}

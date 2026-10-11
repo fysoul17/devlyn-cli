@@ -1,0 +1,9 @@
+test_identity_gap_stays_visible (__main__.InitRunnerTests.test_identity_gap_stays_visible) ... ok
+test_inputs_bind_new_owner_without_changing_legacy_inputs_or_routes (__main__.InitRunnerTests.test_inputs_bind_new_owner_without_changing_legacy_inputs_or_routes) ... ok
+test_only_owner_creation_argument_changes (__main__.InitRunnerTests.test_only_owner_creation_argument_changes) ... ok
+test_recorded_argv_exit_timeout_and_teardown_are_preserved (__main__.InitRunnerTests.test_recorded_argv_exit_timeout_and_teardown_are_preserved) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.195s
+
+OK

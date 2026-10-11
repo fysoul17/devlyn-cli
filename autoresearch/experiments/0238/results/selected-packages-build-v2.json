@@ -1,0 +1,7 @@
+{
+  "ended_at": "2026-10-10T12:36:27.143582+00:00",
+  "seconds": 7.502670292000403,
+  "exit_code": 0,
+  "stdout": "{\"B\": \"050bc8d6f3af071461903f0c7efd77ae445828f232152cd4f52b6e81faa967b3\", \"S\": \"c031f7d5e5ea752bf153092e059684f281cfd55a1241c643f57b525b22d334d5\", \"H\": \"1731e86ce031172ce87352146887e1ac28abbdf65266ee1cf05a28466ca53d3f\", \"P\": \"10a748e9235f614b0c2f8091aa17fec88a6f762d77e5d4f8a830d3dc8ddb5d5e\"}\n",
+  "stderr": "npm notice\nnpm notice New major version of npm available! 10.8.2 -> 12.2.0\nnpm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0\nnpm notice To update run: npm install -g npm@12.2.0\nnpm notice\n"
+}

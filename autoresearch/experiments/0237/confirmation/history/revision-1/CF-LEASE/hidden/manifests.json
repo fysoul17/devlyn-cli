@@ -1,0 +1,134 @@
+{
+  "manifestations": [
+    {
+      "id": "expiry-boundary",
+      "contract_bindings": [
+        {
+          "file": "visible/docs/delivery.md",
+          "sha256": "070f0c7455312730cd6d48a510be13a8c954cc608c9683888f33cd8512e608fc",
+          "quote": "The expiration boundary belongs to the next worker:"
+        }
+      ]
+    },
+    {
+      "id": "expired-unclaimed-settlement",
+      "contract_bindings": [
+        {
+          "file": "visible/docs/delivery.md",
+          "sha256": "070f0c7455312730cd6d48a510be13a8c954cc608c9683888f33cd8512e608fc",
+          "quote": "A rejected settlement returns False and changes no stored fields."
+        }
+      ]
+    },
+    {
+      "id": "stale-receipt-reopen",
+      "contract_bindings": [
+        {
+          "file": "visible/docs/delivery.md",
+          "sha256": "070f0c7455312730cd6d48a510be13a8c954cc608c9683888f33cd8512e608fc",
+          "quote": "Reclaiming a job always issues a new token, even when the same worker ID is reused."
+        }
+      ]
+    },
+    {
+      "id": "idempotent-producer-every-state",
+      "contract_bindings": [
+        {
+          "file": "visible/docs/storage.md",
+          "sha256": "8b79b3fef133f6a1122da75175f4311d069b263a2ec18ffa7fbf604bc11e2c68",
+          "quote": "Enqueuing an existing ID with an"
+        }
+      ]
+    },
+    {
+      "id": "retry-lifecycle-clean-settlement",
+      "contract_bindings": [
+        {
+          "file": "visible/docs/delivery.md",
+          "sha256": "070f0c7455312730cd6d48a510be13a8c954cc608c9683888f33cd8512e608fc",
+          "quote": "Successful completion clears an earlier last_error; attempts remain auditable."
+        }
+      ]
+    },
+    {
+      "id": "eligibility-and-stable-order",
+      "contract_bindings": [
+        {
+          "file": "visible/docs/delivery.md",
+          "sha256": "070f0c7455312730cd6d48a510be13a8c954cc608c9683888f33cd8512e608fc",
+          "quote": "choose by `(available_at, seq)`."
+        }
+      ]
+    },
+    {
+      "id": "independent-concurrent-claims",
+      "contract_bindings": [
+        {
+          "file": "visible/docs/delivery.md",
+          "sha256": "070f0c7455312730cd6d48a510be13a8c954cc608c9683888f33cd8512e608fc",
+          "quote": "Independent SQLite connections"
+        }
+      ]
+    },
+    {
+      "id": "worker-success-after-takeover",
+      "contract_bindings": [
+        {
+          "file": "visible/docs/delivery.md",
+          "sha256": "070f0c7455312730cd6d48a510be13a8c954cc608c9683888f33cd8512e608fc",
+          "quote": "Completion produces `completed` or `lost`."
+        }
+      ]
+    },
+    {
+      "id": "worker-failure-after-takeover",
+      "contract_bindings": [
+        {
+          "file": "visible/docs/delivery.md",
+          "sha256": "070f0c7455312730cd6d48a510be13a8c954cc608c9683888f33cd8512e608fc",
+          "quote": "produce `retried` or `lost` depending on whether settlement still owns the lease."
+        }
+      ]
+    },
+    {
+      "id": "retry-uses-settlement-clock",
+      "contract_bindings": [
+        {
+          "file": "visible/docs/delivery.md",
+          "sha256": "070f0c7455312730cd6d48a510be13a8c954cc608c9683888f33cd8512e608fc",
+          "quote": "The worker uses its injected clock again after the handler, because time may"
+        }
+      ]
+    },
+    {
+      "id": "settlement-errors-not-handler-errors",
+      "contract_bindings": [
+        {
+          "file": "visible/docs/delivery.md",
+          "sha256": "070f0c7455312730cd6d48a510be13a8c954cc608c9683888f33cd8512e608fc",
+          "quote": "settlement failures must escape as well; they are not handler delivery failures."
+        }
+      ]
+    },
+    {
+      "id": "process-interruption-retains-lease",
+      "contract_bindings": [
+        {
+          "file": "visible/docs/delivery.md",
+          "sha256": "070f0c7455312730cd6d48a510be13a8c954cc608c9683888f33cd8512e608fc",
+          "quote": "BaseException is allowed to escape, leaving its lease for recovery."
+        }
+      ]
+    },
+    {
+      "id": "invalid-input-no-mutation",
+      "contract_bindings": [
+        {
+          "file": "visible/docs/delivery.md",
+          "sha256": "070f0c7455312730cd6d48a510be13a8c954cc608c9683888f33cd8512e608fc",
+          "quote": "A retry delay must be nonnegative."
+        }
+      ]
+    }
+  ]
+}

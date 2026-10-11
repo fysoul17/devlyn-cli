@@ -1,0 +1,61 @@
+--- v1/OR1/gold/folio/storage.py
++++ v2/OR1/gold/folio/storage.py
+@@ -4,6 +4,9 @@
+ import os
+ from pathlib import Path
+ import tempfile
++
++def _reject_constant(token):
++    raise ValueError(f"invalid JSON constant: {token}")
+ 
+ @dataclass
+ class Snapshot:
+@@ -31,7 +34,7 @@
+         except (OSError, UnicodeError) as exc:
+             raise StorageError(str(exc)) from exc
+         try:
+-            value = json.loads(text)
++            value = json.loads(text, parse_constant=_reject_constant)
+             if (not isinstance(value, dict) or set(value) != {"revision", "documents"}
+                     or type(value["revision"]) is not int or value["revision"] < 0
+                     or not isinstance(value["documents"], dict)
+--- v1/OR1/hidden/oracle.py
++++ v2/OR1/hidden/oracle.py
+@@ -255,6 +255,16 @@
+     expect(StorageError, workspace.refresh)
+     assert path.read_bytes() == b'\xff'
+     assert workspace.snapshot().revision == 1
++    for constant in ('NaN', 'Infinity', '-Infinity'):
++        malformed = ('{"revision": 1, "documents": {"bad": {"value": ' + constant + '}}}').encode()
++        path.write_bytes(malformed)
++        expect(StorageError, FileStore(path).read)
++        expect(StorageError, workspace.refresh)
++        assert path.read_bytes() == malformed
++        assert workspace.snapshot().revision == 1 and workspace.snapshot().documents == {}
++        path.write_bytes(before)
++        assert workspace.refresh().revision == 1 and workspace.snapshot().documents == {}
++    assert workspace.begin().commit().revision == 2
+ 
+ FUNCTIONS = [ownership, refresh_isolation, optimistic, disjoint, overlap,
+              absent_delete, failed_save, failed_read, atomic_boundary, lifecycle]
+--- v1/OR1/visible/folio/storage.py
++++ v2/OR1/visible/folio/storage.py
+@@ -4,6 +4,9 @@
+ import os
+ from pathlib import Path
+ import tempfile
++
++def _reject_constant(token):
++    raise ValueError(f"invalid JSON constant: {token}")
+ 
+ @dataclass
+ class Snapshot:
+@@ -31,7 +34,7 @@
+         except (OSError, UnicodeError) as exc:
+             raise StorageError(str(exc)) from exc
+         try:
+-            value = json.loads(text)
++            value = json.loads(text, parse_constant=_reject_constant)
+             if (not isinstance(value, dict) or set(value) != {"revision", "documents"}
+                     or type(value["revision"]) is not int or value["revision"] < 0
+                     or not isinstance(value["documents"], dict)

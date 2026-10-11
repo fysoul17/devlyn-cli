@@ -1,0 +1,12 @@
+{
+  "recorded_at": "2026-10-10T10:40:48.892094+00:00",
+  "status": "PROSPECTIVE_DRAFT_NOT_DISPATCH_AUTHORIZATION",
+  "revision": "two-sequential-foreground-commands-v2",
+  "prediction": "Both Claude foreground transport smokes complete the sole child, consume its terminal result, save a passing receipt and make a matching local commit before finalizing. FG-LONG performs two separate foreground Bash calls, each >=305s with requested timeout360000ms, sequentially, so the foreground child survives >600s without a print-mode background-ceiling kill. Native root and child identity/effort match claude-opus-5-5/max and whole usage is complete.",
+  "runtime": null,
+  "packages": null,
+  "dispatch_order": "Proposed FG-SHORT then FG-LONG; root must freeze order, arm, output names and runtime before any native call.",
+  "local_validation_prediction": "Both fixtures compile. Synthetic valid ordered terminal parts pass; missing receipt, wrong marker, too-short elapsed and missing/duplicate/reversed long parts fail. Validation executes only receipt checkers, not gates, sleeps, Docker or native models.",
+  "manifest_sha256": "a4cacc95d24de8fa9eb53d4f7adaa04b4f5cde7fc6fcd3e5161ba215b99a8491",
+  "superseded": "superseded-single-command-draft retains prior unregistered inputs, prediction and 8 local checker controls verbatim; no native run occurred."
+}

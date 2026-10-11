@@ -1,0 +1,33 @@
+{
+  "command": [
+    "docker",
+    "run",
+    "--rm",
+    "--init",
+    "--name",
+    "devlyn-integration-helper-0237-425-v1",
+    "--network",
+    "none",
+    "--user",
+    "0:0",
+    "--pids-limit",
+    "256",
+    "--memory",
+    "4g",
+    "--cpus",
+    "2",
+    "--mount",
+    "type=bind,src=/Users/aipalm/.local/share/nx01/0237-integration-425/config/skills/_shared,dst=/source,readonly",
+    "--workdir",
+    "/tmp",
+    "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998",
+    "python3",
+    "-B",
+    "/source/task-complete.py",
+    "--self-test"
+  ],
+  "elapsed_seconds": 35.668189083982725,
+  "finished_at": "2026-10-10T23:14:42.243456+00:00",
+  "returncode": 0,
+  "started_at": "2026-10-10T23:14:06.574737+00:00"
+}

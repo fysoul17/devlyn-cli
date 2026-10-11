@@ -1,0 +1,52 @@
+{
+  "cell": "d08-f23-codex-a",
+  "config": "codex",
+  "arm": "A",
+  "status": "PRODUCT_INCOMPLETE",
+  "usage": "COMPLETE",
+  "input_tokens": 223364,
+  "output_tokens": 15996,
+  "owner_seconds": 306.79681274999166,
+  "source_check_pass": false,
+  "public_pass": true,
+  "product_check_pass": false,
+  "delivery_pass": true,
+  "oracle": [
+    {
+      "id": "priority-rollback",
+      "status": "PASS"
+    },
+    {
+      "id": "single-warehouse-fefo",
+      "status": "PASS"
+    },
+    {
+      "id": "submillisecond-order",
+      "status": "FAIL"
+    },
+    {
+      "id": "offset-equivalence",
+      "status": "FAIL"
+    }
+  ],
+  "identity": {
+    "codex_seats": {
+      "01a127e5-e621-7d72-9978-c95a471b07e9": [
+        "owner",
+        "gpt-6-astra",
+        "max"
+      ]
+    },
+    "gaps": [],
+    "owner": "MATCH",
+    "owner_launched_sessions": [],
+    "status": "MATCH",
+    "violations": []
+  },
+  "usage_gaps": [],
+  "teardown": "CLEAN",
+  "at": "2026-10-10T22:24:48.793395+00:00",
+  "verdict_sha256": "ba62d47cffe12936f0689b77b6ae5c7aa5135665baf220a1c7984f71656d66f4",
+  "independent_audits": "PENDING",
+  "scope": "Valid nativeA product failure retained unchanged. No reroll/regrade, no pooled currentCodexH/P inference or global null."
+}

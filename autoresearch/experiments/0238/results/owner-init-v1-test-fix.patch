@@ -1,0 +1,19 @@
+--- test_runner.py.before-test-name-fix
++++ test_runner.py
+@@ -129,14 +129,14 @@
+             r.write(out / 'checks.json', checked)
+             return checked
+         with ExitStack() as stack:
+-            for target, name, value in ((self.app, 'validate', None), (self.app, 'preflight', ({}, None)),
++            for target, attribute, value in ((self.app, 'validate', None), (self.app, 'preflight', ({}, None)),
+                 (self.app, 'prepare', self.out), (self.app, 'boot_catalogs', None),
+                 (self.app, 'unchanged', None), (self.app.frame.cell_run, 'run',
+                  dict(owner_status='EXITED_0', seconds=1, identity=dict(status='MATCH'), teardown='CLEAN')),
+                 (self.app.frame.quota, 'classify', dict(execution=False)),
+                 (self.app.frame.locate, 'locate', dict(kind='anchor', path='cell/work')),
+                 (r.delivery, 'check', delivered)):
+-                stack.enter_context(patch.object(target, name, return_value=value))
++                stack.enter_context(patch.object(target, attribute, return_value=value))
+             stack.enter_context(patch.object(self.app.frame.check, 'check', side_effect=check))
+             self.assertEqual(self.app.run(name, task, self.plan['arm'], 'claude'), 0)
+         return r.read(Path(self.app.runtime['output']) / ('verdict-' + name + '.json'))

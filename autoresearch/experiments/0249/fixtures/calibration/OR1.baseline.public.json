@@ -1,0 +1,25 @@
+{
+  "command": [
+    "python3",
+    "-B",
+    "checks/run_checks.py"
+  ],
+  "cwd": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/fixtures/OR1/visible",
+  "started_at": "2026-10-10T23:22:28.811302+00:00",
+  "ended_at": "2026-10-10T23:22:28.863159+00:00",
+  "exit_code": 0,
+  "stdout": "{\"public_passed\": true, \"tests\": 2}\n",
+  "stderr": "test_rollback_closes_and_malformed_is_visible (test_smoke.Smoke.test_rollback_closes_and_malformed_is_visible) ... ok\ntest_save_reopen_and_delete (test_smoke.Smoke.test_save_reopen_and_delete) ... ok\n\n----------------------------------------------------------------------\nRan 2 tests in 0.002s\n\nOK\n",
+  "source_sha256": {
+    "README.md": "62914dbb5b6f52868a163a978d8d85919e2a13770c5fe5f1da12ab5745e488dc",
+    "checks/run_checks.py": "cbb387f1adb61e7050d32afdaa8207f4b826a89a5b62d078ab9e846ea9629d5a",
+    "checks/test_smoke.py": "c003d1d5d0b0f747af5601ca5572ad809a4b34a781933827a1729baff2f7c8b1",
+    "docs/contract.md": "34ef6d091ce4a045ef986878fe9b7d12f0de6347c6a1da3c97786dfdef907960",
+    "examples/editor.py": "52cd078bcf31507451ade0de97534604f79ef8ba92ff646ac3b8828d01fbaea8",
+    "folio/__init__.py": "022e71a1d374648796e2e3c7d0257344faf1c96e9f1dce226b66a676d6fb2530",
+    "folio/storage.py": "e81037f4bb68095b0395786d29f63758ea1686bc15cf6f99a68fb8c3dadb93dc",
+    "folio/workspace.py": "1e0e0c1c379fdaaf00e1e6f97f6586229fd79cc0abb5cfda172afae5be5f73cb"
+  },
+  "source_unchanged": true,
+  "prediction_sha256": "76e3612ee880540a59ff96f2875ba1706e6affa53ff80193e9bc1a81abe7aebb"
+}

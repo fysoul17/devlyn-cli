@@ -1,0 +1,80 @@
+{
+  "at": "2026-10-10T14:32:09.621192+00:00",
+  "cell": "/Users/aipalm/.local/share/nx01/0238-live/staged-v1/out-smoke-v2/s01-h-claude-v3",
+  "checks": {
+    "accounting_gaps": [],
+    "accounting_sources": {
+      "count": 5,
+      "errors": [],
+      "pass": true
+    },
+    "checks_binding": true,
+    "controls": {
+      "oracle": {
+        "count": 26,
+        "errors": [],
+        "pass": true
+      },
+      "packages": {
+        "count": 969,
+        "errors": [],
+        "pass": true
+      },
+      "public": {
+        "count": 64,
+        "errors": [],
+        "pass": true
+      }
+    },
+    "delivery_binding": true,
+    "evidence": {
+      "count": 727,
+      "errors": [],
+      "pass": true
+    },
+    "evidence_failures": [],
+    "inputs": {
+      "count": 75,
+      "errors": [],
+      "pass": true
+    },
+    "inputs_equal": true,
+    "prepared": {
+      "count": 5,
+      "errors": [],
+      "pass": true
+    },
+    "recovery_artifacts": {
+      "count": 6,
+      "errors": [],
+      "pass": true
+    },
+    "selected_artifacts": {
+      "count": 17,
+      "errors": [],
+      "pass": true
+    },
+    "snapshot_equal": true,
+    "snapshot_files": 55,
+    "usage_matches_terminal_totals": true,
+    "verdict_evidence_binding": true
+  },
+  "hashes": {
+    "checked.json": "55ca749828bf1c4b56b30018c9d39d7a4541c6c17dee1f96b14d5b7b1f63dd5b",
+    "checks.json": "78bd747b03c1d38c5a751361930f635301e1e0ac7c995768eb3b9b2ccbd8d6e0",
+    "claude-accounting.json": "aa847f7b4b5c7a8f689d927e1873f76b10fc1d9323be3ee3c858b51e611f5b4d",
+    "delivery.json": "56c19c20fe614f0b752260b838a806afaa1e4746c14ffc93675f10d0cdd6eac7",
+    "evidence.manifest.json": "b5977c01c4f511cac539c2d12a56fca05fdca7d0eb33d70df22a8020fe699c9f",
+    "seal.json": "c535cdfb3becdf0ccc13d64f93e40b844bb5159e04608d972cc9dbe9083700c4",
+    "usage.json": "555ae8846cd89d2e209c1dd8cee540abe65f0ed6c55b5d1e51b8588c259616b5"
+  },
+  "limits": "Native emitted usage reconciles; provider billing is not independently observed. This is forced transport, not efficacy. No result regraded.",
+  "status": "CHECKS_PASS",
+  "usage": {
+    "completeness": "COMPLETE",
+    "input_tokens": 4534554,
+    "output_tokens": 129558,
+    "owner_seconds": 1206.0878251669928,
+    "thinking_already_in_output": 111417
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "at": "2026-10-10T16:10:56.372487+00:00",
+  "base": "85004d8b3424488cb65bd593ea2d7354998ddb87",
+  "files": {
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0238/build_packages.py": "197d92ae282ba7693d8e6584eba6a3ecd4687b25f5d3d6e36903390db6bb1a51",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0238/results/stage.py": "9c288dd37a20f114a9ef2d6167da23502748b634b0d6b08870a95c4626d17500",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0242/guides/H.md": "e8b73b4edda4b2476605a34b2535ee79085f09883256950fcde49556d668ff84",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0242/guides/P.md": "9523319d650db1d5176261cb00d254e6216915b86d9d222bfacc85cefa23993a",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0242/guides/S.md": "34287e59aa0e32ba09dacb92115715466e1408de0f0620f92fb6ff2db1e9acc3",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0242/peer.py": "f3f4c878847e6d33149cb9d6ebfe6a78dd12eba82d5ce417fdef79ee6af28d95",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0242/results/implementation-review-v1.md": "dd7b23ed252ba53b734efa7bd3918b05b94eebcee595fce67c726c971b170a21",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0242/results/review-manifest-v1.json": "e767833b31bc207da1363ccc142e5192cb485de87c1e2fdf1e453089160e37bd",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0242/runner.py": "9989c055e847aeb84eaae04d0f3f19d9e74144da3423848a3321a7bfc9aea200",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0243/DESIGN.md": "32ab359ab3827f8a98011cd3901f728a60a8c648868da69a7077c9e4b325dfc6",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0243/build_packages.py": "05873fe9c937f6ae208283998796537689182c82b86a049446c1b23cb7565183"
+  },
+  "integration_inputs": {
+    "/Users/aipalm/.local/share/nx01/0237-integration/.agents/skills/_shared/task-complete.py": "a53067d8ca15730c185880e76c1d1d096473ce8fe8d9d384febe0a03b60dfc78",
+    "/Users/aipalm/.local/share/nx01/0237-integration/.agents/skills/_shared/task-completion.md": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733",
+    "/Users/aipalm/.local/share/nx01/0237-integration/bin/instructions.js": "c2ef3fda7714efab8e1569a4d08ec17abc1a10469133b11b159d0884f7bb2532",
+    "/Users/aipalm/.local/share/nx01/0237-integration/config/skills/_shared/task-complete.py": "a53067d8ca15730c185880e76c1d1d096473ce8fe8d9d384febe0a03b60dfc78",
+    "/Users/aipalm/.local/share/nx01/0237-integration/config/skills/_shared/task-completion.md": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733",
+    "/Users/aipalm/.local/share/nx01/0237-integration/package-lock.json": "292798067830b59eba153167a45972cf5ab92c136de4119a14a32eb109e7e4a6",
+    "/Users/aipalm/.local/share/nx01/0237-integration/package.json": "688e807e5fa90ac3677c1e88df3bfaeb9a04a18fae72a6e853122440b7c2cddd",
+    "/Users/aipalm/.local/share/nx01/0237-integration/scripts/lint-skills.sh": "ee64d473c8de16504eb2dbb867b02433c8a15cc5ba9505bc8679a5b14343a892",
+    "/Users/aipalm/.local/share/nx01/0237-integration/scripts/test-windows-portability.py": "425231bc48b31287a2343c5c3986c7a8ced235571730addeb434ed96b1bf11bb"
+  },
+  "scope": "Review the thin 4.2.4 builder adapter and exact reuse of reviewed 0242 treatments. Operational sequence still running separately; no new native or efficacy dispatch.",
+  "status": "PREPARATION_ONLY_NOT_DISPATCH"
+}

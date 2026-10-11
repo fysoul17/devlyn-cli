@@ -1,0 +1,25 @@
+{
+  "root": "/Users/aipalm/.local/share/nx01/0237-live/design-consultation",
+  "files": {
+    "astra-receipt.json": "5835daeb041e1bbf213f45cb291aaba75511237e891314f16d3b03813326d270",
+    "opus.md": "855ec73b45b2842eaca8bf405b3d81f141625d16d8f52aeebef7a2c42dfe472d",
+    "opus.raw.json": "2d3997776ea4739091c7a5aca415ec1770f8cf4d86bb5c3eae0d02b6e1c66777",
+    "grok.raw.json": "bb4ddd0cb769510b83b9c0fc11780e7365ea0bfd5c80f4217e864928e60e5ebc",
+    "astra-launch.json": "fd8793a2a90f0df88350228f5f2922ade7407ed7974eebd470b3c93c2fbc7f71",
+    "grok-receipt.json": "b231b1fa794b26b3f28479108c3730f93cdf4911e6ee230ee3bedf56f99f16b7",
+    "astra.raw.json": "c88877b8196adc985259c432b4ce5797f46d0dc458739a476b9132e673f82583",
+    "opus-launch.json": "9a6cfd8a466c79e1aa9e4f56f57f46d4072fea4d6f01917c79aee0e8b3d39ca6",
+    "astra.md": "b1f239116455593feb50768e8b57fc415fcef554ceec88d2a7b03e58cf7a859c",
+    "opus.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "design-summary.json": "f4edda58bebf8299911ac67c3f0582086d4d31115a89e8d3afa7105fb97e7ff9",
+    "launch.py": "ca18135fe11a4e63316cafaf003ef4a9d84bad515a8779b365316ffd6de8f207",
+    "grok-launch.json": "bb2cea899ce4f67134bc366aebdc0b0965c522d05848a1ad669dd512f1b949ce",
+    "design-prompt.txt": "89bc3268a8433a98472f2cbefe77f899296d2b1afce8f46c35c1f46e563932ca",
+    "manifest.json": "6a6e15598a3be4baddb24162bd054985cf203c90fac52e362bc8d2b1124c8e67",
+    "opus-receipt.json": "ff9ded63463ea21129febfcfd2387849ceb4aa0e15f43fc2c85e1480e3650a86",
+    "grok.stderr.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "design-prompt.txt.transport.json": "99c3a084ce0df1d480ffb52f6e01c37b9c7a227cdb77940dc45958d5c4d11f69",
+    "grok.md": "400374817278ed53ef4c2589322a7b9ddb98a14086c1de3b9096f2d53ee68fab",
+    "astra.stderr.txt": "a494adc2b4eefb337a56294d3bee97aed49b77897098e382053847c0dcb2ba70"
+  }
+}

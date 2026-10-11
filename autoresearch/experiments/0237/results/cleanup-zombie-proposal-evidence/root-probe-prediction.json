@@ -1,0 +1,4 @@
+{
+  "recorded_at": "2026-10-10T03:09:49.436003+00:00",
+  "prediction": "As uid0, proc fd enumeration may be allowed even for a Z leader with live threads; the baseline missing-cwd break could then falsely approve stopped writers. If observed, a permission-only fix is incomplete across supported Linux privilege modes and must be reconsidered."
+}

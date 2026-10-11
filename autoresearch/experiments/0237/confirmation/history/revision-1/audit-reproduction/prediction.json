@@ -1,0 +1,4 @@
+{
+  "prediction": "Equivalent read_bytes substitution: with canonical TMPDIR public pass and only shared-file-once-per-load fails; default host TMPDIR additionally exposes the independent public expected-path portability defect.",
+  "oracle_sha256": "15f04da3b37015df8c0c7ed5ddbf3573c5121b40595ea1c279e85a3b7c31afa4"
+}

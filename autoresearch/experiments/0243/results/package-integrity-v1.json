@@ -1,0 +1,55 @@
+{
+  "at": "2026-10-10T16:13:22.080971+00:00",
+  "base": "85004d8b3424488cb65bd593ea2d7354998ddb87",
+  "baseline_inputs": {
+    ".agents/skills/_shared/task-complete.py": "a53067d8ca15730c185880e76c1d1d096473ce8fe8d9d384febe0a03b60dfc78",
+    ".agents/skills/_shared/task-completion.md": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733",
+    "bin/instructions.js": "c2ef3fda7714efab8e1569a4d08ec17abc1a10469133b11b159d0884f7bb2532",
+    "config/skills/_shared/task-complete.py": "a53067d8ca15730c185880e76c1d1d096473ce8fe8d9d384febe0a03b60dfc78",
+    "config/skills/_shared/task-completion.md": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733",
+    "package-lock.json": "292798067830b59eba153167a45972cf5ab92c136de4119a14a32eb109e7e4a6",
+    "package.json": "688e807e5fa90ac3677c1e88df3bfaeb9a04a18fae72a6e853122440b7c2cddd"
+  },
+  "builder_adapter_sha256": "05873fe9c937f6ae208283998796537689182c82b86a049446c1b23cb7565183",
+  "builder_sha256": "197d92ae282ba7693d8e6584eba6a3ecd4687b25f5d3d6e36903390db6bb1a51",
+  "package_metadata_sha256": "4271e4bb16f012ea5a3fe2b4e02937d9aae7edf7a207940ca3308c4840fe8824",
+  "packages": {
+    "B": "edca612f3873fe154c1855d54788d7c097a9d88e97912bc9b36ba755b71aed53",
+    "H": "7721444559884e316cc9e043bd49d909055e06eeb01b46bed438c66b8b2b06a3",
+    "P": "d8d9e34a63b8196a76de8f0c14dfe67e4e85e06329ae31f4fb476b055f027f75",
+    "S": "e01b32c0b15541fc1d887d13e80e0edd9e83f9b97023948762b13ae5276e2bff"
+  },
+  "regular_payloads": {
+    "B": 241,
+    "H": 243,
+    "P": 243,
+    "S": 242
+  },
+  "status": "PASS",
+  "variant_differences_from_B": {
+    "H": [
+      "package/AGENTS.md",
+      "package/CLAUDE.md",
+      "package/bin/instruction-templates.json",
+      "package/config/skills/_shared/pair.md",
+      "package/config/skills/_shared/peer.py",
+      "package/config/skills/_shared/runtime-principles.md"
+    ],
+    "P": [
+      "package/AGENTS.md",
+      "package/CLAUDE.md",
+      "package/bin/instruction-templates.json",
+      "package/config/skills/_shared/pair.md",
+      "package/config/skills/_shared/peer.py",
+      "package/config/skills/_shared/runtime-principles.md"
+    ],
+    "S": [
+      "package/AGENTS.md",
+      "package/CLAUDE.md",
+      "package/bin/instruction-templates.json",
+      "package/config/skills/_shared/pair.md",
+      "package/config/skills/_shared/runtime-principles.md"
+    ]
+  },
+  "version": "4.2.4"
+}

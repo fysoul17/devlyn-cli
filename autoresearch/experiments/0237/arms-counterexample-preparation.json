@@ -1,0 +1,13 @@
+{
+  "base_commit": "975a01e6200750b75ca4b77b4fcbb95521ed1214",
+  "packages": {
+    "B": "d9d723b1bad27b1dc28834b9b5551cecc43e0c6e4ddec0b002f2c2c217c24d28",
+    "C": "6d68bb010853b818c02a40ef6eca9bec666925369f519aced7c00a69bb7339dd"
+  },
+  "changed_package_files": [
+    "package/AGENTS.md",
+    "package/CLAUDE.md",
+    "package/config/skills/_shared/runtime-principles.md"
+  ],
+  "control_manifest_sha256": "6c1236b63ff4c2e88a8fb8537873189e943a92afd033adc5a45030e945bb9c29"
+}

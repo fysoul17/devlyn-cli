@@ -1,0 +1,18 @@
+{
+  "at": "2026-10-10T15:33:43.508668+00:00",
+  "prediction": "Fresh model-free staging succeeds on final mount-corrected capture source. Peer/package/build inputs are unchanged so selected packs-v1 reuse is exact; stage-v1 stays undispatched. No auth/model. Final review pending.",
+  "command": [
+    "python3",
+    "-B",
+    "autoresearch/experiments/0241/results/stage.py",
+    "/Users/aipalm/.local/share/nx01/0241-live/staged-v2",
+    "--packs",
+    "/Users/aipalm/.local/share/nx01/0241-live/selected-packs-v1",
+    "--tasks",
+    "autoresearch/experiments/0241/tasks-smoke.json",
+    "--template-runtime",
+    "/Users/aipalm/.local/share/nx01/0240-live/staged-v1/runtime-smoke.json",
+    "--review-manifest",
+    "autoresearch/experiments/0241/results/review-manifest-v2.json"
+  ]
+}

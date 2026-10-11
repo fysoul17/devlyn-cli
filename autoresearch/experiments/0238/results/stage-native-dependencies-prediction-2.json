@@ -1,0 +1,25 @@
+{
+  "time": "2026-10-10T10:23:58.775154+00:00",
+  "finding": "Astra v4 MEDIUM: stage.py verified review files/shared process helper but ignored pair_native_dependencies, so a changed reviewed0234 identity/evidence/accounting dependency could be staged and later newly sealed.",
+  "prediction": "All3 focused tests pass with canonical temporary fixture paths.",
+  "command": [
+    "python3",
+    "-B",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0238/results/test_stage_native_dependencies.py"
+  ],
+  "sources": {
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0238/results/stage.py": "9c288dd37a20f114a9ef2d6167da23502748b634b0d6b08870a95c4626d17500",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0238/results/test_stage_native_dependencies.py": "97fe00153f2059a50decfec62a183faae7fd293fb0a2ecd7b8aeec704be6c2e2"
+  },
+  "v4_manifest_sha256": "e85487aa88210d7caac68ccaf190386559026af8e604bb286267bb3c75a959fd",
+  "reviewed_files": {
+    "peer.py": "d500dc6ca46c5ab1528c6d419530ad89094f36443461979c6aa1d27933fa3294",
+    "policy.py": "d02be3a1700c0a78aab0d141580da7eacc97be97a60ea7cfc27e9bd31b154606",
+    "runner.py": "80f14a65f9f0e5af89eaca78cf8170cb5d93ba8e35cd6228f4cdd6be51bd0d48",
+    "test_peer.py": "c06be9e3fa81275b420f305de76aa686d22bc250d5c165aa0aa959aefff02a27",
+    "test_runner.py": "7e6b8f21666aff9c7f74a6c75f09116ba7b7dcc8e1289b9348a35b06cec07305",
+    "f23_precision.py": "47124cac8635717d90d22cb5719579e611952e3925ec3ef28a2f678312fe9e89",
+    "cell-init-v1.py": "daa0e64da8b745746b1abb4445317b965ce1dca5d385e993379a71e20022266f"
+  },
+  "prior_result": "2 drift/missing-binding tests passed. Valid staging completed but expected returned path did not canonicalize macOS /var -> /private/var. Fixture root now resolves; stage.py unchanged."
+}

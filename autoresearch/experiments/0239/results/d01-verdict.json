@@ -1,0 +1,195 @@
+{
+  "adjudication_needed": false,
+  "arm": "C",
+  "assessment": "NOT_REQUESTED",
+  "boot_catalogs": {
+    "mcp_servers": [],
+    "plugins": [
+      {
+        "name": "cc-plugin-agents-md",
+        "path": "builtin",
+        "source": "cc-plugin-agents-md@builtin"
+      },
+      {
+        "name": "cc-plugin-plugin-authoring",
+        "path": "builtin",
+        "source": "cc-plugin-plugin-authoring@builtin"
+      },
+      {
+        "name": "cc-plugin-telemetry",
+        "path": "builtin",
+        "source": "cc-plugin-telemetry@builtin"
+      }
+    ],
+    "skills": [
+      "batch",
+      "claude-api",
+      "code-review",
+      "dataviz",
+      "debug",
+      "deep-research",
+      "design",
+      "design-sync",
+      "devlyn-engines",
+      "devlyn-ideate",
+      "doctor",
+      "fewer-permission-prompts",
+      "loop",
+      "plugin-authoring",
+      "run",
+      "run-skill-generator",
+      "schedule",
+      "simplify",
+      "update-config",
+      "verify",
+      "workflow-authoring"
+    ]
+  },
+  "cell": "d01-claude-c",
+  "changed": [
+    "visible/beacon/document.py",
+    "visible/beacon/loader.py",
+    "visible/beacon/manager.py",
+    "visible/beacon/merge.py",
+    "visible/beacon/model.py",
+    "visible/beacon/paths.py",
+    "visible/checks/test_includes.py",
+    "visible/checks/test_merge.py",
+    "visible/checks/test_reload.py"
+  ],
+  "config": "claude",
+  "cross_engine_sessions": [],
+  "delivery": {
+    "baseline": "c1c21800d26bd174a2c27fe057f11ed66724a83f",
+    "changed": [
+      "visible/beacon/document.py",
+      "visible/beacon/loader.py",
+      "visible/beacon/manager.py",
+      "visible/beacon/merge.py",
+      "visible/beacon/model.py",
+      "visible/beacon/paths.py",
+      "visible/checks/test_includes.py",
+      "visible/checks/test_merge.py",
+      "visible/checks/test_reload.py"
+    ],
+    "commit": "635ae29d07aadec822122a7a852b0f2a78f4dc93",
+    "passed": true,
+    "reason": "local commit matches the assessed task source"
+  },
+  "delivery_pass": true,
+  "deterministic_seconds": 1.0365528749971418,
+  "evidence_manifest_sha256": "60b835ad96ebd995a98125d464defa9dc2885f62650a1e351da719bd1bdc8c4a",
+  "identity": {
+    "codex_seats": {},
+    "gaps": [],
+    "owner": "MATCH",
+    "owner_launched_sessions": [],
+    "status": "MATCH",
+    "violations": []
+  },
+  "input_tokens": 25986453,
+  "measurement_eligible": true,
+  "oracle": [
+    {
+      "id": "loader-merge-value-kinds",
+      "status": "PASS"
+    },
+    {
+      "id": "relative-diamond-layer-order",
+      "status": "PASS"
+    },
+    {
+      "id": "transitive-change-same-size-and-mtime",
+      "status": "PASS"
+    },
+    {
+      "id": "nested-caller-isolation",
+      "status": "PASS"
+    },
+    {
+      "id": "semantic-generation-current-dependencies",
+      "status": "PASS"
+    },
+    {
+      "id": "failed-reload-preserves-and-recovers",
+      "status": "PASS"
+    },
+    {
+      "id": "failed-first-load-no-cache-poisoning",
+      "status": "PASS"
+    },
+    {
+      "id": "deleted-dependency-repair",
+      "status": "PASS"
+    },
+    {
+      "id": "canonical-cycle-after-success",
+      "status": "PASS"
+    },
+    {
+      "id": "repeated-include-public-freshness",
+      "status": "PASS"
+    },
+    {
+      "id": "independent-root-dependency-accuracy",
+      "status": "PASS"
+    },
+    {
+      "id": "schema-errors-retain-include-chain",
+      "status": "PASS"
+    }
+  ],
+  "output_tokens": 411981,
+  "owner_seconds": 3477.738696790999,
+  "owner_status": "EXITED_0",
+  "phase": "measured",
+  "product_check_pass": true,
+  "public": [
+    {
+      "argv": [
+        "sh",
+        "-c",
+        "mkdir /tmp/public-work && cp -a /cell/work/. /tmp/public-work/ && cd /tmp/public-work && cd visible && python3 -B checks/run_checks.py"
+      ],
+      "exit_code": 0,
+      "stderr_tail": " (test_merge.Merge.test_later_value_replaces_unless_both_are_objects) ... ok\ntest_nesting_deeper_than_the_interpreter_stack (test_merge.Merge.test_nesting_deeper_than_the_interpreter_stack) ... ok\ntest_objects_merge_recursively (test_merge.Merge.test_objects_merge_recursively) ... ok\ntest_change_hidden_by_an_override_keeps_the_generation (test_reload.Reload.test_change_hidden_by_an_override_keeps_the_generation) ... ok\ntest_changed_values_increment_the_generation (test_reload.Reload.test_changed_values_increment_the_generation) ... ok\ntest_dependency_only_change_refreshes_dependencies (test_reload.Reload.test_dependency_only_change_refreshes_dependencies) ... ok\ntest_failed_first_reload_publishes_nothing (test_reload.Reload.test_failed_first_reload_publishes_nothing) ... ok\ntest_failed_reload_keeps_the_last_snapshot_until_repaired (test_reload.Reload.test_failed_reload_keeps_the_last_snapshot_until_repaired) ... ok\ntest_manager_keeps_no_reference_to_what_its_loader_returned (test_reload.Reload.test_manager_keeps_no_reference_to_what_its_loader_returned) ... ok\ntest_managers_sharing_a_loader_see_a_changed_shared_include (test_reload.Reload.test_managers_sharing_a_loader_see_a_changed_shared_include) ... ok\ntest_snapshots_are_detached (test_reload.Reload.test_snapshots_are_detached) ... ok\ntest_type_change_is_a_value_change (test_reload.Reload.test_type_change_is_a_value_change) ... ok\ntest_unchanged_or_reformatted_files_keep_the_generation (test_reload.Reload.test_unchanged_or_reformatted_files_keep_the_generation) ... ok\ntest_values_from_any_loader_are_compared_structurally (test_reload.Reload.test_values_from_any_loader_are_compared_structurally) ... ok\ntest_flat_include_and_override (test_smoke.Smoke.test_flat_include_and_override) ... ok\ntest_initial_manager (test_smoke.Smoke.test_initial_manager) ... ok\ntest_missing_file (test_smoke.Smoke.test_missing_file) ... ok\n\n----------------------------------------------------------------------\nRan 37 tests in 0.103s\n\nOK\n",
+      "stdout_tail": "",
+      "timeout": false
+    }
+  ],
+  "public_pass": true,
+  "quota": {
+    "assessment": [],
+    "execution": []
+  },
+  "run_and_checks_seconds": 3480.073360667011,
+  "scope_violations": [],
+  "snapshot": {
+    "candidates": [
+      {
+        "acceptance": true,
+        "allocation": "owned",
+        "local_only": true,
+        "receipt": "cell/work/.git/devlyn-completion/5ce838d1788b504f8dac9c1e/receipt.json",
+        "worktree": "/tmp/beacon-reload-contracts-worktree"
+      }
+    ],
+    "kind": "accepted",
+    "receipt": "cell/work/.git/devlyn-completion/5ce838d1788b504f8dac9c1e/receipt.json",
+    "rule": "receipt",
+    "sha": "635ae29d07aadec822122a7a852b0f2a78f4dc93"
+  },
+  "source_check_pass": true,
+  "status": "CHECKS_PASS",
+  "task": "CFG-LIFE",
+  "teardown": "CLEAN",
+  "usage": "COMPLETE",
+  "usage_gaps": [],
+  "venue": {
+    "account": [
+      "cc43a4e02ede",
+      "2905f4abf05b"
+    ],
+    "token_seconds_left": 11107
+  }
+}

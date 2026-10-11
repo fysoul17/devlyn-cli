@@ -1,0 +1,12 @@
+{
+  "at": "2026-10-10T20:25:41.858754+00:00",
+  "scope": "Read-only applicability inspection for four previously valid observations; no evaluator/regrade or new native inference",
+  "prediction": "Any Unicode-split record loss in the relevant prior native owner/peer streams is either absent or confined to nonidentity/noncounter payloads; no new session/model/reroute/token/result evidence invalidates prior gate applicability. If it does, do not reuse without separate explicit treatment, preserve original verdict.",
+  "cells": [
+    "0243/d01-f23-claude-s",
+    "0246/d02-f23-codex-p",
+    "0246/d03-f23-claude-a",
+    "0246/d04-f23-codex-h"
+  ],
+  "method": "Compare strict LF JSON dict rows and legacy splitlines dict rows in retained run/stdout and native home/.codex/sessions or home/.claude/projects JSONL. Hash original files before/after; report lost row types and identity/counter-sensitive event metadata only. No transcripts or credentials printed."
+}

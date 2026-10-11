@@ -1,0 +1,29 @@
+{
+  "note": "The initial fault-control trees retained original full source bytes before the final audit. These initial baseline/gold source snapshots are reconstructed from those retained bytes by reversing the single recorded control mutation, and verified byte-for-byte against the initial raw source hashes. No initial evidence was overwritten.",
+  "snapshots": [
+    {
+      "task": "OR1",
+      "variant": "baseline",
+      "path": "calibration/initial-sources/OR1/baseline",
+      "matches_initial_recorded_source_sha256": true
+    },
+    {
+      "task": "OR1",
+      "variant": "gold",
+      "path": "calibration/initial-sources/OR1/gold",
+      "matches_initial_recorded_source_sha256": true
+    },
+    {
+      "task": "OR2",
+      "variant": "baseline",
+      "path": "calibration/initial-sources/OR2/baseline",
+      "matches_initial_recorded_source_sha256": true
+    },
+    {
+      "task": "OR2",
+      "variant": "gold",
+      "path": "calibration/initial-sources/OR2/gold",
+      "matches_initial_recorded_source_sha256": true
+    }
+  ]
+}

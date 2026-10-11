@@ -1,0 +1,13 @@
+{
+  "created_at": "2026-10-10T14:58:40.026386+00:00",
+  "prediction": "New package build succeeds with Node20/npm10. B/S regular payload maps are identical to selected0238v2; H/P differ only config/skills/_shared/pair.md and peer.py. Source root templates remain HEAD-identical. Native models/auth are not invoked. Archive hashes may differ only if payload changes; source commit timestamps are not performance evidence.",
+  "command": [
+    "python3",
+    "-B",
+    "autoresearch/experiments/0240/build_packages.py",
+    "/Users/aipalm/.local/share/nx01/0240-live/selected-packs-v1",
+    "--toolchain",
+    "/Users/aipalm/.nvm/versions/node/v20.19.0/bin"
+  ],
+  "builder_sha256": "7378de371e30c4bbbc7796d5161a320e82e7fcf042f7e224a269532a727d3c39"
+}

@@ -1,0 +1,63 @@
+{
+  "auth_calls": 0,
+  "controls": [
+    {
+      "passes": [
+        "loader-merge-value-kinds",
+        "relative-diamond-layer-order",
+        "transitive-change-same-size-and-mtime",
+        "nested-caller-isolation",
+        "semantic-generation-current-dependencies",
+        "failed-reload-preserves-and-recovers",
+        "failed-first-load-no-cache-poisoning",
+        "deleted-dependency-repair",
+        "canonical-cycle-after-success",
+        "repeated-include-public-freshness",
+        "independent-root-dependency-accuracy",
+        "schema-errors-retain-include-chain"
+      ],
+      "public_exit": 0,
+      "variant": "gold"
+    },
+    {
+      "passes": [
+        "schema-errors-retain-include-chain"
+      ],
+      "public_exit": 0,
+      "variant": "visible"
+    }
+  ],
+  "native_calls": 0,
+  "prepared": [
+    {
+      "arm": "B",
+      "guide_sha256": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733",
+      "name": "cal-b-config",
+      "seal_sha256": "0109599b26d9475d8c7d8536d742f3780863b6b860707d9905dcb39479717a14",
+      "task": "CFG-LIFE"
+    },
+    {
+      "arm": "C",
+      "guide_sha256": "a933737f262fa9338789ee3e7c944f3020d9bbed673cfe19042822699c0d6f87",
+      "name": "cal-c-config",
+      "seal_sha256": "3429c49b6241a2820059003e7f5b28e186ec11305441471a093e49543ad5f5c8",
+      "task": "CFG-LIFE"
+    },
+    {
+      "arm": "B",
+      "guide_sha256": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733",
+      "name": "cal-b-short",
+      "seal_sha256": "8c3bd92a3a31ab12ff0fb67d97e84dfd8f3ed44751b7ad212e93f5e650ab6053",
+      "task": "FG-SHORT"
+    },
+    {
+      "arm": "B",
+      "guide_sha256": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733",
+      "name": "cal-b-long",
+      "seal_sha256": "7978e191d4acf50f41c896923c5ec5d9b8429d45d496216d6b3587884bf445bb",
+      "task": "FG-LONG"
+    }
+  ],
+  "runtime_sha256": "f85379a9ffdfd88511a942ef6988e383f93d0e974a4b768da17e6e023abd54aa",
+  "status": "PASS"
+}

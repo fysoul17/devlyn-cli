@@ -1,0 +1,13 @@
+{
+  "retained": "/Users/aipalm/.local/share/nx01/0239-live/installer-fixture-diagnosis-jkgnpxda",
+  "original_shared": "8c80926ab03b2477e52264495b35c2116f65fc51b02e8c56e441b5705872392a",
+  "candidate_shared": "8e3d8ca69e5bf8fd09819fe616364085bf808c2d82f0ef66fe336e3628c2f75f",
+  "original_listed": true,
+  "candidate_listed": false,
+  "known": [
+    "eb3327d5e6940bd5e0459fa28c9ab323d9c58ccfdeb9426c19cd027cc4e5c4ed",
+    "8c80926ab03b2477e52264495b35c2116f65fc51b02e8c56e441b5705872392a"
+  ],
+  "incomplete_fixture_copy_line": "cp -R bin config package.json AGENTS.md CLAUDE.md \"$incomplete/package/\"",
+  "required_marked_bundled": true
+}

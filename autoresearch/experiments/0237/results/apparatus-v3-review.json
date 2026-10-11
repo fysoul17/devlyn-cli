@@ -1,0 +1,14 @@
+{
+  "status": "SHIP",
+  "reviewer": "gpt-6-astra",
+  "effort": "ultra",
+  "round": 2,
+  "open_high": 0,
+  "open_medium": 0,
+  "suite_passed": 23,
+  "independent_focused_tests_passed": 2,
+  "scope": "seed actual Codex cwd trust before sealing; unexpected inherited layout and any later byte drift remain errors",
+  "runner_sha256": "e69f8a0a3f24163b349ba3175464997d651ef7ed9341aad30c62222393328f2d",
+  "tests_sha256": "18c4d79e5bb632a9e523cdd1576de5ed53c5caab0fba2755ecca1e86cc909984",
+  "model_benchmark_calls": 0
+}

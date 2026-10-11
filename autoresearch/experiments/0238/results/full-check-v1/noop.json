@@ -1,0 +1,28 @@
+{
+  "assessment_binding": {
+    "original_request_present": true,
+    "selected_source_same": true,
+    "source_names": [
+      "bin/cli.js",
+      "tests/cli.test.js"
+    ],
+    "tasks_same": true
+  },
+  "case": "noop",
+  "delivery": {
+    "baseline": "a14a7ba89574b17f0c497d6f9779904b5975cf4b",
+    "commit": "a14a7ba89574b17f0c497d6f9779904b5975cf4b",
+    "passed": false,
+    "reason": "required edits exist only outside a post-baseline commit"
+  },
+  "error": "F23 supplemental oracle returned no unambiguous verdict",
+  "out": "/Users/aipalm/.local/share/nx01/0237-live/0238-full-check-9hhs0glh/out/noop",
+  "selection": {
+    "candidates": [],
+    "changed": [],
+    "kind": "anchor",
+    "path": "cell/work",
+    "rule": "unchanged-anchor"
+  },
+  "traceback": "Traceback (most recent call last):\n  File \"/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0238/results/full_check_probe.py\", line 52, in <module>\n    result['checks']=app.frame.check.check(out,app.runtime)\n                     ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^\n  File \"/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0234/check.py\", line 80, in check\n    result = evaluate(snapshot, spec['id'], runtime)\n  File \"/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0238/runner.py\", line 102, in evaluate\n    raise ValueError('F23 supplemental oracle returned no unambiguous verdict')\nValueError: F23 supplemental oracle returned no unambiguous verdict\n"
+}

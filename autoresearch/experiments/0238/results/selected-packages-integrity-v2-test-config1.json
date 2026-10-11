@@ -1,0 +1,72 @@
+{
+  "started_at": "2026-10-10T12:39:38.533057+00:00",
+  "private_root": "/Users/aipalm/.local/share/nx01/0238-live/selected-package-audit-v2-config1",
+  "private_mode": "0o700",
+  "prediction_sha256": "a87a9ee6a92e374e9eb028852c39f6195165415d1888896aa734ddfb552a6f0b",
+  "selected_B_sha256": "050bc8d6f3af071461903f0c7efd77ae445828f232152cd4f52b6e81faa967b3",
+  "test_source_sha256": "425231bc48b31287a2343c5c3986c7a8ced235571730addeb434ed96b1bf11bb",
+  "commands": [
+    {
+      "command": [
+        "node",
+        "--version"
+      ],
+      "cwd": "/Users/aipalm/.local/share/nx01/0238-live/selected-package-audit-v2-config1",
+      "seconds": 0.011828582995804027,
+      "exit_code": 0,
+      "stdout": "v20.19.0\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "npm",
+        "--version"
+      ],
+      "cwd": "/Users/aipalm/.local/share/nx01/0238-live/selected-package-audit-v2-config1",
+      "seconds": 0.0638686660095118,
+      "exit_code": 0,
+      "stdout": "10.8.2\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "npm",
+        "install",
+        "--prefix",
+        "/Users/aipalm/.local/share/nx01/0238-live/selected-package-audit-v2-config1/installed",
+        "--offline",
+        "--ignore-scripts",
+        "--no-audit",
+        "--no-fund",
+        "/Users/aipalm/.local/share/nx01/0238-live/selected-packs-v2/B.tgz"
+      ],
+      "cwd": "/Users/aipalm/.local/share/nx01/0238-live/selected-package-audit-v2-config1",
+      "seconds": 0.3541682499926537,
+      "exit_code": 0,
+      "stdout": "\nadded 1 package in 302ms\n",
+      "stderr": "npm notice\nnpm notice New major version of npm available! 10.8.2 -> 12.2.0\nnpm notice Changelog: https://github.com/npm/cli/releases/tag/v12.2.0\nnpm notice To update run: npm install -g npm@12.2.0\nnpm notice\n"
+    },
+    {
+      "command": [
+        "/opt/homebrew/opt/python@3.14/bin/python3.14",
+        "-B",
+        "/Users/aipalm/.local/share/nx01/0237-harness/scripts/test-windows-portability.py",
+        "--package-root",
+        "/Users/aipalm/.local/share/nx01/0238-live/selected-package-audit-v2-config1/installed/node_modules/devlyn-cli",
+        "PackageTests.test_agents_imports_follow_markdown_text_and_complete_paths"
+      ],
+      "cwd": "/Users/aipalm/.local/share/nx01/0238-live/selected-package-audit-v2-config1",
+      "seconds": 0.13643112500722054,
+      "exit_code": 0,
+      "stdout": "{\"platform\": \"darwin\", \"utf8_mode\": 0, \"locale\": \"UTF-8\", \"package_root\": \"/Users/aipalm/.local/share/nx01/0238-live/selected-package-audit-v2-config1/installed/node_modules/devlyn-cli\"}\n",
+      "stderr": "test_agents_imports_follow_markdown_text_and_complete_paths (__main__.PackageTests.test_agents_imports_follow_markdown_text_and_complete_paths) ... ok\n\n----------------------------------------------------------------------\nRan 1 test in 0.046s\n\nOK\n"
+    }
+  ],
+  "ended_at": "2026-10-10T12:39:39.100090+00:00",
+  "complete": true,
+  "builder_not_invoked": true,
+  "archive_unchanged": true,
+  "test_source_unchanged": true,
+  "installed_payload_checked": 241,
+  "installed_payload_mismatches": []
+}

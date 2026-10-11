@@ -52,7 +52,8 @@
   },
   "dependencies": {
     "@inquirer/checkbox": "5.2.6",
-    "@inquirer/select": "5.2.6"
+    "@inquirer/select": "5.2.6",
+    "marked": "15.0.12"
   },
   "devDependencies": {
     "@xterm/headless": "6.0.0"
@@ -62,6 +63,7 @@
   },
   "bundleDependencies": [
     "@inquirer/checkbox",
-    "@inquirer/select"
+    "@inquirer/select",
+    "marked"
   ]
 }

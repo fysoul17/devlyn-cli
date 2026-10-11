@@ -1,0 +1,156 @@
+{
+  "at": "2026-10-10T16:15:28.075123+00:00",
+  "controls_reused_not_rerun": "Exact0242 public/oracle/task inputs and frozen prepare/evaluate methods; earlier evaluator positive/noop/deleted/missing controls retained.",
+  "delivery_bindings": [
+    {
+      "arm": "B",
+      "config": "claude",
+      "path": ".agents/skills/_shared/task-complete.py",
+      "sha256": "a53067d8ca15730c185880e76c1d1d096473ce8fe8d9d384febe0a03b60dfc78"
+    },
+    {
+      "arm": "B",
+      "config": "claude",
+      "path": ".agents/skills/_shared/task-completion.md",
+      "sha256": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733"
+    },
+    {
+      "arm": "B",
+      "config": "claude",
+      "path": ".claude/skills/_shared/task-complete.py",
+      "sha256": "a53067d8ca15730c185880e76c1d1d096473ce8fe8d9d384febe0a03b60dfc78"
+    },
+    {
+      "arm": "B",
+      "config": "claude",
+      "path": ".claude/skills/_shared/task-completion.md",
+      "sha256": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733"
+    },
+    {
+      "arm": "B",
+      "config": "codex",
+      "path": ".agents/skills/_shared/task-complete.py",
+      "sha256": "a53067d8ca15730c185880e76c1d1d096473ce8fe8d9d384febe0a03b60dfc78"
+    },
+    {
+      "arm": "B",
+      "config": "codex",
+      "path": ".agents/skills/_shared/task-completion.md",
+      "sha256": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733"
+    },
+    {
+      "arm": "S",
+      "config": "claude",
+      "path": ".agents/skills/_shared/task-complete.py",
+      "sha256": "a53067d8ca15730c185880e76c1d1d096473ce8fe8d9d384febe0a03b60dfc78"
+    },
+    {
+      "arm": "S",
+      "config": "claude",
+      "path": ".agents/skills/_shared/task-completion.md",
+      "sha256": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733"
+    },
+    {
+      "arm": "S",
+      "config": "claude",
+      "path": ".claude/skills/_shared/task-complete.py",
+      "sha256": "a53067d8ca15730c185880e76c1d1d096473ce8fe8d9d384febe0a03b60dfc78"
+    },
+    {
+      "arm": "S",
+      "config": "claude",
+      "path": ".claude/skills/_shared/task-completion.md",
+      "sha256": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733"
+    },
+    {
+      "arm": "S",
+      "config": "codex",
+      "path": ".agents/skills/_shared/task-complete.py",
+      "sha256": "a53067d8ca15730c185880e76c1d1d096473ce8fe8d9d384febe0a03b60dfc78"
+    },
+    {
+      "arm": "S",
+      "config": "codex",
+      "path": ".agents/skills/_shared/task-completion.md",
+      "sha256": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733"
+    },
+    {
+      "arm": "H",
+      "config": "claude",
+      "path": ".agents/skills/_shared/task-complete.py",
+      "sha256": "a53067d8ca15730c185880e76c1d1d096473ce8fe8d9d384febe0a03b60dfc78"
+    },
+    {
+      "arm": "H",
+      "config": "claude",
+      "path": ".agents/skills/_shared/task-completion.md",
+      "sha256": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733"
+    },
+    {
+      "arm": "H",
+      "config": "claude",
+      "path": ".claude/skills/_shared/task-complete.py",
+      "sha256": "a53067d8ca15730c185880e76c1d1d096473ce8fe8d9d384febe0a03b60dfc78"
+    },
+    {
+      "arm": "H",
+      "config": "claude",
+      "path": ".claude/skills/_shared/task-completion.md",
+      "sha256": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733"
+    },
+    {
+      "arm": "H",
+      "config": "codex",
+      "path": ".agents/skills/_shared/task-complete.py",
+      "sha256": "a53067d8ca15730c185880e76c1d1d096473ce8fe8d9d384febe0a03b60dfc78"
+    },
+    {
+      "arm": "H",
+      "config": "codex",
+      "path": ".agents/skills/_shared/task-completion.md",
+      "sha256": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733"
+    },
+    {
+      "arm": "P",
+      "config": "claude",
+      "path": ".agents/skills/_shared/task-complete.py",
+      "sha256": "a53067d8ca15730c185880e76c1d1d096473ce8fe8d9d384febe0a03b60dfc78"
+    },
+    {
+      "arm": "P",
+      "config": "claude",
+      "path": ".agents/skills/_shared/task-completion.md",
+      "sha256": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733"
+    },
+    {
+      "arm": "P",
+      "config": "claude",
+      "path": ".claude/skills/_shared/task-complete.py",
+      "sha256": "a53067d8ca15730c185880e76c1d1d096473ce8fe8d9d384febe0a03b60dfc78"
+    },
+    {
+      "arm": "P",
+      "config": "claude",
+      "path": ".claude/skills/_shared/task-completion.md",
+      "sha256": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733"
+    },
+    {
+      "arm": "P",
+      "config": "codex",
+      "path": ".agents/skills/_shared/task-complete.py",
+      "sha256": "a53067d8ca15730c185880e76c1d1d096473ce8fe8d9d384febe0a03b60dfc78"
+    },
+    {
+      "arm": "P",
+      "config": "codex",
+      "path": ".agents/skills/_shared/task-completion.md",
+      "sha256": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733"
+    }
+  ],
+  "guide_and_peer_presence_and_bytes": "PASS",
+  "installations": 8,
+  "package_metadata_sha256": "4271e4bb16f012ea5a3fe2b4e02937d9aae7edf7a207940ca3308c4840fe8824",
+  "runtime_sha256": "790b85cfce89b5168d9c12c844a3fc8e134d0caba35b84d54a8584157712343a",
+  "seconds": 49.9761433340027,
+  "status": "PASS"
+}

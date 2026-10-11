@@ -1,0 +1,6 @@
+{
+  "at": "2026-10-10T12:39:23.260424+00:00",
+  "runtime": "/Users/aipalm/.local/share/nx01/0238-live/staged-v1/runtime-smoke.json",
+  "runtime_sha256": "65a1679bd588ff0896c54024cd5b070d5c30c7784b3b6533cecc2e5828c46e4e",
+  "prediction": "Exact staged runtime classifies F23 positive as public/oracle/local-delivery PASS and noop/deleted as product failures. H/P prepared installs contain selected peer and platform hashes in both skill roots. Missing evaluator binary is STOP. No authentication, model call, or historical artifact mutation."
+}

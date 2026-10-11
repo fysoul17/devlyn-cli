@@ -1,0 +1,90 @@
+
+[2m=== Check 0a: Temp allocation fails closed ===[0m
+  [32m✓[0m lint-skills.sh uses temp allocation helpers instead of direct mktemp
+
+[2m=== Check 1: No mcp__codex-cli__ outside _shared / archive ===[0m
+  [32m✓[0m no MCP references in managed files
+
+[2m=== Check 2: No 'Requires Codex MCP' prose ===[0m
+  [32m✓[0m no Codex MCP prose
+
+[2m=== Check 3: No hardcoded pre-5.5 model strings ===[0m
+  [32m✓[0m no hardcoded pre-5.5 strings
+
+[2m=== Check 4: No model-pinned Claude references ===[0m
+  [32m✓[0m no model-pinned Claude references
+
+[2m=== Check 5: shipped SKILL.md frontmatter follows the Agent Skills standard ===[0m
+  [32m✓[0m every shipped skill name follows the Agent Skills standard and equals its folder
+
+[2m=== Check 5c: no pre-4.0.0 skill names in live text ===[0m
+  [32m✓[0m pre-4.0.0 skill names appear only in history and the rename table
+
+[2m=== Check 5d: DEPRECATED_DIRS never names a shipped skill ===[0m
+  [32m✓[0m DEPRECATED_DIRS removes only retired skills
+
+[2m=== Check 5a: resolve, design-ui and queue are retired ===[0m
+  [32m✓[0m every skill root install gets the shared DEVLYN_CORE_SKILLS bundle, without resolve, design-ui or queue
+  [32m✓[0m DEPRECATED_DIRS removes resolve, design-ui and queue under their 3.x and 4.x names
+
+[2m=== Check 5e: retired resolve names appear only in removal and migration text ===[0m
+  [32m✓[0m resolve's skill, helpers and flags appear only in removal and migration text
+
+[2m=== Check 5b: Installed skill roots carry exact version markers ===[0m
+  [32m✓[0m managed roots have exact 0600 markers; Bash max is installed, raised, preserved, and idempotent
+  [32m✓[0m incomplete project and global copies fail visibly without stale or replacement markers
+
+[2m=== Check 6: Source ↔ mirror parity ===[0m
+  [32m✓[0m config/skills, .agents/skills and any installed .claude/skills core skills are in parity
+
+[2m=== Check 6b: Retained helper self-tests ===[0m
+PASS role-config self-test: executor pin, retired keys inactive, fail-closed selection and atomic validated writes
+  [32m✓[0m _shared/role-config.py self-test passed
+task-complete self-test: PASS (72 isolated tests)
+  [32m✓[0m _shared/task-complete.py self-test passed
+expected-contract self-test: PASS (4 tests)
+  [32m✓[0m _shared/expected-contract.py self-test passed
+PASS monitored-wrapper descendant cleanup and authority-widening refusal
+  [32m✓[0m _shared/invocation-receipt.py self-test passed
+queue self-test: PASS (9 tests)
+  [32m✓[0m devlyn-ideate/scripts/queue.py self-test passed
+acceptance self-test: PASS (13 tests)
+  [32m✓[0m devlyn-ideate/scripts/acceptance.py self-test passed
+
+[2m=== Check 6f: ideate validates loop packages and keeps its normative policies ===[0m
+  [32m✓[0m ideate validates packages, keeps its question and autonomous policies, and requires compound checks for interacting requirements
+
+[2m=== Check 6g: ideate gives the exact drain executor argv ===[0m
+  [32m✓[0m ideate gives the exact Claude and Codex executor argv; the Codex adapter makes the common and worktree Git directories writable and allows network
+
+[2m=== Check 6h: No undocumented spec.expected.json.browser_flows field ===[0m
+  [32m✓[0m active docs do not advertise unsupported browser_flows schema field
+
+[2m=== Check 10: No raw codex exec invocation in skill prompts ===[0m
+  [32m✓[0m no raw codex exec invocations in skill prompts (wrapper-form everywhere)
+
+[2m=== Check 10a: codex-monitored.sh rejects invalid numeric settings ===[0m
+  [32m✓[0m codex-monitored.sh rejects a zero heartbeat and a non-numeric timeout
+
+[2m=== Check 10a1: Shared helper paths resolve from the invoked skill ===[0m
+  [32m✓[0m no project-relative .claude/skills/_shared paths in managed skills
+
+[2m=== Check 10a1b: Skill paths come from the loaded SKILL.md, not a substitution ===[0m
+  [32m✓[0m skill resources resolve from the loaded SKILL.md on every reader
+
+[2m=== Check 10b: Shared routing docs avoid retired skill surfaces ===[0m
+  [32m✓[0m shared routing docs reference the current devlyn-ideate/devlyn-engines surface
+
+[2m=== Check 10c: User-facing current docs avoid retired skill surfaces ===[0m
+  [32m✓[0m README/package/installer copy avoids retired skill surfaces
+
+[2m=== Check 9: Engine availability fails closed ===[0m
+  [32m✓[0m engine availability fail-closed wording canonical
+
+[2m=== Check 9b: package.json version matches exact release tag ===[0m
+  [32m✓[0m HEAD is not an exact tag — package/tag parity not applicable
+
+[2m=== Check 12: Canonical principles block parity ===[0m
+  [32m✓[0m North Star, seven principles and three discipline rules are identical in CLAUDE.md, AGENTS.md and runtime-principles.md
+
+[32mAll checks passed.[0m

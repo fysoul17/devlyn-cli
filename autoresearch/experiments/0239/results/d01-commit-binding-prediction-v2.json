@@ -1,0 +1,13 @@
+{
+  "at": "2026-10-10T12:15:29.167089+00:00",
+  "prediction": "All 70 raw Git object contents and normalized tracked modes match the assessed snapshot. The prior archive-only differences are tar presentation (664/775), not tracked source or mode changes.",
+  "prior_probe": {
+    "AGENTS.md": {
+      "content_sha256": "11a85ab7155374e4242c80a02ab3bb3f671f1ff048cb0138e5fb113ef3d65abf",
+      "git_mode": "100644",
+      "snapshot_mode": "644",
+      "tar_mode": "664"
+    }
+  },
+  "prior_result": "d01-integrity.json"
+}

@@ -1,0 +1,2457 @@
+{
+  "schema": "0237-derived-cells-v1",
+  "generated_at": "2026-10-10T04:25:06.929859+00:00",
+  "candidate_decision": "NOT_MADE_BY_THIS_SUMMARY",
+  "runtime": {
+    "path": "/Users/aipalm/.local/share/nx01/0237-live/runtime-discovery-max.json",
+    "sha256": "94a2c79f41f22fd0b9e7a599d06f5b9210262b80bcf8108684c067e952fa7eae"
+  },
+  "tasks": {
+    "path": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0237/tasks-discovery-max.json",
+    "sha256": "f10e5905d0d1ac73a65966cfb2e8743ec94d4ec0a5ecc0c5cf2fd5c17ff1aa12"
+  },
+  "control_manifest": {
+    "path": "/Users/aipalm/.local/share/nx01/0237-live/control-discovery.manifest.json",
+    "sha256": "f54b10234ddc5d876aeca2a200168ca8621d8c7c666e0a6a1c2ea6ad6a3e37e5"
+  },
+  "image": "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998",
+  "accounting": "Input is processed input inclusive of cache; output already includes reasoning. Not billed tokens or dollars. Owner totals include recorded native children; research assessors are separate. Missing costs remain unknown.",
+  "endpoint": "Source checks plus local commit matching the assessed source; not PR/merge or full North Star delivery.",
+  "exclusions": {
+    "UA1": "Entire task excluded by oracle-contract audit; all five raw verdicts and costs retained.",
+    "MI1_BD1": "Retired before measured dispatch; not missing successful cells."
+  },
+  "owner_time_note": "Use owner_seconds, not dispatcher START/FINISH elapsed. review-boundary.jsonl records a dispatcher-only hold.",
+  "review_boundary": {
+    "path": "/Users/aipalm/.local/share/nx01/0237-live/review-boundary.jsonl",
+    "sha256": "72ffa4d06c5f03adada3382bee14cca5a19dfbfbcabc8c86aae2734afbd2db4e"
+  },
+  "oracle_audit_hold": {
+    "path": "/Users/aipalm/.local/share/nx01/0237-live/halt-discovery-oracle-audit.json",
+    "sha256": "065e0c8770c093b12cc2a374d046d917e8fbc637ea50b2ba2fc06547619399ad"
+  },
+  "cells": [
+    {
+      "cell": "d01-EQ3-UA1-claude-A-r1",
+      "task": "EQ3-UA1",
+      "arm": "A",
+      "config": "claude",
+      "status": "PRODUCT_INCOMPLETE",
+      "reason": null,
+      "owner_status": "EXITED_0",
+      "owner_seconds": 529.3813612920057,
+      "run_and_checks_seconds": 531.5402151669987,
+      "deterministic_seconds": 0.9754274579900084,
+      "input_tokens": 611877,
+      "output_tokens": 53340,
+      "usage": "COMPLETE",
+      "usage_gaps": [],
+      "known_usage_lower_bound": null,
+      "source_check_pass": false,
+      "delivery_pass": true,
+      "public_pass": true,
+      "oracle": [
+        {
+          "id": "local-a",
+          "status": "FAIL"
+        },
+        {
+          "id": "local-b",
+          "status": "PASS"
+        },
+        {
+          "id": "remote-a",
+          "status": "PASS"
+        },
+        {
+          "id": "remote-b",
+          "status": "PASS"
+        },
+        {
+          "id": "restore",
+          "status": "PASS"
+        }
+      ],
+      "scope_violations": [],
+      "changed": [
+        "visible/loan_desk/renewal_intake.py"
+      ],
+      "assessment": "NOT_REQUESTED",
+      "identity": {
+        "codex_seats": {},
+        "gaps": [],
+        "owner": "MATCH",
+        "owner_launched_sessions": [],
+        "status": "MATCH",
+        "violations": []
+      },
+      "teardown": "CLEAN",
+      "task_disposition": "EXCLUDED_ORACLE_CONTRACT",
+      "registered_route": {
+        "model": "claude-opus-5-5",
+        "effort": "max"
+      },
+      "protocol_measurement_eligible": true,
+      "source": {
+        "baseline_commit": "8362c1703dd2e255e895e0d3389c52b8bf10de8a",
+        "selected_snapshot": {
+          "candidates": [],
+          "changed": [
+            "cell/work"
+          ],
+          "kind": "anchor",
+          "path": "cell/work",
+          "rule": "changed-product"
+        },
+        "delivery": {
+          "baseline": "8362c1703dd2e255e895e0d3389c52b8bf10de8a",
+          "changed": [
+            "visible/loan_desk/renewal_intake.py"
+          ],
+          "commit": "6275cbf0702483b732613540fb586bbad36beec1",
+          "passed": true,
+          "reason": "local commit matches the assessed task source"
+        }
+      },
+      "dispatcher_events": {
+        "START": {
+          "arm": "A",
+          "cell": "d01-EQ3-UA1-claude-A-r1",
+          "engine": "claude",
+          "event": "START",
+          "number": 1,
+          "task": "EQ3-UA1",
+          "time": "2026-10-10T02:16:50.055870+00:00"
+        },
+        "FINISH": {
+          "cell": "d01-EQ3-UA1-claude-A-r1",
+          "delivery_pass": true,
+          "event": "FINISH",
+          "exit_code": 0,
+          "input_tokens": 611877,
+          "number": 1,
+          "output_tokens": 53340,
+          "owner_seconds": 529.3813612920057,
+          "reason": null,
+          "source_check_pass": false,
+          "status": "PRODUCT_INCOMPLETE",
+          "time": "2026-10-10T02:25:43.024359+00:00",
+          "usage": "COMPLETE"
+        }
+      },
+      "dispatcher_elapsed_seconds_not_owner_time": 532.968489,
+      "evidence": {
+        "baseline.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d01-EQ3-UA1-claude-A-r1/baseline.json",
+          "sha256": "389d7e3d4d576582e6a2351efacee95b25a5a58408c66f3747f0cb2ee469fc81"
+        },
+        "seal.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d01-EQ3-UA1-claude-A-r1/seal.json",
+          "sha256": "c9d722b102dfd5a5ff10137c41c568ee34b487c5e00e77226cdcf133c67ff999"
+        },
+        "usage.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d01-EQ3-UA1-claude-A-r1/usage.json",
+          "sha256": "c3ee991cc1a205579074b84a94329fd1b7c956afee35b01aed4a16ece4b0f273"
+        },
+        "run/result.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d01-EQ3-UA1-claude-A-r1/run/result.json",
+          "sha256": "ea8a83ecb17dd24015ea91868fcba43a36ddb3f96d0cc0157dcce9a20625cb5d"
+        },
+        "checks.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d01-EQ3-UA1-claude-A-r1/checks.json",
+          "sha256": "b49092c26057c9647a82f1774615a1927985750c57c2cae14257dec2d1e75eeb"
+        },
+        "checks-raw.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d01-EQ3-UA1-claude-A-r1/checks-raw.json",
+          "sha256": "9ffabc25f93c76c23fd804206e4bb7074fc84fea4331bfacb5be9cb5de9a397f"
+        },
+        "checked.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d01-EQ3-UA1-claude-A-r1/checked.json",
+          "sha256": "ba97afc9af430f620ea5ce044870aebbe681de3d6f08b1bdb64ca5c56c8734a2"
+        },
+        "delivery.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d01-EQ3-UA1-claude-A-r1/delivery.json",
+          "sha256": "f54131c347e03ca3910e7a3fe22b048bbac445c7445571ac4cb9ea10f7a81902"
+        },
+        "snapshot.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d01-EQ3-UA1-claude-A-r1/snapshot.json",
+          "sha256": "0730d4161f2bf973c0dd1cea59bdd93ca3111f8277e9579eec7b42585eef624a"
+        },
+        "evidence.manifest.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d01-EQ3-UA1-claude-A-r1/evidence.manifest.json",
+          "sha256": "69403990cc6dcd183a28277dd49c4389d092a25e5db4eb8d40af1a5a18f304e7"
+        },
+        "verdict": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/verdict-d01-EQ3-UA1-claude-A-r1.json",
+          "sha256": "7c73d06aeda0d5fb6284e5f20f2ed7346281faf77f61a4c9beaa2ad5c54537dd"
+        }
+      },
+      "usage_detail": {
+        "completeness": "COMPLETE",
+        "input_tokens": 611877,
+        "output_tokens": 53340,
+        "gaps": [],
+        "codex": {},
+        "claude": {
+          "claude-opus-5-5": {
+            "input": 22,
+            "cache_read": 546464,
+            "cache_write": 65391,
+            "output": 53340
+          }
+        }
+      },
+      "input_bindings": {
+        "/Users/aipalm/.local/share/nx01/0237-live/runtime-discovery-max.json": {
+          "sealed_sha256": "94a2c79f41f22fd0b9e7a599d06f5b9210262b80bcf8108684c067e952fa7eae",
+          "current_sha256": "94a2c79f41f22fd0b9e7a599d06f5b9210262b80bcf8108684c067e952fa7eae"
+        },
+        "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0237/tasks-discovery-max.json": {
+          "sealed_sha256": "f10e5905d0d1ac73a65966cfb2e8743ec94d4ec0a5ecc0c5cf2fd5c17ff1aa12",
+          "current_sha256": "f10e5905d0d1ac73a65966cfb2e8743ec94d4ec0a5ecc0c5cf2fd5c17ff1aa12"
+        },
+        "/Users/aipalm/.local/share/nx01/0237-live/control-discovery.manifest.json": {
+          "sealed_sha256": "f54b10234ddc5d876aeca2a200168ca8621d8c7c666e0a6a1c2ea6ad6a3e37e5",
+          "current_sha256": "f54b10234ddc5d876aeca2a200168ca8621d8c7c666e0a6a1c2ea6ad6a3e37e5"
+        }
+      },
+      "baseline_tasks_sha256_note": {
+        "value": "eb0bde7363c5c80d7c46202b77a64be5f2d9dac16c7e9c906ff873feb2c7d0c5",
+        "meaning": "Inherited prepare field hashes sibling tasks.json; selected tasks are bound by seal.inputs above."
+      },
+      "checked_binding": {
+        "snapshot_matches": true,
+        "checks_match": true,
+        "delivery_match": true
+      }
+    },
+    {
+      "cell": "d02-EQ3-UA1-claude-B-r1",
+      "task": "EQ3-UA1",
+      "arm": "B",
+      "config": "claude",
+      "status": "PRODUCT_INCOMPLETE",
+      "reason": null,
+      "owner_status": "EXITED_0",
+      "owner_seconds": 607.5840407920041,
+      "run_and_checks_seconds": 610.6244538749888,
+      "deterministic_seconds": 1.3189702499948908,
+      "input_tokens": 2430324,
+      "output_tokens": 60742,
+      "usage": "COMPLETE",
+      "usage_gaps": [],
+      "known_usage_lower_bound": null,
+      "source_check_pass": false,
+      "delivery_pass": true,
+      "public_pass": true,
+      "oracle": [
+        {
+          "id": "local-a",
+          "status": "FAIL"
+        },
+        {
+          "id": "local-b",
+          "status": "PASS"
+        },
+        {
+          "id": "remote-a",
+          "status": "PASS"
+        },
+        {
+          "id": "remote-b",
+          "status": "PASS"
+        },
+        {
+          "id": "restore",
+          "status": "PASS"
+        }
+      ],
+      "scope_violations": [],
+      "changed": [
+        "visible/loan_desk/renewal_intake.py"
+      ],
+      "assessment": "NOT_REQUESTED",
+      "identity": {
+        "codex_seats": {},
+        "gaps": [],
+        "owner": "MATCH",
+        "owner_launched_sessions": [],
+        "status": "MATCH",
+        "violations": []
+      },
+      "teardown": "CLEAN",
+      "task_disposition": "EXCLUDED_ORACLE_CONTRACT",
+      "registered_route": {
+        "model": "claude-opus-5-5",
+        "effort": "max"
+      },
+      "protocol_measurement_eligible": true,
+      "source": {
+        "baseline_commit": "db2d2077df19c4691af39eea430cf47423d466ea",
+        "selected_snapshot": {
+          "candidates": [
+            {
+              "acceptance": true,
+              "allocation": "owned",
+              "local_only": true,
+              "receipt": "cell/work/.git/devlyn-completion/107befe24281d286b3a7d478/receipt.json",
+              "worktree": "/tmp/devlyn-task.gPVldC/renewal-pending-hold"
+            }
+          ],
+          "kind": "accepted",
+          "receipt": "cell/work/.git/devlyn-completion/107befe24281d286b3a7d478/receipt.json",
+          "rule": "receipt",
+          "sha": "7ef2433ad6f8fde66bbbe5e599f7fb4b9a9999f2"
+        },
+        "delivery": {
+          "baseline": "db2d2077df19c4691af39eea430cf47423d466ea",
+          "changed": [
+            "visible/loan_desk/renewal_intake.py"
+          ],
+          "commit": "7ef2433ad6f8fde66bbbe5e599f7fb4b9a9999f2",
+          "passed": true,
+          "reason": "local commit matches the assessed task source"
+        }
+      },
+      "dispatcher_events": {
+        "START": {
+          "arm": "B",
+          "cell": "d02-EQ3-UA1-claude-B-r1",
+          "engine": "claude",
+          "event": "START",
+          "number": 2,
+          "task": "EQ3-UA1",
+          "time": "2026-10-10T02:25:43.024453+00:00"
+        },
+        "FINISH": {
+          "cell": "d02-EQ3-UA1-claude-B-r1",
+          "delivery_pass": true,
+          "event": "FINISH",
+          "exit_code": 0,
+          "input_tokens": 2430324,
+          "number": 2,
+          "output_tokens": 60742,
+          "owner_seconds": 607.5840407920041,
+          "reason": null,
+          "source_check_pass": false,
+          "status": "PRODUCT_INCOMPLETE",
+          "time": "2026-10-10T02:35:55.988680+00:00",
+          "usage": "COMPLETE"
+        }
+      },
+      "dispatcher_elapsed_seconds_not_owner_time": 612.964227,
+      "evidence": {
+        "baseline.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d02-EQ3-UA1-claude-B-r1/baseline.json",
+          "sha256": "6865e97440fb667aab832646c0dfd72aa1e06b4db9b9702cf63cec12bea61ec2"
+        },
+        "seal.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d02-EQ3-UA1-claude-B-r1/seal.json",
+          "sha256": "f32d251f30c86da176c64e5d96e375a0917301e0db95f4c1d083f7fb4c6ab02d"
+        },
+        "usage.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d02-EQ3-UA1-claude-B-r1/usage.json",
+          "sha256": "16ba0f4b170091ac6cac0c400145a511f73e36b3a8bd9262ee12123b7f3f1972"
+        },
+        "run/result.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d02-EQ3-UA1-claude-B-r1/run/result.json",
+          "sha256": "51c0c42edf818b863b31b2836624ff31a6f0a14181f6bf841656e79c2d73dc34"
+        },
+        "checks.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d02-EQ3-UA1-claude-B-r1/checks.json",
+          "sha256": "b49092c26057c9647a82f1774615a1927985750c57c2cae14257dec2d1e75eeb"
+        },
+        "checks-raw.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d02-EQ3-UA1-claude-B-r1/checks-raw.json",
+          "sha256": "9ffabc25f93c76c23fd804206e4bb7074fc84fea4331bfacb5be9cb5de9a397f"
+        },
+        "checked.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d02-EQ3-UA1-claude-B-r1/checked.json",
+          "sha256": "c24781e0d1037ca4bac48a3a3396e8ef66d7fbf98d80a4ed25a8bbcee96e298f"
+        },
+        "delivery.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d02-EQ3-UA1-claude-B-r1/delivery.json",
+          "sha256": "208065a29798a0a39881df310a26d6a562a8d9d21584949d26191ee42afbfcfc"
+        },
+        "snapshot.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d02-EQ3-UA1-claude-B-r1/snapshot.json",
+          "sha256": "7ea29caad039c3c8ae22749c42b64168430dc35dd7a549f6bc23b41b45b0e839"
+        },
+        "evidence.manifest.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d02-EQ3-UA1-claude-B-r1/evidence.manifest.json",
+          "sha256": "d63c9e05b443d49fe50140f080dbfb962032f9e79c0edb0c07f7a8725e470ae0"
+        },
+        "verdict": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/verdict-d02-EQ3-UA1-claude-B-r1.json",
+          "sha256": "135fc710f450d3380f354f499d88bc19670b5fb747515176ebfe9e030ab3df42"
+        }
+      },
+      "usage_detail": {
+        "completeness": "COMPLETE",
+        "input_tokens": 2430324,
+        "output_tokens": 60742,
+        "gaps": [],
+        "codex": {},
+        "claude": {
+          "claude-opus-5-5": {
+            "input": 55,
+            "cache_read": 2315765,
+            "cache_write": 114504,
+            "output": 60742
+          }
+        }
+      },
+      "input_bindings": {
+        "/Users/aipalm/.local/share/nx01/0237-live/runtime-discovery-max.json": {
+          "sealed_sha256": "94a2c79f41f22fd0b9e7a599d06f5b9210262b80bcf8108684c067e952fa7eae",
+          "current_sha256": "94a2c79f41f22fd0b9e7a599d06f5b9210262b80bcf8108684c067e952fa7eae"
+        },
+        "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0237/tasks-discovery-max.json": {
+          "sealed_sha256": "f10e5905d0d1ac73a65966cfb2e8743ec94d4ec0a5ecc0c5cf2fd5c17ff1aa12",
+          "current_sha256": "f10e5905d0d1ac73a65966cfb2e8743ec94d4ec0a5ecc0c5cf2fd5c17ff1aa12"
+        },
+        "/Users/aipalm/.local/share/nx01/0237-live/control-discovery.manifest.json": {
+          "sealed_sha256": "f54b10234ddc5d876aeca2a200168ca8621d8c7c666e0a6a1c2ea6ad6a3e37e5",
+          "current_sha256": "f54b10234ddc5d876aeca2a200168ca8621d8c7c666e0a6a1c2ea6ad6a3e37e5"
+        }
+      },
+      "baseline_tasks_sha256_note": {
+        "value": "eb0bde7363c5c80d7c46202b77a64be5f2d9dac16c7e9c906ff873feb2c7d0c5",
+        "meaning": "Inherited prepare field hashes sibling tasks.json; selected tasks are bound by seal.inputs above."
+      },
+      "checked_binding": {
+        "snapshot_matches": true,
+        "checks_match": true,
+        "delivery_match": true
+      }
+    },
+    {
+      "cell": "d03-EQ3-UA1-claude-C-r1",
+      "task": "EQ3-UA1",
+      "arm": "C",
+      "config": "claude",
+      "status": "PRODUCT_INCOMPLETE",
+      "reason": null,
+      "owner_status": "EXITED_0",
+      "owner_seconds": 809.4653287919937,
+      "run_and_checks_seconds": 814.1382023750048,
+      "deterministic_seconds": 2.0412377910106443,
+      "input_tokens": 2677123,
+      "output_tokens": 82340,
+      "usage": "COMPLETE",
+      "usage_gaps": [],
+      "known_usage_lower_bound": null,
+      "source_check_pass": false,
+      "delivery_pass": true,
+      "public_pass": true,
+      "oracle": [
+        {
+          "id": "local-a",
+          "status": "FAIL"
+        },
+        {
+          "id": "local-b",
+          "status": "PASS"
+        },
+        {
+          "id": "remote-a",
+          "status": "PASS"
+        },
+        {
+          "id": "remote-b",
+          "status": "PASS"
+        },
+        {
+          "id": "restore",
+          "status": "PASS"
+        }
+      ],
+      "scope_violations": [],
+      "changed": [
+        "visible/loan_desk/renewal_intake.py"
+      ],
+      "assessment": "NOT_REQUESTED",
+      "identity": {
+        "codex_seats": {},
+        "gaps": [],
+        "owner": "MATCH",
+        "owner_launched_sessions": [],
+        "status": "MATCH",
+        "violations": []
+      },
+      "teardown": "CLEAN",
+      "task_disposition": "EXCLUDED_ORACLE_CONTRACT",
+      "registered_route": {
+        "model": "claude-opus-5-5",
+        "effort": "max"
+      },
+      "protocol_measurement_eligible": true,
+      "source": {
+        "baseline_commit": "df6bc2a27160b076e1d5cff10a94ec6ca4bb13e1",
+        "selected_snapshot": {
+          "candidates": [
+            {
+              "acceptance": true,
+              "allocation": "owned",
+              "local_only": true,
+              "receipt": "cell/work/.git/devlyn-completion/fb81a78c8a00591d9f868ed4/receipt.json",
+              "worktree": "/tmp/devlyn-wt.lv0euh/loan-desk-renewal-hold"
+            }
+          ],
+          "kind": "accepted",
+          "receipt": "cell/work/.git/devlyn-completion/fb81a78c8a00591d9f868ed4/receipt.json",
+          "rule": "receipt",
+          "sha": "e4f7b37a172d16fc8a8c34e99b568e07353ae2b4"
+        },
+        "delivery": {
+          "baseline": "df6bc2a27160b076e1d5cff10a94ec6ca4bb13e1",
+          "changed": [
+            "visible/loan_desk/renewal_intake.py"
+          ],
+          "commit": "e4f7b37a172d16fc8a8c34e99b568e07353ae2b4",
+          "passed": true,
+          "reason": "local commit matches the assessed task source"
+        }
+      },
+      "dispatcher_events": {
+        "START": {
+          "arm": "C",
+          "cell": "d03-EQ3-UA1-claude-C-r1",
+          "engine": "claude",
+          "event": "START",
+          "number": 3,
+          "task": "EQ3-UA1",
+          "time": "2026-10-10T02:35:55.988800+00:00"
+        },
+        "FINISH": {
+          "cell": "d03-EQ3-UA1-claude-C-r1",
+          "delivery_pass": true,
+          "event": "FINISH",
+          "exit_code": 0,
+          "input_tokens": 2677123,
+          "number": 3,
+          "output_tokens": 82340,
+          "owner_seconds": 809.4653287919937,
+          "reason": null,
+          "source_check_pass": false,
+          "status": "PRODUCT_INCOMPLETE",
+          "time": "2026-10-10T02:49:32.547579+00:00",
+          "usage": "COMPLETE"
+        }
+      },
+      "dispatcher_elapsed_seconds_not_owner_time": 816.558779,
+      "evidence": {
+        "baseline.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d03-EQ3-UA1-claude-C-r1/baseline.json",
+          "sha256": "6f48b6454c2f76b21119da12bbc819753dccc9d707a2b9f737d276e84bfb32d1"
+        },
+        "seal.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d03-EQ3-UA1-claude-C-r1/seal.json",
+          "sha256": "a82b89adb0ae849d5736a1e3d70e73e2e6c4137a2b4138579565fa42df389d33"
+        },
+        "usage.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d03-EQ3-UA1-claude-C-r1/usage.json",
+          "sha256": "78a8a74ef95c10d4ef0bbd832cdf4ceebee1d2d13304640d8cd1e11deee58c17"
+        },
+        "run/result.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d03-EQ3-UA1-claude-C-r1/run/result.json",
+          "sha256": "33dd2eb66be69197b0e8e771f7dc71d39a747fa1e3095b49cc462b399cca3253"
+        },
+        "checks.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d03-EQ3-UA1-claude-C-r1/checks.json",
+          "sha256": "b49092c26057c9647a82f1774615a1927985750c57c2cae14257dec2d1e75eeb"
+        },
+        "checks-raw.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d03-EQ3-UA1-claude-C-r1/checks-raw.json",
+          "sha256": "9ffabc25f93c76c23fd804206e4bb7074fc84fea4331bfacb5be9cb5de9a397f"
+        },
+        "checked.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d03-EQ3-UA1-claude-C-r1/checked.json",
+          "sha256": "fc80992a6acc7e438de9856dd343fca737ba7fd42999aeea275173f17d4715fa"
+        },
+        "delivery.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d03-EQ3-UA1-claude-C-r1/delivery.json",
+          "sha256": "093ab4c5ba7e1dcee60fb6f2c74070346877315d66878333e265d1e3360162e0"
+        },
+        "snapshot.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d03-EQ3-UA1-claude-C-r1/snapshot.json",
+          "sha256": "753e63fad00273c1f7b8878744621c49d72d4e81321c4df6dc9ec4eca873b737"
+        },
+        "evidence.manifest.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d03-EQ3-UA1-claude-C-r1/evidence.manifest.json",
+          "sha256": "baaaffab1fc82f208a1658443d91f86c04ad005bac106268c5cde99979d3b0ee"
+        },
+        "verdict": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/verdict-d03-EQ3-UA1-claude-C-r1.json",
+          "sha256": "2ba48e9992119451872d08b084a72fd675eae7f64f774aec386dc1786e0263d6"
+        }
+      },
+      "usage_detail": {
+        "completeness": "COMPLETE",
+        "input_tokens": 2677123,
+        "output_tokens": 82340,
+        "gaps": [],
+        "codex": {},
+        "claude": {
+          "claude-opus-5-5": {
+            "input": 52,
+            "cache_read": 2541696,
+            "cache_write": 135375,
+            "output": 82340
+          }
+        }
+      },
+      "input_bindings": {
+        "/Users/aipalm/.local/share/nx01/0237-live/runtime-discovery-max.json": {
+          "sealed_sha256": "94a2c79f41f22fd0b9e7a599d06f5b9210262b80bcf8108684c067e952fa7eae",
+          "current_sha256": "94a2c79f41f22fd0b9e7a599d06f5b9210262b80bcf8108684c067e952fa7eae"
+        },
+        "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0237/tasks-discovery-max.json": {
+          "sealed_sha256": "f10e5905d0d1ac73a65966cfb2e8743ec94d4ec0a5ecc0c5cf2fd5c17ff1aa12",
+          "current_sha256": "f10e5905d0d1ac73a65966cfb2e8743ec94d4ec0a5ecc0c5cf2fd5c17ff1aa12"
+        },
+        "/Users/aipalm/.local/share/nx01/0237-live/control-discovery.manifest.json": {
+          "sealed_sha256": "f54b10234ddc5d876aeca2a200168ca8621d8c7c666e0a6a1c2ea6ad6a3e37e5",
+          "current_sha256": "f54b10234ddc5d876aeca2a200168ca8621d8c7c666e0a6a1c2ea6ad6a3e37e5"
+        }
+      },
+      "baseline_tasks_sha256_note": {
+        "value": "eb0bde7363c5c80d7c46202b77a64be5f2d9dac16c7e9c906ff873feb2c7d0c5",
+        "meaning": "Inherited prepare field hashes sibling tasks.json; selected tasks are bound by seal.inputs above."
+      },
+      "checked_binding": {
+        "snapshot_matches": true,
+        "checks_match": true,
+        "delivery_match": true
+      }
+    },
+    {
+      "cell": "d04-EQ3-UA1-codex-B-r1",
+      "task": "EQ3-UA1",
+      "arm": "B",
+      "config": "codex",
+      "status": "PRODUCT_INCOMPLETE",
+      "reason": null,
+      "owner_status": "EXITED_0",
+      "owner_seconds": 181.68656333400577,
+      "run_and_checks_seconds": 183.46845533400483,
+      "deterministic_seconds": 0.8843448749976233,
+      "input_tokens": 251150,
+      "output_tokens": 6292,
+      "usage": "COMPLETE",
+      "usage_gaps": [],
+      "known_usage_lower_bound": null,
+      "source_check_pass": false,
+      "delivery_pass": true,
+      "public_pass": true,
+      "oracle": [
+        {
+          "id": "local-a",
+          "status": "PASS"
+        },
+        {
+          "id": "local-b",
+          "status": "PASS"
+        },
+        {
+          "id": "remote-a",
+          "status": "FAIL"
+        },
+        {
+          "id": "remote-b",
+          "status": "PASS"
+        },
+        {
+          "id": "restore",
+          "status": "PASS"
+        }
+      ],
+      "scope_violations": [],
+      "changed": [
+        "visible/checks/run_checks.py",
+        "visible/loan_desk/renewal_intake.py"
+      ],
+      "assessment": "NOT_REQUESTED",
+      "identity": {
+        "codex_seats": {
+          "01a123b7-486c-7b40-9f39-5ffe6868dbe2": [
+            "owner",
+            "gpt-6-astra",
+            "max"
+          ]
+        },
+        "gaps": [],
+        "owner": "MATCH",
+        "owner_launched_sessions": [],
+        "status": "MATCH",
+        "violations": []
+      },
+      "teardown": "CLEAN",
+      "task_disposition": "EXCLUDED_ORACLE_CONTRACT",
+      "registered_route": {
+        "model": "gpt-6-astra",
+        "effort": "max"
+      },
+      "protocol_measurement_eligible": true,
+      "source": {
+        "baseline_commit": "08e401f2a4ca9326fb71c7899883240d73c7390e",
+        "selected_snapshot": {
+          "candidates": [],
+          "changed": [
+            "cell/work"
+          ],
+          "kind": "anchor",
+          "path": "cell/work",
+          "rule": "changed-product"
+        },
+        "delivery": {
+          "baseline": "08e401f2a4ca9326fb71c7899883240d73c7390e",
+          "changed": [
+            "visible/checks/run_checks.py",
+            "visible/loan_desk/renewal_intake.py"
+          ],
+          "commit": "84184b1d5bb2efe54c1f88b4a5d824be61c1cac8",
+          "passed": true,
+          "reason": "local commit matches the assessed task source"
+        }
+      },
+      "dispatcher_events": {
+        "START": {
+          "arm": "B",
+          "cell": "d04-EQ3-UA1-codex-B-r1",
+          "engine": "codex",
+          "event": "START",
+          "number": 4,
+          "task": "EQ3-UA1",
+          "time": "2026-10-10T02:49:32.547924+00:00"
+        },
+        "FINISH": {
+          "cell": "d04-EQ3-UA1-codex-B-r1",
+          "delivery_pass": true,
+          "event": "FINISH",
+          "exit_code": 0,
+          "input_tokens": 251150,
+          "number": 4,
+          "output_tokens": 6292,
+          "owner_seconds": 181.68656333400577,
+          "reason": null,
+          "source_check_pass": false,
+          "status": "PRODUCT_INCOMPLETE",
+          "time": "2026-10-10T02:52:39.163686+00:00",
+          "usage": "COMPLETE"
+        }
+      },
+      "dispatcher_elapsed_seconds_not_owner_time": 186.615762,
+      "evidence": {
+        "baseline.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d04-EQ3-UA1-codex-B-r1/baseline.json",
+          "sha256": "4fbf9d6a3bc1fbdfba621f91c0180dce19493f5c1344c0804f404d4c0576687d"
+        },
+        "seal.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d04-EQ3-UA1-codex-B-r1/seal.json",
+          "sha256": "2786f4f88e6b9e3288124c7419bac89e93618abb2cb3e4fc32dd1e6054f8a895"
+        },
+        "usage.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d04-EQ3-UA1-codex-B-r1/usage.json",
+          "sha256": "1609bb5110a5af2cd00102b49d46f9d9e2e00326e22bf944743387fcc01422d1"
+        },
+        "run/result.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d04-EQ3-UA1-codex-B-r1/run/result.json",
+          "sha256": "1f0bea13ffdffaa7e920219d5b93650d72b75b94c2f15fc3b79f7d27873e2ef7"
+        },
+        "checks.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d04-EQ3-UA1-codex-B-r1/checks.json",
+          "sha256": "615927c2162c75428e76b584eba427fb1ca45cc42b38c76032cccc8cdd99ea4b"
+        },
+        "checks-raw.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d04-EQ3-UA1-codex-B-r1/checks-raw.json",
+          "sha256": "1aad03a9914c3b1f898d8642952d88279903e30898b6c1fe699e27f7f81a4dbc"
+        },
+        "checked.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d04-EQ3-UA1-codex-B-r1/checked.json",
+          "sha256": "d8ce571cb293f646954b6b23239c0459dddb0f3c9e5baa1650920fa7a97b6639"
+        },
+        "delivery.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d04-EQ3-UA1-codex-B-r1/delivery.json",
+          "sha256": "1ef2b3786292c79322ff850bfb163456dd2febc8f49f1603c0ab9606a65dbdcf"
+        },
+        "snapshot.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d04-EQ3-UA1-codex-B-r1/snapshot.json",
+          "sha256": "0730d4161f2bf973c0dd1cea59bdd93ca3111f8277e9579eec7b42585eef624a"
+        },
+        "evidence.manifest.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d04-EQ3-UA1-codex-B-r1/evidence.manifest.json",
+          "sha256": "ccf7d08cb14cd4b88f648d8a051ebaa020a211cd80276d81aabf207b31951ecc"
+        },
+        "verdict": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/verdict-d04-EQ3-UA1-codex-B-r1.json",
+          "sha256": "6c5f05c79b824d2ae1126119582a6c729f06c8125b41d8c2dff34545e487bd02"
+        }
+      },
+      "usage_detail": {
+        "completeness": "COMPLETE",
+        "input_tokens": 251150,
+        "output_tokens": 6292,
+        "gaps": [],
+        "codex": {
+          "gpt-6-astra": {
+            "input_tokens": 251150,
+            "cached_input_tokens": 210432,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 6292,
+            "reasoning_output_tokens": 3318
+          }
+        },
+        "claude": {}
+      },
+      "input_bindings": {
+        "/Users/aipalm/.local/share/nx01/0237-live/runtime-discovery-max.json": {
+          "sealed_sha256": "94a2c79f41f22fd0b9e7a599d06f5b9210262b80bcf8108684c067e952fa7eae",
+          "current_sha256": "94a2c79f41f22fd0b9e7a599d06f5b9210262b80bcf8108684c067e952fa7eae"
+        },
+        "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0237/tasks-discovery-max.json": {
+          "sealed_sha256": "f10e5905d0d1ac73a65966cfb2e8743ec94d4ec0a5ecc0c5cf2fd5c17ff1aa12",
+          "current_sha256": "f10e5905d0d1ac73a65966cfb2e8743ec94d4ec0a5ecc0c5cf2fd5c17ff1aa12"
+        },
+        "/Users/aipalm/.local/share/nx01/0237-live/control-discovery.manifest.json": {
+          "sealed_sha256": "f54b10234ddc5d876aeca2a200168ca8621d8c7c666e0a6a1c2ea6ad6a3e37e5",
+          "current_sha256": "f54b10234ddc5d876aeca2a200168ca8621d8c7c666e0a6a1c2ea6ad6a3e37e5"
+        }
+      },
+      "baseline_tasks_sha256_note": {
+        "value": "eb0bde7363c5c80d7c46202b77a64be5f2d9dac16c7e9c906ff873feb2c7d0c5",
+        "meaning": "Inherited prepare field hashes sibling tasks.json; selected tasks are bound by seal.inputs above."
+      },
+      "checked_binding": {
+        "snapshot_matches": true,
+        "checks_match": true,
+        "delivery_match": true
+      }
+    },
+    {
+      "cell": "d05-EQ3-UA1-codex-C-r1",
+      "task": "EQ3-UA1",
+      "arm": "C",
+      "config": "codex",
+      "status": "PRODUCT_INCOMPLETE",
+      "reason": null,
+      "owner_status": "EXITED_0",
+      "owner_seconds": 293.873285166992,
+      "run_and_checks_seconds": 296.4109622499964,
+      "deterministic_seconds": 1.0099262910080142,
+      "input_tokens": 539289,
+      "output_tokens": 10649,
+      "usage": "COMPLETE",
+      "usage_gaps": [],
+      "known_usage_lower_bound": null,
+      "source_check_pass": false,
+      "delivery_pass": true,
+      "public_pass": true,
+      "oracle": [
+        {
+          "id": "local-a",
+          "status": "PASS"
+        },
+        {
+          "id": "local-b",
+          "status": "PASS"
+        },
+        {
+          "id": "remote-a",
+          "status": "FAIL"
+        },
+        {
+          "id": "remote-b",
+          "status": "PASS"
+        },
+        {
+          "id": "restore",
+          "status": "PASS"
+        }
+      ],
+      "scope_violations": [],
+      "changed": [
+        "visible/checks/run_checks.py",
+        "visible/loan_desk/renewal_intake.py"
+      ],
+      "assessment": "NOT_REQUESTED",
+      "identity": {
+        "codex_seats": {
+          "01a123ba-19d4-7a60-b8fb-55c6bd7cd274": [
+            "owner",
+            "gpt-6-astra",
+            "max"
+          ]
+        },
+        "gaps": [],
+        "owner": "MATCH",
+        "owner_launched_sessions": [],
+        "status": "MATCH",
+        "violations": []
+      },
+      "teardown": "CLEAN",
+      "task_disposition": "EXCLUDED_ORACLE_CONTRACT",
+      "registered_route": {
+        "model": "gpt-6-astra",
+        "effort": "max"
+      },
+      "protocol_measurement_eligible": true,
+      "source": {
+        "baseline_commit": "db041259587d6d6b6acbdc5bb12e00261e54d78a",
+        "selected_snapshot": {
+          "candidates": [
+            {
+              "acceptance": true,
+              "allocation": "owned",
+              "local_only": true,
+              "receipt": "cell/work/.git/devlyn-completion/698c02e24927c1f82af9a79f/receipt.json",
+              "worktree": "/cell/loan-desk-pending-hold"
+            }
+          ],
+          "kind": "accepted",
+          "receipt": "cell/work/.git/devlyn-completion/698c02e24927c1f82af9a79f/receipt.json",
+          "rule": "receipt",
+          "sha": "2deb7c55cb5ec4b4ab64f8f6989d33be427bc625"
+        },
+        "delivery": {
+          "baseline": "db041259587d6d6b6acbdc5bb12e00261e54d78a",
+          "changed": [
+            "visible/checks/run_checks.py",
+            "visible/loan_desk/renewal_intake.py"
+          ],
+          "commit": "2deb7c55cb5ec4b4ab64f8f6989d33be427bc625",
+          "passed": true,
+          "reason": "local commit matches the assessed task source"
+        }
+      },
+      "dispatcher_events": {
+        "START": {
+          "arm": "C",
+          "cell": "d05-EQ3-UA1-codex-C-r1",
+          "engine": "codex",
+          "event": "START",
+          "number": 5,
+          "task": "EQ3-UA1",
+          "time": "2026-10-10T02:52:39.163850+00:00"
+        }
+      },
+      "evidence": {
+        "baseline.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d05-EQ3-UA1-codex-C-r1/baseline.json",
+          "sha256": "901102de56f4b6b75f328abd0a7d8272689c1f73d18706f115b12d6e5e6ab7d7"
+        },
+        "seal.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d05-EQ3-UA1-codex-C-r1/seal.json",
+          "sha256": "5c885d83e1e1449dd2eeb6ddb8f170bf7d01abb26269ef8d88e93a530c43d5ec"
+        },
+        "usage.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d05-EQ3-UA1-codex-C-r1/usage.json",
+          "sha256": "7c751cc169baf621485b02cff93af61d186ed2f13ea20847ca8252da4ee86608"
+        },
+        "run/result.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d05-EQ3-UA1-codex-C-r1/run/result.json",
+          "sha256": "3a444e650bfb2b16b71e16e86a4f165cb5422c2d769c2bd907570fd05e30bd78"
+        },
+        "checks.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d05-EQ3-UA1-codex-C-r1/checks.json",
+          "sha256": "615927c2162c75428e76b584eba427fb1ca45cc42b38c76032cccc8cdd99ea4b"
+        },
+        "checks-raw.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d05-EQ3-UA1-codex-C-r1/checks-raw.json",
+          "sha256": "1aad03a9914c3b1f898d8642952d88279903e30898b6c1fe699e27f7f81a4dbc"
+        },
+        "checked.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d05-EQ3-UA1-codex-C-r1/checked.json",
+          "sha256": "76dc318086500bbc888563b2c9078d3f6d086843e0eb28ff28b52a6f29f253d8"
+        },
+        "delivery.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d05-EQ3-UA1-codex-C-r1/delivery.json",
+          "sha256": "8972c81bbb41386eba4ae384ca66609c211621c79975579c600099faf11738ed"
+        },
+        "snapshot.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d05-EQ3-UA1-codex-C-r1/snapshot.json",
+          "sha256": "2c6cade3f3887774ab744770fe52db31d4b146d9066e869661b9f1cab0bd4c2c"
+        },
+        "evidence.manifest.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d05-EQ3-UA1-codex-C-r1/evidence.manifest.json",
+          "sha256": "d433719c4fa7ef3c450402534f56d6ac7d943eb116718203a3abb5ee8e62d881"
+        },
+        "verdict": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/verdict-d05-EQ3-UA1-codex-C-r1.json",
+          "sha256": "566571627b4d145edf55174e874a0b99c0e23f388216b03cd0c2d3dfe0be59d4"
+        }
+      },
+      "usage_detail": {
+        "completeness": "COMPLETE",
+        "input_tokens": 539289,
+        "output_tokens": 10649,
+        "gaps": [],
+        "codex": {
+          "gpt-6-astra": {
+            "input_tokens": 539289,
+            "cached_input_tokens": 488064,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 10649,
+            "reasoning_output_tokens": 5978
+          }
+        },
+        "claude": {}
+      },
+      "input_bindings": {
+        "/Users/aipalm/.local/share/nx01/0237-live/runtime-discovery-max.json": {
+          "sealed_sha256": "94a2c79f41f22fd0b9e7a599d06f5b9210262b80bcf8108684c067e952fa7eae",
+          "current_sha256": "94a2c79f41f22fd0b9e7a599d06f5b9210262b80bcf8108684c067e952fa7eae"
+        },
+        "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0237/tasks-discovery-max.json": {
+          "sealed_sha256": "f10e5905d0d1ac73a65966cfb2e8743ec94d4ec0a5ecc0c5cf2fd5c17ff1aa12",
+          "current_sha256": "f10e5905d0d1ac73a65966cfb2e8743ec94d4ec0a5ecc0c5cf2fd5c17ff1aa12"
+        },
+        "/Users/aipalm/.local/share/nx01/0237-live/control-discovery.manifest.json": {
+          "sealed_sha256": "f54b10234ddc5d876aeca2a200168ca8621d8c7c666e0a6a1c2ea6ad6a3e37e5",
+          "current_sha256": "f54b10234ddc5d876aeca2a200168ca8621d8c7c666e0a6a1c2ea6ad6a3e37e5"
+        }
+      },
+      "baseline_tasks_sha256_note": {
+        "value": "eb0bde7363c5c80d7c46202b77a64be5f2d9dac16c7e9c906ff873feb2c7d0c5",
+        "meaning": "Inherited prepare field hashes sibling tasks.json; selected tasks are bound by seal.inputs above."
+      },
+      "checked_binding": {
+        "snapshot_matches": true,
+        "checks_match": true,
+        "delivery_match": true
+      }
+    },
+    {
+      "cell": "d13-EQ3-AF1-claude-C-r1",
+      "task": "EQ3-AF1",
+      "arm": "C",
+      "config": "claude",
+      "status": "CHECKS_PASS",
+      "reason": null,
+      "owner_status": "EXITED_0",
+      "owner_seconds": 1169.6740955830028,
+      "run_and_checks_seconds": 1172.5481984159997,
+      "deterministic_seconds": 1.2944999579922296,
+      "input_tokens": 3809320,
+      "output_tokens": 116734,
+      "usage": "COMPLETE",
+      "usage_gaps": [],
+      "known_usage_lower_bound": null,
+      "source_check_pass": true,
+      "delivery_pass": true,
+      "public_pass": true,
+      "oracle": [
+        {
+          "id": "local-a",
+          "status": "PASS"
+        },
+        {
+          "id": "local-b",
+          "status": "PASS"
+        },
+        {
+          "id": "remote-a",
+          "status": "PASS"
+        },
+        {
+          "id": "remote-b",
+          "status": "PASS"
+        },
+        {
+          "id": "restore",
+          "status": "PASS"
+        }
+      ],
+      "scope_violations": [],
+      "changed": [
+        "visible/intake/hold_intake.py"
+      ],
+      "assessment": "NOT_REQUESTED",
+      "identity": {
+        "codex_seats": {},
+        "gaps": [],
+        "owner": "MATCH",
+        "owner_launched_sessions": [],
+        "status": "MATCH",
+        "violations": []
+      },
+      "teardown": "CLEAN",
+      "task_disposition": "AVAILABLE_DIAGNOSTIC_NO_CANDIDATE_DECISION",
+      "registered_route": {
+        "model": "claude-opus-5-5",
+        "effort": "max"
+      },
+      "protocol_measurement_eligible": true,
+      "source": {
+        "baseline_commit": "f48d88e332aeef266fa5761dbfc068e938e03dfb",
+        "selected_snapshot": {
+          "candidates": [
+            {
+              "acceptance": true,
+              "allocation": "owned",
+              "local_only": true,
+              "receipt": "cell/work/.git/devlyn-completion/1276cea86acade75a816e7be/receipt.json",
+              "worktree": "/tmp/devlyn-intake-hold-retention"
+            }
+          ],
+          "kind": "accepted",
+          "receipt": "cell/work/.git/devlyn-completion/1276cea86acade75a816e7be/receipt.json",
+          "rule": "receipt",
+          "sha": "b7826242b42312549e9f0e7b516e4b1f957efc82"
+        },
+        "delivery": {
+          "baseline": "f48d88e332aeef266fa5761dbfc068e938e03dfb",
+          "changed": [
+            "visible/intake/hold_intake.py"
+          ],
+          "commit": "b7826242b42312549e9f0e7b516e4b1f957efc82",
+          "passed": true,
+          "reason": "local commit matches the assessed task source"
+        }
+      },
+      "dispatcher_events": {
+        "START": {
+          "arm": "C",
+          "cell": "d13-EQ3-AF1-claude-C-r1",
+          "engine": "claude",
+          "event": "START",
+          "number": 1,
+          "task": "EQ3-AF1",
+          "time": "2026-10-10T02:59:06.307985+00:00"
+        },
+        "FINISH": {
+          "cell": "d13-EQ3-AF1-claude-C-r1",
+          "delivery_pass": true,
+          "event": "FINISH",
+          "exit_code": 0,
+          "input_tokens": 3809320,
+          "number": 1,
+          "output_tokens": 116734,
+          "owner_seconds": 1169.6740955830028,
+          "reason": null,
+          "source_check_pass": true,
+          "status": "CHECKS_PASS",
+          "time": "2026-10-10T03:18:41.597685+00:00",
+          "usage": "COMPLETE"
+        }
+      },
+      "dispatcher_elapsed_seconds_not_owner_time": 1175.2897,
+      "evidence": {
+        "baseline.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d13-EQ3-AF1-claude-C-r1/baseline.json",
+          "sha256": "9747a66b3bd49e5f62e0216dc01b6379dc7094d0571e96d56c369b201215207b"
+        },
+        "seal.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d13-EQ3-AF1-claude-C-r1/seal.json",
+          "sha256": "b5bc92e9a7122b9e1e0b65c7d3a9b00345414503286860d4e93e6f0cd9748941"
+        },
+        "usage.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d13-EQ3-AF1-claude-C-r1/usage.json",
+          "sha256": "0caefd70cd8ea52ab1fd7813a1859712966471733a8341131035610f7f8fde12"
+        },
+        "run/result.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d13-EQ3-AF1-claude-C-r1/run/result.json",
+          "sha256": "e729ad124a30bf67db273f168ab46dc69237547a9f373e51eca12f8ada4806be"
+        },
+        "checks.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d13-EQ3-AF1-claude-C-r1/checks.json",
+          "sha256": "78b12c7d98e18b873bc94607001d79757ecbd5f66d382a3e7c01462f27054ee8"
+        },
+        "checks-raw.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d13-EQ3-AF1-claude-C-r1/checks-raw.json",
+          "sha256": "38a17e94e2bc6a9c7daa8917f8fa3e5da2b3191abfff8a2d3dd326ee789a867a"
+        },
+        "checked.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d13-EQ3-AF1-claude-C-r1/checked.json",
+          "sha256": "ec7bd6398cc961022efd2d245e8851c22173a42103e82f0a7e814cf0562bd060"
+        },
+        "delivery.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d13-EQ3-AF1-claude-C-r1/delivery.json",
+          "sha256": "fe6c98d8ca5d1c30e35c33471f9f30445052b117ab3ca3b640a4b91c92f52f3b"
+        },
+        "snapshot.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d13-EQ3-AF1-claude-C-r1/snapshot.json",
+          "sha256": "0d0b5bcf6b23194ded14a4c514dddecb16d416359b952ae68d5d2fbe7c0ab9cd"
+        },
+        "evidence.manifest.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d13-EQ3-AF1-claude-C-r1/evidence.manifest.json",
+          "sha256": "f0d70ddc44c82a77d368799010448dffd3f26d9f4a6c075007508312e2eb8e28"
+        },
+        "verdict": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/verdict-d13-EQ3-AF1-claude-C-r1.json",
+          "sha256": "a21b434b3b4ceb523ef16b702503b5df37aa20eb754d3b424a1a76ae32fdac07"
+        }
+      },
+      "usage_detail": {
+        "completeness": "COMPLETE",
+        "input_tokens": 3809320,
+        "output_tokens": 116734,
+        "gaps": [],
+        "codex": {},
+        "claude": {
+          "claude-opus-5-5": {
+            "input": 64,
+            "cache_read": 3643129,
+            "cache_write": 166127,
+            "output": 116734
+          }
+        }
+      },
+      "input_bindings": {
+        "/Users/aipalm/.local/share/nx01/0237-live/runtime-discovery-max.json": {
+          "sealed_sha256": "94a2c79f41f22fd0b9e7a599d06f5b9210262b80bcf8108684c067e952fa7eae",
+          "current_sha256": "94a2c79f41f22fd0b9e7a599d06f5b9210262b80bcf8108684c067e952fa7eae"
+        },
+        "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0237/tasks-discovery-max.json": {
+          "sealed_sha256": "f10e5905d0d1ac73a65966cfb2e8743ec94d4ec0a5ecc0c5cf2fd5c17ff1aa12",
+          "current_sha256": "f10e5905d0d1ac73a65966cfb2e8743ec94d4ec0a5ecc0c5cf2fd5c17ff1aa12"
+        },
+        "/Users/aipalm/.local/share/nx01/0237-live/control-discovery.manifest.json": {
+          "sealed_sha256": "f54b10234ddc5d876aeca2a200168ca8621d8c7c666e0a6a1c2ea6ad6a3e37e5",
+          "current_sha256": "f54b10234ddc5d876aeca2a200168ca8621d8c7c666e0a6a1c2ea6ad6a3e37e5"
+        }
+      },
+      "baseline_tasks_sha256_note": {
+        "value": "eb0bde7363c5c80d7c46202b77a64be5f2d9dac16c7e9c906ff873feb2c7d0c5",
+        "meaning": "Inherited prepare field hashes sibling tasks.json; selected tasks are bound by seal.inputs above."
+      },
+      "checked_binding": {
+        "snapshot_matches": true,
+        "checks_match": true,
+        "delivery_match": true
+      },
+      "af1_predicate_integrity": {
+        "status": "UNCHANGED",
+        "protected_files": {
+          "visible/matching/crossmatch_reserver.py": {
+            "baseline": "8f189ba40ca4e4e3231eb5823fc5fe8b55f0360b43a2a188098ae1bb184e8ea5:644",
+            "evaluated": "8f189ba40ca4e4e3231eb5823fc5fe8b55f0360b43a2a188098ae1bb184e8ea5:644",
+            "unchanged": true
+          },
+          "visible/qa/expiry_release.py": {
+            "baseline": "01146fd73b2a9d2a813d7b02b4f846e5e035a70fb7de792e42ed4f50420838d5:644",
+            "evaluated": "01146fd73b2a9d2a813d7b02b4f846e5e035a70fb7de792e42ed4f50420838d5:644",
+            "unchanged": true
+          },
+          "visible/qa/run_checks.py": {
+            "baseline": "7bb6fd92f38b78a89d3d91787c7433adc273a655150977e8659bc2790a5748cd:644",
+            "evaluated": "7bb6fd92f38b78a89d3d91787c7433adc273a655150977e8659bc2790a5748cd:644",
+            "unchanged": true
+          },
+          "visible/qa/scenarios.txt": {
+            "baseline": "24be2fe42966ed508820e98581e700fed1ae21e80810ca820bb9c072dcb1496e:644",
+            "evaluated": "24be2fe42966ed508820e98581e700fed1ae21e80810ca820bb9c072dcb1496e:644",
+            "unchanged": true
+          }
+        },
+        "changed_existing_visible": [
+          "visible/intake/hold_intake.py"
+        ],
+        "added_visible": [],
+        "baseline_matches_registered_source": true,
+        "hidden_oracle": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/control-discovery/oracle/eq3/EQ3-AF1/oracle.py",
+          "sha256": "3bdc42c33b48bab3168da726eb892410364024f64ad64b223f848a9c82ab46b1"
+        },
+        "hidden_oracle_matches_control_manifest": true
+      }
+    },
+    {
+      "cell": "d14-EQ3-AF1-claude-A-r1",
+      "task": "EQ3-AF1",
+      "arm": "A",
+      "config": "claude",
+      "status": "CHECKS_PASS",
+      "reason": null,
+      "owner_status": "EXITED_0",
+      "owner_seconds": 855.3643329589977,
+      "run_and_checks_seconds": 856.9903735420085,
+      "deterministic_seconds": 0.6519972499954747,
+      "input_tokens": 1305743,
+      "output_tokens": 86558,
+      "usage": "COMPLETE",
+      "usage_gaps": [],
+      "known_usage_lower_bound": null,
+      "source_check_pass": true,
+      "delivery_pass": true,
+      "public_pass": true,
+      "oracle": [
+        {
+          "id": "local-a",
+          "status": "PASS"
+        },
+        {
+          "id": "local-b",
+          "status": "PASS"
+        },
+        {
+          "id": "remote-a",
+          "status": "PASS"
+        },
+        {
+          "id": "remote-b",
+          "status": "PASS"
+        },
+        {
+          "id": "restore",
+          "status": "PASS"
+        }
+      ],
+      "scope_violations": [],
+      "changed": [
+        "visible/intake/hold_intake.py",
+        "visible/qa/run_expiry_checks.py"
+      ],
+      "assessment": "NOT_REQUESTED",
+      "identity": {
+        "codex_seats": {},
+        "gaps": [],
+        "owner": "MATCH",
+        "owner_launched_sessions": [],
+        "status": "MATCH",
+        "violations": []
+      },
+      "teardown": "CLEAN",
+      "task_disposition": "AVAILABLE_DIAGNOSTIC_NO_CANDIDATE_DECISION",
+      "registered_route": {
+        "model": "claude-opus-5-5",
+        "effort": "max"
+      },
+      "protocol_measurement_eligible": true,
+      "source": {
+        "baseline_commit": "45329073b7d31828e081431a66df6b8d9a5ac7b8",
+        "selected_snapshot": {
+          "candidates": [],
+          "changed": [
+            "cell/work"
+          ],
+          "kind": "anchor",
+          "path": "cell/work",
+          "rule": "changed-product"
+        },
+        "delivery": {
+          "baseline": "45329073b7d31828e081431a66df6b8d9a5ac7b8",
+          "changed": [
+            "visible/intake/hold_intake.py",
+            "visible/qa/run_expiry_checks.py"
+          ],
+          "commit": "ef3148e9da3dcf77134dcf3453227de04f2f849e",
+          "passed": true,
+          "reason": "local commit matches the assessed task source"
+        }
+      },
+      "dispatcher_events": {
+        "START": {
+          "arm": "A",
+          "cell": "d14-EQ3-AF1-claude-A-r1",
+          "engine": "claude",
+          "event": "START",
+          "number": 2,
+          "task": "EQ3-AF1",
+          "time": "2026-10-10T03:18:41.597812+00:00"
+        },
+        "FINISH": {
+          "cell": "d14-EQ3-AF1-claude-A-r1",
+          "delivery_pass": true,
+          "event": "FINISH",
+          "exit_code": 0,
+          "input_tokens": 1305743,
+          "number": 2,
+          "output_tokens": 86558,
+          "owner_seconds": 855.3643329589977,
+          "reason": null,
+          "source_check_pass": true,
+          "status": "CHECKS_PASS",
+          "time": "2026-10-10T03:40:42.576396+00:00",
+          "usage": "COMPLETE"
+        }
+      },
+      "dispatcher_elapsed_seconds_not_owner_time": 1320.978584,
+      "evidence": {
+        "baseline.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d14-EQ3-AF1-claude-A-r1/baseline.json",
+          "sha256": "cf8c95037a3fd830ed05657a8cc38703eb5832b1b923b50509db569a64044f11"
+        },
+        "seal.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d14-EQ3-AF1-claude-A-r1/seal.json",
+          "sha256": "a157da72bae66b24495411a2b6641ad3c1711dd1c3f7edd76686440db78ef7fb"
+        },
+        "usage.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d14-EQ3-AF1-claude-A-r1/usage.json",
+          "sha256": "be455a3a50b22a810346d0ee56dffc930786dbb737442fb72a222766fef6436b"
+        },
+        "run/result.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d14-EQ3-AF1-claude-A-r1/run/result.json",
+          "sha256": "9943ca785790782508ae10302f28c19862ad8d672067a2044bd0335f856daad7"
+        },
+        "checks.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d14-EQ3-AF1-claude-A-r1/checks.json",
+          "sha256": "886f3d42eb964ca2714a61f18def69a7a486ae884e489ef47c2685aebe0f1088"
+        },
+        "checks-raw.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d14-EQ3-AF1-claude-A-r1/checks-raw.json",
+          "sha256": "38a17e94e2bc6a9c7daa8917f8fa3e5da2b3191abfff8a2d3dd326ee789a867a"
+        },
+        "checked.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d14-EQ3-AF1-claude-A-r1/checked.json",
+          "sha256": "1e67b8d0088175daab1ec07212628d32be763cafa3b59999e1bc8f52f602311d"
+        },
+        "delivery.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d14-EQ3-AF1-claude-A-r1/delivery.json",
+          "sha256": "32916da94b6b3625cccb70f5fb2df3e40c6f3d07bb7951038d66dba1ca17874e"
+        },
+        "snapshot.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d14-EQ3-AF1-claude-A-r1/snapshot.json",
+          "sha256": "0730d4161f2bf973c0dd1cea59bdd93ca3111f8277e9579eec7b42585eef624a"
+        },
+        "evidence.manifest.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d14-EQ3-AF1-claude-A-r1/evidence.manifest.json",
+          "sha256": "099d51fc5dcdc2379a8e5804af038946fab3b298943d661465bd099d6babdbfc"
+        },
+        "verdict": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/verdict-d14-EQ3-AF1-claude-A-r1.json",
+          "sha256": "d9850136776bdc5f0a7201d147beae3875adf69aa4f9500d26938e554c343e74"
+        }
+      },
+      "usage_detail": {
+        "completeness": "COMPLETE",
+        "input_tokens": 1305743,
+        "output_tokens": 86558,
+        "gaps": [],
+        "codex": {},
+        "claude": {
+          "claude-opus-5-5": {
+            "input": 32,
+            "cache_read": 1203401,
+            "cache_write": 102310,
+            "output": 86558
+          }
+        }
+      },
+      "input_bindings": {
+        "/Users/aipalm/.local/share/nx01/0237-live/runtime-discovery-max.json": {
+          "sealed_sha256": "94a2c79f41f22fd0b9e7a599d06f5b9210262b80bcf8108684c067e952fa7eae",
+          "current_sha256": "94a2c79f41f22fd0b9e7a599d06f5b9210262b80bcf8108684c067e952fa7eae"
+        },
+        "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0237/tasks-discovery-max.json": {
+          "sealed_sha256": "f10e5905d0d1ac73a65966cfb2e8743ec94d4ec0a5ecc0c5cf2fd5c17ff1aa12",
+          "current_sha256": "f10e5905d0d1ac73a65966cfb2e8743ec94d4ec0a5ecc0c5cf2fd5c17ff1aa12"
+        },
+        "/Users/aipalm/.local/share/nx01/0237-live/control-discovery.manifest.json": {
+          "sealed_sha256": "f54b10234ddc5d876aeca2a200168ca8621d8c7c666e0a6a1c2ea6ad6a3e37e5",
+          "current_sha256": "f54b10234ddc5d876aeca2a200168ca8621d8c7c666e0a6a1c2ea6ad6a3e37e5"
+        }
+      },
+      "baseline_tasks_sha256_note": {
+        "value": "eb0bde7363c5c80d7c46202b77a64be5f2d9dac16c7e9c906ff873feb2c7d0c5",
+        "meaning": "Inherited prepare field hashes sibling tasks.json; selected tasks are bound by seal.inputs above."
+      },
+      "checked_binding": {
+        "snapshot_matches": true,
+        "checks_match": true,
+        "delivery_match": true
+      },
+      "af1_predicate_integrity": {
+        "status": "UNCHANGED",
+        "protected_files": {
+          "visible/matching/crossmatch_reserver.py": {
+            "baseline": "8f189ba40ca4e4e3231eb5823fc5fe8b55f0360b43a2a188098ae1bb184e8ea5:644",
+            "evaluated": "8f189ba40ca4e4e3231eb5823fc5fe8b55f0360b43a2a188098ae1bb184e8ea5:644",
+            "unchanged": true
+          },
+          "visible/qa/expiry_release.py": {
+            "baseline": "01146fd73b2a9d2a813d7b02b4f846e5e035a70fb7de792e42ed4f50420838d5:644",
+            "evaluated": "01146fd73b2a9d2a813d7b02b4f846e5e035a70fb7de792e42ed4f50420838d5:644",
+            "unchanged": true
+          },
+          "visible/qa/run_checks.py": {
+            "baseline": "7bb6fd92f38b78a89d3d91787c7433adc273a655150977e8659bc2790a5748cd:644",
+            "evaluated": "7bb6fd92f38b78a89d3d91787c7433adc273a655150977e8659bc2790a5748cd:644",
+            "unchanged": true
+          },
+          "visible/qa/scenarios.txt": {
+            "baseline": "24be2fe42966ed508820e98581e700fed1ae21e80810ca820bb9c072dcb1496e:644",
+            "evaluated": "24be2fe42966ed508820e98581e700fed1ae21e80810ca820bb9c072dcb1496e:644",
+            "unchanged": true
+          }
+        },
+        "changed_existing_visible": [
+          "visible/intake/hold_intake.py"
+        ],
+        "added_visible": [
+          "visible/qa/run_expiry_checks.py"
+        ],
+        "baseline_matches_registered_source": true,
+        "hidden_oracle": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/control-discovery/oracle/eq3/EQ3-AF1/oracle.py",
+          "sha256": "3bdc42c33b48bab3168da726eb892410364024f64ad64b223f848a9c82ab46b1"
+        },
+        "hidden_oracle_matches_control_manifest": true
+      }
+    },
+    {
+      "cell": "d15-EQ3-AF1-claude-B-r1",
+      "task": "EQ3-AF1",
+      "arm": "B",
+      "config": "claude",
+      "status": "CHECKS_PASS",
+      "reason": null,
+      "owner_status": "EXITED_0",
+      "owner_seconds": 1218.1382314999937,
+      "run_and_checks_seconds": 1220.3583904999978,
+      "deterministic_seconds": 0.9927813329995843,
+      "input_tokens": 5192478,
+      "output_tokens": 122560,
+      "usage": "COMPLETE",
+      "usage_gaps": [],
+      "known_usage_lower_bound": null,
+      "source_check_pass": true,
+      "delivery_pass": true,
+      "public_pass": true,
+      "oracle": [
+        {
+          "id": "local-a",
+          "status": "PASS"
+        },
+        {
+          "id": "local-b",
+          "status": "PASS"
+        },
+        {
+          "id": "remote-a",
+          "status": "PASS"
+        },
+        {
+          "id": "remote-b",
+          "status": "PASS"
+        },
+        {
+          "id": "restore",
+          "status": "PASS"
+        }
+      ],
+      "scope_violations": [],
+      "changed": [
+        "visible/intake/hold_intake.py"
+      ],
+      "assessment": "NOT_REQUESTED",
+      "identity": {
+        "codex_seats": {},
+        "gaps": [],
+        "owner": "MATCH",
+        "owner_launched_sessions": [],
+        "status": "MATCH",
+        "violations": []
+      },
+      "teardown": "CLEAN",
+      "task_disposition": "AVAILABLE_DIAGNOSTIC_NO_CANDIDATE_DECISION",
+      "registered_route": {
+        "model": "claude-opus-5-5",
+        "effort": "max"
+      },
+      "protocol_measurement_eligible": true,
+      "source": {
+        "baseline_commit": "07b2beddaefa62e17078f507e67d4dd359fed92c",
+        "selected_snapshot": {
+          "candidates": [
+            {
+              "acceptance": true,
+              "allocation": "owned",
+              "local_only": true,
+              "receipt": "cell/work/.git/devlyn-completion/1276cea86acade75a816e7be/receipt.json",
+              "worktree": "/tmp/devlyn-task/intake-hold-retention"
+            }
+          ],
+          "kind": "accepted",
+          "receipt": "cell/work/.git/devlyn-completion/1276cea86acade75a816e7be/receipt.json",
+          "rule": "receipt",
+          "sha": "4ab2e0f29c277bba166b7e61a0437455509a9b06"
+        },
+        "delivery": {
+          "baseline": "07b2beddaefa62e17078f507e67d4dd359fed92c",
+          "changed": [
+            "visible/intake/hold_intake.py"
+          ],
+          "commit": "4ab2e0f29c277bba166b7e61a0437455509a9b06",
+          "passed": true,
+          "reason": "local commit matches the assessed task source"
+        }
+      },
+      "dispatcher_events": {
+        "START": {
+          "arm": "B",
+          "cell": "d15-EQ3-AF1-claude-B-r1",
+          "engine": "claude",
+          "event": "START",
+          "number": 3,
+          "task": "EQ3-AF1",
+          "time": "2026-10-10T03:40:42.576683+00:00"
+        },
+        "FINISH": {
+          "cell": "d15-EQ3-AF1-claude-B-r1",
+          "delivery_pass": true,
+          "event": "FINISH",
+          "exit_code": 0,
+          "input_tokens": 5192478,
+          "number": 3,
+          "output_tokens": 122560,
+          "owner_seconds": 1218.1382314999937,
+          "reason": null,
+          "source_check_pass": true,
+          "status": "CHECKS_PASS",
+          "time": "2026-10-10T04:01:04.941736+00:00",
+          "usage": "COMPLETE"
+        }
+      },
+      "dispatcher_elapsed_seconds_not_owner_time": 1222.365053,
+      "evidence": {
+        "baseline.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d15-EQ3-AF1-claude-B-r1/baseline.json",
+          "sha256": "35bc70a78642ec88eface5b9198047f6659052d2b26c9921b86f5c17e88d2c8d"
+        },
+        "seal.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d15-EQ3-AF1-claude-B-r1/seal.json",
+          "sha256": "f8b7916a5b3651551c0e04c91370f2b99aca8da86735a51dd582738f38ba906b"
+        },
+        "usage.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d15-EQ3-AF1-claude-B-r1/usage.json",
+          "sha256": "e691dcd82c247778862fd509268eebb05e125e0d9307a3daf209a9cba5b304e8"
+        },
+        "run/result.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d15-EQ3-AF1-claude-B-r1/run/result.json",
+          "sha256": "d3637ebcbf0ad6845956d53e563d5951ac5f3005bbb8119522d6c41c15286144"
+        },
+        "checks.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d15-EQ3-AF1-claude-B-r1/checks.json",
+          "sha256": "78b12c7d98e18b873bc94607001d79757ecbd5f66d382a3e7c01462f27054ee8"
+        },
+        "checks-raw.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d15-EQ3-AF1-claude-B-r1/checks-raw.json",
+          "sha256": "38a17e94e2bc6a9c7daa8917f8fa3e5da2b3191abfff8a2d3dd326ee789a867a"
+        },
+        "checked.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d15-EQ3-AF1-claude-B-r1/checked.json",
+          "sha256": "d38cf6cfdac04c5047cd4746ace75a60108fea98939405528c1e073b72bae69c"
+        },
+        "delivery.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d15-EQ3-AF1-claude-B-r1/delivery.json",
+          "sha256": "782797a577ebad17d258084e1285b2fcfc46dbef3f8327ed9382627c3cebd069"
+        },
+        "snapshot.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d15-EQ3-AF1-claude-B-r1/snapshot.json",
+          "sha256": "fdca25eea0465e3e1ffdc0c8aa1a241b5d3306358dc72ccc1c6c3624dd2bb337"
+        },
+        "evidence.manifest.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d15-EQ3-AF1-claude-B-r1/evidence.manifest.json",
+          "sha256": "8d2300f0768973dfcabc97959e435e8e49629a8bf9f0c55094555336a8629f35"
+        },
+        "verdict": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/verdict-d15-EQ3-AF1-claude-B-r1.json",
+          "sha256": "71fab9cac0df55c6efb1080a165706b88c7ad5c74a713df8b81dba31c80ac7f2"
+        }
+      },
+      "usage_detail": {
+        "completeness": "COMPLETE",
+        "input_tokens": 5192478,
+        "output_tokens": 122560,
+        "gaps": [],
+        "codex": {},
+        "claude": {
+          "claude-opus-5-5": {
+            "input": 77,
+            "cache_read": 5001433,
+            "cache_write": 190968,
+            "output": 122560
+          }
+        }
+      },
+      "input_bindings": {
+        "/Users/aipalm/.local/share/nx01/0237-live/runtime-discovery-max.json": {
+          "sealed_sha256": "94a2c79f41f22fd0b9e7a599d06f5b9210262b80bcf8108684c067e952fa7eae",
+          "current_sha256": "94a2c79f41f22fd0b9e7a599d06f5b9210262b80bcf8108684c067e952fa7eae"
+        },
+        "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0237/tasks-discovery-max.json": {
+          "sealed_sha256": "f10e5905d0d1ac73a65966cfb2e8743ec94d4ec0a5ecc0c5cf2fd5c17ff1aa12",
+          "current_sha256": "f10e5905d0d1ac73a65966cfb2e8743ec94d4ec0a5ecc0c5cf2fd5c17ff1aa12"
+        },
+        "/Users/aipalm/.local/share/nx01/0237-live/control-discovery.manifest.json": {
+          "sealed_sha256": "f54b10234ddc5d876aeca2a200168ca8621d8c7c666e0a6a1c2ea6ad6a3e37e5",
+          "current_sha256": "f54b10234ddc5d876aeca2a200168ca8621d8c7c666e0a6a1c2ea6ad6a3e37e5"
+        }
+      },
+      "baseline_tasks_sha256_note": {
+        "value": "eb0bde7363c5c80d7c46202b77a64be5f2d9dac16c7e9c906ff873feb2c7d0c5",
+        "meaning": "Inherited prepare field hashes sibling tasks.json; selected tasks are bound by seal.inputs above."
+      },
+      "checked_binding": {
+        "snapshot_matches": true,
+        "checks_match": true,
+        "delivery_match": true
+      },
+      "af1_predicate_integrity": {
+        "status": "UNCHANGED",
+        "protected_files": {
+          "visible/matching/crossmatch_reserver.py": {
+            "baseline": "8f189ba40ca4e4e3231eb5823fc5fe8b55f0360b43a2a188098ae1bb184e8ea5:644",
+            "evaluated": "8f189ba40ca4e4e3231eb5823fc5fe8b55f0360b43a2a188098ae1bb184e8ea5:644",
+            "unchanged": true
+          },
+          "visible/qa/expiry_release.py": {
+            "baseline": "01146fd73b2a9d2a813d7b02b4f846e5e035a70fb7de792e42ed4f50420838d5:644",
+            "evaluated": "01146fd73b2a9d2a813d7b02b4f846e5e035a70fb7de792e42ed4f50420838d5:644",
+            "unchanged": true
+          },
+          "visible/qa/run_checks.py": {
+            "baseline": "7bb6fd92f38b78a89d3d91787c7433adc273a655150977e8659bc2790a5748cd:644",
+            "evaluated": "7bb6fd92f38b78a89d3d91787c7433adc273a655150977e8659bc2790a5748cd:644",
+            "unchanged": true
+          },
+          "visible/qa/scenarios.txt": {
+            "baseline": "24be2fe42966ed508820e98581e700fed1ae21e80810ca820bb9c072dcb1496e:644",
+            "evaluated": "24be2fe42966ed508820e98581e700fed1ae21e80810ca820bb9c072dcb1496e:644",
+            "unchanged": true
+          }
+        },
+        "changed_existing_visible": [
+          "visible/intake/hold_intake.py"
+        ],
+        "added_visible": [],
+        "baseline_matches_registered_source": true,
+        "hidden_oracle": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/control-discovery/oracle/eq3/EQ3-AF1/oracle.py",
+          "sha256": "3bdc42c33b48bab3168da726eb892410364024f64ad64b223f848a9c82ab46b1"
+        },
+        "hidden_oracle_matches_control_manifest": true
+      }
+    },
+    {
+      "cell": "d16-EQ3-AF1-codex-A-r1",
+      "task": "EQ3-AF1",
+      "arm": "A",
+      "config": "codex",
+      "status": "CHECKS_PASS",
+      "reason": null,
+      "owner_status": "EXITED_0",
+      "owner_seconds": 216.16586854199704,
+      "run_and_checks_seconds": 217.8013734999986,
+      "deterministic_seconds": 0.8140606250090059,
+      "input_tokens": 209634,
+      "output_tokens": 7956,
+      "usage": "COMPLETE",
+      "usage_gaps": [],
+      "known_usage_lower_bound": null,
+      "source_check_pass": true,
+      "delivery_pass": true,
+      "public_pass": true,
+      "oracle": [
+        {
+          "id": "local-a",
+          "status": "PASS"
+        },
+        {
+          "id": "local-b",
+          "status": "PASS"
+        },
+        {
+          "id": "remote-a",
+          "status": "PASS"
+        },
+        {
+          "id": "remote-b",
+          "status": "PASS"
+        },
+        {
+          "id": "restore",
+          "status": "PASS"
+        }
+      ],
+      "scope_violations": [],
+      "changed": [
+        "visible/intake/hold_intake.py",
+        "visible/qa/test_hold_intake.py"
+      ],
+      "assessment": "NOT_REQUESTED",
+      "identity": {
+        "codex_seats": {
+          "01a123f8-bdd3-78d1-b5eb-fdcb70219536": [
+            "owner",
+            "gpt-6-astra",
+            "max"
+          ]
+        },
+        "gaps": [],
+        "owner": "MATCH",
+        "owner_launched_sessions": [],
+        "status": "MATCH",
+        "violations": []
+      },
+      "teardown": "CLEAN",
+      "task_disposition": "AVAILABLE_DIAGNOSTIC_NO_CANDIDATE_DECISION",
+      "registered_route": {
+        "model": "gpt-6-astra",
+        "effort": "max"
+      },
+      "protocol_measurement_eligible": true,
+      "source": {
+        "baseline_commit": "a58d8f9aae6c6b8f1234450cb216d056b981052b",
+        "selected_snapshot": {
+          "candidates": [],
+          "changed": [
+            "cell/work"
+          ],
+          "kind": "anchor",
+          "path": "cell/work",
+          "rule": "changed-product"
+        },
+        "delivery": {
+          "baseline": "a58d8f9aae6c6b8f1234450cb216d056b981052b",
+          "changed": [
+            "visible/intake/hold_intake.py",
+            "visible/qa/test_hold_intake.py"
+          ],
+          "commit": "f8278bf782d07efb68a66467343b7b2e2fa33cd6",
+          "passed": true,
+          "reason": "local commit matches the assessed task source"
+        }
+      },
+      "dispatcher_events": {
+        "START": {
+          "arm": "A",
+          "cell": "d16-EQ3-AF1-codex-A-r1",
+          "engine": "codex",
+          "event": "START",
+          "number": 4,
+          "task": "EQ3-AF1",
+          "time": "2026-10-10T04:01:04.941811+00:00"
+        },
+        "FINISH": {
+          "cell": "d16-EQ3-AF1-codex-A-r1",
+          "delivery_pass": true,
+          "event": "FINISH",
+          "exit_code": 0,
+          "input_tokens": 209634,
+          "number": 4,
+          "output_tokens": 7956,
+          "owner_seconds": 216.16586854199704,
+          "reason": null,
+          "source_check_pass": true,
+          "status": "CHECKS_PASS",
+          "time": "2026-10-10T04:04:43.978350+00:00",
+          "usage": "COMPLETE"
+        }
+      },
+      "dispatcher_elapsed_seconds_not_owner_time": 219.036539,
+      "evidence": {
+        "baseline.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d16-EQ3-AF1-codex-A-r1/baseline.json",
+          "sha256": "eebff9b0d6a540aa3d18eef3aebfb6514e4057f80ba6abc49bac06489492f3a9"
+        },
+        "seal.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d16-EQ3-AF1-codex-A-r1/seal.json",
+          "sha256": "f7cda043399a95e5490153243c09744c24d7ece32da49161c8ffe00bbfba01d7"
+        },
+        "usage.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d16-EQ3-AF1-codex-A-r1/usage.json",
+          "sha256": "2d2064ded7f34b464baa110381bccba80888b4e9ff740e6cf1447bae7f742f47"
+        },
+        "run/result.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d16-EQ3-AF1-codex-A-r1/run/result.json",
+          "sha256": "66ada531a97e06b489e11840a1619657f8be090486d5bbf5d9bacecd79cca69d"
+        },
+        "checks.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d16-EQ3-AF1-codex-A-r1/checks.json",
+          "sha256": "7f100b479f5a69365d607ef6b49aa6c42e56356aa244c83c3e25d00043045b40"
+        },
+        "checks-raw.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d16-EQ3-AF1-codex-A-r1/checks-raw.json",
+          "sha256": "38a17e94e2bc6a9c7daa8917f8fa3e5da2b3191abfff8a2d3dd326ee789a867a"
+        },
+        "checked.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d16-EQ3-AF1-codex-A-r1/checked.json",
+          "sha256": "0fdd987d5f1a67472e5107f45cbb2953bc55441f9347768761333568993bf32a"
+        },
+        "delivery.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d16-EQ3-AF1-codex-A-r1/delivery.json",
+          "sha256": "07564e5a94dc17a232948c06f98236e4d834fc71003ab864def965044b9ba9ed"
+        },
+        "snapshot.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d16-EQ3-AF1-codex-A-r1/snapshot.json",
+          "sha256": "0730d4161f2bf973c0dd1cea59bdd93ca3111f8277e9579eec7b42585eef624a"
+        },
+        "evidence.manifest.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d16-EQ3-AF1-codex-A-r1/evidence.manifest.json",
+          "sha256": "6f18a57202736c057ee983ae6af3b7098bcfc43c10ba880717b2581758cee392"
+        },
+        "verdict": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/verdict-d16-EQ3-AF1-codex-A-r1.json",
+          "sha256": "f6fc569f3e68c2a07cecdb1eb5811e4fbc6a4c57f5c1eb024a76275e0e173d72"
+        }
+      },
+      "usage_detail": {
+        "completeness": "COMPLETE",
+        "input_tokens": 209634,
+        "output_tokens": 7956,
+        "gaps": [],
+        "codex": {
+          "gpt-6-astra": {
+            "input_tokens": 209634,
+            "cached_input_tokens": 168192,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 7956,
+            "reasoning_output_tokens": 4784
+          }
+        },
+        "claude": {}
+      },
+      "input_bindings": {
+        "/Users/aipalm/.local/share/nx01/0237-live/runtime-discovery-max.json": {
+          "sealed_sha256": "94a2c79f41f22fd0b9e7a599d06f5b9210262b80bcf8108684c067e952fa7eae",
+          "current_sha256": "94a2c79f41f22fd0b9e7a599d06f5b9210262b80bcf8108684c067e952fa7eae"
+        },
+        "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0237/tasks-discovery-max.json": {
+          "sealed_sha256": "f10e5905d0d1ac73a65966cfb2e8743ec94d4ec0a5ecc0c5cf2fd5c17ff1aa12",
+          "current_sha256": "f10e5905d0d1ac73a65966cfb2e8743ec94d4ec0a5ecc0c5cf2fd5c17ff1aa12"
+        },
+        "/Users/aipalm/.local/share/nx01/0237-live/control-discovery.manifest.json": {
+          "sealed_sha256": "f54b10234ddc5d876aeca2a200168ca8621d8c7c666e0a6a1c2ea6ad6a3e37e5",
+          "current_sha256": "f54b10234ddc5d876aeca2a200168ca8621d8c7c666e0a6a1c2ea6ad6a3e37e5"
+        }
+      },
+      "baseline_tasks_sha256_note": {
+        "value": "eb0bde7363c5c80d7c46202b77a64be5f2d9dac16c7e9c906ff873feb2c7d0c5",
+        "meaning": "Inherited prepare field hashes sibling tasks.json; selected tasks are bound by seal.inputs above."
+      },
+      "checked_binding": {
+        "snapshot_matches": true,
+        "checks_match": true,
+        "delivery_match": true
+      },
+      "af1_predicate_integrity": {
+        "status": "UNCHANGED",
+        "protected_files": {
+          "visible/matching/crossmatch_reserver.py": {
+            "baseline": "8f189ba40ca4e4e3231eb5823fc5fe8b55f0360b43a2a188098ae1bb184e8ea5:644",
+            "evaluated": "8f189ba40ca4e4e3231eb5823fc5fe8b55f0360b43a2a188098ae1bb184e8ea5:644",
+            "unchanged": true
+          },
+          "visible/qa/expiry_release.py": {
+            "baseline": "01146fd73b2a9d2a813d7b02b4f846e5e035a70fb7de792e42ed4f50420838d5:644",
+            "evaluated": "01146fd73b2a9d2a813d7b02b4f846e5e035a70fb7de792e42ed4f50420838d5:644",
+            "unchanged": true
+          },
+          "visible/qa/run_checks.py": {
+            "baseline": "7bb6fd92f38b78a89d3d91787c7433adc273a655150977e8659bc2790a5748cd:644",
+            "evaluated": "7bb6fd92f38b78a89d3d91787c7433adc273a655150977e8659bc2790a5748cd:644",
+            "unchanged": true
+          },
+          "visible/qa/scenarios.txt": {
+            "baseline": "24be2fe42966ed508820e98581e700fed1ae21e80810ca820bb9c072dcb1496e:644",
+            "evaluated": "24be2fe42966ed508820e98581e700fed1ae21e80810ca820bb9c072dcb1496e:644",
+            "unchanged": true
+          }
+        },
+        "changed_existing_visible": [
+          "visible/intake/hold_intake.py"
+        ],
+        "added_visible": [
+          "visible/qa/test_hold_intake.py"
+        ],
+        "baseline_matches_registered_source": true,
+        "hidden_oracle": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/control-discovery/oracle/eq3/EQ3-AF1/oracle.py",
+          "sha256": "3bdc42c33b48bab3168da726eb892410364024f64ad64b223f848a9c82ab46b1"
+        },
+        "hidden_oracle_matches_control_manifest": true
+      }
+    },
+    {
+      "cell": "d17-EQ3-AF1-codex-B-r1",
+      "task": "EQ3-AF1",
+      "arm": "B",
+      "config": "codex",
+      "status": "CHECKS_PASS",
+      "reason": null,
+      "owner_status": "EXITED_0",
+      "owner_seconds": 419.312111791005,
+      "run_and_checks_seconds": 421.2134065410064,
+      "deterministic_seconds": 0.7870918749977136,
+      "input_tokens": 639136,
+      "output_tokens": 16228,
+      "usage": "COMPLETE",
+      "usage_gaps": [],
+      "known_usage_lower_bound": null,
+      "source_check_pass": true,
+      "delivery_pass": true,
+      "public_pass": true,
+      "oracle": [
+        {
+          "id": "local-a",
+          "status": "PASS"
+        },
+        {
+          "id": "local-b",
+          "status": "PASS"
+        },
+        {
+          "id": "remote-a",
+          "status": "PASS"
+        },
+        {
+          "id": "remote-b",
+          "status": "PASS"
+        },
+        {
+          "id": "restore",
+          "status": "PASS"
+        }
+      ],
+      "scope_violations": [],
+      "changed": [
+        "visible/intake/hold_intake.py"
+      ],
+      "assessment": "NOT_REQUESTED",
+      "identity": {
+        "codex_seats": {
+          "01a123fc-17c5-7102-937f-48ad3d58247c": [
+            "owner",
+            "gpt-6-astra",
+            "max"
+          ]
+        },
+        "gaps": [],
+        "owner": "MATCH",
+        "owner_launched_sessions": [],
+        "status": "MATCH",
+        "violations": []
+      },
+      "teardown": "CLEAN",
+      "task_disposition": "AVAILABLE_DIAGNOSTIC_NO_CANDIDATE_DECISION",
+      "registered_route": {
+        "model": "gpt-6-astra",
+        "effort": "max"
+      },
+      "protocol_measurement_eligible": true,
+      "source": {
+        "baseline_commit": "ee8e4c1a6977a95bdf3fe840b447c3ae903cc8d9",
+        "selected_snapshot": {
+          "candidates": [
+            {
+              "acceptance": true,
+              "allocation": "owned",
+              "local_only": true,
+              "receipt": "cell/work/.git/devlyn-completion/1276cea86acade75a816e7be/receipt.json",
+              "worktree": "/cell/intake-hold-retention"
+            }
+          ],
+          "kind": "accepted",
+          "receipt": "cell/work/.git/devlyn-completion/1276cea86acade75a816e7be/receipt.json",
+          "rule": "receipt",
+          "sha": "4aa8d77135db0240893907dbfe75c3e2cdc6bfe3"
+        },
+        "delivery": {
+          "baseline": "ee8e4c1a6977a95bdf3fe840b447c3ae903cc8d9",
+          "changed": [
+            "visible/intake/hold_intake.py"
+          ],
+          "commit": "4aa8d77135db0240893907dbfe75c3e2cdc6bfe3",
+          "passed": true,
+          "reason": "local commit matches the assessed task source"
+        }
+      },
+      "dispatcher_events": {
+        "START": {
+          "arm": "B",
+          "cell": "d17-EQ3-AF1-codex-B-r1",
+          "engine": "codex",
+          "event": "START",
+          "number": 5,
+          "task": "EQ3-AF1",
+          "time": "2026-10-10T04:04:43.978431+00:00"
+        },
+        "FINISH": {
+          "cell": "d17-EQ3-AF1-codex-B-r1",
+          "delivery_pass": true,
+          "event": "FINISH",
+          "exit_code": 0,
+          "input_tokens": 639136,
+          "number": 5,
+          "output_tokens": 16228,
+          "owner_seconds": 419.312111791005,
+          "reason": null,
+          "source_check_pass": true,
+          "status": "CHECKS_PASS",
+          "time": "2026-10-10T04:17:16.169039+00:00",
+          "usage": "COMPLETE"
+        }
+      },
+      "dispatcher_elapsed_seconds_not_owner_time": 752.190608,
+      "evidence": {
+        "baseline.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d17-EQ3-AF1-codex-B-r1/baseline.json",
+          "sha256": "3e6f87d63b711ec61ed75d144c47863f2e7b8996fa001de6a6aeaf7e9a32c364"
+        },
+        "seal.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d17-EQ3-AF1-codex-B-r1/seal.json",
+          "sha256": "24b4d278f607a79524e7913405d7199fe293b1dbb8ad7b6f4736a12acc92d6b4"
+        },
+        "usage.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d17-EQ3-AF1-codex-B-r1/usage.json",
+          "sha256": "f9dff8747212deafe6d334bda46f7771770e6859a153513ddcdd540a9d901890"
+        },
+        "run/result.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d17-EQ3-AF1-codex-B-r1/run/result.json",
+          "sha256": "be905e6cbfb789823e14981ebb1cb6245fc92e04d2d1deb3d05bf95874dbd3ee"
+        },
+        "checks.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d17-EQ3-AF1-codex-B-r1/checks.json",
+          "sha256": "78b12c7d98e18b873bc94607001d79757ecbd5f66d382a3e7c01462f27054ee8"
+        },
+        "checks-raw.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d17-EQ3-AF1-codex-B-r1/checks-raw.json",
+          "sha256": "38a17e94e2bc6a9c7daa8917f8fa3e5da2b3191abfff8a2d3dd326ee789a867a"
+        },
+        "checked.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d17-EQ3-AF1-codex-B-r1/checked.json",
+          "sha256": "6aee02294a358e195ebeba74c86b3224507c0c0e1e286ff2046e4cc361736a59"
+        },
+        "delivery.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d17-EQ3-AF1-codex-B-r1/delivery.json",
+          "sha256": "ebe1a4250f323291ba7f5b59a132c3ba94ec2fa2ee8c219be18a7ab63e8c00f3"
+        },
+        "snapshot.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d17-EQ3-AF1-codex-B-r1/snapshot.json",
+          "sha256": "1750e7472b2339ccc00314bfd79f6046b7cc0595e6101eec8a4914b412b65197"
+        },
+        "evidence.manifest.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d17-EQ3-AF1-codex-B-r1/evidence.manifest.json",
+          "sha256": "2a6d083100ff55fe2be93eb02bc61a5281c3a773af96f3f104979ba609621861"
+        },
+        "verdict": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/verdict-d17-EQ3-AF1-codex-B-r1.json",
+          "sha256": "f43e4f626dcca1bd25badf2ee65a322f2d147c04595e2e72e25c18e92ec46c32"
+        }
+      },
+      "usage_detail": {
+        "completeness": "COMPLETE",
+        "input_tokens": 639136,
+        "output_tokens": 16228,
+        "gaps": [],
+        "codex": {
+          "gpt-6-astra": {
+            "input_tokens": 639136,
+            "cached_input_tokens": 580224,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 16228,
+            "reasoning_output_tokens": 9745
+          }
+        },
+        "claude": {}
+      },
+      "input_bindings": {
+        "/Users/aipalm/.local/share/nx01/0237-live/runtime-discovery-max.json": {
+          "sealed_sha256": "94a2c79f41f22fd0b9e7a599d06f5b9210262b80bcf8108684c067e952fa7eae",
+          "current_sha256": "94a2c79f41f22fd0b9e7a599d06f5b9210262b80bcf8108684c067e952fa7eae"
+        },
+        "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0237/tasks-discovery-max.json": {
+          "sealed_sha256": "f10e5905d0d1ac73a65966cfb2e8743ec94d4ec0a5ecc0c5cf2fd5c17ff1aa12",
+          "current_sha256": "f10e5905d0d1ac73a65966cfb2e8743ec94d4ec0a5ecc0c5cf2fd5c17ff1aa12"
+        },
+        "/Users/aipalm/.local/share/nx01/0237-live/control-discovery.manifest.json": {
+          "sealed_sha256": "f54b10234ddc5d876aeca2a200168ca8621d8c7c666e0a6a1c2ea6ad6a3e37e5",
+          "current_sha256": "f54b10234ddc5d876aeca2a200168ca8621d8c7c666e0a6a1c2ea6ad6a3e37e5"
+        }
+      },
+      "baseline_tasks_sha256_note": {
+        "value": "eb0bde7363c5c80d7c46202b77a64be5f2d9dac16c7e9c906ff873feb2c7d0c5",
+        "meaning": "Inherited prepare field hashes sibling tasks.json; selected tasks are bound by seal.inputs above."
+      },
+      "checked_binding": {
+        "snapshot_matches": true,
+        "checks_match": true,
+        "delivery_match": true
+      },
+      "af1_predicate_integrity": {
+        "status": "UNCHANGED",
+        "protected_files": {
+          "visible/matching/crossmatch_reserver.py": {
+            "baseline": "8f189ba40ca4e4e3231eb5823fc5fe8b55f0360b43a2a188098ae1bb184e8ea5:644",
+            "evaluated": "8f189ba40ca4e4e3231eb5823fc5fe8b55f0360b43a2a188098ae1bb184e8ea5:644",
+            "unchanged": true
+          },
+          "visible/qa/expiry_release.py": {
+            "baseline": "01146fd73b2a9d2a813d7b02b4f846e5e035a70fb7de792e42ed4f50420838d5:644",
+            "evaluated": "01146fd73b2a9d2a813d7b02b4f846e5e035a70fb7de792e42ed4f50420838d5:644",
+            "unchanged": true
+          },
+          "visible/qa/run_checks.py": {
+            "baseline": "7bb6fd92f38b78a89d3d91787c7433adc273a655150977e8659bc2790a5748cd:644",
+            "evaluated": "7bb6fd92f38b78a89d3d91787c7433adc273a655150977e8659bc2790a5748cd:644",
+            "unchanged": true
+          },
+          "visible/qa/scenarios.txt": {
+            "baseline": "24be2fe42966ed508820e98581e700fed1ae21e80810ca820bb9c072dcb1496e:644",
+            "evaluated": "24be2fe42966ed508820e98581e700fed1ae21e80810ca820bb9c072dcb1496e:644",
+            "unchanged": true
+          }
+        },
+        "changed_existing_visible": [
+          "visible/intake/hold_intake.py"
+        ],
+        "added_visible": [],
+        "baseline_matches_registered_source": true,
+        "hidden_oracle": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/control-discovery/oracle/eq3/EQ3-AF1/oracle.py",
+          "sha256": "3bdc42c33b48bab3168da726eb892410364024f64ad64b223f848a9c82ab46b1"
+        },
+        "hidden_oracle_matches_control_manifest": true
+      }
+    },
+    {
+      "cell": "d18-EQ3-AF1-codex-C-r1",
+      "task": "EQ3-AF1",
+      "arm": "C",
+      "config": "codex",
+      "status": "CHECKS_PASS",
+      "reason": null,
+      "owner_status": "EXITED_0",
+      "owner_seconds": 336.2834316249937,
+      "run_and_checks_seconds": 338.29891783399216,
+      "deterministic_seconds": 0.8099120830011088,
+      "input_tokens": 574930,
+      "output_tokens": 12788,
+      "usage": "COMPLETE",
+      "usage_gaps": [],
+      "known_usage_lower_bound": null,
+      "source_check_pass": true,
+      "delivery_pass": true,
+      "public_pass": true,
+      "oracle": [
+        {
+          "id": "local-a",
+          "status": "PASS"
+        },
+        {
+          "id": "local-b",
+          "status": "PASS"
+        },
+        {
+          "id": "remote-a",
+          "status": "PASS"
+        },
+        {
+          "id": "remote-b",
+          "status": "PASS"
+        },
+        {
+          "id": "restore",
+          "status": "PASS"
+        }
+      ],
+      "scope_violations": [],
+      "changed": [
+        "visible/intake/hold_intake.py",
+        "visible/qa/test_hold_intake.py"
+      ],
+      "assessment": "NOT_REQUESTED",
+      "identity": {
+        "codex_seats": {
+          "01a12407-92bf-7e03-a96b-766c2a552535": [
+            "owner",
+            "gpt-6-astra",
+            "max"
+          ]
+        },
+        "gaps": [],
+        "owner": "MATCH",
+        "owner_launched_sessions": [],
+        "status": "MATCH",
+        "violations": []
+      },
+      "teardown": "CLEAN",
+      "task_disposition": "AVAILABLE_DIAGNOSTIC_NO_CANDIDATE_DECISION",
+      "registered_route": {
+        "model": "gpt-6-astra",
+        "effort": "max"
+      },
+      "protocol_measurement_eligible": true,
+      "source": {
+        "baseline_commit": "659e76b4265a5698e8a634053b553fdca5a316c9",
+        "selected_snapshot": {
+          "candidates": [
+            {
+              "acceptance": true,
+              "allocation": "owned",
+              "local_only": true,
+              "receipt": "cell/work/.git/devlyn-completion/1276cea86acade75a816e7be/receipt.json",
+              "worktree": "/cell/intake-hold-retention"
+            }
+          ],
+          "kind": "accepted",
+          "receipt": "cell/work/.git/devlyn-completion/1276cea86acade75a816e7be/receipt.json",
+          "rule": "receipt",
+          "sha": "c81c8801997ed3244c6784e4f73dcfcef7090642"
+        },
+        "delivery": {
+          "baseline": "659e76b4265a5698e8a634053b553fdca5a316c9",
+          "changed": [
+            "visible/intake/hold_intake.py",
+            "visible/qa/test_hold_intake.py"
+          ],
+          "commit": "c81c8801997ed3244c6784e4f73dcfcef7090642",
+          "passed": true,
+          "reason": "local commit matches the assessed task source"
+        }
+      },
+      "dispatcher_events": {
+        "START": {
+          "arm": "C",
+          "cell": "d18-EQ3-AF1-codex-C-r1",
+          "engine": "codex",
+          "event": "START",
+          "number": 6,
+          "task": "EQ3-AF1",
+          "time": "2026-10-10T04:17:16.169398+00:00"
+        },
+        "FINISH": {
+          "cell": "d18-EQ3-AF1-codex-C-r1",
+          "delivery_pass": true,
+          "event": "FINISH",
+          "exit_code": 0,
+          "input_tokens": 574930,
+          "number": 6,
+          "output_tokens": 12788,
+          "owner_seconds": 336.2834316249937,
+          "reason": null,
+          "source_check_pass": true,
+          "status": "CHECKS_PASS",
+          "time": "2026-10-10T04:22:56.367516+00:00",
+          "usage": "COMPLETE"
+        }
+      },
+      "dispatcher_elapsed_seconds_not_owner_time": 340.198118,
+      "evidence": {
+        "baseline.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d18-EQ3-AF1-codex-C-r1/baseline.json",
+          "sha256": "0fa5001f464c5bc7a8423728cf3df07976616d4fa5f255b9f589fb854aa9896d"
+        },
+        "seal.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d18-EQ3-AF1-codex-C-r1/seal.json",
+          "sha256": "d5a3eacb673bd42bfc84eb1f86c6c97db7d295fd9c47202b33b5f10807859aab"
+        },
+        "usage.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d18-EQ3-AF1-codex-C-r1/usage.json",
+          "sha256": "b563367df7b0ecc4c38a7e60e90af5eedd14dfd3e27ea77866e31f6079aed04c"
+        },
+        "run/result.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d18-EQ3-AF1-codex-C-r1/run/result.json",
+          "sha256": "62e7ee89e6d0d60b4b6ce6673b9301cf24888d1305384ac25079e15c4a5a6534"
+        },
+        "checks.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d18-EQ3-AF1-codex-C-r1/checks.json",
+          "sha256": "7f100b479f5a69365d607ef6b49aa6c42e56356aa244c83c3e25d00043045b40"
+        },
+        "checks-raw.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d18-EQ3-AF1-codex-C-r1/checks-raw.json",
+          "sha256": "38a17e94e2bc6a9c7daa8917f8fa3e5da2b3191abfff8a2d3dd326ee789a867a"
+        },
+        "checked.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d18-EQ3-AF1-codex-C-r1/checked.json",
+          "sha256": "7e884c362f4d569a8b720f9b6da0b54d9b3d94c1ddb1195adddcd732cb1c2af0"
+        },
+        "delivery.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d18-EQ3-AF1-codex-C-r1/delivery.json",
+          "sha256": "7d7468bc79377ba30629ed2c18501978c57cc3d74499d69f1093d5af7c819721"
+        },
+        "snapshot.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d18-EQ3-AF1-codex-C-r1/snapshot.json",
+          "sha256": "4649be1840fc59eca1ba1053f45b6d04dd3f2d1bb3949a08fdcd8ea087c797a9"
+        },
+        "evidence.manifest.json": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/d18-EQ3-AF1-codex-C-r1/evidence.manifest.json",
+          "sha256": "225fb239504b0d4e87af64649de3a13c8de200d5baa399e59109b7e170d25200"
+        },
+        "verdict": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/out-discovery/verdict-d18-EQ3-AF1-codex-C-r1.json",
+          "sha256": "b3b42584958a5a1c8f3904b294d467efdcb96ac34212b5122233644f43abaacd"
+        }
+      },
+      "usage_detail": {
+        "completeness": "COMPLETE",
+        "input_tokens": 574930,
+        "output_tokens": 12788,
+        "gaps": [],
+        "codex": {
+          "gpt-6-astra": {
+            "input_tokens": 574930,
+            "cached_input_tokens": 518528,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 12788,
+            "reasoning_output_tokens": 7183
+          }
+        },
+        "claude": {}
+      },
+      "input_bindings": {
+        "/Users/aipalm/.local/share/nx01/0237-live/runtime-discovery-max.json": {
+          "sealed_sha256": "94a2c79f41f22fd0b9e7a599d06f5b9210262b80bcf8108684c067e952fa7eae",
+          "current_sha256": "94a2c79f41f22fd0b9e7a599d06f5b9210262b80bcf8108684c067e952fa7eae"
+        },
+        "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0237/tasks-discovery-max.json": {
+          "sealed_sha256": "f10e5905d0d1ac73a65966cfb2e8743ec94d4ec0a5ecc0c5cf2fd5c17ff1aa12",
+          "current_sha256": "f10e5905d0d1ac73a65966cfb2e8743ec94d4ec0a5ecc0c5cf2fd5c17ff1aa12"
+        },
+        "/Users/aipalm/.local/share/nx01/0237-live/control-discovery.manifest.json": {
+          "sealed_sha256": "f54b10234ddc5d876aeca2a200168ca8621d8c7c666e0a6a1c2ea6ad6a3e37e5",
+          "current_sha256": "f54b10234ddc5d876aeca2a200168ca8621d8c7c666e0a6a1c2ea6ad6a3e37e5"
+        }
+      },
+      "baseline_tasks_sha256_note": {
+        "value": "eb0bde7363c5c80d7c46202b77a64be5f2d9dac16c7e9c906ff873feb2c7d0c5",
+        "meaning": "Inherited prepare field hashes sibling tasks.json; selected tasks are bound by seal.inputs above."
+      },
+      "checked_binding": {
+        "snapshot_matches": true,
+        "checks_match": true,
+        "delivery_match": true
+      },
+      "af1_predicate_integrity": {
+        "status": "UNCHANGED",
+        "protected_files": {
+          "visible/matching/crossmatch_reserver.py": {
+            "baseline": "8f189ba40ca4e4e3231eb5823fc5fe8b55f0360b43a2a188098ae1bb184e8ea5:644",
+            "evaluated": "8f189ba40ca4e4e3231eb5823fc5fe8b55f0360b43a2a188098ae1bb184e8ea5:644",
+            "unchanged": true
+          },
+          "visible/qa/expiry_release.py": {
+            "baseline": "01146fd73b2a9d2a813d7b02b4f846e5e035a70fb7de792e42ed4f50420838d5:644",
+            "evaluated": "01146fd73b2a9d2a813d7b02b4f846e5e035a70fb7de792e42ed4f50420838d5:644",
+            "unchanged": true
+          },
+          "visible/qa/run_checks.py": {
+            "baseline": "7bb6fd92f38b78a89d3d91787c7433adc273a655150977e8659bc2790a5748cd:644",
+            "evaluated": "7bb6fd92f38b78a89d3d91787c7433adc273a655150977e8659bc2790a5748cd:644",
+            "unchanged": true
+          },
+          "visible/qa/scenarios.txt": {
+            "baseline": "24be2fe42966ed508820e98581e700fed1ae21e80810ca820bb9c072dcb1496e:644",
+            "evaluated": "24be2fe42966ed508820e98581e700fed1ae21e80810ca820bb9c072dcb1496e:644",
+            "unchanged": true
+          }
+        },
+        "changed_existing_visible": [
+          "visible/intake/hold_intake.py"
+        ],
+        "added_visible": [
+          "visible/qa/test_hold_intake.py"
+        ],
+        "baseline_matches_registered_source": true,
+        "hidden_oracle": {
+          "path": "/Users/aipalm/.local/share/nx01/0237-live/control-discovery/oracle/eq3/EQ3-AF1/oracle.py",
+          "sha256": "3bdc42c33b48bab3168da726eb892410364024f64ad64b223f848a9c82ab46b1"
+        },
+        "hidden_oracle_matches_control_manifest": true
+      }
+    }
+  ],
+  "unfinished_af1": []
+}

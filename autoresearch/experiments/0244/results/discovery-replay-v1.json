@@ -1,0 +1,74 @@
+{
+  "adapter_sha256": "ed34007176d18f1422d009d0eaed3890548eb9fe88d2690e80776bb204ceea63",
+  "at": "2026-10-10T16:52:53.883407+00:00",
+  "old": {
+    "envelopes": {
+      "1007025c-9afd-4539-8461-53b1571e00e9": [
+        {
+          "has_usage": false,
+          "models": [],
+          "path": "cell/work/.devlyn/pair/fresh-result-metadata.json"
+        },
+        {
+          "has_usage": true,
+          "models": [
+            "claude-opus-5-5"
+          ],
+          "path": "cell/work/.devlyn/pair/review1/peer1791650168333261717.json"
+        },
+        {
+          "has_usage": true,
+          "models": [
+            "claude-opus-5-5"
+          ],
+          "path": "cell/work/.devlyn/pair/review2/peer1791650425576578294.json"
+        }
+      ]
+    },
+    "unreadable": []
+  },
+  "prospective": {
+    "envelopes": {
+      "1007025c-9afd-4539-8461-53b1571e00e9": [
+        {
+          "has_usage": true,
+          "models": [
+            "claude-opus-5-5"
+          ],
+          "path": "cell/work/.devlyn/pair/review1/peer1791650168333261717.json"
+        },
+        {
+          "has_usage": true,
+          "models": [
+            "claude-opus-5-5"
+          ],
+          "path": "cell/work/.devlyn/pair/review2/peer1791650425576578294.json"
+        }
+      ]
+    },
+    "unreadable": []
+  },
+  "scope": "Read-only candidate-discovery replay only; original STOP/PARTIAL and costs remain unchanged. No cell regrade.",
+  "seconds": 0.09028908400796354,
+  "source_hashes": {
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/acceptance.json": "68a8dde14ad82698f5591dc656f3130b3f574d035ffa5f9ecf0cffb4055706cf",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/allocation.json": "b6d4372175fdd8c5880aab5bc14b0b9e119cb77abd2ce028a90fff673209152a",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/fresh-result-metadata.json": "3a9f769bfcfaa33d8cc00d3d8f78c074fd2ca1f18d43aca55808ed264f61dbb0",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/local-completion.json": "f3f556773b57b2da5b75d0f4f2917169832f5b55459e7d591e1f249ba7481c1d",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/operational-verification.json": "b21c9d0d34cc7a255fba719a9e9758fd0c4db266aebee4a5bccdf9d768245821",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/review1/attempt.json": "d64fe0489523f9408bea8d0a204fe52b19a36986ea2460798e01c767837db682",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/review1/completion.json": "517e8cb6cfd2e5a6f980786c8e4778ad9296bc962e134f7dae9c7c17276b8200",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/review1/peer1791650168333261717.json": "401f4c7d6e2feccb4359f058afbcb9caa68db43d2a2c7779b34f17dc81aefe3f",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/review2/attempt.json": "9a1bc00f83fae03865000fde122177496973484ae1a87621f2844befaed0861b",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/review2/completion.json": "ce5f71aee4e1fd9b78c7c0786dade97ce01f099254bb49749e0b3f7465801d5e",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/review2/peer1791650425576578294.json": "76b13350b1b2f4222136e29c82226637837b792ee2ac59aa7072f206c930af63",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/source-hashes.json": "f09d5c1c4a6dd2065336e106e408e262954aafc553853b5d0384067233a54c81",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/claude-accounting.json": "b81ce1d15dafde6a445f0835c886609118fcc8bcf8bfc3a6c0f7a57385e468c0",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/evidence.manifest.json": "bbc18a768be8ebed5e5c3dab1ba4b3ba6cf2a1648baa20b059c875b66b1450c9",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/peer-policy.json": "d54ca046ca6519667c4a8c68939fd0275106bf0f1f67ce050e14cb5e43730b5e",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/run/stdout": "5f018871b372a5f833000662103d7e6a12497bdbee0702ed8af142aab8813707",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/usage.json": "8fb5cbe54c3210be633ece270fb0e7dfbadf632c5bb56807e0794f448d751273",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/verdict-s03-p-codex.json": "2519b8ca17db411ebc46c9a9a12b3b2b636d8be1615944b3cce34c50cdc9355a"
+  },
+  "source_unchanged": true
+}

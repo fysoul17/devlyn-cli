@@ -1,0 +1,86 @@
+--- a/beacon/loader.py
++++ b/beacon/loader.py
+@@ -1,3 +1,4 @@
++from copy import deepcopy
+ from .document import read_document
+ from .errors import ConfigError
+ from .merge import merge
+@@ -5,31 +6,25 @@
+ from .paths import canonical
+ 
+ class Loader:
+-    def __init__(self):
+-        self._cache = {}
+-
+     def load(self, path):
+-        seen = set()
++        cache = {}
+         dependencies = set()
+ 
+         def visit(path, chain):
+             dependencies.add(path)
+-            if path in self._cache:
+-                cached = self._cache[path]
+-                dependencies.update(cached.dependencies)
+-                return cached.values
+-            if path in seen:
++            if path in chain[:-1]:
+                 raise ConfigError(path, chain, 'include cycle')
+-            seen.add(path)
++            if path in cache:
++                return cache[path]
+             includes, local = read_document(path, chain)
+             values = {}
+             for include in includes:
+                 child = canonical(include, path.parent)
+                 values = merge(values, visit(child, chain + (child,)))
+             values = merge(values, local)
+-            self._cache[path] = Resolved(values, tuple(sorted(dependencies, key=str)))
++            cache[path] = values
+             return values
+ 
+         root = canonical(path)
+         values = visit(root, (root,))
+-        return Resolved(values, tuple(sorted(dependencies, key=str)))
++        return Resolved(deepcopy(values), tuple(sorted(dependencies, key=str)))
+--- a/beacon/manager.py
++++ b/beacon/manager.py
+@@ -1,3 +1,4 @@
++from copy import deepcopy
+ from .loader import Loader
+ from .model import Snapshot
+ 
+@@ -9,10 +10,12 @@
+ 
+     @property
+     def current(self):
+-        return self._current
++        return deepcopy(self._current)
+ 
+     def reload(self):
+         resolved = self.loader.load(self.path)
+-        generation = 1 if self._current is None else self._current.generation + 1
+-        self._current = Snapshot(generation, resolved.values, resolved.dependencies)
+-        return self._current
++        generation = 1 if self._current is None else self._current.generation
++        if self._current is not None and resolved.values != self._current.values:
++            generation += 1
++        self._current = Snapshot(generation, deepcopy(resolved.values), resolved.dependencies)
++        return self.current
+--- a/beacon/merge.py
++++ b/beacon/merge.py
+@@ -1,5 +1,11 @@
++from copy import deepcopy
++
+ def merge(base, override):
+-    """Combine an earlier layer with a later layer."""
+-    result = dict(base)
+-    result.update(override)
++    """Combine independent JSON layers without retaining their mutable values."""
++    result = deepcopy(base)
++    for key, value in override.items():
++        if isinstance(result.get(key), dict) and isinstance(value, dict):
++            result[key] = merge(result[key], value)
++        else:
++            result[key] = deepcopy(value)
+     return result

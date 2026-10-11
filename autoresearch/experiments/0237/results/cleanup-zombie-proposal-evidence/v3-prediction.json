@@ -1,0 +1,10 @@
+{
+  "recorded_at": "2026-10-10T03:14:54.768866+00:00",
+  "before_v3": true,
+  "predictions": [
+    "Missing cwd plus fresh Threads1 continues scanning already enumerated fds; it permits an empty list but catches an active file descriptor. Missing/unknown/multiple threads retain.",
+    "PermissionError requires exact fresh State Z and Threads1. Denied live processes, threaded zombies and unknown status retain.",
+    "Real uid0 and uid501 zombie-leader writers remain protected and ordinary zombies allow only explicitly attested cleanup.",
+    "All original self-tests plus six added cases pass in isolated Linux, with host Darwin real-Linux tests skipped."
+  ]
+}

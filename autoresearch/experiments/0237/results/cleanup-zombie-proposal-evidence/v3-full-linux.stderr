@@ -1,0 +1,762 @@
+.....................FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+======================================================================
+FAIL: test_linked_ignored_output_disposed_and_records_preserved (__main__.CompletionTests.test_linked_ignored_output_disposed_and_records_preserved)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/proposal/proposed/task-complete.py", line 975, in setUp
+    self.g("push", "origin", "main")
+  File "/proposal/proposed/task-complete.py", line 985, in g
+    return self.run_cmd(["git", "-C", str(work or self.work), *args]).stdout.strip()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proposal/proposed/task-complete.py", line 981, in run_cmd
+    self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+AssertionError: 128 != 0 : error: cannot fork() for pack-objects: Resource temporarily unavailable
+fatal: git pack-objects failed: Resource temporarily unavailable
+
+
+======================================================================
+FAIL: test_linux_missing_cwd_checks_threads_and_remaining_fds (__main__.CompletionTests.test_linux_missing_cwd_checks_threads_and_remaining_fds)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/proposal/proposed/task-complete.py", line 975, in setUp
+    self.g("push", "origin", "main")
+  File "/proposal/proposed/task-complete.py", line 985, in g
+    return self.run_cmd(["git", "-C", str(work or self.work), *args]).stdout.strip()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proposal/proposed/task-complete.py", line 981, in run_cmd
+    self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+AssertionError: 128 != 0 : error: cannot create async thread: Resource temporarily unavailable
+fatal: send-pack: unable to fork off sideband demultiplexer
+error: cannot create async thread: Resource temporarily unavailable
+error: cannot create async thread: Resource temporarily unavailable
+error: cannot fork() for rev-list: Resource temporarily unavailable
+error: Could not run 'git rev-list'
+fatal: bad object 51dbb38f26cc6f2997e503661ffb62e07d4b9579
+
+
+======================================================================
+FAIL: test_linux_real_zombie_allows_only_attested_scratch_cleanup (__main__.CompletionTests.test_linux_real_zombie_allows_only_attested_scratch_cleanup)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/proposal/proposed/task-complete.py", line 975, in setUp
+    self.g("push", "origin", "main")
+  File "/proposal/proposed/task-complete.py", line 985, in g
+    return self.run_cmd(["git", "-C", str(work or self.work), *args]).stdout.strip()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proposal/proposed/task-complete.py", line 981, in run_cmd
+    self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+AssertionError: 128 != 0 : error: cannot fork() for git-receive-pack '/tmp/devlyn-completion-a3jn44em/remote.git': Resource temporarily unavailable
+fatal: unable to fork
+
+
+======================================================================
+FAIL: test_linux_real_zombie_leader_retains_live_sibling_writer (__main__.CompletionTests.test_linux_real_zombie_leader_retains_live_sibling_writer)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/proposal/proposed/task-complete.py", line 975, in setUp
+    self.g("push", "origin", "main")
+  File "/proposal/proposed/task-complete.py", line 985, in g
+    return self.run_cmd(["git", "-C", str(work or self.work), *args]).stdout.strip()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proposal/proposed/task-complete.py", line 981, in run_cmd
+    self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+AssertionError: 128 != 0 : error: cannot fork() for git-receive-pack '/tmp/devlyn-completion-izb0dadh/remote.git': Resource temporarily unavailable
+fatal: unable to fork
+
+
+======================================================================
+FAIL: test_linux_writer_scan_accepts_confirmed_single_thread_zombie (__main__.CompletionTests.test_linux_writer_scan_accepts_confirmed_single_thread_zombie)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/proposal/proposed/task-complete.py", line 975, in setUp
+    self.g("push", "origin", "main")
+  File "/proposal/proposed/task-complete.py", line 985, in g
+    return self.run_cmd(["git", "-C", str(work or self.work), *args]).stdout.strip()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proposal/proposed/task-complete.py", line 981, in run_cmd
+    self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+AssertionError: 128 != 0 : error: cannot fork() for git-receive-pack '/tmp/devlyn-completion-bcq6sfgm/remote.git': Resource temporarily unavailable
+fatal: unable to fork
+
+
+======================================================================
+FAIL: test_linux_writer_scan_continues_after_vanished_fd (__main__.CompletionTests.test_linux_writer_scan_continues_after_vanished_fd)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/proposal/proposed/task-complete.py", line 975, in setUp
+    self.g("push", "origin", "main")
+  File "/proposal/proposed/task-complete.py", line 985, in g
+    return self.run_cmd(["git", "-C", str(work or self.work), *args]).stdout.strip()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proposal/proposed/task-complete.py", line 981, in run_cmd
+    self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+AssertionError: 128 != 0 : error: cannot fork() for git-receive-pack '/tmp/devlyn-completion-rj2c3flo/remote.git': Resource temporarily unavailable
+fatal: unable to fork
+
+
+======================================================================
+FAIL: test_linux_writer_scan_retains_denied_live_or_threaded_process (__main__.CompletionTests.test_linux_writer_scan_retains_denied_live_or_threaded_process)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/proposal/proposed/task-complete.py", line 975, in setUp
+    self.g("push", "origin", "main")
+  File "/proposal/proposed/task-complete.py", line 985, in g
+    return self.run_cmd(["git", "-C", str(work or self.work), *args]).stdout.strip()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proposal/proposed/task-complete.py", line 981, in run_cmd
+    self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+AssertionError: 128 != 0 : error: cannot fork() for git-receive-pack '/tmp/devlyn-completion-j_hu8afx/remote.git': Resource temporarily unavailable
+fatal: unable to fork
+
+
+======================================================================
+FAIL: test_linux_writer_scan_retains_unknown_zombie_status (__main__.CompletionTests.test_linux_writer_scan_retains_unknown_zombie_status)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/proposal/proposed/task-complete.py", line 975, in setUp
+    self.g("push", "origin", "main")
+  File "/proposal/proposed/task-complete.py", line 985, in g
+    return self.run_cmd(["git", "-C", str(work or self.work), *args]).stdout.strip()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proposal/proposed/task-complete.py", line 981, in run_cmd
+    self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+AssertionError: 128 != 0 : error: cannot fork() for git-receive-pack '/tmp/devlyn-completion-9fi0tnzt/remote.git': Resource temporarily unavailable
+fatal: unable to fork
+
+
+======================================================================
+FAIL: test_local_allocation_needs_no_base (__main__.CompletionTests.test_local_allocation_needs_no_base)
+P4-2. Prediction: a local allocation with --local-base and no --base, the form agents wrote in 3 of 3 timed
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/proposal/proposed/task-complete.py", line 975, in setUp
+    self.g("push", "origin", "main")
+  File "/proposal/proposed/task-complete.py", line 985, in g
+    return self.run_cmd(["git", "-C", str(work or self.work), *args]).stdout.strip()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proposal/proposed/task-complete.py", line 981, in run_cmd
+    self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+AssertionError: 128 != 0 : error: cannot fork() for git-receive-pack '/tmp/devlyn-completion-tingym61/remote.git': Resource temporarily unavailable
+fatal: unable to fork
+
+
+======================================================================
+FAIL: test_local_allocation_needs_no_repository (__main__.CompletionTests.test_local_allocation_needs_no_repository)
+E4. Prediction: without --repository, a remote allocation is refused naming it, with nothing created, while a
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/proposal/proposed/task-complete.py", line 975, in setUp
+    self.g("push", "origin", "main")
+  File "/proposal/proposed/task-complete.py", line 985, in g
+    return self.run_cmd(["git", "-C", str(work or self.work), *args]).stdout.strip()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proposal/proposed/task-complete.py", line 981, in run_cmd
+    self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+AssertionError: 128 != 0 : error: cannot fork() for git-receive-pack '/tmp/devlyn-completion-0xfyk_9_/remote.git': Resource temporarily unavailable
+fatal: unable to fork
+
+
+======================================================================
+FAIL: test_local_allocation_refuses_unaccepted_failed_or_inexact_sources (__main__.CompletionTests.test_local_allocation_refuses_unaccepted_failed_or_inexact_sources)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/proposal/proposed/task-complete.py", line 975, in setUp
+    self.g("push", "origin", "main")
+  File "/proposal/proposed/task-complete.py", line 985, in g
+    return self.run_cmd(["git", "-C", str(work or self.work), *args]).stdout.strip()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proposal/proposed/task-complete.py", line 981, in run_cmd
+    self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+AssertionError: 128 != 0 : error: cannot fork() for git-receive-pack '/tmp/devlyn-completion-l_znpb46/remote.git': Resource temporarily unavailable
+fatal: unable to fork
+
+
+======================================================================
+FAIL: test_local_chain_starts_from_accepted_source_not_terminal_commit (__main__.CompletionTests.test_local_chain_starts_from_accepted_source_not_terminal_commit)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/proposal/proposed/task-complete.py", line 975, in setUp
+    self.g("push", "origin", "main")
+  File "/proposal/proposed/task-complete.py", line 985, in g
+    return self.run_cmd(["git", "-C", str(work or self.work), *args]).stdout.strip()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proposal/proposed/task-complete.py", line 981, in run_cmd
+    self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+AssertionError: 128 != 0 : error: cannot fork() for git-receive-pack '/tmp/devlyn-completion-eub5a7in/remote.git': Resource temporarily unavailable
+fatal: unable to fork
+
+
+======================================================================
+FAIL: test_local_only_completion_binds_acceptance_custody (__main__.CompletionTests.test_local_only_completion_binds_acceptance_custody)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/proposal/proposed/task-complete.py", line 975, in setUp
+    self.g("push", "origin", "main")
+  File "/proposal/proposed/task-complete.py", line 985, in g
+    return self.run_cmd(["git", "-C", str(work or self.work), *args]).stdout.strip()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proposal/proposed/task-complete.py", line 981, in run_cmd
+    self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+AssertionError: 128 != 0 : error: cannot fork() for git-receive-pack '/tmp/devlyn-completion-0et0yps1/remote.git': Resource temporarily unavailable
+fatal: unable to fork
+
+
+======================================================================
+FAIL: test_nested_repository_or_worktree_retains_tree (__main__.CompletionTests.test_nested_repository_or_worktree_retains_tree)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/proposal/proposed/task-complete.py", line 975, in setUp
+    self.g("push", "origin", "main")
+  File "/proposal/proposed/task-complete.py", line 985, in g
+    return self.run_cmd(["git", "-C", str(work or self.work), *args]).stdout.strip()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proposal/proposed/task-complete.py", line 981, in run_cmd
+    self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+AssertionError: 128 != 0 : error: cannot fork() for git-receive-pack '/tmp/devlyn-completion-v_4ieieg/remote.git': Resource temporarily unavailable
+fatal: unable to fork
+
+
+======================================================================
+FAIL: test_no_adoption_and_remote_head_race (__main__.CompletionTests.test_no_adoption_and_remote_head_race)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/proposal/proposed/task-complete.py", line 975, in setUp
+    self.g("push", "origin", "main")
+  File "/proposal/proposed/task-complete.py", line 985, in g
+    return self.run_cmd(["git", "-C", str(work or self.work), *args]).stdout.strip()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proposal/proposed/task-complete.py", line 981, in run_cmd
+    self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+AssertionError: 128 != 0 : error: cannot fork() for git-receive-pack '/tmp/devlyn-completion-vxohr_zt/remote.git': Resource temporarily unavailable
+fatal: unable to fork
+
+
+======================================================================
+FAIL: test_pipeline_acceptance_is_refused_with_recovery_instruction (__main__.CompletionTests.test_pipeline_acceptance_is_refused_with_recovery_instruction)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/proposal/proposed/task-complete.py", line 975, in setUp
+    self.g("push", "origin", "main")
+  File "/proposal/proposed/task-complete.py", line 985, in g
+    return self.run_cmd(["git", "-C", str(work or self.work), *args]).stdout.strip()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proposal/proposed/task-complete.py", line 981, in run_cmd
+    self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+AssertionError: 128 != 0 : error: cannot fork() for git-receive-pack '/tmp/devlyn-completion-vr7xqiy7/remote.git': Resource temporarily unavailable
+fatal: unable to fork
+
+
+======================================================================
+FAIL: test_policy_and_local_only_persist (__main__.CompletionTests.test_policy_and_local_only_persist)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/proposal/proposed/task-complete.py", line 975, in setUp
+    self.g("push", "origin", "main")
+  File "/proposal/proposed/task-complete.py", line 985, in g
+    return self.run_cmd(["git", "-C", str(work or self.work), *args]).stdout.strip()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proposal/proposed/task-complete.py", line 981, in run_cmd
+    self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+AssertionError: 128 != 0 : error: cannot fork() for git-receive-pack '/tmp/devlyn-completion-jryrm75q/remote.git': Resource temporarily unavailable
+fatal: unable to fork
+
+
+======================================================================
+FAIL: test_pr_mode_cleans_after_human_merge (__main__.CompletionTests.test_pr_mode_cleans_after_human_merge)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/proposal/proposed/task-complete.py", line 975, in setUp
+    self.g("push", "origin", "main")
+  File "/proposal/proposed/task-complete.py", line 985, in g
+    return self.run_cmd(["git", "-C", str(work or self.work), *args]).stdout.strip()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proposal/proposed/task-complete.py", line 981, in run_cmd
+    self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+AssertionError: 128 != 0 : error: cannot fork() for git-receive-pack '/tmp/devlyn-completion-t8byuh6l/remote.git': Resource temporarily unavailable
+fatal: unable to fork
+
+
+======================================================================
+FAIL: test_pr_mode_disables_only_owned_auto_merge (__main__.CompletionTests.test_pr_mode_disables_only_owned_auto_merge)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/proposal/proposed/task-complete.py", line 975, in setUp
+    self.g("push", "origin", "main")
+  File "/proposal/proposed/task-complete.py", line 985, in g
+    return self.run_cmd(["git", "-C", str(work or self.work), *args]).stdout.strip()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proposal/proposed/task-complete.py", line 981, in run_cmd
+    self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+AssertionError: 128 != 0 : error: cannot fork() for git-receive-pack '/tmp/devlyn-completion-7w1u5cce/remote.git': Resource temporarily unavailable
+fatal: unable to fork
+
+
+======================================================================
+FAIL: test_pr_pending_and_retry (__main__.CompletionTests.test_pr_pending_and_retry)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/proposal/proposed/task-complete.py", line 975, in setUp
+    self.g("push", "origin", "main")
+  File "/proposal/proposed/task-complete.py", line 985, in g
+    return self.run_cmd(["git", "-C", str(work or self.work), *args]).stdout.strip()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proposal/proposed/task-complete.py", line 981, in run_cmd
+    self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+AssertionError: 128 != 0 : error: cannot fork() for git-receive-pack '/tmp/devlyn-completion-vkzrpi9w/remote.git': Resource temporarily unavailable
+fatal: unable to fork
+
+
+======================================================================
+FAIL: test_reconcile_already_retired_tree_and_branch (__main__.CompletionTests.test_reconcile_already_retired_tree_and_branch)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/proposal/proposed/task-complete.py", line 975, in setUp
+    self.g("push", "origin", "main")
+  File "/proposal/proposed/task-complete.py", line 985, in g
+    return self.run_cmd(["git", "-C", str(work or self.work), *args]).stdout.strip()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proposal/proposed/task-complete.py", line 981, in run_cmd
+    self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+AssertionError: 128 != 0 : error: cannot fork() for git-receive-pack '/tmp/devlyn-completion-sswgg4w2/remote.git': Resource temporarily unavailable
+fatal: unable to fork
+
+
+======================================================================
+FAIL: test_reconcile_checks_repo_policy_before_cleanup (__main__.CompletionTests.test_reconcile_checks_repo_policy_before_cleanup)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/proposal/proposed/task-complete.py", line 975, in setUp
+    self.g("push", "origin", "main")
+  File "/proposal/proposed/task-complete.py", line 985, in g
+    return self.run_cmd(["git", "-C", str(work or self.work), *args]).stdout.strip()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proposal/proposed/task-complete.py", line 981, in run_cmd
+    self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+AssertionError: 128 != 0 : error: cannot fork() for git-receive-pack '/tmp/devlyn-completion-x_l4dssk/remote.git': Resource temporarily unavailable
+fatal: unable to fork
+
+
+======================================================================
+FAIL: test_reconcile_never_removes_allocation_anchor (__main__.CompletionTests.test_reconcile_never_removes_allocation_anchor)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/proposal/proposed/task-complete.py", line 975, in setUp
+    self.g("push", "origin", "main")
+  File "/proposal/proposed/task-complete.py", line 985, in g
+    return self.run_cmd(["git", "-C", str(work or self.work), *args]).stdout.strip()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proposal/proposed/task-complete.py", line 981, in run_cmd
+    self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+AssertionError: 128 != 0 : error: cannot fork() for git-receive-pack '/tmp/devlyn-completion-33s45_cn/remote.git': Resource temporarily unavailable
+fatal: unable to fork
+
+
+======================================================================
+FAIL: test_reconcile_released_merge_and_retains_without_release (__main__.CompletionTests.test_reconcile_released_merge_and_retains_without_release)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/proposal/proposed/task-complete.py", line 975, in setUp
+    self.g("push", "origin", "main")
+  File "/proposal/proposed/task-complete.py", line 985, in g
+    return self.run_cmd(["git", "-C", str(work or self.work), *args]).stdout.strip()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proposal/proposed/task-complete.py", line 981, in run_cmd
+    self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+AssertionError: 128 != 0 : error: cannot fork() for git-receive-pack '/tmp/devlyn-completion-nqa9xfh2/remote.git': Resource temporarily unavailable
+fatal: unable to fork
+
+
+======================================================================
+FAIL: test_reconcile_reports_scratch_cleanup_pending (__main__.CompletionTests.test_reconcile_reports_scratch_cleanup_pending)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/proposal/proposed/task-complete.py", line 975, in setUp
+    self.g("push", "origin", "main")
+  File "/proposal/proposed/task-complete.py", line 985, in g
+    return self.run_cmd(["git", "-C", str(work or self.work), *args]).stdout.strip()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proposal/proposed/task-complete.py", line 981, in run_cmd
+    self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+AssertionError: 128 != 0 : error: cannot fork() for git-receive-pack '/tmp/devlyn-completion-rs5d5llo/remote.git': Resource temporarily unavailable
+fatal: unable to fork
+
+
+======================================================================
+FAIL: test_reconcile_retains_busy_receipt_without_waiting (__main__.CompletionTests.test_reconcile_retains_busy_receipt_without_waiting)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/proposal/proposed/task-complete.py", line 975, in setUp
+    self.g("push", "origin", "main")
+  File "/proposal/proposed/task-complete.py", line 985, in g
+    return self.run_cmd(["git", "-C", str(work or self.work), *args]).stdout.strip()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proposal/proposed/task-complete.py", line 981, in run_cmd
+    self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+AssertionError: 128 != 0 : error: cannot fork() for git-receive-pack '/tmp/devlyn-completion-z4c8g5x2/remote.git': Resource temporarily unavailable
+fatal: unable to fork
+
+
+======================================================================
+FAIL: test_reconcile_retains_malformed_receipt_without_failing_allocation (__main__.CompletionTests.test_reconcile_retains_malformed_receipt_without_failing_allocation)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/proposal/proposed/task-complete.py", line 975, in setUp
+    self.g("push", "origin", "main")
+  File "/proposal/proposed/task-complete.py", line 985, in g
+    return self.run_cmd(["git", "-C", str(work or self.work), *args]).stdout.strip()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proposal/proposed/task-complete.py", line 981, in run_cmd
+    self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+AssertionError: 128 != 0 : error: cannot fork() for git-receive-pack '/tmp/devlyn-completion-vq0ys8ml/remote.git': Resource temporarily unavailable
+fatal: unable to fork
+
+
+======================================================================
+FAIL: test_reconcile_retries_unattempted_scratch_cleanup (__main__.CompletionTests.test_reconcile_retries_unattempted_scratch_cleanup)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/proposal/proposed/task-complete.py", line 975, in setUp
+    self.g("push", "origin", "main")
+  File "/proposal/proposed/task-complete.py", line 985, in g
+    return self.run_cmd(["git", "-C", str(work or self.work), *args]).stdout.strip()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proposal/proposed/task-complete.py", line 981, in run_cmd
+    self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+AssertionError: 128 != 0 : error: cannot fork() for git-receive-pack '/tmp/devlyn-completion-d_3ajna3/remote.git': Resource temporarily unavailable
+fatal: unable to fork
+
+
+======================================================================
+FAIL: test_reconcile_skips_open_and_unaccepted_and_retains_in_use_tree (__main__.CompletionTests.test_reconcile_skips_open_and_unaccepted_and_retains_in_use_tree)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/proposal/proposed/task-complete.py", line 975, in setUp
+    self.g("push", "origin", "main")
+  File "/proposal/proposed/task-complete.py", line 985, in g
+    return self.run_cmd(["git", "-C", str(work or self.work), *args]).stdout.strip()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proposal/proposed/task-complete.py", line 981, in run_cmd
+    self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+AssertionError: 128 != 0 : error: cannot fork() for git-receive-pack '/tmp/devlyn-completion-fl2z0ha6/remote.git': Resource temporarily unavailable
+fatal: unable to fork
+
+
+======================================================================
+FAIL: test_records_refuse_symlink_nonregular_and_tampered_resume (__main__.CompletionTests.test_records_refuse_symlink_nonregular_and_tampered_resume)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/proposal/proposed/task-complete.py", line 975, in setUp
+    self.g("push", "origin", "main")
+  File "/proposal/proposed/task-complete.py", line 985, in g
+    return self.run_cmd(["git", "-C", str(work or self.work), *args]).stdout.strip()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proposal/proposed/task-complete.py", line 981, in run_cmd
+    self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+AssertionError: 128 != 0 : error: cannot fork() for git-receive-pack '/tmp/devlyn-completion-3_k_8ay4/remote.git': Resource temporarily unavailable
+fatal: unable to fork
+
+
+======================================================================
+FAIL: test_reject_invalid_policy_before_push (__main__.CompletionTests.test_reject_invalid_policy_before_push)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/proposal/proposed/task-complete.py", line 975, in setUp
+    self.g("push", "origin", "main")
+  File "/proposal/proposed/task-complete.py", line 985, in g
+    return self.run_cmd(["git", "-C", str(work or self.work), *args]).stdout.strip()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proposal/proposed/task-complete.py", line 981, in run_cmd
+    self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+AssertionError: 128 != 0 : error: cannot fork() for git-receive-pack '/tmp/devlyn-completion-7jsiuqkh/remote.git': Resource temporarily unavailable
+fatal: unable to fork
+
+
+======================================================================
+FAIL: test_reject_previously_bound_repository_rewrite (__main__.CompletionTests.test_reject_previously_bound_repository_rewrite)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/proposal/proposed/task-complete.py", line 975, in setUp
+    self.g("push", "origin", "main")
+  File "/proposal/proposed/task-complete.py", line 985, in g
+    return self.run_cmd(["git", "-C", str(work or self.work), *args]).stdout.strip()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proposal/proposed/task-complete.py", line 981, in run_cmd
+    self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+AssertionError: 128 != 0 : error: cannot fork() for git-receive-pack '/tmp/devlyn-completion-vvgyl151/remote.git': Resource temporarily unavailable
+fatal: unable to fork
+
+
+======================================================================
+FAIL: test_reject_repository_rewrite_before_allocation (__main__.CompletionTests.test_reject_repository_rewrite_before_allocation)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/proposal/proposed/task-complete.py", line 975, in setUp
+    self.g("push", "origin", "main")
+  File "/proposal/proposed/task-complete.py", line 985, in g
+    return self.run_cmd(["git", "-C", str(work or self.work), *args]).stdout.strip()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proposal/proposed/task-complete.py", line 981, in run_cmd
+    self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+AssertionError: 128 != 0 : error: cannot fork() for git-receive-pack '/tmp/devlyn-completion-yz30tx_7/remote.git': Resource temporarily unavailable
+fatal: unable to fork
+
+
+======================================================================
+FAIL: test_release_is_refused_from_inside_the_task_tree (__main__.CompletionTests.test_release_is_refused_from_inside_the_task_tree)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/proposal/proposed/task-complete.py", line 975, in setUp
+    self.g("push", "origin", "main")
+  File "/proposal/proposed/task-complete.py", line 985, in g
+    return self.run_cmd(["git", "-C", str(work or self.work), *args]).stdout.strip()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proposal/proposed/task-complete.py", line 981, in run_cmd
+    self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+AssertionError: 128 != 0 : error: cannot fork() for git-receive-pack '/tmp/devlyn-completion-rvjpyduo/remote.git': Resource temporarily unavailable
+fatal: unable to fork
+
+
+======================================================================
+FAIL: test_remote_allocation_starts_from_an_exact_commit (__main__.CompletionTests.test_remote_allocation_starts_from_an_exact_commit)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/proposal/proposed/task-complete.py", line 975, in setUp
+    self.g("push", "origin", "main")
+  File "/proposal/proposed/task-complete.py", line 985, in g
+    return self.run_cmd(["git", "-C", str(work or self.work), *args]).stdout.strip()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proposal/proposed/task-complete.py", line 981, in run_cmd
+    self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+AssertionError: 128 != 0 : error: cannot fork() for git-receive-pack '/tmp/devlyn-completion-8y9avy9x/remote.git': Resource temporarily unavailable
+fatal: unable to fork
+
+
+======================================================================
+FAIL: test_remote_compare_delete_race (__main__.CompletionTests.test_remote_compare_delete_race)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/proposal/proposed/task-complete.py", line 975, in setUp
+    self.g("push", "origin", "main")
+  File "/proposal/proposed/task-complete.py", line 985, in g
+    return self.run_cmd(["git", "-C", str(work or self.work), *args]).stdout.strip()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proposal/proposed/task-complete.py", line 981, in run_cmd
+    self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+AssertionError: 128 != 0 : error: cannot fork() for git-receive-pack '/tmp/devlyn-completion-g4seo0qn/remote.git': Resource temporarily unavailable
+fatal: unable to fork
+
+
+======================================================================
+FAIL: test_remote_rewrite_after_allocation_is_rejected (__main__.CompletionTests.test_remote_rewrite_after_allocation_is_rejected)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/proposal/proposed/task-complete.py", line 975, in setUp
+    self.g("push", "origin", "main")
+  File "/proposal/proposed/task-complete.py", line 985, in g
+    return self.run_cmd(["git", "-C", str(work or self.work), *args]).stdout.strip()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proposal/proposed/task-complete.py", line 981, in run_cmd
+    self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+AssertionError: 128 != 0 : error: cannot fork() for git-receive-pack '/tmp/devlyn-completion-vjih_qki/remote.git': Resource temporarily unavailable
+fatal: unable to fork
+
+
+======================================================================
+FAIL: test_replaced_tree_and_unsafe_custody (__main__.CompletionTests.test_replaced_tree_and_unsafe_custody)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/proposal/proposed/task-complete.py", line 975, in setUp
+    self.g("push", "origin", "main")
+  File "/proposal/proposed/task-complete.py", line 985, in g
+    return self.run_cmd(["git", "-C", str(work or self.work), *args]).stdout.strip()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proposal/proposed/task-complete.py", line 981, in run_cmd
+    self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+AssertionError: 128 != 0 : error: cannot fork() for git-receive-pack '/tmp/devlyn-completion-vog6zg3h/remote.git': Resource temporarily unavailable
+fatal: unable to fork
+
+
+======================================================================
+FAIL: test_retains_dirty_locked_and_active_tree (__main__.CompletionTests.test_retains_dirty_locked_and_active_tree)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/proposal/proposed/task-complete.py", line 975, in setUp
+    self.g("push", "origin", "main")
+  File "/proposal/proposed/task-complete.py", line 985, in g
+    return self.run_cmd(["git", "-C", str(work or self.work), *args]).stdout.strip()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proposal/proposed/task-complete.py", line 981, in run_cmd
+    self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+AssertionError: 128 != 0 : error: cannot fork() for git-receive-pack '/tmp/devlyn-completion-hpmzu6zi/remote.git': Resource temporarily unavailable
+fatal: unable to fork
+
+
+======================================================================
+FAIL: test_same_repository_transport_alias (__main__.CompletionTests.test_same_repository_transport_alias)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/proposal/proposed/task-complete.py", line 975, in setUp
+    self.g("push", "origin", "main")
+  File "/proposal/proposed/task-complete.py", line 985, in g
+    return self.run_cmd(["git", "-C", str(work or self.work), *args]).stdout.strip()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proposal/proposed/task-complete.py", line 981, in run_cmd
+    self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+AssertionError: 128 != 0 : error: cannot fork() for git-receive-pack '/tmp/devlyn-completion-3b8syr0n/remote.git': Resource temporarily unavailable
+fatal: unable to fork
+
+
+======================================================================
+FAIL: test_scratch_mount_and_scan_failure_preserve_contents (__main__.CompletionTests.test_scratch_mount_and_scan_failure_preserve_contents)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/proposal/proposed/task-complete.py", line 975, in setUp
+    self.g("push", "origin", "main")
+  File "/proposal/proposed/task-complete.py", line 985, in g
+    return self.run_cmd(["git", "-C", str(work or self.work), *args]).stdout.strip()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proposal/proposed/task-complete.py", line 981, in run_cmd
+    self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+AssertionError: 128 != 0 : error: cannot fork() for git-receive-pack '/tmp/devlyn-completion-2bncw6_9/remote.git': Resource temporarily unavailable
+fatal: unable to fork
+
+
+======================================================================
+FAIL: test_scratch_mount_table_parsing_preserves_ambiguous_literal_paths (__main__.CompletionTests.test_scratch_mount_table_parsing_preserves_ambiguous_literal_paths)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/proposal/proposed/task-complete.py", line 975, in setUp
+    self.g("push", "origin", "main")
+  File "/proposal/proposed/task-complete.py", line 985, in g
+    return self.run_cmd(["git", "-C", str(work or self.work), *args]).stdout.strip()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proposal/proposed/task-complete.py", line 981, in run_cmd
+    self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+AssertionError: 128 != 0 : error: cannot fork() for git-receive-pack '/tmp/devlyn-completion-g57qvkxp/remote.git': Resource temporarily unavailable
+fatal: unable to fork
+
+
+======================================================================
+FAIL: test_scratch_refusal_does_not_block_local_only_delivery (__main__.CompletionTests.test_scratch_refusal_does_not_block_local_only_delivery)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/proposal/proposed/task-complete.py", line 975, in setUp
+    self.g("push", "origin", "main")
+  File "/proposal/proposed/task-complete.py", line 985, in g
+    return self.run_cmd(["git", "-C", str(work or self.work), *args]).stdout.strip()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proposal/proposed/task-complete.py", line 981, in run_cmd
+    self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+AssertionError: 128 != 0 : error: cannot fork() for git-receive-pack '/tmp/devlyn-completion-wcl3134p/remote.git': Resource temporarily unavailable
+fatal: unable to fork
+
+
+======================================================================
+FAIL: test_scratch_refusal_reports_delivery_separately (__main__.CompletionTests.test_scratch_refusal_reports_delivery_separately)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/proposal/proposed/task-complete.py", line 975, in setUp
+    self.g("push", "origin", "main")
+  File "/proposal/proposed/task-complete.py", line 985, in g
+    return self.run_cmd(["git", "-C", str(work or self.work), *args]).stdout.strip()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proposal/proposed/task-complete.py", line 981, in run_cmd
+    self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+AssertionError: 128 != 0 : error: cannot fork() for git-receive-pack '/tmp/devlyn-completion-aq4mmz1d/remote.git': Resource temporarily unavailable
+fatal: unable to fork
+
+
+======================================================================
+FAIL: test_scratch_rejects_active_writer_and_requires_owner_assertion (__main__.CompletionTests.test_scratch_rejects_active_writer_and_requires_owner_assertion)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/proposal/proposed/task-complete.py", line 975, in setUp
+    self.g("push", "origin", "main")
+  File "/proposal/proposed/task-complete.py", line 985, in g
+    return self.run_cmd(["git", "-C", str(work or self.work), *args]).stdout.strip()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proposal/proposed/task-complete.py", line 981, in run_cmd
+    self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+AssertionError: 128 != 0 : error: cannot fork() for git-receive-pack '/tmp/devlyn-completion-axlllcg6/remote.git': Resource temporarily unavailable
+fatal: unable to fork
+
+
+======================================================================
+FAIL: test_scratch_rejects_redirect_and_git_data_but_does_not_follow_child_links (__main__.CompletionTests.test_scratch_rejects_redirect_and_git_data_but_does_not_follow_child_links)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/proposal/proposed/task-complete.py", line 975, in setUp
+    self.g("push", "origin", "main")
+  File "/proposal/proposed/task-complete.py", line 985, in g
+    return self.run_cmd(["git", "-C", str(work or self.work), *args]).stdout.strip()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proposal/proposed/task-complete.py", line 981, in run_cmd
+    self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+AssertionError: 128 != 0 : error: cannot fork() for git-receive-pack '/tmp/devlyn-completion-48ut8e20/remote.git': Resource temporarily unavailable
+fatal: unable to fork
+
+
+======================================================================
+FAIL: test_scratch_reuse_and_partial_cleanup_keep_original_identity (__main__.CompletionTests.test_scratch_reuse_and_partial_cleanup_keep_original_identity)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/proposal/proposed/task-complete.py", line 975, in setUp
+    self.g("push", "origin", "main")
+  File "/proposal/proposed/task-complete.py", line 985, in g
+    return self.run_cmd(["git", "-C", str(work or self.work), *args]).stdout.strip()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proposal/proposed/task-complete.py", line 981, in run_cmd
+    self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+AssertionError: 128 != 0 : error: cannot fork() for git-receive-pack '/tmp/devlyn-completion-xawi9w0q/remote.git': Resource temporarily unavailable
+fatal: unable to fork
+
+
+======================================================================
+FAIL: test_squash_merge_cleans_and_recovery_ref_keeps_commit (__main__.CompletionTests.test_squash_merge_cleans_and_recovery_ref_keeps_commit)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/proposal/proposed/task-complete.py", line 975, in setUp
+    self.g("push", "origin", "main")
+  File "/proposal/proposed/task-complete.py", line 985, in g
+    return self.run_cmd(["git", "-C", str(work or self.work), *args]).stdout.strip()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proposal/proposed/task-complete.py", line 981, in run_cmd
+    self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+AssertionError: 128 != 0 : error: cannot fork() for git-receive-pack '/tmp/devlyn-completion-6o220t5h/remote.git': Resource temporarily unavailable
+fatal: unable to fork
+
+
+======================================================================
+FAIL: test_unobservable_writers_settle_a_merged_delivery_and_retain_the_workspace (__main__.CompletionTests.test_unobservable_writers_settle_a_merged_delivery_and_retain_the_workspace)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/proposal/proposed/task-complete.py", line 975, in setUp
+    self.g("push", "origin", "main")
+  File "/proposal/proposed/task-complete.py", line 985, in g
+    return self.run_cmd(["git", "-C", str(work or self.work), *args]).stdout.strip()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proposal/proposed/task-complete.py", line 981, in run_cmd
+    self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+AssertionError: 128 != 0 : error: cannot fork() for git-receive-pack '/tmp/devlyn-completion-x0b7twog/remote.git': Resource temporarily unavailable
+fatal: unable to fork
+
+
+======================================================================
+FAIL: test_unverified_descendant_is_never_merged (__main__.CompletionTests.test_unverified_descendant_is_never_merged)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/proposal/proposed/task-complete.py", line 975, in setUp
+    self.g("push", "origin", "main")
+  File "/proposal/proposed/task-complete.py", line 985, in g
+    return self.run_cmd(["git", "-C", str(work or self.work), *args]).stdout.strip()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/proposal/proposed/task-complete.py", line 981, in run_cmd
+    self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+AssertionError: 128 != 0 : error: cannot fork() for git-receive-pack '/tmp/devlyn-completion-f9xf4po9/remote.git': Resource temporarily unavailable
+fatal: unable to fork
+
+
+----------------------------------------------------------------------
+Ran 71 tests in 13.171s
+
+FAILED (failures=50)

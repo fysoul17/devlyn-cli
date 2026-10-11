@@ -1,0 +1,10 @@
+{
+  "recorded_at": "2026-10-10T03:08:12.883477+00:00",
+  "before_fix": true,
+  "predictions": [
+    "New focused positive test fails on unmodified product, existing negative controls pass.",
+    "On fd PermissionError, a fresh single-file status read proving State Z (zombie) and Threads 1 will allow observation to continue; all other/missing/unreadable evidence will retain with WritersUnobservable.",
+    "A real single-thread zombie permits scratch cleanup only with writers-stopped attestation; a Z leader with live worker, a nondumpable live process, and an active cwd/fd holder prevent deletion.",
+    "All original isolated self-tests and new tests will pass on the proposal."
+  ]
+}

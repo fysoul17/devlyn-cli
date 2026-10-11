@@ -1,0 +1,94 @@
+{
+  "purpose": "0237 solo-first design consultation only",
+  "candidate_consensus": "Evidence-directed verification / counterexample before unchanged passing reruns",
+  "preferred_minimal_wording_source": "astra.md",
+  "all_priorities_are_proposals_not_admission": true,
+  "calls": [
+    {
+      "model_requested": "opus",
+      "effort_requested": "max",
+      "elapsed_s": 426.03,
+      "exit_code": 0,
+      "answer": "opus.md",
+      "raw": "opus.raw.json",
+      "launch": "opus-launch.json",
+      "modelUsage": {
+        "claude-opus-5-5": {
+          "inputTokens": 2,
+          "outputTokens": 46700,
+          "cacheReadInputTokens": 1454,
+          "cacheCreationInputTokens": 15327,
+          "webSearchRequests": 0,
+          "costUSD": 1.0569148,
+          "contextWindow": 1000000,
+          "maxOutputTokens": 128000,
+          "thinkingTokens": 44435,
+          "canonicalModel": "claude-opus-5-5",
+          "provider": "firstParty",
+          "costBasis": "list"
+        }
+      },
+      "observed_model_ids": [
+        "claude-opus-5-5"
+      ],
+      "reported_cost_usd": 1.0569148,
+      "status": "success"
+    },
+    {
+      "model_requested": "grok-4.7",
+      "effort_requested": "xhigh",
+      "elapsed_s": 256.65,
+      "exit_code": 0,
+      "answer": "grok.md",
+      "raw": "grok.raw.json",
+      "launch": "grok-launch.json",
+      "modelUsage": {
+        "grok-4.7-build": {
+          "inputTokens": 33963,
+          "outputTokens": 15385,
+          "cacheReadInputTokens": 1152,
+          "cacheCreationInputTokens": 0,
+          "modelCalls": 1,
+          "costUSD": 0.05467608
+        }
+      },
+      "observed_model_ids": [
+        "grok-4.7-build"
+      ],
+      "reported_cost_usd": 0.05467608,
+      "status": "end_turn"
+    },
+    {
+      "model_requested": "gpt-6-astra",
+      "effort_requested": "ultra",
+      "elapsed_s": 122.06,
+      "exit_code": 0,
+      "answer": "astra.md",
+      "raw": "astra.raw.json",
+      "launch": "astra-launch.json",
+      "usage": {
+        "input_tokens": 27455,
+        "cached_input_tokens": 12288,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 4167,
+        "reasoning_output_tokens": 3106
+      },
+      "observed_model_id": "not echoed by Codex JSONL; requested gpt-6-astra accepted and call completed",
+      "reported_cost_usd": null,
+      "tool_items": [
+        "error",
+        "agent_message"
+      ]
+    }
+  ],
+  "design_cautions": [
+    "No model claims measured lift; 30 reruns alone do not prove waste if a named scheduling failure was genuinely under test.",
+    "Prefer compact Astra delta; Opus parenthetical conflates falsifiable prediction and falsifying result; Grok appends more text.",
+    "Rerun-count mediator is diagnostic; do not require it for admission if outcomes/resources improve through another evidenced path.",
+    "Allow quality-preserved resource gain, not only strictly more completions; do not silently add stricter criteria or inherit whole historical corpus sizes into a new explicit registration.",
+    "Two rejected candidates are not a global solo ceiling. State scoped saturation and reopen for a new trace-backed mechanism.",
+    "D47 recognized and discounted override contract; more discovery may not fix that. This does not falsify an EQ3-specific nonlocal discovery hypothesis.",
+    "Preserve orphan-cleanup, core principles, prediction/raw-results integrity and adopted default delivery.",
+    "Pair later needs distinct residual complementary catches versus equal-cost fresh solo; 0175 catches came from Codex primary, not proof of other-engine diversity."
+  ]
+}

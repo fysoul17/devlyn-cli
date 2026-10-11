@@ -1,0 +1,13 @@
+{
+  "task": "CF-LEASE",
+  "arm": "baseline",
+  "phase": "public",
+  "command": [
+    "/opt/homebrew/opt/python@3.14/bin/python3.14",
+    "-B",
+    "checks/run_checks.py"
+  ],
+  "returncode": 0,
+  "stdout": "",
+  "stderr": "test_conflicting_payload_is_visible (test_smoke.Smoke.test_conflicting_payload_is_visible) ... ok\ntest_normal_delivery (test_smoke.Smoke.test_normal_delivery) ... ok\ntest_worker_and_empty_queue (test_smoke.Smoke.test_worker_and_empty_queue) ... ok\ntest_reopen_and_payload_snapshot (test_storage.StorageSmoke.test_reopen_and_payload_snapshot) ... ok\n\n----------------------------------------------------------------------\nRan 4 tests in 0.006s\n\nOK\n"
+}

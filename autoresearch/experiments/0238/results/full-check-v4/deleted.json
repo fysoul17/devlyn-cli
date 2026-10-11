@@ -1,0 +1,70 @@
+{
+  "assessment_binding": {
+    "original_request_present": true,
+    "selected_source_same": true,
+    "source_names": [
+      "tests/cli.test.js"
+    ],
+    "tasks_same": true
+  },
+  "case": "deleted",
+  "checks": {
+    "adjudication_needed": false,
+    "changed": [
+      "bin/cli.js"
+    ],
+    "oracle": [
+      {
+        "id": "priority-rollback",
+        "status": "FAIL"
+      },
+      {
+        "id": "single-warehouse-fefo",
+        "status": "FAIL"
+      },
+      {
+        "id": "submillisecond-order",
+        "status": "FAIL"
+      },
+      {
+        "id": "offset-equivalence",
+        "status": "FAIL"
+      }
+    ],
+    "product_check_pass": false,
+    "public": [
+      {
+        "argv": [
+          "sh",
+          "-c",
+          "mkdir /tmp/public-work && cp -a /cell/work/. /tmp/public-work/ && cd /tmp/public-work && node --test tests/cli.test.js"
+        ],
+        "exit_code": 1,
+        "stderr_tail": "",
+        "stdout_tail": "ureType: 'testCodeFailure'\n  error: |-\n    Command failed: node /tmp/public-work/bin/cli.js version\n    node:internal/modules/cjs/loader:1433\n      throw err;\n      ^\n    \n    Error: Cannot find module '/tmp/public-work/bin/cli.js'\n        at Function._resolveFilename (node:internal/modules/cjs/loader:1430:15)\n        at defaultResolveImpl (node:internal/modules/cjs/loader:1040:19)\n        at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1045:22)\n        at Function._load (node:internal/modules/cjs/loader:1216:25)\n        at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)\n        at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)\n        at node:internal/main/run_main_module:36:49 {\n      code: 'MODULE_NOT_FOUND',\n      requireStack: []\n    }\n    \n    Node.js v22.23.2\n    \n  code: 'ERR_TEST_FAILURE'\n  stack: |-\n    Function._resolveFilename (node:internal/modules/cjs/loader:1430:15)\n    defaultResolveImpl (node:internal/modules/cjs/loader:1040:19)\n    resolveForCJSWithHooks (node:internal/modules/cjs/loader:1045:22)\n    Function._load (node:internal/modules/cjs/loader:1216:25)\n    wrapModuleLoad (node:internal/modules/cjs/loader:254:19)\n    Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)\n    node:internal/main/run_main_module:36:49 {\n    genericNodeError (node:internal/errors:983:15)\n    wrappedFn (node:internal/errors:537:14)\n    checkExecSyncError (node:child_process:916:11)\n    execFileSync (node:child_process:952:15)\n    run (/tmp/public-work/tests/cli.test.js:9:10)\n    TestContext.<anonymous> (/tmp/public-work/tests/cli.test.js:23:15)\n    Test.runInAsyncScope (node:async_hooks:214:14)\n    Test.run (node:internal/test_runner/test:1047:25)\n    Test.processPendingSubtests (node:internal/test_runner/test:744:18)\n    Test.postRun (node:internal/test_runner/test:1173:19)\n  ...\n1..3\n# tests 3\n# suites 0\n# pass 0\n# fail 3\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 90.410458\n",
+        "timeout": false
+      }
+    ],
+    "public_pass": false,
+    "scope_violations": []
+  },
+  "delivery": {
+    "baseline": "8c6544eb541e19f0f0eb47a4ba25e75a04b60686",
+    "changed": [
+      "bin/cli.js"
+    ],
+    "commit": "ffff3647103bba75a8da4607f260f381729e0e6a",
+    "passed": true,
+    "reason": "local commit matches the assessed task source"
+  },
+  "out": "/Users/aipalm/.local/share/nx01/0237-live/0238-full-check-jhz45dvg/out/deleted",
+  "selection": {
+    "candidates": [],
+    "changed": [
+      "cell/work"
+    ],
+    "kind": "anchor",
+    "path": "cell/work",
+    "rule": "changed-product"
+  }
+}

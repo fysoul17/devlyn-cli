@@ -1,0 +1,30 @@
+{
+  "at": "2026-10-10T19:57:30.471473+00:00",
+  "cell": "d05-f23-claude-p",
+  "scope": "Reactive observation before native run ended; not a new efficacy hypothesis or altered gate.",
+  "events": [
+    {
+      "line": 1176,
+      "event_sha256": "5cc0533fd2d3a36ce13b54d1a58ba7fe1865055eeb025aa8501caca6264f548d",
+      "description": "Read peer completion receipt"
+    },
+    {
+      "line": 1210,
+      "event_sha256": "fcc02cfb953da332716668db3287ff3d550f71ec43bc7f84ce60f11f04dacfea",
+      "description": "Locate malformed lines in peer capture"
+    },
+    {
+      "line": 1242,
+      "event_sha256": "0f7c155eb5da143c6f389c68753f61ad1241d576e4adce7b2c3996f985b50e4d",
+      "description": "Find line-separator characters breaking helper parse"
+    },
+    {
+      "line": 1285,
+      "event_sha256": "d72ef1ae7e7e342c6b00d33c74254487a5191c030a3db6b9deb679da0d6e8abf",
+      "description": "Extract peer final answer from native capture"
+    }
+  ],
+  "observation": "Owner-visible peer receipt says NATIVE_FAILED with native exit0/source unchanged and JSON Unterminated string error. Owner parses all56 LF-delimited native records, finds literal U+2028 in one command output, one turn.completed and final answer. Python str.splitlines yields57 pieces. Native usage visibly356000 input/11087 output; retained full cost not yet adjudicated.",
+  "prediction": "The overbroad line splitter can turn a valid native JSONL payload into a peer-helper machinery failure. Unless unchanged collection independently preserves all required bindings and this is a supported fully-accounted recovery, expect registered STOP rather than a product verdict. Do not patch inputs, repair records, reroll or regrade this cell.",
+  "verdict_present_at_observation": false
+}

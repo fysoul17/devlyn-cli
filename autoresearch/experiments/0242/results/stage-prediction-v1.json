@@ -1,0 +1,18 @@
+{
+  "at": "2026-10-10T15:57:57.653915+00:00",
+  "prediction": "Model-free finalsource/package staging succeeds; native dependencies and all53 reviewedfiles bound. Review pending, no dispatch/auth/model.",
+  "command": [
+    "python3",
+    "-B",
+    "autoresearch/experiments/0242/results/stage.py",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1",
+    "--packs",
+    "/Users/aipalm/.local/share/nx01/0242-live/selected-packs-v1",
+    "--tasks",
+    "autoresearch/experiments/0242/tasks-smoke.json",
+    "--template-runtime",
+    "/Users/aipalm/.local/share/nx01/0241-live/staged-v3/runtime-smoke.json",
+    "--review-manifest",
+    "autoresearch/experiments/0242/results/review-manifest-v1.json"
+  ]
+}

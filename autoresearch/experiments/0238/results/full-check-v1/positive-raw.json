@@ -1,0 +1,51 @@
+[
+  {
+    "argv": [
+      "sh",
+      "-c",
+      "mkdir /tmp/public-work && cp -a /cell/work/. /tmp/public-work/ && cd /tmp/public-work && node --test tests/cli.test.js"
+    ],
+    "exit_code": 0,
+    "stderr": "",
+    "stdout": "TAP version 13\n# Subtest: hello default\nok 1 - hello default\n  ---\n  duration_ms: 16.838\n  type: 'test'\n  ...\n# Subtest: hello with --name\nok 2 - hello with --name\n  ---\n  duration_ms: 14.595208\n  type: 'test'\n  ...\n# Subtest: version prints package version\nok 3 - version prints package version\n  ---\n  duration_ms: 14.648751\n  type: 'test'\n  ...\n# Subtest: fulfill-wave success\nok 4 - fulfill-wave success\n  ---\n  duration_ms: 15.7875\n  type: 'test'\n  ...\n# Subtest: fulfill-wave validation or rejection\nok 5 - fulfill-wave validation or rejection\n  ---\n  duration_ms: 15.695334\n  type: 'test'\n  ...\n1..5\n# tests 5\n# suites 0\n# pass 5\n# fail 0\n# cancelled 0\n# skipped 0\n# todo 0\n# duration_ms 106.941084\n",
+    "timeout": false
+  },
+  {
+    "argv": [
+      "node",
+      "/control/autoresearch/experiments/0234/oracle.js",
+      "F23",
+      "priority-rollback",
+      "/cell/work"
+    ],
+    "exit_code": 1,
+    "stderr": "Error: Cannot find module './fixture_oracle.js'\nRequire stack:\n- /control/autoresearch/experiments/0234/oracle.js\n    at Function._resolveFilename (node:internal/modules/cjs/loader:1430:15)\n    at defaultResolveImpl (node:internal/modules/cjs/loader:1040:19)\n    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1045:22)\n    at Function._load (node:internal/modules/cjs/loader:1216:25)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)\n    at Module.require (node:internal/modules/cjs/loader:1527:12)\n    at require (node:internal/modules/helpers:147:16)\n    at main (/control/autoresearch/experiments/0234/oracle.js:114:11)\n    at Object.<anonymous> (/control/autoresearch/experiments/0234/oracle.js:158:1)\n    at Module._compile (node:internal/modules/cjs/loader:1781:14)\n",
+    "stdout": "",
+    "timeout": false
+  },
+  {
+    "argv": [
+      "node",
+      "/control/autoresearch/experiments/0234/oracle.js",
+      "F23",
+      "single-warehouse-fefo",
+      "/cell/work"
+    ],
+    "exit_code": 1,
+    "stderr": "Error: Cannot find module './fixture_oracle.js'\nRequire stack:\n- /control/autoresearch/experiments/0234/oracle.js\n    at Function._resolveFilename (node:internal/modules/cjs/loader:1430:15)\n    at defaultResolveImpl (node:internal/modules/cjs/loader:1040:19)\n    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1045:22)\n    at Function._load (node:internal/modules/cjs/loader:1216:25)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)\n    at Module.require (node:internal/modules/cjs/loader:1527:12)\n    at require (node:internal/modules/helpers:147:16)\n    at main (/control/autoresearch/experiments/0234/oracle.js:114:11)\n    at Object.<anonymous> (/control/autoresearch/experiments/0234/oracle.js:158:1)\n    at Module._compile (node:internal/modules/cjs/loader:1781:14)\n",
+    "stdout": "",
+    "timeout": false
+  },
+  {
+    "argv": [
+      "python3",
+      "-B",
+      "/control/autoresearch/experiments/0238/f23_precision.py",
+      "/cell/work"
+    ],
+    "exit_code": 0,
+    "stderr": "",
+    "stdout": "{\"schema\": \"0238-f23-precision-v1\", \"source\": \"/cell/work\", \"rows\": [{\"id\": \"submillisecond-order\", \"status\": \"PASS\", \"input\": {\"warehouses\": [{\"id\": \"w\", \"distance\": 0, \"lots\": [{\"sku\": \"s\", \"lot\": \"l\", \"qty\": 1, \"expires\": \"2028-01-01\"}]}], \"orders\": [{\"id\": \"a-later\", \"priority\": 1, \"submitted_at\": \"2027-01-01T00:00:00.0002Z\", \"lines\": [{\"sku\": \"s\", \"qty\": 1, \"single_warehouse\": false}]}, {\"id\": \"z-earlier\", \"priority\": 1, \"submitted_at\": \"2027-01-01T00:00:00.0001Z\", \"lines\": [{\"sku\": \"s\", \"qty\": 1, \"single_warehouse\": false}]}]}, \"expected\": {\"accepted\": [{\"id\": \"z-earlier\", \"allocations\": [{\"sku\": \"s\", \"warehouse\": \"w\", \"lot\": \"l\", \"qty\": 1}]}], \"rejected\": [{\"id\": \"a-later\", \"reason\": \"insufficient_stock\"}]}, \"errors\": [], \"raw\": {\"exit_code\": 0, \"stdout\": \"{\\\"accepted\\\":[{\\\"id\\\":\\\"z-earlier\\\",\\\"allocations\\\":[{\\\"sku\\\":\\\"s\\\",\\\"warehouse\\\":\\\"w\\\",\\\"lot\\\":\\\"l\\\",\\\"qty\\\":1}]}],\\\"rejected\\\":[{\\\"id\\\":\\\"a-later\\\",\\\"reason\\\":\\\"insufficient_stock\\\"}],\\\"remaining\\\":[]}\\n\", \"stderr\": \"\"}}, {\"id\": \"offset-equivalence\", \"status\": \"PASS\", \"input\": {\"warehouses\": [{\"id\": \"w\", \"distance\": 0, \"lots\": [{\"sku\": \"s\", \"lot\": \"l\", \"qty\": 2, \"expires\": \"2028-01-01\"}]}], \"orders\": [{\"id\": \"a-later\", \"priority\": 1, \"submitted_at\": \"2027-01-01T00:00:00.0002Z\", \"lines\": [{\"sku\": \"s\", \"qty\": 1, \"single_warehouse\": false}]}, {\"id\": \"z-earlier\", \"priority\": 1, \"submitted_at\": \"2027-01-01T00:00:00.0001Z\", \"lines\": [{\"sku\": \"s\", \"qty\": 1, \"single_warehouse\": false}]}, {\"id\": \"b-equivalent\", \"priority\": 1, \"submitted_at\": \"2027-01-01T01:00:00.000100+01:00\", \"lines\": [{\"sku\": \"s\", \"qty\": 1, \"single_warehouse\": false}]}]}, \"expected\": {\"accepted\": [{\"id\": \"b-equivalent\", \"allocations\": [{\"sku\": \"s\", \"warehouse\": \"w\", \"lot\": \"l\", \"qty\": 1}]}, {\"id\": \"z-earlier\", \"allocations\": [{\"sku\": \"s\", \"warehouse\": \"w\", \"lot\": \"l\", \"qty\": 1}]}], \"rejected\": [{\"id\": \"a-later\", \"reason\": \"insufficient_stock\"}]}, \"errors\": [], \"raw\": {\"exit_code\": 0, \"stdout\": \"{\\\"accepted\\\":[{\\\"id\\\":\\\"b-equivalent\\\",\\\"allocations\\\":[{\\\"sku\\\":\\\"s\\\",\\\"warehouse\\\":\\\"w\\\",\\\"lot\\\":\\\"l\\\",\\\"qty\\\":1}]},{\\\"id\\\":\\\"z-earlier\\\",\\\"allocations\\\":[{\\\"sku\\\":\\\"s\\\",\\\"warehouse\\\":\\\"w\\\",\\\"lot\\\":\\\"l\\\",\\\"qty\\\":1}]}],\\\"rejected\\\":[{\\\"id\\\":\\\"a-later\\\",\\\"reason\\\":\\\"insufficient_stock\\\"}],\\\"remaining\\\":[]}\\n\", \"stderr\": \"\"}}], \"cli_sha256\": \"6eeb61f0d6b68ceed60eed83a03c1844609a8ea4feee67e5af677a41444e8115\", \"status\": \"PASS\"}\n",
+    "timeout": false
+  }
+]

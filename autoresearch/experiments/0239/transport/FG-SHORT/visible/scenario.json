@@ -1,0 +1,10 @@
+{
+  "id": "FG-SHORT",
+  "parts": [
+    {
+      "part": 1,
+      "wait_seconds": 1,
+      "marker": "fg-short-part-1-terminal"
+    }
+  ]
+}

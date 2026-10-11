@@ -1,0 +1,181 @@
+{
+  "assessors": [
+    {
+      "effort": "high",
+      "engine": "claude",
+      "model": "claude-opus-5-5"
+    },
+    {
+      "effort": "high",
+      "engine": "codex",
+      "model": "gpt-6-astra"
+    }
+  ],
+  "routes": {
+    "claude": {
+      "owner": {
+        "effort": "max",
+        "engine": "claude",
+        "model": "claude-opus-5-5"
+      },
+      "product_roles": {
+        "pair_judge": {
+          "effort": "high",
+          "engine": "codex",
+          "model": "gpt-6-astra"
+        },
+        "primary_judge": {
+          "engine": "claude",
+          "model": "claude-opus-5-5"
+        },
+        "worker": {
+          "engine": "claude"
+        }
+      },
+      "reviewer": {
+        "effort": "high",
+        "engine": "codex",
+        "model": "gpt-6-astra"
+      }
+    },
+    "codex": {
+      "owner": {
+        "child_effort": "high",
+        "child_model": "gpt-6-sol",
+        "effort": "max",
+        "engine": "codex",
+        "model": "gpt-6-astra"
+      },
+      "product_roles": {
+        "pair_judge": {
+          "engine": "claude",
+          "model": "claude-opus-5-5"
+        },
+        "primary_judge": {
+          "effort": "high",
+          "engine": "codex",
+          "model": "gpt-6-astra"
+        },
+        "worker": {
+          "effort": "high",
+          "engine": "codex",
+          "model": "gpt-6-sol"
+        }
+      },
+      "reviewer": {
+        "effort": "high",
+        "engine": "claude",
+        "model": "claude-opus-5-5"
+      }
+    }
+  },
+  "schema": "0237-instruction-study-v1",
+  "tasks": [
+    {
+      "allowed": [
+        "visible/**"
+      ],
+      "domain": "confirmation",
+      "eq3_dir": "autoresearch/experiments/0237/confirmation/CF-CONFIG",
+      "id": "CF-CONFIG",
+      "obligations": [],
+      "oracle": [
+        "recursive-merge-value-kinds",
+        "relative-diamond-layer-order",
+        "transitive-change-same-size-and-mtime",
+        "nested-caller-isolation",
+        "semantic-generation-current-dependencies",
+        "failed-reload-preserves-and-recovers",
+        "failed-first-load-no-cache-poisoning",
+        "deleted-dependency-repair",
+        "canonical-cycle-after-success",
+        "shared-file-once-per-load",
+        "independent-root-dependency-accuracy",
+        "schema-errors-retain-include-chain"
+      ],
+      "public_checks": [
+        "cd visible && python3 -B checks/run_checks.py"
+      ],
+      "repository": "devlyn-confirmation",
+      "request": "Fix Beacon config's reload behavior. Our supervisor sees stale settings after a\nshared include changes, and a client's edits to its snapshot have leaked into\nlater reads. Repair include resolution, merging, and snapshot publication to\nhonor the existing format and reload contracts. Shared includes in different\nbranches must work, bad deployments must leave the last good configuration\navailable, and repairing a broken file must allow a later reload to recover.\nKeep the exported APIs and useful ConfigError diagnostics. Run\n`python3 -B checks/run_checks.py` and add focused coverage for the repaired paths.",
+      "source_sha256": {
+        "visible/README.md": "e69d4295541e7b43db344b4fbb267c658ca9b60ecde667c5ecfd2056a454d431",
+        "visible/beacon/__init__.py": "141535b5f076aef25b191f65dc5eccc2f557a53fe238ab6decaf0c87ea348801",
+        "visible/beacon/document.py": "4fabef334d930c9950649c7beb8a51dc6a89f82df4a61b9a7d003598ac646768",
+        "visible/beacon/errors.py": "b0435e3b53ce18ad2e5d30a9a8a95c2cb07c22745c0200fbad9b97ac36682ce4",
+        "visible/beacon/loader.py": "37e448939bfb592d19e663a7244c6af57bd62bca43608c85f3eac45bd12de31e",
+        "visible/beacon/manager.py": "2a8f925f95739fc699aa0b032732b040cb625148c2c4c2955590a5f13eb69d2d",
+        "visible/beacon/merge.py": "5f45b3a223d18b854f50f43de98f3d8fc63f88005848ea5bb073d4f4bc18bbc0",
+        "visible/beacon/model.py": "2859fff316e4d2d4843f09b24d6fe9df2e9ad0f2c1490b81a617a1f649738e5f",
+        "visible/beacon/paths.py": "f93a8a6bd627302f806db61c829a5f933ddbe149e01e94425aaffadaaee555a6",
+        "visible/checks/helpers.py": "2373801c0e1de90c10489cfb0a9089c8e2e70cdf7e947245ec634370aa17f11a",
+        "visible/checks/run_checks.py": "89da316d92c61568f7224f22774807668ea5053132a9bf22178fed0ab822d107",
+        "visible/checks/test_format.py": "b82f886e5a8b709350d7aaa127e1b7cd8ac508c6b20c05b4701abe24e2a633ff",
+        "visible/checks/test_smoke.py": "815d4fde5374fddf3de1a5c65e4ec1892afc657542a2e89e0eb3af9e1e5429a4",
+        "visible/docs/format.md": "39d56a51e84bcff689c91935802cdd4535172aeb681043771782b884f6f63959",
+        "visible/docs/incident.md": "bb404061e918989576a82d1d85be008dd4e96367d03896cdc42fc83bd05fa796",
+        "visible/docs/reload.md": "a256fd4b9f2e03315c22a7f9337d0332482557acce49956c5f2f786ec20f4524",
+        "visible/examples/config/app.json": "a83c34839ca776d79ad387977f1ad8761242cea7325a92669bbe57d93230eea3",
+        "visible/examples/config/base.json": "38ce6ab0972ff2107207494d9d74debaeae52939650433ee63a8d976b99ab4c8",
+        "visible/examples/show_config.py": "e99256a373695c783a05863aea575d3253006e58f124b4d584f2d50c8a4e1bd5"
+      },
+      "stratum": "confirmation"
+    },
+    {
+      "allowed": [
+        "visible/**"
+      ],
+      "domain": "confirmation",
+      "eq3_dir": "autoresearch/experiments/0237/confirmation/CF-LEASE",
+      "id": "CF-LEASE",
+      "obligations": [],
+      "oracle": [
+        "expiry-boundary",
+        "expired-unclaimed-settlement",
+        "stale-receipt-reopen",
+        "idempotent-producer-every-state",
+        "retry-lifecycle-clean-settlement",
+        "eligibility-and-stable-order",
+        "independent-concurrent-claims",
+        "worker-success-after-takeover",
+        "worker-failure-after-takeover",
+        "retry-uses-settlement-clock",
+        "settlement-errors-not-handler-errors",
+        "process-interruption-retains-lease",
+        "invalid-input-no-mutation"
+      ],
+      "public_checks": [
+        "cd visible && python3 -B checks/run_checks.py"
+      ],
+      "repository": "devlyn-confirmation",
+      "request": "Fix the durable delivery bugs in Parcel relay. After a worker times out and a new\nworker takes its job, a late success or failure from the original worker can\ncurrently settle the new attempt. Producer retries can also revive a completed\njob. Make retries, lease expiry, and worker results obey the existing delivery\nand persistence contracts, including recovery through a newly opened database\nconnection. Preserve the public APIs and keep errors visible to callers. Inspect\nthe package's operational docs and call sites, make the repair, and run\n`python3 -B checks/run_checks.py` plus focused tests for the repaired behavior.",
+      "source_sha256": {
+        "visible/README.md": "735bf3400852e1871c2b6c73dc0291318c1436effc4f84c9292b797e8005eff1",
+        "visible/checks/run_checks.py": "89da316d92c61568f7224f22774807668ea5053132a9bf22178fed0ab822d107",
+        "visible/checks/test_smoke.py": "d84adc182108486fb2df6c1e887d99050d5a1a6853af09f6e251ad4c385fc8c3",
+        "visible/checks/test_storage.py": "9bca9b92c443ce8848984fd28e53c4bda5d0a78a6b6d8eb38ab230a21117e282",
+        "visible/docs/delivery.md": "070f0c7455312730cd6d48a510be13a8c954cc608c9683888f33cd8512e608fc",
+        "visible/docs/incident.md": "056c3caf462783b0bd0eeb85d594261c802b76b3a34accc65dfbf56f5282f610",
+        "visible/docs/storage.md": "8b79b3fef133f6a1122da75175f4311d069b263a2ec18ffa7fbf604bc11e2c68",
+        "visible/examples/retry_demo.py": "e1551e76fb1dcbfdc0376836af602a3a3abb1c0291f9c636b75fdc76cbad08e2",
+        "visible/parcel/__init__.py": "55d0b714d2ba621a4400e5dbad3c1293dc57b2d4eeb682c79cf4984521092a43",
+        "visible/parcel/codec.py": "6cf083598a9bb8a709b785e53826d9a4885ec002a703b584668c98898cc06f91",
+        "visible/parcel/enqueue.py": "3cc030301e919c79ac77f380cee712a7d07ea61f31b8bb61ffc9601afe8b38f2",
+        "visible/parcel/errors.py": "0116da2a8111e1eb9c0218bb3be6379474f2c482f8ede7e7277761a0a207d389",
+        "visible/parcel/leases.py": "9a718c230806611028370f728b3359bf8d660aa86c74d499b4392d35926e2a6f",
+        "visible/parcel/model.py": "207e351778f2d28959a73d04c25912504af9926963cab15147c1e9627316aa6d",
+        "visible/parcel/query.py": "7194686fff0e92c14da640764e4adc084d631191c6bf3b2a6b7f6ee77c5468d7",
+        "visible/parcel/schema.py": "9d284e34bba926f5bcd2504e19d6b63c8d26b7b6604ec66abf539542151bc6e5",
+        "visible/parcel/storage.py": "d50c0417c4aad50eba6f5db2e135e8b4ac7afc9f79f8433613677abbcd820bc7",
+        "visible/parcel/worker.py": "385a4f2d7b622c792df3e78a97447ec18e3bafea23e91646551add08ecda153d"
+      },
+      "stratum": "confirmation"
+    }
+  ],
+  "watchdog_seconds": {
+    "assessor": 600,
+    "evaluator": 600,
+    "owner": 5400,
+    "review": 600
+  }
+}

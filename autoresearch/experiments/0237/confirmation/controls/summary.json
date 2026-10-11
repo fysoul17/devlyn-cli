@@ -1,0 +1,62 @@
+{
+  "validated_at": "2026-10-10T01:55:55.313501+00:00",
+  "predictions_sha256": "aa652bf27091f780a3c083d319243a9173fd21e3bb384bfaf4b7d3b1ff4102ec",
+  "outcomes": [
+    {
+      "task": "CF-LEASE",
+      "arm": "baseline",
+      "phase": "public",
+      "returncode": 0
+    },
+    {
+      "task": "CF-LEASE",
+      "arm": "baseline",
+      "phase": "hidden",
+      "returncode": 0,
+      "passed": 4,
+      "total": 13
+    },
+    {
+      "task": "CF-LEASE",
+      "arm": "gold",
+      "phase": "public",
+      "returncode": 0
+    },
+    {
+      "task": "CF-LEASE",
+      "arm": "gold",
+      "phase": "hidden",
+      "returncode": 0,
+      "passed": 13,
+      "total": 13
+    },
+    {
+      "task": "CF-CONFIG",
+      "arm": "baseline",
+      "phase": "public",
+      "returncode": 0
+    },
+    {
+      "task": "CF-CONFIG",
+      "arm": "baseline",
+      "phase": "hidden",
+      "returncode": 0,
+      "passed": 1,
+      "total": 12
+    },
+    {
+      "task": "CF-CONFIG",
+      "arm": "gold",
+      "phase": "public",
+      "returncode": 0
+    },
+    {
+      "task": "CF-CONFIG",
+      "arm": "gold",
+      "phase": "hidden",
+      "returncode": 0,
+      "passed": 12,
+      "total": 12
+    }
+  ]
+}

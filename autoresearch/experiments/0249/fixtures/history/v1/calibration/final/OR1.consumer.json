@@ -1,0 +1,12 @@
+{
+  "command": [
+    "python3",
+    "-B",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/fixtures/calibration/consumer_check.py",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/fixtures/OR1/gold"
+  ],
+  "cwd": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/fixtures",
+  "exit_code": 0,
+  "stdout": "{\"passed\": true, \"revision\": 2, \"documents\": {\"headline\": {\"text\": \"Today's edition\", \"tags\": [\"news\"]}, \"footer\": {\"text\": \"Contact the desk\"}}}\n",
+  "stderr": ""
+}

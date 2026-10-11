@@ -1,0 +1,84 @@
+{
+  "recorded_at": "2026-10-10T23:30:04.586342+00:00",
+  "principles": [
+    "No guesswork: predictions precede execution.",
+    "No workaround: semantic contracts are evaluated via public boundaries.",
+    "No overengineering: two compact standard-library packages.",
+    "Production ready: failures must preserve recoverability."
+  ],
+  "commands": [
+    "python3 -B calibrate.py --output calibration/v2",
+    "python3 -B calibration/v2/constant_probe.py OR1/visible",
+    "python3 -B calibration/v2/constant_probe.py OR1/gold"
+  ],
+  "expected": {
+    "OR1": {
+      "baseline_public": true,
+      "gold_public": true,
+      "baseline_pass": [
+        "open-transaction-refresh-isolation",
+        "closed-lifecycle-and-durable-store"
+      ],
+      "gold_pass": [
+        "recursive-ownership-boundaries",
+        "open-transaction-refresh-isolation",
+        "optimistic-conflict-preserves-loser",
+        "disjoint-rebase-preserves-deletions",
+        "overlap-rebase-is-atomic",
+        "absent-delete-retains-write-intent",
+        "failed-save-retry",
+        "failed-read-rebase-recovery",
+        "atomic-backend-conflict-boundary",
+        "closed-lifecycle-and-durable-store"
+      ],
+      "fault_control_fail": [
+        "recursive-ownership-boundaries"
+      ]
+    },
+    "OR2": {
+      "baseline_public": true,
+      "gold_public": true,
+      "baseline_pass": [
+        "coalescing-and-independent-keys",
+        "stale-failure-keeps-new-flight",
+        "consumer-instance-isolation"
+      ],
+      "gold_pass": [
+        "coalescing-and-independent-keys",
+        "recursive-result-and-backend-isolation",
+        "one-waiter-cancellation-isolation",
+        "sole-waiter-cancel-and-rejoin",
+        "stale-success-keeps-new-flight",
+        "out-of-order-generations",
+        "shared-failure-can-retry",
+        "stale-failure-keeps-new-flight",
+        "backend-cancellation-can-retry",
+        "shutdown-owns-retired-operations",
+        "shutdown-awaits-cleanup",
+        "consumer-instance-isolation"
+      ],
+      "fault_control_fail": [
+        "stale-success-keeps-new-flight",
+        "out-of-order-generations"
+      ]
+    }
+  },
+  "fault_controls": {
+    "OR1": "Gold put retains the supplied document instead of taking its recursive copy.",
+    "OR2": "Gold _load publishes a retired successful result by dropping its generation publication guard."
+  },
+  "determinism": "Event handshakes and explicitly settled futures control asynchronous order. Three-second per-scenario watchdogs detect deadlocks; success does not depend on elapsed time. Each oracle runs in a fresh interpreter; evaluated trees are read only.",
+  "edge_expected": {
+    "OR1": {
+      "type": "StorageError",
+      "bytes_preserved": true
+    },
+    "OR2": {
+      "cleanup_finished_before_release": false,
+      "cleanup_completed": true
+    }
+  },
+  "reason": "Independent bounded review confirmed unsupported NaN at public FileStore.read. Reject only nonstandard NaN/Infinity/-Infinity literals with json.loads parse_constant; strengthen existing C5 malformed-read/recovery manifestation. No numeric magnitude policy added.",
+  "constant_expected_before": "NaN, Infinity, and -Infinity literal reads accepted; they should instead be rejected as malformed JSON.",
+  "constant_expected_after": "All three literals raise StorageError through FileStore.read and Workspace.refresh, leave bytes and prior workspace view unchanged, and valid repaired bytes restore refresh and no-edit commit."
+}

@@ -1,0 +1,17 @@
+{
+  "status": "SHIP",
+  "reviewer": "gpt-6-astra",
+  "effort": "ultra",
+  "open_high": 0,
+  "open_medium": 0,
+  "tests_passed": 21,
+  "independent_probes_passed": 5,
+  "probes": [
+    "reject staged-only edits",
+    "reject mode mismatch",
+    "reject symlink mismatch",
+    "safe Git config overrides fsmonitor",
+    "delivery evidence tamper rejected before auth/assessor"
+  ],
+  "scope": "common local-commit endpoint and arm-neutral delivery measurement; no benchmark model calls"
+}

@@ -1,0 +1,123 @@
+{
+  "at": "2026-10-10T12:16:41.153661+00:00",
+  "model_calls": 0,
+  "product_modified": false,
+  "results": [
+    {
+      "blocks": {
+        "AGENTS.md": 1,
+        "CLAUDE.md": 0
+      },
+      "calls": [
+        {
+          "exit_code": 0,
+          "stderr": ""
+        },
+        {
+          "exit_code": 0,
+          "stderr": ""
+        }
+      ],
+      "case": "exact",
+      "hashes": {
+        "AGENTS.md": "d1645c838a67efa8c109943dc05470ddf5a849fe9c03c8ab78d87414138020ab",
+        "CLAUDE.md": "ea32df0796a0e3710d0eb2aea5366d0659ae1b396ae98e34c9c30bd02f076dca"
+      },
+      "idempotent": true,
+      "prose_preserved": true
+    },
+    {
+      "blocks": {
+        "AGENTS.md": 1,
+        "CLAUDE.md": 1
+      },
+      "calls": [
+        {
+          "exit_code": 0,
+          "stderr": ""
+        },
+        {
+          "exit_code": 0,
+          "stderr": ""
+        }
+      ],
+      "case": "relative",
+      "hashes": {
+        "AGENTS.md": "d1645c838a67efa8c109943dc05470ddf5a849fe9c03c8ab78d87414138020ab",
+        "CLAUDE.md": "c83a8c88a7a2c895543c9694f8393faeae0311c9400acb60317fdc818ae25348"
+      },
+      "idempotent": true,
+      "prose_preserved": true
+    },
+    {
+      "blocks": {
+        "AGENTS.md": 1,
+        "CLAUDE.md": 1
+      },
+      "calls": [
+        {
+          "exit_code": 0,
+          "stderr": ""
+        },
+        {
+          "exit_code": 0,
+          "stderr": ""
+        }
+      ],
+      "case": "inline",
+      "hashes": {
+        "AGENTS.md": "d1645c838a67efa8c109943dc05470ddf5a849fe9c03c8ab78d87414138020ab",
+        "CLAUDE.md": "36f83d7e7d80a158f5737962da6ec29aefc64c5a817bb0a32b4c01c476f6754d"
+      },
+      "idempotent": true,
+      "prose_preserved": true
+    },
+    {
+      "blocks": {
+        "AGENTS.md": 1,
+        "CLAUDE.md": 1
+      },
+      "calls": [
+        {
+          "exit_code": 0,
+          "stderr": ""
+        },
+        {
+          "exit_code": 0,
+          "stderr": ""
+        }
+      ],
+      "case": "code_span",
+      "hashes": {
+        "AGENTS.md": "d1645c838a67efa8c109943dc05470ddf5a849fe9c03c8ab78d87414138020ab",
+        "CLAUDE.md": "77b2ce9f895f22a2ad65cd58613de7bc32228553f3c3d1dc4b25009d91ed456a"
+      },
+      "idempotent": true,
+      "prose_preserved": true
+    },
+    {
+      "blocks": {
+        "AGENTS.md": 1,
+        "CLAUDE.md": 1
+      },
+      "calls": [
+        {
+          "exit_code": 0,
+          "stderr": ""
+        },
+        {
+          "exit_code": 0,
+          "stderr": ""
+        }
+      ],
+      "case": "fenced",
+      "hashes": {
+        "AGENTS.md": "d1645c838a67efa8c109943dc05470ddf5a849fe9c03c8ab78d87414138020ab",
+        "CLAUDE.md": "5fd7d4d38b3a0ba3b68baf3df55d81d9b357666c207ca652d77437dde294c23f"
+      },
+      "idempotent": true,
+      "prose_preserved": true
+    }
+  ],
+  "root": "/Users/aipalm/.local/share/nx01/0239-live/import-dedup-probe-v1"
+}

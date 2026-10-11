@@ -1,0 +1,287 @@
+{
+  "schema": "0242-s03-native-protocol-audit-v1",
+  "evidence_root": "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex",
+  "verdict": "OBSERVATIONS_ONLY_ORIGINAL_STOP_PRESERVED",
+  "raw_verdict": {
+    "status": "STOP",
+    "usage": "PARTIAL",
+    "reason": "ValueError: whole-run usage PARTIAL",
+    "gap": "Claude result cell/work/.devlyn/pair/fresh-result-metadata.json without usage",
+    "measurement_eligible": false,
+    "assessment": "NOT_REQUESTED",
+    "delivery": null,
+    "identity": "MATCH",
+    "peer_policy": "MATCH",
+    "claude_accounting": "MATCH",
+    "owner_status": "EXITED_0",
+    "teardown": "CLEAN",
+    "owner_seconds": 644.9293162910035,
+    "known_usage_lower_bound": {
+      "input_tokens": 1325063,
+      "output_tokens": 45755
+    }
+  },
+  "native_peer": {
+    "session": "1007025c-9afd-4539-8461-53b1571e00e9",
+    "model": "claude-opus-5-5",
+    "effort": "max",
+    "per_turn_effort": "max",
+    "transcript": "home/.claude/projects/-cell-work/1007025c-9afd-4539-8461-53b1571e00e9.jsonl",
+    "transcript_sha256": "f4396320820dc2b1c857b6e83ac39cdf2da151d43802bd199e8751be4d6264ec",
+    "native_exact_prompt_lines": {
+      "fresh": 3,
+      "resume": 50
+    },
+    "fresh": {
+      "seconds": 214.68231922300038,
+      "exit_code": 0,
+      "result_usage_present": true,
+      "tools": [
+        "Read",
+        "Read",
+        "Read",
+        "Grep",
+        "Glob",
+        "Read",
+        "Read"
+      ]
+    },
+    "resume": {
+      "seconds": 12.846623465004086,
+      "exit_code": 0,
+      "result_usage_present": true,
+      "tools": [
+        "Read"
+      ]
+    },
+    "sidechains_observed": 0,
+    "children_observed": 0,
+    "mutations_observed": 0,
+    "peer_executed_checks": 0
+  },
+  "request": {
+    "original_chars": 2386,
+    "literal_multiline_occurrences": 1,
+    "also_embedded_in_verbatim_json_contract": true,
+    "offsets": {
+      "original": 866,
+      "caller_json": 3253,
+      "source": 5981,
+      "diff": 7967,
+      "public_checks": 10203,
+      "review_ask": 10431
+    },
+    "both_argv_prompt_hashes_match": true
+  },
+  "source_identity": {
+    "count": 4,
+    "files_each": 29,
+    "all_equal": true,
+    "final_files_match": true,
+    "head": "0777e18c54cb8999478f77d3b93fae70c7ff6fc0",
+    "caller_and_git_config_unchanged": true
+  },
+  "owner": {
+    "session": "01a126a9-f2c1-7ff1-afa9-6a3d0e986414",
+    "model": "gpt-6-astra",
+    "effort": "max",
+    "public_tests_passed": 7,
+    "witnesses": [
+      {
+        "input": [
+          49,
+          50,
+          10
+        ],
+        "expected": 28,
+        "actual": 28,
+        "exit_code": 0
+      },
+      {
+        "input": [
+          500,
+          0,
+          0.7
+        ],
+        "expected": 504,
+        "actual": 504,
+        "exit_code": 0
+      }
+    ],
+    "witness_line": 46,
+    "complete_answer_read_lines": [
+      41,
+      48
+    ],
+    "final_line": 61,
+    "claudecode_present": false
+  },
+  "assertion_recoveries": [
+    {
+      "failed_line": 35,
+      "reobservation_line": 37,
+      "root_cause": "Owner expected zero from no-index diff against /dev/null; actual status1 and no whitespace diagnostics",
+      "source_changed": false
+    },
+    {
+      "failed_line": 57,
+      "reconciliation_line": 60,
+      "root_cause": "Owner expected CLEANED but successful helper reports CLEAN",
+      "helper_exit_code": 0,
+      "helper_status": "LOCAL_ONLY",
+      "repeated_completion": false,
+      "source_changed": false
+    }
+  ],
+  "local_delivery_observed": {
+    "commit": "5fe2d0ed993c99e962cf61530f498d700977ac27",
+    "parent": "0777e18c54cb8999478f77d3b93fae70c7ff6fc0",
+    "changed_paths": [
+      "calculate_total.py",
+      "test_calculate_total.py"
+    ],
+    "branch": "main",
+    "clean": true,
+    "temporary_worktree_registration_absent": true,
+    "temporary_branch_absent": true,
+    "status": "LOCAL_ONLY",
+    "substituted_for_runner_grade": false
+  },
+  "sources_before": {
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/trace/trace-aa2e8881-88ec-4a24-a30f-3f2c64f0b1ce-01a126a9-f2c1-7ff1-afa9-6a3d0e986414/manifest.json": "a4d316f3ab63297c596111387927892d33a2889a3059e6fa2a1f62759cf3f1df",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/trace/trace-aa2e8881-88ec-4a24-a30f-3f2c64f0b1ce-01a126a9-f2c1-7ff1-afa9-6a3d0e986414/payloads/4.json": "2d82731638ff6f68633246a0b436e1399357acb72d24e075ad464fdbc6e196ca",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/trace/trace-aa2e8881-88ec-4a24-a30f-3f2c64f0b1ce-01a126a9-f2c1-7ff1-afa9-6a3d0e986414/trace.jsonl": "b6a64118ccc0fa74539924217c02f6596359cd247f0dd90df2213ad0756ae957",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/acceptance.json": "68a8dde14ad82698f5591dc656f3130b3f574d035ffa5f9ecf0cffb4055706cf",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/accepted-candidate.diff": "a3ff8d9473ed2d9c3611b4bb2d9850b17f46a9189ab879d03a3a93508c4048eb",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/allocation.json": "b6d4372175fdd8c5880aab5bc14b0b9e119cb77abd2ce028a90fff673209152a",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/allocation.log": "4d6cc6634027d4699f627aa8fd8dcb624996699e7e677227a82eabe79e363ab2",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/caller.sha256": "e548e6df5ed6f021324bd9bade7b4b33c57ab96e0b539fded3039075d1756649",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/candidate-apply.log": "e1495b811b56c716787f5f95e7ca9ecc4e5fdc2ac2f8f84537a6cc7ee1a21777",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/candidate-verification.log": "641620269753e86af91f38a98e865a214c1e602cbcbe034d5e3243eee9e53c25",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/candidate.patch": "a3ff8d9473ed2d9c3611b4bb2d9850b17f46a9189ab879d03a3a93508c4048eb",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/check-predictions.txt": "1c770ca4155fa1b4fd80deeb878f5d8e6e4c40a998bd48edc9b75ad96fa7c310",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/commit-sha.txt": "33902181f2aae07d521ec225eb1f33b308f52cbd15f30382377d7b88b08fa5a9",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/commit.log": "3472b768e4a3ed1a299c9550fdcc85f56c39501d666ae4e817c11d99771818a0",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/delivery-predictions.txt": "9a0ec80043f4c683374a5fe1eea8b75bcfb8f90f7c53258666bc2eb29f9eb6dd",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/diff-check-observation.log": "1f03de0d0b6f053e48538e2c675a18d18a28ecc4d4b0254b72f0d9bafd04f899",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/diff-check-prediction.txt": "f07923bed93aebc9017811eda5a645a1397dee4d0f287a7831c0297b3bea5050",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/fresh-result-metadata.json": "3a9f769bfcfaa33d8cc00d3d8f78c074fd2ca1f18d43aca55808ed264f61dbb0",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/git-config.sha256": "adc37d66df0639c63dc12c31a1224ee184222f261f57550c00e8f2ca673cb34e",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/initial-state.txt": "551d3b0bf867f193169e9dac06639ce68c2702bfc04f2b7fffe203148f4e2d8a",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/launcher-predictions.txt": "92cbcf2ec4dde43d6cf2abb77543877756ae42eeec76c14d2ad4d20683eb168d",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/local-completion.json": "f3f556773b57b2da5b75d0f4f2917169832f5b55459e7d591e1f249ba7481c1d",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/local-completion.log": "2f142b43abd4dfe3d4a8f155f76ce8854cd27ab88555d54c513f88460f895f70",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/local-delivery-observation.txt": "f6cb917ef04ba2cf4f22de0a1fbdc74f78c098180432112b46ac89a55e7699cb",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/operational-verification.json": "b21c9d0d34cc7a255fba719a9e9758fd0c4db266aebee4a5bccdf9d768245821",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/peer-check-predictions.txt": "4408224f68ec3708f2c2eec90919272808c9f30471a72713208358aa9ca42b7f",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/peer-checks.log": "5fff34ca1172e920bcd9059f4d8f876b606bae1a68ac141e36ce3d3024149d8e",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/public-check.log": "f8d86828b10cd78d847d7bd4fff9a60fe1c76974ec96409226e9722b56e45693",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/reconciliation-prediction.txt": "9d0d1b45916b1872b4133ad486cf198bb350175d267e436389edf90bbdd6484b",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/reconciliation.log": "4aa5aabaa36136df4a4d416bdf1c4b032d2ffe6caf54a78f5215800fac0c1392",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/request.md": "8242100c24f0d0cd2498f8edc770e533dcb5231eac68458373a7972f2d2ebeb9",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/resume-request.md": "49e64e68ad3c05aaf148063d70da8317544a4dac3371f41919beeff5afc633d9",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/review1/attempt.json": "d64fe0489523f9408bea8d0a204fe52b19a36986ea2460798e01c767837db682",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/review1/completion.json": "517e8cb6cfd2e5a6f980786c8e4778ad9296bc962e134f7dae9c7c17276b8200",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/review1/finalanswer.txt": "fe360eb5d4b6343b85ed1534b40c7f39230fd6a7389417577cf3bf1a67276753",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/review1/peer1791650168333261717.json": "401f4c7d6e2feccb4359f058afbcb9caa68db43d2a2c7779b34f17dc81aefe3f",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/review1/stderr": "d5d32f57f3724c9a31b904f2208b97e6de4eaf7a0d3ad2cd2e1b7b0bcdad0b9d",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/review2/attempt.json": "9a1bc00f83fae03865000fde122177496973484ae1a87621f2844befaed0861b",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/review2/completion.json": "ce5f71aee4e1fd9b78c7c0786dade97ce01f099254bb49749e0b3f7465801d5e",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/review2/finalanswer.txt": "bc5d3e09a5c3bc7296bed7cec5bbccf3edcca54be2a5c3edc3e848ab5ceb596a",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/review2/peer1791650425576578294.json": "76b13350b1b2f4222136e29c82226637837b792ee2ac59aa7072f206c930af63",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/review2/stderr": "36fee26129fe5a7c646ef1b019fa01eda91cb2342e480a1d85f7093bf69f23f0",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/session-id.txt": "98dd385f88547a6307f441d93521714520c41c7f23688f74f25087cf3dd4e8a1",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/source-hashes.json": "f09d5c1c4a6dd2065336e106e408e262954aafc553853b5d0384067233a54c81",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.git/config": "521078aa1e06558ed8cf350c443cd94995e4b2ac1f55026b1238454b7e3b3cad",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.git/devlyn-completion/24b6efab7793b7e147a65017/receipt.json": "13d231fa023eeaddaa21dfc6a86b512cfda9cb665ae08efe10b81fb3f8da0726",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/calculate_total.py": "79d856d655277ec677178ed674cd566e40ddcafd8c3abe7b956e4e6b121b219a",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/test_calculate_total.py": "fa52be76ab405812666d2e043055f96591d2294d34f26688a32858680ebf73b1",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/claude-accounting.json": "b81ce1d15dafde6a445f0835c886609118fcc8bcf8bfc3a6c0f7a57385e468c0",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/final.txt": "f08cfad2b35e4332d118d9d8f997d2b8e76c5f8581f96a96a7e1e27b2dfd655b",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/harness/caller.json": "e43ac83a5059dd5144ae1377ed622b166052edea2c5f9618aa3fcc931bf32c92",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/home/.claude/projects/-cell-work/1007025c-9afd-4539-8461-53b1571e00e9.jsonl": "f4396320820dc2b1c857b6e83ac39cdf2da151d43802bd199e8751be4d6264ec",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/home/.codex/sessions/2026/10/10/rollout-2026-10-10T16-33-54-01a126a9-f2c1-7ff1-afa9-6a3d0e986414.jsonl": "1797336569556967561e380dfe49d8f1cfb376d63814b0cb01c254149fb83136",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/peer-policy.json": "d54ca046ca6519667c4a8c68939fd0275106bf0f1f67ce050e14cb5e43730b5e",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/plan.json": "88c57a893d13f7e0a1ce973f9ef2a8ff292b16544c9c68efb3ca45deed3ccfd3",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/run/result.json": "ff0f07f8d494c1ce3c024eef89bae276609c11f42d7c90c0fe55c64b9d4c7426",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/run/stdout": "5f018871b372a5f833000662103d7e6a12497bdbee0702ed8af142aab8813707",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/usage.json": "8fb5cbe54c3210be633ece270fb0e7dfbadf632c5bb56807e0794f448d751273",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/verdict-s03-p-codex.json": "2519b8ca17db411ebc46c9a9a12b3b2b636d8be1615944b3cce34c50cdc9355a"
+  },
+  "sources_after": {
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/trace/trace-aa2e8881-88ec-4a24-a30f-3f2c64f0b1ce-01a126a9-f2c1-7ff1-afa9-6a3d0e986414/manifest.json": "a4d316f3ab63297c596111387927892d33a2889a3059e6fa2a1f62759cf3f1df",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/trace/trace-aa2e8881-88ec-4a24-a30f-3f2c64f0b1ce-01a126a9-f2c1-7ff1-afa9-6a3d0e986414/payloads/4.json": "2d82731638ff6f68633246a0b436e1399357acb72d24e075ad464fdbc6e196ca",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/trace/trace-aa2e8881-88ec-4a24-a30f-3f2c64f0b1ce-01a126a9-f2c1-7ff1-afa9-6a3d0e986414/trace.jsonl": "b6a64118ccc0fa74539924217c02f6596359cd247f0dd90df2213ad0756ae957",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/acceptance.json": "68a8dde14ad82698f5591dc656f3130b3f574d035ffa5f9ecf0cffb4055706cf",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/accepted-candidate.diff": "a3ff8d9473ed2d9c3611b4bb2d9850b17f46a9189ab879d03a3a93508c4048eb",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/allocation.json": "b6d4372175fdd8c5880aab5bc14b0b9e119cb77abd2ce028a90fff673209152a",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/allocation.log": "4d6cc6634027d4699f627aa8fd8dcb624996699e7e677227a82eabe79e363ab2",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/caller.sha256": "e548e6df5ed6f021324bd9bade7b4b33c57ab96e0b539fded3039075d1756649",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/candidate-apply.log": "e1495b811b56c716787f5f95e7ca9ecc4e5fdc2ac2f8f84537a6cc7ee1a21777",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/candidate-verification.log": "641620269753e86af91f38a98e865a214c1e602cbcbe034d5e3243eee9e53c25",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/candidate.patch": "a3ff8d9473ed2d9c3611b4bb2d9850b17f46a9189ab879d03a3a93508c4048eb",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/check-predictions.txt": "1c770ca4155fa1b4fd80deeb878f5d8e6e4c40a998bd48edc9b75ad96fa7c310",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/commit-sha.txt": "33902181f2aae07d521ec225eb1f33b308f52cbd15f30382377d7b88b08fa5a9",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/commit.log": "3472b768e4a3ed1a299c9550fdcc85f56c39501d666ae4e817c11d99771818a0",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/delivery-predictions.txt": "9a0ec80043f4c683374a5fe1eea8b75bcfb8f90f7c53258666bc2eb29f9eb6dd",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/diff-check-observation.log": "1f03de0d0b6f053e48538e2c675a18d18a28ecc4d4b0254b72f0d9bafd04f899",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/diff-check-prediction.txt": "f07923bed93aebc9017811eda5a645a1397dee4d0f287a7831c0297b3bea5050",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/fresh-result-metadata.json": "3a9f769bfcfaa33d8cc00d3d8f78c074fd2ca1f18d43aca55808ed264f61dbb0",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/git-config.sha256": "adc37d66df0639c63dc12c31a1224ee184222f261f57550c00e8f2ca673cb34e",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/initial-state.txt": "551d3b0bf867f193169e9dac06639ce68c2702bfc04f2b7fffe203148f4e2d8a",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/launcher-predictions.txt": "92cbcf2ec4dde43d6cf2abb77543877756ae42eeec76c14d2ad4d20683eb168d",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/local-completion.json": "f3f556773b57b2da5b75d0f4f2917169832f5b55459e7d591e1f249ba7481c1d",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/local-completion.log": "2f142b43abd4dfe3d4a8f155f76ce8854cd27ab88555d54c513f88460f895f70",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/local-delivery-observation.txt": "f6cb917ef04ba2cf4f22de0a1fbdc74f78c098180432112b46ac89a55e7699cb",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/operational-verification.json": "b21c9d0d34cc7a255fba719a9e9758fd0c4db266aebee4a5bccdf9d768245821",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/peer-check-predictions.txt": "4408224f68ec3708f2c2eec90919272808c9f30471a72713208358aa9ca42b7f",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/peer-checks.log": "5fff34ca1172e920bcd9059f4d8f876b606bae1a68ac141e36ce3d3024149d8e",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/public-check.log": "f8d86828b10cd78d847d7bd4fff9a60fe1c76974ec96409226e9722b56e45693",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/reconciliation-prediction.txt": "9d0d1b45916b1872b4133ad486cf198bb350175d267e436389edf90bbdd6484b",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/reconciliation.log": "4aa5aabaa36136df4a4d416bdf1c4b032d2ffe6caf54a78f5215800fac0c1392",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/request.md": "8242100c24f0d0cd2498f8edc770e533dcb5231eac68458373a7972f2d2ebeb9",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/resume-request.md": "49e64e68ad3c05aaf148063d70da8317544a4dac3371f41919beeff5afc633d9",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/review1/attempt.json": "d64fe0489523f9408bea8d0a204fe52b19a36986ea2460798e01c767837db682",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/review1/completion.json": "517e8cb6cfd2e5a6f980786c8e4778ad9296bc962e134f7dae9c7c17276b8200",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/review1/finalanswer.txt": "fe360eb5d4b6343b85ed1534b40c7f39230fd6a7389417577cf3bf1a67276753",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/review1/peer1791650168333261717.json": "401f4c7d6e2feccb4359f058afbcb9caa68db43d2a2c7779b34f17dc81aefe3f",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/review1/stderr": "d5d32f57f3724c9a31b904f2208b97e6de4eaf7a0d3ad2cd2e1b7b0bcdad0b9d",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/review2/attempt.json": "9a1bc00f83fae03865000fde122177496973484ae1a87621f2844befaed0861b",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/review2/completion.json": "ce5f71aee4e1fd9b78c7c0786dade97ce01f099254bb49749e0b3f7465801d5e",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/review2/finalanswer.txt": "bc5d3e09a5c3bc7296bed7cec5bbccf3edcca54be2a5c3edc3e848ab5ceb596a",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/review2/peer1791650425576578294.json": "76b13350b1b2f4222136e29c82226637837b792ee2ac59aa7072f206c930af63",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/review2/stderr": "36fee26129fe5a7c646ef1b019fa01eda91cb2342e480a1d85f7093bf69f23f0",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/session-id.txt": "98dd385f88547a6307f441d93521714520c41c7f23688f74f25087cf3dd4e8a1",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.devlyn/pair/source-hashes.json": "f09d5c1c4a6dd2065336e106e408e262954aafc553853b5d0384067233a54c81",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.git/config": "521078aa1e06558ed8cf350c443cd94995e4b2ac1f55026b1238454b7e3b3cad",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/.git/devlyn-completion/24b6efab7793b7e147a65017/receipt.json": "13d231fa023eeaddaa21dfc6a86b512cfda9cb665ae08efe10b81fb3f8da0726",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/calculate_total.py": "79d856d655277ec677178ed674cd566e40ddcafd8c3abe7b956e4e6b121b219a",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/cell/work/test_calculate_total.py": "fa52be76ab405812666d2e043055f96591d2294d34f26688a32858680ebf73b1",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/claude-accounting.json": "b81ce1d15dafde6a445f0835c886609118fcc8bcf8bfc3a6c0f7a57385e468c0",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/final.txt": "f08cfad2b35e4332d118d9d8f997d2b8e76c5f8581f96a96a7e1e27b2dfd655b",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/harness/caller.json": "e43ac83a5059dd5144ae1377ed622b166052edea2c5f9618aa3fcc931bf32c92",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/home/.claude/projects/-cell-work/1007025c-9afd-4539-8461-53b1571e00e9.jsonl": "f4396320820dc2b1c857b6e83ac39cdf2da151d43802bd199e8751be4d6264ec",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/home/.codex/sessions/2026/10/10/rollout-2026-10-10T16-33-54-01a126a9-f2c1-7ff1-afa9-6a3d0e986414.jsonl": "1797336569556967561e380dfe49d8f1cfb376d63814b0cb01c254149fb83136",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/peer-policy.json": "d54ca046ca6519667c4a8c68939fd0275106bf0f1f67ce050e14cb5e43730b5e",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/plan.json": "88c57a893d13f7e0a1ce973f9ef2a8ff292b16544c9c68efb3ca45deed3ccfd3",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/run/result.json": "ff0f07f8d494c1ce3c024eef89bae276609c11f42d7c90c0fe55c64b9d4c7426",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/run/stdout": "5f018871b372a5f833000662103d7e6a12497bdbee0702ed8af142aab8813707",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/s03-p-codex/usage.json": "8fb5cbe54c3210be633ece270fb0e7dfbadf632c5bb56807e0794f448d751273",
+    "/Users/aipalm/.local/share/nx01/0242-live/staged-v1/out-smoke/verdict-s03-p-codex.json": "2519b8ca17db411ebc46c9a9a12b3b2b636d8be1615944b3cce34c50cdc9355a"
+  },
+  "source_integrity_prediction": "All 59 captured report-source hashes remain unchanged.",
+  "source_integrity": {
+    "status": "PASS",
+    "count": 59,
+    "changed": []
+  },
+  "limits": [
+    "No regrade",
+    "Whole-run costs remain lower bounds",
+    "No hidden S2 oracle or post-STOP product grade",
+    "No efficacy claim",
+    "Configured/observed Claude tool restriction, not provider catalog or security-boundary proof",
+    "Root owns accounting-discovery and broad manifest audit"
+  ],
+  "completed_at": "2026-10-10T16:51:48.931824+00:00"
+}

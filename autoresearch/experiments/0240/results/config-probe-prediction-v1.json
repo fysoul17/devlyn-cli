@@ -1,0 +1,18 @@
+{
+  "at": "2026-10-10T15:06:26.150573+00:00",
+  "prediction": "Pinned CLI debug prompt-input can render catalog without inference. Baseline and features.multi_agent=false retain collaboration; documented agents.enabled=false removes it. A parse/login/offline failure is inconclusive, not proof. Network none and no credential mounts ensure no model/auth request. This is diagnosis, not native smoke substitution.",
+  "conditions": [
+    [],
+    [
+      "features.multi_agent=false"
+    ],
+    [
+      "agents.enabled=false"
+    ]
+  ],
+  "docs": [
+    "https://learn.chatgpt.com/docs/config-file/config-reference",
+    "https://learn.chatgpt.com/docs/agent-configuration/subagents"
+  ],
+  "native_help": "codex debug prompt-input: Render the model-visible prompt input list as JSON"
+}

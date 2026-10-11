@@ -1,0 +1,40 @@
+{
+  "id": "CF-CONFIG",
+  "format": "confirmation-v1",
+  "goal": "Fix Beacon config's reload behavior. Our supervisor sees stale settings after a\nshared include changes, and a client's edits to its snapshot have leaked into\nlater reads. Repair include resolution, merging, and snapshot publication to\nhonor the existing format and reload contracts. Shared includes in different\nbranches must work, bad deployments must leave the last good configuration\navailable, and repairing a broken file must allow a later reload to recover.\nKeep the exported APIs and useful ConfigError diagnostics. Run\n`python3 -B checks/run_checks.py` and add focused coverage for the repaired paths.",
+  "language": "python",
+  "runtime": "Python 3.11+ standard library",
+  "visible_files": [
+    "visible/README.md",
+    "visible/beacon/__init__.py",
+    "visible/beacon/document.py",
+    "visible/beacon/errors.py",
+    "visible/beacon/loader.py",
+    "visible/beacon/manager.py",
+    "visible/beacon/merge.py",
+    "visible/beacon/model.py",
+    "visible/beacon/paths.py",
+    "visible/checks/helpers.py",
+    "visible/checks/run_checks.py",
+    "visible/checks/test_format.py",
+    "visible/checks/test_smoke.py",
+    "visible/docs/format.md",
+    "visible/docs/incident.md",
+    "visible/docs/reload.md",
+    "visible/examples/config/app.json",
+    "visible/examples/config/base.json",
+    "visible/examples/show_config.py"
+  ],
+  "public_command": [
+    "python3",
+    "-B",
+    "checks/run_checks.py"
+  ],
+  "oracle_command": [
+    "python3",
+    "-B",
+    "hidden/oracle.py",
+    "<visible-root>"
+  ],
+  "gold_reference": "gold/"
+}

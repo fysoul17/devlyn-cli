@@ -1,0 +1,10 @@
+{
+  "recorded_at": "2026-10-10T10:42:05.448235+00:00",
+  "before_pinned_controls": true,
+  "image": "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998",
+  "boundary": "Docker --init --network none --read-only; fixture read-only; evaluator evidence mount writable; disposable /tmp. No auth/model calls.",
+  "oracle_sha256": "86967bc80597beee6ab6e37c272c0c58ef636498b13f5a31512f233c10323d22",
+  "original_prediction_sha256": "c14520180a23ecc970f302e001db592c09b4d800d55b5152838dabfc773d1a33",
+  "expectations": "All seven fixed controls reproduce host prediction.json: public exit0; baseline1/12; gold, sharing, metadata-open, cycle-wording12/12; shallow negative fails merge+diamond only; rereading negative passes12/12 (known coverage gap). No control/source/oracle edits.",
+  "expected_cleanup": "Named disposable container absent after docker run --rm."
+}

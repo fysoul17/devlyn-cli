@@ -1,0 +1,44 @@
+{
+  "time": "2026-10-10T10:20:31.171266+00:00",
+  "prediction": "All14 targeted local/mock tests pass. New0238 owner run AST is identical to0234 after removing only --init, and still records ended_at/exactargv. The matched0234 native identity/evidence/effort/task rebinding and usage routes remain. Replaying retained positive/noop/deleted check packets preserves their classifier results; no historical evaluator rerun/regrade.",
+  "command": [
+    "python3",
+    "-B",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0238/test_runner.py",
+    "-v",
+    "ApparatusTests.test_matched_modules_and_registered_routes",
+    "ApparatusTests.test_init_owner_preserves_exact_0234_lifecycle_and_evidence",
+    "ApparatusTests.test_init_owner_keeps_native_owner_effort_check",
+    "ApparatusTests.test_init_owner_records_actual_argv_and_retains_pair_timing",
+    "ApparatusTests.test_init_runner_retains_recorded_positive_noop_deleted_classification",
+    "ApparatusTests.test_both_cli_defaults_and_trust_seeded_before_seal",
+    "ApparatusTests.test_zero_peer_is_valid_not_forced_activation",
+    "ApparatusTests.test_codex_peer_child_and_resumed_turn_full_accounting",
+    "ApparatusTests.test_wrong_resume_effort_and_missing_effort_are_rejected",
+    "ApparatusTests.test_claude_each_resume_requires_own_native_effort_message",
+    "ApparatusTests.test_failed_peer_then_resumed_recovery_preserves_cost_without_failing_quality",
+    "ApparatusTests.test_deleted_allowed_cli_is_product_failure_through_full_check",
+    "ApparatusTests.test_f23_preserves_old_rows_and_requires_supplement_exit_contract",
+    "ApparatusTests.test_eq3_evaluator_protocol_is_preserved"
+  ],
+  "sources": {
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0238/runner.py": "80f14a65f9f0e5af89eaca78cf8170cb5d93ba8e35cd6228f4cdd6be51bd0d48",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0238/cell-init-v1.py": "daa0e64da8b745746b1abb4445317b965ce1dca5d385e993379a71e20022266f",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0238/test_runner.py": "4ce6807ed05f88567553f6657bd83be2787c09de7ef17aaa48c4c048f58ec88a",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0234/cell.py": "fabfd55829c2873e06f42abefab598ee8a717e636122a108b03faee0e9e6f0c5",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0234/evidence.py": "595f9018b489034a38c7be61b15e046ec66a393d5ea0c12d9f7e13c8b80de691",
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0234/record_usage.py": "7692df70d31e2bbef1cec23f081e0040eeb7f58dd7b08bd99df7ff6bdb32f164"
+  },
+  "archive": {
+    "manifest": "results/apparatus-v3/manifest.json",
+    "files": {
+      "peer.py": "d500dc6ca46c5ab1528c6d419530ad89094f36443461979c6aa1d27933fa3294",
+      "policy.py": "d02be3a1700c0a78aab0d141580da7eacc97be97a60ea7cfc27e9bd31b154606",
+      "runner.py": "c8d893bc2782d3b2f49d5bb203a471168a897ff80a5291cf0840d9093eba0a5e",
+      "test_peer.py": "c06be9e3fa81275b420f305de76aa686d22bc250d5c165aa0aa959aefff02a27",
+      "test_runner.py": "303fc5abafcd320e4c4636ff49d11a88eb2b6bec718510ef053a23e311fad719",
+      "f23_precision.py": "47124cac8635717d90d22cb5719579e611952e3925ec3ef28a2f678312fe9e89"
+    }
+  },
+  "scope": "No Docker, native CLI or model invocation. Local Git preparation and synthetic native evidence only."
+}

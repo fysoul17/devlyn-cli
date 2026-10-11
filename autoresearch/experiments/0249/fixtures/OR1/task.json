@@ -1,0 +1,49 @@
+{
+  "id": "OR1",
+  "format": "confirmation-v1",
+  "goal": "Fix Folio workspace saves and recovery. Editors have seen local edits leak into snapshots, a failed save leave an editor unusable, and rebase lose unrelated changes. Repair the existing ownership, optimistic commit, and persistence recovery behavior described in docs/contract.md. Keep the public API and run python3 -B checks/run_checks.py; add focused coverage for the repaired paths.",
+  "language": "python",
+  "runtime": "Python 3.11+ standard library",
+  "visible_files": [
+    "visible/README.md",
+    "visible/checks/run_checks.py",
+    "visible/checks/test_smoke.py",
+    "visible/docs/contract.md",
+    "visible/examples/editor.py",
+    "visible/folio/__init__.py",
+    "visible/folio/storage.py",
+    "visible/folio/workspace.py"
+  ],
+  "allowed": [
+    "visible/folio/**",
+    "visible/checks/**"
+  ],
+  "public_command": [
+    "python3",
+    "-B",
+    "checks/run_checks.py"
+  ],
+  "public_checks": [
+    "cd visible && python3 -B checks/run_checks.py"
+  ],
+  "oracle_command": [
+    "python3",
+    "-B",
+    "hidden/oracle.py",
+    "<visible-root>"
+  ],
+  "oracle": [
+    "recursive-ownership-boundaries",
+    "open-transaction-refresh-isolation",
+    "optimistic-conflict-preserves-loser",
+    "disjoint-rebase-preserves-deletions",
+    "overlap-rebase-is-atomic",
+    "absent-delete-retains-write-intent",
+    "failed-save-retry",
+    "failed-read-rebase-recovery",
+    "atomic-backend-conflict-boundary",
+    "closed-lifecycle-and-durable-store"
+  ],
+  "gold_reference": "gold/",
+  "oracle_exit_semantics": "0 = valid per-manifestation result (including product failures); nonzero = oracle/apparatus failure. The 0237 last_json parser discards JSON on nonzero exit."
+}

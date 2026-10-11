@@ -1,0 +1,57 @@
+{
+  "cell": "d07-f23-claude-h",
+  "config": "claude",
+  "arm": "H",
+  "status": "CHECKS_PASS",
+  "usage": "COMPLETE",
+  "input_tokens": 8690338,
+  "output_tokens": 206662,
+  "owner_seconds": 1650.809419874975,
+  "source_check_pass": true,
+  "public_pass": true,
+  "product_check_pass": true,
+  "delivery_pass": true,
+  "oracle": [
+    {
+      "id": "priority-rollback",
+      "status": "PASS"
+    },
+    {
+      "id": "single-warehouse-fefo",
+      "status": "PASS"
+    },
+    {
+      "id": "submillisecond-order",
+      "status": "PASS"
+    },
+    {
+      "id": "offset-equivalence",
+      "status": "PASS"
+    }
+  ],
+  "identity": {
+    "codex_seats": {},
+    "gaps": [],
+    "owner": "MATCH",
+    "owner_launched_sessions": [
+      {
+        "effort": [
+          "max"
+        ],
+        "engine": "claude",
+        "model": [
+          "claude-opus-5-5"
+        ],
+        "session": "569709e8-8a1e-40ab-96b5-a6395fccaf07"
+      }
+    ],
+    "status": "MATCH",
+    "violations": []
+  },
+  "usage_gaps": [],
+  "teardown": "CLEAN",
+  "at": "2026-10-10T22:14:35.889529+00:00",
+  "verdict_sha256": "7d735bf545596ba71eaead04450db3437fc2265e9e316a087a6e5889c58c035c",
+  "independent_audits": "PENDING",
+  "scope": "Observed current-version nativeH outcome. Preserve all historical costs/version limits; peer novelty/whole accounting pending independent audit; no admission claim."
+}

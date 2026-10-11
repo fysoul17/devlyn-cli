@@ -1,0 +1,19 @@
+{
+  "change": "Canonicalize collector out root once with Path.resolve(), matching mapped capture paths before relative labels are computed.",
+  "command": [
+    "python3",
+    "-B",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "autoresearch/experiments/0241",
+    "-p",
+    "test_*.py",
+    "-v"
+  ],
+  "prediction": "All40 pass, including actual absolute-home capture collection and exact missing-carrier label; inherited UNKNOWN and boundary controls unchanged.",
+  "prior_result": "39/40 pass; actual capture collection failed relative_to under macOS /var -> /private/var path alias. Correct mount resolution exposed inconsistent root canonicalization. Raw v1 retained.",
+  "recorded_at": "2026-10-10T15:32:21.308442+00:00",
+  "source_sha256": "6061c388467f9d20f0be3f46f8ff2da08f397f8e3e30c29a57a0edbeb5aac819"
+}

@@ -1,0 +1,17 @@
+{
+  "base_image": "sha256:1ffe879f3f623671e752bdc20b2b9a963714d45da67db6e912dd3f1c7a244fdf",
+  "result_image": "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998",
+  "cli_downloads": [
+    {
+      "name": "codex",
+      "url": "https://registry.npmjs.org/@openai/codex/-/codex-0.162.1-linux-arm64.tgz",
+      "sha256": "a355051d0c296ed50e42e55aceabf74f017f2f96e223fc7ee2199ea8a60cad4b"
+    },
+    {
+      "name": "claude",
+      "url": "https://registry.npmjs.org/@anthropic-ai/claude-code-linux-arm64/-/claude-code-linux-arm64-2.1.296.tgz",
+      "sha256": "56abbe1cfc85e5b37afeef5ae8b4856ddc32bbe443b82689a3b5f99992045cd1"
+    }
+  ],
+  "dockerfile": "FROM devlyn-0231:latest\nUSER 0:0\nCOPY codex/package/vendor/aarch64-unknown-linux-musl /opt/codex\nCOPY claude/package/claude /usr/local/bin/claude\nRUN codex --version && claude --version\nUSER 501:501\nWORKDIR /work\n"
+}

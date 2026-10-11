@@ -1,0 +1,42 @@
+{
+  "commands": [
+    {
+      "command": [
+        "node",
+        "--test",
+        "scripts/test-installer-menu.cjs"
+      ],
+      "exit_code": 0,
+      "record": "accepted-fixes-installer.json",
+      "seconds": 4.179308000006131,
+      "sha256": "3eadd01ddc97f768285ebd299fedae7f001afb8f63ec2f13b3637002d41ab192"
+    },
+    {
+      "command": [
+        "bash",
+        "scripts/lint-skills.sh"
+      ],
+      "exit_code": 0,
+      "record": "accepted-fixes-lint.json",
+      "seconds": 170.25671537499875,
+      "sha256": "440fb33e351ae8f7f311f0b0acea380133f051bd32251f4e94b0ebb3fc2e2990"
+    },
+    {
+      "command": [
+        "python3",
+        "scripts/test-ideate-loop.py"
+      ],
+      "exit_code": 0,
+      "record": "accepted-fixes-loop.json",
+      "seconds": 375.8213669999968,
+      "sha256": "673645bfc4c7545dd396d8b7a1a93c8639bb56aac0f92acc294a5c926ea97f8e"
+    }
+  ],
+  "note": "Existing portability checks validate admitted helper/doc fixes. No 0239 instruction or 0238 pair candidate is adopted.",
+  "source_sha256": {
+    ".agents/skills/_shared/task-complete.py": "60e101dd720348207a6001432a2b6f66f3c861846b1e768af5456804a402ac8a",
+    ".agents/skills/_shared/task-completion.md": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733",
+    "config/skills/_shared/task-complete.py": "60e101dd720348207a6001432a2b6f66f3c861846b1e768af5456804a402ac8a",
+    "config/skills/_shared/task-completion.md": "6466c18211c9bcea62dc3f72f2c4e2c745f86ce6eb08a12e1146dc4e9a0c4733"
+  }
+}

@@ -1,0 +1,273 @@
+{
+  "at": "2026-10-10T20:55:55.200750+00:00",
+  "checks": {
+    "actual_Runner_inputs_exact": true,
+    "actual_operationalP_catalog_matches_measured_expectation": true,
+    "all_control_hashes_and_inventory_match": true,
+    "all_frozen_hashes_match": true,
+    "both0247_operational_audits_PASS_bound": true,
+    "exact_counts": true,
+    "exact_six_cell_order": true,
+    "execution_inputs_only_runtime_location_changed_from_0247": true,
+    "four_histories_once_exact_proof": true,
+    "freeze_sha_exact": true,
+    "history_d01-f23-claude-s_original": true,
+    "history_d02-f23-codex-p_original": true,
+    "history_d03-f23-claude-a_original": true,
+    "history_d04-f23-codex-h_original": true,
+    "history_selection_preserves_negative_results": true,
+    "measured_catalogs_explicit_and_unchanged": true,
+    "measured_output_empty": true,
+    "old_0243_d02-f23-codex-p_STOP_ungraded": true,
+    "old_0246_d05-f23-claude-p_STOP_ungraded": true,
+    "operational_raw_verdict_seal_manifest_unchanged": true,
+    "operational_result_COMPLETE_and_gates_MATCH": true,
+    "prior_audits_unchanged": true,
+    "protocol_native_shape_claim_bounded": true,
+    "public_oracle_controls_exact0246": true,
+    "registration_review_exact_SHIP": true,
+    "report_outside_frozen_set": true,
+    "required_gate_and_proof_artifacts_directly_bound": true,
+    "reuse38_bindings_match": true,
+    "reuse_proof23_PASS_exact": true,
+    "routes_watchdogs_assessors_and_F23_exact": true,
+    "runtime_semantics_unchanged": true,
+    "runtime_sha_exact": true,
+    "scope_no_mutation_before_after": true,
+    "selected_packages_and_metadata_exact": true,
+    "seven_integration_baseline_inputs_exact": true,
+    "tasks_exact0245": true
+  },
+  "completion": "Final input audit complete; no native owner or model work dispatched by auditor. Idle before dispatch. Supported-auth preflight and each native outcome remain prospective.",
+  "control_counts": {
+    "oracle": 26,
+    "packages": 969,
+    "public": 64
+  },
+  "findings": [],
+  "freeze": {
+    "actual_Runner_inputs_exact": true,
+    "execution_inputs": 117,
+    "path": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/results/freeze-measured-v1.json",
+    "runtime_sha256": "08d1c7439f03cb982dee6fd5f768e5398b72c8fb13db5dfb7dc4ca67b14d85bd",
+    "selected_artifacts": 481,
+    "sha256_after": "fe56d027d72d8c25b14fbe5b07ad71afe3cfa50ed336e27c89f5be8a10976256",
+    "sha256_before": "fe56d027d72d8c25b14fbe5b07ad71afe3cfa50ed336e27c89f5be8a10976256",
+    "unique_bound_files": 568
+  },
+  "historical_reused_cells": [
+    {
+      "arm": "S",
+      "engine": "claude",
+      "experiment": "0243",
+      "input_tokens": 6020526,
+      "name": "d01-f23-claude-s",
+      "original_verified": true,
+      "output_tokens": 154630,
+      "owner_seconds": 1360.3888264999841,
+      "raw_verdict_path": "/Users/aipalm/.local/share/nx01/0243-live/staged-v1/out-measured/verdict-d01-f23-claude-s.json",
+      "read_only_inventory_exact": true,
+      "retained_unchanged": true,
+      "single_count": true,
+      "startup_catalog_exact": true,
+      "status": "CHECKS_PASS",
+      "usage": "COMPLETE",
+      "verdict_sha256": "dc50789bcb12813d57e53ea14cd66203b938a6e1d91d40804b598347f5c1db89"
+    },
+    {
+      "arm": "P",
+      "engine": "codex",
+      "experiment": "0246",
+      "input_tokens": 632441,
+      "name": "d02-f23-codex-p",
+      "original_verified": true,
+      "output_tokens": 19184,
+      "owner_seconds": 404.69662925001467,
+      "raw_verdict_path": "/Users/aipalm/.local/share/nx01/0246-live/out-measured/verdict-d02-f23-codex-p.json",
+      "read_only_inventory_exact": true,
+      "retained_unchanged": true,
+      "single_count": true,
+      "startup_catalog_exact": true,
+      "status": "PRODUCT_INCOMPLETE",
+      "usage": "COMPLETE",
+      "verdict_sha256": "4dd81587abbb27528ccc70a594d0e5cb6dd5a7a31aa8fd33a7fa499a600c7dc9"
+    },
+    {
+      "arm": "A",
+      "engine": "claude",
+      "experiment": "0246",
+      "input_tokens": 3441785,
+      "name": "d03-f23-claude-a",
+      "original_verified": true,
+      "output_tokens": 93953,
+      "owner_seconds": 825.7604531670222,
+      "raw_verdict_path": "/Users/aipalm/.local/share/nx01/0246-live/out-measured/verdict-d03-f23-claude-a.json",
+      "read_only_inventory_exact": true,
+      "retained_unchanged": true,
+      "single_count": true,
+      "startup_catalog_exact": true,
+      "status": "CHECKS_PASS",
+      "usage": "COMPLETE",
+      "verdict_sha256": "6f1f0b98a4d84a6a009a634bd1a49576b7ce14358324f85fbc0f08082feb69af"
+    },
+    {
+      "arm": "H",
+      "engine": "codex",
+      "experiment": "0246",
+      "input_tokens": 558535,
+      "name": "d04-f23-codex-h",
+      "original_verified": true,
+      "output_tokens": 20603,
+      "owner_seconds": 429.060545040993,
+      "raw_verdict_path": "/Users/aipalm/.local/share/nx01/0246-live/out-measured/verdict-d04-f23-codex-h.json",
+      "read_only_inventory_exact": true,
+      "retained_unchanged": true,
+      "single_count": true,
+      "startup_catalog_exact": true,
+      "status": "PRODUCT_INCOMPLETE",
+      "usage": "COMPLETE",
+      "verdict_sha256": "662087c33d44095cd708e7060926ec22420ae92580f477669108de8efe32045a"
+    }
+  ],
+  "new_cell_order": [
+    {
+      "arm": "P",
+      "config": "claude",
+      "name": "d05-f23-claude-p",
+      "task": "F23"
+    },
+    {
+      "arm": "B",
+      "config": "codex",
+      "name": "d06-f23-codex-b",
+      "task": "F23"
+    },
+    {
+      "arm": "H",
+      "config": "claude",
+      "name": "d07-f23-claude-h",
+      "task": "F23"
+    },
+    {
+      "arm": "A",
+      "config": "codex",
+      "name": "d08-f23-codex-a",
+      "task": "F23"
+    },
+    {
+      "arm": "B",
+      "config": "claude",
+      "name": "d09-f23-claude-b",
+      "task": "F23"
+    },
+    {
+      "arm": "S",
+      "config": "codex",
+      "name": "d10-f23-codex-s",
+      "task": "F23"
+    }
+  ],
+  "old_STOPs_preserved": [
+    {
+      "experiment": "0243",
+      "input_tokens": null,
+      "known_usage_lower_bound": {
+        "input_tokens": 1796844,
+        "output_tokens": 69638
+      },
+      "name": "d02-f23-codex-p",
+      "no_regrade": true,
+      "output_tokens": null,
+      "owner_seconds": 807.6238686249999,
+      "status": "STOP",
+      "usage": "PARTIAL",
+      "verdict_sha256": "5dae1c69e1c90024962e08aacc7524598b7e2f4944b9429b370725ad6456f51b"
+    },
+    {
+      "experiment": "0246",
+      "input_tokens": 12316264,
+      "known_usage_lower_bound": null,
+      "name": "d05-f23-claude-p",
+      "no_regrade": true,
+      "output_tokens": 196529,
+      "owner_seconds": 2138.6585267500195,
+      "status": "STOP",
+      "usage": "COMPLETE",
+      "verdict_sha256": "d7f1de56e6d2f0d7ead917788099c1586848a6ea80506e75256e4318a5ba1c6e"
+    }
+  ],
+  "operational_acceptance": {
+    "actual_startup_init_count": 1,
+    "input_tokens": 5238939,
+    "integrity_report_sha256": "5be1ebaf7d5d7492fd8eb462a05144c1ac8bf63077e10f92efba739c98cc4582",
+    "native_regression_pathology_exercised": false,
+    "no_replayed_tests": true,
+    "output_tokens": 119409,
+    "owner_seconds": 1169.6533141669934,
+    "protocol_json_sha256": "a2a5d10d418bac8f1b413b096422b27ca458da20b1f9bb5b66c4c76dfab4afed",
+    "protocol_md_sha256": "1afbe0f8ddb2f1aad1f64e51a46ed742ea978157edeed98fed278150636b2805",
+    "raw_verdict_sha256": "bbda248a6f880af26ca9cafacea202c261b5cd6936102479d7a34d27fa8af923",
+    "status": "CHECKS_PASS",
+    "tests_retained": 32,
+    "usage": "COMPLETE"
+  },
+  "package_archives": {
+    "B": "edca612f3873fe154c1855d54788d7c097a9d88e97912bc9b36ba755b71aed53",
+    "H": "32a8c1cf219565eca41fcb3df9026a3a4d603f1c8143ab4573f84903f9d0cb56",
+    "P": "823b1d0cae53e7134de8308f22026a68ffc530741563a7bfb8977aaace661d35",
+    "S": "e01b32c0b15541fc1d887d13e80e0edd9e83f9b97023948762b13ae5276e2bff"
+  },
+  "prediction": {
+    "prediction": "All 117 execution inputs and 481 selected artifact hashes match the announced immutable freeze and actual 0247 Runner inputs. Both 0247 operational audits are PASS and bound; exactly four historical observations are reused once, preserving old STOPs/costs. Six new measured cells retain registered order and explicit catalog/route/control gates; output remains empty.",
+    "recorded_at": "2026-10-10T20:54:40.831176+00:00"
+  },
+  "reuse": {
+    "bindings": 38,
+    "checks": 23,
+    "scope": "Only verify recorded applicability proof and its binding hashes; no parser inventory/evaluator/outcome replay.",
+    "status": "PASS"
+  },
+  "runtime_scope": {
+    "auth_margin_seconds": 6300,
+    "auth_operations": false,
+    "changed_keys_from0246": [
+      "auth",
+      "control",
+      "output",
+      "scratch",
+      "tasks_file"
+    ],
+    "image": "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998",
+    "measured_claude_catalog_arms": [
+      "A",
+      "B",
+      "H",
+      "P",
+      "S"
+    ],
+    "owner_route": {
+      "effort": "max",
+      "engine": "claude",
+      "model": "claude-opus-5-5"
+    },
+    "peer_watchdog_seconds": 540,
+    "phase": "measured",
+    "resources": "Inherited frozen --init/PID256/memory4g/CPU2",
+    "watchdogs": {
+      "assessor": 600,
+      "evaluator": 600,
+      "owner": 5400,
+      "review": 600
+    }
+  },
+  "schema": "0248-independent-dispatch-freeze-audit-v1",
+  "scope": "Read-only final dispatch input/binding audit. No model/native/auth operations, test/install/evaluator replay, source grading, outcome re-evaluation or prior audit modification.",
+  "source_integrity": {
+    "changed": [],
+    "unchanged_unique_bound_files": 568
+  },
+  "status": "PASS",
+  "writes": [
+    "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0248/results/freeze-audit-v1.json"
+  ]
+}

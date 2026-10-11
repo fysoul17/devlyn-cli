@@ -1,0 +1,250 @@
+{
+  "schema": "0249-conditional-native-order-v1",
+  "registered_at": "2026-10-10T23:38:41.173706+00:00",
+  "dispatch_authorized": false,
+  "note": "Fixed conditional order; final registration, review, freeze and independent audit still required. No token, spending or call-cost budget. No further repetitions after a nonadvancing result. Machinery/accounting/auth/identity STOP closes the active block and leaves remaining cells unrun.",
+  "blocks": [
+    {
+      "id": "OR1",
+      "condition": "FINAL_REVIEW_FREEZE_AUDIT_PASS",
+      "cells": [
+        {
+          "name": "d01-or1-codex-b",
+          "task": "OR1",
+          "config": "codex",
+          "arm": "B",
+          "repetition": 1,
+          "role": "ADMISSION_COMPARISON"
+        },
+        {
+          "name": "d02-or1-claude-s",
+          "task": "OR1",
+          "config": "claude",
+          "arm": "S",
+          "repetition": 1,
+          "role": "ADMISSION_COMPARISON"
+        },
+        {
+          "name": "d03-or1-codex-a",
+          "task": "OR1",
+          "config": "codex",
+          "arm": "A",
+          "repetition": null,
+          "role": "DESCRIPTIVE_REFERENCE"
+        },
+        {
+          "name": "d04-or1-claude-b",
+          "task": "OR1",
+          "config": "claude",
+          "arm": "B",
+          "repetition": 1,
+          "role": "ADMISSION_COMPARISON"
+        },
+        {
+          "name": "d05-or1-codex-s",
+          "task": "OR1",
+          "config": "codex",
+          "arm": "S",
+          "repetition": 1,
+          "role": "ADMISSION_COMPARISON"
+        },
+        {
+          "name": "d06-or1-claude-a",
+          "task": "OR1",
+          "config": "claude",
+          "arm": "A",
+          "repetition": null,
+          "role": "DESCRIPTIVE_REFERENCE"
+        },
+        {
+          "name": "d07-or1-claude-b",
+          "task": "OR1",
+          "config": "claude",
+          "arm": "B",
+          "repetition": 2,
+          "role": "ADMISSION_COMPARISON"
+        },
+        {
+          "name": "d08-or1-codex-s",
+          "task": "OR1",
+          "config": "codex",
+          "arm": "S",
+          "repetition": 2,
+          "role": "ADMISSION_COMPARISON"
+        },
+        {
+          "name": "d09-or1-claude-s",
+          "task": "OR1",
+          "config": "claude",
+          "arm": "S",
+          "repetition": 2,
+          "role": "ADMISSION_COMPARISON"
+        },
+        {
+          "name": "d10-or1-codex-b",
+          "task": "OR1",
+          "config": "codex",
+          "arm": "B",
+          "repetition": 2,
+          "role": "ADMISSION_COMPARISON"
+        }
+      ]
+    },
+    {
+      "id": "OR2",
+      "condition": "BOTH_ENGINES_OR1_PASS",
+      "cells": [
+        {
+          "name": "d11-or2-codex-s",
+          "task": "OR2",
+          "config": "codex",
+          "arm": "S",
+          "repetition": 1,
+          "role": "ADMISSION_COMPARISON"
+        },
+        {
+          "name": "d12-or2-claude-b",
+          "task": "OR2",
+          "config": "claude",
+          "arm": "B",
+          "repetition": 1,
+          "role": "ADMISSION_COMPARISON"
+        },
+        {
+          "name": "d13-or2-codex-a",
+          "task": "OR2",
+          "config": "codex",
+          "arm": "A",
+          "repetition": null,
+          "role": "DESCRIPTIVE_REFERENCE"
+        },
+        {
+          "name": "d14-or2-claude-s",
+          "task": "OR2",
+          "config": "claude",
+          "arm": "S",
+          "repetition": 1,
+          "role": "ADMISSION_COMPARISON"
+        },
+        {
+          "name": "d15-or2-codex-b",
+          "task": "OR2",
+          "config": "codex",
+          "arm": "B",
+          "repetition": 1,
+          "role": "ADMISSION_COMPARISON"
+        },
+        {
+          "name": "d16-or2-claude-a",
+          "task": "OR2",
+          "config": "claude",
+          "arm": "A",
+          "repetition": null,
+          "role": "DESCRIPTIVE_REFERENCE"
+        },
+        {
+          "name": "d17-or2-claude-s",
+          "task": "OR2",
+          "config": "claude",
+          "arm": "S",
+          "repetition": 2,
+          "role": "ADMISSION_COMPARISON"
+        },
+        {
+          "name": "d18-or2-codex-b",
+          "task": "OR2",
+          "config": "codex",
+          "arm": "B",
+          "repetition": 2,
+          "role": "ADMISSION_COMPARISON"
+        },
+        {
+          "name": "d19-or2-claude-b",
+          "task": "OR2",
+          "config": "claude",
+          "arm": "B",
+          "repetition": 2,
+          "role": "ADMISSION_COMPARISON"
+        },
+        {
+          "name": "d20-or2-codex-s",
+          "task": "OR2",
+          "config": "codex",
+          "arm": "S",
+          "repetition": 2,
+          "role": "ADMISSION_COMPARISON"
+        }
+      ]
+    },
+    {
+      "id": "CONTROLS",
+      "condition": "BOTH_ENGINES_OR1_AND_OR2_PASS",
+      "cells": [
+        {
+          "name": "d21-e1-claude-b",
+          "task": "E1",
+          "config": "claude",
+          "arm": "B",
+          "repetition": 1,
+          "role": "NONREGRESSION_CONTROL"
+        },
+        {
+          "name": "d22-e1-claude-s",
+          "task": "E1",
+          "config": "claude",
+          "arm": "S",
+          "repetition": 1,
+          "role": "NONREGRESSION_CONTROL"
+        },
+        {
+          "name": "d23-e1-codex-s",
+          "task": "E1",
+          "config": "codex",
+          "arm": "S",
+          "repetition": 1,
+          "role": "NONREGRESSION_CONTROL"
+        },
+        {
+          "name": "d24-e1-codex-b",
+          "task": "E1",
+          "config": "codex",
+          "arm": "B",
+          "repetition": 1,
+          "role": "NONREGRESSION_CONTROL"
+        },
+        {
+          "name": "d25-b5-codex-b",
+          "task": "B5",
+          "config": "codex",
+          "arm": "B",
+          "repetition": 1,
+          "role": "NONREGRESSION_CONTROL"
+        },
+        {
+          "name": "d26-b5-codex-s",
+          "task": "B5",
+          "config": "codex",
+          "arm": "S",
+          "repetition": 1,
+          "role": "NONREGRESSION_CONTROL"
+        },
+        {
+          "name": "d27-b5-claude-s",
+          "task": "B5",
+          "config": "claude",
+          "arm": "S",
+          "repetition": 1,
+          "role": "NONREGRESSION_CONTROL"
+        },
+        {
+          "name": "d28-b5-claude-b",
+          "task": "B5",
+          "config": "claude",
+          "arm": "B",
+          "repetition": 1,
+          "role": "NONREGRESSION_CONTROL"
+        }
+      ]
+    }
+  ]
+}

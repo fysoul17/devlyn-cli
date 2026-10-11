@@ -1,0 +1,91 @@
+{
+  "checks": {
+    "evidence": {
+      "count": 2052,
+      "mismatches": []
+    },
+    "inputs": {
+      "count": 102,
+      "mismatches": []
+    },
+    "prepared": {
+      "count": 5,
+      "mismatches": []
+    },
+    "selected_artifacts": {
+      "count": 171,
+      "mismatches": []
+    }
+  },
+  "completed_at": "2026-10-10T18:00:32.348772+00:00",
+  "controls_unchanged": true,
+  "freeze_sha256": "a86c0b479204bcb54bd7bc53457cd88797a47e18ed1d74cbac231d4789478825",
+  "original_verdict": {
+    "delivery_pass": true,
+    "input_tokens": 6020526,
+    "measurement_eligible": true,
+    "oracle": [
+      {
+        "id": "priority-rollback",
+        "status": "PASS"
+      },
+      {
+        "id": "single-warehouse-fefo",
+        "status": "PASS"
+      },
+      {
+        "id": "submillisecond-order",
+        "status": "PASS"
+      },
+      {
+        "id": "offset-equivalence",
+        "status": "PASS"
+      }
+    ],
+    "output_tokens": 154630,
+    "owner_seconds": 1360.3888264999841,
+    "public_pass": true,
+    "source_check_pass": true,
+    "status": "CHECKS_PASS",
+    "teardown": "CLEAN",
+    "usage": "COMPLETE"
+  },
+  "prediction": {
+    "at": "2026-10-10T18:00:32.060753+00:00",
+    "prediction": "All frozen inputs/selected artifacts, prepared and raw evidence hashes match; controls remain unchanged; exact container and temporary volume are absent. Native CHECKS_PASS/COMPLETE remains unchanged."
+  },
+  "scope": "Root read-only integrity check; no behavioral regrade, native call or repeated test.",
+  "status": "PASS",
+  "teardown_observations": [
+    {
+      "argv": [
+        "docker",
+        "container",
+        "ls",
+        "--all",
+        "--filter",
+        "name=devlyn-0231-d06e98cb04404897b7f8f8bf47a09696",
+        "--format",
+        "{{.Names}}"
+      ],
+      "exit_code": 0,
+      "stderr": "",
+      "stdout": ""
+    },
+    {
+      "argv": [
+        "docker",
+        "volume",
+        "ls",
+        "--filter",
+        "name=devlyn-0234-tmp-fe4734d4913c411f9830ca83ed84e2d2",
+        "--format",
+        "{{.Name}}"
+      ],
+      "exit_code": 0,
+      "stderr": "",
+      "stdout": ""
+    }
+  ],
+  "verdict_sha256": "dc50789bcb12813d57e53ea14cd66203b938a6e1d91d40804b598347f5c1db89"
+}

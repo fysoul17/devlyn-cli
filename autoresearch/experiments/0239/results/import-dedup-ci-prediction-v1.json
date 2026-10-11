@@ -1,0 +1,33 @@
+{
+  "at": "2026-10-10T12:28:22.153941+00:00",
+  "prediction": "Locked clean install and required local POSIX checks pass with bundled Marked parser; accepted delivery fixes and unchanged ideate loop behavior remain intact. Native Windows execution is not claimed.",
+  "commands": {
+    "dependencies": [
+      "npm",
+      "ci",
+      "--ignore-scripts",
+      "--no-audit",
+      "--no-fund"
+    ],
+    "installer": [
+      "node",
+      "--test",
+      "scripts/test-installer-menu.cjs"
+    ],
+    "lint": [
+      "bash",
+      "scripts/lint-skills.sh"
+    ],
+    "loop": [
+      "python3",
+      "-B",
+      "scripts/test-ideate-loop.py"
+    ]
+  },
+  "input_sha256": {
+    "bin/instructions.js": "90678570811b3e89dac7ec8c81ec33167ab46891fcfa22861f894930d49abec0",
+    "package.json": "ffaaffe502f9c77faa7c0e3dfa2c261373e15ff907d15acf16e96bc604919c07",
+    "package-lock.json": "673daed9c547a038027950cfd31a1fa2144639982a8299a37184d5f0d2c7ae8d",
+    "scripts/test-windows-portability.py": "262c1a041bfab0ebb87265968df87513c54cd7bc2fca6665b7d926f6f65e6c5e"
+  }
+}

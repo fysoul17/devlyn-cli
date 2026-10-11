@@ -1,0 +1,186 @@
+{
+  "assessment": "NOT_REQUESTED",
+  "at": "2026-10-10T17:29:03.242029+00:00",
+  "container_absent": true,
+  "control_manifest_sha256": "4d2ef593ac4b6abc5d5b50223c59d32d5c0e7e906eb73d1032c7a1eebdea9e0b",
+  "delivery_pass": true,
+  "efficacy": "NOT_MEASURED_OPERATIONAL_SMOKE_ONLY",
+  "evidence_manifest_collection_failures": [],
+  "evidence_manifest_matches_verdict": true,
+  "evidence_manifest_sha256": "11a137adcb418e5333ef67f52b876e3d228e4319deaee37b0225efc9b00265ae",
+  "expected_identity_checks": {
+    "evidence_manifest": {
+      "actual": "11a137adcb418e5333ef67f52b876e3d228e4319deaee37b0225efc9b00265ae",
+      "expected": "11a137adcb418e5333ef67f52b876e3d228e4319deaee37b0225efc9b00265ae",
+      "matches": true,
+      "path": "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/s01-p-codex/evidence.manifest.json"
+    },
+    "freeze": {
+      "actual": "2f9b904a28440bcc7343a9126dfa6f763be58331860e48e3ea5a6d2cd3e947f1",
+      "expected": "2f9b904a28440bcc7343a9126dfa6f763be58331860e48e3ea5a6d2cd3e947f1",
+      "matches": true,
+      "path": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0244/results/freeze-smoke-v1.json"
+    },
+    "runtime": {
+      "actual": "e201a1c3f7bb8634cc99a00000a483bdb20e9b64c0e1292ddc6d1428ec85389c",
+      "expected": "e201a1c3f7bb8634cc99a00000a483bdb20e9b64c0e1292ddc6d1428ec85389c",
+      "matches": true,
+      "path": "/Users/aipalm/.local/share/nx01/0244-live/runtime-smoke.json"
+    }
+  },
+  "freeze_sha256": "2f9b904a28440bcc7343a9126dfa6f763be58331860e48e3ea5a6d2cd3e947f1",
+  "identity_status": "MATCH",
+  "independent_observations": [],
+  "input_tokens": 1326755,
+  "integrity": {
+    "control": {
+      "count": 1059,
+      "mismatches": []
+    },
+    "evidence": {
+      "count": 1065,
+      "mismatches": []
+    },
+    "execution_inputs": {
+      "count": 102,
+      "mismatches": []
+    },
+    "prepared": {
+      "count": 5,
+      "mismatches": []
+    },
+    "selected_artifacts": {
+      "count": 72,
+      "mismatches": []
+    }
+  },
+  "integrity_status": "PASS",
+  "measurement_eligible": false,
+  "native_config_identity": {
+    "create_argv_contains_expected_image": true,
+    "create_argv_equal_started_record": true,
+    "docker_image_inspect_matches": true,
+    "image_bindings_match": true,
+    "native_identity_gaps": [],
+    "native_identity_status": "MATCH",
+    "native_identity_violations": [],
+    "owner_config_matches": true,
+    "owner_selection": {
+      "config": "codex",
+      "effort": "max",
+      "engine": "codex",
+      "model": "gpt-6-astra"
+    },
+    "peer_selection_matches": true,
+    "plan_image": "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998",
+    "run_identity_equal_verdict": true,
+    "runtime_image": "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998",
+    "seal_image": "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998",
+    "sealed_claude_selection": {
+      "effortLevel": "max",
+      "model": "claude-opus-5-5"
+    },
+    "sealed_codex_selection": {
+      "model": "gpt-6-astra",
+      "model_reasoning_effort": "max"
+    }
+  },
+  "not_dispatched_records": {
+    "copies_equal": true,
+    "files": {
+      "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0244/results/not-dispatched-s01-p-codex.json": "c765dd0cf5e778038e02863fbe46143428c9d250e31e844663b9edc400a12c0f",
+      "/Users/aipalm/.local/share/nx01/0244-live/out-smoke/not-dispatched-s01-p-codex.json": "c765dd0cf5e778038e02863fbe46143428c9d250e31e844663b9edc400a12c0f"
+    },
+    "retained_unchanged": true
+  },
+  "output_tokens": 61134,
+  "owner_seconds": 688.6771035840211,
+  "owner_status": "EXITED_0",
+  "peer_policy_status": "MATCH",
+  "peer_protocol_violations": [],
+  "prediction": {
+    "prediction": "All 102 execution inputs,72 selected artifacts,5 prepared files, every evidence manifest entry and1059 control files match their recorded hashes. Runtime/freeze/evidence manifest identities match the supplied immutable hashes; sealed native image and configuration identities agree. The exact run container and temporary volume are absent. CHECKS_PASS/COMPLETE verdict and retained not-dispatched records remain byte-identical. No native calls, tests, usage replay or regrade are performed.",
+    "recorded_at": "2026-10-10T17:28:08.648006+00:00"
+  },
+  "product_check_pass": true,
+  "protocol_report": {
+    "path": "autoresearch/experiments/0244/results/s01-native-protocol-audit.md",
+    "scope": "Independent source/request/native-protocol observations; this report only audits retained integrity and preserves the original operational verdict.",
+    "status": "PENDING_INDEPENDENT_AUDIT"
+  },
+  "public_pass": true,
+  "runtime_hash_equal_freeze": true,
+  "scope": "Read-only independent integrity audit; no native call, check execution, usage replay, product regrade or historical edit.",
+  "seal_inputs_equal_freeze": true,
+  "seal_sha256": "01586bdacec04e460f239c56d3efde1a60a0ec6d2426c9e102cb633fccea5cd8",
+  "source_check_pass": true,
+  "status": "CHECKS_PASS",
+  "teardown": "CLEAN",
+  "teardown_and_image_observations": [
+    {
+      "command": [
+        "docker",
+        "container",
+        "ls",
+        "--all",
+        "--filter",
+        "name=devlyn-0231-f4b60958b4f444d493de137c33fbc5c6",
+        "--format",
+        "{{.Names}}"
+      ],
+      "returncode": 0,
+      "stderr": "",
+      "stdout": ""
+    },
+    {
+      "command": [
+        "docker",
+        "volume",
+        "ls",
+        "--filter",
+        "name=devlyn-0234-tmp-f6e428308fb74070b95631493d04970e",
+        "--format",
+        "{{.Name}}"
+      ],
+      "returncode": 0,
+      "stderr": "",
+      "stdout": ""
+    },
+    {
+      "command": [
+        "docker",
+        "image",
+        "inspect",
+        "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998",
+        "--format",
+        "{{.Id}}"
+      ],
+      "returncode": 0,
+      "stderr": "",
+      "stdout": "sha256:0f472bb41685b7daa5923d51d31983f4b3c70053dd773fdf712bd0dcd6d87998\n"
+    }
+  ],
+  "turns": [
+    {
+      "engine": "claude",
+      "exit_code": 0,
+      "mode": "fresh",
+      "seconds": 374.50967158700223,
+      "session": "0bac0e05-98d8-487a-a11a-26a8df35ef2b",
+      "source_unchanged": true
+    },
+    {
+      "engine": "claude",
+      "exit_code": 0,
+      "mode": "resume",
+      "seconds": 9.820799588000227,
+      "session": "0bac0e05-98d8-487a-a11a-26a8df35ef2b",
+      "source_unchanged": true
+    }
+  ],
+  "usage": "COMPLETE",
+  "usage_gaps": [],
+  "verdict_sha256": "8cdb102e66c66fde2c7c9e8ce73386e5fb640c198a5dfc08dcc79eebd5a466e5",
+  "verdict_unchanged_after_audit": true,
+  "volume_absent": true
+}

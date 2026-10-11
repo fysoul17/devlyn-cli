@@ -1,0 +1,248 @@
+{
+  "OR1": {
+    "all_contract_quotes_exact": true,
+    "map_ids_match_task": true,
+    "gold_changed_files": [
+      "folio/workspace.py"
+    ],
+    "raw_records": [
+      {
+        "file": "OR1.baseline.oracle.json",
+        "exit_code": 0,
+        "source_unchanged": true,
+        "keys": [
+          "command",
+          "cwd",
+          "started_at",
+          "ended_at",
+          "exit_code",
+          "stdout",
+          "stderr",
+          "source_sha256",
+          "source_unchanged",
+          "prediction_sha256"
+        ]
+      },
+      {
+        "file": "OR1.baseline.public.json",
+        "exit_code": 0,
+        "source_unchanged": true,
+        "keys": [
+          "command",
+          "cwd",
+          "started_at",
+          "ended_at",
+          "exit_code",
+          "stdout",
+          "stderr",
+          "source_sha256",
+          "source_unchanged",
+          "prediction_sha256"
+        ]
+      },
+      {
+        "file": "OR1.consumer.json",
+        "exit_code": 0,
+        "source_unchanged": null,
+        "keys": [
+          "command",
+          "cwd",
+          "exit_code",
+          "stdout",
+          "stderr"
+        ]
+      },
+      {
+        "file": "OR1.fault.oracle.json",
+        "exit_code": 0,
+        "source_unchanged": true,
+        "keys": [
+          "command",
+          "cwd",
+          "started_at",
+          "ended_at",
+          "exit_code",
+          "stdout",
+          "stderr",
+          "source_sha256",
+          "source_unchanged",
+          "prediction_sha256"
+        ]
+      },
+      {
+        "file": "OR1.fault.public.json",
+        "exit_code": 0,
+        "source_unchanged": true,
+        "keys": [
+          "command",
+          "cwd",
+          "started_at",
+          "ended_at",
+          "exit_code",
+          "stdout",
+          "stderr",
+          "source_sha256",
+          "source_unchanged",
+          "prediction_sha256"
+        ]
+      },
+      {
+        "file": "OR1.gold.oracle.json",
+        "exit_code": 0,
+        "source_unchanged": true,
+        "keys": [
+          "command",
+          "cwd",
+          "started_at",
+          "ended_at",
+          "exit_code",
+          "stdout",
+          "stderr",
+          "source_sha256",
+          "source_unchanged",
+          "prediction_sha256"
+        ]
+      },
+      {
+        "file": "OR1.gold.public.json",
+        "exit_code": 0,
+        "source_unchanged": true,
+        "keys": [
+          "command",
+          "cwd",
+          "started_at",
+          "ended_at",
+          "exit_code",
+          "stdout",
+          "stderr",
+          "source_sha256",
+          "source_unchanged",
+          "prediction_sha256"
+        ]
+      }
+    ]
+  },
+  "OR2": {
+    "all_contract_quotes_exact": true,
+    "map_ids_match_task": true,
+    "gold_changed_files": [
+      "relay/loader.py"
+    ],
+    "raw_records": [
+      {
+        "file": "OR2.baseline.oracle.json",
+        "exit_code": 0,
+        "source_unchanged": true,
+        "keys": [
+          "command",
+          "cwd",
+          "started_at",
+          "ended_at",
+          "exit_code",
+          "stdout",
+          "stderr",
+          "source_sha256",
+          "source_unchanged",
+          "prediction_sha256"
+        ]
+      },
+      {
+        "file": "OR2.baseline.public.json",
+        "exit_code": 0,
+        "source_unchanged": true,
+        "keys": [
+          "command",
+          "cwd",
+          "started_at",
+          "ended_at",
+          "exit_code",
+          "stdout",
+          "stderr",
+          "source_sha256",
+          "source_unchanged",
+          "prediction_sha256"
+        ]
+      },
+      {
+        "file": "OR2.consumer.json",
+        "exit_code": 0,
+        "source_unchanged": null,
+        "keys": [
+          "command",
+          "cwd",
+          "exit_code",
+          "stdout",
+          "stderr"
+        ]
+      },
+      {
+        "file": "OR2.fault.oracle.json",
+        "exit_code": 0,
+        "source_unchanged": true,
+        "keys": [
+          "command",
+          "cwd",
+          "started_at",
+          "ended_at",
+          "exit_code",
+          "stdout",
+          "stderr",
+          "source_sha256",
+          "source_unchanged",
+          "prediction_sha256"
+        ]
+      },
+      {
+        "file": "OR2.fault.public.json",
+        "exit_code": 0,
+        "source_unchanged": true,
+        "keys": [
+          "command",
+          "cwd",
+          "started_at",
+          "ended_at",
+          "exit_code",
+          "stdout",
+          "stderr",
+          "source_sha256",
+          "source_unchanged",
+          "prediction_sha256"
+        ]
+      },
+      {
+        "file": "OR2.gold.oracle.json",
+        "exit_code": 0,
+        "source_unchanged": true,
+        "keys": [
+          "command",
+          "cwd",
+          "started_at",
+          "ended_at",
+          "exit_code",
+          "stdout",
+          "stderr",
+          "source_sha256",
+          "source_unchanged",
+          "prediction_sha256"
+        ]
+      },
+      {
+        "file": "OR2.gold.public.json",
+        "exit_code": 0,
+        "source_unchanged": true,
+        "keys": [
+          "command",
+          "cwd",
+          "started_at",
+          "ended_at",
+          "exit_code",
+          "stdout",
+          "stderr",
+          "source_sha256",
+          "source_unchanged",
+          "prediction_sha256"
+        ]
+      }
+    ]
+  }
+}

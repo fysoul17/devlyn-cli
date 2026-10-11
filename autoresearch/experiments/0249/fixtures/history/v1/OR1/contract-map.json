@@ -1,0 +1,211 @@
+{
+  "scope": "Only public APIs, public backend protocol, files addressed through public FileStore(path), and asyncio events/futures are exercised. No private implementation state is read or altered.",
+  "manifestations": [
+    {
+      "id": "recursive-ownership-boundaries",
+      "contract": [
+        {
+          "path": "visible/docs/contract.md",
+          "start_line": 9,
+          "end_line": 13,
+          "quote": "C1 \u2014 Ownership. Every returned Snapshot and every transaction `get(name)` result\nis a detached recursive copy. Mutating it never changes a transaction, workspace,\nbackend, or another returned value. `put(name, document)` captures a recursive\ncopy when called, including nested lists/dictionaries. Earlier snapshots retain\ntheir values after later operations. Missing `get` raises `KeyError`."
+        },
+        {
+          "path": "visible/docs/contract.md",
+          "start_line": 15,
+          "end_line": 20,
+          "quote": "C2 \u2014 Views. `Workspace(store)` reads the backend once. `snapshot()` reports that\nhandle's last known committed state. `begin()` starts an independent transaction\nfrom that state, including its revision. Transactions read their own writes and\ndeletes. A transaction's staged edits stay private until it commits. `refresh()`\nreads the backend and replaces that handle's committed view; it does not modify\nany open transaction. A failed refresh preserves the previous committed view."
+        }
+      ]
+    },
+    {
+      "id": "open-transaction-refresh-isolation",
+      "contract": [
+        {
+          "path": "visible/docs/contract.md",
+          "start_line": 15,
+          "end_line": 20,
+          "quote": "C2 \u2014 Views. `Workspace(store)` reads the backend once. `snapshot()` reports that\nhandle's last known committed state. `begin()` starts an independent transaction\nfrom that state, including its revision. Transactions read their own writes and\ndeletes. A transaction's staged edits stay private until it commits. `refresh()`\nreads the backend and replaces that handle's committed view; it does not modify\nany open transaction. A failed refresh preserves the previous committed view."
+        },
+        {
+          "path": "visible/docs/contract.md",
+          "start_line": 56,
+          "end_line": 59,
+          "quote": "C6 \u2014 Lifecycle. `delete(name)` removes that name if present. `rollback()` discards\nthe transaction and closes it without updating the handle or backend. After a\nsuccessful commit or rollback, `get`, `put`, `delete`, `commit`, `rebase`, and\n`rollback` all raise `TransactionClosed`. Other open transactions remain usable."
+        }
+      ]
+    },
+    {
+      "id": "optimistic-conflict-preserves-loser",
+      "contract": [
+        {
+          "path": "visible/docs/contract.md",
+          "start_line": 15,
+          "end_line": 20,
+          "quote": "C2 \u2014 Views. `Workspace(store)` reads the backend once. `snapshot()` reports that\nhandle's last known committed state. `begin()` starts an independent transaction\nfrom that state, including its revision. Transactions read their own writes and\ndeletes. A transaction's staged edits stay private until it commits. `refresh()`\nreads the backend and replaces that handle's committed view; it does not modify\nany open transaction. A failed refresh preserves the previous committed view."
+        },
+        {
+          "path": "visible/docs/contract.md",
+          "start_line": 22,
+          "end_line": 29,
+          "quote": "C3 \u2014 Atomic optimistic commit. `commit()` submits the whole staged document set\nagainst the transaction's base revision. A successful commit publishes precisely\nthat set, increments the store revision once, updates the owning handle, returns\na detached Snapshot, and closes the transaction. Any intervening committed\nrevision, including a commit through another handle, raises `ConflictError` with\nthe base and current revisions without changing backend, handle, or transaction.\nThe losing transaction remains open, preserving its staged edits for rebase or\nrollback. A no-edit commit is still a commit and increments the revision."
+        },
+        {
+          "path": "visible/docs/contract.md",
+          "start_line": 31,
+          "end_line": 40,
+          "quote": "C4 \u2014 Rebase. `rebase()` reads the latest backend and reapplies this transaction's\nexplicitly touched names over it. A name is touched by any `put` or `delete`,\nincluding deleting an absent name. If the latest presence/value of any touched\nname differs from its presence/value at the transaction's base, raise\n`RebaseConflict` listing all such names. Compare presence as well as value.\nUnrelated changes are merged; untouched deletions stay deleted. Successful\nrebase updates the transaction's base and the owning handle's committed view,\nkeeps staged edits uncommitted, and returns the latest committed Snapshot.\nA conflict or storage failure changes none of those states and leaves the\ntransaction open. A successful rebase alone never writes to the backend."
+        }
+      ]
+    },
+    {
+      "id": "disjoint-rebase-preserves-deletions",
+      "contract": [
+        {
+          "path": "visible/docs/contract.md",
+          "start_line": 9,
+          "end_line": 13,
+          "quote": "C1 \u2014 Ownership. Every returned Snapshot and every transaction `get(name)` result\nis a detached recursive copy. Mutating it never changes a transaction, workspace,\nbackend, or another returned value. `put(name, document)` captures a recursive\ncopy when called, including nested lists/dictionaries. Earlier snapshots retain\ntheir values after later operations. Missing `get` raises `KeyError`."
+        },
+        {
+          "path": "visible/docs/contract.md",
+          "start_line": 22,
+          "end_line": 29,
+          "quote": "C3 \u2014 Atomic optimistic commit. `commit()` submits the whole staged document set\nagainst the transaction's base revision. A successful commit publishes precisely\nthat set, increments the store revision once, updates the owning handle, returns\na detached Snapshot, and closes the transaction. Any intervening committed\nrevision, including a commit through another handle, raises `ConflictError` with\nthe base and current revisions without changing backend, handle, or transaction.\nThe losing transaction remains open, preserving its staged edits for rebase or\nrollback. A no-edit commit is still a commit and increments the revision."
+        },
+        {
+          "path": "visible/docs/contract.md",
+          "start_line": 31,
+          "end_line": 40,
+          "quote": "C4 \u2014 Rebase. `rebase()` reads the latest backend and reapplies this transaction's\nexplicitly touched names over it. A name is touched by any `put` or `delete`,\nincluding deleting an absent name. If the latest presence/value of any touched\nname differs from its presence/value at the transaction's base, raise\n`RebaseConflict` listing all such names. Compare presence as well as value.\nUnrelated changes are merged; untouched deletions stay deleted. Successful\nrebase updates the transaction's base and the owning handle's committed view,\nkeeps staged edits uncommitted, and returns the latest committed Snapshot.\nA conflict or storage failure changes none of those states and leaves the\ntransaction open. A successful rebase alone never writes to the backend."
+        }
+      ]
+    },
+    {
+      "id": "overlap-rebase-is-atomic",
+      "contract": [
+        {
+          "path": "visible/docs/contract.md",
+          "start_line": 31,
+          "end_line": 40,
+          "quote": "C4 \u2014 Rebase. `rebase()` reads the latest backend and reapplies this transaction's\nexplicitly touched names over it. A name is touched by any `put` or `delete`,\nincluding deleting an absent name. If the latest presence/value of any touched\nname differs from its presence/value at the transaction's base, raise\n`RebaseConflict` listing all such names. Compare presence as well as value.\nUnrelated changes are merged; untouched deletions stay deleted. Successful\nrebase updates the transaction's base and the owning handle's committed view,\nkeeps staged edits uncommitted, and returns the latest committed Snapshot.\nA conflict or storage failure changes none of those states and leaves the\ntransaction open. A successful rebase alone never writes to the backend."
+        },
+        {
+          "path": "visible/docs/contract.md",
+          "start_line": 56,
+          "end_line": 59,
+          "quote": "C6 \u2014 Lifecycle. `delete(name)` removes that name if present. `rollback()` discards\nthe transaction and closes it without updating the handle or backend. After a\nsuccessful commit or rollback, `get`, `put`, `delete`, `commit`, `rebase`, and\n`rollback` all raise `TransactionClosed`. Other open transactions remain usable."
+        }
+      ]
+    },
+    {
+      "id": "absent-delete-retains-write-intent",
+      "contract": [
+        {
+          "path": "visible/docs/contract.md",
+          "start_line": 31,
+          "end_line": 40,
+          "quote": "C4 \u2014 Rebase. `rebase()` reads the latest backend and reapplies this transaction's\nexplicitly touched names over it. A name is touched by any `put` or `delete`,\nincluding deleting an absent name. If the latest presence/value of any touched\nname differs from its presence/value at the transaction's base, raise\n`RebaseConflict` listing all such names. Compare presence as well as value.\nUnrelated changes are merged; untouched deletions stay deleted. Successful\nrebase updates the transaction's base and the owning handle's committed view,\nkeeps staged edits uncommitted, and returns the latest committed Snapshot.\nA conflict or storage failure changes none of those states and leaves the\ntransaction open. A successful rebase alone never writes to the backend."
+        },
+        {
+          "path": "visible/docs/contract.md",
+          "start_line": 56,
+          "end_line": 59,
+          "quote": "C6 \u2014 Lifecycle. `delete(name)` removes that name if present. `rollback()` discards\nthe transaction and closes it without updating the handle or backend. After a\nsuccessful commit or rollback, `get`, `put`, `delete`, `commit`, `rebase`, and\n`rollback` all raise `TransactionClosed`. Other open transactions remain usable."
+        }
+      ]
+    },
+    {
+      "id": "failed-save-retry",
+      "contract": [
+        {
+          "path": "visible/docs/contract.md",
+          "start_line": 22,
+          "end_line": 29,
+          "quote": "C3 \u2014 Atomic optimistic commit. `commit()` submits the whole staged document set\nagainst the transaction's base revision. A successful commit publishes precisely\nthat set, increments the store revision once, updates the owning handle, returns\na detached Snapshot, and closes the transaction. Any intervening committed\nrevision, including a commit through another handle, raises `ConflictError` with\nthe base and current revisions without changing backend, handle, or transaction.\nThe losing transaction remains open, preserving its staged edits for rebase or\nrollback. A no-edit commit is still a commit and increments the revision."
+        },
+        {
+          "path": "visible/docs/contract.md",
+          "start_line": 42,
+          "end_line": 54,
+          "quote": "C5 \u2014 Persistence and retry. A backend implements `read() -> Snapshot` and\n`compare_and_swap(expected_revision, documents) -> Snapshot`. Reads return a\nself-consistent committed version. Compare-and-swap either commits the complete\nnew version atomically or raises `ConflictError`/`StorageError` without committing\nanything. Returned/input objects are caller-owned and not retained by the\nbackend. Implementations may raise `StorageError` before any operation completes;\nthe workspace must propagate it, keep its last good committed view, and keep a\nfailed transaction's base and staged edits intact. Retrying the same transaction\nafter recovery is supported. The workspace calls the backend's atomic operation;\nan earlier read is not a substitute for its revision check. `FileStore(path)`\nimplements this protocol: missing file means revision 0 and empty documents,\nseparate FileStore objects see the same file, committed data survives reopening,\nand unreadable/malformed files raise StorageError without replacing their bytes."
+        }
+      ]
+    },
+    {
+      "id": "failed-read-rebase-recovery",
+      "contract": [
+        {
+          "path": "visible/docs/contract.md",
+          "start_line": 15,
+          "end_line": 20,
+          "quote": "C2 \u2014 Views. `Workspace(store)` reads the backend once. `snapshot()` reports that\nhandle's last known committed state. `begin()` starts an independent transaction\nfrom that state, including its revision. Transactions read their own writes and\ndeletes. A transaction's staged edits stay private until it commits. `refresh()`\nreads the backend and replaces that handle's committed view; it does not modify\nany open transaction. A failed refresh preserves the previous committed view."
+        },
+        {
+          "path": "visible/docs/contract.md",
+          "start_line": 31,
+          "end_line": 40,
+          "quote": "C4 \u2014 Rebase. `rebase()` reads the latest backend and reapplies this transaction's\nexplicitly touched names over it. A name is touched by any `put` or `delete`,\nincluding deleting an absent name. If the latest presence/value of any touched\nname differs from its presence/value at the transaction's base, raise\n`RebaseConflict` listing all such names. Compare presence as well as value.\nUnrelated changes are merged; untouched deletions stay deleted. Successful\nrebase updates the transaction's base and the owning handle's committed view,\nkeeps staged edits uncommitted, and returns the latest committed Snapshot.\nA conflict or storage failure changes none of those states and leaves the\ntransaction open. A successful rebase alone never writes to the backend."
+        },
+        {
+          "path": "visible/docs/contract.md",
+          "start_line": 42,
+          "end_line": 54,
+          "quote": "C5 \u2014 Persistence and retry. A backend implements `read() -> Snapshot` and\n`compare_and_swap(expected_revision, documents) -> Snapshot`. Reads return a\nself-consistent committed version. Compare-and-swap either commits the complete\nnew version atomically or raises `ConflictError`/`StorageError` without committing\nanything. Returned/input objects are caller-owned and not retained by the\nbackend. Implementations may raise `StorageError` before any operation completes;\nthe workspace must propagate it, keep its last good committed view, and keep a\nfailed transaction's base and staged edits intact. Retrying the same transaction\nafter recovery is supported. The workspace calls the backend's atomic operation;\nan earlier read is not a substitute for its revision check. `FileStore(path)`\nimplements this protocol: missing file means revision 0 and empty documents,\nseparate FileStore objects see the same file, committed data survives reopening,\nand unreadable/malformed files raise StorageError without replacing their bytes."
+        }
+      ]
+    },
+    {
+      "id": "atomic-backend-conflict-boundary",
+      "contract": [
+        {
+          "path": "visible/docs/contract.md",
+          "start_line": 22,
+          "end_line": 29,
+          "quote": "C3 \u2014 Atomic optimistic commit. `commit()` submits the whole staged document set\nagainst the transaction's base revision. A successful commit publishes precisely\nthat set, increments the store revision once, updates the owning handle, returns\na detached Snapshot, and closes the transaction. Any intervening committed\nrevision, including a commit through another handle, raises `ConflictError` with\nthe base and current revisions without changing backend, handle, or transaction.\nThe losing transaction remains open, preserving its staged edits for rebase or\nrollback. A no-edit commit is still a commit and increments the revision."
+        },
+        {
+          "path": "visible/docs/contract.md",
+          "start_line": 31,
+          "end_line": 40,
+          "quote": "C4 \u2014 Rebase. `rebase()` reads the latest backend and reapplies this transaction's\nexplicitly touched names over it. A name is touched by any `put` or `delete`,\nincluding deleting an absent name. If the latest presence/value of any touched\nname differs from its presence/value at the transaction's base, raise\n`RebaseConflict` listing all such names. Compare presence as well as value.\nUnrelated changes are merged; untouched deletions stay deleted. Successful\nrebase updates the transaction's base and the owning handle's committed view,\nkeeps staged edits uncommitted, and returns the latest committed Snapshot.\nA conflict or storage failure changes none of those states and leaves the\ntransaction open. A successful rebase alone never writes to the backend."
+        },
+        {
+          "path": "visible/docs/contract.md",
+          "start_line": 42,
+          "end_line": 54,
+          "quote": "C5 \u2014 Persistence and retry. A backend implements `read() -> Snapshot` and\n`compare_and_swap(expected_revision, documents) -> Snapshot`. Reads return a\nself-consistent committed version. Compare-and-swap either commits the complete\nnew version atomically or raises `ConflictError`/`StorageError` without committing\nanything. Returned/input objects are caller-owned and not retained by the\nbackend. Implementations may raise `StorageError` before any operation completes;\nthe workspace must propagate it, keep its last good committed view, and keep a\nfailed transaction's base and staged edits intact. Retrying the same transaction\nafter recovery is supported. The workspace calls the backend's atomic operation;\nan earlier read is not a substitute for its revision check. `FileStore(path)`\nimplements this protocol: missing file means revision 0 and empty documents,\nseparate FileStore objects see the same file, committed data survives reopening,\nand unreadable/malformed files raise StorageError without replacing their bytes."
+        }
+      ]
+    },
+    {
+      "id": "closed-lifecycle-and-durable-store",
+      "contract": [
+        {
+          "path": "visible/docs/contract.md",
+          "start_line": 15,
+          "end_line": 20,
+          "quote": "C2 \u2014 Views. `Workspace(store)` reads the backend once. `snapshot()` reports that\nhandle's last known committed state. `begin()` starts an independent transaction\nfrom that state, including its revision. Transactions read their own writes and\ndeletes. A transaction's staged edits stay private until it commits. `refresh()`\nreads the backend and replaces that handle's committed view; it does not modify\nany open transaction. A failed refresh preserves the previous committed view."
+        },
+        {
+          "path": "visible/docs/contract.md",
+          "start_line": 22,
+          "end_line": 29,
+          "quote": "C3 \u2014 Atomic optimistic commit. `commit()` submits the whole staged document set\nagainst the transaction's base revision. A successful commit publishes precisely\nthat set, increments the store revision once, updates the owning handle, returns\na detached Snapshot, and closes the transaction. Any intervening committed\nrevision, including a commit through another handle, raises `ConflictError` with\nthe base and current revisions without changing backend, handle, or transaction.\nThe losing transaction remains open, preserving its staged edits for rebase or\nrollback. A no-edit commit is still a commit and increments the revision."
+        },
+        {
+          "path": "visible/docs/contract.md",
+          "start_line": 42,
+          "end_line": 54,
+          "quote": "C5 \u2014 Persistence and retry. A backend implements `read() -> Snapshot` and\n`compare_and_swap(expected_revision, documents) -> Snapshot`. Reads return a\nself-consistent committed version. Compare-and-swap either commits the complete\nnew version atomically or raises `ConflictError`/`StorageError` without committing\nanything. Returned/input objects are caller-owned and not retained by the\nbackend. Implementations may raise `StorageError` before any operation completes;\nthe workspace must propagate it, keep its last good committed view, and keep a\nfailed transaction's base and staged edits intact. Retrying the same transaction\nafter recovery is supported. The workspace calls the backend's atomic operation;\nan earlier read is not a substitute for its revision check. `FileStore(path)`\nimplements this protocol: missing file means revision 0 and empty documents,\nseparate FileStore objects see the same file, committed data survives reopening,\nand unreadable/malformed files raise StorageError without replacing their bytes."
+        },
+        {
+          "path": "visible/docs/contract.md",
+          "start_line": 56,
+          "end_line": 59,
+          "quote": "C6 \u2014 Lifecycle. `delete(name)` removes that name if present. `rollback()` discards\nthe transaction and closes it without updating the handle or backend. After a\nsuccessful commit or rollback, `get`, `put`, `delete`, `commit`, `rebase`, and\n`rollback` all raise `TransactionClosed`. Other open transactions remain usable."
+        }
+      ]
+    }
+  ]
+}

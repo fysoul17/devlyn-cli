@@ -1,0 +1,46 @@
+{
+  "registered_at": "2026-10-10T01:51:05.411978+00:00",
+  "experiment": "local-control-v1",
+  "rationale": "Predictions registered before any baseline, gold, public, or hidden execution. Both baselines should pass their public smoke suites; baseline hidden outcomes below follow static inspection of deliberately defective production code. All gold hidden manifestations and public suites should pass.",
+  "tasks": {
+    "CF-LEASE": {
+      "public_baseline": "pass",
+      "public_gold": "pass",
+      "gold_hidden": "all pass",
+      "baseline": {
+        "expiry-boundary": false,
+        "expired-unclaimed-settlement": false,
+        "stale-receipt-reopen": false,
+        "idempotent-producer-every-state": false,
+        "retry-lifecycle-clean-settlement": false,
+        "eligibility-and-stable-order": true,
+        "independent-concurrent-claims": true,
+        "worker-success-after-takeover": false,
+        "worker-failure-after-takeover": false,
+        "retry-uses-settlement-clock": false,
+        "settlement-errors-not-handler-errors": false,
+        "process-interruption-retains-lease": true,
+        "invalid-input-no-mutation": true
+      }
+    },
+    "CF-CONFIG": {
+      "public_baseline": "pass",
+      "public_gold": "pass",
+      "gold_hidden": "all pass",
+      "baseline": {
+        "recursive-merge-value-kinds": false,
+        "relative-diamond-layer-order": false,
+        "transitive-change-same-size-and-mtime": false,
+        "nested-caller-isolation": false,
+        "semantic-generation-current-dependencies": false,
+        "failed-reload-preserves-and-recovers": false,
+        "failed-first-load-no-cache-poisoning": false,
+        "deleted-dependency-repair": false,
+        "canonical-cycle-after-success": false,
+        "shared-file-once-per-load": false,
+        "independent-root-dependency-accuracy": false,
+        "schema-errors-retain-include-chain": true
+      }
+    }
+  }
+}

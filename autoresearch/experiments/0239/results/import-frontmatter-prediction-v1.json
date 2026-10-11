@@ -1,0 +1,6 @@
+{
+  "at": "2026-10-10T12:29:13.610278+00:00",
+  "prediction": "Candidate v1 incorrectly recognizes the frontmatter-only mention as a body import; this would omit its own block. Native2.1.296 strips bounded frontmatter before import lexing.",
+  "source": "---\nnote: \"Read @AGENTS.md for team rules.\"\n---\n\nUse pnpm.\n",
+  "input_sha256": "90678570811b3e89dac7ec8c81ec33167ab46891fcfa22861f894930d49abec0"
+}

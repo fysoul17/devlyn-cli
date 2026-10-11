@@ -1,0 +1,8 @@
+{
+  "time": "2026-10-10T04:40:57.255457+00:00",
+  "completed_cell": "f01-CF-CONFIG-codex-B-r1",
+  "not_dispatched_cell": "f02-CF-CONFIG-claude-C-r1",
+  "reason": "Inherited preflight reported Claude token lifetime6031s below6300s. No model dispatched for f02.",
+  "recovery": "Standard claude auth login --claudeai launched; user browser authentication requested. No guard or credential timestamp change.",
+  "resume_rule": "Retain completed f01 and original not-dispatched record; preserve remaining arm order and assign a separately identified f02 retry after a valid same-account preflight."
+}

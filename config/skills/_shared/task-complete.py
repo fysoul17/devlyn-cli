@@ -439,6 +439,17 @@ def removable(receipt, work):
     stopped_writers(work)
 
 
+def linux_process_status(process):
+    # One opened status file is bound to that process, not a reused PID.
+    # A zombie leader can still have living sibling threads.
+    try:
+        return dict(line.split(":", 1) for line in (process / "status").read_text(encoding="utf-8").splitlines() if ":" in line)
+    except (FileNotFoundError, ProcessLookupError):
+        raise
+    except (OSError, UnicodeError) as exc:
+        raise WritersUnobservable("unknown process status; retain tree until writer cessation can be established") from exc
+
+
 def stopped_writers(work):
     outside(work)
     # The owner assertion covers its actual children; an OS observation catches
@@ -463,15 +474,22 @@ def stopped_writers(work):
                     try:
                         target = Path(os.readlink(link))
                     except FileNotFoundError:
-                        if link == process / "cwd":
-                            break
+                        if link == process / "cwd" and linux_process_status(process).get("Threads", "").strip() != "1":
+                            raise WritersUnobservable("unknown process thread access; retain tree until writer cessation can be established")
                         continue
                     if target.is_absolute() and target.is_relative_to(work):
                         raise WriterActive(f"active process {process.name} uses task files; stop/yield it before resume")
-            except FileNotFoundError:
+            except (FileNotFoundError, ProcessLookupError):
                 continue  # Process exited during observation.
             except PermissionError as exc:
-                raise WritersUnobservable("unknown process access; retain tree until writer cessation can be established") from exc
+                reason = "unknown process access; retain tree until writer cessation can be established"
+                try:
+                    status = linux_process_status(process)
+                except (FileNotFoundError, ProcessLookupError) as error:
+                    raise WritersUnobservable(reason) from error
+                if status.get("State", "").strip() == "Z (zombie)" and status.get("Threads", "").strip() == "1":
+                    continue
+                raise WritersUnobservable(reason) from exc
     else:
         raise WritersUnobservable("writer observation unsupported on this platform; retain workspace")
 
@@ -1133,6 +1151,119 @@ class CompletionTests(unittest.TestCase):
         with patch.object(sys, "platform", "linux"), patch.object(Path, "iterdir", entries), patch.object(os, "readlink", target):
             with self.assertRaisesRegex(WriterActive, "active process " + process.name):
                 stopped_writers(self.work)
+
+    def linux_unobservable_process(self, status, *, missing_cwd=False, active_fd=False):
+        from unittest.mock import patch
+        process = Path("/proc") / str(os.getpid() + 1)
+        original_entries, original_text, original_link = Path.iterdir, Path.read_text, os.readlink
+        def entries(path):
+            if path == Path("/proc"):
+                return iter([process])
+            if path == process / "fd":
+                if missing_cwd:
+                    return iter([process / "fd/3"] if active_fd else [])
+                raise PermissionError(path)
+            return original_entries(path)
+        def text(path, *args, **kwargs):
+            if path == process / "status":
+                if isinstance(status, Exception):
+                    raise status
+                return status
+            return original_text(path, *args, **kwargs)
+        def link(path, *args, **kwargs):
+            if path == process / "cwd":
+                raise FileNotFoundError(path)
+            if path == process / "fd/3":
+                return str(self.work / "product")
+            return original_link(path, *args, **kwargs)
+        with patch.object(sys, "platform", "linux"), patch.object(Path, "iterdir", entries), patch.object(Path, "read_text", text), patch.object(os, "readlink", link):
+            stopped_writers(self.work)
+
+    def test_linux_writer_scan_accepts_confirmed_single_thread_zombie(self):
+        self.linux_unobservable_process("Name:\tgit\nState:\tZ (zombie)\nThreads:\t1\n")
+
+    def test_linux_writer_scan_retains_denied_live_or_threaded_process(self):
+        # The leader may be Z after pthread_exit while sibling threads write.
+        for state, threads in (("Z (zombie)", "2"), ("R (running)", "1"), ("S (sleeping)", "1"), ("T (stopped)", "1")):
+            with self.subTest(state=state, threads=threads):
+                with self.assertRaises(WritersUnobservable):
+                    self.linux_unobservable_process(f"State:\t{state}\nThreads:\t{threads}\n")
+
+    def test_linux_writer_scan_retains_unknown_zombie_status(self):
+        for status in ("", "State:\tZ (zombie)\n", "Threads:\t1\n", "State:\tZ (zombie)\nThreads:\tunknown\n",
+                       PermissionError("status denied"), FileNotFoundError("exited before terminal evidence")):
+            with self.subTest(status=str(status)):
+                with self.assertRaises(WritersUnobservable):
+                    self.linux_unobservable_process(status)
+
+    def test_linux_missing_cwd_checks_threads_and_remaining_fds(self):
+        self.linux_unobservable_process("State:\tZ (zombie)\nThreads:\t1\n", missing_cwd=True)
+        self.linux_unobservable_process(FileNotFoundError("process exited"), missing_cwd=True)
+        self.linux_unobservable_process("State:\tS (sleeping)\nThreads:\t1\n", missing_cwd=True)
+        with self.assertRaises(WriterActive):
+            self.linux_unobservable_process("State:\tS (sleeping)\nThreads:\t1\n", missing_cwd=True, active_fd=True)
+        for status in ("State:\tZ (zombie)\nThreads:\t2\n", "State:\tS (sleeping)\nThreads:\t2\n", ""):
+            with self.subTest(status=status):
+                with self.assertRaises(WritersUnobservable):
+                    self.linux_unobservable_process(status, missing_cwd=True)
+
+    @unittest.skipUnless(sys.platform.startswith("linux"), "requires Linux proc and unreaped child")
+    def test_linux_real_zombie_allows_only_attested_scratch_cleanup(self):
+        scratch = Path(self.allocate()["scratch"])
+        (scratch / "artifact").write_text("rebuildable")
+        child = os.fork()
+        if child == 0:
+            os._exit(0)
+        try:
+            os.waitid(os.P_PID, child, os.WEXITED | os.WNOWAIT)
+            state = (Path("/proc") / str(child) / "status").read_text()
+            self.assertRegex(state, r"State:\s+Z \(zombie\)")
+            self.assertRegex(state, r"Threads:\s+1\n")
+            result, _ = self.cli("clean-scratch", "--receipt", self.receipt, success=False)
+            self.assertIn("--writers-stopped", result["reason"])
+            self.assertTrue((scratch / "artifact").exists())
+            result, _ = self.cli("clean-scratch", "--receipt", self.receipt, "--writers-stopped")
+            self.assertEqual(result["status"], "SCRATCH_CLEAN")
+            self.assertFalse(any(scratch.iterdir()))
+        finally:
+            os.waitpid(child, 0)
+
+    @unittest.skipUnless(sys.platform.startswith("linux"), "requires Linux pthread leader state")
+    def test_linux_real_zombie_leader_retains_live_sibling_writer(self):
+        import time
+        scratch = Path(self.allocate()["scratch"])
+        heartbeat = scratch / "heartbeat"
+        code = """import ctypes, pathlib, sys, threading, time
+path = pathlib.Path(sys.argv[1])
+def worker():
+    with path.open('w') as stream:
+        while True:
+            stream.write('x'); stream.flush(); time.sleep(.01)
+threading.Thread(target=worker).start()
+ctypes.CDLL(None).pthread_exit(None)
+"""
+        child = subprocess.Popen([sys.executable, "-c", code, str(heartbeat)], cwd=self.root)
+        try:
+            deadline = time.monotonic() + 5
+            while time.monotonic() < deadline:
+                status = (Path("/proc") / str(child.pid) / "status").read_text()
+                if re.search(r"State:\s+Z \(zombie\)", status) and heartbeat.exists():
+                    break
+                time.sleep(.01)
+            else:
+                self.fail("threaded zombie fixture did not become ready")
+            self.assertRegex(status, r"Threads:\s+2\n")
+            before = heartbeat.stat().st_size
+            result, _ = self.cli("clean-scratch", "--receipt", self.receipt, "--writers-stopped", success=False)
+            self.assertIn("unknown process", result["reason"])
+            self.assertTrue(heartbeat.exists())
+            deadline = time.monotonic() + 5
+            while heartbeat.stat().st_size <= before and time.monotonic() < deadline:
+                time.sleep(.01)
+            self.assertGreater(heartbeat.stat().st_size, before)
+        finally:
+            child.kill()
+            child.wait(timeout=5)
 
     @unittest.skipUnless(sys.platform == "darwin" or sys.platform.startswith("linux"), "writer observation requires POSIX")
     def test_scratch_rejects_redirect_and_git_data_but_does_not_follow_child_links(self):

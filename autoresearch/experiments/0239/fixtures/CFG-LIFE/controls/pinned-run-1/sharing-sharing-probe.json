@@ -1,0 +1,12 @@
+{
+  "command": [
+    "/usr/local/bin/python3",
+    "-B",
+    "-c",
+    "from beacon.merge import merge; base={\"kept\": [1]}; later={\"new\": [2]}; result=merge(base,later); assert result[\"kept\"] is base[\"kept\"]; assert result[\"new\"] is later[\"new\"]; assert base=={\"kept\":[1]} and later=={\"new\":[2]}; print(\"internal input lists shared; merge did not mutate inputs\")"
+  ],
+  "cwd": "/tmp/cfg-life-control-pxahm77o/work",
+  "returncode": 0,
+  "stdout": "internal input lists shared; merge did not mutate inputs\n",
+  "stderr": ""
+}

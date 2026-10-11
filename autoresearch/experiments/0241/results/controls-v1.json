@@ -1,0 +1,159 @@
+{
+  "F23_task_identical": true,
+  "at": "2026-10-10T15:36:15.978216+00:00",
+  "evaluate_and_prepare_inherited_unmodified": true,
+  "installed_bindings": [
+    {
+      "arm": "H",
+      "config": "claude",
+      "matches": true,
+      "path": ".agents/skills/_shared/peer.py",
+      "sha256": "379fd2890b402ba9351d9a922ce0e11dcb33fe986bb095a191fb354e4246c96b"
+    },
+    {
+      "arm": "H",
+      "config": "claude",
+      "matches": true,
+      "path": ".agents/skills/_shared/pair.md",
+      "sha256": "e8b73b4edda4b2476605a34b2535ee79085f09883256950fcde49556d668ff84"
+    },
+    {
+      "arm": "H",
+      "config": "claude",
+      "matches": true,
+      "path": ".agents/skills/_shared/platform-support.py",
+      "sha256": "a8e1472b792000bd21ef5d359eba2ae49555adcc198198f2625b51ebb94bbc66"
+    },
+    {
+      "arm": "H",
+      "config": "claude",
+      "matches": true,
+      "path": ".claude/skills/_shared/peer.py",
+      "sha256": "379fd2890b402ba9351d9a922ce0e11dcb33fe986bb095a191fb354e4246c96b"
+    },
+    {
+      "arm": "H",
+      "config": "claude",
+      "matches": true,
+      "path": ".claude/skills/_shared/pair.md",
+      "sha256": "e8b73b4edda4b2476605a34b2535ee79085f09883256950fcde49556d668ff84"
+    },
+    {
+      "arm": "H",
+      "config": "claude",
+      "matches": true,
+      "path": ".claude/skills/_shared/platform-support.py",
+      "sha256": "a8e1472b792000bd21ef5d359eba2ae49555adcc198198f2625b51ebb94bbc66"
+    },
+    {
+      "arm": "H",
+      "config": "codex",
+      "matches": true,
+      "path": ".agents/skills/_shared/peer.py",
+      "sha256": "379fd2890b402ba9351d9a922ce0e11dcb33fe986bb095a191fb354e4246c96b"
+    },
+    {
+      "arm": "H",
+      "config": "codex",
+      "matches": true,
+      "path": ".agents/skills/_shared/pair.md",
+      "sha256": "e8b73b4edda4b2476605a34b2535ee79085f09883256950fcde49556d668ff84"
+    },
+    {
+      "arm": "H",
+      "config": "codex",
+      "matches": true,
+      "path": ".agents/skills/_shared/platform-support.py",
+      "sha256": "a8e1472b792000bd21ef5d359eba2ae49555adcc198198f2625b51ebb94bbc66"
+    },
+    {
+      "absent": true,
+      "arm": "H",
+      "config": "codex",
+      "root": ".claude/skills/_shared"
+    },
+    {
+      "arm": "P",
+      "config": "claude",
+      "matches": true,
+      "path": ".agents/skills/_shared/peer.py",
+      "sha256": "379fd2890b402ba9351d9a922ce0e11dcb33fe986bb095a191fb354e4246c96b"
+    },
+    {
+      "arm": "P",
+      "config": "claude",
+      "matches": true,
+      "path": ".agents/skills/_shared/pair.md",
+      "sha256": "9523319d650db1d5176261cb00d254e6216915b86d9d222bfacc85cefa23993a"
+    },
+    {
+      "arm": "P",
+      "config": "claude",
+      "matches": true,
+      "path": ".agents/skills/_shared/platform-support.py",
+      "sha256": "a8e1472b792000bd21ef5d359eba2ae49555adcc198198f2625b51ebb94bbc66"
+    },
+    {
+      "arm": "P",
+      "config": "claude",
+      "matches": true,
+      "path": ".claude/skills/_shared/peer.py",
+      "sha256": "379fd2890b402ba9351d9a922ce0e11dcb33fe986bb095a191fb354e4246c96b"
+    },
+    {
+      "arm": "P",
+      "config": "claude",
+      "matches": true,
+      "path": ".claude/skills/_shared/pair.md",
+      "sha256": "9523319d650db1d5176261cb00d254e6216915b86d9d222bfacc85cefa23993a"
+    },
+    {
+      "arm": "P",
+      "config": "claude",
+      "matches": true,
+      "path": ".claude/skills/_shared/platform-support.py",
+      "sha256": "a8e1472b792000bd21ef5d359eba2ae49555adcc198198f2625b51ebb94bbc66"
+    },
+    {
+      "arm": "P",
+      "config": "codex",
+      "matches": true,
+      "path": ".agents/skills/_shared/peer.py",
+      "sha256": "379fd2890b402ba9351d9a922ce0e11dcb33fe986bb095a191fb354e4246c96b"
+    },
+    {
+      "arm": "P",
+      "config": "codex",
+      "matches": true,
+      "path": ".agents/skills/_shared/pair.md",
+      "sha256": "9523319d650db1d5176261cb00d254e6216915b86d9d222bfacc85cefa23993a"
+    },
+    {
+      "arm": "P",
+      "config": "codex",
+      "matches": true,
+      "path": ".agents/skills/_shared/platform-support.py",
+      "sha256": "a8e1472b792000bd21ef5d359eba2ae49555adcc198198f2625b51ebb94bbc66"
+    },
+    {
+      "absent": true,
+      "arm": "P",
+      "config": "codex",
+      "root": ".claude/skills/_shared"
+    }
+  ],
+  "prior_evaluator_results_reused_not_rerun": {
+    "deleted.json": "5cf4d9f2efc2c5b036ae52d775506f60fa74049dfbb5d198e849a427d7d54491",
+    "missing-interpreter-raw.json": "bd7754bc66018dde10272d90e8e1d6c1ea454c26184dfc967fd9bfa09b177cd2",
+    "noop.json": "d92cfdf7de2563c78d1b71c83b2879fd42e767330ad8fa861a65b399589cbb36",
+    "positive.json": "a218775fc5ecd407c75a194edd268db654277892c035083d7db92d4afaf52ffd",
+    "summary.json": "a144fd5f28c3f7fdef8b46579d4325f772d2165532391777fe44002934ee5e71"
+  },
+  "prior_frozen_bindings_unchanged": 113,
+  "scope": "Changed H/P installed and checked offline; reuse exact A/F23 evaluator controls, not rerun. Actual owner catalog capability is still a native gate.",
+  "status": "PASS",
+  "unchanged_control_trees": {
+    "oracle": true,
+    "public": true
+  }
+}

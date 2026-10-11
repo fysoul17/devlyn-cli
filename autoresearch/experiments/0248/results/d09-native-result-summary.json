@@ -1,0 +1,46 @@
+{
+  "cell": "d09-f23-claude-b",
+  "config": "claude",
+  "arm": "B",
+  "status": "CHECKS_PASS",
+  "usage": "COMPLETE",
+  "input_tokens": 8074123,
+  "output_tokens": 208961,
+  "owner_seconds": 1794.5719497080136,
+  "source_check_pass": true,
+  "public_pass": true,
+  "product_check_pass": true,
+  "delivery_pass": true,
+  "oracle": [
+    {
+      "id": "priority-rollback",
+      "status": "PASS"
+    },
+    {
+      "id": "single-warehouse-fefo",
+      "status": "PASS"
+    },
+    {
+      "id": "submillisecond-order",
+      "status": "PASS"
+    },
+    {
+      "id": "offset-equivalence",
+      "status": "PASS"
+    }
+  ],
+  "identity": {
+    "codex_seats": {},
+    "gaps": [],
+    "owner": "MATCH",
+    "owner_launched_sessions": [],
+    "status": "MATCH",
+    "violations": []
+  },
+  "usage_gaps": [],
+  "teardown": "CLEAN",
+  "at": "2026-10-10T22:59:29.075661+00:00",
+  "verdict_sha256": "f5af705b2ba959728304a304eee0134183ec51b4f1e0fa33f9d8bf285b20065f",
+  "independent_audits": "PENDING",
+  "scope": "Observed integratedB with spontaneous native Agent review, not experimental peer helper and not strict single-session solo. Native child accounting/novelty pending independent audit. All history/costs retained."
+}

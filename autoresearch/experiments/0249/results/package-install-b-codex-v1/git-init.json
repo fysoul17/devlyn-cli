@@ -1,0 +1,16 @@
+{
+  "argv": [
+    "git",
+    "init",
+    "-q",
+    "-b",
+    "main"
+  ],
+  "cwd": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/results/package-install-b-codex-v1/work",
+  "exit_code": 0,
+  "seconds": 0.016356915992219,
+  "stderr": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/results/package-install-b-codex-v1/git-init.stderr",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stdout": "/Users/aipalm/.local/share/nx01/0237-harness/autoresearch/experiments/0249/results/package-install-b-codex-v1/git-init.stdout",
+  "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

@@ -1,0 +1,35 @@
+{
+  "command": [
+    "python3",
+    "-B",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "autoresearch/experiments/0242",
+    "-p",
+    "test_*.py",
+    "-v"
+  ],
+  "known_scope": "Direct single Python/script argv, optional env assignments/env prefix and bounded sh/bash/dash -c/-lc wrappers. No general shell compound-command/script interpretation or actual native catalog-removal claim.",
+  "prediction": [
+    "46 focused tests pass. Both Codex peer settings are false for fresh/resume, and only the added v2 pair differs from0241; Claude and owner behavior unchanged.",
+    "Retained actual helper commands plus acceptance-writing event produce counts[1,1,0], two typed native-bound calls pass with unchanged216input/24output fixture costs.",
+    "A third actual supported helper call that fails before recording a receipt still produces STOP; malformed receipts, unknown native sessions and interrupted/missing usage remain gated.",
+    "Only the new policy parser/import/count delta changes frozen0238policy logic; inherited0240peer-descendant gate remains active,0241capture module reused exactly.",
+    "All old snapshotted execution bytes remain unchanged."
+  ],
+  "recorded_at": "2026-10-10T15:53:17.209037+00:00",
+  "scope": "0242 only. Fake executables/local temporary Git and fixture evidence; no model/auth/native CLI/build/stage.",
+  "source_sha256": {
+    "autoresearch/experiments/0242/build_packages.py": "7378de371e30c4bbbc7796d5161a320e82e7fcf042f7e224a269532a727d3c39",
+    "autoresearch/experiments/0242/fixtures/retained-helper-events.json": "3839eb25c96c86da38a189a7b73f74ecfa1c85d2aa4a291458c46ac9ccb19623",
+    "autoresearch/experiments/0242/peer.py": "f3f4c878847e6d33149cb9d6ebfe6a78dd12eba82d5ce417fdef79ee6af28d95",
+    "autoresearch/experiments/0242/policy.py": "04438db12016d0bca6283b7baa9dfd38c609b21973f373b8a35273f6cd0b2975",
+    "autoresearch/experiments/0242/results/stage.py": "0217f2364da868305d676a5583677a5482e55d8aa7ca4307705873da8c864ec1",
+    "autoresearch/experiments/0242/runner.py": "9989c055e847aeb84eaae04d0f3f19d9e74144da3423848a3321a7bfc9aea200",
+    "autoresearch/experiments/0242/test_adapters.py": "a8375922687e0727c243fa256df0aee532e932fed81ce3bf63852f284f06daa0",
+    "autoresearch/experiments/0242/test_peer.py": "fea5a3e9af06714cf6d930a489a1e63f34b09094db068bfbb331fb47b1fda8a0",
+    "autoresearch/experiments/0242/test_runner.py": "1344962cadc5ef8c17686f776551d52fba02047afe87d9513b180b8b30e08540"
+  }
+}

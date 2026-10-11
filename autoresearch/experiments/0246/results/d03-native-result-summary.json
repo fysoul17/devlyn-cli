@@ -1,0 +1,46 @@
+{
+  "cell": "d03-f23-claude-a",
+  "config": "claude",
+  "arm": "A",
+  "status": "CHECKS_PASS",
+  "usage": "COMPLETE",
+  "input_tokens": 3441785,
+  "output_tokens": 93953,
+  "owner_seconds": 825.7604531670222,
+  "source_check_pass": true,
+  "public_pass": true,
+  "product_check_pass": true,
+  "delivery_pass": true,
+  "oracle": [
+    {
+      "id": "priority-rollback",
+      "status": "PASS"
+    },
+    {
+      "id": "single-warehouse-fefo",
+      "status": "PASS"
+    },
+    {
+      "id": "submillisecond-order",
+      "status": "PASS"
+    },
+    {
+      "id": "offset-equivalence",
+      "status": "PASS"
+    }
+  ],
+  "identity": {
+    "codex_seats": {},
+    "gaps": [],
+    "owner": "MATCH",
+    "owner_launched_sessions": [],
+    "status": "MATCH",
+    "violations": []
+  },
+  "usage_gaps": [],
+  "teardown": "CLEAN",
+  "at": "2026-10-10T19:17:47.242951+00:00",
+  "verdict_sha256": "6f1f0b98a4d84a6a009a634bd1a49576b7ce14358324f85fbc0f08082feb69af",
+  "independent_audits": "PENDING",
+  "scope": "Observed native outcome only; preserve frozen source, historical comparisons and costs."
+}
