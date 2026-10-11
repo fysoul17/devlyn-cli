@@ -18,6 +18,7 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import textwrap
 import time
 import unittest
 from unittest.mock import patch
@@ -309,10 +310,163 @@ init({options});
                 self.assertEqual(self.markers(self.home), home)
                 if files:
                     ignored = (self.project / '.gitignore').read_text(encoding='utf-8').splitlines()
-                    self.assertEqual(ignored[1:], ['.devlyn/', '.agents/skills/.devlyn-install.json']
-                                     + ['.claude/skills/.devlyn-install.json'] * ('CLAUDE.md' in files))
+                    self.assertEqual(ignored[1:], ['.devlyn/'])
         self.cli('-y', '--bogus', code=1)
         self.cli('agents-all', code=1)
+
+    def test_project_upgrade_removes_only_selected_marker_ignore_lines(self):
+        agents = b'.agents/skills/.devlyn-install.json'
+        claude = b'.claude/skills/.devlyn-install.json'
+        before = (b'# User rules\r\nnode_modules/\r\n\r\n# devlyn-cli pipeline state\r\n.devlyn/\r\n'
+                  + b'  ' + agents + b' \r\n' + claude + b'\r\n'
+                  + b'# Custom header: preserve me\r\n' + agents + b'\r\n'
+                  + b'/' + agents + b'\r\n!' + claude + b'\r\n'
+                  + claude + b'.backup\r\n# ' + agents + b'\r\nkeep-last')
+        for targets in (['agents'], ['claude'], ['agents', 'claude']):
+            with self.subTest(targets=targets):
+                self.project = self.case / ('upgrade-' + '-'.join(targets)); self.project.mkdir()
+                for target in targets:
+                    self.seed_4_1(self.project / f'.{target}/skills')
+                ignore = self.project / '.gitignore'; ignore.write_bytes(before)
+                selected = {f'.{target}/skills/.devlyn-install.json'.encode() for target in targets}
+                expected = b''.join(line for line in before.splitlines(keepends=True) if line.removesuffix(b'\n').removesuffix(b'\r') not in selected)
+                self.invoke(f'install({json.dumps(targets)}, false);')
+                self.assertEqual(ignore.read_bytes(), expected)
+                self.invoke(f'install({json.dumps(targets)}, false);')
+                self.assertEqual(ignore.read_bytes(), expected)
+
+    def test_project_marker_migration_removes_only_emptied_managed_headers(self):
+        marker = b'.agents/skills/.devlyn-install.json'
+        header = b'# devlyn-cli pipeline state\r\n'
+        before = (b'.devlyn/\r\n' + header + marker + b'\r\n# Custom header\r\ncache/\r\n'
+                  + header + marker + b'\r\n\r\nelsewhere/\r\n'
+                  + header + marker + b'\r\nkeep/\r\n'
+                  + header + marker)
+        expected = (b'.devlyn/\r\n# Custom header\r\ncache/\r\n\r\nelsewhere/\r\n'
+                    + header + b'keep/\r\n')
+        ignore = self.project / '.gitignore'; ignore.write_bytes(before)
+        self.cli('-y')
+        self.assertEqual(ignore.read_bytes(), expected)
+
+    @unittest.skipIf(os.name == 'nt', 'creating a symlink needs a privilege on native Windows')
+    def test_project_gitignore_links_refuse_before_any_mutation(self):
+        shared = self.case / 'shared-ignore'
+        shared.write_bytes(b'.devlyn/\n.agents/skills/.devlyn-install.json\n')
+        ignore = self.project / '.gitignore'
+        for target in (shared, self.case / 'missing-ignore'):
+            with self.subTest(target=target):
+                ignore.symlink_to(target)
+                try:
+                    before = self.snapshot()
+                    result = self.cli('-y', '--claude', code=1)
+                    self.assertIn(b'.gitignore', result.stderr)
+                    self.assertIn(b'not a regular file', result.stderr)
+                    self.assertEqual(self.snapshot(), before)
+                finally:
+                    ignore.unlink()
+
+    def test_project_gitignore_directory_refuses_before_any_mutation(self):
+        (self.project / '.gitignore').mkdir()
+        before = self.snapshot()
+        result = self.cli('-y', code=1)
+        self.assertIn(b'.gitignore', result.stderr)
+        self.assertIn(b'not a regular file', result.stderr)
+        self.assertEqual(self.snapshot(), before)
+
+    def test_project_gitignore_hardlinks_refuse_when_write_needed(self):
+        shared = self.case / 'shared-ignore'
+        ignore = self.project / '.gitignore'
+        for content in (b'.devlyn/\n.agents/skills/.devlyn-install.json\n', b'cache/\n'):
+            with self.subTest(content=content):
+                shared.write_bytes(content)
+                os.link(shared, ignore)
+                try:
+                    self.assertEqual(ignore.stat().st_nlink, 2)
+                    before = self.snapshot()
+                    result = self.cli('-y', '--claude', code=1)
+                    self.assertIn(b'.gitignore', result.stderr)
+                    self.assertIn(b'links are refused', result.stderr)
+                    self.assertEqual(self.snapshot(), before)
+                    self.assertEqual(ignore.stat().st_ino, shared.stat().st_ino)
+                    self.assertEqual(ignore.stat().st_nlink, 2)
+                finally:
+                    ignore.unlink()
+
+    def test_project_gitignore_hardlinks_refuse_even_without_rule_changes(self):
+        shared = self.case / 'shared-ignore'
+        shared.write_bytes(b'.devlyn/\ncache/\n')
+        ignore = self.project / '.gitignore'
+        os.link(shared, ignore)
+        self.assertEqual(ignore.stat().st_nlink, 2)
+        before = self.snapshot()
+        result = self.cli('-y', '--claude', code=1)
+        self.assertIn(b'.gitignore', result.stderr)
+        self.assertIn(b'links are refused', result.stderr)
+        self.assertEqual(self.snapshot(), before)
+        self.assertEqual(ignore.stat().st_ino, shared.stat().st_ino)
+        self.assertEqual(ignore.stat().st_nlink, 2)
+
+    def test_project_marker_migration_preserves_invalid_utf8_and_line_endings(self):
+        marker = b'.agents/skills/.devlyn-install.json'
+        header = b'# devlyn-cli pipeline state'
+        for eol in (b'\n', b'\r\n'):
+            for add_runtime_rule in (False, True):
+                with self.subTest(eol=eol, add_runtime_rule=add_runtime_rule):
+                    prefix = b'' if add_runtime_rule else b'.devlyn/' + eol
+                    user_rules = b'caf\xe9/' + eol + marker + b'\xe9' + eol + b'keep-last\xe9'
+                    before = prefix + header + eol + marker + eol + eol + user_rules
+                    expected = prefix + eol + user_rules
+                    if add_runtime_rule:
+                        expected += eol + eol + header + eol + b'.devlyn/' + eol
+                    ignore = self.project / '.gitignore'; ignore.write_bytes(before)
+                    self.cli('-y')
+                    self.assertEqual(ignore.read_bytes(), expected)
+                    self.cli('-y')
+                    self.assertEqual(ignore.read_bytes(), expected)
+
+    def test_project_gitignore_preserves_pattern_whitespace(self):
+        before = (b'  .devlyn/\r\n# devlyn-cli pipeline state\r\n'
+                  b'  .agents/skills/.devlyn-install.json\r\n'
+                  b'.agents/skills/.devlyn-install.json \r\n')
+        ignore = self.project / '.gitignore'; ignore.write_bytes(before)
+        self.cli('-y')
+        self.assertEqual(ignore.read_bytes(), before + b'.devlyn/\r\n')
+
+    def test_fresh_project_markers_are_unignored_and_committed_reinstall_is_identical(self):
+        run(['git', 'init', '-q', self.project])
+        self.cli('-y', '--claude')
+        markers = [f'.{target}/skills/.devlyn-install.json' for target in ('agents', 'claude')]
+        before = {name: (self.project / name).read_bytes() for name in markers}
+        for name in markers:
+            run(['git', 'check-ignore', name], cwd=self.project, code=1)
+            marker = json.loads(before[name])
+            self.assertEqual(set(marker), {'schemaVersion', 'package', 'version', 'skills'})
+            self.assertEqual(marker['version'], json.loads((self.package / 'package.json').read_bytes())['version'])
+            self.assertEqual(set(marker['skills']), {'devlyn-ideate', 'devlyn-engines', '_shared'})
+        run(['git', 'check-ignore', '.devlyn/probe'], cwd=self.project)
+        run(['git', '-c', 'core.autocrlf=false', 'add', '.gitignore', '.agents/skills', '.claude/skills'], cwd=self.project)
+        run(['git', '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.test',
+             '-c', 'commit.gpgsign=false', 'commit', '-qm', 'installed skills and markers'], cwd=self.project)
+        self.cli('-y', '--claude')
+        for name in markers:
+            self.assertEqual((self.project / name).read_bytes(), before[name])
+            self.assertEqual(run(['git', 'show', f'HEAD:{name}'], cwd=self.project).stdout, before[name])
+        run(['git', 'diff', '--exit-code', 'HEAD', '--', *markers], cwd=self.project)
+
+    def test_project_marker_migration_preserves_broader_user_patterns(self):
+        for index, pattern in enumerate((b'.claude/', b'*.json')):
+            with self.subTest(pattern=pattern):
+                self.project = self.case / f'broad-{index}'; self.project.mkdir()
+                run(['git', 'init', '-q', self.project])
+                ignore = self.project / '.gitignore'
+                before = b'# My patterns\r\n' + pattern + b'\r\n'
+                ignore.write_bytes(before + b'.claude/skills/.devlyn-install.json\r\n')
+                self.cli('-y', '--claude')
+                self.assertEqual(ignore.read_bytes(), before + b'\r\n# devlyn-cli pipeline state\r\n.devlyn/\r\n')
+                run(['git', 'check-ignore', '.claude/skills/.devlyn-install.json'], cwd=self.project)
+                run(['git', 'check-ignore', '.agents/skills/.devlyn-install.json'], cwd=self.project,
+                    code=0 if pattern == b'*.json' else 1)
+                run(['git', 'check-ignore', '.devlyn/probe'], cwd=self.project)
 
     def test_yes_keeps_claude_where_this_project_has_it(self):
         colon = '' if os.name == 'nt' else ':'
@@ -991,6 +1145,234 @@ writeInstallMarker(process.cwd(), [], {});
         self.assertNotIn(b'modified contents', result.stderr)
         self.assertEqual(self.snapshot(), before)
 
+    def seed_pre_4_1(self, root, version, name, *, stamped=False):
+        # Exact published skill bytes; archive paths use Windows-safe logical names.
+        fixture = Path(__file__).parent / 'fixtures/installer-pre-4.1.tar.gz'
+        dest = root / name
+        dest.mkdir(parents=True)
+        prefix = f'{version}/{name}/'
+        with tarfile.open(fixture) as archive:
+            for member in archive.getmembers():
+                if member.name.startswith(prefix):
+                    file = dest / member.name[len(prefix):]
+                    file.parent.mkdir(parents=True, exist_ok=True)
+                    file.write_bytes(archive.extractfile(member).read())
+        if stamped:
+            # Another machine, with every character shellDoubleQuoteDefault escaped.
+            foreign = '/Users/other machine/a\\b $cash "quote" `tick` }/.claude/skills/' + name
+            escaped = ''.join('\\' + char if char in '\\$"`}' else char for char in foreign)
+            sentinel = b'${CLAUDE_SKILL_DIR:-__DEVLYN_SKILL_DIR__}'
+            replacement = ('${CLAUDE_SKILL_DIR:-' + escaped + '}').encode()
+            changed = 0
+            for file in dest.rglob('*.md'):
+                data = file.read_bytes()
+                changed += data.count(sentinel)
+                file.write_bytes(data.replace(sentinel, replacement))
+            self.assertGreater(changed, 0)
+        return dest
+
+    def test_committed_unedited_4_0_1_resolve_upgrades(self):
+        # Prediction: a committed published 4.0.1 tree is removed, never refused as edited.
+        root = self.project / '.agents/skills'
+        old = self.seed_pre_4_1(root, '4.0.1', 'devlyn-resolve')
+        run(['git', 'init', '-q', self.project])
+        run(['git', '-C', self.project, 'add', '.agents/skills'])
+        run(['git', '-C', self.project, '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.test',
+             '-c', 'commit.gpgsign=false', 'commit', '-qm', 'published 4.0.1 resolve'])
+        self.cli('-y')
+        self.assertFalse(old.exists())
+        self.assertTrue((root / 'devlyn-ideate/SKILL.md').is_file())
+
+    def test_committed_foreign_stamped_3_x_copy_upgrades(self):
+        # Prediction: escaping and the original machine's path do not change ownership.
+        root = self.project / '.agents/skills'
+        old = self.seed_pre_4_1(root, '3.3.1', 'devlyn-engines', stamped=True)
+        old.rename(old.with_name('devlyn\uf03aengines'))
+        run(['git', 'init', '-q', self.project])
+        run(['git', '-C', self.project, 'add', '.agents/skills'])
+        run(['git', '-C', self.project, '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.test',
+             '-c', 'commit.gpgsign=false', 'commit', '-qm', 'foreign stamped 3.3.1 engines'])
+        self.cli('-y')
+        self.assertFalse(old.with_name('devlyn\uf03aengines').exists())
+        self.assertEqual((root / 'devlyn-engines/SKILL.md').read_bytes(),
+                         (self.package / 'config/skills/devlyn-engines/SKILL.md').read_bytes())
+
+    def test_bytecode_caches_upgrade_and_are_removed(self):
+        # Prediction: generated bytecode is ignored for ownership and never survives replacement.
+        self.cli('-y')
+        root = self.project / '.agents/skills'
+        for name in ('_shared', 'devlyn-ideate', 'devlyn-engines'):
+            cache = root / name / '__pycache__/x.pyc'
+            cache.parent.mkdir(); cache.write_bytes(b'generated bytecode')
+        self.cli('-y')
+        self.assertEqual(list(root.rglob('__pycache__')), [])
+        self.assertEqual(list(root.rglob('*.pyc')), [])
+
+    def test_cache_user_content_and_standalone_bytecode_stay_refused(self):
+        # Prediction: tracked and untracked user content cannot hide behind cache names.
+        for tracked in (False, True):
+            for index, relative in enumerate(('__pycache__/notes.md', '__pycache__/nested', 'standalone.pyc')):
+                with self.subTest(tracked=tracked, relative=relative):
+                    self.project = self.case / f'cache-{tracked}-{index}'; self.project.mkdir()
+                    self.cli('-y')
+                    skill = self.project / '.agents/skills/devlyn-engines'
+                    file = skill / relative; file.parent.mkdir(exist_ok=True)
+                    if file.parent.name == '__pycache__':
+                        (file.parent / 'generated.pyc').write_bytes(b'generated bytecode')
+                    if relative.endswith('/nested'):
+                        file.mkdir()
+                    else:
+                        file.write_bytes(b'user content')
+                    if tracked:
+                        run(['git', 'init', '-q', self.project])
+                        run(['git', '-C', self.project, 'add', '.agents/skills'])
+                    self.assert_install_refused('-y', paths=[skill], reason='modified contents')
+
+    def test_functional_stamp_edits_stay_refused(self):
+        old = self.seed_pre_4_1(self.project / '.agents/skills', '3.3.1', 'devlyn-engines')
+        file = old / 'SKILL.md'; original = file.read_bytes()
+        sentinel = b'${CLAUDE_SKILL_DIR:-__DEVLYN_SKILL_DIR__}'
+        self.assertIn(sentinel, original)
+        for default in ('$(cat ~/.custom-skill-location)', '/tmp/$(whoami)', '/tmp/$HOME',
+                        '/tmp/`whoami`', '/tmp/"quoted"', r'/tmp/\q', 'relative/path', '',
+                        'C:relative', r'\rooted', '/tmp/line\nbreak'):
+            with self.subTest(default=default):
+                file.write_bytes(original.replace(sentinel, ('${CLAUDE_SKILL_DIR:-' + default + '}').encode()))
+                self.assert_install_refused('-y', paths=[old], reason='fingerprint mismatch with known shipped copies')
+
+    def test_stamp_normalization_only_changes_historical_markdown_defaults(self):
+        # Non-Markdown files and the bare sentinel guard were never stamped.
+        self.invoke(r'''
+const assert = require('node:assert/strict');
+const sentinel = '${CLAUDE_SKILL_DIR:-__DEVLYN_SKILL_DIR__}';
+const guard = 'test "$DEVLYN_SKILL_DIR" = "__DEVLYN_SKILL_DIR__"';
+const md = path.join(projectDir(), 'probe.md');
+const py = path.join(projectDir(), 'probe.py');
+for (const file of [md, py]) fs.writeFileSync(file, sentinel + '\n' + guard);
+const original = contentHash(md);
+for (const absolute of ['/tmp/한글/a\\b $cash "quote" `tick` }', 'C:\\Users\\other machine\\skill', '\\\\server\\share\\skill']) {
+  const escaped = absolute.replace(/[\\$"`}]/g, '\\$&');
+  const stamped = '${CLAUDE_SKILL_DIR:-' + escaped + '}';
+  fs.writeFileSync(md, stamped + '\n' + guard);
+  assert.equal(contentHash(md), original, absolute);
+  fs.writeFileSync(py, stamped + '\n' + guard);
+  assert.notEqual(contentHash(py), original, 'non-Markdown edits are content');
+  fs.writeFileSync(md, stamped + '\n' + guard.replace('__DEVLYN_SKILL_DIR__', absolute));
+  assert.notEqual(contentHash(md), original, 'guard edits are content');
+}
+''')
+
+    def test_release_driver_copies_and_identifies_all_installer_fixtures(self):
+        if PACKAGE_ROOT is not None:
+            self.skipTest('workflow source is checked in the source suite')
+        # Execute the workflow's real copy/list block, then run both archives' consumers relocated.
+        workflow = (ROOT / '.github/workflows/portability.yml').read_text(encoding='utf-8')
+        start = workflow.index("          test = driver / 'test-windows-portability.py'")
+        end = workflow.index('          for copied in driver_files:', start)
+        driver = self.case / 'driver'; driver.mkdir()
+        scope = {'driver': driver, 'shutil': shutil, 'check_source': lambda: None}
+        with contextlib.chdir(ROOT):
+            exec(compile(textwrap.dedent(workflow[start:end]), str(ROOT / '.github/workflows/portability.yml'), 'exec'), scope)
+        expected = [Path('test-windows-portability.py'), Path('test-ideate-loop.py'),
+                    *sorted(p.relative_to(ROOT / 'scripts') for p in (ROOT / 'scripts/fixtures').rglob('*') if p.is_file())]
+        for relative in expected:
+            with self.subTest(relative=relative):
+                copied = driver / relative
+                self.assertEqual(copied.read_bytes(), (ROOT / 'scripts' / relative).read_bytes())
+                self.assertIn(copied, scope['driver_files'])
+        run([sys.executable, driver / 'test-windows-portability.py', '--package-root', self.package,
+             'PackageTests.test_committed_unedited_4_0_1_resolve_upgrades',
+             'PackageTests.test_tracked_pristine_retired_skill_is_removed'], timeout=90)
+
+    def test_edited_stamped_copy_stays_refused(self):
+        old = self.seed_pre_4_1(self.project / '.agents/skills', '3.3.1', 'devlyn-engines', stamped=True)
+        self.invoke("preflightSkills(skillRoots('agents', false));")
+        file = old / 'SKILL.md'
+        file.write_bytes(file.read_bytes() + b'\nUser edit\n')
+        self.assert_install_refused('-y', paths=[old], reason='fingerprint mismatch with known shipped copies')
+
+    def test_added_non_cache_file_stays_refused(self):
+        old = self.seed_pre_4_1(self.project / '.agents/skills', '3.3.1', 'devlyn-engines', stamped=True)
+        self.invoke("preflightSkills(skillRoots('agents', false));")
+        (old / '.private-notes').write_bytes(b'user content')
+        self.assert_install_refused('-y', paths=[old], reason='fingerprint mismatch with known shipped copies')
+
+    def test_stamped_legacy_spellings_upgrade_globally(self):
+        root = self.home / '.agents/skills'
+        old = self.seed_pre_4_1(root, '3.3.1', 'devlyn-engines', stamped=True)
+        shutil.copytree(old, root / 'devlyn\uf03aengines')
+        if os.name != 'nt':
+            shutil.copytree(old, root / 'devlyn:engines')
+        self.cli('-y', '--global')
+        self.assertEqual({p.name for p in root.iterdir()},
+                         {'_shared', 'devlyn-ideate', 'devlyn-engines', '.devlyn-install.json'})
+        self.assertEqual((root / 'devlyn-engines/SKILL.md').read_bytes(),
+                         (self.package / 'config/skills/devlyn-engines/SKILL.md').read_bytes())
+
+    def test_raw_manifest_still_matches_after_normalization(self):
+        self.cli('-y')
+        root = self.project / '.agents/skills'
+        # The original 4.2.1-4.2.5 fingerprint algorithm, before stamps/cache normalization.
+        result = self.invoke(r"""
+const crypto = require('crypto');
+function rawFingerprint(dir) {
+  const entries = [];
+  function visit(full, relative) {
+    if (fs.lstatSync(full).isDirectory()) {
+      entries.push([relative, 'directory']);
+      for (const name of fs.readdirSync(full).sort()) visit(path.join(full, name), relative ? `${relative}/${name}` : name);
+    } else {
+      const bytes = fs.readFileSync(full).toString('latin1').replace(/\r\n/g, '\n');
+      entries.push([relative, 'file', crypto.createHash('sha256').update(bytes, 'latin1').digest('hex')]);
+    }
+  }
+  visit(dir, '');
+  return crypto.createHash('sha256').update(JSON.stringify(entries)).digest('hex');
+}
+console.log(JSON.stringify(Object.fromEntries(DEVLYN_CORE_SKILLS.map((name) =>
+  [name, rawFingerprint(path.join(skillRoots('agents', false)[0], name))]))));
+""")
+        marker_path = root / '.devlyn-install.json'
+        marker = json.loads(marker_path.read_bytes())
+        self.assertEqual(marker['skills'], json.loads(result.stdout))
+        marker['version'] = '4.2.5'
+        marker_path.write_text(json.dumps(marker), encoding='utf-8')
+        for name in marker['skills']:
+            cache = root / name / '__pycache__/x.pyc'
+            cache.parent.mkdir(); cache.write_bytes(b'generated bytecode')
+        copy = self.case / 'next-package'; shutil.copytree(self.package, copy)
+        (copy / 'bin/skill-history.json').write_text('{"skills": {}}', encoding='utf-8')
+        for name in marker['skills']:
+            (copy / 'config/skills' / name / 'new-default').write_bytes(b'next defaults')
+        self.invoke("install(['agents'], false);", package=copy)
+        self.assertEqual(list(root.rglob('__pycache__')), [])
+        for name in marker['skills']:
+            self.assertEqual((root / name / 'new-default').read_bytes(), b'next defaults')
+
+    def test_cache_names_do_not_hide_non_cache_types(self):
+        self.cli('-y')
+        root = self.project / '.agents/skills/devlyn-engines'
+        (root / '__pycache__').write_bytes(b'user file')
+        self.assert_install_refused('-y', paths=[root], reason='modified contents')
+        (root / '__pycache__').unlink()
+        (root / 'user.pyc').mkdir()
+        self.assert_install_refused('-y', paths=[root], reason='modified contents')
+
+    @unittest.skipIf(os.name == 'nt', 'creating a symlink needs a privilege on native Windows')
+    def test_bytecode_cache_links_and_special_files_stay_refused(self):
+        self.cli('-y')
+        root = self.project / '.agents/skills/devlyn-engines'
+        outside = self.case / 'outside'; outside.write_bytes(b'keep')
+        link = root / 'linked.pyc'; link.symlink_to(outside)
+        self.assert_install_refused('-y', paths=[root], reason='link or special file')
+        link.unlink()
+        cache = root / '__pycache__'; cache.mkdir()
+        link = cache / 'linked.pyc'; link.symlink_to(outside)
+        self.assert_install_refused('-y', paths=[root], reason='link or special file')
+        link.unlink()
+        os.mkfifo(cache / 'pipe.pyc')
+        self.assert_install_refused('-y', paths=[root], reason='link or special file')
+
     def test_missing_manifest_current_copy_passes_but_old_modified_copy_refuses(self):
         self.cli('-y')
         root = self.project / '.agents/skills'
@@ -1234,8 +1616,7 @@ writeInstallMarker(process.cwd(), [], {});
                     self.assertEqual(settings['env']['ENABLE_PROMPT_CACHING_1H'], 'true')
                     self.assertEqual(settings['env']['BASH_MAX_TIMEOUT_MS'], '3600000')
                     self.assertEqual((self.project / '.gitignore').read_text(encoding='utf-8').splitlines(),
-                                     ['# devlyn-cli pipeline state', '.devlyn/', '.agents/skills/.devlyn-install.json',
-                                      '.claude/skills/.devlyn-install.json'])
+                                     ['# devlyn-cli pipeline state', '.devlyn/'])
 
     def test_instruction_source_templates_are_not_wrapped(self):
         copy = self.case / 'source-package'; shutil.copytree(self.package, copy)
@@ -1616,11 +1997,23 @@ writeInstallMarker(process.cwd(), [], {});
         (copy / 'optional-skills/devlyn-pencil-push/SKILL.md').unlink()
         push = self.project / '.claude/skills/devlyn-pencil-push'
         push.mkdir(parents=True); (push / 'SKILL.md').write_bytes(legacy)
+        cache = push / '__pycache__'; cache.mkdir(); (cache / 'x.pyc').write_bytes(b'generated bytecode')
         result = self.invoke("installClaudeCore();", package=copy, code=None)
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual((push / 'SKILL.md').read_bytes(), legacy)
         self.invoke("installClaudeCore();")
         self.assertIn(b'name: devlyn-pencil-push', (push / 'SKILL.md').read_bytes())
+        self.assertEqual(sorted(p.name for p in push.iterdir()), ['SKILL.md'])
+        # Cache cleanup must precede the swap: on failure the legacy hash still selects a retry.
+        (push / 'SKILL.md').write_bytes(legacy)
+        cache.mkdir(); (cache / 'x.pyc').write_bytes(b'generated bytecode')
+        result = self.invoke("const remove = fs.rmSync; fs.rmSync = (file, options) => { "
+                             "if (path.basename(file) === '__pycache__') throw new Error('injected cache cleanup'); "
+                             "return remove(file, options); }; installClaudeCore();", code=None)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual((push / 'SKILL.md').read_bytes(), legacy)
+        self.invoke("installClaudeCore();")
+        self.assertEqual(sorted(p.name for p in push.iterdir()), ['SKILL.md'])
         # A Windows checkout with core.autocrlf holds the same copy with CRLF; a failed swap
         # leaves no staged file behind.
         (push / 'SKILL.md').write_bytes(legacy.replace(b'\n', b'\r\n'))

@@ -341,11 +341,12 @@ for target, expected_timeout in (
         raise SystemExit(f"{target}: BASH_DEFAULT_TIMEOUT_MS must not be installed")
 PY
     then
-      if grep -Fxq '.claude/skills/.devlyn-install.json' "$marker_project/.gitignore" \
-         && grep -Fxq '.agents/skills/.devlyn-install.json' "$marker_project/.gitignore"; then
+      if grep -Fxq '.devlyn/' "$marker_project/.gitignore" \
+         && ! grep -Fxq '.claude/skills/.devlyn-install.json' "$marker_project/.gitignore" \
+         && ! grep -Fxq '.agents/skills/.devlyn-install.json' "$marker_project/.gitignore"; then
         ok "managed roots have exact 0600 markers; Bash max is installed, raised, preserved, and idempotent"
       else
-        bad "project installs must ignore their local markers"
+        bad "project installs must ignore pipeline state, not skill markers"
       fi
     else
       bad "completed installs must write the exact per-root marker"
@@ -535,10 +536,12 @@ fi
 
 section "Check 10a1b: Skill paths come from the loaded SKILL.md, not a substitution"
 # Only Claude Code and Grok render ${CLAUDE_SKILL_DIR}; any other use breaks the other readers.
-# The inert hint line and generate-skill's substitution table are the allowed occurrences.
+# The inert hint line, generate-skill's substitution table and the ownership module's
+# historical stamp normalization are allowed; normalization never renders skill paths.
 skill_dir_offenders=$(grep -RInE 'CLAUDE_SKILL_DIR|__DEVLYN_SKILL_DIR__' config/skills optional-skills bin 2>/dev/null \
   | grep -vE '^[^:]+:[0-9]+:\$\{CLAUDE_SKILL_DIR\}$' \
   | grep -vE '^optional-skills/generate-skill/REFERENCE\.md:[0-9]+:\| `\$\{CLAUDE_SKILL_DIR\}` \|' \
+  | grep -vE '^bin/skill-ownership\.js:[0-9]+:[[:space:]]+(bytes = bytes\.replace\(/|return /\^)' \
   || true)
 if [ -z "$skill_dir_offenders" ]; then
   ok "skill resources resolve from the loaded SKILL.md on every reader"
