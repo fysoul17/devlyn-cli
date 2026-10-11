@@ -374,17 +374,18 @@ function cleanupDeprecated(skillsDir, written) {
 // are in place. An optional skill found under an old spelling is installed under its new name
 // before the old copy goes, so an interrupted migration never loses it. An unedited 0.6.0-0.7.1
 // copy is refreshed in place. Any other folder under a 4.0 name is the user's own; `-y` leaves it.
-function retireRenamedSkills(skillsDir, written) {
+function retireRenamedSkills(skillsDir, written, installedSkills) {
   const optional = new Set(OPTIONAL_ADDONS.filter((addon) => addon.type === 'local').map((addon) => addon.name));
   const refreshed = [];
   for (const [oldName, newName] of Object.entries(RENAMED_SKILLS)) {
     const found = legacySkillPaths(skillsDir, oldName).filter((fullPath) => fs.existsSync(fullPath));
     if (found.length > 0 && optional.has(newName)) {
-      installOptionalSkillInto(skillsDir, newName, written);
+      installOptionalSkillInto(skillsDir, newName, written, installedSkills);
       refreshed.push(newName);
     } else if (isShippedCopy(path.join(skillsDir, newName), PRE_STANDARD_SKILL_MD_SHA256)) {
       refreshPreStandardCopy(skillsDir, newName);
       written.push(path.join(skillsDir, newName));
+      installedSkills.set(path.join(skillsDir, newName), [path.join(skillsDir, newName, 'SKILL.md')]);
       refreshed.push(newName);
     }
     for (const fullPath of found) {
@@ -396,7 +397,7 @@ function retireRenamedSkills(skillsDir, written) {
   return refreshed;
 }
 
-function copyRecursive(src, dest, baseDir) {
+function copyRecursive(src, dest, baseDir, files = []) {
   const stats = fs.statSync(src);
 
   if (stats.isDirectory()) {
@@ -405,7 +406,7 @@ function copyRecursive(src, dest, baseDir) {
     }
 
     for (const item of fs.readdirSync(src)) {
-      copyRecursive(path.join(src, item), path.join(dest, item), baseDir);
+      copyRecursive(path.join(src, item), path.join(dest, item), baseDir, files);
     }
   } else {
     const destDir = path.dirname(dest);
@@ -413,8 +414,10 @@ function copyRecursive(src, dest, baseDir) {
       fs.mkdirSync(destDir, { recursive: true });
     }
     fs.copyFileSync(src, dest);
+    files.push(dest);
     log(`  → ${path.relative(baseDir, dest)}`, 'dim');
   }
+  return files;
 }
 
 function clearInstallMarker(skillsDir) {
@@ -615,14 +618,14 @@ function singleSelect(message, items, initial) {
 }
 
 // After preflight has cleared every selected addon before any change.
-function installLocalSkill(skillName, roots, written = []) {
+function installLocalSkill(skillName, roots, written = [], installedSkills = new Map()) {
   if (!fs.existsSync(path.join(OPTIONAL_SKILLS_SOURCE, skillName))) {
     log(`   ⚠️  Skill "${skillName}" not found`, 'yellow');
     return false;
   }
   log(`\n🛠️  Installing ${skillName}...`, 'cyan');
   for (const root of roots) {
-    installOptionalSkillInto(root, skillName, written);
+    installOptionalSkillInto(root, skillName, written, installedSkills);
     writeInstallMarker(root, [skillName], readInstallManifest(root));
     written.push(path.join(root, DEVLYN_INSTALL_MARKER));
   }
@@ -631,10 +634,10 @@ function installLocalSkill(skillName, roots, written = []) {
 
 // One optional skill into one skill-loader directory, replacing any older copy of it. A
 // copy under its name before the 4.0.0 rename goes only once the new one is complete.
-function installOptionalSkillInto(target, skillName, written) {
+function installOptionalSkillInto(target, skillName, written, installedSkills) {
   const dest = path.join(target, skillName);
   fs.rmSync(dest, { recursive: true, force: true });
-  copyRecursive(path.join(OPTIONAL_SKILLS_SOURCE, skillName), dest, target);
+  installedSkills.set(dest, copyRecursive(path.join(OPTIONAL_SKILLS_SOURCE, skillName), dest, target));
   assertCompleteSkillInstall(OPTIONAL_SKILLS_SOURCE, target, [skillName]);
   written.push(dest);
   const oldName = Object.keys(RENAMED_SKILLS).find((name) => RENAMED_SKILLS[name] === skillName);
@@ -696,7 +699,7 @@ function installAddon(addon) {
 
 // The core skills into one skill root, replacing older copies and retired skills, then the
 // marker that records a complete install.
-function installCoreSkills(skillsDir, written = []) {
+function installCoreSkills(skillsDir, written = [], installedSkills = new Map()) {
   const sourceSkillsDir = path.join(CONFIG_SOURCE, 'skills');
   log(`\n📁 Installing devlyn skills to ${skillsDir.replace(os.homedir(), '~')}`, 'green');
   fs.mkdirSync(skillsDir, { recursive: true });
@@ -712,11 +715,11 @@ function installCoreSkills(skillsDir, written = []) {
     if (!fs.existsSync(src)) continue;
     // Full replace: copyRecursive is an overlay, so stale files would otherwise persist.
     fs.rmSync(dest, { recursive: true, force: true });
-    copyRecursive(src, dest, skillsDir);
+    installedSkills.set(dest, copyRecursive(src, dest, skillsDir));
     written.push(dest);
   }
   assertCompleteSkillInstall(sourceSkillsDir, skillsDir, DEVLYN_CORE_SKILLS);
-  const refreshed = retireRenamedSkills(skillsDir, written);
+  const refreshed = retireRenamedSkills(skillsDir, written, installedSkills);
   writeInstallMarker(skillsDir, [...DEVLYN_CORE_SKILLS, ...refreshed], previous);
   written.push(path.join(skillsDir, DEVLYN_INSTALL_MARKER));
 }
@@ -792,7 +795,7 @@ function agentsMdIsClaudeMd() {
   return target !== null && fs.existsSync(target) && fs.realpathSync.native(target) === fs.realpathSync.native(claude);
 }
 
-function installAgentsProject(withClaude) {
+function installAgentsProject(withClaude, installedSkills = new Map()) {
   const written = [];
   if (!agentsMdIsClaudeMd()) {
     if (updateInstructions('AGENTS.md')) written.push('AGENTS.md');
@@ -802,7 +805,7 @@ function installAgentsProject(withClaude) {
     throw new InstructionError('AGENTS.md is CLAUDE.md under another name here. Choose CLAUDE.md as well '
       + '(npx devlyn-cli -y --claude) so the devlyn block is written once, into CLAUDE.md.');
   }
-  installCoreSkills(skillRoots('agents', false)[0], written);
+  installCoreSkills(skillRoots('agents', false)[0], written, installedSkills);
   if (updateProjectGitignore('.agents/skills/.devlyn-install.json')) written.push('.gitignore');
   return written;
 }
@@ -834,7 +837,7 @@ function installClaudeInstructions() {
 }
 
 // Project CLAUDE.md and .claude/: skills and settings.
-function installClaudeCore() {
+function installClaudeCore(installedSkills = new Map()) {
   const skillsDir = skillRoots('claude', false)[0];
   const targetDir = path.dirname(skillsDir);
   // Read before any write, so settings this install cannot merge leave the Claude target as it was.
@@ -866,7 +869,7 @@ function installClaudeCore() {
       written.push(`.claude/${relPath}`);
     }
   }
-  installCoreSkills(skillsDir, written);
+  installCoreSkills(skillsDir, written, installedSkills);
   if (updateProjectGitignore('.claude/skills/.devlyn-install.json')) written.push('.gitignore');
 
   // One-hour foreground Bash calls and one-hour prompt caching serve a drain host that waits in the foreground.
@@ -924,30 +927,32 @@ function install(targets, global, optionalNames = []) {
   }
   const roots = targets.flatMap((target) => skillRoots(target, global));
   const written = [];
+  const installedSkills = new Map();
   if (!global) readProjectGitignore();
   preflightSkills(roots, optionalNames,
     !global && targets.includes('claude') ? path.dirname(skillRoots('claude', false)[0]) : null);
   // AGENTS.md first, whatever order the menu gave: a new CLAUDE.md holds the block only when AGENTS.md does not.
   for (const target of ['agents', 'claude'].filter((name) => targets.includes(name))) {
     if (global) skillRoots(target, true).forEach((root) => installCoreSkills(root));
-    else if (target === 'agents') written.push(...installAgentsProject(targets.includes('claude')));
-    else written.push(...installClaudeCore());
+    else if (target === 'agents') written.push(...installAgentsProject(targets.includes('claude'), installedSkills));
+    else written.push(...installClaudeCore(installedSkills));
   }
-  for (const name of optionalNames) installLocalSkill(name, roots, written);
+  for (const name of optionalNames) installLocalSkill(name, roots, written, installedSkills);
   log(`\n✅ devlyn ${PKG.version} installed`, 'green');
   if (global) log('The principles block installs per project: run npx devlyn-cli in the project without --global.');
-  else noticeProjectChanges(written);
+  else noticeProjectChanges(written, installedSkills);
   noticeGlobalDrift(roots);
   return roots;
 }
 
 // Advisory only: a successful install stays successful when Git is unavailable or fails.
-function noticeProjectChanges(paths) {
-  if (!paths.length) return;
+function noticeProjectChanges(paths, installedSkills = new Map()) {
+  if (!paths.length && !installedSkills.size) return;
   const cwd = projectDir();
-  paths = [...new Set(paths.map((name) => path.relative(cwd, path.resolve(cwd, name)).split(path.sep).join('/')))];
+  const relative = (name) => path.relative(cwd, path.resolve(cwd, name)).split(path.sep).join('/');
+  paths = [...new Set(paths.map(relative))];
   const env = { ...gitEnvironment(), GIT_OPTIONAL_LOCKS: '0' };
-  const git = (args) => spawnSync('git', ['-C', cwd, ...args], { encoding: 'utf8', env });
+  const git = (args, input) => spawnSync('git', ['-C', cwd, ...args], { encoding: 'utf8', env, input });
   const repo = git(['rev-parse', '--show-toplevel']);
   if (repo.error || repo.status !== 0) return;
   const status = git(['status', '--porcelain=v1', '-z', '--untracked-files=all', '--no-renames',
@@ -973,10 +978,36 @@ function noticeProjectChanges(paths) {
         return false;
       }
     })))];
-  if (!pending.length) return;
+  // Check only files this run copied, grouped by skill: ignoring a whole skill is deliberate.
+  // check-ignore omits tracked files, so a complete committed install stays quiet on reruns.
+  const groups = [...installedSkills.values()].map((files) => files.map(relative));
+  const files = groups.flat();
+  let ignored = [];
+  let rule;
+  if (files.length) {
+    const result = git(['check-ignore', '-z', '--stdin'], files.join('\0') + '\0');
+    if (result.error || ![0, 1].includes(result.status)) return;
+    const matches = new Set(result.stdout.split('\0').filter(Boolean));
+    ignored = [...new Set(groups.flatMap((group) => {
+      const hidden = group.filter((file) => matches.has(file));
+      return hidden.length === group.length ? [] : hidden;
+    }))];
+    if (ignored.length) {
+      const verbose = git(['check-ignore', '-v', '-z', '--stdin'], ignored[0] + '\0');
+      if (verbose.error || verbose.status !== 0) return;
+      const [source, line, pattern] = verbose.stdout.split('\0');
+      rule = `${source}:${line}: ${pattern}`;
+    }
+  }
+  if (!pending.length && !ignored.length) return;
   const quote = (name) => /^[a-zA-Z0-9_./-]+$/.test(name) ? name : `'${name.replace(/'/g, "'\\''")}'`;
   log('Commit these changes for teammates and /devlyn-ideate drains to use them:', 'yellow');
-  log(`  git add -- ${pending.map(quote).join(' ')} && git commit -m "chore(devlyn): update devlyn-cli to ${PKG.version}"`, 'dim');
+  if (ignored.length) log(`.gitignore hides ${ignored.length} installed files (${rule}).`, 'yellow');
+  const commands = [];
+  if (pending.length) commands.push(`git add -- ${pending.map(quote).join(' ')}`);
+  if (ignored.length) commands.push(`git add -f -- ${ignored.map(quote).join(' ')}`);
+  commands.push(`git commit -m "chore(devlyn): update devlyn-cli to ${PKG.version}"`);
+  log(`  ${commands.join(' && ')}`, 'dim');
 }
 
 // A devlyn install in a user root this run does not refresh drifts and can shadow the
