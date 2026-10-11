@@ -1,0 +1,375 @@
+{
+  "checks": [
+    {
+      "actual_inventory_sha256": "091bf71184ca620c34387f781b933748a34677e8f35939bebde9c44a4ed18b32",
+      "bindings_sha256": "4aa28f3063837c98029e010e4ca75dc617bc119f4ebfe8775c490dd73766c214",
+      "expected_inventory_sha256": "091bf71184ca620c34387f781b933748a34677e8f35939bebde9c44a4ed18b32",
+      "files": 125,
+      "matched": 125,
+      "mismatches": [],
+      "name": "raw_execution_bindings",
+      "status": "PASS"
+    },
+    {
+      "name": "registration_runtime_and_order",
+      "registered_at": "2026-10-11T01:33:37.741807+00:00",
+      "registration_sha256": "c08c6509845b6aff6a727315202c86ea43b7e27d2f1a82843dd0f8c94936b352",
+      "runtime_sha256": "e7f29b7ce330aa0851638380a2ceee794d99da5712a4af2ce060f48f817b6993",
+      "status": "PASS"
+    },
+    {
+      "auth_profile_called": false,
+      "credential_contents_decoded": false,
+      "directory_mode": "0o700",
+      "files": [
+        {
+          "expected_sha256": "c10e5f01993651c5bfe9d841156247567f969478accc7bf544d46289ba3ba7db",
+          "link_count": 1,
+          "matches": true,
+          "mode": "0o400",
+          "name": "claude.env",
+          "owner_matches": true,
+          "regular_nonsymlink": true,
+          "sha256": "c10e5f01993651c5bfe9d841156247567f969478accc7bf544d46289ba3ba7db"
+        },
+        {
+          "expected_sha256": "aaa6c05f4e34afe36b585045cb72cf15d8d2d903434fbac3a30177fa08fe8ab4",
+          "link_count": 1,
+          "matches": true,
+          "mode": "0o400",
+          "name": "codex.json",
+          "owner_matches": true,
+          "regular_nonsymlink": true,
+          "sha256": "aaa6c05f4e34afe36b585045cb72cf15d8d2d903434fbac3a30177fa08fe8ab4"
+        }
+      ],
+      "manifest_sha256": "43980e45bef2ad26a7f11d994fda5ac5909d421dfa46fc9dad45516780e32b4d",
+      "name": "frozen_auth_unchanged_private",
+      "status": "PASS"
+    },
+    {
+      "actual_inventory_sha256": "1019a974b8b213f32133f5e00437e3f91b33ea81f0dfb3de21f840b7d4ac085d",
+      "extra": [],
+      "files": 2038,
+      "matched": 2038,
+      "mismatches": [],
+      "missing": [],
+      "name": "claude:evidence_manifest",
+      "raw_roots": [
+        "run",
+        "cell",
+        "tmp",
+        "home"
+      ],
+      "sha256": "cdd302e80a1652055e4163b6194c7dfe69ea0220eab0473bb5a1ee80c2535db5",
+      "status": "PASS"
+    },
+    {
+      "name": "claude:prepared_binding_and_private_custody",
+      "plan_sha256": "38cf90e0aa81044c96a9bcb421a93972d55972a9e443ab12aacb2042bed9f92a",
+      "prepared_files": 5,
+      "prepared_mismatches": [],
+      "raw_directory_mode": "0o700",
+      "seal_sha256": "0cf3a7d619674a3d8a640c54d64f09e1afc5ff49c27411b25b7a0b9fc8599454",
+      "sealed_inputs": 125,
+      "status": "PASS"
+    },
+    {
+      "container_name": "devlyn-0231-01e5ee173d4f4990857cffae2f458bdc",
+      "launcher_sha256": "68b8b803f4857f31be2b3933e498de9fda81ed18b8b0aac0a02cf21d043b6e6f",
+      "live_docker_inspection_performed": false,
+      "name": "claude:owner_lifecycle_and_auth_transport",
+      "owner_seconds": 7.1931306250044145,
+      "owner_status": "EXITED_0",
+      "state_check_source": "0251/cell.py uses state-only inspect, requires Running=false/Pid=0, removes container, preserves /tmp then removes volume before recording CLEAN",
+      "status": "PASS",
+      "teardown_record": "CLEAN",
+      "volume_name": "devlyn-0234-tmp-ba7f8d3cde814515a8aa3fed8e6b5dc1",
+      "watchdog_seconds": 5400
+    },
+    {
+      "final_sha256": "4ec505c9cc58357dc0acecd662a9c985db9f5a273877b73ee1e983cbbf677ada",
+      "lifetime_at_owner_start_seconds": 20779.93139410019,
+      "name": "claude:registered_prompt_response_and_preflight",
+      "saved_preflight_lifetime_seconds": 20793,
+      "status": "PASS"
+    },
+    {
+      "forbidden_event_count": 0,
+      "forbidden_types": [],
+      "name": "claude:no_native_tool_calls_or_declared_children",
+      "raw_jsonl_files": [
+        "home/.claude/projects/-cell-work/ae603d5b-65af-428f-a29f-4f80c07a2181.jsonl"
+      ],
+      "recorded_children": [],
+      "status": "PASS"
+    },
+    {
+      "assistant_record_count": 2,
+      "effort": "max",
+      "effort_evidence": "native transcript assistant effort and perTurnEffort fields",
+      "model": "claude-opus-5-5",
+      "name": "claude:native_model_effort_and_one_owner",
+      "native_version": "2.1.296",
+      "owner_sessions": [
+        "ae603d5b-65af-428f-a29f-4f80c07a2181"
+      ],
+      "status": "PASS",
+      "unique_message_ids": 1
+    },
+    {
+      "accounting_basis": "One terminal result, reconciled to modelUsage and same-message transcript totals; repeated partial blocks, thinking subset and cache-creation lifetime breakdown are not added again.",
+      "counters": {
+        "cache_write_input": 18162,
+        "cached_input": 0,
+        "output_tokens": 34,
+        "thinking_tokens_subset": 27,
+        "uncached_input": 2
+      },
+      "excluded_duplicate_partial_stdout_records": 2,
+      "excluded_duplicate_transcript_records": 2,
+      "name": "claude:raw_usage_complete_no_double_count",
+      "provider_reported_cost_usd": 0.145984,
+      "status": "PASS",
+      "terminal_results": 1,
+      "whole_usage": {
+        "input_tokens": 18164,
+        "output_tokens": 34
+      }
+    },
+    {
+      "catalog_sha256": "9737867b2ff6b8a33c159f4974078c13589ea3917aec44bc01fa2afb45955034",
+      "counts": {
+        "mcp_servers": 0,
+        "plugins": 3,
+        "skills": 21
+      },
+      "name": "claude:native_catalogs",
+      "native_tools_advertised": 25,
+      "status": "PASS"
+    },
+    {
+      "delivery_grade": "NOT_RUN",
+      "efficacy_eligible": false,
+      "hidden_oracle": "NOT_RUN",
+      "name": "claude:no_grading_or_delivery",
+      "source_grade": "NOT_RUN",
+      "status": "PASS"
+    },
+    {
+      "actual_inventory_sha256": "c29cfef8eb5f922ed48117f886e4af529c89c560173e92eb48bd54d6366d568d",
+      "extra": [],
+      "files": 2085,
+      "matched": 2085,
+      "mismatches": [],
+      "missing": [],
+      "name": "codex:evidence_manifest",
+      "raw_roots": [
+        "run",
+        "cell",
+        "tmp",
+        "home"
+      ],
+      "sha256": "aa502381af7896f28274396c23e0cdcd6dc891460fc963bb2fea6fce39466729",
+      "status": "PASS"
+    },
+    {
+      "name": "codex:prepared_binding_and_private_custody",
+      "plan_sha256": "3701fbc85eb5fcef204a6614038483d2214276e013afd241f08c3c5cf84f8890",
+      "prepared_files": 5,
+      "prepared_mismatches": [],
+      "raw_directory_mode": "0o700",
+      "seal_sha256": "e43c50f5bd7fd5f64bb37142b54491eb1f8af82bf65c25a58868efc35418ba69",
+      "sealed_inputs": 125,
+      "status": "PASS"
+    },
+    {
+      "container_name": "devlyn-0231-134b7f3506e943b38ae778783503e419",
+      "launcher_sha256": "68b8b803f4857f31be2b3933e498de9fda81ed18b8b0aac0a02cf21d043b6e6f",
+      "live_docker_inspection_performed": false,
+      "name": "codex:owner_lifecycle_and_auth_transport",
+      "owner_seconds": 6.501034249988152,
+      "owner_status": "EXITED_0",
+      "state_check_source": "0251/cell.py uses state-only inspect, requires Running=false/Pid=0, removes container, preserves /tmp then removes volume before recording CLEAN",
+      "status": "PASS",
+      "teardown_record": "CLEAN",
+      "volume_name": "devlyn-0234-tmp-7b0784b10fce4d6c9731c3ef12869b4a",
+      "watchdog_seconds": 5400
+    },
+    {
+      "final_sha256": "4ec505c9cc58357dc0acecd662a9c985db9f5a273877b73ee1e983cbbf677ada",
+      "lifetime_at_owner_start_seconds": 20748.395473003387,
+      "name": "codex:registered_prompt_response_and_preflight",
+      "saved_preflight_lifetime_seconds": 20760,
+      "status": "PASS"
+    },
+    {
+      "forbidden_event_count": 0,
+      "forbidden_types": [],
+      "name": "codex:no_native_tool_calls_or_declared_children",
+      "raw_jsonl_files": [
+        "cell/trace/trace-85de23e8-8950-4978-8c31-7c8d5053e9a3-01a12899-faa1-7ee2-a375-5795417c73bc/trace.jsonl",
+        "home/.codex/sessions/2026/10/11/rollout-2026-10-11T01-35-43-01a12899-faa1-7ee2-a375-5795417c73bc.jsonl"
+      ],
+      "recorded_children": [],
+      "status": "PASS"
+    },
+    {
+      "contiguous_closed_trace": true,
+      "effort": "max",
+      "effort_evidence": "native turn_context plus emitted inference request reasoning.effort",
+      "inference_calls": 1,
+      "model": "gpt-6-astra",
+      "name": "codex:native_model_effort_and_one_owner",
+      "native_version": "0.162.1",
+      "owner_sessions": [
+        "01a12899-faa1-7ee2-a375-5795417c73bc"
+      ],
+      "status": "PASS",
+      "trace_events": 12
+    },
+    {
+      "accounting_basis": "One inference response, reconciled to rollout token_usage_record and terminal turn; cumulative token_count and equivalent mirrors are not added again.",
+      "counters": {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 0,
+        "input_tokens": 12093,
+        "output_tokens": 6,
+        "reasoning_output_tokens": 0,
+        "total_tokens": 12099
+      },
+      "inference_responses": 1,
+      "name": "codex:raw_usage_complete_no_double_count",
+      "status": "PASS",
+      "terminal_turns": 1,
+      "token_usage_records": 1,
+      "whole_usage": {
+        "input_tokens": 12093,
+        "output_tokens": 6
+      }
+    },
+    {
+      "name": "codex:catalog_contract",
+      "status": "PASS",
+      "status_detail": "NOT_APPLICABLE: inherited runner does not expose a Codex Claude-style startup catalog; native session/request evidence verified separately"
+    },
+    {
+      "delivery_grade": "NOT_RUN",
+      "efficacy_eligible": false,
+      "hidden_oracle": "NOT_RUN",
+      "name": "codex:no_grading_or_delivery",
+      "source_grade": "NOT_RUN",
+      "status": "PASS"
+    },
+    {
+      "distinct_native_sessions": true,
+      "name": "serial_independent_smokes_no_reuse",
+      "nonoverlap_seconds": 7.195452928543091,
+      "registered_order": [
+        "claude",
+        "codex"
+      ],
+      "replacement_runs": 0,
+      "status": "PASS"
+    },
+    {
+      "mismatches": [],
+      "name": "audit_end_boundary_unchanged",
+      "raw_bound_files": 125,
+      "status": "PASS"
+    }
+  ],
+  "completed_at": "2026-10-11T01:39:10.029368+00:00",
+  "cost_ledger": {
+    "counted_smokes": 2,
+    "dollar_total": null,
+    "dollar_total_reason": "Codex native monetary charge is not recorded; Claude alone reports 0.145984 USD list cost.",
+    "input_tokens": 30257,
+    "not_efficacy_draws": true,
+    "output_tokens": 40,
+    "owner_seconds": 13.694164874992566
+  },
+  "findings": [],
+  "limitations": [
+    "Credential files were hashed opaquely; contents were never decoded, parsed or printed. No host credentials, profile call, native inference, Docker command, oracle, delivery or source grading was performed.",
+    "CLEAN is supported by immutable owner records and the hash-bound launcher state checks/removal sequence. Docker State responses are not separately persisted, so no fresh or independently replayed live-state assertion is made.",
+    "The inherited protocol has a native Claude startup catalog only; Codex catalog=null is explicitly not equivalent to a verified empty catalog.",
+    "These two distinct operational B smokes establish only successful authentication/launch/evidence capture for those attempts, not S/B efficacy, grant-refresh isolation, robustness to revocation, or general performance superiority.",
+    "The no-children/no-tools finding is grounded in complete retained native session/trace event inventories for these tiny prompts, not a claim about all possible external provider activity."
+  ],
+  "prediction": "The two operational auth smokes will each match their 125 raw execution bindings and complete evidence-manifest hashes, identify exactly the pinned model/effort, retain one owner with no child/native tool calls, record complete nonduplicated usage and clean teardown, and leave the sealed auth file hashes unchanged. Every counter/cost remains attributed to its own smoke. No source grade, hidden oracle, delivery or efficacy inference is made; any mismatch stops acceptance without rewriting evidence.",
+  "prediction_recorded_at": "2026-10-11T01:36:22.588741+00:00",
+  "schema": "0251-independent-smoke-native-audit-v1",
+  "smokes": [
+    {
+      "config": "claude",
+      "ended_at": 1791682521.4525921,
+      "evidence_manifest_sha256": "cdd302e80a1652055e4163b6194c7dfe69ea0220eab0473bb5a1ee80c2535db5",
+      "financial": {
+        "basis": "native result list cost; not an invoice",
+        "provider_reported_cost_usd": 0.145984
+      },
+      "identity": {
+        "effort": "max",
+        "model": "claude-opus-5-5",
+        "owner_sessions": [
+          "ae603d5b-65af-428f-a29f-4f80c07a2181"
+        ],
+        "version": "2.1.296"
+      },
+      "input_tokens": 18164,
+      "measurement_eligible": false,
+      "name": "smoke-claude-b",
+      "operational_end_to_end_seconds": 26.292166233062744,
+      "output_tokens": 34,
+      "owner_seconds": 7.1931306250044145,
+      "raw_counters": {
+        "cache_write_input": 18162,
+        "cached_input": 0,
+        "output_tokens": 34,
+        "thinking_tokens_subset": 27,
+        "uncached_input": 2
+      },
+      "raw_evidence_files": 2038,
+      "result_sha256": "c96420d2a6c5013ac60bb323dc0cc1ad7cc21266ac802455d3827a3444e6f02e",
+      "started_at": 1791682495.160426,
+      "status": "PASS"
+    },
+    {
+      "config": "codex",
+      "ended_at": 1791682550.340169,
+      "evidence_manifest_sha256": "aa502381af7896f28274396c23e0cdcd6dc891460fc963bb2fea6fce39466729",
+      "financial": {
+        "basis": "No native dollar figure recorded; retain raw counters without inventing price or zero cost",
+        "provider_reported_cost_usd": null
+      },
+      "identity": {
+        "effort": "max",
+        "model": "gpt-6-astra",
+        "owner_sessions": [
+          "01a12899-faa1-7ee2-a375-5795417c73bc"
+        ],
+        "version": "0.162.1"
+      },
+      "input_tokens": 12093,
+      "measurement_eligible": false,
+      "name": "smoke-codex-b",
+      "operational_end_to_end_seconds": 21.692123889923096,
+      "output_tokens": 6,
+      "owner_seconds": 6.501034249988152,
+      "raw_counters": {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 0,
+        "input_tokens": 12093,
+        "output_tokens": 6,
+        "reasoning_output_tokens": 0,
+        "total_tokens": 12099
+      },
+      "raw_evidence_files": 2085,
+      "result_sha256": "9fc40ba8d4f663bcec90d31179584161feb878968d676e1fb009d56e41830d98",
+      "started_at": 1791682528.648045,
+      "status": "PASS"
+    }
+  ],
+  "status": "PASS"
+}

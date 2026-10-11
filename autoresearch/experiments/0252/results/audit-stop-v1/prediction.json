@@ -1,0 +1,7 @@
+{
+  "schema": "0252-stop-audit-prediction-v1",
+  "prediction": "d07 must remain PARTIAL, with whole-attempt cost UNKNOWN, and d08-d24 remain NOT_RUN; verify without efficacy grading or restarting execution.",
+  "provenance": "Verbatim meaning of reviewer commentary stated before the first audit filesystem call. This file was saved after initial record inspection; it is not claimed to predate that inspection.",
+  "additional_checks": "Independently reconstruct native usage and identity; hash frozen bindings, seals and raw evidence; verify schedule prefix and lifecycle, preserve unmodified parking/resume durations.",
+  "forbidden": ["native model launch", "owner or evaluator rerun", "efficacy gate", "source/oracle/delivery grading", "input modification", "credential-content read"]
+}

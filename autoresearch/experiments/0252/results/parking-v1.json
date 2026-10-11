@@ -1,0 +1,11 @@
+{
+  "at": "2026-10-11T02:58:58.137448+00:00",
+  "reason": "User requests parking for a new session",
+  "prediction": "SIGSTOP only the serial driver while it waits for d05; d05 keeps running to its own terminal result and the driver cannot launch d06. Frozen inputs remain unchanged.",
+  "driver_pid": 72149,
+  "driver_command": "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python -B /Users/aipalm/.local/share/nx01/0252-live/run_or2.py",
+  "active_child": "49409 72149 /opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python -B /Users/aipalm/.local/share/nx01/0251-live/source/autoresearch/experiments/0251/runner.py run /Users/aipalm/.local/share/nx01/0252-live/runtime.json d05-or2-claude-s OR2 S claude",
+  "action": "SIGSTOP driver only; do not signal current runner/container",
+  "observed_driver": "72149 21559 Ts   01:17:28 /opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python -B /Users/aipalm/.local/share/nx01/0252-live/run_or2.py",
+  "observed_child": "49409 72149 S    07:23 /opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python -B /Users/aipalm/.local/share/nx01/0251-live/source/autoresearch/experiments/0251/runner.py run /Users/aipalm/.local/share/nx01/0252-live/runtime.json d05-or2-claude-s OR2 S claude"
+}

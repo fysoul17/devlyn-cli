@@ -1,0 +1,27 @@
+{
+  "at": "2026-10-11T01:38:04.518982+00:00",
+  "checks": {
+    "resource_warning_policy": "error",
+    "status": "PASS",
+    "synthetic_tests": 22
+  },
+  "files": {
+    "README.md": "4b88acbdfa415440b33e2cf5790265ed20a54957594b8640277b7ee813e3ca2d",
+    "auth.py": "2c7cc393efc973b94696cf5df8c973a87e4c1941c8a123eedf88eff30faa301d",
+    "cell.py": "68b8b803f4857f31be2b3933e498de9fda81ed18b8b0aac0a02cf21d043b6e6f",
+    "runner.py": "5b43f4f838278a00f018cbdf157d682032b557968f423f013af3dd9a6110ffa0",
+    "test_auth.py": "8db488579d44bac36bae1cadba8e992a8bb35eecf0b92a0bf7c3e869758b3cec",
+    "test_cell.py": "f820ac5544cd9739d2cf747a63fa8a342faa7ac14d2feff3fa716b9c403daca7",
+    "test_runner.py": "9e944b0650f79d14bf8bffa6a9b3b0dfaeeb684f838e1d1e2f310de6ca0effdc"
+  },
+  "high_findings": 0,
+  "native_smoke_order": [
+    "claude/B",
+    "codex/B"
+  ],
+  "native_smoke_status": "PASS_PENDING_INDEPENDENT_NATIVE_AUDIT",
+  "reviewer": "gpt-6-astra/high (continuation_design)",
+  "rounds": 2,
+  "scope": "Fixed selected-auth adapter; Codex managed refresh capability explicitly retained. No independent-grant claim.",
+  "verdict": "SHIP"
+}

@@ -1,0 +1,2141 @@
+{
+  "actual_attempts": 7,
+  "attempts": [
+    {
+      "arm": "S",
+      "config": "codex",
+      "container": "devlyn-0231-c93cca2eb14c49ad947b7da290ce455f",
+      "ended_at": 1791683563.862103,
+      "evidence_manifest_sha256": "ab9783b2619d34be8736045d75a91d2dc36f7c9e3d81e27a4bdba5d2f3960950",
+      "input_tokens": 639167,
+      "known_native_reported_input": 639167,
+      "known_native_reported_output": 23386,
+      "name": "d01-or2-codex-s",
+      "native": {
+        "input_tokens": 639167,
+        "output_tokens": 23386,
+        "sessions": [
+          {
+            "contexts": [
+              [
+                "gpt-6-astra",
+                "max"
+              ]
+            ],
+            "last_native_total": {
+              "cache_write_input_tokens": 0,
+              "cached_input_tokens": 565120,
+              "input_tokens": 639167,
+              "output_tokens": 23386,
+              "reasoning_output_tokens": 13328,
+              "total_tokens": 662553
+            },
+            "metadata": [
+              {
+                "cli_version": "0.162.1",
+                "id": "01a1289f-5bab-7eb3-8dd3-78906167a412",
+                "model_provider": "openai",
+                "source": "exec"
+              }
+            ],
+            "path": "home/.codex/sessions/2026/10/11/rollout-2026-10-11T01-41-35-01a1289f-5bab-7eb3-8dd3-78906167a412.jsonl",
+            "sha256": "67e99b4679e23d97a226100ef414095d1fe00ddf2df337fd1ffba8b31598a20d",
+            "summed_terminal_usage": {
+              "cache_write_input_tokens": 0,
+              "cached_input_tokens": 565120,
+              "input_tokens": 639167,
+              "output_tokens": 23386,
+              "reasoning_output_tokens": 13328,
+              "total_tokens": 662553
+            },
+            "terminal_record_count": 17,
+            "terminal_totals_match": true,
+            "unique_record_count": 17
+          }
+        ]
+      },
+      "original_runner_status_unadjudicated": "CHECKS_PASS",
+      "output_tokens": 23386,
+      "owner_seconds": 669.6833574170014,
+      "owner_status": "EXITED_0",
+      "started_at": 1791682894.113312,
+      "teardown": "CLEAN",
+      "tmp_volume": "devlyn-0234-tmp-9d6e425fe2494a6e858e70d8d5c89721",
+      "usage": "COMPLETE",
+      "verdict_sha256": "77510a4ed021781dedd5ddb40436c9034f4b1271d17aa618cb841b2c0d6941b9"
+    },
+    {
+      "arm": "B",
+      "config": "claude",
+      "container": "devlyn-0231-d9d68104b3324d4fb8325745e3d892b6",
+      "ended_at": 1791685291.8463502,
+      "evidence_manifest_sha256": "6f8d79649a666e42c602fb1a3e066df2ef2edcf9a175d109214f004794538746",
+      "input_tokens": 3168958,
+      "known_native_reported_input": 3168958,
+      "known_native_reported_output": 191043,
+      "name": "d02-or2-claude-b",
+      "native": {
+        "api_errors": [],
+        "comparisons": [
+          {
+            "arithmetic_difference": {
+              "cache_creation_input_tokens": 0,
+              "cache_read_input_tokens": 0,
+              "input_tokens": 0,
+              "output_tokens": 0,
+              "thinking_tokens": 0
+            },
+            "matches": true,
+            "model": "claude-opus-5-5",
+            "native_aggregate": {
+              "cache_creation_input_tokens": 258695,
+              "cache_read_input_tokens": 2910203,
+              "input_tokens": 60,
+              "output_tokens": 191043,
+              "thinking_tokens": 167848
+            },
+            "session": "b465228e-4539-4589-aefb-8e61c4d59002",
+            "terminal_messages": {
+              "cache_creation_input_tokens": 258695,
+              "cache_read_input_tokens": 2910203,
+              "input_tokens": 60,
+              "output_tokens": 191043,
+              "thinking_tokens": 167848
+            }
+          }
+        ],
+        "init": [
+          {
+            "claude_code_version": "2.1.296",
+            "model": "claude-opus-5-5",
+            "session_id": "b465228e-4539-4589-aefb-8e61c4d59002"
+          }
+        ],
+        "input_tokens": 3168958,
+        "missing_terminal": [],
+        "models": [
+          "claude-opus-5-5"
+        ],
+        "native_agent_launches": [
+          {
+            "line": 1072,
+            "model_override": null,
+            "path": "run/stdout",
+            "run_in_background": null,
+            "subagent_type": "general-purpose",
+            "tool": "Agent"
+          }
+        ],
+        "native_child_transcripts": [
+          {
+            "agent_ids": [
+              "aa95496ce0b2533ed"
+            ],
+            "path": "home/.claude/projects/-cell-work/b465228e-4539-4589-aefb-8e61c4d59002/subagents/agent-aa95496ce0b2533ed.jsonl",
+            "rows": 61,
+            "session_ids": [
+              "b465228e-4539-4589-aefb-8e61c4d59002"
+            ],
+            "sha256": "d2ea633380882db6ec724bbe497b2727f4fae98156bff98dd835a417d52e33d1",
+            "sidechain_values": [
+              true
+            ]
+          }
+        ],
+        "output_tokens": 191043,
+        "result_records": [
+          {
+            "is_error": false,
+            "line": 1268,
+            "session_id": "b465228e-4539-4589-aefb-8e61c4d59002",
+            "subtype": "success"
+          }
+        ],
+        "sources": {
+          "home/.claude/projects/-cell-work/b465228e-4539-4589-aefb-8e61c4d59002.jsonl": "5f318f0c69f4471643669ff470f6643a6d88e9410384a440bcdbea23b473da5d",
+          "home/.claude/projects/-cell-work/b465228e-4539-4589-aefb-8e61c4d59002/subagents/agent-aa95496ce0b2533ed.jsonl": "d2ea633380882db6ec724bbe497b2727f4fae98156bff98dd835a417d52e33d1",
+          "run/stdout": "baa195355208adb07045d5c01cf693516c952c4d1128b9335bbf0c2e24bcc24e"
+        },
+        "stream_retries": [],
+        "terminal_message_count": 30,
+        "unique_message_count": 30
+      },
+      "original_runner_status_unadjudicated": "PRODUCT_INCOMPLETE",
+      "output_tokens": 191043,
+      "owner_seconds": 1719.27477012499,
+      "owner_status": "EXITED_0",
+      "started_at": 1791683570.322298,
+      "teardown": "CLEAN",
+      "tmp_volume": "devlyn-0234-tmp-b313b7132349412ba71c415bd4759980",
+      "usage": "COMPLETE",
+      "verdict_sha256": "859113064671853dbad3f3cb0af7c1009669154343832798d1a66d133738e152"
+    },
+    {
+      "arm": "S",
+      "config": "claude",
+      "container": "devlyn-0231-be35727ef5054e51966ca64646453f10",
+      "ended_at": 1791686372.584043,
+      "evidence_manifest_sha256": "29f65150a8f388fdc4ffa858404f3af834512686d07f2dc0579c5c7f89c3edb9",
+      "input_tokens": 4600164,
+      "known_native_reported_input": 4600164,
+      "known_native_reported_output": 118425,
+      "name": "d03-or2-claude-s",
+      "native": {
+        "api_errors": [],
+        "comparisons": [
+          {
+            "arithmetic_difference": {
+              "cache_creation_input_tokens": 0,
+              "cache_read_input_tokens": 0,
+              "input_tokens": 0,
+              "output_tokens": 0,
+              "thinking_tokens": 0
+            },
+            "matches": true,
+            "model": "claude-opus-5-5",
+            "native_aggregate": {
+              "cache_creation_input_tokens": 160202,
+              "cache_read_input_tokens": 4439888,
+              "input_tokens": 74,
+              "output_tokens": 118425,
+              "thinking_tokens": 91947
+            },
+            "session": "7ca8eb38-fca2-4215-9abd-57f73d85ed71",
+            "terminal_messages": {
+              "cache_creation_input_tokens": 160202,
+              "cache_read_input_tokens": 4439888,
+              "input_tokens": 74,
+              "output_tokens": 118425,
+              "thinking_tokens": 91947
+            }
+          }
+        ],
+        "init": [
+          {
+            "claude_code_version": "2.1.296",
+            "model": "claude-opus-5-5",
+            "session_id": "7ca8eb38-fca2-4215-9abd-57f73d85ed71"
+          }
+        ],
+        "input_tokens": 4600164,
+        "missing_terminal": [],
+        "models": [
+          "claude-opus-5-5"
+        ],
+        "native_agent_launches": [],
+        "native_child_transcripts": [],
+        "output_tokens": 118425,
+        "result_records": [
+          {
+            "is_error": false,
+            "line": 1308,
+            "session_id": "7ca8eb38-fca2-4215-9abd-57f73d85ed71",
+            "subtype": "success"
+          }
+        ],
+        "sources": {
+          "home/.claude/projects/-cell-work/7ca8eb38-fca2-4215-9abd-57f73d85ed71.jsonl": "2953041597ccf2e18f0482620cb0149e6c76c50c610f8624d251f9c500e7c313",
+          "run/stdout": "cadd0782efad8ce48dd248e4bc488d6d0bcfedaa97725d6693d018cdf8fde385"
+        },
+        "stream_retries": [],
+        "terminal_message_count": 37,
+        "unique_message_count": 37
+      },
+      "original_runner_status_unadjudicated": "CHECKS_PASS",
+      "output_tokens": 118425,
+      "owner_seconds": 1069.8808793750068,
+      "owner_status": "EXITED_0",
+      "started_at": 1791685302.586741,
+      "teardown": "CLEAN",
+      "tmp_volume": "devlyn-0234-tmp-5519b0a1f24e4d18a1d526a295176478",
+      "usage": "COMPLETE",
+      "verdict_sha256": "29410aae13ff7b7895a0cfd8bd784f6cfcaed80eaea53a2e8b0f67bd1eebc08b"
+    },
+    {
+      "arm": "B",
+      "config": "codex",
+      "container": "devlyn-0231-4a514efbb9cc4a329788162ae9d3118d",
+      "ended_at": 1791687093.246142,
+      "evidence_manifest_sha256": "99e30f15575b572d63feae8ca3ea05d4a9cbd50e32d2c2407164c226bf2b6459",
+      "input_tokens": 545514,
+      "known_native_reported_input": 545514,
+      "known_native_reported_output": 24557,
+      "name": "d04-or2-codex-b",
+      "native": {
+        "input_tokens": 545514,
+        "output_tokens": 24557,
+        "sessions": [
+          {
+            "contexts": [
+              [
+                "gpt-6-astra",
+                "max"
+              ]
+            ],
+            "last_native_total": {
+              "cache_write_input_tokens": 0,
+              "cached_input_tokens": 483200,
+              "input_tokens": 545514,
+              "output_tokens": 24557,
+              "reasoning_output_tokens": 16050,
+              "total_tokens": 570071
+            },
+            "metadata": [
+              {
+                "cli_version": "0.162.1",
+                "id": "01a128d4-9f27-7080-8029-757c8723fae9",
+                "model_provider": "openai",
+                "source": "exec"
+              }
+            ],
+            "path": "home/.codex/sessions/2026/10/11/rollout-2026-10-11T02-39-46-01a128d4-9f27-7080-8029-757c8723fae9.jsonl",
+            "sha256": "676649110cb12ce93809b956517fe02b4eb224ea70d85a609aa628abaec2f212",
+            "summed_terminal_usage": {
+              "cache_write_input_tokens": 0,
+              "cached_input_tokens": 483200,
+              "input_tokens": 545514,
+              "output_tokens": 24557,
+              "reasoning_output_tokens": 16050,
+              "total_tokens": 570071
+            },
+            "terminal_record_count": 14,
+            "terminal_totals_match": true,
+            "unique_record_count": 14
+          }
+        ]
+      },
+      "original_runner_status_unadjudicated": "CHECKS_PASS",
+      "output_tokens": 24557,
+      "owner_seconds": 708.9588165830064,
+      "owner_status": "EXITED_0",
+      "started_at": 1791686384.100757,
+      "teardown": "CLEAN",
+      "tmp_volume": "devlyn-0234-tmp-8bf1388fae8645dd9e2d98e5ccf46660",
+      "usage": "COMPLETE",
+      "verdict_sha256": "9a667461988f371d0fdcd735386c1ae316caf838d9eb6da0567ebe7353e45f2e"
+    },
+    {
+      "arm": "S",
+      "config": "claude",
+      "container": "devlyn-0231-09a8af826d5f4090ab7099de24e2982e",
+      "ended_at": 1791688813.610549,
+      "evidence_manifest_sha256": "79d8b5028db627be5a4b073d61a3690fb015cccce1af6d013c0144b00b3ca225",
+      "input_tokens": 5077003,
+      "known_native_reported_input": 5077003,
+      "known_native_reported_output": 159308,
+      "name": "d05-or2-claude-s",
+      "native": {
+        "api_errors": [],
+        "comparisons": [
+          {
+            "arithmetic_difference": {
+              "cache_creation_input_tokens": 0,
+              "cache_read_input_tokens": 0,
+              "input_tokens": 0,
+              "output_tokens": 0,
+              "thinking_tokens": 0
+            },
+            "matches": true,
+            "model": "claude-opus-5-5",
+            "native_aggregate": {
+              "cache_creation_input_tokens": 200672,
+              "cache_read_input_tokens": 4876263,
+              "input_tokens": 68,
+              "output_tokens": 159308,
+              "thinking_tokens": 137488
+            },
+            "session": "6a0c4631-635c-4917-8081-cf0f33b9fb38",
+            "terminal_messages": {
+              "cache_creation_input_tokens": 200672,
+              "cache_read_input_tokens": 4876263,
+              "input_tokens": 68,
+              "output_tokens": 159308,
+              "thinking_tokens": 137488
+            }
+          }
+        ],
+        "init": [
+          {
+            "claude_code_version": "2.1.296",
+            "model": "claude-opus-5-5",
+            "session_id": "6a0c4631-635c-4917-8081-cf0f33b9fb38"
+          }
+        ],
+        "input_tokens": 5077003,
+        "missing_terminal": [],
+        "models": [
+          "claude-opus-5-5"
+        ],
+        "native_agent_launches": [],
+        "native_child_transcripts": [],
+        "output_tokens": 159308,
+        "result_records": [
+          {
+            "is_error": false,
+            "line": 1685,
+            "session_id": "6a0c4631-635c-4917-8081-cf0f33b9fb38",
+            "subtype": "success"
+          }
+        ],
+        "sources": {
+          "home/.claude/projects/-cell-work/6a0c4631-635c-4917-8081-cf0f33b9fb38.jsonl": "0ac3ac5c6404360dc4cd88c0f66e6c3d8a82a41bb1ab5219e95579038adfe607",
+          "run/stdout": "5da0488d69ce9fa0fffd51d968d6dc6def5a81c1056c50566c30bc4f1dad4708"
+        },
+        "stream_retries": [],
+        "terminal_message_count": 34,
+        "unique_message_count": 34
+      },
+      "original_runner_status_unadjudicated": "CHECKS_PASS",
+      "output_tokens": 159308,
+      "owner_seconds": 1715.7884819169994,
+      "owner_status": "EXITED_0",
+      "started_at": 1791687097.700616,
+      "teardown": "CLEAN",
+      "tmp_volume": "devlyn-0234-tmp-cfc859addeb5458dac1a8fe09e2927ca",
+      "usage": "COMPLETE",
+      "verdict_sha256": "486cd7616da41f995433fde78d742f0bb41369135b20a243fdc82baedee65da1"
+    },
+    {
+      "arm": "B",
+      "config": "codex",
+      "container": "devlyn-0231-160937e3e918432d9c55af194af57e36",
+      "ended_at": 1791689362.840428,
+      "evidence_manifest_sha256": "c126aa6a67bc46b845b69fce79881ad9df0f3a7854a479ac663e6570c516c9d0",
+      "input_tokens": 488997,
+      "known_native_reported_input": 488997,
+      "known_native_reported_output": 18422,
+      "name": "d06-or2-codex-b",
+      "native": {
+        "input_tokens": 488997,
+        "output_tokens": 18422,
+        "sessions": [
+          {
+            "contexts": [
+              [
+                "gpt-6-astra",
+                "max"
+              ]
+            ],
+            "last_native_total": {
+              "cache_write_input_tokens": 0,
+              "cached_input_tokens": 423424,
+              "input_tokens": 488997,
+              "output_tokens": 18422,
+              "reasoning_output_tokens": 10755,
+              "total_tokens": 507419
+            },
+            "metadata": [
+              {
+                "cli_version": "0.162.1",
+                "id": "01a128f9-c5b9-7a33-9164-fb31b9ee5762",
+                "model_provider": "openai",
+                "source": "exec"
+              }
+            ],
+            "path": "home/.codex/sessions/2026/10/11/rollout-2026-10-11T03-20-20-01a128f9-c5b9-7a33-9164-fb31b9ee5762.jsonl",
+            "sha256": "6f4679c202e9d768f564f6852630099234ba8a5e671ab6bf62a2e2be572a59e0",
+            "summed_terminal_usage": {
+              "cache_write_input_tokens": 0,
+              "cached_input_tokens": 423424,
+              "input_tokens": 488997,
+              "output_tokens": 18422,
+              "reasoning_output_tokens": 10755,
+              "total_tokens": 507419
+            },
+            "terminal_record_count": 15,
+            "terminal_totals_match": true,
+            "unique_record_count": 15
+          }
+        ]
+      },
+      "original_runner_status_unadjudicated": "CHECKS_PASS",
+      "output_tokens": 18422,
+      "owner_seconds": 543.0486605830083,
+      "owner_status": "EXITED_0",
+      "started_at": 1791688819.692576,
+      "teardown": "CLEAN",
+      "tmp_volume": "devlyn-0234-tmp-47a7648097f6471fb842fe71a6c96264",
+      "usage": "COMPLETE",
+      "verdict_sha256": "f2d83e50b5c0b81fed16dcfeb693def5e3d7c24570cf0d9ce291cb728cdd980c"
+    },
+    {
+      "arm": "B",
+      "config": "claude",
+      "container": "devlyn-0231-f5446b90aca14733a5e33ffea6946f0c",
+      "ended_at": 1791691579.125642,
+      "evidence_manifest_sha256": "6c0aa40e0e5b7f575827bffb01720e32111fc49916a9abc078d640a93f529193",
+      "input_tokens": null,
+      "known_native_reported_input": 4682353,
+      "known_native_reported_output": 252455,
+      "name": "d07-or2-claude-b",
+      "native": {
+        "api_errors": [],
+        "comparisons": [
+          {
+            "arithmetic_difference": {
+              "cache_creation_input_tokens": 1238,
+              "cache_read_input_tokens": 90925,
+              "input_tokens": 2,
+              "output_tokens": 5552,
+              "thinking_tokens": 5001
+            },
+            "matches": false,
+            "model": "claude-opus-5-5",
+            "native_aggregate": {
+              "cache_creation_input_tokens": 312517,
+              "cache_read_input_tokens": 4369766,
+              "input_tokens": 70,
+              "output_tokens": 252455,
+              "thinking_tokens": 225007
+            },
+            "session": "72508a4d-1db7-4ce7-a283-fe5ceb0c674b",
+            "terminal_messages": {
+              "cache_creation_input_tokens": 311279,
+              "cache_read_input_tokens": 4278841,
+              "input_tokens": 68,
+              "output_tokens": 246903,
+              "thinking_tokens": 220006
+            }
+          }
+        ],
+        "init": [
+          {
+            "claude_code_version": "2.1.296",
+            "model": "claude-opus-5-5",
+            "session_id": "72508a4d-1db7-4ce7-a283-fe5ceb0c674b"
+          }
+        ],
+        "input_tokens": 4682353,
+        "missing_terminal": [
+          {
+            "message_id": "msg_011CfunbQhY59sLNzUGB5DeQ",
+            "records": [
+              {
+                "line": 53,
+                "model": "claude-opus-5-5",
+                "path": "home/.claude/projects/-cell-work/72508a4d-1db7-4ce7-a283-fe5ceb0c674b/subagents/agent-a404df2904b5a0457.jsonl",
+                "request_id": "req_011CfunbQSukX6eR7yg1aY6j",
+                "stop_reason": null,
+                "timestamp": "2026-10-11T04:05:06.607Z",
+                "usage": {
+                  "cache_creation": {
+                    "ephemeral_1h_input_tokens": 1238,
+                    "ephemeral_5m_input_tokens": 0
+                  },
+                  "cache_creation_input_tokens": 1238,
+                  "cache_read_input_tokens": 90925,
+                  "inference_geo": "global",
+                  "input_tokens": 2,
+                  "output_tokens": 8,
+                  "service_tier": "standard"
+                }
+              },
+              {
+                "line": 54,
+                "model": "claude-opus-5-5",
+                "path": "home/.claude/projects/-cell-work/72508a4d-1db7-4ce7-a283-fe5ceb0c674b/subagents/agent-a404df2904b5a0457.jsonl",
+                "request_id": "req_011CfunbQSukX6eR7yg1aY6j",
+                "stop_reason": null,
+                "timestamp": "2026-10-11T04:05:06.619Z",
+                "usage": {
+                  "cache_creation": {
+                    "ephemeral_1h_input_tokens": 1238,
+                    "ephemeral_5m_input_tokens": 0
+                  },
+                  "cache_creation_input_tokens": 1238,
+                  "cache_read_input_tokens": 90925,
+                  "inference_geo": "global",
+                  "input_tokens": 2,
+                  "output_tokens": 8,
+                  "service_tier": "standard"
+                }
+              },
+              {
+                "line": 55,
+                "model": "claude-opus-5-5",
+                "path": "home/.claude/projects/-cell-work/72508a4d-1db7-4ce7-a283-fe5ceb0c674b/subagents/agent-a404df2904b5a0457.jsonl",
+                "request_id": "req_011CfunbQSukX6eR7yg1aY6j",
+                "stop_reason": null,
+                "timestamp": "2026-10-11T04:05:09.087Z",
+                "usage": {
+                  "cache_creation": {
+                    "ephemeral_1h_input_tokens": 1238,
+                    "ephemeral_5m_input_tokens": 0
+                  },
+                  "cache_creation_input_tokens": 1238,
+                  "cache_read_input_tokens": 90925,
+                  "inference_geo": "global",
+                  "input_tokens": 2,
+                  "output_tokens": 8,
+                  "service_tier": "standard"
+                }
+              }
+            ],
+            "session": "72508a4d-1db7-4ce7-a283-fe5ceb0c674b"
+          }
+        ],
+        "models": [
+          "claude-opus-5-5"
+        ],
+        "native_agent_launches": [
+          {
+            "line": 1441,
+            "model_override": null,
+            "path": "run/stdout",
+            "run_in_background": true,
+            "subagent_type": "general-purpose",
+            "tool": "Agent"
+          }
+        ],
+        "native_child_transcripts": [
+          {
+            "agent_ids": [
+              "a404df2904b5a0457"
+            ],
+            "path": "home/.claude/projects/-cell-work/72508a4d-1db7-4ce7-a283-fe5ceb0c674b/subagents/agent-a404df2904b5a0457.jsonl",
+            "rows": 63,
+            "session_ids": [
+              "72508a4d-1db7-4ce7-a283-fe5ceb0c674b"
+            ],
+            "sha256": "16b62e46de3804071162f87c9e7cc7118da36f7ec077ce6ffcf924a11d2b8b50",
+            "sidechain_values": [
+              true
+            ]
+          }
+        ],
+        "output_tokens": 252455,
+        "result_records": [
+          {
+            "is_error": false,
+            "line": 1697,
+            "session_id": "72508a4d-1db7-4ce7-a283-fe5ceb0c674b",
+            "subtype": "success"
+          }
+        ],
+        "sources": {
+          "home/.claude/projects/-cell-work/72508a4d-1db7-4ce7-a283-fe5ceb0c674b.jsonl": "ae0d7e0bb4e53e15aa6f855dfe60d949035b57d58b714749bd2cb6efc8d36907",
+          "home/.claude/projects/-cell-work/72508a4d-1db7-4ce7-a283-fe5ceb0c674b/subagents/agent-a404df2904b5a0457.jsonl": "16b62e46de3804071162f87c9e7cc7118da36f7ec077ce6ffcf924a11d2b8b50",
+          "run/stdout": "a3f7c3a60e0d13716252a2e867226c943e4b8e683994757a86ee4ef417d54539"
+        },
+        "stream_retries": [],
+        "terminal_message_count": 34,
+        "unique_message_count": 35
+      },
+      "original_runner_status_unadjudicated": "STOP",
+      "output_tokens": null,
+      "owner_seconds": 2210.522106166987,
+      "owner_status": "EXITED_0",
+      "started_at": 1791689368.4548092,
+      "teardown": "CLEAN",
+      "tmp_volume": "devlyn-0234-tmp-07ac9ae4513b40fd8dea9f39444714f6",
+      "usage": "PARTIAL",
+      "verdict_sha256": "18fd88a053919d60ee2a53bf38add99bdb00a3679a31746255d1532680b8315f"
+    }
+  ],
+  "checks": [
+    {
+      "detail": {
+        "count": 773,
+        "inputs_equal_freeze": true,
+        "mismatches": [],
+        "selected_equal_freeze": true
+      },
+      "name": "773_frozen_bindings",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "bindings_sha256": "e8dfafde4c137db7f082c11243d42c871596a7f43ab35701735b6660c73c2dae",
+        "freeze_sha256": "e157693dea13ec057f19acb205220241a2583590e13243b8168d2f068b6604d8",
+        "registration_sha256": "2e90d1d98a9ecb1f580786881a262c8b18cd97109d1e91cfb5f5411a1c1b1204",
+        "schedule_sha256": "4bd81b5d2e2ccfa8a2d07566c4bd93103ca716472b64423e4e7fb45daee91d2b"
+      },
+      "name": "registration_schedule_and_freeze",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "audit_sha256": "c7eecbb692ed0c9a3060bc8f4858f0635d1663bbc628e1333a72b3bb6a1ee5a9",
+        "freeze_sha256": "e157693dea13ec057f19acb205220241a2583590e13243b8168d2f068b6604d8",
+        "script_sha256": "46b55c6126a38f44d8cf8922d2a8d10f10d371fcad683c5437ffeb85e80d0611"
+      },
+      "name": "operator_binding",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "oracle": {
+          "count": 28,
+          "extra": [],
+          "mismatches": [],
+          "missing": []
+        },
+        "packages": {
+          "count": 969,
+          "extra": [],
+          "mismatches": [],
+          "missing": []
+        },
+        "public": {
+          "count": 64,
+          "extra": [],
+          "mismatches": [],
+          "missing": []
+        }
+      },
+      "name": "control_hashes_only",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "credential_contents_read": false,
+        "files": {
+          "claude.env": "c10e5f01993651c5bfe9d841156247567f969478accc7bf544d46289ba3ba7db",
+          "codex.json": "aaa6c05f4e34afe36b585045cb72cf15d8d2d903434fbac3a30177fa08fe8ab4"
+        },
+        "manifest_sha256": "43980e45bef2ad26a7f11d994fda5ac5909d421dfa46fc9dad45516780e32b4d",
+        "mismatches": []
+      },
+      "name": "fixed_auth_hashes_only",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "freeze_audit_sha256": "c7eecbb692ed0c9a3060bc8f4858f0635d1663bbc628e1333a72b3bb6a1ee5a9",
+        "rerun": false,
+        "smoke_audit_sha256": "4bfa1d6569ad6513bc8c5af675eaa1a48bf35994c6c4fb086fbbb71d99915f03"
+      },
+      "name": "unchanged_prior_freeze_and_smoke_audit_reuse",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "actual_attempts": 7,
+        "actual_starts": [
+          "d01-or2-codex-s",
+          "d02-or2-claude-b",
+          "d03-or2-claude-s",
+          "d04-or2-codex-b",
+          "d05-or2-claude-s",
+          "d06-or2-codex-b",
+          "d07-or2-claude-b"
+        ],
+        "not_run": [
+          "d08-or2-codex-s",
+          "d09-or1-codex-b",
+          "d10-or1-claude-s",
+          "d11-or1-claude-b",
+          "d12-or1-codex-s",
+          "d13-or1-claude-b",
+          "d14-or1-codex-s",
+          "d15-or1-claude-s",
+          "d16-or1-codex-b",
+          "d17-e1-claude-b",
+          "d18-e1-claude-s",
+          "d19-e1-codex-s",
+          "d20-e1-codex-b",
+          "d21-b5-codex-b",
+          "d22-b5-codex-s",
+          "d23-b5-claude-s",
+          "d24-b5-claude-b"
+        ],
+        "not_run_count": 17
+      },
+      "name": "registered_seven_attempt_prefix",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "failures": [],
+        "file_count": 959,
+        "manifest_sha256": "ab9783b2619d34be8736045d75a91d2dc36f7c9e3d81e27a4bdba5d2f3960950",
+        "mismatches": []
+      },
+      "name": "d01-or2-codex-s_custody",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "mismatches": [],
+        "prepared_count": 5,
+        "seal_sha256": "e41a303f98d8eba3a21aa6b6b9415d480ff45798f5e530feecfd8a4c1181b55d"
+      },
+      "name": "d01-or2-codex-s_prepared_and_inputs",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "argv_matches_native": true,
+        "effort": "max",
+        "model": "gpt-6-astra",
+        "owner_watchdog_seconds": 5400,
+        "verdict_sha256": "77510a4ed021781dedd5ddb40436c9034f4b1271d17aa618cb841b2c0d6941b9"
+      },
+      "name": "d01-or2-codex-s_launch",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "raw_native_input": 639167,
+        "raw_native_output": 23386,
+        "recorded_completeness": "COMPLETE"
+      },
+      "name": "d01-or2-codex-s_native_counter_retention",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "input_tokens": 639167,
+        "output_tokens": 23386,
+        "sessions": [
+          {
+            "contexts": [
+              [
+                "gpt-6-astra",
+                "max"
+              ]
+            ],
+            "last_native_total": {
+              "cache_write_input_tokens": 0,
+              "cached_input_tokens": 565120,
+              "input_tokens": 639167,
+              "output_tokens": 23386,
+              "reasoning_output_tokens": 13328,
+              "total_tokens": 662553
+            },
+            "metadata": [
+              {
+                "cli_version": "0.162.1",
+                "id": "01a1289f-5bab-7eb3-8dd3-78906167a412",
+                "model_provider": "openai",
+                "source": "exec"
+              }
+            ],
+            "path": "home/.codex/sessions/2026/10/11/rollout-2026-10-11T01-41-35-01a1289f-5bab-7eb3-8dd3-78906167a412.jsonl",
+            "sha256": "67e99b4679e23d97a226100ef414095d1fe00ddf2df337fd1ffba8b31598a20d",
+            "summed_terminal_usage": {
+              "cache_write_input_tokens": 0,
+              "cached_input_tokens": 565120,
+              "input_tokens": 639167,
+              "output_tokens": 23386,
+              "reasoning_output_tokens": 13328,
+              "total_tokens": 662553
+            },
+            "terminal_record_count": 17,
+            "terminal_totals_match": true,
+            "unique_record_count": 17
+          }
+        ]
+      },
+      "name": "d01-or2-codex-s_independent_codex_reconstruction",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "models_verified_from_native_metadata": true,
+        "native_identity": {
+          "codex_seats": {
+            "01a1289f-5bab-7eb3-8dd3-78906167a412": [
+              "owner",
+              "gpt-6-astra",
+              "max"
+            ]
+          },
+          "gaps": [],
+          "owner": "MATCH",
+          "owner_launched_sessions": [],
+          "status": "MATCH",
+          "violations": []
+        },
+        "peer_status": "MATCH"
+      },
+      "name": "d01-or2-codex-s_native_identity",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "account": [
+          "230ea92eea12",
+          "584a8a8f163a"
+        ],
+        "minimum": 6300,
+        "scope": "Recorded preflight only; frozen adapter enforcement reused, no live auth call",
+        "token_seconds_left": 20397
+      },
+      "name": "d01-or2-codex-s_recorded_venue",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "failures": [],
+        "file_count": 880,
+        "manifest_sha256": "6f8d79649a666e42c602fb1a3e066df2ef2edcf9a175d109214f004794538746",
+        "mismatches": []
+      },
+      "name": "d02-or2-claude-b_custody",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "mismatches": [],
+        "prepared_count": 5,
+        "seal_sha256": "65cf10917862028418ed07b3b814e7392e5601d1a00f48e21957add01349a897"
+      },
+      "name": "d02-or2-claude-b_prepared_and_inputs",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "argv_matches_native": true,
+        "effort": "max",
+        "model": "claude-opus-5-5",
+        "owner_watchdog_seconds": 5400,
+        "verdict_sha256": "859113064671853dbad3f3cb0af7c1009669154343832798d1a66d133738e152"
+      },
+      "name": "d02-or2-claude-b_launch",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "raw_native_input": 3168958,
+        "raw_native_output": 191043,
+        "recorded_completeness": "COMPLETE"
+      },
+      "name": "d02-or2-claude-b_native_counter_retention",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "api_errors": [],
+        "comparisons": [
+          {
+            "arithmetic_difference": {
+              "cache_creation_input_tokens": 0,
+              "cache_read_input_tokens": 0,
+              "input_tokens": 0,
+              "output_tokens": 0,
+              "thinking_tokens": 0
+            },
+            "matches": true,
+            "model": "claude-opus-5-5",
+            "native_aggregate": {
+              "cache_creation_input_tokens": 258695,
+              "cache_read_input_tokens": 2910203,
+              "input_tokens": 60,
+              "output_tokens": 191043,
+              "thinking_tokens": 167848
+            },
+            "session": "b465228e-4539-4589-aefb-8e61c4d59002",
+            "terminal_messages": {
+              "cache_creation_input_tokens": 258695,
+              "cache_read_input_tokens": 2910203,
+              "input_tokens": 60,
+              "output_tokens": 191043,
+              "thinking_tokens": 167848
+            }
+          }
+        ],
+        "init": [
+          {
+            "claude_code_version": "2.1.296",
+            "model": "claude-opus-5-5",
+            "session_id": "b465228e-4539-4589-aefb-8e61c4d59002"
+          }
+        ],
+        "input_tokens": 3168958,
+        "missing_terminal": [],
+        "models": [
+          "claude-opus-5-5"
+        ],
+        "native_agent_launches": [
+          {
+            "line": 1072,
+            "model_override": null,
+            "path": "run/stdout",
+            "run_in_background": null,
+            "subagent_type": "general-purpose",
+            "tool": "Agent"
+          }
+        ],
+        "native_child_transcripts": [
+          {
+            "agent_ids": [
+              "aa95496ce0b2533ed"
+            ],
+            "path": "home/.claude/projects/-cell-work/b465228e-4539-4589-aefb-8e61c4d59002/subagents/agent-aa95496ce0b2533ed.jsonl",
+            "rows": 61,
+            "session_ids": [
+              "b465228e-4539-4589-aefb-8e61c4d59002"
+            ],
+            "sha256": "d2ea633380882db6ec724bbe497b2727f4fae98156bff98dd835a417d52e33d1",
+            "sidechain_values": [
+              true
+            ]
+          }
+        ],
+        "output_tokens": 191043,
+        "result_records": [
+          {
+            "is_error": false,
+            "line": 1268,
+            "session_id": "b465228e-4539-4589-aefb-8e61c4d59002",
+            "subtype": "success"
+          }
+        ],
+        "sources": {
+          "home/.claude/projects/-cell-work/b465228e-4539-4589-aefb-8e61c4d59002.jsonl": "5f318f0c69f4471643669ff470f6643a6d88e9410384a440bcdbea23b473da5d",
+          "home/.claude/projects/-cell-work/b465228e-4539-4589-aefb-8e61c4d59002/subagents/agent-aa95496ce0b2533ed.jsonl": "d2ea633380882db6ec724bbe497b2727f4fae98156bff98dd835a417d52e33d1",
+          "run/stdout": "baa195355208adb07045d5c01cf693516c952c4d1128b9335bbf0c2e24bcc24e"
+        },
+        "stream_retries": [],
+        "terminal_message_count": 30,
+        "unique_message_count": 30
+      },
+      "name": "d02-or2-claude-b_independent_claude_reconstruction",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "models_verified_from_native_metadata": true,
+        "native_identity": {
+          "codex_seats": {},
+          "gaps": [],
+          "owner": "MATCH",
+          "owner_launched_sessions": [],
+          "status": "MATCH",
+          "violations": []
+        },
+        "peer_status": "MATCH"
+      },
+      "name": "d02-or2-claude-b_native_identity",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "account": [
+          "230ea92eea12",
+          "584a8a8f163a"
+        ],
+        "minimum": 6300,
+        "scope": "Recorded preflight only; frozen adapter enforcement reused, no live auth call",
+        "token_seconds_left": 19721
+      },
+      "name": "d02-or2-claude-b_recorded_venue",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "failures": [],
+        "file_count": 806,
+        "manifest_sha256": "29f65150a8f388fdc4ffa858404f3af834512686d07f2dc0579c5c7f89c3edb9",
+        "mismatches": []
+      },
+      "name": "d03-or2-claude-s_custody",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "mismatches": [],
+        "prepared_count": 5,
+        "seal_sha256": "4899e57701d7e5009e7b8704fd19146f8ada3667538c14ddfcb4a6c0069d7dbb"
+      },
+      "name": "d03-or2-claude-s_prepared_and_inputs",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "argv_matches_native": true,
+        "effort": "max",
+        "model": "claude-opus-5-5",
+        "owner_watchdog_seconds": 5400,
+        "verdict_sha256": "29410aae13ff7b7895a0cfd8bd784f6cfcaed80eaea53a2e8b0f67bd1eebc08b"
+      },
+      "name": "d03-or2-claude-s_launch",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "raw_native_input": 4600164,
+        "raw_native_output": 118425,
+        "recorded_completeness": "COMPLETE"
+      },
+      "name": "d03-or2-claude-s_native_counter_retention",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "api_errors": [],
+        "comparisons": [
+          {
+            "arithmetic_difference": {
+              "cache_creation_input_tokens": 0,
+              "cache_read_input_tokens": 0,
+              "input_tokens": 0,
+              "output_tokens": 0,
+              "thinking_tokens": 0
+            },
+            "matches": true,
+            "model": "claude-opus-5-5",
+            "native_aggregate": {
+              "cache_creation_input_tokens": 160202,
+              "cache_read_input_tokens": 4439888,
+              "input_tokens": 74,
+              "output_tokens": 118425,
+              "thinking_tokens": 91947
+            },
+            "session": "7ca8eb38-fca2-4215-9abd-57f73d85ed71",
+            "terminal_messages": {
+              "cache_creation_input_tokens": 160202,
+              "cache_read_input_tokens": 4439888,
+              "input_tokens": 74,
+              "output_tokens": 118425,
+              "thinking_tokens": 91947
+            }
+          }
+        ],
+        "init": [
+          {
+            "claude_code_version": "2.1.296",
+            "model": "claude-opus-5-5",
+            "session_id": "7ca8eb38-fca2-4215-9abd-57f73d85ed71"
+          }
+        ],
+        "input_tokens": 4600164,
+        "missing_terminal": [],
+        "models": [
+          "claude-opus-5-5"
+        ],
+        "native_agent_launches": [],
+        "native_child_transcripts": [],
+        "output_tokens": 118425,
+        "result_records": [
+          {
+            "is_error": false,
+            "line": 1308,
+            "session_id": "7ca8eb38-fca2-4215-9abd-57f73d85ed71",
+            "subtype": "success"
+          }
+        ],
+        "sources": {
+          "home/.claude/projects/-cell-work/7ca8eb38-fca2-4215-9abd-57f73d85ed71.jsonl": "2953041597ccf2e18f0482620cb0149e6c76c50c610f8624d251f9c500e7c313",
+          "run/stdout": "cadd0782efad8ce48dd248e4bc488d6d0bcfedaa97725d6693d018cdf8fde385"
+        },
+        "stream_retries": [],
+        "terminal_message_count": 37,
+        "unique_message_count": 37
+      },
+      "name": "d03-or2-claude-s_independent_claude_reconstruction",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "models_verified_from_native_metadata": true,
+        "native_identity": {
+          "codex_seats": {},
+          "gaps": [],
+          "owner": "MATCH",
+          "owner_launched_sessions": [],
+          "status": "MATCH",
+          "violations": []
+        },
+        "peer_status": "MATCH"
+      },
+      "name": "d03-or2-claude-s_native_identity",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "account": [
+          "230ea92eea12",
+          "584a8a8f163a"
+        ],
+        "minimum": 6300,
+        "scope": "Recorded preflight only; frozen adapter enforcement reused, no live auth call",
+        "token_seconds_left": 17989
+      },
+      "name": "d03-or2-claude-s_recorded_venue",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "failures": [],
+        "file_count": 906,
+        "manifest_sha256": "99e30f15575b572d63feae8ca3ea05d4a9cbd50e32d2c2407164c226bf2b6459",
+        "mismatches": []
+      },
+      "name": "d04-or2-codex-b_custody",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "mismatches": [],
+        "prepared_count": 5,
+        "seal_sha256": "343d1822b8d6dfd3d67102e646f46d41b823533924f37c5d61956616f3826d6c"
+      },
+      "name": "d04-or2-codex-b_prepared_and_inputs",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "argv_matches_native": true,
+        "effort": "max",
+        "model": "gpt-6-astra",
+        "owner_watchdog_seconds": 5400,
+        "verdict_sha256": "9a667461988f371d0fdcd735386c1ae316caf838d9eb6da0567ebe7353e45f2e"
+      },
+      "name": "d04-or2-codex-b_launch",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "raw_native_input": 545514,
+        "raw_native_output": 24557,
+        "recorded_completeness": "COMPLETE"
+      },
+      "name": "d04-or2-codex-b_native_counter_retention",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "input_tokens": 545514,
+        "output_tokens": 24557,
+        "sessions": [
+          {
+            "contexts": [
+              [
+                "gpt-6-astra",
+                "max"
+              ]
+            ],
+            "last_native_total": {
+              "cache_write_input_tokens": 0,
+              "cached_input_tokens": 483200,
+              "input_tokens": 545514,
+              "output_tokens": 24557,
+              "reasoning_output_tokens": 16050,
+              "total_tokens": 570071
+            },
+            "metadata": [
+              {
+                "cli_version": "0.162.1",
+                "id": "01a128d4-9f27-7080-8029-757c8723fae9",
+                "model_provider": "openai",
+                "source": "exec"
+              }
+            ],
+            "path": "home/.codex/sessions/2026/10/11/rollout-2026-10-11T02-39-46-01a128d4-9f27-7080-8029-757c8723fae9.jsonl",
+            "sha256": "676649110cb12ce93809b956517fe02b4eb224ea70d85a609aa628abaec2f212",
+            "summed_terminal_usage": {
+              "cache_write_input_tokens": 0,
+              "cached_input_tokens": 483200,
+              "input_tokens": 545514,
+              "output_tokens": 24557,
+              "reasoning_output_tokens": 16050,
+              "total_tokens": 570071
+            },
+            "terminal_record_count": 14,
+            "terminal_totals_match": true,
+            "unique_record_count": 14
+          }
+        ]
+      },
+      "name": "d04-or2-codex-b_independent_codex_reconstruction",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "models_verified_from_native_metadata": true,
+        "native_identity": {
+          "codex_seats": {
+            "01a128d4-9f27-7080-8029-757c8723fae9": [
+              "owner",
+              "gpt-6-astra",
+              "max"
+            ]
+          },
+          "gaps": [],
+          "owner": "MATCH",
+          "owner_launched_sessions": [],
+          "status": "MATCH",
+          "violations": []
+        },
+        "peer_status": "MATCH"
+      },
+      "name": "d04-or2-codex-b_native_identity",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "account": [
+          "230ea92eea12",
+          "584a8a8f163a"
+        ],
+        "minimum": 6300,
+        "scope": "Recorded preflight only; frozen adapter enforcement reused, no live auth call",
+        "token_seconds_left": 16908
+      },
+      "name": "d04-or2-codex-b_recorded_venue",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "failures": [],
+        "file_count": 722,
+        "manifest_sha256": "79d8b5028db627be5a4b073d61a3690fb015cccce1af6d013c0144b00b3ca225",
+        "mismatches": []
+      },
+      "name": "d05-or2-claude-s_custody",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "mismatches": [],
+        "prepared_count": 5,
+        "seal_sha256": "1e9f3330f0fa626f3c92bce88271376eaa4df983845194ef7c3bd1c29303b02b"
+      },
+      "name": "d05-or2-claude-s_prepared_and_inputs",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "argv_matches_native": true,
+        "effort": "max",
+        "model": "claude-opus-5-5",
+        "owner_watchdog_seconds": 5400,
+        "verdict_sha256": "486cd7616da41f995433fde78d742f0bb41369135b20a243fdc82baedee65da1"
+      },
+      "name": "d05-or2-claude-s_launch",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "raw_native_input": 5077003,
+        "raw_native_output": 159308,
+        "recorded_completeness": "COMPLETE"
+      },
+      "name": "d05-or2-claude-s_native_counter_retention",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "api_errors": [],
+        "comparisons": [
+          {
+            "arithmetic_difference": {
+              "cache_creation_input_tokens": 0,
+              "cache_read_input_tokens": 0,
+              "input_tokens": 0,
+              "output_tokens": 0,
+              "thinking_tokens": 0
+            },
+            "matches": true,
+            "model": "claude-opus-5-5",
+            "native_aggregate": {
+              "cache_creation_input_tokens": 200672,
+              "cache_read_input_tokens": 4876263,
+              "input_tokens": 68,
+              "output_tokens": 159308,
+              "thinking_tokens": 137488
+            },
+            "session": "6a0c4631-635c-4917-8081-cf0f33b9fb38",
+            "terminal_messages": {
+              "cache_creation_input_tokens": 200672,
+              "cache_read_input_tokens": 4876263,
+              "input_tokens": 68,
+              "output_tokens": 159308,
+              "thinking_tokens": 137488
+            }
+          }
+        ],
+        "init": [
+          {
+            "claude_code_version": "2.1.296",
+            "model": "claude-opus-5-5",
+            "session_id": "6a0c4631-635c-4917-8081-cf0f33b9fb38"
+          }
+        ],
+        "input_tokens": 5077003,
+        "missing_terminal": [],
+        "models": [
+          "claude-opus-5-5"
+        ],
+        "native_agent_launches": [],
+        "native_child_transcripts": [],
+        "output_tokens": 159308,
+        "result_records": [
+          {
+            "is_error": false,
+            "line": 1685,
+            "session_id": "6a0c4631-635c-4917-8081-cf0f33b9fb38",
+            "subtype": "success"
+          }
+        ],
+        "sources": {
+          "home/.claude/projects/-cell-work/6a0c4631-635c-4917-8081-cf0f33b9fb38.jsonl": "0ac3ac5c6404360dc4cd88c0f66e6c3d8a82a41bb1ab5219e95579038adfe607",
+          "run/stdout": "5da0488d69ce9fa0fffd51d968d6dc6def5a81c1056c50566c30bc4f1dad4708"
+        },
+        "stream_retries": [],
+        "terminal_message_count": 34,
+        "unique_message_count": 34
+      },
+      "name": "d05-or2-claude-s_independent_claude_reconstruction",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "models_verified_from_native_metadata": true,
+        "native_identity": {
+          "codex_seats": {},
+          "gaps": [],
+          "owner": "MATCH",
+          "owner_launched_sessions": [],
+          "status": "MATCH",
+          "violations": []
+        },
+        "peer_status": "MATCH"
+      },
+      "name": "d05-or2-claude-s_native_identity",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "account": [
+          "230ea92eea12",
+          "584a8a8f163a"
+        ],
+        "minimum": 6300,
+        "scope": "Recorded preflight only; frozen adapter enforcement reused, no live auth call",
+        "token_seconds_left": 16193
+      },
+      "name": "d05-or2-claude-s_recorded_venue",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "failures": [],
+        "file_count": 890,
+        "manifest_sha256": "c126aa6a67bc46b845b69fce79881ad9df0f3a7854a479ac663e6570c516c9d0",
+        "mismatches": []
+      },
+      "name": "d06-or2-codex-b_custody",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "mismatches": [],
+        "prepared_count": 5,
+        "seal_sha256": "27842eee72cdf580050d7ae7318b2ba191e7112d69101e45d00f31377945e280"
+      },
+      "name": "d06-or2-codex-b_prepared_and_inputs",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "argv_matches_native": true,
+        "effort": "max",
+        "model": "gpt-6-astra",
+        "owner_watchdog_seconds": 5400,
+        "verdict_sha256": "f2d83e50b5c0b81fed16dcfeb693def5e3d7c24570cf0d9ce291cb728cdd980c"
+      },
+      "name": "d06-or2-codex-b_launch",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "raw_native_input": 488997,
+        "raw_native_output": 18422,
+        "recorded_completeness": "COMPLETE"
+      },
+      "name": "d06-or2-codex-b_native_counter_retention",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "input_tokens": 488997,
+        "output_tokens": 18422,
+        "sessions": [
+          {
+            "contexts": [
+              [
+                "gpt-6-astra",
+                "max"
+              ]
+            ],
+            "last_native_total": {
+              "cache_write_input_tokens": 0,
+              "cached_input_tokens": 423424,
+              "input_tokens": 488997,
+              "output_tokens": 18422,
+              "reasoning_output_tokens": 10755,
+              "total_tokens": 507419
+            },
+            "metadata": [
+              {
+                "cli_version": "0.162.1",
+                "id": "01a128f9-c5b9-7a33-9164-fb31b9ee5762",
+                "model_provider": "openai",
+                "source": "exec"
+              }
+            ],
+            "path": "home/.codex/sessions/2026/10/11/rollout-2026-10-11T03-20-20-01a128f9-c5b9-7a33-9164-fb31b9ee5762.jsonl",
+            "sha256": "6f4679c202e9d768f564f6852630099234ba8a5e671ab6bf62a2e2be572a59e0",
+            "summed_terminal_usage": {
+              "cache_write_input_tokens": 0,
+              "cached_input_tokens": 423424,
+              "input_tokens": 488997,
+              "output_tokens": 18422,
+              "reasoning_output_tokens": 10755,
+              "total_tokens": 507419
+            },
+            "terminal_record_count": 15,
+            "terminal_totals_match": true,
+            "unique_record_count": 15
+          }
+        ]
+      },
+      "name": "d06-or2-codex-b_independent_codex_reconstruction",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "models_verified_from_native_metadata": true,
+        "native_identity": {
+          "codex_seats": {
+            "01a128f9-c5b9-7a33-9164-fb31b9ee5762": [
+              "owner",
+              "gpt-6-astra",
+              "max"
+            ]
+          },
+          "gaps": [],
+          "owner": "MATCH",
+          "owner_launched_sessions": [],
+          "status": "MATCH",
+          "violations": []
+        },
+        "peer_status": "MATCH"
+      },
+      "name": "d06-or2-codex-b_native_identity",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "account": [
+          "230ea92eea12",
+          "584a8a8f163a"
+        ],
+        "minimum": 6300,
+        "scope": "Recorded preflight only; frozen adapter enforcement reused, no live auth call",
+        "token_seconds_left": 14471
+      },
+      "name": "d06-or2-codex-b_recorded_venue",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "failures": [],
+        "file_count": 712,
+        "manifest_sha256": "6c0aa40e0e5b7f575827bffb01720e32111fc49916a9abc078d640a93f529193",
+        "mismatches": []
+      },
+      "name": "d07-or2-claude-b_custody",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "mismatches": [],
+        "prepared_count": 5,
+        "seal_sha256": "f11862ab69d96240fb2b209d8c14c43e350005f00b604f747a7a9b2e72023667"
+      },
+      "name": "d07-or2-claude-b_prepared_and_inputs",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "argv_matches_native": true,
+        "effort": "max",
+        "model": "claude-opus-5-5",
+        "owner_watchdog_seconds": 5400,
+        "verdict_sha256": "18fd88a053919d60ee2a53bf38add99bdb00a3679a31746255d1532680b8315f"
+      },
+      "name": "d07-or2-claude-b_launch",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "raw_native_input": 4682353,
+        "raw_native_output": 252455,
+        "recorded_completeness": "PARTIAL"
+      },
+      "name": "d07-or2-claude-b_native_counter_retention",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "api_errors": [],
+        "comparisons": [
+          {
+            "arithmetic_difference": {
+              "cache_creation_input_tokens": 1238,
+              "cache_read_input_tokens": 90925,
+              "input_tokens": 2,
+              "output_tokens": 5552,
+              "thinking_tokens": 5001
+            },
+            "matches": false,
+            "model": "claude-opus-5-5",
+            "native_aggregate": {
+              "cache_creation_input_tokens": 312517,
+              "cache_read_input_tokens": 4369766,
+              "input_tokens": 70,
+              "output_tokens": 252455,
+              "thinking_tokens": 225007
+            },
+            "session": "72508a4d-1db7-4ce7-a283-fe5ceb0c674b",
+            "terminal_messages": {
+              "cache_creation_input_tokens": 311279,
+              "cache_read_input_tokens": 4278841,
+              "input_tokens": 68,
+              "output_tokens": 246903,
+              "thinking_tokens": 220006
+            }
+          }
+        ],
+        "init": [
+          {
+            "claude_code_version": "2.1.296",
+            "model": "claude-opus-5-5",
+            "session_id": "72508a4d-1db7-4ce7-a283-fe5ceb0c674b"
+          }
+        ],
+        "input_tokens": 4682353,
+        "missing_terminal": [
+          {
+            "message_id": "msg_011CfunbQhY59sLNzUGB5DeQ",
+            "records": [
+              {
+                "line": 53,
+                "model": "claude-opus-5-5",
+                "path": "home/.claude/projects/-cell-work/72508a4d-1db7-4ce7-a283-fe5ceb0c674b/subagents/agent-a404df2904b5a0457.jsonl",
+                "request_id": "req_011CfunbQSukX6eR7yg1aY6j",
+                "stop_reason": null,
+                "timestamp": "2026-10-11T04:05:06.607Z",
+                "usage": {
+                  "cache_creation": {
+                    "ephemeral_1h_input_tokens": 1238,
+                    "ephemeral_5m_input_tokens": 0
+                  },
+                  "cache_creation_input_tokens": 1238,
+                  "cache_read_input_tokens": 90925,
+                  "inference_geo": "global",
+                  "input_tokens": 2,
+                  "output_tokens": 8,
+                  "service_tier": "standard"
+                }
+              },
+              {
+                "line": 54,
+                "model": "claude-opus-5-5",
+                "path": "home/.claude/projects/-cell-work/72508a4d-1db7-4ce7-a283-fe5ceb0c674b/subagents/agent-a404df2904b5a0457.jsonl",
+                "request_id": "req_011CfunbQSukX6eR7yg1aY6j",
+                "stop_reason": null,
+                "timestamp": "2026-10-11T04:05:06.619Z",
+                "usage": {
+                  "cache_creation": {
+                    "ephemeral_1h_input_tokens": 1238,
+                    "ephemeral_5m_input_tokens": 0
+                  },
+                  "cache_creation_input_tokens": 1238,
+                  "cache_read_input_tokens": 90925,
+                  "inference_geo": "global",
+                  "input_tokens": 2,
+                  "output_tokens": 8,
+                  "service_tier": "standard"
+                }
+              },
+              {
+                "line": 55,
+                "model": "claude-opus-5-5",
+                "path": "home/.claude/projects/-cell-work/72508a4d-1db7-4ce7-a283-fe5ceb0c674b/subagents/agent-a404df2904b5a0457.jsonl",
+                "request_id": "req_011CfunbQSukX6eR7yg1aY6j",
+                "stop_reason": null,
+                "timestamp": "2026-10-11T04:05:09.087Z",
+                "usage": {
+                  "cache_creation": {
+                    "ephemeral_1h_input_tokens": 1238,
+                    "ephemeral_5m_input_tokens": 0
+                  },
+                  "cache_creation_input_tokens": 1238,
+                  "cache_read_input_tokens": 90925,
+                  "inference_geo": "global",
+                  "input_tokens": 2,
+                  "output_tokens": 8,
+                  "service_tier": "standard"
+                }
+              }
+            ],
+            "session": "72508a4d-1db7-4ce7-a283-fe5ceb0c674b"
+          }
+        ],
+        "models": [
+          "claude-opus-5-5"
+        ],
+        "native_agent_launches": [
+          {
+            "line": 1441,
+            "model_override": null,
+            "path": "run/stdout",
+            "run_in_background": true,
+            "subagent_type": "general-purpose",
+            "tool": "Agent"
+          }
+        ],
+        "native_child_transcripts": [
+          {
+            "agent_ids": [
+              "a404df2904b5a0457"
+            ],
+            "path": "home/.claude/projects/-cell-work/72508a4d-1db7-4ce7-a283-fe5ceb0c674b/subagents/agent-a404df2904b5a0457.jsonl",
+            "rows": 63,
+            "session_ids": [
+              "72508a4d-1db7-4ce7-a283-fe5ceb0c674b"
+            ],
+            "sha256": "16b62e46de3804071162f87c9e7cc7118da36f7ec077ce6ffcf924a11d2b8b50",
+            "sidechain_values": [
+              true
+            ]
+          }
+        ],
+        "output_tokens": 252455,
+        "result_records": [
+          {
+            "is_error": false,
+            "line": 1697,
+            "session_id": "72508a4d-1db7-4ce7-a283-fe5ceb0c674b",
+            "subtype": "success"
+          }
+        ],
+        "sources": {
+          "home/.claude/projects/-cell-work/72508a4d-1db7-4ce7-a283-fe5ceb0c674b.jsonl": "ae0d7e0bb4e53e15aa6f855dfe60d949035b57d58b714749bd2cb6efc8d36907",
+          "home/.claude/projects/-cell-work/72508a4d-1db7-4ce7-a283-fe5ceb0c674b/subagents/agent-a404df2904b5a0457.jsonl": "16b62e46de3804071162f87c9e7cc7118da36f7ec077ce6ffcf924a11d2b8b50",
+          "run/stdout": "a3f7c3a60e0d13716252a2e867226c943e4b8e683994757a86ee4ef417d54539"
+        },
+        "stream_retries": [],
+        "terminal_message_count": 34,
+        "unique_message_count": 35
+      },
+      "name": "d07-or2-claude-b_independent_claude_reconstruction",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "models_verified_from_native_metadata": true,
+        "native_identity": {
+          "codex_seats": {},
+          "gaps": [],
+          "owner": "MATCH",
+          "owner_launched_sessions": [],
+          "status": "MATCH",
+          "violations": []
+        },
+        "peer_status": "MATCH"
+      },
+      "name": "d07-or2-claude-b_native_identity",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "account": [
+          "230ea92eea12",
+          "584a8a8f163a"
+        ],
+        "minimum": 6300,
+        "scope": "Recorded preflight only; frozen adapter enforcement reused, no live auth call",
+        "token_seconds_left": 13923
+      },
+      "name": "d07-or2-claude-b_recorded_venue",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "intervals": [
+          {
+            "ended_at": 1791683563.862103,
+            "name": "d01-or2-codex-s",
+            "owner_seconds": 669.6833574170014,
+            "started_at": 1791682894.113312
+          },
+          {
+            "ended_at": 1791685291.8463502,
+            "name": "d02-or2-claude-b",
+            "owner_seconds": 1719.27477012499,
+            "started_at": 1791683570.322298
+          },
+          {
+            "ended_at": 1791686372.584043,
+            "name": "d03-or2-claude-s",
+            "owner_seconds": 1069.8808793750068,
+            "started_at": 1791685302.586741
+          },
+          {
+            "ended_at": 1791687093.246142,
+            "name": "d04-or2-codex-b",
+            "owner_seconds": 708.9588165830064,
+            "started_at": 1791686384.100757
+          },
+          {
+            "ended_at": 1791688813.610549,
+            "name": "d05-or2-claude-s",
+            "owner_seconds": 1715.7884819169994,
+            "started_at": 1791687097.700616
+          },
+          {
+            "ended_at": 1791689362.840428,
+            "name": "d06-or2-codex-b",
+            "owner_seconds": 543.0486605830083,
+            "started_at": 1791688819.692576
+          },
+          {
+            "ended_at": 1791691579.125642,
+            "name": "d07-or2-claude-b",
+            "owner_seconds": 2210.522106166987,
+            "started_at": 1791689368.4548092
+          }
+        ],
+        "limitation": "Recorded intervals establish no overlap among these owners; cannot reconstruct all unrelated historical host work."
+      },
+      "name": "serial_native_owner_intervals",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "amount_subtracted": 0,
+        "clarification_preserved": true,
+        "driver_wall_seconds": 1721.3958677079936,
+        "hold_seconds": 620.791736,
+        "original_prediction_preserved": true,
+        "overlap": "entire hold inside uninterrupted d05 native interval",
+        "owner_seconds": 1715.7884819169994
+      },
+      "name": "parking_resume_unmodified_d05_duration",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "arithmetic_difference_is_not_recovered_usage": true,
+        "efficacy_gate": "NOT_APPLIED",
+        "no_post_stop_grading_artifacts": true,
+        "raw_record_field_name": "known_usage_lower_bound; inherited raw label retained, not independently certified as a lower bound",
+        "reason": "ValueError: whole-run usage PARTIAL",
+        "reported_native_aggregate": {
+          "input_tokens": 4682353,
+          "output_tokens": 252455
+        },
+        "stop_is_s_failure": false,
+        "whole_run_cost": "UNKNOWN",
+        "whole_run_input": null,
+        "whole_run_output": null
+      },
+      "name": "faithful_accounting_stop_before_grading",
+      "status": "PASS"
+    },
+    {
+      "detail": [
+        {
+          "container_absent": true,
+          "name": "d01-or2-codex-s",
+          "recorded_teardown": "CLEAN",
+          "state_only_inspection": {
+            "returncode": 1,
+            "stderr": "Error: No such object: devlyn-0231-c93cca2eb14c49ad947b7da290ce455f",
+            "stdout": ""
+          },
+          "volume_absent": true,
+          "volume_name_only_inspection": {
+            "returncode": 1,
+            "stderr": "Error response from daemon: get devlyn-0234-tmp-9d6e425fe2494a6e858e70d8d5c89721: no such volume",
+            "stdout": ""
+          }
+        },
+        {
+          "container_absent": true,
+          "name": "d02-or2-claude-b",
+          "recorded_teardown": "CLEAN",
+          "state_only_inspection": {
+            "returncode": 1,
+            "stderr": "Error: No such object: devlyn-0231-d9d68104b3324d4fb8325745e3d892b6",
+            "stdout": ""
+          },
+          "volume_absent": true,
+          "volume_name_only_inspection": {
+            "returncode": 1,
+            "stderr": "Error response from daemon: get devlyn-0234-tmp-b313b7132349412ba71c415bd4759980: no such volume",
+            "stdout": ""
+          }
+        },
+        {
+          "container_absent": true,
+          "name": "d03-or2-claude-s",
+          "recorded_teardown": "CLEAN",
+          "state_only_inspection": {
+            "returncode": 1,
+            "stderr": "Error: No such object: devlyn-0231-be35727ef5054e51966ca64646453f10",
+            "stdout": ""
+          },
+          "volume_absent": true,
+          "volume_name_only_inspection": {
+            "returncode": 1,
+            "stderr": "Error response from daemon: get devlyn-0234-tmp-5519b0a1f24e4d18a1d526a295176478: no such volume",
+            "stdout": ""
+          }
+        },
+        {
+          "container_absent": true,
+          "name": "d04-or2-codex-b",
+          "recorded_teardown": "CLEAN",
+          "state_only_inspection": {
+            "returncode": 1,
+            "stderr": "Error: No such object: devlyn-0231-4a514efbb9cc4a329788162ae9d3118d",
+            "stdout": ""
+          },
+          "volume_absent": true,
+          "volume_name_only_inspection": {
+            "returncode": 1,
+            "stderr": "Error response from daemon: get devlyn-0234-tmp-8bf1388fae8645dd9e2d98e5ccf46660: no such volume",
+            "stdout": ""
+          }
+        },
+        {
+          "container_absent": true,
+          "name": "d05-or2-claude-s",
+          "recorded_teardown": "CLEAN",
+          "state_only_inspection": {
+            "returncode": 1,
+            "stderr": "Error: No such object: devlyn-0231-09a8af826d5f4090ab7099de24e2982e",
+            "stdout": ""
+          },
+          "volume_absent": true,
+          "volume_name_only_inspection": {
+            "returncode": 1,
+            "stderr": "Error response from daemon: get devlyn-0234-tmp-cfc859addeb5458dac1a8fe09e2927ca: no such volume",
+            "stdout": ""
+          }
+        },
+        {
+          "container_absent": true,
+          "name": "d06-or2-codex-b",
+          "recorded_teardown": "CLEAN",
+          "state_only_inspection": {
+            "returncode": 1,
+            "stderr": "Error: No such object: devlyn-0231-160937e3e918432d9c55af194af57e36",
+            "stdout": ""
+          },
+          "volume_absent": true,
+          "volume_name_only_inspection": {
+            "returncode": 1,
+            "stderr": "Error response from daemon: get devlyn-0234-tmp-47a7648097f6471fb842fe71a6c96264: no such volume",
+            "stdout": ""
+          }
+        },
+        {
+          "container_absent": true,
+          "name": "d07-or2-claude-b",
+          "recorded_teardown": "CLEAN",
+          "state_only_inspection": {
+            "returncode": 1,
+            "stderr": "Error: No such object: devlyn-0231-f5446b90aca14733a5e33ffea6946f0c",
+            "stdout": ""
+          },
+          "volume_absent": true,
+          "volume_name_only_inspection": {
+            "returncode": 1,
+            "stderr": "Error response from daemon: get devlyn-0234-tmp-07ac9ae4513b40fd8dea9f39444714f6: no such volume",
+            "stdout": ""
+          }
+        }
+      ],
+      "name": "attempt_lifecycle",
+      "status": "PASS"
+    },
+    {
+      "detail": {
+        "returncode": 1,
+        "stdout": ""
+      },
+      "name": "original_driver_gone",
+      "status": "PASS"
+    }
+  ],
+  "completed_at": "2026-10-11T04:13:56.857235+00:00",
+  "evidence_hashes": {
+    "/Users/aipalm/.local/share/nx01/0249-live/staged-v1/control.manifest.json": "1d0fa17cf35ce310b7e01ed07f4a0c31774931b53d7c63dfeef0fce348ab7f4a",
+    "/Users/aipalm/.local/share/nx01/0251-live/auth/manifest.json": "43980e45bef2ad26a7f11d994fda5ac5909d421dfa46fc9dad45516780e32b4d",
+    "/Users/aipalm/.local/share/nx01/0251-live/verification/0251-smoke-native-audit.json": "4bfa1d6569ad6513bc8c5af675eaa1a48bf35994c6c4fb086fbbb71d99915f03",
+    "/Users/aipalm/.local/share/nx01/0252-live/audit-stop-v1/audit.py": "b69b6e9311bd2501aeb78165c2798bbdbef152b65a736f68b4bea53483fcd58b",
+    "/Users/aipalm/.local/share/nx01/0252-live/audit-stop-v1/prediction.json": "d06d39c7433095c748bf3e065089f0b5a168a30361f8bf12ec315cdb85005c30",
+    "/Users/aipalm/.local/share/nx01/0252-live/bindings.json": "e8dfafde4c137db7f082c11243d42c871596a7f43ab35701735b6660c73c2dae",
+    "/Users/aipalm/.local/share/nx01/0252-live/freeze-audit-v1.json": "c7eecbb692ed0c9a3060bc8f4858f0635d1663bbc628e1333a72b3bb6a1ee5a9",
+    "/Users/aipalm/.local/share/nx01/0252-live/freeze-v1.json": "e157693dea13ec057f19acb205220241a2583590e13243b8168d2f068b6604d8",
+    "/Users/aipalm/.local/share/nx01/0252-live/launch/d01-or2-codex-s-prediction.json": "6573c610633b5f46ed194eb25e57889a8b5c3a550da435af8ee98d011ab51086",
+    "/Users/aipalm/.local/share/nx01/0252-live/launch/d01-or2-codex-s-result.json": "466ab4c6cbdbbdd41e05bf93d4cd6fb09cc5f7f4935ec925dae9fcfdc196513d",
+    "/Users/aipalm/.local/share/nx01/0252-live/launch/d02-or2-claude-b-prediction.json": "94be58f6b26f001ef4307d889b6a7eaff44615993fb562a8a8a48a01616f361a",
+    "/Users/aipalm/.local/share/nx01/0252-live/launch/d02-or2-claude-b-result.json": "29b971dcf186b9404a62b753008ea5a6e10bbe9ea2984d36d51ff051ba4e126c",
+    "/Users/aipalm/.local/share/nx01/0252-live/launch/d03-or2-claude-s-prediction.json": "fb2d9874a811ec7ebdc0abcbbc6546f59bb3d66f09f0c33aa5ce40eb46bba07c",
+    "/Users/aipalm/.local/share/nx01/0252-live/launch/d03-or2-claude-s-result.json": "a4295ab046d5b61ab097892746552c1e1c684d776961c9062e2aedf92aa5c474",
+    "/Users/aipalm/.local/share/nx01/0252-live/launch/d04-or2-codex-b-prediction.json": "0dc72376ba03487171f4d8bfa10922d10874845e2073e24cc154c01a45811bb9",
+    "/Users/aipalm/.local/share/nx01/0252-live/launch/d04-or2-codex-b-result.json": "e02dd791d3ed86fae3d2779756ff69d0d0c7a1d7a03674c4464d420dc9c98633",
+    "/Users/aipalm/.local/share/nx01/0252-live/launch/d05-or2-claude-s-prediction.json": "4d6e7dd4e8ea0da7f78e2ac8c6836ea11f650e8e41a07cf27dab7df99c88e02c",
+    "/Users/aipalm/.local/share/nx01/0252-live/launch/d05-or2-claude-s-result.json": "d8195a7475b723c11a3a52c9e52d46e34ecc13c0f1930ea94d4c01ba65bd3e82",
+    "/Users/aipalm/.local/share/nx01/0252-live/launch/d06-or2-codex-b-prediction.json": "02ff19d4e6509ca9649b2ee970ba27d238e3d889e2a537b116db3d617696d5c5",
+    "/Users/aipalm/.local/share/nx01/0252-live/launch/d06-or2-codex-b-result.json": "084f1fe95dbad7c29a29ea5722ed282e86d484ecc326007833ee4445a37d6a76",
+    "/Users/aipalm/.local/share/nx01/0252-live/launch/d07-or2-claude-b-prediction.json": "5cccd316fd311db6e5b93ac6813b653a311d63abf34b027aa21175d1fc37beb7",
+    "/Users/aipalm/.local/share/nx01/0252-live/launch/d07-or2-claude-b-result.json": "d2b7b32b1f418ede02df3ea2a82c16777addc5d2d70cb903d568f69ac1b96f9c",
+    "/Users/aipalm/.local/share/nx01/0252-live/launch/operator-binding.json": "812a5befab93497a868151097261989ddfd10d16c5fc3d9399ba92c35ab1c6a7",
+    "/Users/aipalm/.local/share/nx01/0252-live/or2-driver.stdout": "dc6b59e8e358223bf7981b3b60fc7ebc88f5a894fb4d1814efb6dfddaf58e48c",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d01-or2-codex-s/evidence.manifest.json": "ab9783b2619d34be8736045d75a91d2dc36f7c9e3d81e27a4bdba5d2f3960950",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d01-or2-codex-s/home/.codex/sessions/2026/10/11/rollout-2026-10-11T01-41-35-01a1289f-5bab-7eb3-8dd3-78906167a412.jsonl": "67e99b4679e23d97a226100ef414095d1fe00ddf2df337fd1ffba8b31598a20d",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d01-or2-codex-s/peer-policy.json": "501daf0ad704c4615f9a68cfe3019a65b33eef4a11506e5c2d815def3cfda208",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d01-or2-codex-s/plan.json": "e69fe0a938e9c37a89e7e83a1732f4fb80e868e705e6cfe8dc6c2c801593dd02",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d01-or2-codex-s/run/result.json": "919b0de75943cd4529b844edf68349b77161bbf28e92e912894977ea20c1ed4e",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d01-or2-codex-s/run/started.json": "1647feb14f68fab39eb57d6373a146cf96b12782d0a69f382095f0a95198e132",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d01-or2-codex-s/seal.json": "e41a303f98d8eba3a21aa6b6b9415d480ff45798f5e530feecfd8a4c1181b55d",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d01-or2-codex-s/usage.json": "56ecf220f7db7c8633b2ff99ddcecaaef82bdf246ba7438c599b69ac368483d7",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d02-or2-claude-b/claude-accounting.json": "f95e094ffd46ef51051ac182a1f7cdb57505fb9fae36ac7a9090bcc3aef50094",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d02-or2-claude-b/evidence.manifest.json": "6f8d79649a666e42c602fb1a3e066df2ef2edcf9a175d109214f004794538746",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d02-or2-claude-b/home/.claude/projects/-cell-work/b465228e-4539-4589-aefb-8e61c4d59002.jsonl": "5f318f0c69f4471643669ff470f6643a6d88e9410384a440bcdbea23b473da5d",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d02-or2-claude-b/home/.claude/projects/-cell-work/b465228e-4539-4589-aefb-8e61c4d59002/subagents/agent-aa95496ce0b2533ed.jsonl": "d2ea633380882db6ec724bbe497b2727f4fae98156bff98dd835a417d52e33d1",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d02-or2-claude-b/peer-policy.json": "362506bc1f7dee932c674fe6663cf9c2da3d7d5d20655dba8e7e4be0f6bc3679",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d02-or2-claude-b/plan.json": "0db99f15a4e99ca3fef26e66669822bb7d2edafcb067533053578605b0f1207b",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d02-or2-claude-b/run/result.json": "45437edd37064eda1a8d1efd187cf7e02a83a49caf9e61d3bfe7105445e44604",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d02-or2-claude-b/run/started.json": "6ead0a7bb42a980480b130632f31c6a0fc86f95f17914fc68982be2a305ad4b8",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d02-or2-claude-b/run/stdout": "baa195355208adb07045d5c01cf693516c952c4d1128b9335bbf0c2e24bcc24e",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d02-or2-claude-b/seal.json": "65cf10917862028418ed07b3b814e7392e5601d1a00f48e21957add01349a897",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d02-or2-claude-b/usage.json": "f376d00d3e156dd4133bdaab2a055a84762d0486f81e035ffc7da6f573cda5eb",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d03-or2-claude-s/claude-accounting.json": "ede33bf34fae7dbaec8af03d33a175b8a71a0f1e00e56e5934afe330715518ba",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d03-or2-claude-s/evidence.manifest.json": "29f65150a8f388fdc4ffa858404f3af834512686d07f2dc0579c5c7f89c3edb9",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d03-or2-claude-s/home/.claude/projects/-cell-work/7ca8eb38-fca2-4215-9abd-57f73d85ed71.jsonl": "2953041597ccf2e18f0482620cb0149e6c76c50c610f8624d251f9c500e7c313",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d03-or2-claude-s/peer-policy.json": "4f0f9e7174890b331f74729768c170f639b65e999394d55e170ba5c9805a6709",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d03-or2-claude-s/plan.json": "5e82c8c483824538e0c52beb554871efef25d01c3ed6fef7eacc0b5d62495a89",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d03-or2-claude-s/run/result.json": "3383cee6e21087d0e2dc262a16e79c53212724ca5ffc513e916767999b4129ae",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d03-or2-claude-s/run/started.json": "328f4dc49e9bf2bccd287b3d9508c382d12d5931744d0f33319d45619cd4d65b",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d03-or2-claude-s/run/stdout": "cadd0782efad8ce48dd248e4bc488d6d0bcfedaa97725d6693d018cdf8fde385",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d03-or2-claude-s/seal.json": "4899e57701d7e5009e7b8704fd19146f8ada3667538c14ddfcb4a6c0069d7dbb",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d03-or2-claude-s/usage.json": "822ba8bef7e52e897fe3d2245081d4cb648a37d1e9300e008c7f944fcd15a6c6",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d04-or2-codex-b/evidence.manifest.json": "99e30f15575b572d63feae8ca3ea05d4a9cbd50e32d2c2407164c226bf2b6459",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d04-or2-codex-b/home/.codex/sessions/2026/10/11/rollout-2026-10-11T02-39-46-01a128d4-9f27-7080-8029-757c8723fae9.jsonl": "676649110cb12ce93809b956517fe02b4eb224ea70d85a609aa628abaec2f212",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d04-or2-codex-b/peer-policy.json": "634a34fe80a2e103855ec1ffdd054d7ad86c24cd61cd1da7b82b6d5375c26246",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d04-or2-codex-b/plan.json": "65908fb94de7abf4232fc580384258c7eb14a5e7533bb8892b1b516e1acdfaa6",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d04-or2-codex-b/run/result.json": "e0444b96775ba3314e8fa100bdf1d6f1ee94b9a08abee6718b2ace60ec97c00e",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d04-or2-codex-b/run/started.json": "e02c8ab1ae284188eccaa38f38ce48cb7e8ee5f56c14cce958c7047326e969a9",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d04-or2-codex-b/seal.json": "343d1822b8d6dfd3d67102e646f46d41b823533924f37c5d61956616f3826d6c",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d04-or2-codex-b/usage.json": "2b217a740da35d964dd971651abf6d8cc578acd08709438f53b27b26fed53e3f",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d05-or2-claude-s/claude-accounting.json": "4070bce13c3b4cb97326cf8ccb427b436c00d384de7e86971872f3e33f344799",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d05-or2-claude-s/evidence.manifest.json": "79d8b5028db627be5a4b073d61a3690fb015cccce1af6d013c0144b00b3ca225",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d05-or2-claude-s/home/.claude/projects/-cell-work/6a0c4631-635c-4917-8081-cf0f33b9fb38.jsonl": "0ac3ac5c6404360dc4cd88c0f66e6c3d8a82a41bb1ab5219e95579038adfe607",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d05-or2-claude-s/peer-policy.json": "0d92f905d1615e7a51f81a89d9774d9f3247a3f43254c8bd7da7fe4b9f316e3a",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d05-or2-claude-s/plan.json": "5064108589cdc243699b2360490a7010b32165c4e84206c5b2bf0210cb5cb71c",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d05-or2-claude-s/run/result.json": "ed84535c6c3f074ada7020898df5a64978ebb07f659a1576a993942b0bee6a4e",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d05-or2-claude-s/run/started.json": "7088f4154ed33e4225792a77be768bab5c272b9ba8675de7e90b9083e137e784",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d05-or2-claude-s/run/stdout": "5da0488d69ce9fa0fffd51d968d6dc6def5a81c1056c50566c30bc4f1dad4708",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d05-or2-claude-s/seal.json": "1e9f3330f0fa626f3c92bce88271376eaa4df983845194ef7c3bd1c29303b02b",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d05-or2-claude-s/usage.json": "65c8a930cceaa57a120af60a6e5199e21ca99030aedec4dcc20720a519ccb981",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d06-or2-codex-b/evidence.manifest.json": "c126aa6a67bc46b845b69fce79881ad9df0f3a7854a479ac663e6570c516c9d0",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d06-or2-codex-b/home/.codex/sessions/2026/10/11/rollout-2026-10-11T03-20-20-01a128f9-c5b9-7a33-9164-fb31b9ee5762.jsonl": "6f4679c202e9d768f564f6852630099234ba8a5e671ab6bf62a2e2be572a59e0",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d06-or2-codex-b/peer-policy.json": "86a2b12949f5573a6b153648b61ee0f1414828888a4f6ccdec19453331da037d",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d06-or2-codex-b/plan.json": "813248c04c8368e03c8b999c62d0e36aebc561c9a04d96c2c756c53eeaee0462",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d06-or2-codex-b/run/result.json": "e2299f3960230db21ae4d0f3cd9de6924e83583e1ce6df0642b9112ef238414a",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d06-or2-codex-b/run/started.json": "b59baed16a8a6ae5d69b58c9692e5dd3c688b69b9d11218c8d366f5c973e04cc",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d06-or2-codex-b/seal.json": "27842eee72cdf580050d7ae7318b2ba191e7112d69101e45d00f31377945e280",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d06-or2-codex-b/usage.json": "7ec9b9bbdac6c91405e2a674bc495d77f653e0663816e42475c7a7f897b43c8c",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d07-or2-claude-b/claude-accounting.json": "f9de147ed77b3014f94ce8ccac5ae760c63e4157e693f57cd667617a7c3b53b5",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d07-or2-claude-b/evidence.manifest.json": "6c0aa40e0e5b7f575827bffb01720e32111fc49916a9abc078d640a93f529193",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d07-or2-claude-b/home/.claude/projects/-cell-work/72508a4d-1db7-4ce7-a283-fe5ceb0c674b.jsonl": "ae0d7e0bb4e53e15aa6f855dfe60d949035b57d58b714749bd2cb6efc8d36907",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d07-or2-claude-b/home/.claude/projects/-cell-work/72508a4d-1db7-4ce7-a283-fe5ceb0c674b/subagents/agent-a404df2904b5a0457.jsonl": "16b62e46de3804071162f87c9e7cc7118da36f7ec077ce6ffcf924a11d2b8b50",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d07-or2-claude-b/peer-policy.json": "43c47d2f04ac5afd1d73547f773ec55e2f3f47e9069d4d5fad967dde5fb313db",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d07-or2-claude-b/plan.json": "ee9396b7ad7b12fce94b1e4faa439f1e658a8a423d65cef611ed81ded652b863",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d07-or2-claude-b/run/result.json": "a4e7ed40a38acae47953f5bfe1af9cc87d0be407440959e97e36b3500f2351c6",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d07-or2-claude-b/run/started.json": "18a10831d4653e65890c7aa006119675805d75499471a6aba0034a47cfef607a",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d07-or2-claude-b/run/stdout": "a3f7c3a60e0d13716252a2e867226c943e4b8e683994757a86ee4ef417d54539",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d07-or2-claude-b/seal.json": "f11862ab69d96240fb2b209d8c14c43e350005f00b604f747a7a9b2e72023667",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/d07-or2-claude-b/usage.json": "da102e2d40b0f0a7f9bf221fc250e755ce250d4266065033b4560416b847db64",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/verdict-d01-or2-codex-s.json": "77510a4ed021781dedd5ddb40436c9034f4b1271d17aa618cb841b2c0d6941b9",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/verdict-d02-or2-claude-b.json": "859113064671853dbad3f3cb0af7c1009669154343832798d1a66d133738e152",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/verdict-d03-or2-claude-s.json": "29410aae13ff7b7895a0cfd8bd784f6cfcaed80eaea53a2e8b0f67bd1eebc08b",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/verdict-d04-or2-codex-b.json": "9a667461988f371d0fdcd735386c1ae316caf838d9eb6da0567ebe7353e45f2e",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/verdict-d05-or2-claude-s.json": "486cd7616da41f995433fde78d742f0bb41369135b20a243fdc82baedee65da1",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/verdict-d06-or2-codex-b.json": "f2d83e50b5c0b81fed16dcfeb693def5e3d7c24570cf0d9ce291cb728cdd980c",
+    "/Users/aipalm/.local/share/nx01/0252-live/out-measured/verdict-d07-or2-claude-b.json": "18fd88a053919d60ee2a53bf38add99bdb00a3679a31746255d1532680b8315f",
+    "/Users/aipalm/.local/share/nx01/0252-live/parking-check-v1.json": "32c58ae9eecc426d6920ddb5040e369df875ff19950c34dc6c29e9957bbf62a4",
+    "/Users/aipalm/.local/share/nx01/0252-live/parking-v1.json": "7a19a3fbd54ccc1f3ca3a65eee891a5e145c06805048e2116355b813337e5354",
+    "/Users/aipalm/.local/share/nx01/0252-live/registration/schedule.json": "4bd81b5d2e2ccfa8a2d07566c4bd93103ca716472b64423e4e7fb45daee91d2b",
+    "/Users/aipalm/.local/share/nx01/0252-live/resume-action-v1.json": "2b769ca5f42e68b7e517a4af6818a5f6a8ba486cf3bdf8803707a4138b1d3832",
+    "/Users/aipalm/.local/share/nx01/0252-live/resume-d05-observation-v1.json": "73fe332116b8c847a8448d87abba386f3ecc7310d36e4deefb7615c94a6094cc",
+    "/Users/aipalm/.local/share/nx01/0252-live/resume-prediction-v1.json": "ab09883cbfc7ecd8fdff33f738030bcdedd18f0b3e6fc3c3f762334c6a9fc944",
+    "/Users/aipalm/.local/share/nx01/0252-live/resume-verification-v1.json": "a1b87cec3b731ddc8b9dc547c58a7e5e3daa4150560c517def615a4d71c6fe58",
+    "/Users/aipalm/.local/share/nx01/0252-live/runtime.json": "07141c5d91cdac18008f69a49bd529d6853929e306c25469c1f735d1594453e8"
+  },
+  "findings": [],
+  "high_findings": 0,
+  "limitations": [
+    "No native model, owner, evaluator, product test or provider/authentication call was launched.",
+    "Credential files were read by a byte-stream SHA256 hasher only; no credential content was parsed or displayed.",
+    "Source/oracle/delivery file bytes were hashed for custody only; outcome files were not graded.",
+    "0251 operational smoke and 0252 freeze audit were reused after binding checks, not repeated.",
+    "Observed raw native accounting is not provider billing. The aggregate-terminal arithmetic difference does not repair missing terminal evidence.",
+    "Invocation arguments/native metadata verify observable identity; server-side hidden identity and complete historical host overlap are not independently observable.",
+    "No efficacy gate, S-failure claim, retry, repair campaign, successor study or pair escalation is authorized by this audit."
+  ],
+  "native_child_provenance": {
+    "d02": "Native Claude child transcript aa95496ce0b2533ed is also retained and included in accounting.",
+    "d07": "Native Agent launch and sidechain transcript a404df2904b5a0457 share the owner session ID; all observed assistant models are claude-opus-5-5. The missing terminal message is in this child transcript.",
+    "interpretation": "owner_launched_sessions=[] does not mean no native child. Frozen evidence.py excludes the owner session and native children from independent owner-launched sessions.",
+    "source": "/Users/aipalm/.local/share/nx01/0251-live/source/autoresearch/experiments/0234/evidence.py",
+    "source_sha256": "595f9018b489034a38c7be61b15e046ec66a393d5ea0c12d9f7e13c8b80de691"
+  },
+  "not_run": [
+    "d08-or2-codex-s",
+    "d09-or1-codex-b",
+    "d10-or1-claude-s",
+    "d11-or1-claude-b",
+    "d12-or1-codex-s",
+    "d13-or1-claude-b",
+    "d14-or1-codex-s",
+    "d15-or1-claude-s",
+    "d16-or1-codex-b",
+    "d17-e1-claude-b",
+    "d18-e1-claude-s",
+    "d19-e1-codex-s",
+    "d20-e1-codex-b",
+    "d21-b5-codex-b",
+    "d22-b5-codex-s",
+    "d23-b5-claude-s",
+    "d24-b5-claude-b"
+  ],
+  "prediction": {
+    "additional_checks": "Independently reconstruct native usage and identity; hash frozen bindings, seals and raw evidence; verify schedule prefix and lifecycle, preserve unmodified parking/resume durations.",
+    "forbidden": [
+      "native model launch",
+      "owner or evaluator rerun",
+      "efficacy gate",
+      "source/oracle/delivery grading",
+      "input modification",
+      "credential-content read"
+    ],
+    "prediction": "d07 must remain PARTIAL, with whole-attempt cost UNKNOWN, and d08-d24 remain NOT_RUN; verify without efficacy grading or restarting execution.",
+    "provenance": "Verbatim meaning of reviewer commentary stated before the first audit filesystem call. This file was saved after initial record inspection; it is not claimed to predate that inspection.",
+    "schema": "0252-stop-audit-prediction-v1"
+  },
+  "prior_runner_observations": "d01-d06 statuses retained verbatim as unadjudicated descriptions; no source, oracle or delivery grading",
+  "resources": {
+    "note": "Sum of retained native reported counters only; not independently certified as a whole-cost lower bound. No engine/arm pooling for efficacy; cached input and thinking counted once.",
+    "reported_partial_input_tokens": 19202156,
+    "reported_partial_output_tokens": 787596,
+    "total_owner_seconds": 8637.157072167,
+    "whole_cost": "UNKNOWN",
+    "whole_input_tokens": null,
+    "whole_output_tokens": null
+  },
+  "schema": "0252-independent-stop-audit-v1",
+  "status": "PASS",
+  "verdict_scope": "Faithful registered accounting STOP closure only; no efficacy adjudication"
+}

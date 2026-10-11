@@ -1,0 +1,12 @@
+{
+  "at": "2026-10-11T03:09:18.928894+00:00",
+  "binding_count": 773,
+  "bindings": "PASS",
+  "operator_hashes": "PASS",
+  "driver_pid": 72149,
+  "command": "/opt/homebrew/Cellar/python@3.14/3.14.7/Frameworks/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python -B /Users/aipalm/.local/share/nx01/0252-live/run_or2.py",
+  "before_state": "Ts",
+  "d05_verdict_exists": false,
+  "pause_started_at": "2026-10-11T02:58:58.137448+00:00",
+  "pause_note": "User paused scheduler only. Preserve raw dispatch wall; registered efficacy uses native owner_seconds. No credential recapture/renewal and no slot replay."
+}

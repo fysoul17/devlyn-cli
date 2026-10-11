@@ -1,0 +1,22 @@
+{
+  "at": "2026-10-11T03:20:42.749445+00:00",
+  "pause_started_at": "2026-10-11T02:58:58.137448+00:00",
+  "resume_at": "2026-10-11T03:09:18.929184+00:00",
+  "scheduler_hold_seconds": 620.791736,
+  "d05_driver_record": {
+    "exit_code": 0,
+    "input_tokens": 5077003,
+    "name": "d05-or2-claude-s",
+    "output_tokens": 159308,
+    "owner_seconds": 1715.7884819169994,
+    "status": "CHECKS_PASS",
+    "usage": "COMPLETE",
+    "verdict_sha256": "486cd7616da41f995433fde78d742f0bb41369135b20a243fdc82baedee65da1",
+    "wall_seconds": 1721.3958677079936
+  },
+  "d05_driver_record_sha256": "d8195a7475b723c11a3a52c9e52d46e34ecc13c0f1930ea94d4c01ba65bd3e82",
+  "observation": "The scheduler hold overlapped uninterrupted d05 native execution. Neither raw dispatch wall nor native owner_seconds is adjusted or reduced by the scheduler hold. The owner was never signaled; its elapsed time includes the period it continued running while its parent was stopped.",
+  "prediction_clarification": "The earlier phrase owner_seconds excludes scheduler-only pause means no separately added scheduler-wait cost; it does NOT mean subtracting the pause interval from native time. Preserve the original prediction and all raw durations unchanged.",
+  "efficacy_clock": "unmodified native owner_seconds",
+  "next_slot": "d06-or2-codex-b"
+}
