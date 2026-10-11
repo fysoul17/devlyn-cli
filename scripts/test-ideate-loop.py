@@ -98,17 +98,24 @@ UNOBSERVABLE = ("import runpy, sys\n"
                 "sys.exit(queue['main']())\n")
 # Runs the driver until its next matching durable step, then exits at once, as a crash there would: no handler, finally
 # block or later write runs. `replace <name>` stops before the atomic write of a file of that name, `unlink <name>` before
-# the removal of one.
+# the removal of one. The `-after` suffix stops after that operation; `rename-after <name>` matches the source name.
 CRASH = ("import os, pathlib, runpy, sys\n"
          "step, name = sys.argv[1:3]\n"
+         "after = step.endswith('-after')\n"
+         "step = step.removesuffix('-after')\n"
          "sys.argv = sys.argv[3:]\n"
          "def crashing(real):\n"
          "    def call(path, *args, **kwargs):\n"
-         "        if pathlib.Path(args[0] if step == 'replace' else path).name == name:\n"
+         "        matched = pathlib.Path(args[0] if step == 'replace' else path).name == name\n"
+         "        if matched and not after:\n"
          "            os._exit(9)\n"
-         "        return real(path, *args, **kwargs)\n"
+         "        result = real(path, *args, **kwargs)\n"
+         "        if matched:\n"
+         "            os._exit(9)\n"
+         "        return result\n"
          "    return call\n"
          "if step == 'replace':\n    os.replace = crashing(os.replace)\n"
+         "elif step == 'rename':\n    pathlib.Path.rename = crashing(pathlib.Path.rename)\n"
          "else:\n    pathlib.Path.unlink = crashing(pathlib.Path.unlink)\n"
          "runpy.run_path(sys.argv[0], run_name='__main__')\n")
 # Leave acceptance copied and the next custody file truncated, without running cleanup handlers.
@@ -278,9 +285,12 @@ class LoopFixture(unittest.TestCase):
     def tasks(self, result):
         return {task["identity"]: task for task in result["tasks"]}
 
-    def fault_drain(self, injection, *, local=True, code=0, root=None):
+    def fault_drain(self, injection, *, local=True, code=0, root=None, status=False):
         """Inject an operational fault in the controller; executors and Git still run normally."""
         argv = self.drain_argv(local)
+        if status:
+            argv[2] = "status"
+            del argv[argv.index("--"):]
         if root is not None:
             argv[argv.index("--"):argv.index("--")] = ["--worktree-root", str(root)]
         wrapper = ("import json, os, pathlib, runpy, subprocess, sys\n"
@@ -796,6 +806,55 @@ class LoopFixture(unittest.TestCase):
                 self.assertEqual((self.calls("aa.t1"), self.calls("bb.t1")), (0, 0))
                 path.write_bytes(saved)
                 (self.anchor / "docs/specs/queue.md").write_bytes(self.base_queue)
+
+    def test_robust_13_unreadable_unrelated_queue(self):
+        # Prediction: an unreadable tracked file without a proving row in HEAD (including no HEAD copy) is ignored, and a
+        # recorded loop's tracked queue is never read (its capture is); status selects aa.t1 and drain accepts both aa.t1
+        # and bb.t1, each with one executor call.
+        path = self.anchor / "docs/specs/notes/queue.md"
+        path.parent.mkdir()
+        path.write_text("- [ ] ordinary documentation task\n", encoding="utf-8")
+        self.plan("aa", [CHAIN[0]], {"aa.t1": {"product": "greeting"}})
+        self.g("checkout", "refs/devlyn/captures/aa", "--", "docs/specs/aa")
+        self.g("commit", "-qm", "tracked loop package")
+        self.g("add", str(path))
+        self.independent()
+        denied = [str(path), str(self.anchor / "docs/specs/aa/queue.md")]
+        injection = ("real_read = pathlib.Path.read_bytes\ndef read(path):\n"
+                     f"    if str(path) in {denied!r}:\n        raise PermissionError('queue read denied')\n"
+                     "    return real_read(path)\npathlib.Path.read_bytes = read\n")
+        for committed in (False, True):
+            with self.subTest(committed=committed):
+                if committed:
+                    self.g("commit", "-qm", "unrelated queue")
+                status = self.fault_drain(injection, status=True)
+                self.assertEqual((status["status"], status["next"]), ("OK", "aa.t1"))
+        result = self.fault_drain(injection)
+        self.assert_independent(result)
+        self.assertEqual({identity: task["result"] for identity, task in self.tasks(result).items()},
+                         {"aa.t1": "accepted", "bb.t1": "accepted"})
+        self.assertEqual((self.calls("aa.t1"), self.calls("bb.t1")), (1, 1))
+
+    def test_robust_13_unreadable_proven_queue(self):
+        # Prediction: HEAD's proving row makes an unreadable unrecorded loop queue BLOCKED in status and drain,
+        # naming its path before either independent executor runs.
+        path = self.anchor / "docs/specs/known/queue.md"
+        path.parent.mkdir()
+        path.write_text(self.queue["row_line"]("known.t1", "Known") + "\n", encoding="utf-8")
+        self.g("add", str(path))
+        self.g("commit", "-qm", "known loop")
+        self.plan("aa", [CHAIN[0]], {"aa.t1": {"product": "greeting"}})
+        self.independent()
+        injection = ("real_read = pathlib.Path.read_bytes\ndef read(path):\n"
+                     f"    if path == pathlib.Path({str(path)!r}):\n        raise PermissionError('queue read denied')\n"
+                     "    return real_read(path)\npathlib.Path.read_bytes = read\n")
+        for status in (True, False):
+            with self.subTest(status=status):
+                result = self.fault_drain(injection, status=status, code=1)
+                self.assertEqual(result["status"], "BLOCKED")
+                self.assertIn(str(path), result["reason"])
+                self.assertIn("queue read denied", result["reason"])
+                self.assertEqual((self.calls("aa.t1"), self.calls("bb.t1"), self.calls("known.t1")), (0, 0, 0))
 
     def test_robust_selection_io_and_programming_errors(self):
         # Prediction: a task-local eligibility read failure waits before selection and cannot abort annotation/reporting;
@@ -1472,7 +1531,7 @@ class LoopFixture(unittest.TestCase):
                          ("accepted", self.receipt("oo.t1")["source_sha"]))
         self.assertIn("- Whole-loop acceptance: ACCEPTED\n", self.report("oo"))
 
-    def assert_interrupted_custody_resumes(self, product, runner, verdict, published=False):
+    def assert_interrupted_custody_resumes(self, product, runner, verdict, published=False, crash_after=None):
         # A partially copied result must not bind custody or obstruct the next acceptance run.
         self.plan("inv", [CHAIN[0]], {"inv.t1": {"product": product, "runner": runner}})
         argv = self.drain_argv()
@@ -1485,20 +1544,41 @@ class LoopFixture(unittest.TestCase):
         self.assertNotIn("acceptance", receipt)
         acceptance_file = Path(receipt["worktree"]) / ".devlyn/loop/acceptance.json"
         previous = acceptance_file.read_bytes()
-        result = self.drain()
+        helper = self.queue["shared"]("task-complete")
+        unbound = path.parent / "custody" if published else next(path.parent.glob(".custody-*"))
+        copies = [helper["snapshot_files"](unbound, [".devlyn"])]
+        if crash_after:
+            crashed = subprocess.run([sys.executable, "-c", CRASH, *crash_after, *argv[1:]], cwd=self.root,
+                                     env=self.env, capture_output=True, text=True, encoding="utf-8")
+            self.assertEqual(crashed.returncode, 9, crashed.stdout + crashed.stderr)
+            self.assertNotIn("acceptance", self.receipt("inv.t1"))
+            self.assertNotEqual(acceptance_file.read_bytes(), previous)
+            previous = acceptance_file.read_bytes()
+            retained, = path.parent.glob(".custody-*")
+            helper["verify_files"](retained, copies[0])
+            if crash_after[0] == "rename-after":
+                self.assertFalse((path.parent / "custody").exists())
+                self.assertFalse(path.with_name("manifest.json").exists())
+            else:
+                copies.append(helper["snapshot_files"](path.parent / "custody", [".devlyn"]))
+                self.assertEqual(json.loads(path.with_name("manifest.json").read_text(encoding="utf-8")), copies[-1])
+        resumed = subprocess.run(argv, cwd=self.root, env=self.env, capture_output=True, text=True, encoding="utf-8")
+        self.assertEqual(resumed.returncode, 0, resumed.stdout + resumed.stderr)
+        self.assertEqual(resumed.stderr.count("devlyn-loop: inv.t1: bound\n"), 1)
+        result = json.loads(resumed.stdout)
         self.assertEqual(self.tasks(result)["inv.t1"]["result"], verdict)
         self.assertNotEqual(acceptance_file.read_bytes(), previous)  # The checks really ran again.
         bound = self.receipt("inv.t1")
-        helper = self.queue["shared"]("task-complete")
         helper["verify_files"](path.parent / "custody", bound["files"])
         self.assertEqual(json.loads(path.with_name("manifest.json").read_text(encoding="utf-8")), bound["files"])
         self.assertEqual(self.g("rev-parse", bound["recovery_ref"]), bound["publish_sha"])
         self.assertEqual(bound["delivery"], "FAILED" if verdict == "failed" else "LOCAL_ONLY")
         # A hard crash leaves its private staging directory behind; later runs never consume it.
         retained = list(path.parent.glob(".custody-*"))
-        self.assertEqual(len(retained), 1)
-        self.assertEqual((retained[0] / ".devlyn/loop/acceptance.json").read_bytes(), previous)
+        self.assertCountEqual([helper["snapshot_files"](root, [".devlyn"]) for root in retained], copies)
         self.assertEqual(self.tasks(self.drain())["inv.t1"]["result"], verdict)
+        self.assertEqual(self.receipt("inv.t1"), bound)
+        helper["verify_files"](Path(bound["worktree"]), bound["files"])
         self.assertEqual(self.calls("inv.t1"), 1)
 
     def test_interrupted_custody_resumes_failed_checks(self):
@@ -1512,6 +1592,18 @@ class LoopFixture(unittest.TestCase):
 
     def test_published_custody_resumes_rerun_checks(self):
         self.assert_interrupted_custody_resumes("greeting", False, "accepted", published=True)
+
+    def test_unbound_custody_rename_crash_resumes(self):
+        # Prediction: crashing just after custody is renamed aside leaves no acceptance binding or new custody;
+        # fresh acceptance binds once, retains the earlier copy and finishes LOCAL_ONLY without rerunning the executor.
+        self.assert_interrupted_custody_resumes("greeting", False, "accepted", published=True,
+                                               crash_after=("rename-after", "custody"))
+
+    def test_custody_manifest_written_crash_resumes(self):
+        # Prediction: crashing after manifest.json is written leaves a complete but unbound copy; fresh acceptance
+        # binds once, retains both earlier copies and finishes FAILED without rerunning the executor.
+        self.assert_interrupted_custody_resumes("bad-greeting", True, "failed", published=True,
+                                               crash_after=("replace-after", "manifest.json"))
 
     def test_published_unbound_custody_cannot_override_changed_inputs(self):
         # A legacy tracked package has no immutable capture: its anchor inputs must still be reconciled.

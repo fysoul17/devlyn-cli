@@ -486,19 +486,26 @@ def queue_view(anchor, recorded):
         tracked.update(rel for rel in git(anchor, "ls-tree", "-r", "-z", "--name-only", head, "--", "docs/specs").split("\0")
                        if re.fullmatch(r"docs/specs/[^/]+/queue\.md", rel))
     for rel in sorted(tracked, key=lambda rel: rel.split("/")[2]):
-        loop, data = rel.split("/")[2], (anchor / rel).read_bytes() if (anchor / rel).is_file() else None
-        if loop not in recorded:
-            # A directory name alone proves nothing. A task row in the checkout or HEAD proves this is a loop queue;
-            # HEAD keeps that proof when the checkout loses its rows. Strict decoding/parsing follows only that proof.
-            known = False
-            for candidate in (data, show(anchor, head, rel) if head else None):
-                for line in (candidate or b"").decode("utf-8", errors="replace").splitlines():
-                    match = ROW_RE.fullmatch(line)
-                    item = ITEM_RE.fullmatch(match["text"].rstrip()) if match else None
-                    if item and item["loop"] == loop and bool(item["rest"]) == (match["mark"] == "F"):
-                        known = True
-            if known:
-                loops[loop] = parse_loop(data, loop, anchor / rel)
+        loop, data, read_error = rel.split("/")[2], None, None
+        if loop in recorded:
+            continue
+        try:
+            data = (anchor / rel).read_bytes() if (anchor / rel).is_file() else None
+        except OSError as exc:
+            read_error = exc
+        # A directory name alone proves nothing. A task row in the checkout or HEAD proves this is a loop queue; HEAD
+        # keeps that proof when the checkout loses its rows or cannot be read. Only a proven queue is parsed or blocks.
+        known = False
+        for candidate in (data, show(anchor, head, rel) if head else None):
+            for line in (candidate or b"").decode("utf-8", errors="replace").splitlines():
+                match = ROW_RE.fullmatch(line)
+                item = ITEM_RE.fullmatch(match["text"].rstrip()) if match else None
+                if item and item["loop"] == loop and bool(item["rest"]) == (match["mark"] == "F"):
+                    known = True
+        if known:
+            if read_error is not None:
+                raise LoopError(f"{anchor / rel}: {read_error}") from read_error
+            loops[loop] = parse_loop(data, loop, anchor / rel)
     claims = {}
     for loop, (_, target) in loops.items():
         if target:
