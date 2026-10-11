@@ -215,7 +215,9 @@ Selected during install. Run `npx devlyn-cli` again to add more.
 
 ---
 
-Installer updates preserve user work: before writing any selected target, devlyn refuses to replace or remove git-tracked skills, edited skills, or directories with extra files (including hidden files). `-y` does not bypass this check. Commit your work or move conflicting folders to a backup and migrate them manually; tracked folders must be moved out of the install path before rerunning. Unchanged installer copies and pristine untracked 4.1.0 installs upgrade automatically. Older copies without verifiable content history require manual migration.
+Installer updates preserve user work: before writing any selected target, devlyn refuses to replace or remove edited skills, directories with extra files (including hidden files), links, or unknown copies. `-y` does not bypass this check. Unedited copies from every published version upgrade automatically, including committed copies, historical install-path stamps and generated Python bytecode caches. Release packaging derives the offline skill history from Git with `node scripts/update-skill-history.js`. Move conflicting folders to a backup and migrate them manually; also remove conflicting tracked paths from the Git index before rerunning.
+
+Only `__pycache__` directories containing exclusively regular `*.pyc` files count as generated Python caches. Other entries make the directory ordinary content; links and special files are refused. Standalone `*.pyc` files count as content: none of the 113 published versions through 4.2.5 shipped them. Historical path normalization applies only to the escaped absolute assignment defaults written into Markdown by the 2.8.0–4.0.0 installers.
 
 ## Requirements
 

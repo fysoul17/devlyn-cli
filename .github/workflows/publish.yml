@@ -38,6 +38,9 @@ jobs:
       - name: Refresh instruction migration history
         run: node scripts/update-instruction-templates.js
 
+      - name: Refresh skill ownership history
+        run: node scripts/update-skill-history.js
+
       - name: Dry-run pack
         run: npm pack --dry-run
 

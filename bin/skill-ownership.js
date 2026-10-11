@@ -3,21 +3,33 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
-// A folder-metadata file the OS writes on its own (Finder, Explorer); never user content.
-// Only a regular file: a folder or link under that name is still the user's.
-function isOsMetadata(full) {
-  return ['.DS_Store', 'Thumbs.db'].includes(path.basename(full))
-    && fs.lstatSync(full, { throwIfNoEntry: false })?.isFile() === true;
+// CPython caches contain only regular *.pyc files. A mixed directory is ordinary
+// content; the fingerprint walker below still refuses links and special files.
+// No published version shipped standalone *.pyc files, so those count as edits.
+function isIgnoredEntry(full) {
+  const stat = fs.lstatSync(full, { throwIfNoEntry: false });
+  const name = path.basename(full);
+  if (stat?.isFile()) return ['.DS_Store', 'Thumbs.db'].includes(name);
+  if (name !== '__pycache__' || !stat?.isDirectory()) return false;
+  return fs.readdirSync(full).every((child) =>
+    child.endsWith('.pyc') && fs.lstatSync(path.join(full, child)).isFile());
 }
 
 // SHA-256 of a file with CRLF read as LF: Git for Windows checks text out with CRLF by
-// default, and an unedited clone must still match its shipped copy.
+// default. 2.8.0-4.0.0 stamped only the exact assignment sentinel in .md files.
+// Accept only shellDoubleQuoteDefault's escapes and an absolute original path.
 function contentHash(file) {
-  const bytes = fs.readFileSync(file).toString('latin1').replace(/\r\n/g, '\n');
+  let bytes = fs.readFileSync(file).toString('latin1').replace(/\r\n/g, '\n');
+  if (path.extname(file) === '.md') {
+    bytes = bytes.replace(/\$\{CLAUDE_SKILL_DIR:-((?:\\[\\$"`}]|[^\\$"`}\n])+)\}/g, (match, escaped) => {
+      const original = escaped.replace(/\\([\\$"`}])/g, '$1');
+      return /^(?:\/|[A-Za-z]:\\|\\\\)/.test(original) ? '${CLAUDE_SKILL_DIR:-__DEVLYN_SKILL_DIR__}' : match;
+    });
+  }
   return crypto.createHash('sha256').update(bytes, 'latin1').digest('hex');
 }
 
-// Hash every entry, including empty directories and dotfiles, except OS metadata. Links and
+// Hash every entry, including empty directories and dotfiles, except generated metadata. Links and
 // special files are never installer-owned.
 function fingerprint(dir) {
   const entries = [];
@@ -26,7 +38,7 @@ function fingerprint(dir) {
     if (stat.isDirectory()) {
       entries.push([relative, 'directory']);
       for (const name of fs.readdirSync(full).sort()) {
-        if (isOsMetadata(path.join(full, name))) continue;
+        if (isIgnoredEntry(path.join(full, name))) continue;
         visit(path.join(full, name), relative ? `${relative}/${name}` : name);
       }
     } else if (stat.isFile()) {
@@ -64,4 +76,4 @@ function trackedPaths(root) {
   return files.stdout.split('\0').filter(Boolean).map((file) => path.resolve(repo.stdout.trim(), file));
 }
 
-module.exports = { contentHash, fingerprint, isOsMetadata, trackedPaths };
+module.exports = { contentHash, fingerprint, isIgnoredEntry, trackedPaths };

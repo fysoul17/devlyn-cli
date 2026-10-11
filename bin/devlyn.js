@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 
-const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
@@ -10,7 +9,7 @@ const CONFIG_SOURCE = path.join(__dirname, '..', 'config');
 const OPTIONAL_SKILLS_SOURCE = path.join(__dirname, '..', 'optional-skills');
 const PKG = require('../package.json');
 const { updateInstructions, InstructionError, holdsDevlynDefaults, importsAgentsMd } = require('./instructions');
-const { contentHash, fingerprint, isOsMetadata, trackedPaths } = require('./skill-ownership');
+const { contentHash, fingerprint, isIgnoredEntry, trackedPaths } = require('./skill-ownership');
 const SKILL_HISTORY = require('./skill-history.json');
 
 // The devlyn skill bundle installed into every skill-capable agent's loader
@@ -83,16 +82,15 @@ const RETIRED_SKILL_MD_SHA256 = {
   ]),
 };
 
-// Whether `dir` is a real folder whose only file, besides OS metadata, is a SKILL.md
+// Whether `dir` is a real folder whose only file, besides generated metadata, is a SKILL.md
 // with an LF-normalized SHA-256 in `hashes`: an unedited copy devlyn-cli shipped, not something
 // the user added to or wrote.
 function isShippedCopy(dir, hashes) {
   const skill = path.join(dir, 'SKILL.md');
   return fs.lstatSync(dir, { throwIfNoEntry: false })?.isDirectory() === true
-    && fs.readdirSync(dir).filter((name) => !isOsMetadata(path.join(dir, name))).length === 1
+    && fs.readdirSync(dir).filter((name) => !isIgnoredEntry(path.join(dir, name))).length === 1
     && fs.lstatSync(skill, { throwIfNoEntry: false })?.isFile() === true
-    && hashes.has(crypto.createHash('sha256')
-      .update(fs.readFileSync(skill, 'utf8').replace(/\r\n/g, '\n')).digest('hex'));
+    && hashes.has(contentHash(skill));
 }
 
 // Skill roots of each target. In a project, `.agents/skills` serves Codex, omp, Pi and Grok,
@@ -639,13 +637,18 @@ function installOptionalSkillInto(target, skillName) {
   }
 }
 
-// A 0.6.0-0.7.1 copy is one SKILL.md, the file that identifies it. Renaming the new one over it is
-// atomic, so an interrupted run leaves the old copy, which the retry finds again, or the new.
+// A 0.6.0-0.7.1 copy is one SKILL.md, the file that identifies it. A failed swap leaves
+// that copy for the retry; a successful refresh discards its generated metadata too.
 function refreshPreStandardCopy(target, skillName) {
-  const skill = path.join(target, skillName, 'SKILL.md');
+  const dir = path.join(target, skillName);
+  const skill = path.join(dir, 'SKILL.md');
   const staged = `${skill}.${process.pid}.tmp`;
   try {
     fs.copyFileSync(path.join(OPTIONAL_SKILLS_SOURCE, skillName, 'SKILL.md'), staged);
+    for (const name of fs.readdirSync(dir)) {
+      const file = path.join(dir, name);
+      if (isIgnoredEntry(file)) fs.rmSync(file, { recursive: true });
+    }
     fs.renameSync(staged, skill);
   } finally {
     fs.rmSync(staged, { force: true });
@@ -711,21 +714,55 @@ function installCoreSkills(skillsDir) {
   writeInstallMarker(skillsDir, [...DEVLYN_CORE_SKILLS, ...refreshed], previous);
 }
 
-// Keep installer-managed pipeline state and install metadata out of git.
-function ignoreInGit(gitignoreEntries) {
+function readProjectGitignore() {
   const gitignorePath = path.join(projectDir(), '.gitignore');
-  let gitignoreContent = fs.existsSync(gitignorePath)
-    ? fs.readFileSync(gitignorePath, 'utf8')
-    : '';
-  const gitignoreLines = gitignoreContent.split('\n').map((line) => line.trim());
-  const missingGitignoreEntries = gitignoreEntries.filter((entry) =>
-    !gitignoreLines.includes(entry) && !(entry === '.devlyn/' && gitignoreLines.includes('.devlyn')));
-  if (missingGitignoreEntries.length > 0) {
-    const prefix = gitignoreContent && !gitignoreContent.endsWith('\n') ? '\n' : '';
-    const hasManagedHeader = gitignoreLines.includes('# devlyn-cli pipeline state');
-    const header = hasManagedHeader ? '' : gitignoreContent ? '\n# devlyn-cli pipeline state\n' : '# devlyn-cli pipeline state\n';
-    fs.writeFileSync(gitignorePath, gitignoreContent + prefix + header + missingGitignoreEntries.join('\n') + '\n');
-    log(`  → .gitignore (added ${missingGitignoreEntries.join(', ')})`, 'dim');
+  const stat = fs.lstatSync(gitignorePath, { throwIfNoEntry: false });
+  // Refuse symlinks and hardlinks even when no rules need changing, before any installation write.
+  if (stat && (!stat.isFile() || stat.nlink !== 1)) {
+    throw new InstructionError(`Cannot update ${gitignorePath}: not a regular file with a single link (links are refused).`);
+  }
+  return stat ? fs.readFileSync(gitignorePath) : Buffer.alloc(0);
+}
+
+// Ignore runtime state; let the project's install marker travel with its skills.
+function updateProjectGitignore(markerEntry) {
+  const gitignorePath = path.join(projectDir(), '.gitignore');
+  const original = readProjectGitignore();
+  const marker = Buffer.from(markerEntry);
+  const managedHeader = Buffer.from('# devlyn-cli pipeline state');
+  const runtimeRules = [Buffer.from('.devlyn/'), Buffer.from('.devlyn')];
+  const lines = [];
+  for (let start = 0; start < original.length;) {
+    const lf = original.indexOf(0x0a, start);
+    const end = lf === -1 ? original.length : lf + 1;
+    const patternEnd = lf === -1 ? end : original[lf - 1] === 0x0d ? lf - 1 : lf;
+    lines.push({ raw: original.subarray(start, end), pattern: original.subarray(start, patternEnd) });
+    start = end;
+  }
+  const kept = lines.filter(({ pattern }, index) => {
+    if (pattern.equals(marker)) return false;
+    if (!pattern.equals(managedHeader)) return true;
+    // A header owns contiguous patterns until a blank/comment; remove it only when marker removal empties that block.
+    const entries = [];
+    for (let next = index + 1; next < lines.length; next++) {
+      const entry = lines[next].pattern;
+      if (!entry.length || entry[0] === 0x23) break;
+      entries.push(entry);
+    }
+    return !entries.some((entry) => entry.equals(marker)) || entries.some((entry) => !entry.equals(marker));
+  });
+  let gitignoreContent = Buffer.concat(kept.map((line) => line.raw));
+  if (!kept.some(({ pattern }) => runtimeRules.some((rule) => pattern.equals(rule)))) {
+    const lf = original.indexOf(0x0a);
+    const eol = lf > 0 && original[lf - 1] === 0x0d ? '\r\n' : '\n';
+    const prefix = gitignoreContent.length && gitignoreContent.at(-1) !== 0x0a ? eol : '';
+    const header = kept.some(({ pattern }) => pattern.equals(managedHeader))
+      ? '' : `${gitignoreContent.length ? eol : ''}${managedHeader}${eol}`;
+    gitignoreContent = Buffer.concat([gitignoreContent, Buffer.from(`${prefix}${header}.devlyn/${eol}`)]);
+  }
+  if (!gitignoreContent.equals(original)) {
+    fs.writeFileSync(gitignorePath, gitignoreContent);
+    log('  → .gitignore (updated project install rules)', 'dim');
   }
 }
 
@@ -756,7 +793,7 @@ function installAgentsProject(withClaude) {
       + '(npx devlyn-cli -y --claude) so the devlyn block is written once, into CLAUDE.md.');
   }
   installCoreSkills(skillRoots('agents', false)[0]);
-  ignoreInGit(['.devlyn/', '.agents/skills/.devlyn-install.json']);
+  updateProjectGitignore('.agents/skills/.devlyn-install.json');
 }
 
 // Whether Claude Code reads the devlyn defaults of AGENTS.md through an `@AGENTS.md` import in this CLAUDE.md text.
@@ -817,7 +854,7 @@ function installClaudeCore() {
     }
   }
   installCoreSkills(skillsDir);
-  ignoreInGit(['.devlyn/', '.claude/skills/.devlyn-install.json']);
+  updateProjectGitignore('.claude/skills/.devlyn-install.json');
 
   // One-hour foreground Bash calls and one-hour prompt caching serve a drain host that waits in the foreground.
   let settingsChanged = false;
@@ -871,6 +908,7 @@ function install(targets, global, optionalNames = []) {
       + 'would apply to every project. Run from a project folder, or use --global for skills only.');
   }
   const roots = targets.flatMap((target) => skillRoots(target, global));
+  if (!global) readProjectGitignore();
   preflightSkills(roots, optionalNames,
     !global && targets.includes('claude') ? path.dirname(skillRoots('claude', false)[0]) : null);
   // AGENTS.md first, whatever order the menu gave: a new CLAUDE.md holds the block only when AGENTS.md does not.

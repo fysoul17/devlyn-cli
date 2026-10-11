@@ -56,8 +56,9 @@ The Devlyn app follows in devlyn-os-v1 `docs/specs/harnesses-reader-paths/spec.m
 
 ### What each target writes
 - AGENTS, project: the `AGENTS.md` managed block; `.agents/skills/<core skills>` with
-  `.agents/skills/.devlyn-install.json`; `.gitignore` gains `.devlyn/` and
-  `.agents/skills/.devlyn-install.json`.
+  `.agents/skills/.devlyn-install.json`; `.gitignore` gains `.devlyn/`. Each project's
+  skill-root marker is committed with its skills; installation removes legacy exact
+  marker ignore lines for selected targets while preserving broader user patterns.
 - Claude, project: as 4.0.1 (CLAUDE.md managed block, `.claude/skills` + marker,
   `.claude/templates`, `.claude/commit-conventions.md`, `.claude/settings.json`
   permissions/env/Stop hook, `.gitignore`), except that `ENABLE_PROMPT_CACHING_1H` is set in
