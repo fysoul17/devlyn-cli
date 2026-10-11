@@ -1,0 +1,16 @@
+{
+  "at": "2026-10-11T04:58:03.394895+00:00",
+  "prediction": "All ten targeted synthetic tests pass; restored catalog, quota/auth and peer-policy gates STOP before any product grading. No native inference.",
+  "command": [
+    "python3",
+    "-B",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "autoresearch/experiments/0253",
+    "-p",
+    "test_capture.py",
+    "-v"
+  ]
+}

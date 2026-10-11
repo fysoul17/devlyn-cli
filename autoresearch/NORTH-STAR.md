@@ -2,7 +2,17 @@
 
 This file is the single source of truth for the project's goal. Every other doc references this one. If a future session is uncertain about scope, contract, or direction, **read this file first** — do not infer from code, do not assume from older docs, and do not hallucinate intent.
 
-Current work: PR202 delivered the 0251/0252 research below. Its accepted and
+Current work: the user's continuation after 0252 produced
+[0253 native capture](experiments/0253/README.md). One registered operational
+owner and foreground same-model child yielded three request-bound terminal
+responses with the existing gates unchanged. This tests capture in the pinned
+venue, not instruction efficacy, spontaneous lifecycle behavior, provider billing
+or every failure path. It does not establish d07's internal loss cause or repair
+its UNKNOWN cost. Product wording and version remain unchanged. Commit, push,
+main merge and removal of verified unnecessary worktrees/branches are authorized;
+preserve active work and frozen evidence.
+
+Prior delivery: PR202 delivered the 0251/0252 research below. Its accepted and
 frozen study source is 4.2.5, including PR200's comment-prefixed import correction.
 Separate PR201 advanced main to 4.2.6; PR202 preserves its changes and performs
 no npm release.

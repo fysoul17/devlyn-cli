@@ -1,0 +1,54 @@
+{
+  "at": "2026-10-11T05:04:41.566812+00:00",
+  "original_tracked_files": 19383,
+  "changed_tracked": [],
+  "old0252_bindings": 773,
+  "changed_bindings": [],
+  "old0252_evidence": [
+    {
+      "name": "d01-or2-codex-s",
+      "files": 959,
+      "changes": [],
+      "manifest_sha256": "ab9783b2619d34be8736045d75a91d2dc36f7c9e3d81e27a4bdba5d2f3960950"
+    },
+    {
+      "name": "d02-or2-claude-b",
+      "files": 880,
+      "changes": [],
+      "manifest_sha256": "6f8d79649a666e42c602fb1a3e066df2ef2edcf9a175d109214f004794538746"
+    },
+    {
+      "name": "d03-or2-claude-s",
+      "files": 806,
+      "changes": [],
+      "manifest_sha256": "29f65150a8f388fdc4ffa858404f3af834512686d07f2dc0579c5c7f89c3edb9"
+    },
+    {
+      "name": "d04-or2-codex-b",
+      "files": 906,
+      "changes": [],
+      "manifest_sha256": "99e30f15575b572d63feae8ca3ea05d4a9cbd50e32d2c2407164c226bf2b6459"
+    },
+    {
+      "name": "d05-or2-claude-s",
+      "files": 722,
+      "changes": [],
+      "manifest_sha256": "79d8b5028db627be5a4b073d61a3690fb015cccce1af6d013c0144b00b3ca225"
+    },
+    {
+      "name": "d06-or2-codex-b",
+      "files": 890,
+      "changes": [],
+      "manifest_sha256": "c126aa6a67bc46b845b69fce79881ad9df0f3a7854a479ac663e6570c516c9d0"
+    },
+    {
+      "name": "d07-or2-claude-b",
+      "files": 712,
+      "changes": [],
+      "manifest_sha256": "6c0aa40e0e5b7f575827bffb01720e32111fc49916a9abc078d640a93f529193"
+    }
+  ],
+  "product_grades": 0,
+  "previous_check": "v1 preserved CHECKER_ERROR; no native repeat or historical edits",
+  "status": "PASS"
+}

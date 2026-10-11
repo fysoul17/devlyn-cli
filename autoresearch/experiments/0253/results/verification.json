@@ -1,0 +1,72 @@
+{
+  "schema": "0253-verification-v1",
+  "at": "2026-10-11T05:10:45.699253+00:00",
+  "status": "PASS",
+  "scope": "One instrument-only native owner and prompted foreground same-model child; no efficacy or product admission",
+  "native_dispatches": 1,
+  "retries": 0,
+  "operational": {
+    "name": "s01-claude-native-bodies",
+    "runner_status": "CAPTURE_OBSERVED",
+    "accepted_status": "CAPTURE_COVERAGE_PASS",
+    "checks": {
+      "owner_exit": true,
+      "identity": true,
+      "teardown": true,
+      "sealed": true,
+      "usage": true,
+      "transcript_accounting": true,
+      "peer_policy": true,
+      "catalog": true,
+      "quota": true,
+      "index_present": true,
+      "response": true
+    },
+    "input_tokens": 49313,
+    "output_tokens": 468,
+    "thinking_included_in_output": 274,
+    "owner_seconds": 11.085199166001985,
+    "requests": 3,
+    "terminal_responses": 3,
+    "owner_requests": 2,
+    "child_requests": 1,
+    "owner_status": "EXITED_0",
+    "teardown": "CLEAN",
+    "token_seconds_at_preflight": 8400,
+    "result_sha256": "a735137752f0cf216bdbefdfe8d37d9352b5ece7c4f8496720837cf233544a60",
+    "evidence_manifest_sha256": "3b9c1a8bf178ec5d1f004f84f874f951f5eb6906ceb397f08b9e190951eabf86"
+  },
+  "verification": {
+    "synthetic_tests": 10,
+    "source_review": "Astra SHIP; HIGH 0 after one bounded repair",
+    "native_audit": "20 receipt checks and 26 custody checks PASS; HIGH 0",
+    "native_audit_sha256": "cd9d2d32632d71d1646272d8115c5cecb4334eb1b289161b7d844932e2aa593f",
+    "frozen_inputs": 126,
+    "evidence_manifest_files": 2048,
+    "history": "19,383 pre-existing tracked files unchanged before handoff update; 773 old 0252 bindings and seven old native manifests unchanged",
+    "history_record_sha256": "9db5517150c0234427e31383412a7198ed7ab729509f1b15fdc3d617151f6222",
+    "product_tests_rerun": 0,
+    "rationale": "Only new 0253 research source and current research handoff changed; no product inputs changed."
+  },
+  "unchanged": {
+    "product_instructions": true,
+    "package_version": true,
+    "prior_accounting_gates": true,
+    "old0252_status": "CLOSED_ACCOUNTING_STOP",
+    "old0252_whole_token_cost": "UNKNOWN"
+  },
+  "custody": {
+    "private_root": "/Users/aipalm/.local/share/nx01/0253-live",
+    "private_diagnosis": "/Users/aipalm/.local/share/nx01/0253-diagnosis",
+    "retained_source": "/Users/aipalm/.local/share/nx01/0253-live/source",
+    "raw_body_publication": false,
+    "completion_receipt": "9b90645cc3b430ba9c210676"
+  },
+  "limits": [
+    "Exact internal cause of d07 loss remains unestablished; no historical backfill.",
+    "No error/retry/cancellation coverage guarantee or prospective reconciler admitted.",
+    "Prompted foreground lifecycle is not spontaneous behavior or efficacy.",
+    "Native emitted counters are not provider billing; remote exporters were configured none, not packet-traced.",
+    "Shared host has unrelated workloads; wall is observational only."
+  ]
+}

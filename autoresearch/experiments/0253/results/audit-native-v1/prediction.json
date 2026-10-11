@@ -1,0 +1,15 @@
+{
+  "schema": "0253-native-receipt-audit-prediction-v1",
+  "at": "2026-10-11T05:02:48.156134+00:00",
+  "scope": "Observed receipt mechanism coverage for the single registered 0253 operational probe only. No prior STOP amendment, d07 reproduction, universal capture completeness, source/oracle/delivery grading or efficacy admission.",
+  "prior_information": "Parent reports one CAPTURE_OBSERVED owner, CLEAN teardown, eleven existing checks true, and three indexed requests/responses. These are hypotheses to independently verify, not audit evidence.",
+  "prediction": "All observed request/response/index entries bind unambiguously by native request/message/session identities; each observed model request has a terminal response with valid usage, the inventory includes exactly the registered owner and one foreground same-model child, native model/effort and exporter configuration match the frozen plan, aggregate usage reconciles, inputs/seals are unchanged and lifecycle resources are gone.",
+  "falsifiers": [
+    "Any orphan, missing terminal, unresolved error/retry, duplicate or conflicting identity/usage, unexpected invocation or child, background/cancel lifecycle, aggregate disagreement, input/evidence hash drift, or teardown survivor prevents observed-coverage acceptance.",
+    "A complete positive run only establishes this observed successful path, not capture completeness for all future native paths."
+  ],
+  "constraints": [
+    "No native/provider call or rerun; no credential contents; inspect metadata only and keep full native payload private.",
+    "No inferred residual usage or cost; unknown stays unknown."
+  ]
+}
