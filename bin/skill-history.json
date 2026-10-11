@@ -1,11 +1,12 @@
 {
-  "source": "devlyn-cli@4.1.0 (npm tarball sha1 398ff07d3d689b56cc22e18ac50260bc6e4e9e85); devlyn-cli@4.2.0 (npm tarball sha1 c93c2fb1cf5630b18d2eba0085182c14fddbe2d5); devlyn-cli@4.2.4 and 4.2.5 (_shared and devlyn-ideate, fingerprinted from an install of each packed tarball); whole-tree fingerprints from bin/skill-ownership.js; deprecated commands: commands/ and optional-commands/*/ files of devlyn-cli 0.0.1-0.5.8 (every published version that shipped them), LF-normalized SHA-256",
+  "source": "devlyn-cli@4.1.0 (npm tarball sha1 398ff07d3d689b56cc22e18ac50260bc6e4e9e85); devlyn-cli@4.2.0 (npm tarball sha1 c93c2fb1cf5630b18d2eba0085182c14fddbe2d5); devlyn-cli@4.2.4, 4.2.5 and 4.2.6 (_shared and devlyn-ideate, fingerprinted from an install of each packed tarball); whole-tree fingerprints from bin/skill-ownership.js; deprecated commands: commands/ and optional-commands/*/ files of devlyn-cli 0.0.1-0.5.8 (every published version that shipped them), LF-normalized SHA-256",
   "skills": {
     "_shared": [
       "eb3327d5e6940bd5e0459fa28c9ab323d9c58ccfdeb9426c19cd027cc4e5c4ed",
       "8c80926ab03b2477e52264495b35c2116f65fc51b02e8c56e441b5705872392a",
       "3c81c575cc43d70488865b440204cb399091405d9b7f81dbf047a32d3d5ac045",
-      "6546d6b833701f2641a004802cfc17ec62442e5d0003f396cb0231b676ba9a4a"
+      "6546d6b833701f2641a004802cfc17ec62442e5d0003f396cb0231b676ba9a4a",
+      "640500e3ada3d81645c293ddc956e9757f0c4ba0a06e3f914c9bdad4968cbc66"
     ],
     "devlyn-design-ui": [
       "91080266232fb62b6f1d45932184f065589e12eb66f02fb6442527c6dfcd81b6"
@@ -18,7 +19,8 @@
       "8ff5148cc65b4608c35b29afd6fef20d42d8da93a094144d98cfc63e74089b6e",
       "5824f07e455fe1c3942bf595a12e935258d4c0a851ca1bf741db915603d1c4e0",
       "7f451e48e391643b34f6249244bc47d93d6303875e7b092771e3af0718343bc1",
-      "d6433bf0f96dd9dd485c3623885255738654674b3e23cfcc1a2cfd24f3cda96e"
+      "d6433bf0f96dd9dd485c3623885255738654674b3e23cfcc1a2cfd24f3cda96e",
+      "7fb3ceaf835230e1a75e510b046f4fe26e79815760354bec1949fa55515c6316"
     ],
     "devlyn-queue": [
       "4c7d988dcd154c7bf658d2d24cd7868955df9d854ed87eb784742d6d4bb229e0"

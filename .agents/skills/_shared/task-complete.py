@@ -185,7 +185,8 @@ def policy(receipt, override):
     return override or value or "auto"
 
 
-def allocate(args):
+def allocate(args, *, exclude_receipts=()):
+    """Reconcile older tasks, except receipts the queue has identified as invalid."""
     work = Path(git(Path(args.repo).resolve(), "rev-parse", "--show-toplevel")).resolve()
     common = Path(git(work, "rev-parse", "--path-format=absolute", "--git-common-dir")).resolve()
     require(args.task.strip(), "task identity is required")
@@ -228,7 +229,7 @@ def allocate(args):
     receipt["allocation"] = "owned"
     atomic_json(path, receipt)
     return {"status": "ALLOCATED", "receipt": str(path), "worktree": str(target), "scratch": str(scratch),
-            "reconciled": [] if local else reconcile(common, path, work)}
+            "reconciled": [] if local else reconcile(common, path, work, exclude_receipts=exclude_receipts)}
 
 
 def exact_commit(receipt, value, flag):
@@ -243,7 +244,7 @@ def local_baseline(receipt, args):
     if args.from_receipt:
         with locked_receipt(Path(args.from_receipt).absolute(), blocking=False) as predecessor:
             require(predecessor["common_gitdir"] == receipt["common_gitdir"], "predecessor receipt belongs to another repository")
-            require(predecessor.get("acceptance") and predecessor.get("product") != "FAILED", "predecessor has no accepted result")
+            require(predecessor.get("acceptance") and predecessor["acceptance"].get("verdict") != "FAILED", "predecessor has no accepted result")
             require(ref_sha(predecessor, predecessor["recovery_ref"]) == predecessor["publish_sha"], "predecessor recovery ref changed")
             gref(predecessor, "merge-base", "--is-ancestor", predecessor["source_sha"], predecessor["publish_sha"])
             receipt["allocated_from"] = {"receipt": predecessor["id"], "source_sha": predecessor["source_sha"]}
@@ -341,7 +342,7 @@ def accept(args):
     with locked_receipt(path) as receipt:
         refuse_retired_pipeline(receipt, path, args.acceptance, receipt.get("local_only"), [])
         bind_acceptance(receipt, path, args.acceptance)
-        return {"status": "FAILED" if receipt.get("product") == "FAILED" else "ACCEPTED", "receipt": str(path),
+        return {"status": "FAILED" if receipt["acceptance"].get("verdict") == "FAILED" else "ACCEPTED", "receipt": str(path),
                 "source_sha": receipt["source_sha"], "recovery_ref": receipt["recovery_ref"]}
 
 
@@ -357,7 +358,7 @@ def attach(args):
             queue_commit(receipt, work, queue, receipt["source_sha"])
             # A failed result is never published, so its checkout stays as left; a publishable one must be checked out.
             require(ref_sha(receipt, "refs/heads/"+receipt["branch"]) == args.commit
-                    and (receipt.get("product") == "FAILED" or git(work, "rev-parse", "HEAD") == args.commit),
+                    and (receipt["acceptance"].get("verdict") == "FAILED" or git(work, "rev-parse", "HEAD") == args.commit),
                     "task ref and HEAD must be the terminal commit")
             recovery = ref_sha(receipt, receipt["recovery_ref"])
             require(recovery in {receipt["source_sha"], args.commit}, "recovery ref changed")
@@ -664,10 +665,10 @@ def completion_result(receipt, path, status):
             "scratch_cleanup": scratch, "workspace_cleanup": receipt.get("workspace_cleanup")}
 
 
-def reconcile(common, allocated, anchor):
+def reconcile(common, allocated, anchor, *, exclude_receipts=()):
     results = []
     for path in sorted((common / "devlyn-completion").glob("*/receipt.json")):
-        if path == allocated:
+        if path == allocated or path in exclude_receipts:
             continue
         try:
             receipt = read_json(path)
@@ -711,7 +712,7 @@ def complete(args):
             atomic_json(path, receipt)
         def result(status):
             return completion_result(receipt, path, status)
-        if receipt.get("product") == "FAILED":
+        if (receipt.get("acceptance") or {}).get("verdict") == "FAILED":
             return result("FAILED")
         if args.local_only or receipt.get("local_only"):
             require(not receipt.get("pushed"), f"{receipt['task']} already has a pushed PR {receipt.get('pr_url') or receipt['branch']}; "
