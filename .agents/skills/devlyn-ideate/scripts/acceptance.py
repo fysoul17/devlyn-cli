@@ -31,6 +31,7 @@ SHA_RE = re.compile(r"[0-9a-f]{40}|[0-9a-f]{64}")
 BLOCKERS = ("failed", "needs-review", "blocked-infrastructure")
 REVIEW_KEYS = {"schema_version", "kind", "task", "engine", "model", "source_sha", "contract_sha256",
                "expected_sha256", "requirements", "findings"}
+# findings, cleanup, handoff and summary are unread; allow them so earlier-template submissions validate.
 SUBMISSION_KEYS = {"schema_version", "task", "source_sha", "runner_results", "reviews", "findings", "cleanup",
                    "handoff", "assumptions", "blockers", "summary"}
 PACKET_KEYS = {"task", "worktree", "branch", "inputs_sha", "allocation_base", "contract", "expected", "meta",

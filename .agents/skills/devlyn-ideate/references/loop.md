@@ -82,16 +82,12 @@ Run `runner` (`acceptance.py run --packet <packet>`) on the committed candidate 
   "source_sha": "<candidate commit on the owned branch>",
   "runner_results": ["<worktree>/.devlyn/loop/runs/<n>/result.json"],
   "reviews": ["<worktree>/.devlyn/reviews/<name>.json"],
-  "findings": [{"id": "F1", "disposition": "resolved", "evidence": "<what changed>"}],
-  "cleanup": "<residue removed, output retained>",
-  "handoff": "<state a successor needs>",
   "assumptions": ["<each assumption, recorded once>"],
-  "blockers": [],
-  "summary": "<informational only>"
+  "blockers": []
 }
 ```
 
-`schema_version`, `task` and `source_sha` are required. A blocker `{"kind": "failed" | "needs-review" | "blocked-infrastructure", "detail": "<concrete question or cause>"}` records `[F]` with that reason and runs no checks; material ambiguity becomes `needs-review`, never a weakened acceptance. The summary is never evidence.
+`schema_version`, `task` and `source_sha` are required. A blocker `{"kind": "failed" | "needs-review" | "blocked-infrastructure", "detail": "<concrete question or cause>"}` records `[F]` with that reason and runs no checks; material ambiguity becomes `needs-review`, never a weakened acceptance.
 
 ## Review records
 
