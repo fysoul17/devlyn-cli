@@ -438,26 +438,38 @@ init({options});
         run(['git', '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.test',
              '-c', 'commit.gpgsign=false', 'commit', '-qm', 'installer fixture'], cwd=self.project)
 
-    def assert_commit_notice(self, result, paths):
+    def assert_commit_notice(self, result, paths, ignored=()):
         output = result.stdout.decode('utf-8')
         lines = [line.split('\x1b[0m')[0].removeprefix('\x1b[2m') for line in output.splitlines()
-                 if 'git add -- ' in line]
-        if not paths:
+                 if 'git add ' in line]
+        if not ignored:
+            self.assertNotIn('.gitignore hides', output)
+            self.assertNotIn('git add -f --', output)
+        if not paths and not ignored:
             self.assertEqual(lines, [])
             self.assertNotIn('Commit these changes', output)
             return
         self.assertEqual(len(lines), 1, output)
         version = json.loads((self.package / 'package.json').read_bytes())['version']
         argv = shlex.split(lines[0])
-        divider = argv.index('&&')
-        self.assertEqual(argv[:3], ['git', 'add', '--'])
-        self.assertEqual(set(argv[3:divider]), set(paths))
-        self.assertEqual(len(argv[3:divider]), len(paths))
-        self.assertEqual(argv[divider + 1:], ['git', 'commit', '-m', f'chore(devlyn): update devlyn-cli to {version}'])
+        remaining = argv[:]
+        for prefix, expected in [(['git', 'add', '--'], paths), (['git', 'add', '-f', '--'], ignored)]:
+            if not expected:
+                continue
+            self.assertIn('&&', remaining, output)
+            divider = remaining.index('&&')
+            self.assertEqual(remaining[:len(prefix)], prefix)
+            self.assertCountEqual(remaining[len(prefix):divider], expected)
+            remaining = remaining[divider + 1:]
+        self.assertEqual(remaining, ['git', 'commit', '-m', f'chore(devlyn): update devlyn-cli to {version}'])
+        if ignored:
+            warning = f'.gitignore hides {len(ignored)} installed files'
+            self.assertEqual(output.count(warning), 1)
+            self.assertLess(output.index(warning), output.index('git add '))
         notice = 'Commit these changes for teammates and /devlyn-ideate drains to use them:'
         self.assertEqual(output.count(notice), 1)
         self.assertGreater(output.index(notice), output.index(f'✅ devlyn {version} installed'))
-        return argv[:divider]
+        return argv[:argv.index('&&')]
 
     def installed_skill_paths(self, *targets):
         return [f'.{target}/skills/{name}' for target in targets
@@ -637,6 +649,72 @@ fs.lstatSync = (file, options) => {{
         (self.project / '.gitignore').write_text('.devlyn/\n', encoding='utf-8')
         self.assert_commit_notice(self.cli('-y'), self.installed_skill_paths('agents'))
 
+    def test_project_commit_notice_partially_ignored_scripts(self):
+        run(['git', 'init', '-q', self.project])
+        (self.project / '.gitignore').write_text('# project scripts\n' * 12 + 'scripts/\n', encoding='utf-8')
+        result = self.cli('-y')
+        ignored = [f'.agents/skills/devlyn-ideate/scripts/{name}.py' for name in ('queue', 'acceptance')]
+        self.assert_commit_notice(result, [*self.installed_skill_paths('agents'), 'AGENTS.md', '.gitignore'], ignored)
+        self.assertIn(b'.gitignore:13: scripts/', result.stdout)
+        self.assertEqual(run(['git', 'ls-files'], cwd=self.project).stdout, b'')
+
+    def test_project_commit_notice_wholly_ignored_skill_folders(self):
+        run(['git', 'init', '-q', self.project])
+        (self.project / '.gitignore').write_text('.agents/skills/devlyn-*\n', encoding='utf-8')
+        result = self.cli('-y')
+        self.assert_commit_notice(result, ['.agents/skills/_shared', '.agents/skills/.devlyn-install.json',
+                                           'AGENTS.md', '.gitignore'])
+
+    def test_project_commit_notice_ignored_scripts_after_incomplete_commit(self):
+        run(['git', 'init', '-q', self.project])
+        (self.project / '.gitignore').write_text('scripts/\n', encoding='utf-8')
+        self.cli('-y')
+        self.commit_install_fixture()
+        before = run(['git', 'ls-files', '-z'], cwd=self.project).stdout
+        ignored = [f'.agents/skills/devlyn-ideate/scripts/{name}.py' for name in ('queue', 'acceptance')]
+        self.assert_commit_notice(self.cli('-y'), [], ignored)
+        self.assertEqual(run(['git', 'ls-files', '-z'], cwd=self.project).stdout, before)
+        self.assertEqual(run(['git', 'status', '--porcelain'], cwd=self.project).stdout, b'')
+
+    def test_project_commit_notice_force_added_scripts_are_quiet(self):
+        run(['git', 'init', '-q', self.project])
+        (self.project / '.gitignore').write_text('scripts/\n', encoding='utf-8')
+        self.cli('-y')
+        ignored = [f'.agents/skills/devlyn-ideate/scripts/{name}.py' for name in ('queue', 'acceptance')]
+        run(['git', 'add', '-f', '--', *ignored], cwd=self.project)
+        self.commit_install_fixture()
+        self.assert_commit_notice(self.cli('-y'), [])
+
+    def test_project_commit_notice_ignored_cache_is_not_installed(self):
+        run(['git', 'init', '-q', self.project])
+        (self.project / '.gitignore').write_text('scripts/\n', encoding='utf-8')
+        # A runtime cache appears after copying, before the advisory runs. It was not installed.
+        cache = '.agents/skills/devlyn-ideate/scripts/__pycache__/queue.cpython-312.pyc'
+        result = self.invoke(f"""
+const notice = noticeProjectChanges;
+noticeProjectChanges = (...args) => {{
+  fs.mkdirSync(path.dirname({json.dumps(cache)}), {{ recursive: true }});
+  fs.writeFileSync({json.dumps(cache)}, 'runtime cache');
+  notice(...args);
+}};
+install(['agents'], false);
+""")
+        ignored = [f'.agents/skills/devlyn-ideate/scripts/{name}.py' for name in ('queue', 'acceptance')]
+        self.assert_commit_notice(result, [*self.installed_skill_paths('agents'), 'AGENTS.md', '.gitignore'], ignored)
+        self.assertNotIn(cache.encode(), result.stdout)
+        self.assertEqual((self.project / cache).read_bytes(), b'runtime cache')
+
+    def test_project_commit_notice_ignored_optional_files_and_each_target(self):
+        run(['git', 'init', '-q', self.project])
+        (self.project / '.gitignore').write_text('scripts/\n.claude/skills/devlyn-*\n', encoding='utf-8')
+        result = self.invoke("install(['agents', 'claude'], false, ['polar-billing-setup']);")
+        ignored = [f'.agents/skills/devlyn-ideate/scripts/{name}.py' for name in ('queue', 'acceptance')]
+        ignored += [f'.{target}/skills/polar-billing-setup/scripts/diagnose.mjs' for target in ('agents', 'claude')]
+        paths = [*self.installed_skill_paths('agents'), '.claude/skills/_shared', '.claude/skills/.devlyn-install.json',
+                 'AGENTS.md', 'CLAUDE.md', '.gitignore', '.claude/settings.json',
+                 '.agents/skills/polar-billing-setup', '.claude/skills/polar-billing-setup']
+        self.assert_commit_notice(result, paths, ignored)
+
     def test_project_commit_notice_non_git(self):
         self.assert_commit_notice(self.cli('-y', '--claude'), [])
         run(['git', 'init', '-q', self.project])
@@ -672,11 +750,15 @@ fs.lstatSync = (file, options) => {{
 
     def test_project_commit_notice_nested_repo_and_git_environment(self):
         run(['git', 'init', '-q', self.case])
+        (self.project / '.gitignore').write_text('scripts/\n', encoding='utf-8')
         self.env.update(GIT_DIR=str(self.home / 'missing.git'), GIT_WORK_TREE=str(self.home),
                         GIT_INDEX_FILE=str(self.home / 'missing-index'), GIT_COMMON_DIR=str(self.home),
                         GIT_LITERAL_PATHSPECS='1', GIT_GLOB_PATHSPECS='1', GIT_NOGLOB_PATHSPECS='1',
                         GIT_ICASE_PATHSPECS='1', GIT_CEILING_DIRECTORIES=str(self.project))
-        self.assert_commit_notice(self.cli('-y'), [*self.installed_skill_paths('agents'), 'AGENTS.md', '.gitignore'])
+        result = self.cli('-y')
+        ignored = [f'.agents/skills/devlyn-ideate/scripts/{name}.py' for name in ('queue', 'acceptance')]
+        self.assert_commit_notice(result, [*self.installed_skill_paths('agents'), 'AGENTS.md', '.gitignore'], ignored)
+        self.assertIn(b'project/.gitignore:1: scripts/', result.stdout)
 
     def test_project_commit_notice_settings_migration(self):
         run(['git', 'init', '-q', self.project])
@@ -693,18 +775,25 @@ fs.lstatSync = (file, options) => {{
         self.assertTrue((self.project / '.agents/skills/asset-creator/SKILL.md').is_file())
         self.assert_commit_notice(result, ['.agents/skills/asset-creator', '.agents/skills/.devlyn-install.json'])
 
-    def test_project_commit_notice_git_unavailable_or_status_fails(self):
+    def test_project_commit_notice_git_unavailable_or_query_fails(self):
         run(['git', 'init', '-q', self.project])
+        (self.project / '.gitignore').write_text('scripts/\n', encoding='utf-8')
         preload = self.preload.read_bytes()
         try:
-            for failure in ['missing', 'status']:
+            for failure in ['missing', 'status', 'check-ignore', 'ignore-rule']:
                 with self.subTest(failure=failure):
                     self.preload.write_bytes(preload + f"""
 const cp = require('child_process');
 const spawn = cp.spawnSync;
 cp.spawnSync = (file, args, options) => {{
   if (file === 'git' && {json.dumps(failure)} === 'missing') return {{ error: {{ code: 'ENOENT' }} }};
-  if (file === 'git' && args.includes('status')) return {{ status: 1, stderr: 'status failed' }};
+  if (file === 'git' && args.includes('status') && {json.dumps(failure)} === 'status') return {{ status: 1 }};
+  if (file === 'git' && args.includes('check-ignore')) {{
+    if (options.env.GIT_OPTIONAL_LOCKS !== '0') throw new Error('advisory must disable optional Git locks');
+    if ({json.dumps(failure)} === 'check-ignore' || ({json.dumps(failure)} === 'ignore-rule' && args.includes('-v'))) {{
+      return {{ status: 128, stderr: 'check-ignore failed' }};
+    }}
+  }}
   return spawn(file, args, options);
 }};
 """.encode())
