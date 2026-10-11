@@ -3,13 +3,13 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { execSync } = require('child_process');
+const { execSync, spawnSync } = require('child_process');
 
 const CONFIG_SOURCE = path.join(__dirname, '..', 'config');
 const OPTIONAL_SKILLS_SOURCE = path.join(__dirname, '..', 'optional-skills');
 const PKG = require('../package.json');
 const { updateInstructions, InstructionError, holdsDevlynDefaults, importsAgentsMd } = require('./instructions');
-const { contentHash, fingerprint, isIgnoredEntry, trackedPaths } = require('./skill-ownership');
+const { contentHash, fingerprint, gitEnvironment, isIgnoredEntry, trackedPaths } = require('./skill-ownership');
 const SKILL_HISTORY = require('./skill-history.json');
 
 // The devlyn skill bundle installed into every skill-capable agent's loader
@@ -346,13 +346,14 @@ function listContents() {
 }
 
 // Old and retired skills in one skill root; nothing outside it.
-function cleanupDeprecated(skillsDir) {
+function cleanupDeprecated(skillsDir, written) {
   let removed = 0;
   const deprecated = DEPRECATED_DIRS.flatMap((relPath) =>
     legacySkillPaths(skillsDir, path.basename(relPath)).map((fullPath) => [relPath, fullPath]));
   for (const [relPath, fullPath] of deprecated) {
     if (fs.existsSync(fullPath)) {
       fs.rmSync(fullPath, { recursive: true });
+      written.push(fullPath);
       log(`  ✕ ${relPath}/ (removed)`, 'dim');
       removed++;
     }
@@ -361,6 +362,7 @@ function cleanupDeprecated(skillsDir) {
     const fullPath = path.join(skillsDir, name);
     if (isShippedCopy(fullPath, hashes)) {
       fs.rmSync(fullPath, { recursive: true });
+      written.push(fullPath);
       log(`  ✕ skills/${name}/ (removed)`, 'dim');
       removed++;
     }
@@ -372,20 +374,22 @@ function cleanupDeprecated(skillsDir) {
 // are in place. An optional skill found under an old spelling is installed under its new name
 // before the old copy goes, so an interrupted migration never loses it. An unedited 0.6.0-0.7.1
 // copy is refreshed in place. Any other folder under a 4.0 name is the user's own; `-y` leaves it.
-function retireRenamedSkills(skillsDir) {
+function retireRenamedSkills(skillsDir, written) {
   const optional = new Set(OPTIONAL_ADDONS.filter((addon) => addon.type === 'local').map((addon) => addon.name));
   const refreshed = [];
   for (const [oldName, newName] of Object.entries(RENAMED_SKILLS)) {
     const found = legacySkillPaths(skillsDir, oldName).filter((fullPath) => fs.existsSync(fullPath));
     if (found.length > 0 && optional.has(newName)) {
-      installOptionalSkillInto(skillsDir, newName);
+      installOptionalSkillInto(skillsDir, newName, written);
       refreshed.push(newName);
     } else if (isShippedCopy(path.join(skillsDir, newName), PRE_STANDARD_SKILL_MD_SHA256)) {
       refreshPreStandardCopy(skillsDir, newName);
+      written.push(path.join(skillsDir, newName));
       refreshed.push(newName);
     }
     for (const fullPath of found) {
       fs.rmSync(fullPath, { recursive: true, force: true });
+      written.push(fullPath);
       log(`  ✕ ${path.basename(fullPath)}/ (renamed to ${newName})`, 'dim');
     }
   }
@@ -610,30 +614,34 @@ function singleSelect(message, items, initial) {
   });
 }
 
-// After install(), whose preflight already cleared every selected addon before any change.
-function installLocalSkill(skillName, roots) {
+// After preflight has cleared every selected addon before any change.
+function installLocalSkill(skillName, roots, written = []) {
   if (!fs.existsSync(path.join(OPTIONAL_SKILLS_SOURCE, skillName))) {
     log(`   ⚠️  Skill "${skillName}" not found`, 'yellow');
     return false;
   }
   log(`\n🛠️  Installing ${skillName}...`, 'cyan');
   for (const root of roots) {
-    installOptionalSkillInto(root, skillName);
+    installOptionalSkillInto(root, skillName, written);
     writeInstallMarker(root, [skillName], readInstallManifest(root));
+    written.push(path.join(root, DEVLYN_INSTALL_MARKER));
   }
   return true;
 }
 
 // One optional skill into one skill-loader directory, replacing any older copy of it. A
 // copy under its name before the 4.0.0 rename goes only once the new one is complete.
-function installOptionalSkillInto(target, skillName) {
+function installOptionalSkillInto(target, skillName, written) {
   const dest = path.join(target, skillName);
   fs.rmSync(dest, { recursive: true, force: true });
   copyRecursive(path.join(OPTIONAL_SKILLS_SOURCE, skillName), dest, target);
   assertCompleteSkillInstall(OPTIONAL_SKILLS_SOURCE, target, [skillName]);
+  written.push(dest);
   const oldName = Object.keys(RENAMED_SKILLS).find((name) => RENAMED_SKILLS[name] === skillName);
   for (const fullPath of oldName ? legacySkillPaths(target, oldName) : []) {
+    if (!fs.existsSync(fullPath)) continue;
     fs.rmSync(fullPath, { recursive: true, force: true });
+    written.push(fullPath);
   }
 }
 
@@ -679,10 +687,7 @@ function installSkillPack(packName) {
   }
 }
 
-function installAddon(addon, roots) {
-  if (addon.type === 'local') {
-    return installLocalSkill(addon.name, roots);
-  }
+function installAddon(addon) {
   if (addon.type === 'mcp') {
     return installMcpServer(addon.name, addon.command);
   }
@@ -691,13 +696,13 @@ function installAddon(addon, roots) {
 
 // The core skills into one skill root, replacing older copies and retired skills, then the
 // marker that records a complete install.
-function installCoreSkills(skillsDir) {
+function installCoreSkills(skillsDir, written = []) {
   const sourceSkillsDir = path.join(CONFIG_SOURCE, 'skills');
   log(`\n📁 Installing devlyn skills to ${skillsDir.replace(os.homedir(), '~')}`, 'green');
   fs.mkdirSync(skillsDir, { recursive: true });
   const previous = readInstallManifest(skillsDir);
   clearInstallMarker(skillsDir);
-  const removed = cleanupDeprecated(skillsDir);
+  const removed = cleanupDeprecated(skillsDir, written);
   if (removed > 0) {
     log(`\n🧹 Cleaned up ${removed} deprecated file${removed > 1 ? 's' : ''}`, 'yellow');
   }
@@ -708,10 +713,12 @@ function installCoreSkills(skillsDir) {
     // Full replace: copyRecursive is an overlay, so stale files would otherwise persist.
     fs.rmSync(dest, { recursive: true, force: true });
     copyRecursive(src, dest, skillsDir);
+    written.push(dest);
   }
   assertCompleteSkillInstall(sourceSkillsDir, skillsDir, DEVLYN_CORE_SKILLS);
-  const refreshed = retireRenamedSkills(skillsDir);
+  const refreshed = retireRenamedSkills(skillsDir, written);
   writeInstallMarker(skillsDir, [...DEVLYN_CORE_SKILLS, ...refreshed], previous);
+  written.push(path.join(skillsDir, DEVLYN_INSTALL_MARKER));
 }
 
 function readProjectGitignore() {
@@ -763,7 +770,9 @@ function updateProjectGitignore(markerEntry) {
   if (!gitignoreContent.equals(original)) {
     fs.writeFileSync(gitignorePath, gitignoreContent);
     log('  → .gitignore (updated project install rules)', 'dim');
+    return true;
   }
+  return false;
 }
 
 // With the Claude target in the same run, an AGENTS.md that links to this project's CLAUDE.md (a
@@ -784,16 +793,18 @@ function agentsMdIsClaudeMd() {
 }
 
 function installAgentsProject(withClaude) {
+  const written = [];
   if (!agentsMdIsClaudeMd()) {
-    updateInstructions('AGENTS.md');
+    if (updateInstructions('AGENTS.md')) written.push('AGENTS.md');
   } else if (withClaude) {
     log('  → AGENTS.md is CLAUDE.md here, so it gets the devlyn block written there', 'dim');
   } else {
     throw new InstructionError('AGENTS.md is CLAUDE.md under another name here. Choose CLAUDE.md as well '
       + '(npx devlyn-cli -y --claude) so the devlyn block is written once, into CLAUDE.md.');
   }
-  installCoreSkills(skillRoots('agents', false)[0]);
-  updateProjectGitignore('.agents/skills/.devlyn-install.json');
+  installCoreSkills(skillRoots('agents', false)[0], written);
+  if (updateProjectGitignore('.agents/skills/.devlyn-install.json')) written.push('.gitignore');
+  return written;
 }
 
 // Whether Claude Code reads the devlyn defaults of AGENTS.md through an `@AGENTS.md` import in this CLAUDE.md text.
@@ -817,8 +828,9 @@ function installClaudeInstructions() {
     throw new InstructionError('Claude Code reads AGENTS.md here, and its devlyn defaults need an update. Codex, omp, Pi and Grok '
       + 'read them too, with .agents/skills, so choose AGENTS.md as well (npx devlyn-cli -y --claude) to update both together.');
   }
-  updateInstructions('CLAUDE.md', initial, !imported);
+  const changed = updateInstructions('CLAUDE.md', initial, !imported);
   if (imported) log('  → CLAUDE.md imports AGENTS.md, which holds the devlyn block', 'dim');
+  return changed;
 }
 
 // Project CLAUDE.md and .claude/: skills and settings.
@@ -845,16 +857,17 @@ function installClaudeCore() {
       && (!settings.env || typeof settings.env !== 'object' || Array.isArray(settings.env))) {
     throw unmergeable('env must be a JSON object');
   }
-  installClaudeInstructions();
+  const written = installClaudeInstructions() ? ['CLAUDE.md'] : [];
   for (const relPath of DEPRECATED_FILES) {
     const fullPath = path.join(targetDir, relPath);
     if (fs.existsSync(fullPath)) {
       fs.unlinkSync(fullPath);
       log(`  ✕ ${relPath} (deprecated)`, 'dim');
+      written.push(`.claude/${relPath}`);
     }
   }
-  installCoreSkills(skillsDir);
-  updateProjectGitignore('.claude/skills/.devlyn-install.json');
+  installCoreSkills(skillsDir, written);
+  if (updateProjectGitignore('.claude/skills/.devlyn-install.json')) written.push('.gitignore');
 
   // One-hour foreground Bash calls and one-hour prompt caching serve a drain host that waits in the foreground.
   let settingsChanged = false;
@@ -885,6 +898,7 @@ function installClaudeCore() {
   if (settingsChanged) {
     fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n');
     log('  → settings.json', 'dim');
+    written.push('.claude/settings.json');
   }
   // Their ownership cannot be established, so the other retired settings stay; name the ones present.
   const retired = [
@@ -894,6 +908,7 @@ function installClaudeCore() {
   if (retired.length > 0) {
     log(`  Retired devlyn settings may remain in .claude/settings.json: ${retired.join(', ')} — delete those you did not add yourself.`, 'yellow');
   }
+  return written;
 }
 
 // Installs the targets in one scope; returns the skill roots written.
@@ -908,19 +923,60 @@ function install(targets, global, optionalNames = []) {
       + 'would apply to every project. Run from a project folder, or use --global for skills only.');
   }
   const roots = targets.flatMap((target) => skillRoots(target, global));
+  const written = [];
   if (!global) readProjectGitignore();
   preflightSkills(roots, optionalNames,
     !global && targets.includes('claude') ? path.dirname(skillRoots('claude', false)[0]) : null);
   // AGENTS.md first, whatever order the menu gave: a new CLAUDE.md holds the block only when AGENTS.md does not.
   for (const target of ['agents', 'claude'].filter((name) => targets.includes(name))) {
     if (global) skillRoots(target, true).forEach((root) => installCoreSkills(root));
-    else if (target === 'agents') installAgentsProject(targets.includes('claude'));
-    else installClaudeCore();
+    else if (target === 'agents') written.push(...installAgentsProject(targets.includes('claude')));
+    else written.push(...installClaudeCore());
   }
+  for (const name of optionalNames) installLocalSkill(name, roots, written);
   log(`\n✅ devlyn ${PKG.version} installed`, 'green');
   if (global) log('The principles block installs per project: run npx devlyn-cli in the project without --global.');
+  else noticeProjectChanges(written);
   noticeGlobalDrift(roots);
   return roots;
+}
+
+// Advisory only: a successful install stays successful when Git is unavailable or fails.
+function noticeProjectChanges(paths) {
+  if (!paths.length) return;
+  const cwd = projectDir();
+  paths = [...new Set(paths.map((name) => path.relative(cwd, path.resolve(cwd, name)).split(path.sep).join('/')))];
+  const env = { ...gitEnvironment(), GIT_OPTIONAL_LOCKS: '0' };
+  const git = (args) => spawnSync('git', ['-C', cwd, ...args], { encoding: 'utf8', env });
+  const repo = git(['rev-parse', '--show-toplevel']);
+  if (repo.error || repo.status !== 0) return;
+  const status = git(['status', '--porcelain=v1', '-z', '--untracked-files=all', '--no-renames',
+    '--', ...paths.map((name) => `:(icase,literal)${name}`)]);
+  if (status.error || status.status !== 0) return;
+  // Porcelain paths are repository-relative, even when installing in a nested project.
+  const changed = status.stdout.split('\0').filter(Boolean).map((entry) =>
+    path.relative(cwd, path.resolve(repo.stdout.replace(/\r?\n$/, ''), entry.slice(3))).split(path.sep).join('/'));
+  // Keep the installed folder/file scope, using Git's spelling on case-insensitive volumes.
+  const pending = [...new Set(paths.flatMap((name) => [...new Set(changed
+    .map((file) => file.split('/').slice(0, name.split('/').length).join('/')))]
+    .filter((file) => {
+      if (file === name) return true;
+      if (file.toLowerCase() !== name.toLowerCase()) return false;
+      // Case folding alone can include independently edited files on case-sensitive volumes.
+      // Removed paths have no identity left to compare, so require their exact spelling.
+      try {
+        const written = fs.lstatSync(path.resolve(cwd, name), { bigint: true, throwIfNoEntry: false });
+        const reported = fs.lstatSync(path.resolve(cwd, file), { bigint: true, throwIfNoEntry: false });
+        return written && reported && written.dev === reported.dev && written.ino === reported.ino;
+      } catch (error) {
+        log(`Cannot compare Git path ${file} with installed path ${name}: ${error.message}`, 'yellow');
+        return false;
+      }
+    })))];
+  if (!pending.length) return;
+  const quote = (name) => /^[a-zA-Z0-9_./-]+$/.test(name) ? name : `'${name.replace(/'/g, "'\\''")}'`;
+  log('Commit these changes for teammates and /devlyn-ideate drains to use them:', 'yellow');
+  log(`  git add -- ${pending.map(quote).join(' ')} && git commit -m "chore(devlyn): update devlyn-cli to ${PKG.version}"`, 'dim');
 }
 
 // A devlyn install in a user root this run does not refresh drifts and can shadow the
@@ -982,11 +1038,11 @@ async function init({ yes, claude, global }) {
   const scope = await singleSelect('Where', ['This project', 'Global — every project on this machine'], global ? 1 : 0);
   // Ask about optional addons (local skills + external packs; MCP servers belong to Claude Code)
   const selectedAddons = await multiSelect('Optional skills & packs', OPTIONAL_ADDONS.filter((addon) => addon.type !== 'mcp' || targets.includes('claude')));
-  const roots = install(targets, scope === 1, selectedAddons.filter((addon) => addon.type === 'local').map((addon) => addon.name));
+  install(targets, scope === 1, selectedAddons.filter((addon) => addon.type === 'local').map((addon) => addon.name));
 
   if (selectedAddons.length > 0) {
-    for (const addon of selectedAddons) {
-      installAddon(addon, roots);
+    for (const addon of selectedAddons.filter((addon) => addon.type !== 'local')) {
+      installAddon(addon);
     }
   } else {
     log('💡 No optional addons selected', 'dim');
