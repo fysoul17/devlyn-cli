@@ -1,0 +1,53 @@
+{
+  "schema": "0255-verification-v1",
+  "at": "2026-10-11T11:41:47.857703+00:00",
+  "status": "PASS",
+  "source_sha256": {
+    "autoresearch/experiments/0255/runner.py": "becb3b4b05a9536860e91ad464c50bc1985bded25696335b1d8c637cfd69b9c2",
+    "autoresearch/experiments/0255/test_runner.py": "1d62304f12f9ab52edb7e7146d944eb813903b911c6a238d38a8495d3c238ca5"
+  },
+  "scope": "Offline-tested prospective Claude runner integration, unchanged Codex routing; no native operational admission or old-result regrade.",
+  "tests": {
+    "methods": 46,
+    "status": "PASS",
+    "result_sha256": "6ccdac41f511f4c9791f4800ecd6716a38551b074121f96b9718d2e9b9279a76",
+    "stderr_sha256": "48ddb543cd9d7b19b27e3cafc828cdbd854ae94fd2257eb8f49bf75624a137c6",
+    "native_and_product_execution_boundaries": "synthetic",
+    "codex_trace_parser": "unchanged, numeric output mocked in full inherited orchestration control; not retested here"
+  },
+  "review": {
+    "verdict": "SHIP",
+    "high_count": 0,
+    "rounds": 2,
+    "report_sha256": "b92a0fd7336dbd74979af12d43be788b9853ac077fe368dce6afbc66206fa8ba"
+  },
+  "compatibility": {
+    "status": "PASS",
+    "usage": "COMPLETE",
+    "input_tokens": 49313,
+    "output_tokens": 468,
+    "thinking_included": 274,
+    "strict_sources_unchanged": true,
+    "new_native_observation": false,
+    "old_grading_calls": 0,
+    "result_sha256": "fa231d1cbc9fc7120705b402d04b4febf01fd2e265d37eb96462a772ff3c952c"
+  },
+  "preserved_failures": [
+    "Initial real-capture compatibility failed on native user string content passed to stdout-shaped diagnostics.",
+    "Initial scope exceptions discarded already verified receipt observations.",
+    "Review v1 found2HIGH: helper-only terminal dispatch and malformed foreign native carrier missed; both synthetic counterexamples incorrectly reached grading.",
+    "First38integrationtests passed but did not cover the two additional reviewer counterexamples;46methods include their regressions."
+  ],
+  "native_calls": 0,
+  "auth_bootstrap_or_renewal": false,
+  "product_or_version_changes": false,
+  "old0252_cost": "UNKNOWN",
+  "history_sha256": "df34349313d863877eae2949017c8930d42c7e5e8ae3ba881fb0c148bb39b217",
+  "receipt": "23285171a4dcb879807b6eaf",
+  "limits": [
+    "Claude only A/B/S and0254successful owner/native child scope; independent peers remain unsupported.",
+    "Bounded existing native/helper recognition, not arbitrary hidden-shell completeness.",
+    "Full source/evaluator/delivery path was not exercised on a live owner in this boundary.",
+    "A future operational probe requires its own prospective registration and current fixed-auth snapshot."
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "at": "2026-10-11T11:34:09.717786+00:00",
+  "scope": "Focused synthetic probes only; no native calls or retained raw evidence modifications.",
+  "runner_sha256": "6d7c013949c1f36524c700fd0d070ec83ea033c765c5cf2a5f648aee3b301576",
+  "prediction": [
+    {
+      "case": "healthy_baseline",
+      "expected": "account returns COMPLETE with63input139output."
+    },
+    {
+      "case": "malformed_terminal_body_content",
+      "mutation": "Synthetic sealed final owner terminal response content contains a null block; exact numeric and identity receipts remain unchanged.",
+      "expected": "0254 can return MATCH because this non-Agent terminal body content is not its numeric scope; new0255 diagnostics.calls may raise uncaught AttributeError instead of returning UNKNOWN."
+    },
+    {
+      "case": "scope_inventory_read_error",
+      "mutation": "After a real0254 MATCH, independent synthetic inventory raises ValueError.",
+      "expected": "Newrun stops but may omit the already available native receipt observations because account has not returned yet."
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "at": "2026-10-11T11:30:31.435364+00:00",
+  "provenance": "Recorded after read-only source inspection. Prediction was stated to root in a collaboration message before any new probes. No tests or experiments were run by this reviewer.",
+  "prediction": "A synthetic Claude cell with exact nonterminal transcript anchors and complete matching native bodies reaches the existing grading boundary once. Any accounting/scope/identity/teardown/catalog/quota/input fault stops before grading. Codex delegates to the inherited run and never calls0254.",
+  "native_calls": 0
+}

@@ -1,0 +1,39 @@
+{
+  "at": "2026-10-11T11:41:47.848312+00:00",
+  "status": "PASS",
+  "baseline": "0259a23efb0b252e6e2fdf852dc811e565be90da",
+  "allowed_paths": [
+    "autoresearch/experiments/0255/",
+    "autoresearch/HANDOFF.md",
+    "autoresearch/NORTH-STAR.md"
+  ],
+  "old_runners_auditor_results_product_packages_unchanged": true,
+  "auditor0254_sha256": "115619928aad24fc37280117863c06cbfd72bc4035e84de694e3bd8140a43fef",
+  "changed_paths": [
+    "autoresearch/HANDOFF.md",
+    "autoresearch/NORTH-STAR.md",
+    "autoresearch/experiments/0255/README.md",
+    "autoresearch/experiments/0255/results/code-review-v1-prediction.json",
+    "autoresearch/experiments/0255/results/code-review-v1-probes.json",
+    "autoresearch/experiments/0255/results/code-review-v1-scope-probes.json",
+    "autoresearch/experiments/0255/results/code-review-v1.md",
+    "autoresearch/experiments/0255/results/code-review-v2-prediction.json",
+    "autoresearch/experiments/0255/results/code-review-v2.json",
+    "autoresearch/experiments/0255/results/code-review-v2.md",
+    "autoresearch/experiments/0255/results/compatibility-v1-prediction.json",
+    "autoresearch/experiments/0255/results/compatibility-v1-result.json",
+    "autoresearch/experiments/0255/results/compatibility-v2-prediction.json",
+    "autoresearch/experiments/0255/results/compatibility-v2-result.json",
+    "autoresearch/experiments/0255/results/compatibility-v3-prediction.json",
+    "autoresearch/experiments/0255/results/compatibility-v3-result.json",
+    "autoresearch/experiments/0255/results/design-r0-prediction.json",
+    "autoresearch/experiments/0255/results/design-r0.md",
+    "autoresearch/experiments/0255/results/owner-contract-r0.md",
+    "autoresearch/experiments/0255/results/tests-v1-prediction.json",
+    "autoresearch/experiments/0255/results/tests-v1-result.json",
+    "autoresearch/experiments/0255/results/tests-v2-prediction.json",
+    "autoresearch/experiments/0255/results/tests-v2-result.json",
+    "autoresearch/experiments/0255/runner.py",
+    "autoresearch/experiments/0255/test_runner.py"
+  ]
+}

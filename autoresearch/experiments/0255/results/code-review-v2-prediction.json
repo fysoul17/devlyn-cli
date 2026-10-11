@@ -1,0 +1,8 @@
+{
+  "at": "2026-10-11T11:39:18.118673+00:00",
+  "provenance": "Written after bounded repair source inspection, before reading v2 test results. Reviewer will use the independent targeted suite rather than repeat already covered tests.",
+  "runner_sha256": "becb3b4b05a9536860e91ad464c50bc1985bded25696335b1d8c637cfd69b9c2",
+  "prediction": "Terminal-body-only registered peer helper and actual/sealed incomplete Codex carriers now force UNKNOWN/null whole totals and STOP before evaluator/delivery. Healthy receipt cases and direct inherited Codex orchestration remain unchanged.",
+  "scope": "Only H1/H2 repair, retained initial malformed-content/observation fixes, and gate preservation; no broader hunt.",
+  "native_calls": 0
+}

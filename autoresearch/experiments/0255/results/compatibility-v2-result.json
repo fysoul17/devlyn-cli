@@ -1,0 +1,27 @@
+{
+  "at": "2026-10-11T11:37:23.712498+00:00",
+  "status": "PASS",
+  "source_sha256": {
+    "autoresearch/experiments/0255/runner.py": "65d1ac5c2f68ffda13eafaaf78161cbdee077b38a32efa87a68462fce8c24e33",
+    "autoresearch/experiments/0255/test_runner.py": "041b4aee7405055b91e85d42e29420e31bf9ed97dd35bd6538e0db01069341d6"
+  },
+  "usage": {
+    "schema": "0255-native-usage-v1",
+    "completeness": "COMPLETE",
+    "input_tokens": 49313,
+    "output_tokens": 468,
+    "gaps": [],
+    "source": "0254-native-receipts-v1"
+  },
+  "native_receipt_status": "MATCH",
+  "receipt_totals": {
+    "input_tokens": 6,
+    "cache_creation_input_tokens": 31118,
+    "cache_read_input_tokens": 18189,
+    "output_tokens": 468,
+    "thinking_tokens": 274
+  },
+  "strict_sources_unchanged": true,
+  "native_calls": 0,
+  "old_grading_calls": 0
+}

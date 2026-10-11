@@ -2,18 +2,15 @@
 
 This file is the single source of truth for the project's goal. Every other doc references this one. If a future session is uncertain about scope, contract, or direction, **read this file first** — do not infer from code, do not assume from older docs, and do not hallucinate intent.
 
-Current work: the user's continuation produced the standalone
-[0254 offline receipt audit](experiments/0254/README.md), building on
-[0253 native capture](experiments/0253/README.md). Complete exact request-bound
-native terminal bodies supply counters only with transcript/child identity,
-sealed inventory and separate aggregate reconciliation. Gaps remain UNKNOWN.
-Synthetic refusal tests and an unchanged 0253 read-only compatibility control
-supply the evidence; no new native invocation, study-runner integration or
-efficacy draw occurred. Product wording and version remain unchanged. 0252's
-internal loss cause and UNKNOWN whole cost stay unresolved. A future runner
-admission needs a prospective contract. Commit, push, main merge and verified
-unnecessary worktree/branch cleanup are authorized; preserve active work and
-frozen evidence.
+Current work: [0255 receipt runner](experiments/0255/README.md) connects unchanged
+0254 native accounting to a prospective Claude solo execution boundary while
+preserving independent execution and product gates. Codex retains its inherited
+path. Synthetic integration tests and unchanged 0253 read-only compatibility
+provide the evidence; no live owner, auth renewal, old regrade or efficacy draw
+occurred. 0252's internal loss cause and UNKNOWN whole cost remain unresolved.
+A future operational probe needs a separate frozen registration. Product wording
+and version stay unchanged. Commit, push, main merge and verified unnecessary
+resource cleanup are authorized; preserve active work, raw evidence and archives.
 
 Prior delivery: PR202 delivered the 0251/0252 research below. Its accepted and
 frozen study source is 4.2.5, including PR200's comment-prefixed import correction.
