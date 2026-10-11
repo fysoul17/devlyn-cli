@@ -1,0 +1,12 @@
+{
+  "at": "2026-10-11T04:58:04.670669+00:00",
+  "exit_code": 0,
+  "diff_check_exit_code": 0,
+  "native_calls": 0,
+  "source_sha256": {
+    "autoresearch/experiments/0253/probe.py": "4a85491bd70c82a28987b4386cc8550be07372fe93a72a9c913527830bc01a92",
+    "autoresearch/experiments/0253/registration.json": "0d9b0dbd37824d6cab69b8902383869970b270034225881eeb342e4acc12b050",
+    "autoresearch/experiments/0253/runner.py": "3323105fec5ab0ad3bbfbe26b6efeb487254cdc35d0b4dced61ed736757347b9",
+    "autoresearch/experiments/0253/test_capture.py": "1d9cfbd77d12dcd9bc3373aacfa264ea66eb109fe7ac6ebd4e255a7cd26dd37f"
+  }
+}

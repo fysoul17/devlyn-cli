@@ -1,4 +1,25 @@
-# Minimal solo harness — 0252 closed at an accounting STOP (2026-10-11 UTC)
+# Minimal solo harness — 0253 native capture (2026-10-11 UTC)
+
+The user requested continued improvement after 0252 closed, then explicitly
+requested commit, push, main merge and cleanup of unnecessary worktrees and
+branches. [0253](experiments/0253/README.md) adds prospective native API file
+capture without changing product instructions or old accounting gates. Its one
+registered operational owner completed with one foreground same-model child;
+three request/terminal-response pairs contain 49,313 input and 468 output tokens.
+See the independent [native audit](experiments/0253/results/audit-native-v1/audit.md)
+and [verification](experiments/0253/results/verification.json) for the accepted scope.
+This is no efficacy draw, d07 reproduction or general completeness guarantee.
+The exact internal cause of 0252's missing terminal usage remains unestablished.
+
+Private source and raw API bodies remain under `~/.local/share/nx01/0253-live`;
+diagnosis and original review revisions remain in `0253-diagnosis` and completion
+custody. The publication receipt is `9b90645cc3b430ba9c210676`. Preserve these
+records when releasing the publication worktree, branch and disposable scratch.
+Future accounting work needs a new prospective rule for complete request-bound
+receipts and negative tests; this probe admits no reconciler or automatic study.
+Minimal solo remains first, pair only when earned, ideate deferred.
+
+## Previous delivered closure — 0251/0252
 
 **0252 is closed; no S/pair admission and no efficacy gate.** Read the
 [closure](experiments/0252/results/closure-v1.md) and machine-readable record.

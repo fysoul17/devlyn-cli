@@ -1,0 +1,199 @@
+{
+  "schema": "0253-native-acceptance-audit-v1",
+  "at": "2026-10-11T05:09:24.631480+00:00",
+  "reviewer": "Astra independent cross-model review with delegated read-only custody verification",
+  "verdict": "SHIP",
+  "status": "PASS",
+  "high_count": 0,
+  "findings": [],
+  "scope": "Observed official native per-attempt request/index/terminal-response file coverage for exactly one 0253 operational owner and its prompted foreground same-model child. Not general capture completeness, a d07 reproduction or repair, a new reconciler, instruction admission, or efficacy/product grading.",
+  "acceptance": {
+    "native_invocations": 1,
+    "native_agent_children": 1,
+    "native_request_count": 3,
+    "owner_request_count": 2,
+    "child_request_count": 1,
+    "terminal_response_count": 3,
+    "index_rows": 3,
+    "unindexed_request_files": 0,
+    "unindexed_response_files": 0,
+    "orphan_index_entries": 0,
+    "duplicate_index_identifiers": 0,
+    "conflicting_terminal_records": 0,
+    "observed_extra_native_requests": 0,
+    "observed_request_errors_or_retries": 0,
+    "observed_child_cancellation": false,
+    "receipt_metadata_checks_passed": 20,
+    "custody_checks_passed": 26,
+    "whole_native_reported_input_tokens": 49313,
+    "whole_native_reported_output_tokens": 468,
+    "thinking_tokens_included_in_output": 274,
+    "unknown_native_residual": null,
+    "owner_elapsed_seconds": 11.085199166001985,
+    "owner_status": "EXITED_0",
+    "teardown": "CLEAN",
+    "identity": "MATCH"
+  },
+  "receipt_rows": [
+    {
+      "timestamp": "2026-10-11T05:01:54.458Z",
+      "session_id": "1a15a231-001b-4e17-b632-55fbe49dc7d1",
+      "query_source": "sdk",
+      "model": "claude-opus-5-5",
+      "request_id": "req_011CfurzKHhVhPtAvLZ6ydK8",
+      "message_id": "msg_011CfurzKW71Vc3UcuEzL38A",
+      "message_uuid": "5ab6346f-cd9a-4271-b585-288b7fdeef98",
+      "request_file": "4af9d64d-11cf-464c-8287-eeff035ad13f.request.json",
+      "response_file": "req_011CfurzKHhVhPtAvLZ6ydK8.response.json",
+      "role": "owner",
+      "agent_id": null,
+      "request_sha256": "eb3ef129abb6e7553be9e8d4c33aab03bc20c2532b3004187360145251e8e12c",
+      "response_sha256": "2d6c8c3495ac94475020b7c718007f047a88d8783cd59d70b2464b5a8cfedf23",
+      "stop_reason": "tool_use",
+      "usage": {
+        "input_tokens": 2,
+        "cache_creation_input_tokens": 18189,
+        "cache_read_input_tokens": 0,
+        "output_tokens": 394,
+        "thinking_tokens": 230
+      },
+      "effort": "max",
+      "thinking_type": "adaptive",
+      "transcript_path": "home/.claude/projects/-cell-work/1a15a231-001b-4e17-b632-55fbe49dc7d1.jsonl",
+      "terminal_lines": [
+        19,
+        20
+      ],
+      "terminal_uuid": "5ab6346f-cd9a-4271-b585-288b7fdeef98",
+      "transcript_snapshot_count": 2,
+      "native_account_hash_matches_runtime": true
+    },
+    {
+      "timestamp": "2026-10-11T05:01:57.057Z",
+      "session_id": "1a15a231-001b-4e17-b632-55fbe49dc7d1",
+      "query_source": "agent:builtin:general-purpose",
+      "model": "claude-opus-5-5",
+      "request_id": "req_011CfurzesgM8TjeEoxtL4KQ",
+      "message_id": "msg_011Cfurzf6pnTzHSEbg2CcHp",
+      "message_uuid": "87aa4681-4c94-4837-901a-73ac53334b1d",
+      "request_file": "a033e401-1851-41e4-935c-dc104742e4bc.request.json",
+      "response_file": "req_011CfurzesgM8TjeEoxtL4KQ.response.json",
+      "role": "child",
+      "agent_id": "a34001825d913953b",
+      "request_sha256": "f8b4d17a93fb2a5a6a39394364e58422ad1e2a74c01f0d0f863f54d45ada75cc",
+      "response_sha256": "d0f2a99b2fc2f5b4491b42bb539265fbe576c9b2ec7ff906937db6d809f10630",
+      "stop_reason": "end_turn",
+      "usage": {
+        "input_tokens": 2,
+        "cache_creation_input_tokens": 12264,
+        "cache_read_input_tokens": 0,
+        "output_tokens": 59,
+        "thinking_tokens": 44
+      },
+      "effort": "max",
+      "thinking_type": "adaptive",
+      "transcript_path": "home/.claude/projects/-cell-work/1a15a231-001b-4e17-b632-55fbe49dc7d1/subagents/agent-a34001825d913953b.jsonl",
+      "terminal_lines": [
+        12
+      ],
+      "terminal_uuid": "87aa4681-4c94-4837-901a-73ac53334b1d",
+      "transcript_snapshot_count": 2,
+      "native_account_hash_matches_runtime": true
+    },
+    {
+      "timestamp": "2026-10-11T05:01:58.025Z",
+      "session_id": "1a15a231-001b-4e17-b632-55fbe49dc7d1",
+      "query_source": "sdk",
+      "model": "claude-opus-5-5",
+      "request_id": "req_011CfurznsdsWqXySYsBJ4pF",
+      "message_id": "msg_011Cfurzo81iReRGsyNZybUQ",
+      "message_uuid": "4f7ac7c9-932a-4ed4-a7a7-fbba521c698b",
+      "request_file": "e3fd086a-0952-4b50-a72f-70c70b2af863.request.json",
+      "response_file": "req_011CfurznsdsWqXySYsBJ4pF.response.json",
+      "role": "owner",
+      "agent_id": null,
+      "request_sha256": "ecbac037992ad6a8811818aeb39dde134f9d0ff3790805c52f7dd6732c45bcf2",
+      "response_sha256": "8578abc61b0d1c6b145bbb207ce6722ab5de3bcc81214217beee28e07b4ae3d6",
+      "stop_reason": "end_turn",
+      "usage": {
+        "input_tokens": 2,
+        "cache_creation_input_tokens": 665,
+        "cache_read_input_tokens": 18189,
+        "output_tokens": 15,
+        "thinking_tokens": 0
+      },
+      "effort": "max",
+      "thinking_type": "adaptive",
+      "transcript_path": "home/.claude/projects/-cell-work/1a15a231-001b-4e17-b632-55fbe49dc7d1.jsonl",
+      "terminal_lines": [
+        26
+      ],
+      "terminal_uuid": "4f7ac7c9-932a-4ed4-a7a7-fbba521c698b",
+      "transcript_snapshot_count": 1,
+      "native_account_hash_matches_runtime": true
+    }
+  ],
+  "terminal_totals": {
+    "input_tokens": 6,
+    "cache_creation_input_tokens": 31118,
+    "cache_read_input_tokens": 18189,
+    "output_tokens": 468,
+    "thinking_tokens": 274
+  },
+  "owner_only_result_usage": {
+    "input_tokens": 4,
+    "cache_creation_input_tokens": 18854,
+    "cache_read_input_tokens": 18189,
+    "output_tokens": 409,
+    "thinking_tokens": 230
+  },
+  "native_reported_cost": {
+    "total_cost_usd": 0.2619658,
+    "model_cost_usd": 0.2619658,
+    "cost_basis": "list",
+    "scope": "Native emitted list-price estimate, not provider billing."
+  },
+  "custody_summary": {
+    "bindings": 126,
+    "reviewed_files": 4,
+    "prepared_seals": 5,
+    "raw_manifest_entries": 2048,
+    "raw_body_files_all_manifested": 7,
+    "raw_manifest_sha256": "3b9c1a8bf178ec5d1f004f84f874f951f5eb6906ceb397f08b9e190951eabf86",
+    "container_and_volume_absent": true,
+    "fixed_snapshot_preflight_seconds_left": 8400,
+    "native_request_account_hash_matches_runtime": true
+  },
+  "evidence_sha256": {
+    "audit-native-v1/prediction.json": "8e7265269efd453af3bce8f63f38818f9d3fa99282f2897e0bd3645109b589ac",
+    "audit-native-v1/audit_metadata.py": "1becd3ff1335ee00f64964dcf7f53bd143f46863c10831a6645ecf483fa6f32c",
+    "audit-native-v1/native-metadata.json": "59a204b606c0efd70b142174300fdeba6ba8fa273b76151163a9c790c9e4be2e",
+    "audit-native-v1/custody/custody-v2.json": "9c1a77bf8e45d1c5db7ca64f18fab8b5099cb349fc63c8a20cb84b18e50e0faa",
+    "audit-native-v1/custody/custody-v2.md": "e6008a633719a20969a65a8c9d59d5404c267b6671a39b35c8697314a8dd91a4",
+    "audit-native-v1/custody/custody.json": "de7dbd4e69f53d0a342030d814fed3316059b98b7c1ece5abee879515327ebe6",
+    "audit-native-v1/custody/custody.md": "419833057051ffd02836c810f5c4b9b3093af7315cc6aea1aa286f890fd40832",
+    "freeze-v1.json": "877621d7d0953cb04697c8f81ebbd28e7d8b10c823570633e142d645ba4f28fd",
+    "bindings.json": "2d0c8988e2c18631c15b1bef1ac3f923d77cb795a6f1f311b87fc4d68f0e6af1",
+    "runtime.json": "fad6b874e61421f07da5b57c8489647cdcff5c5600e9af4fdc3d815853ba2818",
+    "code-review-v2.json": "670072de6cacc98aa156a848bee7232b04fa781370c55a2635759356a1c9a2b2",
+    "out/s01-claude-native-bodies/evidence.manifest.json": "3b9c1a8bf178ec5d1f004f84f874f951f5eb6906ceb397f08b9e190951eabf86",
+    "out/s01-claude-native-bodies/run/result.json": "eeb75d2e630443a921872704ab0c03a3e46b003e47ef2d36d004ec14bd9d18b4",
+    "result-s01-claude-native-bodies.json": "a735137752f0cf216bdbefdfe8d37d9352b5ece7c4f8496720837cf233544a60"
+  },
+  "limits": [
+    "The index shares the owner session id with the child. Child provenance is independently tied through query_source, message/request/UUID equality, the agent transcript, Agent tool-use id, task lifecycle and foreground meta; session id alone is insufficient.",
+    "The native result top-level usage covers only owner requests. Whole native modelUsage includes the child and equals all three terminal receipts. Thinking is included in output and is not added twice.",
+    "All three model requests use claude-opus-5-5 with output_config.effort=max. Plan and recorded argv configure the official file exporter and all three remote exporters=none; no network-traffic non-export claim is made.",
+    "One allowed_warning rate-limit event was observed at 94% five-hour utilization; it was not an execution refusal, no overage was used, and quota.execution is empty.",
+    "This successful tiny foreground path does not exercise retry/error/cancellation/orphan logging behavior, spontaneous native-child lifecycle choices, or the prior d07 interior transcript gap. No response/cost is backfilled into prior runs.",
+    "The raw evidence manifest covers its defined 2048 regular-file entries, not every output-tree file. Custody v2 separately inventories 31 regular files and 2 symlinks outside it; prepared files have their own seal.",
+    "Credential contents were not read. Authentication identity uses existing frozen manifest/runtime/recorded preflight metadata, corroborated by hashing account_uuid inside each native API request without exposing the identifier.",
+    "No new model/provider invocation, test, product/oracle/delivery grading or accepted-input mutation occurred during this audit. Docker checks were read-only lifecycle-state inspection."
+  ],
+  "audit_corrections": {
+    "custody_initial_record_preserved": true,
+    "detail": "Delegated initial audit wrongly required test_capture.py to be a runtime binding; the test is instead bound by the frozen v2 review. Its bytes match, as do all three directly runtime-bound files. Initial outside-manifest wording was also narrowed. Both original reports and explicit correction remain retained; no evidence bytes changed. An initial metadata print included the already-public registered operational prompt from argv, with no raw provider-body or credential contents exposed.",
+    "final_custody_report": "audit-native-v1/custody/custody-v2.json"
+  },
+  "next_boundary": "Observed mechanism acceptance only. Any future accounting precedence/parser or broader experiment needs its own prospective contract; current and old guards remain unchanged."
+}

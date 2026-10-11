@@ -1,0 +1,15 @@
+{
+  "schema": "0253-native-body-probe-v1",
+  "name": "s01-claude-native-bodies",
+  "task": "E1",
+  "arm": "B",
+  "config": "claude",
+  "prediction": "The pinned Claude Code 2.1.296 writes native request/terminal-response files and an identity index for the owner and one prompted foreground same-model child, with all remote telemetry exporters disabled. Every observed request and terminal usage must be independently audited. Native identity, unchanged inputs, complete usage and clean teardown remain required.",
+  "prompt": "This is an operational native-accounting probe, not product work. Use Agent exactly once with subagent_type general-purpose, run_in_background false, and no model override. Give the child this exact task: Reply exactly NATIVE_CHILD_READY. Do not use tools or spawn agents. Wait for its terminal response, then reply exactly NATIVE_PARENT_READY. Do not perform other work, call other tools, launch CLI sessions, or change files.",
+  "scope": "One operational observation only. Not a d07 reproduction, spontaneous behavior test, S/B efficacy draw, instruction admission, or proof of capture completeness for all possible native paths.",
+  "authentication": "Use the existing sealed 0251 snapshot without renewal, replacement, host reread or account change. Require the existing account/hash checks and at least 6300 seconds before preparation and launch. A refusal ends this probe.",
+  "stopping": "One dispatch only. Any invocation, identity, capture, accounting, binding or teardown failure closes the probe with retained costs and unknowns. No retry, parser repair to rescue this run, ceiling override, native-tool restriction or automatic successor. No source/oracle/delivery grade.",
+  "unchanged": "B instructions, image, model/effort, native child routes, 5400-second owner watchdog and 0251 authentication/lifecycle. Existing accounting gates remain unchanged. 0252 stays CLOSED_ACCOUNTING_STOP.",
+  "custody": "Keep all body files private and sealed. No remote telemetry collector. Publication contains only reviewed metadata after a secret scan. Execution source must survive publication-worktree cleanup.",
+  "concurrency": "No independent study model, reviewer or heavy test overlaps the native owner. Finish review/freeze first, and independently audit after teardown."
+}
