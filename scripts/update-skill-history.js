@@ -32,8 +32,11 @@ try {
         // Materialize each distinct tree once so history uses the installer's exact walker,
         // including directory entries, stamp normalization and ignored generated files.
         const dir = path.join(scratch, tree);
+        const archive = path.join(scratch, `${tree}.tar`);
         fs.mkdirSync(dir);
-        execFileSync('tar', ['-xf', '-', '-C', dir], { input: git('archive', '--format=tar', tree) });
+        git('archive', '--format=tar', `--output=${archive}`, tree);
+        execFileSync('tar', ['-xf', archive, '-C', dir]);
+        fs.unlinkSync(archive);
         fingerprints.set(tree, fingerprint(dir));
       }
       if (!skills.has(name)) skills.set(name, new Set());
