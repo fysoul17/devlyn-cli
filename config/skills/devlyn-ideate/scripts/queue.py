@@ -112,6 +112,34 @@ def read_json(path):
         raise LoopError(f"{path}: {exc}") from exc
 
 
+def skill_diagnostics(anchor):
+    running = SKILLS / ".devlyn-install.json"
+    markers = dict.fromkeys([running, *(anchor / host / "skills/.devlyn-install.json" for host in (".claude", ".agents"))])
+    versions, errors = {}, {}
+    for marker in markers:
+        try:
+            data = json.loads(marker.read_text(encoding="utf-8"))
+            if not isinstance(data, dict) or not isinstance(data.get("version"), (str, type(None))):
+                raise ValueError("install marker must be an object with a string or null version")
+            versions[marker] = data.get("version")
+        except FileNotFoundError:
+            continue  # Global-only and source checkouts need no repository install marker.
+        except (OSError, ValueError, RecursionError) as exc:
+            errors[marker] = str(exc)
+    skill = {"root": str(SKILLS), "version": versions.get(running)}
+    warnings = []
+    for marker in markers:
+        if marker in errors:
+            detail = f"unreadable: {errors[marker]}"
+        elif running not in errors and marker in versions and versions[marker] != skill["version"]:
+            detail = f"version {json.dumps(versions[marker])}"
+        else:
+            continue
+        warnings.append(f"Running skill {skill['root']} (version {json.dumps(skill['version'])}); "
+                        f"install marker {marker} ({detail}); run npx devlyn-cli@latest update.")
+    return {"skill": skill, "warnings": warnings}
+
+
 def write_json(path, value):
     acceptance()["write_json"](path, value)
 
@@ -1314,7 +1342,7 @@ def bring_in(v, loop):
     return f"{receipt['base']}: git merge --ff {receipt['remote']}/{receipt['base']}"
 
 
-def write_reports(v, status, reason):
+def write_reports(v, status, reason, warnings):
     paths = []
     for loop in dict.fromkeys(row["loop"] for row in v["rows"] if row["identity"]):
         path = v["common"] / "devlyn-loops" / loop / "drain-report.md"
@@ -1324,6 +1352,8 @@ def write_reports(v, status, reason):
                      f"- Queue: {f'{CAPTURES}{loop}:{loop_queue(loop)}' if loop in v['records'] else v['anchor'] / loop_queue(loop)}",
                      f"- Drain: {status}" + (f" — {reason}" if reason else ""), f"- Whole-loop acceptance: {loop_acceptance(v, loop, items)}",
                      *([f"- Bring into {line}"] if (line := bring_in(v, loop)) else []), ""]
+            if warnings:
+                lines += ["## Warnings", "", *(f"- {warning}" for warning in warnings), ""]
             try:
                 meta, _ = load_manifest(v["anchor"], loop, capture(v, loop))
                 decisions = sections(
@@ -1393,6 +1423,8 @@ def prune_parents(v, root):
 
 def drain(args):
     anchor, common = repository(args.repo)
+    args.repo = anchor  # Preserve the repository root for failures reported by main.
+    diagnostics = skill_diagnostics(anchor)
     require(any("{packet}" in part for part in args.executor), "executor argv must contain {packet}, replaced by the task packet path")
     args.worktree_root = Path(args.worktree_root).resolve() if args.worktree_root else anchor.parent / f"{anchor.name}.devlyn"
     with lock(common, "drain.lock", blocking=False):
@@ -1422,20 +1454,22 @@ def drain(args):
             with contextlib.suppress(LoopError, OSError):
                 last = view(anchor, common, args.local_only)
         if last is None:
-            return {"status": status, "reason": reason}
+            return {"status": status, "reason": reason, **diagnostics}
         annotate(last, refused)
         prune_parents(last, args.worktree_root)
-        return {"status": status, "reason": reason, "reports": write_reports(last, status, reason), "counts": counts(last),
+        return {"status": status, "reason": reason, **diagnostics,
+                "reports": write_reports(last, status, reason, diagnostics["warnings"]), "counts": counts(last),
                 "tasks": [summary(last, row) for row in last["rows"] if row["identity"]], "cleanup": last["cleanup"]}
 
 
 def status(args):
     anchor, common = repository(args.repo)
+    args.repo = anchor  # Preserve the repository root for failures reported by main.
     v = view(anchor, common, args.local_only)
     row = next_task(v, set())
     annotate(v, {})
     tasks = [summary(v, r) for r in v["rows"] if r["identity"]]
-    return {"status": "OK", "counts": counts(v), "next": row["identity"] if row else None,
+    return {"status": "OK", **skill_diagnostics(anchor), "counts": counts(v), "next": row["identity"] if row else None,
             "blockers": [f"{t['identity']}: {t['reason']}" for t in tasks if t.get("reason") and t["result"] in {"pending", "active", "blocked"}]
             + [f"legacy row {r['index'] + 1} needs planning: {r['text']}" for r in v["rows"] if not r["identity"] and r["mark"] == " "]
             + [f"unreadable receipt {item}" for item in v["unreadable"]],
@@ -1997,6 +2031,8 @@ def main():
         result = {"check": check, "add": add, "status": status, "drain": drain}[args.action](args)
     except (LoopError, OSError) as exc:
         result = {"status": "BLOCKED", "reason": str(exc)}
+        if args.action in {"status", "drain"}:
+            result.update(skill_diagnostics(Path(args.repo)))
     print(json.dumps(result, ensure_ascii=False, sort_keys=True))
     return 1 if result["status"] == "BLOCKED" else 0
 

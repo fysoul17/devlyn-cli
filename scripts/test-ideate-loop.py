@@ -323,6 +323,182 @@ class LoopFixture(unittest.TestCase):
             "    return real_advance(v, row, opts) if row['task'] == 't1' else 'fixture hold dependent'\n"
             "g['advance'] = advance\n")
 
+    def skill_copy(self, root, version):
+        shutil.copytree(self.skills, root)
+        (root / ".devlyn-install.json").write_text(json.dumps({"version": version}), encoding="utf-8")
+        self.queue_py = root / "devlyn-ideate/scripts/queue.py"
+        return {"root": str(root), "version": version}
+
+    def test_skill_version_mismatch_warns_without_blocking(self):
+        # Prediction: each host's different project version adds exactly one warning, without changing status or
+        # preventing execution; WAITING and DRAINED carry the same warning as their Markdown reports.
+        skill = self.skill_copy(self.root / "running skills", "1.0.0")
+        self.independent()
+        for host in (".claude", ".agents"):
+            with self.subTest(host=host):
+                before = self.cli("status", "--repo", self.anchor)
+                marker = self.anchor / host / "skills/.devlyn-install.json"
+                marker.parent.mkdir(parents=True)
+                marker.write_text('{"version": "2.0.0"}', encoding="utf-8")
+                status = self.cli("status", "--repo", self.anchor / "docs")
+                self.assertEqual(status["status"], "OK")
+                self.assertEqual(status["skill"], skill)
+                self.assertEqual({k: v for k, v in status.items() if k != "warnings"},
+                                 {k: v for k, v in before.items() if k != "warnings"})
+                warning, = status["warnings"]
+                for text in (skill["root"], "1.0.0", str(marker), "2.0.0", "npx devlyn-cli@latest update"):
+                    self.assertIn(text, warning)
+                result = self.drain()
+                self.assertEqual((result["status"], result["skill"], result["warnings"]), ("WAITING", skill, [warning]))
+                self.assertEqual((self.tasks(result)["bb.t1"]["result"], self.calls("bb.t1")), ("accepted", 1))
+                report, = result["reports"]
+                self.assertIn("## Warnings\n\n- " + warning, Path(report).read_text(encoding="utf-8"))
+                marker.unlink()
+        (self.anchor / "docs/specs/queue.md").write_text("# Intent Queue\n", encoding="utf-8")
+        marker.write_text('{"version": "2.0.0"}', encoding="utf-8")
+        result = self.drain()
+        self.assertEqual((result["status"], result["skill"], result["warnings"]), ("DRAINED", skill, [warning]))
+        self.assertIn(warning, Path(result["reports"][0]).read_text(encoding="utf-8"))
+        self.assertEqual(self.calls("bb.t1"), 1)
+
+    def test_skill_matching_or_absent_markers_are_quiet(self):
+        # Prediction: the fixture's actual running SKILLS root is reported (null without an install marker), and
+        # absent or matching project markers leave warnings empty and add no Markdown warnings section.
+        root = self.queue["SKILLS"]
+        installed = root / ".devlyn-install.json"
+        version = json.loads(installed.read_text(encoding="utf-8")).get("version") if installed.exists() else None
+        skill = {"root": str(root), "version": version}
+        self.independent()
+        for host in (None, ".claude", ".agents"):
+            with self.subTest(host=host):
+                if host:
+                    marker = self.anchor / host / "skills/.devlyn-install.json"
+                    marker.parent.mkdir(parents=True)
+                    marker.write_text(json.dumps({"version": version}), encoding="utf-8")
+                for result in (self.cli("status", "--repo", self.anchor), self.drain()):
+                    self.assertEqual((result["skill"], result["warnings"]), (skill, []))
+                    for report in result.get("reports", []):
+                        self.assertNotIn("## Warnings", Path(report).read_text(encoding="utf-8"))
+        self.assertEqual(self.calls("bb.t1"), 1)
+
+    def test_skill_running_project_copy_matches_its_marker(self):
+        # Prediction: running the repository's own installed copy reports its version without warning about itself.
+        skill = self.skill_copy(self.anchor / ".agents/skills", "3.0.0")
+        for result in (self.cli("status", "--repo", self.anchor), self.drain()):
+            self.assertEqual((result["skill"], result["warnings"]), (skill, []))
+
+    def test_skill_unreadable_markers_warn_without_crashing(self):
+        # Prediction: invalid or deeply nested JSON, shape, UTF-8 and an OSError are diagnostics, never controller failures; the
+        # executor still runs once, and reports contain the exact warning returned by status and drain.
+        self.independent()
+        root = str(self.queue["SKILLS"])
+        for host in (".claude", ".agents"):
+            marker = self.anchor / host / "skills/.devlyn-install.json"
+            marker.parent.mkdir(parents=True)
+            for data in (b"{", b"[]", b"\xff", b"[" * 2000 + b"]" * 2000, None):
+                with self.subTest(host=host, data=data[:20] if data else data):
+                    if data is None:
+                        marker.mkdir()
+                    else:
+                        marker.write_bytes(data)
+                    status = self.cli("status", "--repo", self.anchor)
+                    warning, = status["warnings"]
+                    for text in (root, str(marker), "unreadable", "npx devlyn-cli@latest update"):
+                        self.assertIn(text, warning)
+                    result = self.drain()
+                    self.assertEqual((status["status"], result["status"], result["warnings"]), ("OK", "WAITING", [warning]))
+                    self.assertEqual((self.tasks(result)["bb.t1"]["result"], self.calls("bb.t1")), ("accepted", 1))
+                    self.assertIn(warning, Path(result["reports"][0]).read_text(encoding="utf-8"))
+                    marker.rmdir() if data is None else marker.unlink()
+
+    def test_skill_unreadable_running_marker_skips_version_comparisons(self):
+        # Prediction: an unreadable running marker warns once, with no comparisons against its unknown version;
+        # unreadable repository markers still warn, including in status/drain's BLOCKED fallback.
+        skill = self.skill_copy(self.root / "running skills", "1.0.0")
+        skill["version"] = None
+        running = Path(skill["root"]) / ".devlyn-install.json"
+        # Python 3.14's C scanner accepts this depth; use the stdlib recursive scanner to exercise RecursionError.
+        wrapper = self.root / "recursive-json-queue.py"
+        wrapper.write_text("import json, json.scanner, runpy\n"
+                           "json._default_decoder.scan_once = json.scanner.py_make_scanner(json._default_decoder)\n"
+                           f"runpy.run_path({str(self.queue_py)!r}, run_name='__main__')\n", encoding="utf-8")
+        self.queue_py = wrapper
+        markers = [self.anchor / host / "skills/.devlyn-install.json" for host in (".claude", ".agents")]
+        for data in (b"{", b"[" * 2000 + b"]" * 2000):
+            with self.subTest(data=data[:20]):
+                running.write_bytes(data)
+                for marker in markers:
+                    marker.parent.mkdir(parents=True, exist_ok=True)
+                    marker.write_text('{"version": "2.0.0"}', encoding="utf-8")
+                status = self.cli("status", "--repo", self.anchor)
+                warning, = status["warnings"]
+                self.assertIn(str(running), warning)
+                self.assertIn("unreadable", warning)
+                result = self.drain()
+                self.assertEqual((status["status"], status["skill"]), ("OK", skill))
+                self.assertEqual((result["status"], result["skill"], result["warnings"]), ("WAITING", skill, [warning]))
+                markers[0].write_bytes(b"{")
+                status = self.cli("status", "--repo", self.anchor)
+                own_warning, repo_warning = status["warnings"]
+                self.assertEqual(own_warning, warning)
+                self.assertIn(str(markers[0]), repo_warning)
+                self.assertIn("unreadable", repo_warning)
+                (self.anchor / "docs/specs/queue.md").write_bytes(b"\xff")
+                for result in (self.cli("status", "--repo", self.anchor, code=1), self.drain(code=1)):
+                    self.assertEqual((result["status"], result["skill"], result["warnings"]),
+                                     ("BLOCKED", skill, status["warnings"]))
+                (self.anchor / "docs/specs/queue.md").write_bytes(self.base_queue)
+
+    def test_skill_absent_running_marker_still_compares_repository_versions(self):
+        # Prediction: an absent running marker keeps the null-version comparison with readable repository markers.
+        skill = self.skill_copy(self.root / "running skills", "1.0.0")
+        (Path(skill["root"]) / ".devlyn-install.json").unlink()
+        skill["version"] = None
+        marker = self.anchor / ".agents/skills/.devlyn-install.json"
+        marker.parent.mkdir(parents=True)
+        marker.write_text('{"version": "2.0.0"}', encoding="utf-8")
+        for result in (self.cli("status", "--repo", self.anchor), self.drain()):
+            self.assertEqual(result["skill"], skill)
+            warning, = result["warnings"]
+            self.assertIn(str(marker), warning)
+            self.assertIn('version "2.0.0"', warning)
+            self.assertNotIn("unreadable", warning)
+
+    def test_skill_details_survive_repository_lookup_failure(self):
+        # Prediction: repository() failing before it returns an anchor still prints BLOCKED JSON with diagnostics,
+        # without a traceback, for both status and drain.
+        skill = self.skill_copy(self.root / "running skills", "1.0.0")
+        for action in ("status", "drain"):
+            with self.subTest(action=action):
+                argv = [sys.executable, str(self.queue_py), action, "--repo", str(self.root)]
+                if action == "drain":
+                    argv += ["--", sys.executable, "-c", "pass", "{packet}"]
+                result = subprocess.run(argv, cwd=self.root, env=self.env, capture_output=True, text=True, encoding="utf-8")
+                self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+                self.assertNotIn("Traceback", result.stdout + result.stderr)
+                payload = json.loads(result.stdout)
+                self.assertEqual((payload["status"], payload["skill"], payload["warnings"]), ("BLOCKED", skill, []))
+                self.assertIn("not a git repository", payload["reason"])
+
+    def test_skill_details_survive_blocked_outcomes(self):
+        # Prediction: preflight, lock and authoritative-queue failures keep BLOCKED and their existing reason,
+        # but still name the running copy and version mismatch, including when --repo names a subdirectory.
+        skill = self.skill_copy(self.root / "running skills", "1.0.0")
+        marker = self.anchor / ".claude/skills/.devlyn-install.json"
+        marker.parent.mkdir(parents=True)
+        marker.write_text('{"version": "2.0.0"}', encoding="utf-8")
+        expected = self.cli("status", "--repo", self.anchor)["warnings"]
+        invalid = self.cli("drain", "--repo", self.anchor / "docs", "--", sys.executable, "-c", "pass", code=1)
+        self.assertIn("executor argv must contain {packet}", invalid["reason"])
+        holder = self.hold(self.common / "devlyn-loops/drain.lock")
+        locked = self.drain(code=1)
+        self.assertIn("another drain is active", locked["reason"])
+        holder.kill()
+        holder.wait()
+        (self.anchor / "docs/specs/queue.md").write_bytes(b"\xff")
+        for result in (invalid, locked, self.cli("status", "--repo", self.anchor / "docs", code=1), self.drain(code=1)):
+            self.assertEqual((result["status"], result["skill"], result["warnings"]), ("BLOCKED", skill, expected))
+
     def test_review_01_failed_verdict_without_product(self):
         # Prediction: the bound verdict remains failed without the redundant product field, before and after attachment;
         # no dependent executes and an independent loop completes. Older valid ACCEPTED receipts omit product too.
