@@ -35,7 +35,7 @@
 #   6. Preserves codex's exact exit code.
 #
 # USAGE:
-#   bash codex-monitored.sh -C <repo> -s read-only -c model_reasoning_effort=xhigh "<prompt>"
+#   bash codex-monitored.sh -C <repo> -s read-only "<prompt>"
 #   bash codex-monitored.sh resume --last
 #   (Args after the script name are passed verbatim to `codex exec`.)
 #
