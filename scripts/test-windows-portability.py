@@ -1336,6 +1336,32 @@ cp.spawnSync = (file, args, options) => {{
                 self.assertIn(str(lock).encode(), result.stderr)
                 self.assertEqual(self.snapshot(), before)
 
+    def test_global_locks_ignore_namespaced_mkdir_result(self):
+        for refused in (False, True):
+            with self.subTest(refused=refused):
+                self.home = self.case / f'home-{refused}'; self.home.mkdir()
+                self.env['DEVLYN_TEST_HOME'] = str(self.home)
+                if refused:
+                    lock = self.home / '.codex/skills/.devlyn-install.lock'
+                    lock.parent.mkdir(parents=True)
+                    lock.write_text('{"pid": 12345, "token": "foreign"}', encoding='utf-8')
+                before = self.snapshot()
+                result = self.invoke(r"""
+const mkdir = fs.mkdirSync;
+fs.mkdirSync = (dir, options) => {
+  const first = mkdir(dir, options);
+  return options?.recursive && typeof first === 'string' ? '\\\\?\\' + first : first;
+};
+install(['agents'], true);
+""", code=1 if refused else 0)
+                if refused:
+                    self.assertIn(b'Another devlyn-cli is changing', result.stderr)
+                    self.assertEqual(self.snapshot(), before)
+                else:
+                    for name in ('.agents', '.codex'):
+                        self.assertTrue((self.home / name / 'skills/devlyn-ideate/SKILL.md').is_file())
+                    self.assertFalse(list(self.home.rglob('.devlyn-install.lock')))
+
     def test_global_lock_lifetime_includes_preflight_and_optional_writes(self):
         # A second process must refuse even while the first writer has no marker or skills yet.
         self.invoke(f"""

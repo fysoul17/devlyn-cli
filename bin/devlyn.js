@@ -949,13 +949,13 @@ function withUserSkillLocks(roots, action) {
           const stat = fs.lstatSync(dir, { throwIfNoEntry: false });
           if (stat && !stat.isDirectory()) throw new Error(`not a real directory: ${dir}`);
         }
-        const first = fs.mkdirSync(root, { recursive: true });
-        if (first) {
-          for (let dir = root; ; dir = path.dirname(dir)) {
-            createdDirs.push(dir);
-            if (dir === first) break;
-          }
+        const missing = [];
+        for (let dir = root; !fs.existsSync(dir); dir = path.dirname(dir)) {
+          missing.push(dir);
+          if (path.dirname(dir) === dir) break;
         }
+        fs.mkdirSync(root, { recursive: true });
+        createdDirs.push(...missing);
         const token = crypto.randomBytes(16).toString('hex');
         const fd = fs.openSync(lock, 'wx', 0o600);
         try {
