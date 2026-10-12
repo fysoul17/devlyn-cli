@@ -521,6 +521,18 @@ def raise_walk_error(error):
     raise error
 
 
+def records_manifest(root):
+    require(root == root.resolve() and root.is_dir(), f"records root must be a nonsymlink directory; repair and resume: {root}")
+    devlyn = safe_path(root, ".devlyn")
+    if not devlyn.exists():
+        return {}
+    require(devlyn.is_dir(), f".devlyn records must be a directory; repair and resume: {devlyn}")
+    paths = [str((Path(directory) / name).relative_to(root))
+             for directory, dirs, files in os.walk(devlyn, onerror=raise_walk_error)
+             for name in files + [name for name in dirs if (Path(directory) / name).is_symlink()]]
+    return snapshot_files(root, paths) if paths else {}
+
+
 def clean_scratch(receipt, path, writers_stopped):
     """Empty the owned build directory; keep its identity across resume/reuse."""
     scratch = path.parent / "scratch"
@@ -583,23 +595,20 @@ def cleanup(receipt, path, pr):
             require(receipt.get("writers_released"), "wait actual children, stop/yield known writers, then resume with --writers-stopped")
             require(work != Path(receipt["anchor"]) and work != Path(receipt["common_gitdir"]).parent, "cannot remove retained/main checkout")
             removable(receipt, work)
-            devlyn = safe_path(work, ".devlyn")
-            if devlyn.exists():
-                require(devlyn.is_dir(), ".devlyn records must be a directory; retain tree")
-                paths = [str((Path(directory) / name).relative_to(work))
-                         for directory, dirs, files in os.walk(devlyn, onerror=raise_walk_error)
-                         for name in files + [name for name in dirs if (Path(directory) / name).is_symlink()]]
-                if paths:
-                    records = snapshot_files(work, paths)
-                    destination = path.parent / "records"
-                    if not destination.exists():
-                        with tempfile.TemporaryDirectory(prefix=".records-", dir=path.parent) as temporary:
-                            shutil.copytree(devlyn, Path(temporary) / ".devlyn", symlinks=True)
-                            verify_files(Path(temporary), records)
-                            Path(temporary).rename(destination)
-                    verify_files(destination, records)
-                    verify_files(work, records)
+            records = records_manifest(work)
+            if records:
+                destination = path.parent / "records"
+                if os.path.lexists(destination) and records_manifest(destination) != records:
+                    digest = hashlib.sha256(json.dumps(records, sort_keys=True, separators=(",", ":")).encode()).hexdigest()[:12]
+                    destination = path.parent / ("records." + digest)
+                if not os.path.lexists(destination):
+                    with tempfile.TemporaryDirectory(prefix=".records-", dir=path.parent) as temporary:
+                        shutil.copytree(safe_path(work, ".devlyn"), Path(temporary) / ".devlyn", symlinks=True)
+                        require(records_manifest(Path(temporary)) == records, ".devlyn changed while it was copied; stop its writer and resume")
+                        Path(temporary).rename(destination)
+                require(records_manifest(destination) == records, f"records copy mismatch; repair and resume: {destination}")
             removable(receipt, work)
+            require(records_manifest(work) == records, ".devlyn changed after it was copied; stop its writer and resume")
             gref(receipt, "worktree", "remove", str(work))
         else:
             require(str(work) not in registrations(receipt), "missing worktree is still registered; retain")
@@ -1637,10 +1646,16 @@ ctypes.CDLL(None).pthread_exit(None)
         self.assertEqual(result["status"], "PR")
         self.assertTrue(json.loads(receipt.read_text())["writers_released"])
         self.merge_pr()
+        original = records_manifest(task)
+        shutil.copytree(task / ".devlyn", receipt.parent / "records/.devlyn")
+        (task / ".devlyn/storage-cleanup.json").write_bytes(b"{}\n")
+        final = records_manifest(task)
         server = json.loads(self.data.read_text())
         result = self.allocate("released")
         self.assertEqual([(row["receipt"], row["status"]) for row in result["reconciled"]], [(str(receipt), "COMPLETE")])
         self.assertFalse(task.exists())
+        self.assertEqual(records_manifest(receipt.parent / "records"), original)
+        self.assertEqual(records_manifest(next(receipt.parent.glob("records.*"))), final)
         self.assertEqual(self.g("branch", "--list", "task/fixture"), "")
         self.assertEqual(self.g("ls-remote", "origin", "refs/heads/task/fixture"), "")
         current = json.loads(self.data.read_text())
@@ -1840,16 +1855,123 @@ ctypes.CDLL(None).pthread_exit(None)
         saved = self.receipt.parent / "records/.devlyn"
         shutil.copytree(self.task / ".devlyn", saved)
         (saved / "checks.txt").write_bytes(b"tampered copy")
-        result, _ = self.complete(success=False)
-        self.assertIn("bytes/mode changed", result["reason"])
-        self.assertEqual((saved / "checks.txt").read_bytes(), b"tampered copy")
-        self.assertTrue(self.task.exists())
-        self.assertNotEqual(self.g("branch", "--list", "task/fixture"), "")
-        self.assertEqual(self.g("ls-remote", "origin", "refs/heads/task/fixture").split()[0], self.sha)
-        shutil.copy2(self.task / ".devlyn/checks.txt", saved / "checks.txt")
+        final = records_manifest(self.task)
         result, _ = self.complete()
         self.assertEqual(result["status"], "COMPLETE")
         self.assertFalse(self.task.exists())
+        self.assertEqual((saved / "checks.txt").read_bytes(), b"tampered copy")
+        self.assertEqual(records_manifest(next(self.receipt.parent.glob("records.*"))), final)
+
+    def test_records_resume_preserves_added_and_changed_files(self):
+        self.allocate(); self.accept()
+        self.complete("--mode", "pr", "--writers-stopped")
+        self.merge_pr()
+        extra = self.task / ".devlyn/extra.log"
+        extra.write_bytes(b"before\n")
+        saved = self.receipt.parent / "records"
+        shutil.copytree(self.task / ".devlyn", saved / ".devlyn")
+        original = records_manifest(saved)
+        extra.write_bytes(b"after\n")
+        extra.chmod(0o640)
+        (self.task / ".devlyn/storage-cleanup.json").write_bytes(b'{"status":"retained"}\n')
+        final = records_manifest(self.task)
+        digest = hashlib.sha256(json.dumps(final, sort_keys=True, separators=(",", ":")).encode()).hexdigest()[:12]
+        result, _ = self.complete()
+        self.assertEqual(result["status"], "COMPLETE")
+        self.assertFalse(self.task.exists())
+        self.assertEqual(records_manifest(saved), original)
+        self.assertEqual(records_manifest(self.receipt.parent / ("records." + digest)), final)
+
+    def test_records_resume_preserves_deleted_file_only_in_earlier_copy(self):
+        self.allocate(); self.accept()
+        self.complete("--mode", "pr", "--writers-stopped")
+        self.merge_pr()
+        extra = self.task / ".devlyn/extra.log"
+        extra.write_bytes(b"before\n")
+        saved = self.receipt.parent / "records"
+        shutil.copytree(self.task / ".devlyn", saved / ".devlyn")
+        original = records_manifest(saved)
+        extra.unlink()
+        final = records_manifest(self.task)
+        result, _ = self.complete()
+        self.assertEqual(result["status"], "COMPLETE")
+        self.assertFalse(self.task.exists())
+        self.assertEqual(records_manifest(saved), original)
+        generation = next(self.receipt.parent.glob("records.*"))
+        self.assertEqual(records_manifest(generation), final)
+        self.assertFalse((generation / ".devlyn/extra.log").exists())
+
+    def test_records_generation_reuse_and_mismatch(self):
+        self.allocate(); self.accept()
+        self.complete("--mode", "pr", "--writers-stopped")
+        self.merge_pr()
+        saved = self.receipt.parent / "records"
+        shutil.copytree(self.task / ".devlyn", saved / ".devlyn")
+        original = records_manifest(saved)
+        (self.task / ".devlyn/storage-cleanup.json").write_bytes(b"{}\n")
+        final = records_manifest(self.task)
+        digest = hashlib.sha256(json.dumps(final, sort_keys=True, separators=(",", ":")).encode()).hexdigest()[:12]
+        generation = self.receipt.parent / ("records." + digest)
+        shutil.copytree(self.task / ".devlyn", generation / ".devlyn")
+        extra = generation / ".devlyn/unexpected"
+        extra.write_bytes(b"keep this copy\n")
+        mismatch = records_manifest(generation)
+        result, _ = self.complete(success=False)
+        self.assertIn(generation.name, result["reason"])
+        self.assertTrue(self.task.exists())
+        self.assertEqual(records_manifest(generation), mismatch)
+        self.assertEqual(records_manifest(saved), original)
+        extra.unlink()  # Owner repairs the mismatched copy before resuming.
+        identity = generation.stat()
+        result, _ = self.complete()
+        self.assertEqual(result["status"], "COMPLETE")
+        self.assertFalse(self.task.exists())
+        self.assertEqual(records_manifest(saved), original)
+        self.assertEqual(records_manifest(generation), final)
+        self.assertEqual(generation.stat(), identity)
+
+    def test_records_change_after_copy_retains_until_resume(self):
+        from unittest.mock import patch
+        self.allocate(); self.accept()
+        self.complete("--mode", "pr", "--writers-stopped")
+        self.merge_pr()
+        original = records_manifest(self.task)
+        saved = self.receipt.parent / "records"
+        check = removable
+        def changed(receipt, work):
+            check(receipt, work)
+            if saved.exists():
+                (work / ".devlyn/storage-cleanup.json").write_bytes(b"{}\n")
+        args = argparse.Namespace(receipt=str(self.receipt), acceptance=None, mode=None, local_only=False, writers_stopped=False)
+        with patch.dict(os.environ, self.env), patch.dict(cleanup.__globals__, {"removable": changed}):
+            with self.assertRaisesRegex(CompletionError, "changed after it was copied; stop its writer and resume"):
+                complete(args)
+        self.assertTrue(self.task.exists())
+        self.assertEqual(records_manifest(saved), original)
+        final = records_manifest(self.task)
+        result, _ = self.complete()
+        self.assertEqual(result["status"], "COMPLETE")
+        self.assertFalse(self.task.exists())
+        self.assertEqual(records_manifest(saved), original)
+        self.assertEqual(records_manifest(next(self.receipt.parent.glob("records.*"))), final)
+
+    def test_records_staged_extra_file_retains_without_publishing(self):
+        from unittest.mock import patch
+        self.allocate(); self.accept()
+        self.complete("--mode", "pr", "--writers-stopped")
+        self.merge_pr()
+        copy = shutil.copytree
+        def changed(source, destination, **kwargs):
+            result = copy(source, destination, **kwargs)
+            (destination / "unexpected").write_bytes(b"late write\n")
+            return result
+        args = argparse.Namespace(receipt=str(self.receipt), acceptance=None, mode=None, local_only=False, writers_stopped=False)
+        with patch.dict(os.environ, self.env), patch.object(shutil, "copytree", changed):
+            with self.assertRaisesRegex(CompletionError, "changed while it was copied; stop its writer and resume"):
+                complete(args)
+        self.assertTrue(self.task.exists())
+        self.assertFalse((self.receipt.parent / "records").exists())
+        self.assertEqual(list(self.receipt.parent.glob(".records-*")), [])
 
     def test_linked_custody_and_interrupted_removal(self):
         self.allocate(); self.accept()
