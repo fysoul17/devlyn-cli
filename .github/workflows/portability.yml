@@ -4,8 +4,9 @@ on:
   # Runner minutes are billed, so this runs per release, not per PR (owner,
   # 2026-10-07): publish.yml calls it on the release tag and publishes only
   # after it passes. Before merging, run the POSIX half locally: npm ci &&
+  # node scripts/update-instruction-templates.js && node scripts/update-skill-history.js &&
   # node --test scripts/test-installer-menu.cjs && bash scripts/lint-skills.sh &&
-  # python3 scripts/test-ideate-loop.py
+  # python3 scripts/test-ideate-loop.py (then restore the two bin/*.json files)
   workflow_call:
   workflow_dispatch:
 
@@ -31,6 +32,7 @@ jobs:
           printf 'GIT_CONFIG_COUNT=1\nGIT_CONFIG_KEY_0=safe.directory\nGIT_CONFIG_VALUE_0=%s\n' "$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
       - uses: actions/checkout@v4
         with:
+          fetch-depth: 0
           set-safe-directory: false
       - uses: actions/setup-node@v4
         with:
@@ -38,6 +40,10 @@ jobs:
       # The tarball bundles the installer's menu dependencies from node_modules.
       - name: Install locked dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Regenerate offline manifests
+        run: |
+          node scripts/update-instruction-templates.js
+          node scripts/update-skill-history.js
       - name: Validate POSIX source
         shell: bash
         run: |
@@ -58,7 +64,9 @@ jobs:
           import hashlib, json, os, pathlib, shutil, subprocess, sys
           def check_source():
               assert subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode().strip() == os.environ['GITHUB_SHA']
-              subprocess.run(['git', 'diff', '--exit-code', 'HEAD', '--'], check=True)
+              subprocess.run(['git', 'diff', '--exit-code', 'HEAD', '--', '.',
+                              ':(exclude)bin/instruction-templates.json',
+                              ':(exclude)bin/skill-history.json'], check=True)
               subprocess.run(['git', 'diff', '--cached', '--exit-code', 'HEAD', '--'], check=True)
           check_source()
           root = pathlib.Path(os.environ['RUNNER_TEMP']) / 'portability'

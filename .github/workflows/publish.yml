@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  # The release publishes only the source that passed the POSIX and native Windows suites.
+  # The release publishes the same tarball tested by the POSIX and native Windows suites.
   portability:
     uses: ./.github/workflows/portability.yml
 
@@ -19,8 +19,6 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -30,24 +28,35 @@ jobs:
       - name: Upgrade npm for OIDC trusted publishing
         run: npm install -g npm@latest
 
-      # The tarball bundles the installer's dependencies from node_modules, and the
-      # template refresh loads bin/instructions.js, which needs them (marked).
-      - name: Install locked dependencies
-        run: npm ci --ignore-scripts --no-audit --no-fund
+      - uses: actions/download-artifact@v4
+        with:
+          name: npm-package
+          path: ${{ runner.temp }}/portability/package
 
-      - name: Refresh instruction migration history
-        run: node scripts/update-instruction-templates.js
-
-      - name: Refresh skill ownership history
-        run: node scripts/update-skill-history.js
-
-      - name: Dry-run pack
-        run: npm pack --dry-run
+      - name: Verify tested npm artifact
+        id: artifact
+        shell: python
+        run: |
+          import hashlib, json, os, pathlib, subprocess, tarfile
+          package = pathlib.Path(os.environ['RUNNER_TEMP']) / 'portability/package'
+          identity = json.loads((package / 'identity.json').read_text(encoding='utf-8'))
+          assert identity['source_sha'] == os.environ['GITHUB_SHA'], 'Artifact source SHA mismatch'
+          assert subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode().strip() == os.environ['GITHUB_SHA'], 'Checkout source SHA mismatch'
+          tarball, = package.glob('*.tgz')
+          assert hashlib.sha256(tarball.read_bytes()).hexdigest() == identity['sha256'][tarball.name], 'Tarball SHA-256 mismatch'
+          with tarfile.open(tarball, 'r:gz') as archive:
+              packed = json.load(archive.extractfile('package/package.json'))
+          checkout = json.loads(pathlib.Path('package.json').read_text(encoding='utf-8'))
+          assert packed['version'] == checkout['version'], 'Tarball and checkout versions differ'
+          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as output:
+              output.write(f'tarball={tarball}\n')
 
       # The first release of a new major waits under `next`, because apps install
       # `devlyn-cli@latest`; the major's next release (or `npm dist-tag add`) promotes it.
       # Only `next` is ever named: npm refuses to move an implicit `latest` backwards.
       - name: Publish to npm
+        env:
+          TARBALL: ${{ steps.artifact.outputs.tarball }}
         run: |
           latest="$(npm view devlyn-cli dist-tags.latest)"
           version="$(node -p "require('./package.json').version")"
@@ -55,7 +64,7 @@ jobs:
           [[ $version =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]] || { echo "package.json version is not semver: '$version'"; exit 1; }
           major="${version%%.*}"
           if [ "$major" -gt "${latest%%.*}" ] && [ -z "$(npm view "devlyn-cli@$major" version 2>/dev/null)" ]; then
-            npm publish --access public --tag next
+            npm publish "$TARBALL" --access public --tag next
           else
-            npm publish --access public
+            npm publish "$TARBALL" --access public
           fi

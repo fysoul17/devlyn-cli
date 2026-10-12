@@ -102,8 +102,9 @@ files and rules outside managed blocks retain their contents. Unknown old text
 is kept conservatively, even when it may contain obsolete defaults.
 Malformed or duplicate managed markers still stop with an exact `.backup`, new
 defaults in `.incoming`, and a `.merge.md` guide; the original remains unchanged.
-Release packaging refreshes the offline fingerprints from Git history using
-`node scripts/update-instruction-templates.js`; installation needs no Git or network.
+Portability refreshes the offline fingerprints from Git history using
+`node scripts/update-instruction-templates.js` before testing; publish ships that tested tarball.
+Installation needs no Git or network.
 Use 3.1.3 or newer consistently: older installers still overwrite `CLAUDE.md`.
 
 Upgrading to 4.1.0: `npx devlyn-cli -y` in a 4.x project keeps its Claude Code install
@@ -215,7 +216,7 @@ Selected during install. Run `npx devlyn-cli` again to add more.
 
 ---
 
-Installer updates preserve user work: before writing any selected target, devlyn refuses to replace or remove edited skills, directories with extra files (including hidden files), links, or unknown copies. `-y` does not bypass this check. Unedited copies from every published version upgrade automatically, including committed copies, historical install-path stamps and generated Python bytecode caches. Release packaging derives the offline skill history from Git with `node scripts/update-skill-history.js`. Move conflicting folders to a backup and migrate them manually; also remove conflicting tracked paths from the Git index before rerunning.
+Installer updates preserve user work: before writing any selected target, devlyn refuses to replace or remove edited skills, directories with extra files (including hidden files), links, or unknown copies. `-y` does not bypass this check. Unedited copies from every published version upgrade automatically, including committed copies, historical install-path stamps and generated Python bytecode caches. Portability derives the offline skill history from Git with `node scripts/update-skill-history.js` before testing; publish ships that tested tarball. Move conflicting folders to a backup and migrate them manually; also remove conflicting tracked paths from the Git index before rerunning.
 
 Only `__pycache__` directories containing exclusively regular `*.pyc` files count as generated Python caches. Other entries make the directory ordinary content; links and special files are refused. Standalone `*.pyc` files count as content: none of the 113 published versions through 4.2.5 shipped them. Historical path normalization applies only to the escaped absolute assignment defaults written into Markdown by the 2.8.0–4.0.0 installers.
 
