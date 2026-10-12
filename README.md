@@ -37,6 +37,8 @@ In a project, AGENTS.md readers load the skills from `.agents/skills/`; Claude C
 
 Without prompts, `npx devlyn-cli -y` installs AGENTS.md + `.agents/skills/` plus every target this project already has; add `--claude` for Claude Code. With `--global` it installs for every project on this machine, plus `~/.claude/skills/` with `--claude` or when it already has a devlyn install. After a project install or update, the installer names the changed files to commit, including installed files a `.gitignore` hides, so teammates and `/devlyn-ideate` drains can use them.
 
+`npx devlyn-cli update` — Update every devlyn install already here (this project and your global skill folders) to this version; installs nothing new.
+
 ---
 
 ## How It Works — Principles and Loops
