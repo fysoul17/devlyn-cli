@@ -3,6 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const crypto = require('crypto');
 const { execSync, spawnSync } = require('child_process');
 
 const CONFIG_SOURCE = path.join(__dirname, '..', 'config');
@@ -29,6 +30,7 @@ const RENAMED_SKILLS = {
   'devlyn:reap': 'devlyn-reap',
 };
 const DEVLYN_INSTALL_MARKER = '.devlyn-install.json';
+const DEVLYN_INSTALL_LOCK = '.devlyn-install.lock';
 // Project settings earlier releases added for the retired pipeline.
 const RETIRED_STOP_HOOK = 'python3 "$CLAUDE_PROJECT_DIR/.claude/skills/_shared/resolve-stop-hook.py"';
 const RETIRED_ENV = ['CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS'];
@@ -99,6 +101,26 @@ function isShippedCopy(dir, hashes) {
 function skillRoots(target, global) {
   const dirs = target === 'claude' ? ['.claude'] : global ? ['.agents', '.codex'] : ['.agents'];
   return dirs.map((dir) => path.join(global ? os.homedir() : projectDir(), dir, 'skills'));
+}
+
+// Core and historical skills count, as does an install in progress. _shared is not
+// unique to devlyn, and a marker alone can outlive its skills; optional addons stand alone.
+function hasDevlynInstall(root) {
+  try {
+    const stat = (name) => fs.lstatSync(name, { throwIfNoEntry: false });
+    if (!stat(root)?.isDirectory()) return false;
+    const optional = new Set(OPTIONAL_ADDONS.map((addon) => addon.name));
+    const names = [...DEVLYN_CORE_SKILLS, ...DEPRECATED_DIRS.map((name) => path.basename(name)),
+      ...Object.keys(RENAMED_SKILLS)].filter((name) => name.startsWith('devlyn')
+        && !optional.has(name.replace(/[:\uF03A]/g, '-')));
+    return !!stat(path.join(root, DEVLYN_INSTALL_LOCK))
+      || names.some((name) => [...legacySkillPaths(root, name.replace(/^devlyn-/, 'devlyn:')),
+        path.join(root, name.replace(/:/g, '-'))].some((full) => stat(full)?.isDirectory()))
+      || (!!stat(path.join(root, DEVLYN_INSTALL_MARKER)) && stat(path.join(root, '_shared'))?.isDirectory());
+  } catch (error) {
+    if (error.code === 'ENOTDIR') return false;
+    throw new InstructionError(`Cannot inspect ${root}: ${error.message}. Check its permissions and run again.`);
+  }
 }
 
 // A devlyn Claude install in this scope. Globally only the marker a `--global --claude` run
@@ -914,6 +936,76 @@ function installClaudeCore(installedSkills = new Map()) {
   return written;
 }
 
+// Shared user roots need one writer from ownership checks through the last addon write.
+// Never reap a foreign lock: PID reuse and slow installs make age/liveness unsafe evidence.
+function withUserSkillLocks(roots, action) {
+  const locks = [];
+  const createdDirs = [];
+  try {
+    for (const root of roots) {
+      const lock = path.join(root, DEVLYN_INSTALL_LOCK);
+      try {
+        for (const dir of [path.dirname(root), root]) {
+          const stat = fs.lstatSync(dir, { throwIfNoEntry: false });
+          if (stat && !stat.isDirectory()) throw new Error(`not a real directory: ${dir}`);
+        }
+        const first = fs.mkdirSync(root, { recursive: true });
+        if (first) {
+          for (let dir = root; ; dir = path.dirname(dir)) {
+            createdDirs.push(dir);
+            if (dir === first) break;
+          }
+        }
+        const token = crypto.randomBytes(16).toString('hex');
+        const fd = fs.openSync(lock, 'wx', 0o600);
+        try {
+          fs.writeFileSync(fd, JSON.stringify({ pid: process.pid, token }) + '\n');
+          locks.push({ lock, token });
+        } catch (error) {
+          // A failed initial write may not leave parseable JSON; verify the open file's identity.
+          const opened = fs.fstatSync(fd);
+          const current = fs.lstatSync(lock, { throwIfNoEntry: false });
+          if (current?.dev === opened.dev && current?.ino === opened.ino) fs.unlinkSync(lock);
+          throw error;
+        } finally {
+          fs.closeSync(fd);
+        }
+      } catch (error) {
+        if (error.code === 'EEXIST') {
+          let owner;
+          try {
+            owner = `pid ${JSON.parse(fs.readFileSync(lock, 'utf8')).pid}`;
+          } catch (readError) {
+            owner = `cannot read lock owner: ${readError.message}`;
+          }
+          throw new InstructionError(`Another devlyn-cli is changing ${root} (${owner}). `
+            + `If none is running, delete ${lock} and run again.`);
+        }
+        throw new InstructionError(`Cannot lock ${root}: ${error.message}. Check ${lock} and run again.`);
+      }
+    }
+    return action();
+  } finally {
+    const errors = [];
+    for (const { lock, token } of locks.reverse()) {
+      try {
+        if (JSON.parse(fs.readFileSync(lock, 'utf8')).token === token) fs.unlinkSync(lock);
+      } catch (error) {
+        if (error.code !== 'ENOENT') errors.push(`${lock}: ${error.message}`);
+      }
+    }
+    // Refusal must not leave empty roots created just to acquire their locks.
+    for (const dir of createdDirs) {
+      try {
+        fs.rmdirSync(dir);
+      } catch (error) {
+        if (!['ENOTEMPTY', 'EEXIST', 'ENOENT'].includes(error.code)) errors.push(`${dir}: ${error.message}`);
+      }
+    }
+    if (errors.length) throw new InstructionError(`Cannot release install locks; check these paths:\n${errors.join('\n')}`);
+  }
+}
+
 // Installs the targets in one scope; returns the skill roots written.
 function install(targets, global, optionalNames = []) {
   // In the home folder CLAUDE.md, AGENTS.md (agents read a parent folder's too) and
@@ -926,23 +1018,25 @@ function install(targets, global, optionalNames = []) {
       + 'would apply to every project. Run from a project folder, or use --global for skills only.');
   }
   const roots = targets.flatMap((target) => skillRoots(target, global));
-  const written = [];
-  const installedSkills = new Map();
-  if (!global) readProjectGitignore();
-  preflightSkills(roots, optionalNames,
-    !global && targets.includes('claude') ? path.dirname(skillRoots('claude', false)[0]) : null);
-  // AGENTS.md first, whatever order the menu gave: a new CLAUDE.md holds the block only when AGENTS.md does not.
-  for (const target of ['agents', 'claude'].filter((name) => targets.includes(name))) {
-    if (global) skillRoots(target, true).forEach((root) => installCoreSkills(root));
-    else if (target === 'agents') written.push(...installAgentsProject(targets.includes('claude'), installedSkills));
-    else written.push(...installClaudeCore(installedSkills));
-  }
-  for (const name of optionalNames) installLocalSkill(name, roots, written, installedSkills);
-  log(`\n✅ devlyn ${PKG.version} installed`, 'green');
-  if (global) log('The principles block installs per project: run npx devlyn-cli in the project without --global.');
-  else noticeProjectChanges(written, installedSkills);
-  noticeGlobalDrift(roots);
-  return roots;
+  return withUserSkillLocks(global ? roots : [], () => {
+    const written = [];
+    const installedSkills = new Map();
+    if (!global) readProjectGitignore();
+    preflightSkills(roots, optionalNames,
+      !global && targets.includes('claude') ? path.dirname(skillRoots('claude', false)[0]) : null);
+    // AGENTS.md first, whatever order the menu gave: a new CLAUDE.md holds the block only when AGENTS.md does not.
+    for (const target of ['agents', 'claude'].filter((name) => targets.includes(name))) {
+      if (global) skillRoots(target, true).forEach((root) => installCoreSkills(root));
+      else if (target === 'agents') written.push(...installAgentsProject(targets.includes('claude'), installedSkills));
+      else written.push(...installClaudeCore(installedSkills));
+    }
+    for (const name of optionalNames) installLocalSkill(name, roots, written, installedSkills);
+    log(`\n✅ devlyn ${PKG.version} installed`, 'green');
+    if (global) log('The principles block installs per project: run npx devlyn-cli in the project without --global.');
+    noticeGlobalDrift(roots);
+    if (!global) noticeProjectChanges(written, installedSkills);
+    return roots;
+  });
 }
 
 // Advisory only: a successful install stays successful when Git is unavailable or fails.
@@ -1023,10 +1117,90 @@ function noticeGlobalDrift(installed) {
     } catch (error) {
       version = `(unreadable marker: ${error.message})`;
     }
+    if (dir !== '.grok' && version === PKG.version) continue;
     // 4.0's Grok root; Grok now reads ~/.agents/skills, so --global never refreshes it.
     const advice = dir === '.grok' ? 'delete it' : 'refresh it with --global, or delete it';
     log(`Global devlyn ${version} in ${root.replace(os.homedir(), '~')} — ${advice}.`, 'yellow');
   }
+}
+
+// Skip project setup in the home folder, where instructions would affect every project.
+// Lock user roots, preflight all roots, check versions, then write; user roots go first
+// so the project's commit guidance remains the last output.
+function update() {
+  showLogo();
+  log('─'.repeat(44), 'dim');
+
+  const userCandidates = [...skillRoots('agents', true), ...skillRoots('claude', true)];
+  const linkedRoots = new Set();
+  const linkNotices = [];
+  for (const root of new Set([...userCandidates, ...skillRoots('agents', false), ...skillRoots('claude', false)])) {
+    try {
+      if (![path.dirname(root), root].some((dir) => fs.lstatSync(dir, { throwIfNoEntry: false })?.isSymbolicLink())) continue;
+      linkedRoots.add(root);
+      // Follow only for discovery; linked roots never enter the write/lock/preflight paths.
+      if (!fs.statSync(root, { throwIfNoEntry: false })?.isDirectory()) continue;
+      if (!fs.statSync(path.join(root, DEVLYN_INSTALL_MARKER), { throwIfNoEntry: false })
+          && !fs.readdirSync(root).some((name) => name.startsWith('devlyn')
+            && fs.statSync(path.join(root, name), { throwIfNoEntry: false })?.isDirectory())) continue;
+      const notice = `Not updated: ${root} is a link — devlyn-cli does not write through links. `
+        + 'Update the folder it points to, or replace the link with a folder.';
+      linkNotices.push(notice);
+      log(notice, 'yellow');
+    } catch (error) {
+      if (error.code === 'ENOTDIR') continue;
+      throw new InstructionError(`Cannot inspect ${root}: ${error.message}. Check its permissions and run again.`);
+    }
+  }
+  const userRoots = userCandidates.filter((root) => !linkedRoots.has(root) && hasDevlynInstall(root));
+  const home = fs.statSync(os.homedir(), { bigint: true, throwIfNoEntry: false });
+  const here = fs.statSync(projectDir(), { bigint: true });
+  const targets = [];
+  if (home?.dev !== here.dev || home?.ino !== here.ino) {
+    if (!linkedRoots.has(skillRoots('agents', false)[0]) && hasDevlynInstall(skillRoots('agents', false)[0])) targets.push('agents');
+    if (!linkedRoots.has(skillRoots('claude', false)[0]) && hasDevlynClaude(false)) targets.push('claude');
+  }
+  const projectRoots = targets.flatMap((target) => skillRoots(target, false));
+  const roots = [...userRoots, ...projectRoots];
+  if (!roots.length) {
+    throw new InstructionError(['No devlyn install here to update. Run npx devlyn-cli to install.', ...linkNotices].join('\n'));
+  }
+
+  return withUserSkillLocks(userRoots, () => {
+    if (targets.length) {
+      readProjectGitignore();
+      preflightSkills(projectRoots, [], targets.includes('claude') ? path.dirname(skillRoots('claude', false)[0]) : null);
+    }
+    preflightSkills(userRoots);
+    // Ownership preflight has already refused unreadable or invalid markers.
+    const current = PKG.version.split('.').map(BigInt);
+    const newer = roots.flatMap((root) => {
+      const marker = path.join(root, DEVLYN_INSTALL_MARKER);
+      if (!fs.existsSync(marker)) return [];
+      const { version } = JSON.parse(fs.readFileSync(marker, 'utf8'));
+      // SemVer 2.0.0's numbered-group regex: https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
+      const parsed = typeof version === 'string' && version.match(/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/);
+      if (!parsed || parsed[0] !== version) {
+        throw new InstructionError(`Update refused; nothing was changed. ${root}: cannot tell which devlyn-cli wrote it `
+          + '(missing or malformed marker version). Restore the original install marker and run again.');
+      }
+      // This package is a plain release: equal-core prereleases are older, and build metadata is ignored.
+      const parts = parsed.slice(1, 4).map(BigInt);
+      const difference = parts.findIndex((part, index) => part !== current[index]);
+      return difference !== -1 && parts[difference] > current[difference] ? [`  - ${root}: ${version}`] : [];
+    });
+    if (newer.length) {
+      throw new InstructionError('Update refused; nothing was changed. Newer devlyn installs:\n'
+        + newer.join('\n') + '\nRun npx devlyn-cli@latest update.');
+    }
+
+    userRoots.forEach((root) => installCoreSkills(root));
+    if (targets.length) install(targets, false);
+    else {
+      log(`\n✅ devlyn ${PKG.version} installed`, 'green');
+      noticeGlobalDrift(userRoots);
+    }
+  });
 }
 
 async function init({ yes, claude, global }) {
@@ -1090,6 +1264,7 @@ function showHelp() {
   showLogo();
   log('Usage:', 'green');
   log('  npx devlyn-cli               Install/update devlyn: choose what (AGENTS.md, CLAUDE.md) and where (this project or global)');
+  log('  npx devlyn-cli update        Update every devlyn install already here (this project and your global skill folders) to this version; installs nothing new');
   log('  npx devlyn-cli -y            Without prompts: AGENTS.md + .agents/skills, plus CLAUDE.md + .claude/ if this project has them');
   log('  npx devlyn-cli -y --claude   Also install CLAUDE.md + .claude/ for Claude Code');
   log('  npx devlyn-cli -y --global   Skills only, for every project on this machine (~/.agents/skills, ~/.codex/skills; ~/.claude/skills with --claude, or when it already has a devlyn install)');
@@ -1133,12 +1308,16 @@ switch (command) {
     process.exitCode = 1;
     break;
   default: {
-    const flags = command === 'init' ? args.slice(1) : args;
-    const unknown = flags.find((flag) => !INSTALL_FLAGS.includes(flag));
+    const flags = command === 'init' || command === 'update' ? args.slice(1) : args;
+    const unknown = command === 'update' ? flags[0] : flags.find((flag) => !INSTALL_FLAGS.includes(flag));
     if (unknown !== undefined) {
       log(`Unknown command: ${unknown}`, 'yellow');
       showHelp();
       process.exit(1);
+    }
+    if (command === 'update') {
+      update();
+      break;
     }
     await init({ yes: flags.includes('-y') || flags.includes('--yes'), claude: flags.includes('--claude'), global: flags.includes('--global') });
   }

@@ -12,6 +12,7 @@ import json
 import locale
 import os
 from pathlib import Path
+import re
 import runpy
 import shlex
 import shutil
@@ -1194,6 +1195,7 @@ cp.spawnSync = (file, args, options) => {{
         # --global refreshes every user root it installs, Claude's too once it has a marker there.
         result = self.cli('-y', '--global')
         self.assertEqual(notices(result), [f"\x1b[33m{line('.grok', 'delete it')}\x1b[0m"])
+        self.assertEqual(notices(self.cli('-y')), [f"\x1b[33m{line('.grok', 'delete it')}\x1b[0m"])
         version = json.loads((self.package / 'package.json').read_bytes())['version']
         for root in ('.agents', '.codex', '.claude'):
             self.assertEqual(json.loads((self.home / root / 'skills/.devlyn-install.json').read_bytes())['version'], version)
@@ -1201,6 +1203,334 @@ cp.spawnSync = (file, args, options) => {{
         grok = self.home / '.grok'
         self.assertEqual({p: p.read_bytes() if p.is_file() else None for p in grok.rglob('*')},
                          {p: data for p, data in before.items() if grok in p.parents})
+
+    def test_update_refreshes_existing_installs_and_preserves_user_bytes(self):
+        self.cli('-y', '--claude'); self.cli('-y', '--global', '--claude')
+        version = json.loads((self.package / 'package.json').read_bytes())['version']
+        for root in self.roots():
+            marker = root / '.devlyn-install.json'
+            data = json.loads(marker.read_bytes()); data['version'] = '4.2.14'
+            marker.write_text(json.dumps(data), encoding='utf-8')
+            (root / 'user-skill').mkdir(); (root / 'user-skill/keep').write_bytes(b'mine\r\n')
+        instructions = {}
+        for name in ('AGENTS.md', 'CLAUDE.md'):
+            file = self.project / name
+            instructions[name] = b'# Team rules\r\n\r\n' + file.read_bytes() + b'\nKeep this tail.\r\n'
+            file.write_bytes(instructions[name])
+        result = self.cli('update')
+        self.assertNotIn(b'Global devlyn', result.stdout)
+        self.assertEqual(result.stdout.count(b'Installing devlyn skills to'), 5)
+        self.assertIn(f'✅ devlyn {version} installed'.encode(), result.stdout)
+        self.assertFalse(list(self.home.rglob('.devlyn-install.lock')))
+        for root in self.roots():
+            self.assertEqual(json.loads((root / '.devlyn-install.json').read_bytes())['version'], version)
+            self.assertEqual((root / 'user-skill/keep').read_bytes(), b'mine\r\n')
+        for name, data in instructions.items():
+            block = rb'<!-- devlyn:instructions:begin[^\n]*\n.*?<!-- devlyn:instructions:end -->\r?\n'
+            self.assertEqual(re.sub(block, b'', (self.project / name).read_bytes(), flags=re.S),
+                             re.sub(block, b'', data, flags=re.S))
+        for name in ('.codex', '.claude'):
+            shutil.rmtree(self.home / name / 'skills')
+        self.cli('update')
+        for name in ('.codex', '.claude'):
+            self.assertFalse((self.home / name / 'skills').exists())
+
+    def test_update_only_user_roots_leaves_project_empty(self):
+        self.cli('-y', '--global')
+        # A core skill directory counts without a marker; _shared alone does not.
+        (self.home / '.agents/skills/.devlyn-install.json').unlink()
+        shared = self.home / '.claude/skills/_shared'
+        shared.mkdir(parents=True); (shared / 'keep').write_bytes(b'other tool')
+        grok = self.home / '.grok/skills'
+        grok.mkdir(parents=True)
+        version = json.loads((self.package / 'package.json').read_bytes())['version']
+        (grok / '.devlyn-install.json').write_text(json.dumps({'version': version}), encoding='utf-8')
+        before = {p: p.read_bytes() for p in (shared / 'keep', grok / '.devlyn-install.json')}
+        result = self.cli('update')
+        self.assertEqual(list(self.project.iterdir()), [])
+        self.assertEqual(self.markers(self.home), {'.agents', '.codex', '.grok'})
+        self.assertIn(b'delete it', result.stdout)
+        for p, data in before.items():
+            self.assertEqual(p.read_bytes(), data)
+
+    def test_update_claude_only_project_stays_claude_only(self):
+        self.invoke("install(['claude'], false);")
+        marker = self.project / '.claude/skills/.devlyn-install.json'
+        data = json.loads(marker.read_bytes()); data['version'] = '4.2.14'
+        marker.write_text(json.dumps(data), encoding='utf-8')
+        self.cli('update')
+        self.assertFalse((self.project / '.agents').exists())
+        self.assertFalse((self.project / 'AGENTS.md').exists())
+        self.assertEqual(list(self.home.iterdir()), [])
+        self.assertEqual(json.loads(marker.read_bytes())['version'],
+                         json.loads((self.package / 'package.json').read_bytes())['version'])
+
+    def test_update_in_home_skips_project_install(self):
+        self.cli('-y', '--global', '--claude')
+        self.project = self.home
+        before = self.snapshot()
+        self.cli('update')
+        self.assertEqual(self.snapshot(), before)
+
+    def test_update_refuses_newer_versions_in_every_scope(self):
+        self.cli('-y', '--claude'); self.cli('-y', '--global', '--claude')
+        malformed = (None, 'malformed', '4.2.15-rc..1', '4.2.15-01', '04.2.15')
+        for root in self.roots():
+            for version in ('4.3.0-beta.1', '4.3.0+build', '99.0.0', *malformed):
+                with self.subTest(root=root, version=version):
+                    marker = root / '.devlyn-install.json'
+                    original = marker.read_bytes()
+                    data = json.loads(original)
+                    if version is None:
+                        del data['version']
+                    else:
+                        data['version'] = version
+                    marker.write_text(json.dumps(data), encoding='utf-8')
+                    before = self.snapshot()
+                    result = self.cli('update', code=1)
+                    self.assertIn(str(root).encode(), result.stderr)
+                    self.assertIn(b'nothing was changed', result.stderr)
+                    if version in malformed:
+                        self.assertIn(b'missing or malformed marker version', result.stderr)
+                    else:
+                        self.assertIn(version.encode(), result.stderr)
+                        self.assertIn(b'npx devlyn-cli@latest update', result.stderr)
+                    self.assertEqual(self.snapshot(), before)
+                    marker.write_bytes(original)
+
+    def test_update_accepts_older_prerelease_and_build_versions(self):
+        self.cli('-y', '--global')
+        current = json.loads((self.package / 'package.json').read_bytes())['version']
+        for version in (current + '-rc.1', current + '+build', '4.0.1'):
+            with self.subTest(version=version):
+                for root in (self.home / '.agents/skills', self.home / '.codex/skills'):
+                    marker = root / '.devlyn-install.json'
+                    data = json.loads(marker.read_bytes()); data['version'] = version
+                    marker.write_text(json.dumps(data), encoding='utf-8')
+                self.cli('update')
+                self.assertEqual(json.loads(marker.read_bytes())['version'], current)
+                self.assertFalse(list(self.home.rglob('.devlyn-install.lock')))
+
+    def test_user_root_locks_refuse_update_and_global_install(self):
+        self.cli('-y', '--claude'); self.cli('-y', '--global', '--claude')
+        for name in ('.agents', '.codex', '.claude'):
+            lock = self.home / name / 'skills/.devlyn-install.lock'
+            lock.write_text('{"pid": 12345, "token": "foreign"}', encoding='utf-8')
+            for args in (('update',), ('-y', '--global', '--claude')):
+                with self.subTest(root=name, args=args):
+                    before = self.snapshot()
+                    result = self.cli(*args, code=1)
+                    self.assertIn(f'Another devlyn-cli is changing {lock.parent} (pid 12345).'.encode(), result.stderr)
+                    self.assertIn(f'delete {lock} and run again.'.encode(), result.stderr)
+                    self.assertEqual(self.snapshot(), before)
+            lock.unlink()
+
+    def test_lock_only_root_is_discovered_and_new_global_roots_are_cleaned_on_refusal(self):
+        lock = self.home / '.claude/skills/.devlyn-install.lock'
+        lock.parent.mkdir(parents=True)
+        lock.write_text('{"pid": 12345, "token": "foreign"}', encoding='utf-8')
+        for args in (('update',), ('-y', '--global', '--claude')):
+            with self.subTest(args=args):
+                before = self.snapshot()
+                result = self.cli(*args, code=1)
+                self.assertIn(str(lock).encode(), result.stderr)
+                self.assertEqual(self.snapshot(), before)
+
+    def test_global_lock_lifetime_includes_preflight_and_optional_writes(self):
+        # A second process must refuse even while the first writer has no marker or skills yet.
+        self.invoke(f"""
+const assert = require('assert');
+const roots = [...skillRoots('agents', true), ...skillRoots('claude', true)];
+const check = () => {{
+  for (const root of roots) {{
+    const lock = path.join(root, DEVLYN_INSTALL_LOCK);
+    const owner = JSON.parse(fs.readFileSync(lock, 'utf8'));
+    assert.equal(owner.pid, process.pid);
+    assert.match(owner.token, /^[0-9a-f]+$/);
+    if (process.platform !== 'win32') assert.equal(fs.statSync(lock).mode & 0o777, 0o600);
+  }}
+  for (const args of [['update'], ['-y', '--global', '--claude']]) {{
+    const result = spawnSync(process.execPath,
+      ['--require', {json.dumps(str(self.preload))}, __filename, ...args], {{ encoding: 'utf8' }});
+    assert.equal(result.status, 1, result.stderr);
+    assert.match(result.stderr, /Another devlyn-cli is changing/);
+  }}
+}};
+const preflight = preflightSkills;
+preflightSkills = (...args) => {{ check(); return preflight(...args); }};
+const optional = installLocalSkill;
+installLocalSkill = (...args) => {{ check(); return optional(...args); }};
+install(['agents', 'claude'], true, ['devlyn-reap']);
+""")
+        self.assertFalse(list(self.home.rglob('.devlyn-install.lock')))
+        for name in ('.agents', '.codex', '.claude'):
+            root = self.home / name / 'skills'
+            self.assertTrue((root / 'devlyn-reap/SKILL.md').is_file())
+            self.assertNotIn('.devlyn-install.lock', json.loads((root / '.devlyn-install.json').read_bytes())['skills'])
+        self.assertNotIn(b'.devlyn-install.lock', self.cli('list').stdout)
+
+    def test_user_locks_release_on_write_failure_and_preserve_replacement_token(self):
+        self.cli('-y', '--global')
+        for command in ('update()', "install(['agents'], true)"):
+            with self.subTest(command=command):
+                before = self.snapshot()
+                result = self.invoke("installCoreSkills = () => { throw new Error('injected write failure'); }; "
+                                     + command + ';', code=1)
+                self.assertIn(b'injected write failure', result.stderr)
+                self.assertEqual(self.snapshot(), before)
+        self.invoke("withUserSkillLocks([skillRoots('agents', true)[0]], () => { "
+                    "fs.writeFileSync(path.join(skillRoots('agents', true)[0], DEVLYN_INSTALL_LOCK), "
+                    "JSON.stringify({ pid: 12345, token: 'replacement' })); });")
+        lock = self.home / '.agents/skills/.devlyn-install.lock'
+        self.assertEqual(json.loads(lock.read_bytes())['token'], 'replacement')
+
+    def test_update_discovers_markerless_historical_skills(self):
+        names = ['devlyn\uf03aideate', 'devlyn-resolve']
+        if os.name != 'nt':
+            names.append('devlyn:ideate')
+        for name in names:
+            with self.subTest(name=name):
+                root = self.home / '.agents/skills'
+                old = self.seed_pre_4_1(root, '4.0.1', 'devlyn-resolve') if name == 'devlyn-resolve' else root / name
+                if name != 'devlyn-resolve':
+                    shutil.copytree(self.package / 'config/skills/devlyn-ideate', old)
+                self.cli('update')
+                self.assertFalse(old.exists())
+                self.assertTrue((root / 'devlyn-ideate/SKILL.md').is_file())
+                self.assertEqual(list(self.project.iterdir()), [])
+                self.assertFalse((self.home / '.codex').exists())
+                shutil.rmtree(self.home / '.agents')
+
+    def test_update_skips_marker_shared_and_optional_only_roots(self):
+        self.cli('-y')
+        for name, entry in (('.agents', '.devlyn-install.json'), ('.codex', '_shared'), ('.claude', 'devlyn-reap')):
+            root = self.home / name / 'skills'; root.mkdir(parents=True)
+            if entry.endswith('.json'):
+                (root / entry).write_bytes(b'{"version":"99.0.0"}')
+            else:
+                (root / entry).mkdir(); (root / entry / 'keep').write_bytes(b'other tool')
+        before = self.snapshot()
+        self.cli('update')
+        self.assertEqual(self.snapshot(), before)
+
+    def test_update_skips_regular_file_user_root(self):
+        self.cli('-y')
+        root = self.home / '.agents/skills'; root.parent.mkdir()
+        root.write_bytes(b'not a directory')
+        result = self.cli('update')
+        self.assertIn(b'Installing devlyn skills to', result.stdout)
+        self.assertEqual(root.read_bytes(), b'not a directory')
+
+    @unittest.skipIf(os.name == 'nt', 'creating a symlink needs a privilege on native Windows')
+    def test_update_reports_linked_roots_and_updates_real_install(self):
+        self.cli('-y')
+        current = json.loads((self.package / 'package.json').read_bytes())['version']
+        project_marker = self.project / '.agents/skills/.devlyn-install.json'
+        target = self.case / 'linked-install'; target.mkdir()
+        shutil.copytree(self.package / 'config/skills', target / 'skills')
+        (target / 'skills/.devlyn-install.json').write_bytes(b'{"version":"4.2.14"}')
+        for root in (self.home / '.agents/skills', self.home / '.codex/skills',
+                     self.home / '.claude/skills', self.project / '.claude/skills'):
+            for parent in (False, True):
+                with self.subTest(root=root, parent=parent):
+                    link = root.parent if parent else root
+                    link.parent.mkdir(parents=True, exist_ok=True)
+                    link.symlink_to(target if parent else target / 'skills', target_is_directory=True)
+                    data = json.loads(project_marker.read_bytes()); data['version'] = '4.2.14'
+                    project_marker.write_text(json.dumps(data), encoding='utf-8')
+                    before = self.snapshot()
+                    result = self.cli('update')
+                    notice = (f'Not updated: {root} is a link — devlyn-cli does not write through links. '
+                              'Update the folder it points to, or replace the link with a folder.').encode()
+                    self.assertEqual(result.stdout.count(notice), 1)
+                    self.assertIn(b'\x1b[33m' + notice, result.stdout)
+                    self.assertLess(result.stdout.index(notice), result.stdout.index(b'Installing devlyn skills to'))
+                    self.assertEqual(json.loads(project_marker.read_bytes())['version'], current)
+                    after = self.snapshot()
+                    self.assertEqual({k: v for k, v in before.items() if k.startswith('linked-install/')},
+                                     {k: v for k, v in after.items() if k.startswith('linked-install/')})
+                    self.assertTrue(link.is_symlink())
+                    link.unlink()
+                    if not parent:
+                        link.parent.rmdir()
+
+    @unittest.skipIf(os.name == 'nt', 'creating a symlink needs a privilege on native Windows')
+    def test_update_with_only_linked_roots_refuses_without_writes(self):
+        target = self.case / 'linked-install'; (target / 'skills').mkdir(parents=True)
+        for root in self.roots():
+            for parent in (False, True):
+                with self.subTest(root=root, parent=parent):
+                    entry = target / 'skills' / ('devlyn-ideate' if parent else '.devlyn-install.json')
+                    if parent:
+                        entry.mkdir()
+                    else:
+                        entry.write_bytes(b'{"version":"4.2.14"}')
+                    link = root.parent if parent else root
+                    link.parent.mkdir(parents=True, exist_ok=True)
+                    link.symlink_to(target if parent else target / 'skills', target_is_directory=True)
+                    before = self.snapshot()
+                    result = self.cli('update', code=1)
+                    notice = (f'Not updated: {root} is a link — devlyn-cli does not write through links. '
+                              'Update the folder it points to, or replace the link with a folder.').encode()
+                    self.assertEqual(result.stdout.count(notice), 1)
+                    self.assertIn(b'No devlyn install here to update', result.stderr)
+                    self.assertIn(notice, result.stderr)
+                    self.assertEqual(self.snapshot(), before)
+                    link.unlink()
+                    if not parent:
+                        link.parent.rmdir()
+                    if parent:
+                        entry.rmdir()
+                    else:
+                        entry.unlink()
+
+    def test_update_discovery_errors_name_the_root(self):
+        result = self.invoke("const stat = fs.lstatSync; fs.lstatSync = (file, ...args) => { "
+                             "if (file === skillRoots('agents', true)[0]) throw Object.assign(new Error('denied'), { code: 'EACCES' }); "
+                             "return stat(file, ...args); }; update();", code=1)
+        self.assertIn(f'Cannot inspect {self.home / ".agents/skills"}'.encode(), result.stderr)
+        self.assertIn(b'Check its permissions and run again.', result.stderr)
+
+    def test_project_commit_guidance_is_last_after_update_and_drift_notice(self):
+        run(['git', 'init', '-q', self.project])
+        self.cli('-y'); self.cli('-y', '--global')
+        grok = self.home / '.grok/skills'; grok.mkdir(parents=True)
+        (grok / '.devlyn-install.json').write_bytes(b'{"version":"4.0.1"}')
+        for command in ('update();', "install(['agents'], false);"):
+            with self.subTest(command=command):
+                output = re.sub(r'\x1b\[[0-9;]*m', '', self.invoke(command).stdout.decode())
+                self.assertLess(output.index('Global devlyn'), output.index('Commit these changes'))
+                self.assertIn('git commit -m', output.strip().splitlines()[-1])
+
+    def test_update_preflights_all_scopes_before_writing(self):
+        self.cli('-y', '--claude'); self.cli('-y', '--global', '--claude')
+        for root in self.roots():
+            marker = root / '.devlyn-install.json'
+            data = json.loads(marker.read_bytes()); data['version'] = '4.2.14'
+            marker.write_text(json.dumps(data), encoding='utf-8')
+        for root in (self.home / '.agents/skills', self.project / '.claude/skills'):
+            with self.subTest(root=root):
+                skill = root / 'devlyn-ideate/SKILL.md'
+                original = skill.read_bytes(); skill.write_bytes(original + b'edited\n')
+                self.assert_install_refused('update', paths=[skill.parent])
+                skill.write_bytes(original)
+        ignore = self.project / '.gitignore'
+        ignore.unlink(); ignore.mkdir()
+        before = self.snapshot()
+        result = self.cli('update', code=1)
+        self.assertIn(str(ignore).encode(), result.stderr)
+        self.assertEqual(self.snapshot(), before)
+
+    def test_update_without_install_or_with_arguments_writes_nothing(self):
+        before = self.snapshot()
+        result = self.cli('update', code=1)
+        self.assertIn(b'No devlyn install here to update. Run npx devlyn-cli to install.', result.stderr)
+        self.assertEqual(self.snapshot(), before)
+        for extra in ('extra', '-y', '--global', '--help'):
+            result = self.cli('update', extra, code=1)
+            self.assertIn(f'Unknown command: {extra}'.encode(), result.stdout)
+            self.assertIn(b'Usage:', result.stdout)
+            self.assertEqual(self.snapshot(), before)
 
     def test_pack_install_reinstall_optional_is_byte_identical(self):
         install = ("const roots = [...install(['agents', 'claude'], false), ...install(['agents', 'claude'], true)];"
@@ -1698,7 +2028,6 @@ for (const absolute of ['/tmp/한글/a\\b $cash "quote" `tick` }', 'C:\\Users\\o
         root = self.project / '.agents/skills'
         # The original 4.2.1-4.2.5 fingerprint algorithm, before stamps/cache normalization.
         result = self.invoke(r"""
-const crypto = require('crypto');
 function rawFingerprint(dir) {
   const entries = [];
   function visit(full, relative) {
