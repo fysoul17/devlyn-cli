@@ -4,8 +4,9 @@ on:
   # Runner minutes are billed, so this runs per release, not per PR (owner,
   # 2026-10-07): publish.yml calls it on the release tag and publishes only
   # after it passes. Before merging, run the POSIX half locally: npm ci &&
+  # node scripts/update-instruction-templates.js && node scripts/update-skill-history.js &&
   # node --test scripts/test-installer-menu.cjs && bash scripts/lint-skills.sh &&
-  # python3 scripts/test-ideate-loop.py
+  # python3 scripts/test-ideate-loop.py (then restore the two bin/*.json files)
   workflow_call:
   workflow_dispatch:
 
