@@ -267,18 +267,32 @@ def guard_results(packet, expected, source):
         results.append({"rule": "forbidden_files", "subject": path, "passed": path not in changed, "blocking": True})
     limit = expected.get("max_deps_added", 0)
     try:
-        added = len(dependency_names(work, source) - dependency_names(work, inputs))
-        subject, passed = f"{added} added, limit {limit}", added <= limit
+        before = dependency_names(work, inputs)
     except ValueError as exc:
-        subject, passed = str(exc), False
+        subject, passed = (f"inputs package.json at {inputs} unreadable; limit cannot apply. "
+                           f"Fix base: regular npm-valid file; start a new loop. {exc}"), False
+    else:
+        try:
+            added = len(dependency_names(work, source) - before)
+            subject, passed = f"{added} added, limit {limit}", added <= limit
+        except ValueError as exc:
+            subject, passed = f"candidate package.json at {source} is invalid; fix it in the candidate. {exc}", False
     results.append({"rule": "max_deps_added", "subject": subject, "passed": passed, "blocking": True})
     return results
 
 
 def dependency_names(work, commit):
     """Package names under dependencies and devDependencies of the root package.json at `commit`; a missing file has none."""
-    if not git(work, "ls-tree", commit, "--", "package.json").stdout:
+    entry = git(work, "ls-tree", commit, "--", "package.json").stdout
+    if not entry:
         return set()
+    mode, kind, _ = entry.split(maxsplit=2)
+    if mode not in (b"100644", b"100755") or kind != b"blob":
+        kind = "symlink" if mode == b"120000" else "gitlink" if mode == b"160000" else kind.decode("ascii")
+        if mode == b"120000":
+            target = git(work, "show", f"{commit}:package.json").stdout.decode("utf-8", "backslashreplace")
+            kind += f" to {target!r}"
+        raise ValueError(f"{kind} (mode {mode.decode('ascii')}); expected a regular file")
     try:
         # Read as npm reads it: a leading BOM is ignored, a duplicate key's last value wins, a null section is empty and
         # NaN or Infinity is invalid.
@@ -718,7 +732,9 @@ class AcceptanceTests(unittest.TestCase):
         moved from dependencies to devDependencies counts 0 and is accepted; an invalid package.json fails the guard,
         naming it. A leading UTF-8 BOM, which npm and Node accept, is ignored: with one at both commits, one added
         counts 1. A duplicate key (its last value wins) and a null dependencies section, which npm also reads, count 0
-        and are accepted; NaN, which npm rejects, fails the guard."""
+        and are accepted; NaN, which npm rejects, fails the guard. Invalid inputs fail before an invalid candidate,
+        naming inputs and the base repair/new loop action; invalid candidates name the candidate and its repair.
+        The action survives the queue's 200-character first-reason collapse, with parser detail after it."""
         passing = {"verification_commands": [{"argv": [sys.executable, "-c", "pass"], "contract_refs": ["R1"]}]}
 
         def guard(inputs, source):
@@ -743,7 +759,7 @@ class AcceptanceTests(unittest.TestCase):
         with self.subTest("invalid"):
             commit, result, deps = guard({"dependencies": {"a": "1"}}, '{"dependencies": {"a": "1",}}\n')
             self.assertEqual((deps["passed"], result["verdict"]), (False, "FAILED"))
-            self.assertIn(f"package.json at {commit} is invalid", deps["subject"])
+            self.assertTrue(deps["subject"].startswith(f"candidate package.json at {commit} is invalid; fix it in the candidate."))
         with self.subTest("BOM"):
             self.write("package.json", "\ufeff" + json.dumps({"dependencies": {"a": "1"}}))
             _, _, deps = guard(None, "\ufeff" + json.dumps({"dependencies": {"a": "1", "b": "1"}}))
@@ -755,7 +771,72 @@ class AcceptanceTests(unittest.TestCase):
         with self.subTest("NaN"):
             commit, result, deps = guard({"dependencies": {"a": "1"}}, '{"config": {"threshold": NaN}}')
             self.assertEqual((deps["passed"], result["verdict"]), (False, "FAILED"))
-            self.assertIn(f"package.json at {commit} is invalid", deps["subject"])
+            self.assertTrue(deps["subject"].startswith(f"candidate package.json at {commit} is invalid; fix it in the candidate."))
+        with self.subTest("invalid inputs precede invalid candidate"):
+            self.write("package.json", "{")
+            _, result, deps = guard(None, "[")
+            self.assertEqual((deps["passed"], result["verdict"]), (False, "FAILED"))
+            self.assertTrue(deps["subject"].startswith(f"inputs package.json at {self.packet['inputs_sha']} unreadable; limit cannot apply."))
+            one_line = runpy.run_path(str(Path(__file__).with_name("queue.py")))["one_line"]
+            for size in (40, 64):
+                reason = result["reasons"][0].replace(self.packet["inputs_sha"], "a" * size)
+                self.assertIn("Fix base: regular npm-valid file; start a new loop", one_line(reason))
+
+    @unittest.skipIf(os.name == "nt", "a symbolic link needs a privilege on Windows")
+    def test_max_deps_added_rejects_symlinks(self):
+        """Prediction: a candidate package.json symlink to a file named '{}' containing a dependency fails the guard,
+        naming the candidate, symlink and target; before, the target text parsed as an empty object and passed limit 0.
+        An ordinary candidate symlink also names its target and candidate repair. An inputs symlink fails first even
+        when the candidate is invalid JSON, naming inputs and the base repair/new loop action."""
+        passing = {"verification_commands": [{"argv": [sys.executable, "-c", "pass"], "contract_refs": ["R1"]}]}
+        package = self.work / "package.json"
+        one_line = runpy.run_path(str(Path(__file__).with_name("queue.py")))["one_line"]
+        for side, target in (("candidate", "{}"), ("inputs", "deps.json"), ("candidate", "deps.json")):
+            with self.subTest(side=side, target=target):
+                package.unlink(missing_ok=True)
+                self.write(target, json.dumps({"dependencies": {"hidden": "1"}}))
+                if side == "inputs":
+                    package.symlink_to(target)
+                else:
+                    self.write("package.json", "{}")
+                self.inputs(passing)
+                package.unlink()
+                if side == "candidate":
+                    package.symlink_to(target)
+                else:
+                    self.write("package.json", "[")
+                source = self.commit("product")
+                result = self.submit(source)
+                deps = next(g for g in result["guards"] if g["rule"] == "max_deps_added")
+                self.assertEqual((deps["passed"], result["verdict"]), (False, "FAILED"))
+                commit = self.packet["inputs_sha"] if side == "inputs" else source
+                self.assertTrue(deps["subject"].startswith(f"{side} package.json at {commit}"))
+                self.assertIn(f"symlink to {target!r}", deps["subject"])
+                action = "Fix base: regular npm-valid file; start a new loop" if side == "inputs" else "fix it in the candidate."
+                self.assertIn(action, one_line(result["reasons"][0]))
+
+    def test_max_deps_added_requires_regular_blobs(self):
+        """Prediction: both regular blob modes count names; a tree or gitlink at package.json fails the guard with
+        its kind and candidate repair, rather than escaping as an AcceptanceError without a guard subject."""
+        self.write("package.json", '{"dependencies": {"a": "1"}}')
+        self.inputs()
+        inputs = self.packet["inputs_sha"]
+        blob = self.g("rev-parse", f"{inputs}:package.json")
+        tree = self.g("rev-parse", f"{inputs}^{{tree}}")
+        for mode, kind, oid in (("100644", "blob", blob), ("100755", "blob", blob),
+                                ("040000", "tree", tree), ("160000", "commit", inputs)):
+            with self.subTest(mode=mode):
+                made = subprocess.run(["git", "-C", str(self.work), "mktree"],
+                                      input=f"{mode} {kind} {oid}\tpackage.json\n".encode(), capture_output=True, check=True)
+                source = self.g("commit-tree", made.stdout.decode().strip(), "-p", inputs, "-m", "package kind")
+                deps = next(g for g in guard_results(self.packet, {}, source) if g["rule"] == "max_deps_added")
+                if kind == "blob":
+                    self.assertEqual(dependency_names(self.work, source), {"a"})
+                    self.assertEqual((deps["passed"], deps["subject"]), (True, "0 added, limit 0"))
+                else:
+                    self.assertFalse(deps["passed"])
+                    self.assertTrue(deps["subject"].startswith(f"candidate package.json at {source} is invalid; fix it in the candidate."))
+                    self.assertIn("gitlink" if kind == "commit" else kind, deps["subject"])
 
 
 def main():
