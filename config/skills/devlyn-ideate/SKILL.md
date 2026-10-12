@@ -96,7 +96,7 @@ An absolute path to a package's `meta.md` is added as it is; anything else is pl
 
 ## status
 
-Run `python3 "$DEVLYN_SKILL_DIR/scripts/queue.py" status --repo .` and report its counts, `next`, `blockers`, pending deliveries with their resume commands and any `cleanup` entry.
+Run `python3 "$DEVLYN_SKILL_DIR/scripts/queue.py" status --repo .` and report its counts, `next`, `blockers`, `warnings`, pending deliveries with their resume commands and any `cleanup` entry.
 
 ## drain
 
@@ -125,4 +125,4 @@ A drain can run for hours. Do not end the turn until it exits: run it in the for
 - Other `WAITING`: report each task’s reason and recovery command. Task-local failures leave dependents and barrier-held siblings waiting while independent work continues; the next drain retries eligible work once. An interrupted executor is observed once per drain and cannot be adopted or respawned until it stops. `BLOCKED` means authoritative queue reconstruction or preflight failed, including a held drain lock. Never edit receipts, refs or queue rows to get past either result.
 - An interrupted drain is resumed by running `drain` again; accepted work is never replayed, and a failed task is never rerun: plan its work again as a new loop.
 
-Report each task's product result, delivery status, PR URL, resume command, assumptions and unresolved questions, plus whole-loop acceptance, the package's `## Decisions and assumptions`, the drain report paths and its exact `Bring into` command; leave running it to the user. Report every `cleanup` diagnostic, including unavailable reports and retained parents; completed products keep their verdict. A package copy left in the checkout can prevent the `Bring into` command until it is removed.
+Report each task's product result, delivery status, PR URL, resume command, assumptions and unresolved questions, plus whole-loop acceptance, the package's `## Decisions and assumptions`, the drain report paths and its exact `Bring into` command; leave running it to the user. Report every `cleanup` diagnostic, including unavailable reports and retained parents, and all `warnings`; completed products keep their verdict. A package copy left in the checkout can prevent the `Bring into` command until it is removed.
