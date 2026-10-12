@@ -218,8 +218,10 @@ The receipt directory holds byte-verified `custody/`, `manifest.json` and a guar
 before publication; removal rechecks it, the recovery ref and the merge commit on base.
 Ignored build output and other ignored files are disposable under native
 non-force worktree removal. The tree's `.devlyn/` files are byte/mode-verified
-and preserved as `<receipt dir>/records/.devlyn`; non-regular files or symlinks
-there retain the tree. Partial/corrupt custody or records retain it for repair.
+and preserved as `<receipt dir>/records/.devlyn`; changes after an earlier copy
+are preserved beside it as `records.<digest>/.devlyn`, never rewriting earlier copies.
+Non-regular files or symlinks there, partial/corrupt custody, an unreadable
+earlier copy or a mismatched `records.<digest>` copy retain the tree for repair.
 
 Legacy in-place receipts retire refs only once their task branch is no longer
 checked out; their checkout is never modified. Local ref deletion is guarded by
