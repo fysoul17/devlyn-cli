@@ -2070,6 +2070,52 @@ console.log(JSON.stringify(Object.fromEntries(DEVLYN_CORE_SKILLS.map((name) =>
                     self.invoke(command)
                     self.assertEqual(dest.read_bytes(), after)
 
+    def test_instruction_merged_branch_paragraphs_migrate_and_preserve_custom_text(self):
+        # 7e2eef0a's Delivery paragraph is reachable from HEAD but absent from first-parent history.
+        # Reuse the edited managed-block fixture with that paragraph and a unique custom rule.
+        # origin/main already retains that key; add 26f40e5e's missing CLAUDE.md paragraph too.
+        # Prediction: migration removes the historical stock text for both files and LF/CRLF,
+        # preserves the custom rule and exact backup, and is unchanged on a second install.
+        delivery = ('- Delivery — direct work edits the current checkout. Only when the user asks to ship it (commit, PR or merge),'
+                    ' follow `_shared/task-completion.md` in `.claude/skills/` or `.agents/skills/` (project, else `~`).'
+                    ' An ideate drain delivers every task. Local-only/no-push instructions win.\n').encode()
+        claude_entry = ('### Conversational entry + full-route handoff\n\n'
+                        'Before writes, inspect requested files and relevant callers/tests. Default to direct execution only for clear,'
+                        ' local, reversible, low-risk work with a decisive existing or small task-specific acceptance check.'
+                        ' Preserve requested behavior, scope, explicit constraints and the executor pin; make scoped edits,'
+                        ' run required checks, review the final diff, and report changes with evidence. One concise route/check explanation'
+                        ' suffices; ordinary direct work needs no spec, pipeline state, phase workers or extra approval.'
+                        ' For direct/full/queue work, the outer owner follows `config/skills/devlyn:resolve/references/task-completion.md`:'
+                        ' prospective task-branch ownership (linked worktree optional), scoped commit acceptance, then PR/merge and recoverable'
+                        ' owned-resource cleanup after required archive/queue commits. Local-only/no-push wins;'
+                        ' delivery pending/failure stays separate from product verification.\n\n').encode()
+        custom_rule = b'Our release checklist requires an owner review.\n\n'
+        for name in ('AGENTS.md', 'CLAUDE.md'):
+            block = (Path(__file__).resolve().parent / f'fixtures/instructions/{name[:-3].lower()}-415e2d14.md').read_bytes()
+            old_delivery = next(line for line in block.splitlines(keepends=True) if line.startswith('- Delivery'.encode()))
+            block = block.replace(old_delivery, delivery).replace(b'## Quick Start\n\n', b'## Quick Start\n\n' + custom_rule)
+            if name == 'CLAUDE.md':
+                block = block.replace(b'<!-- devlyn:instructions:end -->', claude_entry + b'<!-- devlyn:instructions:end -->')
+            for eol in (b'\n', b'\r\n'):
+                with self.subTest(name=name, eol=eol):
+                    dest = self.project / name
+                    before = block.replace(b'\n', eol)
+                    dest.write_bytes(before)
+                    self.invoke(f"updateInstructions('{name}');")
+                    after = dest.read_bytes()
+                    custom, managed = after.split(b'<!-- devlyn:instructions:begin', 1)
+                    self.assertEqual(after.count(b'devlyn:instructions:begin'), 1)
+                    self.assertIn(custom_rule.replace(b'\n', eol), custom)
+                    self.assertEqual(after.count(custom_rule.replace(b'\n', eol)), 1)
+                    self.assertNotIn(b'Only when the user asks to ship it', after)
+                    self.assertNotIn(b'prospective task-branch ownership (linked worktree optional)', after)
+                    self.assertNotIn(b'1. **No workaround**', custom)
+                    self.assertIn(CURRENT_DEFAULTS, managed)
+                    self.assertEqual([managed.count(rule) for rule in CURRENT_RULES], [1, 1])
+                    self.assertIn(before, [p.read_bytes() for p in (self.project / '.devlyn/instructions').glob(name + '*.backup')])
+                    self.invoke(f"updateInstructions('{name}');")
+                    self.assertEqual(dest.read_bytes(), after)
+
     def test_instruction_4_x_blocks_are_replaced_in_place(self):
         # 4.1.0 renamed the AGENTS.md title and intro; design-ui, the queue skill and resolve were
         # retired after it. A 4.0.1, 4.1.0 or main (9ecbe51c, d2d34e3e, 415e2d14) block is replaced, never stacked,

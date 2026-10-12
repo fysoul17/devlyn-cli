@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Refresh offline migration fingerprints from committed mainline instructions.
+// Refresh offline migration fingerprints from the full instruction history reachable from HEAD.
 const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
@@ -9,10 +9,13 @@ const root = path.join(__dirname, '..');
 const manifestPath = path.join(root, 'bin/instruction-templates.json');
 const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
 const git = (...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8' });
+if (git('rev-parse', '--is-shallow-repository').trim() !== 'false') {
+  throw new Error('Instruction templates require a complete Git checkout (fetch-depth: 0).');
+}
 manifest.paragraphs = {};
 for (const name of ['AGENTS.md', 'CLAUDE.md']) {
   const keys = new Set();
-  const commits = git('log', '--first-parent', '--format=%H', 'HEAD', '--', name).trim().split('\n');
+  const commits = git('log', '--full-history', '--format=%H', 'HEAD', '--', name).trim().split('\n');
   for (const commit of commits) {
     for (const paragraph of instructionParagraphs(git('show', `${commit}:${name}`))) {
       keys.add(paragraph.key);
