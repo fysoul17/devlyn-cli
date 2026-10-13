@@ -123,7 +123,6 @@ def seed(work, repository, remaining):
     # Only this push uses host transport/auth. Participant origin is configured later.
     command(['git', '-C', str(work), 'push', url(repository), head + ':refs/heads/main'])
     require(refs(repository) == {'refs/heads/main': head}, 'seed refs differ from bootstrap')
-    return head
 
 
 def record_file(path):

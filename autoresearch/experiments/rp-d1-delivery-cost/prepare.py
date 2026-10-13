@@ -89,25 +89,6 @@ def transport_state(out):
     values = [github.git(anchor, 'config', '--local', '--get-all', 'remote.origin.url'),
               github.git(anchor, 'remote', 'get-url', '--all', 'origin'),
               github.git(anchor, 'remote', 'get-url', '--push', '--all', 'origin')]
-    # Every additional Git directory must be a registration of this anchor.
-    for root in (out / 'cell', out / 'tmp', out / 'home'):
-        for head in root.rglob('HEAD'):
-            directory = head.parent
-            github.require(directory == anchor / '.git' or not all(
-                (directory / name).exists() for name in ('config', 'objects', 'refs')), 'foreign bare repository')
-        for marker in root.rglob('.git'):
-            if marker == anchor / '.git':
-                continue
-            github.require(marker.is_file() and not marker.is_symlink(), 'foreign repository')
-            target = marker.read_text().strip().removeprefix('gitdir: ')
-            prefix = '/cell/work/.git/worktrees/'
-            github.require(target.startswith(prefix) and '/' not in target[len(prefix):], 'foreign Gitdir')
-            registration = anchor / '.git/worktrees' / target[len(prefix):] / 'gitdir'
-            github.require(registration.is_file(), 'unregistered worktree')
-            container = next(('/' + {'cell': 'cell', 'tmp': 'tmp', 'home': 'home/participant'}[part] + '/' +
-                              str(marker.relative_to(out / part))) for part in ('cell', 'tmp', 'home')
-                             if marker.is_relative_to(out / part))
-            github.require(registration.read_text().strip() == container, 'foreign worktree registration')
     return dict(config_sha256=github.digest(config), urls=values)
 
 
@@ -149,7 +130,7 @@ def prepare(runtime, name, task_id, arm, config, *, inherited, tasks, tasks_path
                   review_files=sorted(n for n in inherited.packet.tree(work) if inherited.packet.allowed(n, task['allowed'])),
                   original_context='', base_sha=allocation)
     (harness / 'caller.json').write_text(json.dumps(caller, indent=2))
-    (harness / 'roles.json').write_text(json.dumps(dict(roles=route['product_roles']), indent=2) + '\n')
+    (harness / 'roles.json').write_text(json.dumps(dict(roles={}), indent=2) + '\n')
     github.seed(work, repository, remaining)
     bootstrap_git(work, 'remote', 'add', 'origin', github.url(repository))
     # The just-verified host seed is the exact tracking tip; no participant fetch/auth needed yet.

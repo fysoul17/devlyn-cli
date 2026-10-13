@@ -23,41 +23,42 @@ def check(task, work):
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     results = {}
-    if task == 'BV':
-        f = module.is_expired
-        results['boundary'] = all(f(value, value) is True for value in (-5, 0, 10, 1.5))
-        results['before-after'] = f(9, 10) is False and f(11, 10) is True and f(-11, -10) is False
-        moment = datetime.datetime(2026, 1, 1, tzinfo=datetime.timezone.utc)
-        results['datetime'] = (f(moment, moment) is True and
-            f(moment - datetime.timedelta(microseconds=1), moment) is False and
-            f(moment + datetime.timedelta(microseconds=1), moment) is True)
-        cases = [(None, 0), (0, None), (0, '0')]
-        errors = []
-        for args in cases:
+
+    def rejects(args, error):
+        with contextlib.redirect_stderr(io.StringIO()):
             try:
                 f(*args)
-            except TypeError:
-                errors.append(True)
-            else:
-                errors.append(False)
-        results['errors'] = all(errors)
+            except error as exc:
+                return not isinstance(exc, SystemExit) or exc.code == 2
+        return False
+
+    if task == 'BV':
+        f = module.is_expired
+        moment = datetime.datetime(2026, 1, 1, tzinfo=datetime.timezone.utc)
+        checks = {
+            'boundary': lambda: all(f(value, value) is True for value in (-5, 0, 10, 1.5)),
+            'before-after': lambda: f(9, 10) is False and f(11, 10) is True and f(-11, -10) is False,
+            'datetime': lambda: (f(moment, moment) is True and
+                f(moment - datetime.timedelta(microseconds=1), moment) is False and
+                f(moment + datetime.timedelta(microseconds=1), moment) is True),
+            'errors': lambda: all(rejects(args, TypeError) for args in ((None, 0), (0, None), (0, '0'))),
+        }
     else:
         f = module.parse_limit
-        results['default'] = f([]) == 10
-        results['zero'] = f(['--limit', '0']) == 0 and f(['--limit=0']) == 0
-        results['positive'] = all(f(['--limit', str(n)]) == n for n in (1, 10, 23))
-        errors = []
-        for args in (['--limit', '-1'], ['--limit', 'bad'], ['--limit', '1.5'], ['--limit'], ['--unknown']):
-            with contextlib.redirect_stderr(io.StringIO()):
-                try:
-                    f(args)
-                except SystemExit as exc:
-                    errors.append(exc.code == 2)
-                else:
-                    errors.append(False)
-        results['errors'] = all(errors)
+        checks = {
+            'default': lambda: f([]) == 10,
+            'zero': lambda: f(['--limit', '0']) == 0 and f(['--limit=0']) == 0,
+            'positive': lambda: all(f(['--limit', str(n)]) == n for n in (1, 10, 23)),
+            'errors': lambda: all(rejects((args,), SystemExit) for args in (
+                ['--limit', '-1'], ['--limit', 'bad'], ['--limit', '1.5'], ['--limit'], ['--unknown'])),
+        }
+    for name, probe in checks.items():
+        try:
+            results[name] = dict(id=name, status='PASS' if probe() else 'FAIL')
+        except (Exception, SystemExit):
+            results[name] = dict(id=name, status='FAIL', reason='participant raised during check')
     regression = work / 'tests/test_regression.py'
-    results['regression'] = False
+    results['regression'] = dict(id='regression', status='FAIL')
     if regression.is_file() and not regression.is_symlink():
         codes = []
         with tempfile.TemporaryDirectory(prefix='rp-d1-regression-') as temporary:
@@ -75,14 +76,13 @@ def check(task, work):
                 if result.returncode not in (0, 1, 5):
                     raise ValueError('regression replay did not produce a test verdict')
                 codes.append(result.returncode)
-        results['regression'] = codes == [0, 1]
-    return dict(schema='rp-d1-oracle-v1', rows=[dict(id=name, status='PASS' if results[name] else 'FAIL')
-                                            for name in ROWS[task]])
+        results['regression']['status'] = 'PASS' if codes == [0, 1] else 'FAIL'
+    return dict(schema='rp-d1-oracle-v1', rows=[results[name] for name in ROWS[task]])
 
 
 if __name__ == '__main__':
     try:
         print(json.dumps(check(sys.argv[1], Path(sys.argv[2]))))
-    except (OSError, ValueError, KeyError, TypeError, AttributeError, subprocess.SubprocessError) as exc:
+    except Exception as exc:
         print(json.dumps(dict(status='UNKNOWN', reason=type(exc).__name__)))
         raise SystemExit(2)

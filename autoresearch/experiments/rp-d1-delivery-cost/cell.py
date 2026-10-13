@@ -5,6 +5,8 @@ import os
 from pathlib import Path
 import re
 import stat
+import subprocess
+import tempfile
 from types import SimpleNamespace
 
 HERE = Path(__file__).resolve().parent
@@ -37,35 +39,62 @@ def credential(runtime):
     return root, matches[0]
 
 
-def scan(out, runtime):
+def scan(out, runtime, *, root=None):
     """Every collected regular file, streamed; symlink text too, without traversal.
 
     Do not put a hit path/content in a record: either can itself contain the PAT.
     The owner must revoke the PAT in the UI before any future run.
     """
-    _, token = credential(runtime)
+    root = out if root is None else root
     hit = False
-    def unreadable(error):
-        raise error
-    for directory, dirs, files in os.walk(out, followlinks=False, onerror=unreadable):
-        for name in dirs + files:
-            path = Path(directory) / name
-            hit |= token in os.fsencode(path.relative_to(out))
-            mode = path.lstat().st_mode
-            if stat.S_ISLNK(mode):
-                hit |= token in os.fsencode(path.readlink())
-            elif stat.S_ISREG(mode):
-                with path.open('rb') as stream:
-                    tail = b''
-                    while chunk := stream.read(1024 * 1024):
-                        combined = tail + chunk
-                        hit |= token in combined
-                        tail = combined[-(len(token) - 1):]
-            elif not stat.S_ISDIR(mode):
-                raise ValueError('PAT scan encountered a nonregular collected file')
-    if hit:
-        (out / 'pat-scan.json').write_text(json.dumps(dict(status='UNKNOWN', revocation_required=True)))
-        raise ValueError('PAT-byte hit: UNKNOWN; owner must revoke PAT immediately; schedule stopped')
+
+    def search(stream):
+        nonlocal hit
+        tail = b''
+        while chunk := stream.read(1024 * 1024):
+            combined = tail + chunk
+            hit |= token in combined
+            tail = combined[-(len(token) - 1):]
+
+    def unreadable(_):
+        raise ValueError('PAT scan encountered an unreadable entry') from None
+
+    reason = None
+    try:
+        _, token = credential(runtime)
+        gitdirs = []
+        for directory, dirs, files in os.walk(root, followlinks=False, onerror=unreadable):
+            for name in dirs + files:
+                path = Path(directory) / name
+                hit |= token in os.fsencode(path.relative_to(root))
+                mode = path.lstat().st_mode
+                if stat.S_ISLNK(mode):
+                    hit |= token in os.fsencode(path.readlink())
+                elif stat.S_ISREG(mode):
+                    with path.open('rb') as stream:
+                        search(stream)
+                elif stat.S_ISDIR(mode):
+                    if name in ('.git', 'mirror.git') or path.parent == root / 'cell/work/.git/worktrees':
+                        gitdirs.append(path)
+                else:
+                    raise ValueError('PAT scan encountered a nonregular entry')
+        for gitdir in gitdirs:
+            with tempfile.TemporaryFile() as errors, subprocess.Popen(
+                    ['git', '--git-dir', str(gitdir), 'cat-file', '--batch-all-objects', '--batch', '--unordered'],
+                    stdout=subprocess.PIPE, stderr=errors, env=prepare.github.git_env()) as process:
+                search(process.stdout)
+                if process.wait() != 0 or errors.tell():
+                    raise ValueError('PAT Git object scan failed')
+        if hit:
+            reason = 'PAT-byte hit: UNKNOWN; owner must revoke PAT immediately; schedule stopped'
+    except Exception:
+        reason = 'PAT scan failed: UNKNOWN; owner must revoke PAT immediately; schedule stopped'
+    if reason:
+        try:
+            (out / 'pat-scan.json').write_text(json.dumps(dict(status='UNKNOWN', revocation_required=True)))
+        finally:
+            # Even a failure to write the marker must never expose a scanned path.
+            raise ValueError(reason) from None
 
 
 def run(out, runtime, *, native, check_auth):

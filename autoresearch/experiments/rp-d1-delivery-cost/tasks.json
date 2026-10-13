@@ -6,46 +6,6 @@
         "effort": "max",
         "engine": "claude",
         "model": "claude-opus-5-5"
-      },
-      "peer_routes": {
-        "H": {
-          "effort": "max",
-          "engine": "claude",
-          "model": "claude-opus-5-5"
-        },
-        "P": {
-          "child_effort": "high",
-          "child_model": "gpt-6-sol",
-          "effort": "high",
-          "engine": "codex",
-          "model": "gpt-6-sol"
-        }
-      },
-      "product_roles": {
-        "pair_judge": {
-          "child_effort": "high",
-          "child_model": "gpt-6-sol",
-          "effort": "high",
-          "engine": "codex",
-          "model": "gpt-6-sol"
-        },
-        "primary_judge": {
-          "effort": "max",
-          "engine": "claude",
-          "model": "claude-opus-5-5"
-        },
-        "worker": {
-          "effort": "max",
-          "engine": "claude",
-          "model": "claude-opus-5-5"
-        }
-      },
-      "reviewer": {
-        "child_effort": "high",
-        "child_model": "gpt-6-sol",
-        "effort": "high",
-        "engine": "codex",
-        "model": "gpt-6-sol"
       }
     },
     "codex": {
@@ -55,46 +15,6 @@
         "effort": "high",
         "engine": "codex",
         "model": "gpt-6-sol"
-      },
-      "peer_routes": {
-        "H": {
-          "child_effort": "high",
-          "child_model": "gpt-6-sol",
-          "effort": "high",
-          "engine": "codex",
-          "model": "gpt-6-sol"
-        },
-        "P": {
-          "effort": "max",
-          "engine": "claude",
-          "model": "claude-opus-5-5"
-        }
-      },
-      "product_roles": {
-        "pair_judge": {
-          "effort": "max",
-          "engine": "claude",
-          "model": "claude-opus-5-5"
-        },
-        "primary_judge": {
-          "child_effort": "high",
-          "child_model": "gpt-6-sol",
-          "effort": "high",
-          "engine": "codex",
-          "model": "gpt-6-sol"
-        },
-        "worker": {
-          "child_effort": "high",
-          "child_model": "gpt-6-sol",
-          "effort": "high",
-          "engine": "codex",
-          "model": "gpt-6-sol"
-        }
-      },
-      "reviewer": {
-        "effort": "max",
-        "engine": "claude",
-        "model": "claude-opus-5-5"
       }
     }
   },

@@ -11,7 +11,7 @@ RUN cd /tmp/artifacts && sha256sum -c artifacts.sha256 \
  && mv codex/package/vendor/aarch64-unknown-linux-musl /opt/codex \
  && ln -s /opt/codex/bin/* /opt/codex/codex-path/rg /usr/local/bin/ \
  && cp gh/gh_2.83.2_linux_arm64/bin/gh /usr/local/bin/gh \
- && rm -rf /tmp/artifacts \
+ && cd / && rm -rf /tmp/artifacts \
  && python -m pip install --no-cache-dir pytest==9.0.3 \
  && test "$(node --version)" = 'v22.23.2' \
  && claude --version | grep -Eq '^2\.1\.296([[:space:]]|$)' \

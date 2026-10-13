@@ -26,7 +26,8 @@ sources cites the inherited code it relies on. Where they disagree, this file wi
      1. archive the repository with `git clone --mirror`, the full PR JSON,
         the repository settings and the refs;
      2. hash the archive and check that it is complete;
-     3. delete the repository and confirm it returns 404;
+     3. scan the archive for PAT bytes, then delete the repository and confirm
+        it returns 404, including after a scan hit or failure;
      4. only then start the next slot.
 2. **Credential: one fine-grained PAT (S1).**
    - The owner creates it once in the web UI after the nine repositories
@@ -49,15 +50,18 @@ sources cites the inherited code it relies on. Where they disagree, this file wi
      The empty `credential.helper` reset is dropped, because global and system
      configuration are already disabled.
    - Codex config:
-     - Keep exactly one `[projects."/work"]` table whose only key is
-       `trust_level = "trusted"` (0237/runner.py:140-145).
+     - Keep exactly one project table whose only key is
+       `trust_level = "trusted"`: `/work` during bootstrap, then `/cell/work`
+       for launch (0237/runner.py:140-145, 0238/runner.py:76).
      - Keep `shell_snapshot = false`.
      - Add `[shell_environment_policy]` with `ignore_default_excludes = false`
        and a `[shell_environment_policy.set]` table that restores the variables
        above. `set` runs after the KEY/SECRET/TOKEN filter; `include_only`
        cannot restore excluded names.
-   - Before sealing, scan every collected file for the PAT bytes. A hit makes
-     the observation UNKNOWN; the PAT is revoked and the schedule stops.
+   - Before sealing and after archiving, scan raw files and streamed Git object
+     contents, including registered worktree storage and archive mirrors. A hit
+     or scan failure makes the observation and usage UNKNOWN, requires PAT
+     revocation and stops the schedule. Scan errors never record hit locations.
 3. **Prompt (S2).**
    - Replace `0232/common.txt` and omit `0237/local-delivery.txt`.
    - Then append the inherited `CALLER CONTRACT` JSON unchanged.
@@ -82,7 +86,9 @@ sources cites the inherited code it relies on. Where they disagree, this file wi
      - unchanged local configuration;
      - unchanged caller and roles hashes.
    - It rejects: extra remotes, includes, worktree config, `insteadOf`,
-     `pushInsteadOf`, `sshCommand` and any foreign repository.
+     `pushInsteadOf`, `sshCommand` and foreign anchor/worktree Git storage.
+     GitHub done-check is the delivery authority; there is no filesystem-wide
+     foreign-repository sweep.
    - It allows objects, refs, remote-tracking refs and worktree registrations
      to change.
 6. **Image.**
@@ -130,6 +136,7 @@ sources cites the inherited code it relies on. Where they disagree, this file wi
    - Codex: `gpt-6-sol` at `high`, following the HANDOFF implementation-model
      rule.
    - Native children use the owner's model.
+   - Unused peer, judge and reviewer routes are omitted.
 10. **Tasks.**
     - **BV:** `is_expired(now, deadline)` uses `>` where `>=` is correct.
     - **Z0:** `--limit 0` falls back to the default of 10.
@@ -139,6 +146,8 @@ sources cites the inherited code it relies on. Where they disagree, this file wi
     - The independent oracle checks boundary/default/zero/positive/error cases.
       It also confirms that the added regression test fails against the
       original source.
+    - Participant exceptions within check rows fail those rows. Oracle-internal
+      failures, including unavailable imports or replay environments, stay UNKNOWN.
     - Each fixture includes a tracked `docs/user-notes.txt` and an ignored
       `.user-state/draft.txt`.
 11. **Order.**

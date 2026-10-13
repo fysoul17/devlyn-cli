@@ -32,6 +32,17 @@ SCHEDULE = [('o01', 'BV', 'claude'), ('o02', 'BV', 'codex'), ('o03', 'Z0', 'code
             ('o07', 'BV', 'codex'), ('o08', 'BV', 'claude')]
 
 
+def solo_route(tasks, config, _arm):
+    # 0238's initializer validates unused H/P routes. This study registers only B.
+    route = tasks['routes'][config]
+    if (tasks['schema'] != 'rp-d1-delivery-cost-v1' or set(route) != {'owner'} or
+            route['owner']['engine'] != config):
+        raise ValueError('rp-d1 requires only the owner route')
+
+
+legacy.policy.route_for = solo_route
+
+
 class Runner(legacy.Runner):
     def __init__(self, runtime_path, tasks_path=None):
         super().__init__(runtime_path, tasks_path or read(runtime_path).get('tasks_file', HERE / 'tasks.json'))
@@ -39,9 +50,15 @@ class Runner(legacy.Runner):
         self.frame.prepare.prepare = self.materialize
         self.frame.harness_unchanged = prepare.harness_unchanged
         inherited_launch = self.frame.cell_run.run
+        inherited_launch.keywords['native'].evidence.seats = self.seats
         self.frame.cell_run.run = partial(cell.run, **inherited_launch.keywords)
         self.frame.seal_after_teardown = partial(cell.seal, runtime=self.runtime,
                                                inherited=self.frame.seal_after_teardown)
+
+    def seats(self, plan):
+        # 0234 inventories only owner/native-child seats; no worker or judge runs.
+        owner = self.tasks['routes'][plan['config']]['owner']
+        return dict(owner=owner, child=owner)
 
     def repository(self, name):
         run_id = self.runtime['run_id']
@@ -78,7 +95,8 @@ class Runner(legacy.Runner):
         # Restore the registered config after those unchanged ancestor stages.
         if config == 'codex':
             path = out / 'home/.codex/config.toml'
-            path.write_text(prepare.codex_toml(self.tasks['routes']['codex']['owner']))
+            path.write_text(prepare.codex_toml(self.tasks['routes']['codex']['owner']).replace(
+                '[projects."/work"]', '[projects."/cell/work"]'))
             seal = read(out / 'seal.json')
             seal['prepared']['home/.codex/config.toml'] = digest(path)
             write(out / 'seal.json', seal)
@@ -116,7 +134,7 @@ class Runner(legacy.Runner):
         else:
             previous = SCHEDULE[index - 1][0]
             record = read(Path(self.runtime['output']) / previous / 'rp-verdict.json')
-            if record['status'] in ('STOP', 'NOT_RUN'):
+            if record['status'] in ('STOP', 'UNKNOWN', 'NOT_RUN'):
                 raise ValueError('schedule already stopped')
             receipt = record['repository_cleanup']
         if (receipt.get('repository') != self.repository(previous) or receipt.get('status') != 'DELETED'
@@ -142,7 +160,7 @@ class Runner(legacy.Runner):
             super().run(name, task, arm, config)
             inherited = output / f'verdict-{name}.json'
             if not inherited.exists():
-                raise ValueError('inherited preflight refused dispatch')
+                raise github.EvidenceError(read(output / f'not-dispatched-{name}.json')['reason'])
             verdict = read(inherited)
             record.update(inherited_verdict_sha256=digest(inherited), inherited_status=verdict['status'],
                           dispatched=(out / 'run/started.json').exists(),
@@ -159,6 +177,7 @@ class Runner(legacy.Runner):
                 archived = github.archive(self.repository(name), root)
                 record['archive'] = archived
                 try:
+                    cell.scan(out, self.runtime, root=root)
                     if verdict['status'] != 'STOP':
                         done = github.done_check(out, root, verdict['snapshot'], self.frame.locate, self.packet)
                         write(out / 'report-checklist.json', done['checklist'])
@@ -181,11 +200,11 @@ class Runner(legacy.Runner):
         out.mkdir(parents=True, exist_ok=True, mode=0o700)
         record['dispatched'] = (out / 'run/started.json').exists()
         if (out / 'pat-scan.json').exists():
-            record.update(status='STOP', usage='UNKNOWN', input_tokens=None, output_tokens=None,
+            record.update(status='UNKNOWN', usage='UNKNOWN', input_tokens=None, output_tokens=None,
                           delivery_assessment='NOT_ASSESSED', revocation_required=True,
-                          reason='PAT-byte hit; revoke PAT immediately')
+                          reason='PAT scan hit or failed; revoke PAT immediately')
         write(out / 'rp-verdict.json', record)
-        return 2 if record['status'] == 'STOP' else 0
+        return 2 if record['status'] in ('STOP', 'UNKNOWN') else 0
 
     def schedule(self):
         records, stopped = [], False

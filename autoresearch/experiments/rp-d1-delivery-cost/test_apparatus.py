@@ -6,10 +6,10 @@ from datetime import datetime
 import hashlib
 import importlib.util
 import json
-import os
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import tarfile
 import tempfile
 import tomllib
@@ -330,16 +330,7 @@ class DeliveryTests(TempCase):
         with self.assertRaises(g.EvidenceError):
             p.harness_unchanged(self.out, baseline)
 
-    def test_foreign_repository_and_changed_caller_rejected(self):
-        g.git(self.anchor, 'worktree', 'remove', str(self.work))
-        self.repo(self.out / 'tmp/foreign')
-        with self.assertRaisesRegex(g.EvidenceError, 'foreign'):
-            p.harness_unchanged(self.out, r.read(self.out / 'baseline.json'))
-        shutil.rmtree(self.out / 'tmp/foreign')
-        g.command(['git', 'init', '-q', '--bare', str(self.out / 'tmp/foreign.git')])
-        with self.assertRaisesRegex(g.EvidenceError, 'foreign bare'):
-            p.harness_unchanged(self.out, r.read(self.out / 'baseline.json'))
-        shutil.rmtree(self.out / 'tmp/foreign.git')
+    def test_changed_caller_rejected(self):
         (self.out / 'harness/caller.json').write_text('{}')
         self.assertFalse(p.harness_unchanged(self.out, r.read(self.out / 'baseline.json')))
 
@@ -376,11 +367,78 @@ class CredentialTests(TempCase):
 
     def test_preseal_pat_hit_is_unknown_and_never_sealed(self):
         (self.out / 'binary').write_bytes(b'x' * (1024 * 1024 - 10) + self.token)
-        with patch.object(c, 'credential', wraps=c.credential), self.assertRaisesRegex(ValueError, 'PAT-byte hit'):
+        with self.assertRaisesRegex(ValueError, 'PAT-byte hit'):
             c.seal(self.out, self.runtime, lambda _: self.fail('must not seal a PAT hit'))
         result = r.read(self.out / 'pat-scan.json')
         self.assertEqual(result, dict(status='UNKNOWN', revocation_required=True))
         self.assertNotIn(self.token, (self.out / 'pat-scan.json').read_bytes())
+
+    def test_unreadable_token_named_directory_records_unknown_without_path(self):
+        directory = self.out / self.token.decode()
+        directory.mkdir(mode=0)
+        self.addCleanup(directory.chmod, 0o700)
+        scandir = c.os.scandir
+
+        def unreadable(path):
+            if Path(path) == directory:
+                raise PermissionError(13, 'Permission denied', str(directory))
+            return scandir(path)
+
+        # Inject the OS denial so this also exercises the path when tests run as root.
+        with patch.object(c.os, 'scandir', side_effect=unreadable), self.assertRaises(ValueError) as raised:
+            c.scan(self.out, self.runtime)
+        self.assertEqual(str(raised.exception),
+                         'PAT scan failed: UNKNOWN; owner must revoke PAT immediately; schedule stopped')
+        self.assertEqual(r.read(self.out / 'pat-scan.json'), dict(status='UNKNOWN', revocation_required=True))
+        self.assertNotIn(self.token, (self.out / 'pat-scan.json').read_bytes())
+        self.assertNotIn(str(self.out), str(raised.exception))
+
+    def test_nonregular_entry_records_unknown_without_path(self):
+        c.os.mkfifo(self.out / self.token.decode())
+        with self.assertRaises(ValueError) as raised:
+            c.scan(self.out, self.runtime)
+        self.assertNotIn(self.token.decode(), str(raised.exception))
+        self.assertNotIn(str(self.out), str(raised.exception))
+        self.assertEqual(r.read(self.out / 'pat-scan.json'), dict(status='UNKNOWN', revocation_required=True))
+
+    def test_unreachable_git_blob_and_registered_worktree_objects_are_scanned(self):
+        anchor = self.out / 'cell/work'
+        self.repo(anchor)
+        g.git(anchor, 'commit', '-qm', 'initial', '--allow-empty')
+        worktree = self.out / 'tmp/task'
+        g.git(anchor, 'worktree', 'add', '-q', '-b', 'task', str(worktree))
+        registration = next((anchor / '.git/worktrees').iterdir())
+        (registration / 'gitdir').write_text('/tmp/task/.git\n')
+        (worktree / '.git').write_text('gitdir: /cell/work/.git/worktrees/' + registration.name + '\n')
+        g.git(anchor, 'hash-object', '-w', str(Path(self.runtime['github_auth']) / 'hosts.yml'))
+        self.assertTrue(all(self.token not in path.read_bytes() for path in self.out.rglob('*') if path.is_file()))
+        with patch.object(c.subprocess, 'Popen', wraps=c.subprocess.Popen) as processes, \
+                self.assertRaisesRegex(ValueError, 'PAT-byte hit'):
+            c.scan(self.out, self.runtime)
+        self.assertEqual({call.args[0][2] for call in processes.call_args_list},
+                         {str(anchor / '.git'), str(registration)})
+        self.assertEqual(r.read(self.out / 'pat-scan.json'), dict(status='UNKNOWN', revocation_required=True))
+
+    def test_archive_mirror_blob_is_scanned_without_changing_archive(self):
+        archive = self.root / 'archive'
+        mirror = archive / 'mirror.git'
+        g.command(['git', 'init', '-q', '--bare', str(mirror)])
+        g.git(mirror, 'hash-object', '-w', str(Path(self.runtime['github_auth']) / 'hosts.yml'))
+        before = g.archive_files(archive)
+        self.assertTrue(all(self.token not in path.read_bytes() for path in archive.rglob('*') if path.is_file()))
+        with self.assertRaisesRegex(ValueError, 'PAT-byte hit'):
+            c.scan(self.out, self.runtime, root=archive)
+        self.assertEqual(g.archive_files(archive), before)
+        self.assertEqual(r.read(self.out / 'pat-scan.json'), dict(status='UNKNOWN', revocation_required=True))
+
+    def test_git_object_read_failure_records_unknown(self):
+        self.repo(self.out / 'cell/work')
+        obj = self.out / 'cell/work/.git/objects/aa' / ('a' * 38)
+        obj.parent.mkdir()
+        obj.write_bytes(b'not a Git object')
+        with self.assertRaisesRegex(ValueError, 'PAT scan failed'):
+            c.scan(self.out, self.runtime)
+        self.assertEqual(r.read(self.out / 'pat-scan.json'), dict(status='UNKNOWN', revocation_required=True))
 
     def test_missing_config_or_overlapping_credential_refused(self):
         (Path(self.runtime['github_auth']) / 'config.yml').unlink()
@@ -462,8 +520,8 @@ class PrepareAndRunnerTests(TempCase):
             second = self.app.prepare('o02', 'BV', 'B', 'codex')
         config = (first / 'home/.codex/config.toml').read_text()
         parsed = tomllib.loads(config)
-        self.assertEqual(config.count('[projects."/work"]'), 1)
-        self.assertEqual(parsed['projects'], {'/work': dict(trust_level='trusted')})
+        self.assertEqual(config.count('[projects."/cell/work"]'), 1)
+        self.assertEqual(parsed['projects'], {'/cell/work': dict(trust_level='trusted')})
         self.assertFalse(parsed['features']['shell_snapshot'])
         self.assertEqual(parsed['shell_environment_policy'], dict(ignore_default_excludes=False, set=p.GITHUB_ENV))
         for key in ('source_sha', 'allocation_sha'):
@@ -473,6 +531,15 @@ class PrepareAndRunnerTests(TempCase):
         self.assertNotIn(self.token, (first / 'plan.json').read_bytes())
         self.assertIn('AGENTS.md', r.read(first / 'baseline.json')['installed_files'])
         self.assertFalse((first / 'harness/mirror.git').exists())
+
+    def test_routes_register_only_owner_and_native_children_use_owner(self):
+        native = self.app.frame.cell_run.run.keywords['native']
+        for config, route in self.app.tasks['routes'].items():
+            self.assertEqual(set(route), {'owner'})
+            self.assertEqual(route['owner']['engine'], config)
+            self.assertEqual(native.evidence.seats(dict(config=config)),
+                             dict(owner=route['owner'], child=route['owner']))
+        self.assertIs(native.identity, native.legacy.identity)
 
     def test_empty_target_and_all_future_repositories_required(self):
         with patch.object(g, 'command', self.fake):
@@ -523,6 +590,18 @@ class PrepareAndRunnerTests(TempCase):
         self.assertEqual(result['usage'], 'PARTIAL')
         self.assertIsNone(result['input_tokens'])
 
+    def test_inherited_preflight_refusal_keeps_fixed_reason(self):
+        with patch.object(self.app, 'prior_deleted'), patch.object(g, 'precheck'), \
+                patch.object(self.app, 'validate'), patch.object(self.app, 'boot_expectation'), \
+                patch.object(self.app, 'preflight', return_value=({}, 'fixed-auth-refused')):
+            self.assertEqual(self.app.run('o01', 'BV', 'B', 'claude'), 2)
+        output = Path(self.runtime['output'])
+        self.assertFalse((output / 'verdict-o01.json').exists())
+        result = r.read(output / 'o01/rp-verdict.json')
+        self.assertEqual(result['reason'], r.read(output / 'not-dispatched-o01.json')['reason'])
+        self.assertEqual(result['reason'], 'fixed-auth-refused')
+        self.assertFalse(result['dispatched'])
+
     def test_wrapper_delivery_failure_keeps_cost_and_original_verdict(self):
         def inherited(*args):
             self.inherited_run(*args, status='CHECKS_PASS', usage='COMPLETE')
@@ -535,6 +614,7 @@ class PrepareAndRunnerTests(TempCase):
         with patch.object(self.app, 'prior_deleted'), patch.object(g, 'precheck'), \
                 patch.object(r.legacy.Runner, 'run', side_effect=inherited), \
                 patch.object(g, 'archive', return_value=dict(manifest_sha256='archive')), \
+                patch.object(c, 'scan'), \
                 patch.object(g, 'done_check', return_value=dict(status='PRODUCT_INCOMPLETE', checklist={})), \
                 patch.object(g, 'delete_archived', return_value=dict(status='DELETED')):
             self.assertEqual(self.app.run('o01', 'BV', 'B', 'claude'), 0)
@@ -552,8 +632,8 @@ class PrepareAndRunnerTests(TempCase):
     def test_real_inherited_auditor_gap_and_pat_hit_stop_before_grading(self):
         fixture = r.load('native_receipt_fixture_rpd1', HERE.parent / '0254/test_audit.py')
         self.app.runtime['account'][0] = fixture.ACCOUNT
-        for index, pat_hit in enumerate((False, True)):
-            with self.subTest(pat_hit=pat_hit):
+        for index, fault in enumerate(('accounting', 'hit', 'unreadable')):
+            with self.subTest(fault=fault):
                 self.app.runtime['output'] = str(self.root / f'actual-accounting-{index}')
                 out = Path(self.app.runtime['output']) / 'o01'
 
@@ -564,10 +644,21 @@ class PrepareAndRunnerTests(TempCase):
                                                      effort='max', arm='B', name='o01', task='BV')
                     capture.files['run/started.json'] = {}
                     capture.seal()
-                    if pat_hit:
+                    if fault == 'hit':
                         (out / 'leaked-token').write_bytes(self.token)
+                    elif fault == 'unreadable':
+                        (out / self.token.decode()).mkdir()
                     return out
 
+                scandir = c.os.scandir
+
+                def unreadable(path):
+                    if Path(path).name == self.token.decode():
+                        raise PermissionError(13, 'Permission denied', str(path))
+                    return scandir(path)
+
+                archive_root = Path(self.app.runtime['output']) / 'archives/o01'
+                archive_root.mkdir(parents=True)
                 with ExitStack() as stack:
                     for target, name, kwargs in (
                         (self.app, 'prior_deleted', {}), (g, 'precheck', {}),
@@ -582,6 +673,7 @@ class PrepareAndRunnerTests(TempCase):
                         (self.app.frame.check, 'check', {'side_effect': AssertionError('post-UNKNOWN grading')}),
                     ):
                         stack.enter_context(patch.object(target, name, **kwargs))
+                    stack.enter_context(patch.object(c.os, 'scandir', side_effect=unreadable))
                     self.assertEqual(self.app.run('o01', 'BV', 'B', 'claude'), 2)
                 inherited = r.read(out.parent / 'verdict-o01.json')
                 result = r.read(out / 'rp-verdict.json')
@@ -589,10 +681,52 @@ class PrepareAndRunnerTests(TempCase):
                                  ('STOP', 'UNKNOWN', 'NOT_ASSESSED'))
                 self.assertIsNone(result['input_tokens'])
                 self.assertTrue(result['dispatched'])
-                if pat_hit:
+                if fault != 'accounting':
+                    self.assertEqual(result['status'], 'UNKNOWN')
                     self.assertTrue(result['revocation_required'])
+                    for path in (out.parent / 'verdict-o01.json', out / 'rp-verdict.json', out / 'pat-scan.json'):
+                        self.assertNotIn(self.token, path.read_bytes())
+                        self.assertNotIn(str(out), path.read_text())
                 else:
                     self.assertEqual(inherited['claude_accounting']['status'], 'UNKNOWN')
+
+    def test_pat_only_in_archived_pr_body_deletes_repository_and_stops_schedule(self):
+        source = self.root / 'seed'
+        self.repo(source)
+        g.git(source, 'commit', '-qm', 'seed', '--allow-empty')
+        sha = g.git(source, 'rev-parse', 'HEAD')
+        state = self.fake.states[self.app.repository('o01')]
+        g.git(source, 'push', str(state['remote']), 'HEAD:refs/heads/main')
+        state['pulls'] = [dict(number=1, body=self.token.decode(), head=dict(sha=sha), merged=False)]
+
+        def inherited(*args):
+            self.inherited_run(*args, status='CHECKS_PASS', usage='COMPLETE')
+            output = Path(self.runtime['output'])
+            c.scan(output / 'o01', self.runtime)
+            verdict = r.read(output / 'verdict-o01.json')
+            verdict.update(teardown='CLEAN', evidence_manifest_sha256='sealed', snapshot={})
+            r.write(output / 'verdict-o01.json', verdict)
+
+        with patch.object(self.app, 'prior_deleted'), patch.object(g, 'precheck'), \
+                patch.object(g, 'command', self.fake), \
+                patch.object(r.legacy.Runner, 'run', side_effect=inherited), \
+                patch.object(g, 'done_check', side_effect=AssertionError('PAT hit must prevent grading')):
+            self.assertEqual(self.app.schedule(), 2)
+        output = Path(self.runtime['output'])
+        result = r.read(output / 'o01/rp-verdict.json')
+        self.assertEqual((result['status'], result['usage']), ('UNKNOWN', 'UNKNOWN'))
+        self.assertTrue(result['revocation_required'])
+        self.assertIsNone(result['input_tokens'])
+        self.assertIsNone(result['output_tokens'])
+        self.assertEqual(result['repository_cleanup']['status'], 'DELETED')
+        self.assertTrue(state['deleted'])
+        archive = output / 'archives/o01'
+        self.assertEqual(result['repository_cleanup']['archive_manifest_sha256'], g.digest(archive / 'manifest.json'))
+        self.assertEqual(r.read(archive / 'repository.json')['pulls'][0]['body'], self.token.decode())
+        for path in (output / 'o01/rp-verdict.json', output / 'o01/pat-scan.json', output / 'rp-schedule.json'):
+            self.assertNotIn(self.token, path.read_bytes())
+        self.assertEqual([row['status'] for row in r.read(output / 'rp-schedule.json')['slots']],
+                         ['UNKNOWN'] + ['NOT_RUN'] * 7)
 
     def test_github_unavailable_stops_with_cost_without_rewriting_inherited_verdict(self):
         def inherited(*args):
@@ -623,6 +757,29 @@ class PrepareAndRunnerTests(TempCase):
 
 
 class OracleTests(TempCase):
+    def test_float_implementation_passes_public_but_datetime_exception_fails_row(self):
+        dest = self.root / 'BV'
+        shutil.copytree(HERE / 'fixtures/BV', dest)
+        (dest / oracle.IMPLEMENTATION['BV']).write_text(
+            'def is_expired(now, deadline):\n    return float(now) >= float(deadline)\n')
+        public = subprocess.run([sys.executable, '-B', '-m', 'pytest', '-q', '-p', 'no:cacheprovider'],
+            cwd=dest, capture_output=True, text=True, env=g.git_env() | {
+                'PYTHONPATH': str(dest / 'src'), 'PYTHONDONTWRITEBYTECODE': '1', 'PYTEST_DISABLE_PLUGIN_AUTOLOAD': '1'})
+        self.assertEqual(public.returncode, 0, public.stdout + public.stderr)
+        result = subprocess.run([sys.executable, '-B', str(HERE / 'oracle.py'), 'BV', str(dest)],
+                                capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        rows = {row['id']: row for row in json.loads(result.stdout)['rows']}
+        self.assertEqual(rows['datetime'], dict(id='datetime', status='FAIL', reason='participant raised during check'))
+        self.assertEqual(rows['boundary']['status'], 'PASS')
+        self.assertEqual(rows['before-after']['status'], 'PASS')
+
+    def test_unimportable_fixture_stays_unknown(self):
+        result = subprocess.run([sys.executable, '-B', str(HERE / 'oracle.py'), 'BV', str(self.root / 'missing')],
+                                capture_output=True, text=True)
+        self.assertEqual(result.returncode, 2)
+        self.assertEqual(json.loads(result.stdout)['status'], 'UNKNOWN')
+
     def test_original_fixtures_fail_boundary_and_zero(self):
         for task, failed in (('BV', 'boundary'), ('Z0', 'zero')):
             result = oracle.check(task, HERE / 'fixtures' / task)
