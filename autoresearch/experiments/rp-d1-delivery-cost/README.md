@@ -1,5 +1,7 @@
 # rp-d1 — default-delivery cost: instrumentation gate
 
+> **2026-10-14:** after this gate the owner approved building the delivery apparatus ([DESIGN.md](DESIGN.md)); rp-d1 was registered ([registration.md](registration.md)) and measured. See [results.md](results.md).
+
 **GATE FAIL (2026-10-13). Stopped before registration and before any live run.**
 No prediction was frozen, no task was exposed and no measurement cell was launched.
 Product wording, versions and closed studies are unchanged.

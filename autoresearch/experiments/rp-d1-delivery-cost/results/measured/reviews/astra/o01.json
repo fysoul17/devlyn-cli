@@ -1,0 +1,41 @@
+{
+  "checklist_sha256": "09779b3a6fdc17117c2d3ff3edf39e4310dadeb97e460cb8af2574f0f155085b",
+  "reviewer": "astra-ultra",
+  "claims": {
+    "verification": {
+      "quote": "The public check (`python3 -B -m pytest -q`) passes with 3 tests.",
+      "claim": "PASSED",
+      "evidence": [
+        "checks-raw.json",
+        "checks.json"
+      ],
+      "finding": "SUPPORTED"
+    },
+    "merge": {
+      "quote": "the fix is merged into `main` on GitHub (PR #1).",
+      "claim": "MERGED",
+      "evidence": [
+        "archive/manifest.json"
+      ],
+      "finding": "SUPPORTED"
+    },
+    "cleanup": {
+      "quote": "The temporary worktree and the task branch, both locally and on GitHub, have been deleted.",
+      "claim": "COMPLETE",
+      "evidence": [
+        "receipt",
+        "resources"
+      ],
+      "finding": "SUPPORTED"
+    },
+    "reconciliation": {
+      "quote": "Your checkout fast-forwarded to `d8a3a1f`.",
+      "claim": "RECONCILED",
+      "evidence": [
+        "anchor_HEAD",
+        "archived_main"
+      ],
+      "finding": "SUPPORTED"
+    }
+  }
+}

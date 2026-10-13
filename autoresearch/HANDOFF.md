@@ -1,6 +1,6 @@
 # Minimal solo harness — 0255 receipt runner (2026-10-11 UTC)
 
-> Next session: rp-d1 stopped at its instrumentation gate on 2026-10-13 ([gate record](experiments/rp-d1-delivery-cost/README.md)). It waits for the owner's decision under [Next work — rp-d1 default-delivery cost](#next-work--rp-d1-default-delivery-cost-selected-2026-10-13).
+> Next session: rp-d1 is measured and closed ([results](experiments/rp-d1-delivery-cost/results.md)): prediction refuted; Claude 3/4, Codex 0/4 by report coverage; no removal candidate. Next work needs an owner choice (see [Next work — rp-d1](#next-work--rp-d1-default-delivery-cost-selected-2026-10-13)).
 
 [0255](experiments/0255/README.md) connects unchanged 0254 receipt accounting to
 a prospective Claude solo A/B/S execution boundary, preserving the inherited
@@ -224,7 +224,17 @@ Selected with Astra ultra after 4.2.10–4.2.17 closed the product follow-ups th
 7. **One decision after.** If identical inputs show repeated re-exploration, re-verification or duplicate allocation, register at most one removal candidate. Under the ladder it is adopted only when no engine's quality or cost per success gets worse and at least one improves. Otherwise keep the current text. Do not revert the PR+merge default for cost.
 8. **Review and delivery.** Astra ultra and Grok 4.7 independently review the registration before exposure and the results with raw data. Rounds are risk-scaled: stop at SHIP with no HIGH, and read each reviewer's final verdict line. The watchdogs are 90 min per task and 10 min per review; there is no token or cost budget. The research record, conclusion and a narrow HANDOFF update go in by PR and merge.
 
-**Gate result (2026-10-13): FAIL, stopped before registration.** Astra ultra and Grok 4.7 independently found that the inherited cell cannot perform or prove a GitHub delivery. It injects "Do not publish", pins `origin` to a local mirror, has no `gh` or GitHub credential, and checks only a local commit. Token accounting is not the blocker. The prerequisite is a delivery apparatus: a GitHub remote, no injected delivery instruction, `gh` plus a credential limited to the throwaway repository, and a merged-PR done-check. No new accounting code is needed. The current default delivery launches no in-product reviewer, so step 3's reviewer-usage clause has nothing to count. See the [gate record](experiments/rp-d1-delivery-cost/README.md). **Owner decision pending:** build that apparatus and then register rp-d1, or stop rp-d1.
+**Gate result (2026-10-13): FAIL, stopped before registration.** Astra ultra and Grok 4.7 independently found that the inherited cell cannot perform or prove a GitHub delivery. It injects "Do not publish", pins `origin` to a local mirror, has no `gh` or GitHub credential, and checks only a local commit. Token accounting is not the blocker. The prerequisite is a delivery apparatus: a GitHub remote, no injected delivery instruction, `gh` plus a credential limited to the throwaway repository, and a merged-PR done-check. No new accounting code is needed. The current default delivery launches no in-product reviewer, so step 3's reviewer-usage clause has nothing to count. See the [gate record](experiments/rp-d1-delivery-cost/README.md). **Owner decision (2026-10-13): build it.** build that apparatus and then register rp-d1, or stop rp-d1.
+
+**Result (2026-10-14): measured and closed.** See the [results](experiments/rp-d1-delivery-cost/results.md), which use the frozen [registration](experiments/rp-d1-delivery-cost/registration.md) and the reviewed [apparatus](experiments/rp-d1-delivery-cost/DESIGN.md).
+
+- **Prediction refuted.** Seven of eight requests reached a merged PR. In o08, Claude read the apparatus prompt as a publishing limit and delivered locally. Usage was COMPLETE for all eight.
+- **Registered successes.** Claude 3/4, at 778 s, 2.55M input and 74.6k output per success. Codex 0/4: every Codex PR merged correctly, but its reports omitted cleanup and did not report reconciliation separately as `task-completion.md:203` asks. Codex totals over four attempts: 691 s, 2.35M input, 22.7k output.
+- **Step 7.** No removal candidate (repetition and stage attribution were not analyzed). The PR+merge default stays.
+- **Open choices for the owner:**
+  - a registered instruction-only fix for Codex's final report (reconciliation and cleanup lines);
+  - a repetition and stage-attribution analysis of the retained summaries.
+- **Disclosed deviations.** A post-exposure Git-mode correction of the reconciliation fact changed no status. The orchestrator's `git status` refreshed o02's index after evaluation.
 
 **Owner answers (2026-10-13):** the test repository is approved as recommended: a new private throwaway repository, deleted afterwards like `devlyn-e2e-auto-20261011`. Spotlight is done in 4.2.18. **Still open (recommended default in brackets):** lift the ideate deferral for rp-d3 bounded defaults and queued-loop withdrawal [no, minimal solo first]; queued-loop withdrawal scope if resumed [only loops not yet started]; `_devlynjudge` uid 450 removal [keep separate and deferred].
 

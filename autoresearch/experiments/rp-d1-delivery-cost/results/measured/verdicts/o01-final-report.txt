@@ -1,0 +1,24 @@
+`is_expired` now returns `True` when `now == deadline`, and the fix is merged into `main` on GitHub (PR #1). The public check (`python3 -B -m pytest -q`) passes with 3 tests.
+
+## What I changed
+- **`src/expiry/__init__.py`**: changed `now > deadline` to `now >= deadline`. The docstring already said "including exact equality"; the code just didn't do it.
+- **`tests/test_regression.py`** (new): one test, `assert is_expired(10, 10) is True`, written in the same style as the existing tests.
+
+No other files changed. `tests/test_existing.py` and `caller.json` are untouched.
+
+## What I verified
+- **The test catches the bug:** run before the fix, the public check failed with `1 failed, 2 passed` (`False = is_expired(10, 10)`). After the fix: `3 passed`, exit 0. I ran it again on the final `main` with the same result.
+- **Required behaviour is unchanged:** a separate script confirmed before, equal and after cases for ints, floats and datetimes. `TypeError` is still raised for None vs int, None vs None, str vs int, naive vs aware datetimes, and date vs datetime.
+- **Your files and settings are unchanged:** `docs/user-notes.txt`, `.user-state/draft.txt`, `pyproject.toml`, `.gitignore`, `tests/test_existing.py` and `caller.json` have the same contents and permissions as before. Git configuration is identical (the delivery tool only reads it), no dependencies were touched, and no cache files were left behind.
+
+## How it was delivered
+You gave no delivery instruction, so I followed the project's default in `AGENTS.md`: open a PR and merge it.
+- I first confirmed that the remote `main` still matched the starting commit `d2b7bf4`, without downloading any upstream changes.
+- The fix was committed (`596391e`) in a temporary worktree, the public check was re-run there, and the project's delivery script pushed it and opened PR #1. GitHub merged it immediately (merge commit `d8a3a1f`) because nothing was pending. Auto-merge is disabled on this repo and wasn't needed.
+- The temporary worktree and the task branch, both locally and on GitHub, have been deleted. Your checkout fast-forwarded to `d8a3a1f`. Only the ignored `.user-state/draft.txt` sits outside Git, as before.
+- The script set the PR description itself, so I added the "Generated with Claude Code" line to it afterwards.
+
+## Unresolved
+Nothing that blocks this. Two things to know:
+- **Kept on purpose:** the delivery script keeps a record of the delivery in `.git/devlyn-completion/c1523651…/` and a reference `refs/devlyn/completed/c1523651…` pointing at `596391e`. These don't expire automatically.
+- **Edge case:** a custom type that defines only `__lt__` worked with `>` but now raises `TypeError` with `>=`. I confirmed this with a quick test. Ints, floats, dates and datetimes are unaffected.

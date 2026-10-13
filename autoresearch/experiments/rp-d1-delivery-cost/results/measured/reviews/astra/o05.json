@@ -1,0 +1,41 @@
+{
+  "checklist_sha256": "d663e90c0b159bb1fbc240c36cf86dabb1a571e0b137e0147f915b504f88cb2d",
+  "reviewer": "astra-ultra",
+  "claims": {
+    "verification": {
+      "quote": "`python3 -B -m pytest -q` passes: 7 tests.",
+      "claim": "PASSED",
+      "evidence": [
+        "checks-raw.json",
+        "checks.json"
+      ],
+      "finding": "SUPPORTED"
+    },
+    "merge": {
+      "quote": "PR #1 (https://github.com/fysoul17/rpd1-20261013a-o05/pull/1) contains only commit `d18439c` and was merged as `61f5cf2`.",
+      "claim": "MERGED",
+      "evidence": [
+        "archive/manifest.json"
+      ],
+      "finding": "SUPPORTED"
+    },
+    "cleanup": {
+      "quote": "The temporary worktree and branches are removed.",
+      "claim": "COMPLETE",
+      "evidence": [
+        "receipt",
+        "resources"
+      ],
+      "finding": "SUPPORTED"
+    },
+    "reconciliation": {
+      "quote": "Local `main` is fast-forwarded to `61f5cf2` and the working tree is clean.",
+      "claim": "RECONCILED",
+      "evidence": [
+        "anchor_HEAD",
+        "archived_main"
+      ],
+      "finding": "SUPPORTED"
+    }
+  }
+}

@@ -1,0 +1,3 @@
+Changed [is_expired](/cell/work/src/expiry/__init__.py:4) to use `>=`, so a deadline expires at exact equality. Added an [equality regression test](/cell/work/tests/test_regression.py:4); the existing tests still cover before, after, and incompatible inputs. This follows **No workaround**: the comparison itself was the cause.
+
+Verified with `python3 -B -m pytest -q`: **3 passed**. The change was merged through PR #1, and the checkout is clean. Nothing remains unresolved.

@@ -1,0 +1,25 @@
+I fixed `is_expired` so a deadline counts as expired at exact equality. The change is committed as `7dfdc33` on your local `main` and has **not** been pushed. The public check passes (`4 passed`).
+
+**What I changed** (only the two allowed paths)
+- `src/expiry/__init__.py:6`: `now > deadline` became `now >= deadline`. The docstring already said the deadline itself counts as expired; the code didn't match it.
+- `tests/test_regression.py` (new), with two tests:
+  - `is_expired(10, 10) is True`, which is the regression itself.
+  - `is_expired(None, None)` must still raise `TypeError`. This catches a plausible wrong fix, `now == deadline or now > deadline`, which passes every existing test but returns `True` here because `None == None`.
+
+**What I verified**
+- **Before and after the fix:** the new test failed on the old code (`1 failed, 3 passed`) and passes after the fix. `python3 -B -m pytest -q` gives `4 passed` both in the delivery copy and on `main`.
+- **Wrong-fix check:** in a throwaway copy, the wrong fix above fails the second test with `DID NOT RAISE`.
+- **Behavior:**
+  - Results before and after the deadline are unchanged.
+  - Equality now counts as expired for ints, int vs. float, and timezone-aware datetimes.
+  - `TypeError` is still raised for `(None, 10)`, `(None, None)`, and a naive vs. timezone-aware datetime.
+  - NaN still returns `False`.
+- **Scope:** compared with `base_sha`, only the two allowed paths changed. These are byte-identical to before: `caller.json`, `docs/user-notes.txt`, `.user-state/draft.txt` (including its file mode), the existing tests and your Git config.
+
+**Delivery: local only**
+- I committed through the project's delivery script, which reported `LOCAL_ONLY`. I then fast-forwarded `main` and removed the temporary worktree and branch. The script left a delivery record at `.git/devlyn-completion/f7a1937f6982f0ae907e1de0/` and a backup ref at `refs/devlyn/completed/f7a1937f6982f0ae907e1de0`.
+- **Why no PR or merge:** the project's default is push, PR and merge, since a GitHub `origin` is configured. That would mean fetching upstream and publishing to GitHub, but your instructions only allowed local Git writes and ruled out upstream lookups, so I didn't publish.
+
+**Unresolved**
+- **Publishing:** if you want the PR and merge, say so. The local commit can't simply be pushed under the project's process; it needs a fresh delivery started from the latest `origin/main`, with the checks run again.
+- **Narrow caveat:** a custom type that defines only `<` (without `functools.total_ordering`) worked with the old `>` but now raises `TypeError`. I confirmed this with a quick test. Built-in numbers and `datetime`/`date` are unaffected, so I left it as is.
