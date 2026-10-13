@@ -1,5 +1,5 @@
 """Synthetic measured slots only; no model, GitHub or measured exposure."""
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 from copy import deepcopy
 import importlib.util
 import io
@@ -45,7 +45,8 @@ class SummaryTests(unittest.TestCase):
                 reconciliation={'anchor_HEAD': 'sha', 'archived_main': 'sha'}))
             g.write(out / 'report-checklist.json', checklist)
             for name, path in self.reviews.items():
-                review = dict(reviewer=name, checklist_sha256=g.review_report(checklist)['checklist_sha256'],
+                review = dict(reviewer={'astra': 'astra-ultra', 'grok': 'grok-4.7'}[name],
+                    checklist_sha256=g.review_report(checklist)['checklist_sha256'],
                     claims={category: dict(quote=checklist['report'], claim=checklist['facts'][category],
                         finding='SUPPORTED', evidence=list(checklist['evidence'][category]))
                         for category in g.CATEGORIES})
@@ -102,8 +103,8 @@ class SummaryTests(unittest.TestCase):
         self.assertEqual(summary['slots'][0]['failure'], 'report')
         self.assertEqual(summary['slots'][1]['failure'], 'product')
 
-    def test_unknown_usage_nulls_engine_tokens_only(self):
-        for usage in ('UNKNOWN', 'PARTIAL'):
+    def test_unknown_usage_nulls_all_per_success_costs_but_keeps_wall_total(self):
+        for usage in ('UNKNOWN', 'PARTIAL', None):
             with self.subTest(usage=usage):
                 self.records[1]['usage'] = usage
                 # Even numerical subtotals are unusable when usage is UNKNOWN.
@@ -111,8 +112,9 @@ class SummaryTests(unittest.TestCase):
                 engine = summary['engines']['codex']
                 self.assertEqual(engine['completeness'], 'UNKNOWN')
                 self.assertEqual(engine['totals'], dict(owner_seconds=45.0, input_tokens=None, output_tokens=None))
-                self.assertEqual(engine['cost_per_success'], dict(owner_seconds=11.25, input_tokens=None, output_tokens=None))
+                self.assertEqual(engine['cost_per_success'], dict(owner_seconds=None, input_tokens=None, output_tokens=None))
                 self.assertEqual(summary['engines']['claude']['completeness'], 'COMPLETE')
+                self.assertEqual(summary['engines']['claude']['cost_per_success']['owner_seconds'], 11.25)
 
     def test_zero_successes_have_null_cost_per_success(self):
         for row in self.records:
@@ -164,11 +166,49 @@ class SummaryTests(unittest.TestCase):
         path.write_text('{')
         self.assertEqual(self.summary()['slots'][0]['status'], 'PENDING')
 
-    def test_pass_does_not_require_reviews(self):
+    def test_reviewer_identity_mismatch_is_pending(self):
+        for name, wrong_identity in (('astra', 'grok-4.7'), ('grok', 'astra-ultra')):
+            path = self.reviews[name] / 'o01.json'
+            original = g.read(path)
+            for identity in (wrong_identity, name, '', None):
+                with self.subTest(reviewer=name, identity=identity):
+                    g.write(path, dict(original, reviewer=identity))
+                    slot = self.summary()['slots'][0]
+                    self.assertEqual(slot['status'], 'PENDING')
+                    self.assertEqual(slot['reviews'][name]['status'], 'PENDING')
+            g.write(path, original)
+
+    def test_cli_requires_exactly_two_named_distinct_review_directories(self):
+        astra, grok = (str(self.reviews[name]) for name in ('astra', 'grok'))
+        alias = self.root / 'astra-alias'
+        alias.symlink_to(self.reviews['astra'], target_is_directory=True)
+        for reviews in ([], ['astra=' + astra], ['astra=' + astra, 'astra=' + grok],
+                        ['astra=' + astra, 'other=' + grok],
+                        ['astra=' + astra, 'grok=' + grok, 'astra=' + astra],
+                        ['astra=' + astra, 'grok=' + astra],
+                        ['astra=' + astra, 'grok=' + astra + '/.'],
+                        ['astra=' + astra, 'grok=' + str(alias)]):
+            with self.subTest(reviews=reviews), redirect_stderr(io.StringIO()), redirect_stdout(io.StringIO()):
+                with self.assertRaises(SystemExit) as raised:
+                    s.main([str(self.output), *(arg for value in reviews for arg in ('--review', value))])
+                self.assertEqual(raised.exception.code, 2)
+                self.assertFalse((self.output / 'summary.json').exists())
+
+    def test_pass_requires_both_bound_reviews(self):
         self.records[0]['status'] = 'PASS'
+        self.assertEqual(self.summary()['slots'][0]['status'], 'SUCCESS')
+        self.fail_review()
+        slot = self.summary()['slots'][0]
+        self.assertEqual((slot['status'], slot['failure']), ('FAILED', 'report'))
+        self.fail_review(finding='SUPPORTED')
+        path = self.reviews['grok'] / 'o01.json'
+        review = g.read(path)
+        g.write(path, dict(review, checklist_sha256='stale'))
+        self.assertEqual(self.summary()['slots'][0]['status'], 'PENDING')
+        g.write(path, review)
         for path in self.reviews.values():
             (path / 'o01.json').unlink()
-        self.assertEqual(self.summary()['slots'][0]['status'], 'SUCCESS')
+            self.assertEqual(self.summary()['slots'][0]['status'], 'PENDING')
 
     def test_stop_and_not_run_keep_only_dispatched_cost(self):
         self.records[2]['status'] = 'STOP'
@@ -187,6 +227,7 @@ class SummaryTests(unittest.TestCase):
         codex = self.summary()['engines']['codex']
         self.assertIsNone(codex['totals']['input_tokens'])
         self.assertEqual(codex['totals']['owner_seconds'], 12.5)
+        self.assertEqual(codex['cost_per_success'], dict(owner_seconds=None, input_tokens=None, output_tokens=None))
 
     def test_undispatched_stop_and_unknown_scanner_status(self):
         for row in self.records:
@@ -214,7 +255,7 @@ class SummaryTests(unittest.TestCase):
         self.assertFalse((self.output / 'summary.json').exists())
         g.write(self.reviews['grok'] / 'o01.json', template)
         self.assertEqual(self.summary()['slots'][0]['status'], 'PENDING')
-        template['reviewer'] = 'Grok 4.7'
+        template['reviewer'] = 'grok-4.7'
         for category, claim in template['claims'].items():
             self.assertEqual(claim['claim'], checklist['facts'][category])
             self.assertEqual(claim['evidence'], list(checklist['evidence'][category]))
@@ -225,6 +266,7 @@ class SummaryTests(unittest.TestCase):
 
     def test_wall_prefers_rp_verdict_and_never_imputes_missing_value(self):
         self.records[0]['owner_seconds'] = 12.5
+        self.records[0].pop('inherited_verdict_sha256')
         self.assertEqual(self.summary()['engines']['claude']['totals']['owner_seconds'], 55.0)
         self.records[0].pop('owner_seconds')
         inherited = self.output / 'verdict-o01.json'
@@ -236,10 +278,27 @@ class SummaryTests(unittest.TestCase):
         self.assertIsNone(engine['cost_per_success']['owner_seconds'])
         self.assertEqual(engine['totals']['input_tokens'], 1800)
 
-    def test_changed_inherited_verdict_is_rejected(self):
-        g.write(self.output / 'verdict-o01.json', dict(owner_seconds=999))
-        with self.assertRaisesRegex(g.EvidenceError, 'binding mismatch'):
-            self.summary()
+    def test_inherited_wall_requires_present_matching_hash(self):
+        for binding in (None, '', 'stale'):
+            with self.subTest(binding=binding):
+                self.records[0]['inherited_verdict_sha256'] = binding
+                if binding is None:
+                    self.records[0].pop('inherited_verdict_sha256')
+                summary = self.summary()
+                engine = summary['engines']['claude']
+                self.assertIsNone(summary['slots'][0]['owner_seconds'])
+                self.assertEqual(engine['wall_completeness'], 'UNKNOWN')
+                self.assertIsNone(engine['totals']['owner_seconds'])
+                self.assertIsNone(engine['cost_per_success']['owner_seconds'])
+                self.assertEqual(engine['totals']['input_tokens'], 1800)
+                self.assertEqual(summary['engines']['codex']['totals']['owner_seconds'], 45.0)
+
+    def test_changed_or_missing_inherited_verdict_has_unknown_wall(self):
+        inherited = self.output / 'verdict-o01.json'
+        g.write(inherited, dict(owner_seconds=999))
+        self.assertIsNone(self.summary()['engines']['claude']['totals']['owner_seconds'])
+        inherited.unlink()
+        self.assertIsNone(self.summary()['engines']['claude']['totals']['owner_seconds'])
 
     def test_missing_checklist_is_pending(self):
         (self.output / 'o01/report-checklist.json').unlink()

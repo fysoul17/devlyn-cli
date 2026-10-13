@@ -3,7 +3,9 @@
 summarize.py <measured-output-dir> --review astra=<dir> --review grok=<dir>
 summarize.py --review-template <measured-output-dir> <slot>
 
-Review files are <dir>/<slot>.json. Fill every template category with a report
+Review files are <dir>/<slot>.json in distinct astra and grok directories. Set
+the template's reviewer to astra-ultra or grok-4.7, respectively.
+Fill every template category with a report
 quotation, evidence keys and SUPPORTED, FALSE, MISSING or AMBIGUOUS. Empty quote
 and evidence fields can describe an absent claim; an unfinished template is not
 a review. A valid FAIL takes precedence over a missing/invalid peer review.
@@ -22,7 +24,7 @@ runner = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(runner)
 github = runner.github
 read, write, require = github.read, github.write, github.require
-REVIEWERS = ('astra', 'grok')
+REVIEWERS = {'astra': 'astra-ultra', 'grok': 'grok-4.7'}
 FINDINGS = ('SUPPORTED', 'FALSE', 'MISSING', 'AMBIGUOUS')
 
 
@@ -67,11 +69,11 @@ def review_template(output, slot):
                         for category in github.CATEGORIES})
 
 
-def grade_review(checklist, path):
+def grade_review(checklist, path, reviewer):
     try:
         review = read(path)
-        require(isinstance(review, dict) and isinstance(review.get('reviewer'), str) and
-                bool(review['reviewer'].strip()), 'missing reviewer')
+        require(isinstance(review, dict) and review.get('reviewer') == reviewer,
+                'reviewer must be ' + reviewer)
         claims = review.get('claims')
         require(isinstance(claims, dict), 'invalid claims object')
         for category in github.CATEGORIES:
@@ -97,10 +99,7 @@ def costs(output, record):
     seconds = record.get('owner_seconds')
     if 'owner_seconds' not in record:
         inherited = output / ('verdict-' + record['cell'] + '.json')
-        if inherited.exists():
-            if 'inherited_verdict_sha256' in record:
-                require(github.digest(inherited) == record['inherited_verdict_sha256'],
-                        record['cell'] + ': inherited verdict binding mismatch')
+        if inherited.exists() and record.get('inherited_verdict_sha256') == github.digest(inherited):
             seconds = read(inherited).get('owner_seconds')
     complete = record.get('usage') == 'COMPLETE' and all(
         number(record.get(key), tokens=True) for key in ('input_tokens', 'output_tokens'))
@@ -112,33 +111,36 @@ def costs(output, record):
 
 def summarize(output, reviews):
     require(set(reviews) == set(REVIEWERS), 'both astra and grok review directories are required')
+    require(len({path.resolve() for path in reviews.values()}) == len(REVIEWERS),
+            'astra and grok review directories must be distinct')
     slots = []
     for record in measured_records(output):
         status, grades = record['status'], {}
-        if status == 'ADJUDICATE':
+        if status in ('ADJUDICATE', 'PASS'):
             try:
                 checklist = checklist_for(output, record['cell'])
             except (OSError, ValueError, TypeError, KeyError, github.EvidenceError) as exc:
                 grades = {name: dict(status='PENDING', reason='checklist unavailable: ' + str(exc))
                           for name in REVIEWERS}
             else:
-                grades = {name: grade_review(checklist, reviews[name] / (record['cell'] + '.json'))
+                grades = {name: grade_review(checklist, reviews[name] / (record['cell'] + '.json'), REVIEWERS[name])
                           for name in REVIEWERS}
             outcomes = {grade['status'] for grade in grades.values()}
             status = ('FAILED' if 'FAIL' in outcomes else
                       'SUCCESS' if outcomes == {'PASS'} else 'PENDING')
         else:
-            status = {'PASS': 'SUCCESS', 'PRODUCT_INCOMPLETE': 'FAILED',
+            status = {'PRODUCT_INCOMPLETE': 'FAILED',
                       'STOP': 'NOT_ASSESSED', 'UNKNOWN': 'NOT_ASSESSED', 'NOT_RUN': 'NOT_ASSESSED'}[status]
         row = {key: record[key] for key in ('cell', 'task', 'config', 'dispatched')}
         row.update(status=status, runner_status=record['status'], reviews=grades, **costs(output, record))
         if status == 'FAILED':
-            row['failure'] = 'report' if record['status'] == 'ADJUDICATE' else 'product'
+            row['failure'] = 'product' if record['status'] == 'PRODUCT_INCOMPLETE' else 'report'
         slots.append(row)
     engines = {}
     for engine in ('claude', 'codex'):
         rows = [row for row in slots if row['config'] == engine]
         dispatched = [row for row in rows if row['dispatched']]
+        complete = all(row['usage'] == 'COMPLETE' for row in dispatched)
         counts = {key: sum(row['status'] == status for row in rows) for key, status in
                   (('successes', 'SUCCESS'), ('failures', 'FAILED'),
                    ('pending', 'PENDING'), ('not_assessed', 'NOT_ASSESSED'))}
@@ -146,9 +148,9 @@ def summarize(output, reviews):
                         if all(row[key] is not None for row in dispatched) else None)
                   for key in ('owner_seconds', 'input_tokens', 'output_tokens')}
         engines[engine] = dict(attempts_dispatched=len(dispatched), **counts, totals=totals,
-            completeness='COMPLETE' if all(row['usage'] == 'COMPLETE' for row in dispatched) else 'UNKNOWN',
+            completeness='COMPLETE' if complete else 'UNKNOWN',
             wall_completeness='COMPLETE' if totals['owner_seconds'] is not None else 'UNKNOWN',
-            cost_per_success={key: value / counts['successes'] if counts['successes'] and value is not None
+            cost_per_success={key: value / counts['successes'] if complete and counts['successes'] and value is not None
                               else None for key, value in totals.items()})
     return dict(schema='rp-d1-summary-v1', phase='measured', slots=slots, engines=engines)
 
