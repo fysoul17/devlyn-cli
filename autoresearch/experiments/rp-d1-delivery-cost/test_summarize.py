@@ -304,6 +304,150 @@ class SummaryTests(unittest.TestCase):
         (self.output / 'o01/report-checklist.json').unlink()
         self.assertEqual(self.summary()['slots'][0]['status'], 'PENDING')
 
+    def corrected(self):
+        dest = self.root / 'corrected'
+        dest.mkdir()
+        for record in self.records:
+            slot = record['cell']
+            (dest / slot).mkdir()
+            checklist = g.read(self.output / slot / 'report-checklist.json')
+            (self.output / slot / 'final.txt').write_text(checklist['report'])
+            (self.output / 'archives' / slot).mkdir(parents=True)
+            g.write(self.output / 'archives' / slot / 'manifest.json', {})
+            checklist['facts']['reconciliation'] = 'PENDING'
+            g.write(dest / slot / 'report-checklist.json', checklist)
+            g.write(dest / slot / 'github-delivery.json', dict(status='ADJUDICATE', checklist=checklist))
+        self.seal_corrections(dest)
+        return dest
+
+    def seal_corrections(self, dest):
+        census = {str(path.relative_to(self.output)): dict(type='file', **g.record_file(path))
+                  for path in self.output.rglob('*') if path.is_file()}
+        slots = []
+        for record in self.records:
+            slot = record['cell']
+            delivery = g.read(dest / slot / 'github-delivery.json')
+            slots.append(dict(cell=slot,
+                original=dict(status=record['status'], facts=g.read(self.output / slot / 'report-checklist.json')['facts']),
+                corrected=dict(status=delivery['status'], facts=delivery['checklist']['facts']),
+                input_sha256={name: entry['sha256'] for name, entry in census.items()
+                              if name.startswith((slot + '/', 'archives/' + slot + '/')) or
+                              name in ('rp-schedule.json', f'verdict-{slot}.json')}))
+        g.write(dest / 'reevaluation.json', dict(schema='rp-d1-reevaluation-v1', status='COMPLETE',
+            measured_output=str(self.output), raw_census=dict(before=census, after=census, unchanged=True), slots=slots))
+
+    def bind_corrected_reviews(self, dest):
+        for record in self.records:
+            slot = record['cell']
+            checklist = g.read(dest / slot / 'report-checklist.json')
+            for directory in self.reviews.values():
+                path = directory / (slot + '.json')
+                review = g.read(path)
+                review['checklist_sha256'] = g.review_report(checklist)['checklist_sha256']
+                review['claims']['reconciliation']['claim'] = checklist['facts']['reconciliation']
+                g.write(path, review)
+
+    def test_corrected_checklists_require_new_bound_reviews_and_preserve_original_status(self):
+        dest = self.corrected()
+        self.records[0]['status'] = 'PRODUCT_INCOMPLETE'
+        self.flush()
+        self.seal_corrections(dest)
+        corrected = s.summarize(self.output, self.reviews, dest)
+        self.assertTrue(all(row['status'] == 'PENDING' for row in corrected['slots']))
+        self.bind_corrected_reviews(dest)
+        corrected = s.summarize(self.output, self.reviews, dest)
+        row = corrected['slots'][0]
+        self.assertEqual((row['runner_status'], row['corrected_status'], row['status']),
+                         ('PRODUCT_INCOMPLETE', 'ADJUDICATE', 'SUCCESS'))
+        self.assertEqual(corrected['engines']['claude']['totals']['input_tokens'], 1800)
+        self.assertEqual(self.summary()['slots'][0]['status'], 'FAILED')
+        self.assertNotIn('corrected_status', self.summary()['slots'][0])
+
+    def test_corrected_product_failure_cannot_pass_report_review(self):
+        dest = self.corrected()
+        self.bind_corrected_reviews(dest)
+        path = dest / 'o01/github-delivery.json'
+        delivery = g.read(path)
+        delivery['status'] = 'PRODUCT_INCOMPLETE'
+        g.write(path, delivery)
+        self.seal_corrections(dest)
+        row = s.summarize(self.output, self.reviews, dest)['slots'][0]
+        self.assertEqual((row['status'], row['failure'], row['corrected_status']),
+                         ('FAILED', 'product', 'PRODUCT_INCOMPLETE'))
+
+    def test_missing_or_inconsistent_correction_never_falls_back_to_raw(self):
+        dest = self.corrected()
+        path = dest / 'o01/github-delivery.json'
+        original = g.read(path)
+        invalid = [dict(original, status='PASS'), dict(original, checklist={}), None]
+        for delivery in invalid:
+            with self.subTest(delivery=delivery):
+                if delivery is None:
+                    path.unlink()
+                else:
+                    g.write(path, delivery)
+                row = s.summarize(self.output, self.reviews, dest)['slots'][0]
+                self.assertEqual((row['status'], row['corrected_status']), ('PENDING', 'UNAVAILABLE'))
+
+    def test_corrected_cli_template_and_summary_leave_raw_output_unchanged(self):
+        dest = self.corrected()
+        before = {str(path.relative_to(self.output)): path.read_bytes()
+                  for path in self.output.rglob('*') if path.is_file()}
+        stdout = io.StringIO()
+        with redirect_stdout(stdout):
+            self.assertEqual(s.main([str(self.output), 'o01', '--review-template', '--checklists', str(dest)]), 0)
+        template = json.loads(stdout.getvalue())
+        checklist = g.read(dest / 'o01/report-checklist.json')
+        self.assertEqual(template['checklist_sha256'], g.review_report(checklist)['checklist_sha256'])
+        self.assertEqual(template['claims']['reconciliation']['claim'], 'PENDING')
+        self.bind_corrected_reviews(dest)
+        stdout = io.StringIO()
+        with redirect_stdout(stdout):
+            self.assertEqual(s.main([str(self.output), '--checklists', str(dest),
+                '--review', 'astra=' + str(self.reviews['astra']),
+                '--review', 'grok=' + str(self.reviews['grok'])]), 0)
+        self.assertIn('| o01 | ADJUDICATE | ADJUDICATE | SUCCESS |', stdout.getvalue())
+        self.assertTrue((dest / 'summary.json').exists())
+        self.assertEqual(before, {str(path.relative_to(self.output)): path.read_bytes()
+                                 for path in self.output.rglob('*') if path.is_file()})
+
+    def test_corrected_cli_rejects_output_overlap(self):
+        for dest in (self.output, self.output / 'corrected', self.root):
+            with self.subTest(dest=dest), redirect_stderr(io.StringIO()):
+                with self.assertRaises(SystemExit) as raised:
+                    s.main([str(self.output), 'o01', '--review-template', '--checklists', str(dest)])
+                self.assertEqual(raised.exception.code, 2)
+
+    def test_failed_foreign_or_unbound_correction_is_rejected_for_grading_and_template(self):
+        dest = self.corrected()
+        self.bind_corrected_reviews(dest)
+        path = dest / 'reevaluation.json'
+        original = g.read(path)
+        invalid = [dict(original, status='FAILED'), dict(original, measured_output=str(self.root / 'other')),
+                   dict(original, slots=[]), dict(original, raw_census=dict(original['raw_census'], unchanged=False))]
+        for field, value in (('input_sha256', {}), ('original', {}), ('corrected', {})):
+            changed = deepcopy(original)
+            changed['slots'][0][field] = value
+            invalid.append(changed)
+        changed = deepcopy(original)
+        changed['raw_census']['after'].pop('o01/final.txt')
+        invalid.append(changed)
+        for receipt in invalid:
+            with self.subTest(receipt=receipt):
+                g.write(path, receipt)
+                row = s.summarize(self.output, self.reviews, dest)['slots'][0]
+                self.assertEqual((row['status'], row['corrected_status']), ('PENDING', 'UNAVAILABLE'))
+                with self.assertRaises(g.EvidenceError):
+                    s.review_template(self.output, 'o01', dest)
+
+    def test_stale_raw_input_rejects_otherwise_bound_corrected_reviews(self):
+        dest = self.corrected()
+        self.bind_corrected_reviews(dest)
+        (self.output / 'o01/final.txt').write_text('changed since reevaluation')
+        self.assertEqual(s.summarize(self.output, self.reviews, dest)['slots'][0]['status'], 'PENDING')
+        with self.assertRaisesRegex(g.EvidenceError, 'correction input changed'):
+            s.review_template(self.output, 'o01', dest)
+
     def test_smoke_and_incomplete_or_inconsistent_schedule_rejected(self):
         schedule = g.read(self.output / 'rp-schedule.json')
         for changed in (dict(schedule, phase='smoke'), dict(schedule, slots=schedule['slots'][:-1]),

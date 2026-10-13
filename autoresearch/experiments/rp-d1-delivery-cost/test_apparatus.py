@@ -99,7 +99,7 @@ class TempCase(unittest.TestCase):
         return dict(github_auth=str(private), output=str(output), auth=str(self.root / 'model-auth'))
 
 
-class DeliveryTests(TempCase):
+class DeliveryFixture(TempCase):
     def setUp(self):
         super().setUp()
         self.out = self.root / 'cell-out'
@@ -186,6 +186,8 @@ class DeliveryTests(TempCase):
         (registration / 'gitdir').write_text('/cell/task/.git\n')
         (self.work / '.git').write_text('gitdir: /cell/work/.git/worktrees/' + registration.name + '\n')
 
+
+class DeliveryTests(DeliveryFixture):
     def test_different_commit_same_tree_and_truthful_pending_report_pass(self):
         before = packet.tree(self.out)
         self.freeze_archive()
@@ -265,6 +267,22 @@ class DeliveryTests(TempCase):
         checked = self.check()
         self.assertEqual(checked['failures'], [])
         self.assertTrue(self.check(self.review(checked))['passed'])
+
+    def test_reconciliation_normalizes_installer_mode_but_preserves_content_and_head(self):
+        g.git(self.anchor, 'merge', '--ff-only', self.merge)
+        marker = self.anchor / '.devlyn-install.json'
+        marker.write_text('{"version": "4.2.8"}\n')
+        marker.chmod(0o600)
+        submitted = self.out / 'snapshot/.devlyn-install.json'
+        submitted.write_bytes(marker.read_bytes())
+        submitted.chmod(0o644)
+        self.freeze_archive()
+        self.assertEqual(self.check()['checklist']['facts']['reconciliation'], 'RECONCILED')
+        marker.write_text('changed\n')
+        self.assertEqual(self.check()['checklist']['facts']['reconciliation'], 'PENDING')
+        marker.write_bytes(submitted.read_bytes())
+        g.git(self.anchor, 'reset', '--soft', self.sha)
+        self.assertEqual(self.check()['checklist']['facts']['reconciliation'], 'PENDING')
 
     def test_tracked_file_deletion_and_executable_change_fail(self):
         self.freeze_archive()

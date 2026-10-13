@@ -359,7 +359,7 @@ def done_check(out, root, selection, locate, packet, review=None):
     main = observed['refs'].get('refs/heads/main')
     reconciled = (main is not None and git(anchor, 'rev-parse', 'HEAD') == main and
                   git(anchor, 'symbolic-ref', '--short', 'HEAD', ok=(0, 1)) == 'main' and
-                  all(anchor_files.get(n) == v for n, v in submitted_files.items()))
+                  all(git_mode(anchor_files.get(n)) == git_mode(v) for n, v in submitted_files.items()))
     facts['reconciliation'] = 'RECONCILED' if reconciled else 'PENDING'
     report = (out / 'final.txt').read_text()
     checklist = dict(schema='rp-d1-report-checklist-v1', report=report, report_sha256=digest(out / 'final.txt'),

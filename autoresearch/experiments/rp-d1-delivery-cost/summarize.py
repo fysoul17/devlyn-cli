@@ -3,6 +3,10 @@
 summarize.py <measured-output-dir> --review astra=<dir> --review grok=<dir>
 summarize.py --review-template <measured-output-dir> <slot>
 
+Both forms accept --checklists <reevaluation-dir>. Corrected delivery status and
+checklists are used together; summary.json is then written there, leaving raw
+output untouched. Original runner statuses and costs remain visible.
+
 Review files are <dir>/<slot>.json in distinct astra and grok directories. Set
 the template's reviewer to astra-ultra or grok-4.7, respectively.
 Fill every template category with a report
@@ -13,9 +17,11 @@ PENDING is counted separately. STOP/UNKNOWN and NOT_RUN are NOT_ASSESSED.
 Missing wall measurements produce null wall totals, never partial sums or zero.
 """
 import argparse
+import hashlib
 import importlib.util
 import json
 import math
+import os
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -60,9 +66,47 @@ def checklist_for(output, slot):
     return checklist
 
 
-def review_template(output, slot):
-    require(slot in {row['cell'] for row in measured_records(output)}, 'unregistered slot')
-    checklist = checklist_for(output, slot)
+def corrected_delivery(output, checklists, slot):
+    reevaluation = read(checklists / 'reevaluation.json')
+    census = reevaluation['raw_census']
+    require(reevaluation['schema'] == 'rp-d1-reevaluation-v1' and reevaluation['status'] == 'COMPLETE' and
+            Path(reevaluation['measured_output']).resolve() == output.resolve() and
+            census['unchanged'] is True and census['before'] == census['after'],
+            'correction is not a completed unchanged reevaluation of this output')
+    rows = [row for row in reevaluation['slots'] if row['cell'] == slot]
+    require(len(rows) == 1, 'correction must contain exactly one record for ' + slot)
+    row = rows[0]
+    expected = {name: entry['sha256'] for name, entry in census['before'].items()
+                if name.startswith((slot + '/', 'archives/' + slot + '/')) or
+                name in ('rp-schedule.json', f'verdict-{slot}.json')}
+    required = {slot + '/' + name for name in ('rp-verdict.json', 'report-checklist.json', 'final.txt')}
+    required.update(('rp-schedule.json', f'verdict-{slot}.json', f'archives/{slot}/manifest.json'))
+    require(required <= expected.keys() and row['input_sha256'] == expected, 'incomplete correction input hashes')
+    for name in expected:
+        relative = Path(name)
+        parent = github.safe_file(output, str(relative.parent)) if relative.parent != Path('.') else output
+        path = parent / relative.name
+        actual = (dict(type='symlink', sha256=hashlib.sha256(os.fsencode(path.readlink())).hexdigest())
+                  if path.is_symlink() else dict(type='file', **github.record_file(github.safe_file(output, name))))
+        require(actual == census['before'][name], 'correction input changed: ' + name)
+    checklist = checklist_for(checklists, slot)
+    delivery = read(checklists / slot / 'github-delivery.json')
+    require(delivery['status'] in ('ADJUDICATE', 'PRODUCT_INCOMPLETE') and
+            delivery['checklist'] == checklist, 'corrected delivery/checklist mismatch')
+    require(row['original'] == dict(status=read(output / slot / 'rp-verdict.json')['status'],
+                                   facts=checklist_for(output, slot)['facts']) and
+            row['corrected'] == dict(status=delivery['status'], facts=checklist['facts']),
+            'correction facts/status binding changed')
+    return delivery['status'], checklist
+
+
+def review_template(output, slot, checklists=None):
+    records = {row['cell']: row for row in measured_records(output)}
+    require(slot in records, 'unregistered slot')
+    if checklists is not None and records[slot]['status'] in ('ADJUDICATE', 'PRODUCT_INCOMPLETE'):
+        _, checklist = corrected_delivery(output, checklists, slot)
+    else:
+        checklist = checklist_for(output, slot)
     return dict(checklist_sha256=github.review_report(checklist)['checklist_sha256'], reviewer='',
                 claims={category: dict(quote='', claim=checklist['facts'][category],
                                        evidence=list(checklist['evidence'][category]), finding='')
@@ -109,22 +153,33 @@ def costs(output, record):
                 usage='COMPLETE' if complete else 'UNKNOWN')
 
 
-def summarize(output, reviews):
+def summarize(output, reviews, checklists=None):
     require(set(reviews) == set(REVIEWERS), 'both astra and grok review directories are required')
     require(len({path.resolve() for path in reviews.values()}) == len(REVIEWERS),
             'astra and grok review directories must be distinct')
     slots = []
     for record in measured_records(output):
         status, grades = record['status'], {}
-        if status in ('ADJUDICATE', 'PASS'):
+        checklist = None
+        if checklists is not None and status in ('ADJUDICATE', 'PRODUCT_INCOMPLETE'):
             try:
-                checklist = checklist_for(output, record['cell'])
+                status, checklist = corrected_delivery(output, checklists, record['cell'])
+            except (OSError, ValueError, TypeError, KeyError, github.EvidenceError) as exc:
+                status = 'UNAVAILABLE'
+                grades = {name: dict(status='PENDING', reason='correction unavailable: ' + str(exc))
+                          for name in REVIEWERS}
+        delivery_status = status
+        if grades or status in ('ADJUDICATE', 'PASS'):
+            try:
+                if not grades and checklist is None:
+                    checklist = checklist_for(output, record['cell'])
             except (OSError, ValueError, TypeError, KeyError, github.EvidenceError) as exc:
                 grades = {name: dict(status='PENDING', reason='checklist unavailable: ' + str(exc))
                           for name in REVIEWERS}
             else:
-                grades = {name: grade_review(checklist, reviews[name] / (record['cell'] + '.json'), REVIEWERS[name])
-                          for name in REVIEWERS}
+                if not grades:
+                    grades = {name: grade_review(checklist, reviews[name] / (record['cell'] + '.json'), REVIEWERS[name])
+                              for name in REVIEWERS}
             outcomes = {grade['status'] for grade in grades.values()}
             status = ('FAILED' if 'FAIL' in outcomes else
                       'SUCCESS' if outcomes == {'PASS'} else 'PENDING')
@@ -133,8 +188,10 @@ def summarize(output, reviews):
                       'STOP': 'NOT_ASSESSED', 'UNKNOWN': 'NOT_ASSESSED', 'NOT_RUN': 'NOT_ASSESSED'}[status]
         row = {key: record[key] for key in ('cell', 'task', 'config', 'dispatched')}
         row.update(status=status, runner_status=record['status'], reviews=grades, **costs(output, record))
+        if checklists is not None:
+            row['corrected_status'] = delivery_status
         if status == 'FAILED':
-            row['failure'] = 'product' if record['status'] == 'PRODUCT_INCOMPLETE' else 'report'
+            row['failure'] = 'product' if delivery_status == 'PRODUCT_INCOMPLETE' else 'report'
         slots.append(row)
     engines = {}
     for engine in ('claude', 'codex'):
@@ -162,6 +219,10 @@ def markdown(summary):
         values = [engine, *(row[key] for key in ('attempts_dispatched', 'successes', 'failures', 'pending',
                   'not_assessed')), *row['totals'].values(), *row['cost_per_success'].values(), row['completeness']]
         lines.append('| ' + ' | '.join('null' if value is None else str(value) for value in values) + ' |')
+    if any('corrected_status' in row for row in summary['slots']):
+        lines.extend(['', '| Slot | Original rp-verdict | Corrected delivery | Result |', '|---|---|---|---|'])
+        lines.extend(f"| {row['cell']} | {row['runner_status']} | {row['corrected_status']} | {row['status']} |"
+                     for row in summary['slots'])
     return '\n'.join(lines)
 
 
@@ -171,6 +232,7 @@ def main(argv=None):
     parser.add_argument('slot', nargs='?')
     parser.add_argument('--review', action='append', default=[], metavar='REVIEWER=DIR')
     parser.add_argument('--review-template', action='store_true')
+    parser.add_argument('--checklists', type=Path)
     args = parser.parse_args(argv)
     if args.review_template:
         if not args.slot or args.review:
@@ -184,11 +246,17 @@ def main(argv=None):
             parser.error('--review must name astra and grok once each as REVIEWER=DIR')
         reviews[name] = Path(directory)
     try:
+        if args.checklists is not None:
+            require(not args.checklists.resolve().is_relative_to(args.output.resolve()) and
+                    not args.output.resolve().is_relative_to(args.checklists.resolve()),
+                    'checklists and measured output must not overlap')
         if args.review_template:
-            print(json.dumps(review_template(args.output, args.slot), indent=2))
+            print(json.dumps(review_template(args.output, args.slot, args.checklists), indent=2))
         else:
-            summary = summarize(args.output, reviews)
-            write(args.output / 'summary.json', summary)
+            summary = summarize(args.output, reviews, args.checklists)
+            target = (args.output / 'summary.json' if args.checklists is None else
+                      github.safe_file(args.checklists, 'summary.json'))
+            write(target, summary)
             print(markdown(summary))
     except (OSError, ValueError, TypeError, KeyError, github.EvidenceError) as exc:
         parser.exit(2, 'rp-d1 summary: ' + str(exc) + '\n')
