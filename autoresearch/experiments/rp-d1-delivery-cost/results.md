@@ -38,8 +38,8 @@ comparison.
   for normal repository operations are allowed" and "Do not look up upstream
   fixes" as a limit on publishing. Its report said this truthfully. The
   attempt counts as a failure, with its cost.
-- **Codex.** Each final report said only that the change was merged and "the
-  checkout is clean". Cleanup and reconciliation actually succeeded:
+- **Codex.** Each final report gave the public-check result, said the change
+  was merged and "the checkout is clean", and said nothing remained unresolved. Cleanup and reconciliation actually succeeded:
   - no owned worktree or branch was left;
   - local `main` equals the merged commit.
 
@@ -66,8 +66,9 @@ comparison.
      skip-worktree flags.
    - The original verdict predates the incident. Re-evaluation accepted this
      one file only as a disclosed change.
-   - Reviewers found no possible effect on any result. Inspection now uses
-     `GIT_OPTIONAL_LOCKS=0`.
+   - Neither results reviewer found a supported effect on any result or cost;
+     a byte-level proof is impossible without the original bytes. Inspection
+     now uses `GIT_OPTIONAL_LOCKS=0`.
 3. **Smoke attempts and credential re-freeze** are recorded in the
    [registration](registration.md). The measured account is the one recorded
    at the final freeze.
@@ -76,9 +77,9 @@ comparison.
 
 **No removal candidate is registered; the current text is kept.**
 - Repetition analysis (re-exploration, re-verification, duplicate allocation)
-  and stage attribution were not performed. The receipts do not separate
-  delivery from implementation without an analysis that was not registered,
-  so nothing here supports a removal.
+  and stage attribution were not performed, so nothing here supports a
+  removal. This is a conservative decision; it does not establish that
+  removable repetition is absent.
 - The PR+merge default stays.
 
 Two observations are recorded for future work, neither adopted here:
@@ -92,8 +93,9 @@ Two observations are recorded for future work, neither adopted here:
 
 ## Review
 
-- **Before exposure.** Astra ultra and Grok 4.7 reviewed the design, the
-  apparatus (eight rounds) and the registration (two rounds). See
+- **Before exposure.** Astra ultra wrote the design and Grok 4.7 reviewed it.
+  Both then reviewed the apparatus (eight rounds) and the registration (two
+  rounds). See
   [results/](results/).
 - **Results review.** Both reviewers read the raw data and graded the report
   checklists ([Astra](results/results-review-astra.md),
