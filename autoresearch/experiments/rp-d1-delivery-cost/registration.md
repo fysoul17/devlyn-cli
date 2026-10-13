@@ -99,3 +99,29 @@ Otherwise keep the current text. The PR+merge default is not reverted for cost.
 - **After the run:** both review the results against the raw data.
 - **Stopping rule:** stop at SHIP with no HIGH finding, reading each
   reviewer's final verdict line.
+
+## Smoke qualification (before registration)
+
+Smoke tasks are unrelated to BV and Z0 and are never pooled with measured data.
+
+- **Attempt 1.** Claude merged its PR, but two apparatus defects made the slot
+  STOP:
+  - The 0254 auditor did not recognize the foreground `local_bash` task rows
+    for the delivery command.
+  - GitHub's per-request `temp_clone_token` made the archive comparison fail.
+
+  Both defects were fixed and reviewed. A re-audit of the sealed evidence
+  returned MATCH.
+- **Attempt 2.** Claude delivered correctly. The done-check flagged the
+  installer's 0600 marker files against the committed 100644 mode, so the
+  Codex slot never ran. The check now compares raw files with Git-mode
+  normalization, and index flags fail it.
+- **Attempt 3** qualified both engines:
+
+  | Engine | Owner seconds | Input | Output | Done-check | Repository |
+  |---|---:|---:|---:|---|---|
+  | Claude | 765.2 | 2,017,930 | 72,606 | no failures; report review pending | archived, deleted (404) |
+  | Codex | 181.6 | 532,069 | 6,215 | no failures; report review pending | archived, deleted (404) |
+
+  Its verdict hashes and the recorded Claude boot catalogs are in
+  [registration.json](registration.json).
