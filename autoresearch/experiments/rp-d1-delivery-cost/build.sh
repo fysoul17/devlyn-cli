@@ -14,7 +14,8 @@ fetch node.tar.xz https://nodejs.org/dist/v22.23.2/node-v22.23.2-linux-arm64.tar
 fetch claude.tgz https://registry.npmjs.org/@anthropic-ai/claude-code-linux-arm64/-/claude-code-linux-arm64-2.1.296.tgz 56abbe1cfc85e5b37afeef5ae8b4856ddc32bbe443b82689a3b5f99992045cd1
 fetch codex.tgz https://registry.npmjs.org/@openai/codex/-/codex-0.162.1-linux-arm64.tgz a355051d0c296ed50e42e55aceabf74f017f2f96e223fc7ee2199ea8a60cad4b
 fetch gh.tgz https://github.com/cli/cli/releases/download/v2.83.2/gh_2.83.2_linux_arm64.tar.gz b1a0c0a0fcf18524e36996caddc92a062355ed014defc836203fe20fba75a38e
-docker build --platform linux/arm64 --iidfile image.id -f "$here/Dockerfile" .
+# A tag keeps the image from being pruned as dangling; the registered identity is still its .Id.
+docker build --platform linux/arm64 --iidfile image.id --tag rp-d1-delivery-cost:local -f "$here/Dockerfile" .
 image_id=$(cat image.id)
 docker run --rm --network none "$image_id" sh -c 'node --version && claude --version && codex --version && gh --version && python -m pytest --version'
 docker image inspect "$image_id" --format '{{.Id}}'
