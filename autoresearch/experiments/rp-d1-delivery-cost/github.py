@@ -65,9 +65,14 @@ def url(repository):
     return 'https://github.com/' + repository + '.git'
 
 
+def without_clone_token(value):
+    return {key: item for key, item in value.items() if key != 'temp_clone_token'}
+
+
 def api(endpoint):
     try:
-        return json.loads(command(['gh', 'api', '--hostname', 'github.com', endpoint]).stdout)
+        return json.loads(command(['gh', 'api', '--hostname', 'github.com', endpoint]).stdout,
+                          object_hook=without_clone_token)
     except (ValueError, TypeError):
         raise EvidenceError('GitHub returned invalid JSON') from None
 
@@ -75,7 +80,7 @@ def api(endpoint):
 def pulls(repository):
     try:
         pages = json.loads(command(['gh', 'api', '--hostname', 'github.com', '--paginate', '--slurp',
-            f'repos/{repository}/pulls?state=all&per_page=100']).stdout)
+            f'repos/{repository}/pulls?state=all&per_page=100']).stdout, object_hook=without_clone_token)
     except (ValueError, TypeError):
         raise EvidenceError('GitHub PR census unavailable') from None
     require(isinstance(pages, list) and all(isinstance(page, list) for page in pages),
@@ -103,7 +108,6 @@ def settings(repository):
     value = api('repos/' + repository)
     require(isinstance(value, dict) and value.get('full_name') == repository
             and value.get('private') is True, 'repository identity/privacy mismatch')
-    value.pop('temp_clone_token', None)
     return value
 
 

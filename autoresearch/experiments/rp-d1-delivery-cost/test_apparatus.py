@@ -66,7 +66,10 @@ class FakeGitHub:
             number = int(endpoint.rsplit('/', 1)[1])
             value = json.dumps(next(pr for pr in state['pulls'] if pr['number'] == number))
         else:
-            value = json.dumps(dict(state['settings'], temp_clone_token=f'offline-clone-token-{len(self.calls)}'))
+            value = json.dumps(state['settings'])
+        if code == 0 and 'DELETE' not in args:
+            value = json.dumps(json.loads(value, object_hook=lambda row:
+                dict(row, temp_clone_token=f'offline-clone-token-{len(self.calls)}')))
         if code not in ok:
             raise g.EvidenceError('fake HTTP failure')
         return subprocess.CompletedProcess(args, code, value, stderr)
@@ -335,11 +338,18 @@ class DeliveryTests(TempCase):
         self.assertFalse(p.harness_unchanged(self.out, r.read(self.out / 'baseline.json')))
 
     def test_rotating_clone_token_is_discarded_before_comparison_and_archive(self):
-        first = g.settings(REPOSITORY)
-        self.assertNotIn('temp_clone_token', first)
-        self.assertEqual(first, g.settings(REPOSITORY))
+        self.state['settings']['parent'] = {'extra': [{'keep': 'settings metadata'}]}
+        self.state['pulls'][0]['extra'] = [{'keep': 'pull metadata'}]
+        for observe in (g.settings, g.pulls, g.observe):
+            with self.subTest(observe=observe.__name__):
+                first = observe(REPOSITORY)
+                self.assertNotIn('temp_clone_token', json.dumps(first))
+                self.assertEqual(first, observe(REPOSITORY))
         archived = self.freeze_archive()
-        self.assertNotIn('temp_clone_token', g.read(self.archive / 'repository.json')['settings'])
+        observed = g.read(self.archive / 'repository.json')
+        self.assertNotIn('temp_clone_token', json.dumps(observed))
+        self.assertEqual(observed['settings']['parent']['extra'], [{'keep': 'settings metadata'}])
+        self.assertEqual(observed['pulls'][0]['extra'], [{'keep': 'pull metadata'}])
         for path in self.archive.rglob('*'):
             if path.is_file():
                 self.assertNotIn(b'offline-clone-token-', path.read_bytes(), str(path))

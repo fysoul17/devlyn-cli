@@ -194,6 +194,31 @@ class ReceiptAuditTests(unittest.TestCase):
     def test_foreground_local_bash_adds_no_inference_usage(self):
         self.exercise(self.foreground_bash, expected="MATCH")
 
+    def test_bash_anchor_requires_terminal_body_membership(self):
+        def change(f):
+            self.foreground_bash(f)
+            f.files[f.indexed_file(1, "response")]["content"].pop()
+        self.exercise(change)
+
+    def test_bash_background_input_contradicts_foreground_lifecycle(self):
+        for carrier in ("transcript", "body", "both"):
+            with self.subTest(carrier=carrier):
+                def change(f):
+                    self.foreground_bash(f)
+                    if carrier in ("transcript", "both"):
+                        f.files[OWNER][0]["message"]["content"][-1]["input"]["run_in_background"] = True
+                    if carrier in ("body", "both"):
+                        f.files[f.indexed_file(1, "response")]["content"][-1]["input"]["run_in_background"] = True
+                self.exercise(change)
+
+    def test_failed_foreground_local_bash_adds_no_inference_usage(self):
+        self.exercise(lambda f: self.foreground_bash(f)[-1].update(status="failed"), expected="MATCH")
+
+    def test_other_bash_notification_status_is_unknown(self):
+        for status in ("stopped", "running", "other", None):
+            with self.subTest(status=status):
+                self.exercise(lambda f: self.foreground_bash(f)[-1].update(status=status))
+
     def test_backgrounded_local_bash_is_unbound(self):
         self.assertEqual(self.exercise(lambda f: self.foreground_bash(f)[0].update(is_backgrounded=True))["gaps"],
                          ["unbound task lifecycle"])
@@ -220,7 +245,8 @@ class ReceiptAuditTests(unittest.TestCase):
 
     def test_shell_lifecycle_identity_and_cardinality_are_required(self):
         for defect in ("duplicate_start", "duplicate_end", "missing_start", "wrong_end_tool",
-                       "wrong_end_task", "wrong_update_tool", "wrong_session", "non_system"):
+                       "missing_end_tool", "blank_task", "wrong_end_task", "wrong_update_tool",
+                       "wrong_session", "non_system"):
             with self.subTest(defect=defect):
                 def change(f):
                     rows = self.foreground_bash(f)
@@ -228,6 +254,9 @@ class ReceiptAuditTests(unittest.TestCase):
                     elif defect == "duplicate_end": f.files["run/stdout"].insert(-1, deepcopy(rows[-1]))
                     elif defect == "missing_start": f.files["run/stdout"].remove(rows[0])
                     elif defect == "wrong_end_tool": rows[-1]["tool_use_id"] = "other"
+                    elif defect == "missing_end_tool": del rows[-1]["tool_use_id"]
+                    elif defect == "blank_task":
+                        for row in rows: row["task_id"] = " "
                     elif defect == "wrong_end_task": rows[-1]["task_id"] = "other"
                     elif defect == "wrong_update_tool": rows[1]["tool_use_id"] = "other"
                     elif defect == "wrong_session": rows[0]["session_id"] = "other"
