@@ -71,8 +71,9 @@ def scan(out, runtime, *, roots=None):
     reason = None
     try:
         _, token = credential(runtime)
-        gitdirs = []
+        gitdirs = set()
         for root in roots if roots is not None else (out,):
+            root = Path(os.path.abspath(root))
             mode = root.lstat().st_mode
             if stat.S_ISREG(mode):
                 with root.open('rb') as stream:
@@ -81,8 +82,14 @@ def scan(out, runtime, *, roots=None):
             if not stat.S_ISDIR(mode):
                 raise ValueError('PAT scan root is not a regular file or directory')
             for directory, dirs, files in os.walk(root, followlinks=False, onerror=unreadable):
+                directory = Path(directory)
+                if directory.name == '.git' or (
+                        'HEAD' in files and stat.S_ISREG((directory / 'HEAD').lstat().st_mode) and (
+                            'objects' in dirs and stat.S_ISDIR((directory / 'objects').lstat().st_mode) or
+                            'gitdir' in files and stat.S_ISREG((directory / 'gitdir').lstat().st_mode))):
+                    gitdirs.add(directory)
                 for name in dirs + files:
-                    path = Path(directory) / name
+                    path = directory / name
                     hit |= token in os.fsencode(path.relative_to(root))
                     mode = path.lstat().st_mode
                     if stat.S_ISLNK(mode):
@@ -90,12 +97,9 @@ def scan(out, runtime, *, roots=None):
                     elif stat.S_ISREG(mode):
                         with path.open('rb') as stream:
                             search(stream)
-                    elif stat.S_ISDIR(mode):
-                        if name in ('.git', 'mirror.git') or path.parent == root / 'cell/work/.git/worktrees':
-                            gitdirs.append(path)
-                    else:
+                    elif not stat.S_ISDIR(mode):
                         raise ValueError('PAT scan encountered a nonregular entry')
-        for gitdir in gitdirs:
+        for gitdir in sorted(gitdirs):
             with tempfile.TemporaryFile() as errors, subprocess.Popen(
                     ['git', '--git-dir', str(gitdir), 'cat-file', '--batch-all-objects', '--batch', '--unordered'],
                     stdout=subprocess.PIPE, stderr=errors, env=prepare.github.git_env()) as process:

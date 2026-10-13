@@ -3,6 +3,7 @@ import argparse
 import base64
 import hashlib
 import importlib.util
+from itertools import combinations
 import json
 from pathlib import Path
 import re
@@ -57,14 +58,18 @@ def stage(args):
     phase = args.phase
     target = dest / f'runtime-{phase}.json'
     require(not target.exists(), 'runtime already staged; preserve it')
-    smoke_output = args.smoke_output.resolve() if args.smoke_output else dest / 'smoke-output'
+    smoke_output = (args.smoke_output or dest / 'smoke-output').resolve()
     require(smoke_output.is_relative_to(dest) and smoke_output != dest,
             'smoke output must be under the stage directory')
+    control = dest / 'control'
+    for left, right in combinations((control.resolve(), (dest / 'output').resolve(),
+                                     smoke_output, (dest / 'scratch').resolve()), 2):
+        require(not (left.is_relative_to(right) or right.is_relative_to(left)),
+                'control, output, smoke output and scratch must be disjoint')
     catalogs = {'claude': {'B': smoke_catalogs(smoke_output)}} if phase == 'measured' else {}
     manifest, manifest_hash = model_auth(args.auth)
     release = dict(version='4.2.18', tarball=str(dest / 'release.tgz'), sha256=digest(args.release_tarball),
         integrity='sha512-' + base64.b64encode(hashlib.sha512(args.release_tarball.read_bytes()).digest()).decode())
-    control = dest / 'control'
     runtime = dict(run_id=args.run_id, phase=phase, release=release, image=args.image,
         control=str(control), output=str(dest / 'output'), smoke_output=str(smoke_output),
         scratch=str(dest / 'scratch'), sources=str(dest / 'sources'), source_root=str(HERE.parents[2]),

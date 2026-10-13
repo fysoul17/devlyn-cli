@@ -419,6 +419,40 @@ class CredentialTests(TempCase):
                          {str(anchor / '.git'), str(registration)})
         self.assertEqual(r.read(self.out / 'pat-scan.json'), dict(status='UNKNOWN', revocation_required=True))
 
+    def test_arbitrary_bare_git_blob_is_scanned_once_across_overlapping_roots(self):
+        bare = self.out / 'tmp/cache.git'
+        g.command(['git', 'init', '-q', '--bare', str(bare)])
+        g.command(['git', '--git-dir', str(bare), 'hash-object', '-w',
+                   str(Path(self.runtime['github_auth']) / 'hosts.yml')])
+        self.assertTrue(all(self.token not in path.read_bytes() for path in self.out.rglob('*') if path.is_file()))
+        for roots in ([self.out], [bare], [self.out, bare, bare / '..' / bare.name]):
+            with self.subTest(roots=roots), \
+                    patch.object(c.subprocess, 'Popen', wraps=c.subprocess.Popen) as processes, \
+                    self.assertRaisesRegex(ValueError, 'PAT-byte hit'):
+                c.scan(self.out, self.runtime, roots=roots)
+            self.assertEqual([call.args[0][2] for call in processes.call_args_list], [str(bare)])
+            self.assertEqual(r.read(self.out / 'pat-scan.json'), dict(status='UNKNOWN', revocation_required=True))
+
+    def test_git_discovery_does_not_follow_symlinks(self):
+        bare = self.root / 'external'
+        g.command(['git', 'init', '-q', '--bare', str(bare)])
+        g.git(bare, 'hash-object', '-w', str(Path(self.runtime['github_auth']) / 'hosts.yml'))
+        (self.out / '.git').symlink_to(bare, target_is_directory=True)
+        for linked in ('HEAD', 'objects'):
+            candidate = self.out / linked
+            candidate.mkdir()
+            for name in ('HEAD', 'objects'):
+                if name == linked:
+                    (candidate / name).symlink_to(bare / name, target_is_directory=name == 'objects')
+                elif name == 'HEAD':
+                    (candidate / name).write_text('ref: refs/heads/main\n')
+                else:
+                    (candidate / name).mkdir()
+        with patch.object(c.subprocess, 'Popen', wraps=c.subprocess.Popen) as processes:
+            c.scan(self.out, self.runtime)
+        processes.assert_not_called()
+        self.assertFalse((self.out / 'pat-scan.json').exists())
+
     def test_archive_mirror_blob_is_scanned_without_changing_archive(self):
         archive = self.root / 'archive'
         mirror = archive / 'mirror.git'

@@ -192,6 +192,36 @@ class StageTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'private regular'):
             self.check(runtime)
 
+    def test_stage_refuses_overlapping_smoke_output_before_writing(self):
+        for name in ('control/public', 'control', 'output', 'output/nested', 'scratch', 'scratch/nested'):
+            with self.subTest(name=name):
+                self.args.stage_dir = self.root / name.replace('/', '-')
+                self.args.smoke_output = self.args.stage_dir / name
+                with self.assertRaisesRegex(RuntimeError, 'disjoint'):
+                    self.stage()
+                self.assertFalse(self.args.stage_dir.exists())
+
+    def test_stage_refuses_paths_resolving_inside_or_around_control(self):
+        for name in ('output', 'scratch', 'smoke-output'):
+            for target in ('control', 'control/public', '.'):
+                with self.subTest(name=name, target=target):
+                    self.args.stage_dir = self.root / (name + '-' + target.replace('/', '-'))
+                    self.args.stage_dir.mkdir()
+                    (self.args.stage_dir / name).symlink_to(target, target_is_directory=True)
+                    with self.assertRaisesRegex(RuntimeError, 'disjoint|under the stage directory'):
+                        self.stage()
+                    self.assertEqual(list(self.args.stage_dir.iterdir()), [self.args.stage_dir / name])
+
+    def test_cli_refuses_smoke_output_in_control_before_writing(self):
+        with redirect_stdout(io.StringIO()) as output:
+            code = s.main([str(self.args.stage_dir), '--run-id', self.args.run_id,
+                '--release-tarball', str(self.tarball), '--image', self.args.image, '--auth', str(self.auth),
+                '--github-auth', str(self.github_auth), '--phase', 'smoke',
+                '--smoke-output', str(self.args.stage_dir / 'control/public')])
+        self.assertEqual(code, 2)
+        self.assertIn('STOP', output.getvalue())
+        self.assertFalse(self.args.stage_dir.exists())
+
     def test_stage_refuses_missing_host_cache_and_preserves_failed_stage(self):
         self.cache.unlink()
         with self.assertRaises(FileNotFoundError):
