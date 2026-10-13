@@ -21,6 +21,12 @@ UNKNOWN. The API documents additional [stop reasons](https://platform.claude.com
 their existence does not establish support in this audit. Native capture uses the
 [official local-file facility](https://code.claude.com/docs/en/monitoring-usage).
 
+Scope amended **2026-10-13** for rp-d1 after live smoke: an owner-session
+foreground `local_bash` task with an owner Bash tool-use anchor, exactly one start
+and one matching completed notification is admitted (updates allowed). It adds
+no inference usage. Other unbound task lifecycles remain UNKNOWN; old results
+are unchanged.
+
 The sealed and actual native inventories must agree, including unindexed attempts.
 Relevant files must be regular and hash-matched; symlinks, duplicate JSON keys,
 truncated JSONL, malformed counters and conflicting identities fail visibly.

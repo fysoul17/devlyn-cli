@@ -176,6 +176,64 @@ class ReceiptAuditTests(unittest.TestCase):
     def test_healthy_owner_and_foreground_child(self):
         self.exercise(expected="MATCH")
 
+    @staticmethod
+    def foreground_bash(f, carrier=OWNER):
+        tool = dict(type="tool_use", id="toolu_owner_bash", name="Bash", input={"command": "true"})
+        f.files[carrier][0]["message"]["content"].append(tool)
+        number = 1 if carrier == OWNER else 2
+        f.files[f.indexed_file(number, "response")]["content"].append(deepcopy(tool))
+        rows = [dict(type="system", subtype="task_started", task_id="bash-task", session_id=SESSION,
+                     task_type="local_bash", is_backgrounded=False, tool_use_id=tool["id"]),
+                dict(type="system", subtype="task_updated", task_id="bash-task", session_id=SESSION,
+                     patch={"status": "running"}),
+                dict(type="system", subtype="task_notification", task_id="bash-task", session_id=SESSION,
+                     status="completed", tool_use_id=tool["id"])]
+        f.files["run/stdout"][-1:-1] = rows
+        return rows
+
+    def test_foreground_local_bash_adds_no_inference_usage(self):
+        self.exercise(self.foreground_bash, expected="MATCH")
+
+    def test_backgrounded_local_bash_is_unbound(self):
+        self.assertEqual(self.exercise(lambda f: self.foreground_bash(f)[0].update(is_backgrounded=True))["gaps"],
+                         ["unbound task lifecycle"])
+
+    def test_unknown_shell_task_type_is_unbound(self):
+        self.assertEqual(self.exercise(lambda f: self.foreground_bash(f)[0].update(task_type="other"))["gaps"],
+                         ["unbound task lifecycle"])
+
+    def test_unmatched_bash_tool_use_is_unbound(self):
+        def change(f):
+            rows = self.foreground_bash(f)
+            rows[0]["tool_use_id"] = rows[-1]["tool_use_id"] = "unmatched"
+        self.assertEqual(self.exercise(change)["gaps"], ["unbound task lifecycle"])
+
+    def test_missing_bash_notification_is_unbound(self):
+        def change(f):
+            rows = self.foreground_bash(f)
+            f.files["run/stdout"].remove(rows[-1])
+        self.assertEqual(self.exercise(change)["gaps"], ["unbound task lifecycle"])
+
+    def test_child_bash_is_unbound(self):
+        self.assertEqual(self.exercise(lambda f: self.foreground_bash(f, CHILD_FILE))["gaps"],
+                         ["unbound task lifecycle"])
+
+    def test_shell_lifecycle_identity_and_cardinality_are_required(self):
+        for defect in ("duplicate_start", "duplicate_end", "missing_start", "wrong_end_tool",
+                       "wrong_end_task", "wrong_update_tool", "wrong_session", "non_system"):
+            with self.subTest(defect=defect):
+                def change(f):
+                    rows = self.foreground_bash(f)
+                    if defect == "duplicate_start": f.files["run/stdout"].insert(-1, deepcopy(rows[0]))
+                    elif defect == "duplicate_end": f.files["run/stdout"].insert(-1, deepcopy(rows[-1]))
+                    elif defect == "missing_start": f.files["run/stdout"].remove(rows[0])
+                    elif defect == "wrong_end_tool": rows[-1]["tool_use_id"] = "other"
+                    elif defect == "wrong_end_task": rows[-1]["task_id"] = "other"
+                    elif defect == "wrong_update_tool": rows[1]["tool_use_id"] = "other"
+                    elif defect == "wrong_session": rows[0]["session_id"] = "other"
+                    else: rows[0]["type"] = "other"
+                self.assertEqual(self.exercise(change)["gaps"], ["unbound task lifecycle"])
+
     def test_nonterminal_anchors_use_exact_terminal_bodies(self):
         def change(f):
             for name in (OWNER, CHILD_FILE):

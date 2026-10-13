@@ -1,8 +1,9 @@
-"""rp-d1 adapter over unchanged 0255/0254 accounting; serial, fail-closed delivery.
+"""rp-d1 adapter over 0255/0254 accounting; serial, fail-closed delivery.
 
 runner.py <runtime.json> smoke | measured
 Runtime adds run_id, github_auth (private directory path), release (version,
-tarball, sha256, registry integrity), and smoke_output (separate from output).
+tarball, sha256, registry integrity), smoke_attempt (default 1), and smoke_output
+(separate from output).
 No credential value belongs in runtime, plan, command arguments or records.
 """
 import argparse
@@ -31,10 +32,16 @@ read, write, digest = legacy.read, legacy.write, legacy.digest
 SCHEDULE = [('o01', 'BV', 'claude'), ('o02', 'BV', 'codex'), ('o03', 'Z0', 'codex'),
             ('o04', 'Z0', 'claude'), ('o05', 'Z0', 'claude'), ('o06', 'Z0', 'codex'),
             ('o07', 'BV', 'codex'), ('o08', 'BV', 'claude')]
-SMOKE = [('smoke-claude', 'SM', 'claude'), ('smoke-codex', 'SM', 'codex')]
 BOOT_REFUSALS = {'runtime phase must be smoke or measured',
                  'measured Claude requires boot_catalogs.claude.B',
                  'boot catalog must explicitly list skills, plugins and mcp_servers'}
+
+
+def smoke_slots(attempt=1):
+    if type(attempt) is not int or attempt < 1:
+        raise ValueError('smoke_attempt must be an integer >= 1')
+    prefix = 'smoke' if attempt == 1 else f'smoke{attempt}'
+    return [(f'{prefix}-{config}', 'SM', config) for config in ('claude', 'codex')]
 
 
 def solo_route(tasks, config, _arm):
@@ -51,6 +58,7 @@ legacy.policy.route_for = solo_route
 class Runner(legacy.Runner):
     def __init__(self, runtime_path, tasks_path=None, *, phase=None):
         runtime = read(runtime_path)
+        self.smoke = smoke_slots(runtime.get('smoke_attempt', 1))
         phase = phase or runtime['phase']
         if phase not in ('smoke', 'measured'):
             raise ValueError('runtime phase must be smoke or measured')
@@ -61,6 +69,7 @@ class Runner(legacy.Runner):
                          runtime.get('tasks_file', HERE / 'tasks.json'))
         super().__init__(runtime_path, tasks_path or default_tasks)
         self.runtime['phase'] = phase
+        self.runtime['smoke_attempt'] = runtime.get('smoke_attempt', 1)
         if phase == 'smoke':
             self.runtime['output'] = str(smoke_output)
         self.frame.prepare.git = prepare.bootstrap_git
@@ -86,11 +95,11 @@ class Runner(legacy.Runner):
         return repository
 
     def remaining(self, name):
-        slots = [row[0] for row in SMOKE + SCHEDULE]
+        slots = [row[0] for row in self.smoke + SCHEDULE]
         return [self.repository(slot) for slot in slots[slots.index(name):]]
 
     def slots(self):
-        return {'smoke': SMOKE, 'measured': SCHEDULE}[self.runtime['phase']]
+        return {'smoke': self.smoke, 'measured': SCHEDULE}[self.runtime['phase']]
 
     def native_prompt(self, caller):
         return (HERE / 'common.txt').read_text() + '\nCALLER CONTRACT\n' + json.dumps(caller, indent=2)
@@ -146,7 +155,7 @@ class Runner(legacy.Runner):
         return dict(public=public, rows=decoded['rows'], raw=[raw])
 
     def prior_deleted(self, name):
-        slots = [row[0] for row in SMOKE + SCHEDULE]
+        slots = [row[0] for row in self.smoke + SCHEDULE]
         index = slots.index(name)
         # o01 independently requires both smoke verdicts, even if one is lost later.
         predecessors = slots[:2] if name == 'o01' else slots[max(0, index - 1):index]

@@ -66,7 +66,7 @@ class FakeGitHub:
             number = int(endpoint.rsplit('/', 1)[1])
             value = json.dumps(next(pr for pr in state['pulls'] if pr['number'] == number))
         else:
-            value = json.dumps(state['settings'])
+            value = json.dumps(dict(state['settings'], temp_clone_token=f'offline-clone-token-{len(self.calls)}'))
         if code not in ok:
             raise g.EvidenceError('fake HTTP failure')
         return subprocess.CompletedProcess(args, code, value, stderr)
@@ -334,6 +334,18 @@ class DeliveryTests(TempCase):
         (self.out / 'harness/caller.json').write_text('{}')
         self.assertFalse(p.harness_unchanged(self.out, r.read(self.out / 'baseline.json')))
 
+    def test_rotating_clone_token_is_discarded_before_comparison_and_archive(self):
+        first = g.settings(REPOSITORY)
+        self.assertNotIn('temp_clone_token', first)
+        self.assertEqual(first, g.settings(REPOSITORY))
+        archived = self.freeze_archive()
+        self.assertNotIn('temp_clone_token', g.read(self.archive / 'repository.json')['settings'])
+        for path in self.archive.rglob('*'):
+            if path.is_file():
+                self.assertNotIn(b'offline-clone-token-', path.read_bytes(), str(path))
+        self.assertEqual(g.delete_archived(REPOSITORY, self.archive, archived['manifest_sha256'])['status'],
+                         'DELETED')
+
     def test_archive_verified_before_delete_and_explicit_404(self):
         archived = self.freeze_archive()
         result = g.delete_archived(REPOSITORY, self.archive, archived['manifest_sha256'])
@@ -573,14 +585,14 @@ class PrepareAndRunnerTests(TempCase):
             self.assertEqual(app.schedule(), 0)
             self.assertEqual([call.args for call in launch.call_args_list],
                              [('smoke-claude', 'SM', 'B', 'claude'), ('smoke-codex', 'SM', 'B', 'codex')])
-            for name, task, config in r.SMOKE:
+            for name, task, config in r.smoke_slots():
                 with self.assertRaisesRegex(ValueError, 'never replay'):
                     app.run(name, task, 'B', config)
             self.assertEqual(launch.call_count, 2)
         self.assertEqual(events, [(action, name) for name in ('smoke-claude', 'smoke-codex')
                                   for action in ('prepare', 'done', 'deleted')])
         self.assertEqual([call.kwargs.get('roots', [call.args[0]]) for call in scan.call_args_list],
-                         [roots for name, _, _ in r.SMOKE for roots in (
+                         [roots for name, _, _ in r.smoke_slots() for roots in (
                              [output / name],
                              [output / name, output / 'archives' / name, output / f'verdict-{name}.json'])])
         self.assertFalse(Path(self.runtime['output']).exists())
@@ -601,7 +613,7 @@ class PrepareAndRunnerTests(TempCase):
         self.assertEqual([task['id'] for task in smoke.tasks['tasks']], ['SM'])
         self.assertEqual([task['id'] for task in self.app.tasks['tasks']], ['BV', 'Z0'])
         with patch.object(r.legacy.Runner, 'run') as inherited:
-            for app, foreign in ((smoke, r.SCHEDULE), (self.app, r.SMOKE)):
+            for app, foreign in ((smoke, r.SCHEDULE), (self.app, r.smoke_slots())):
                 for name, task, config in foreign:
                     with self.assertRaisesRegex(ValueError, 'unregistered'):
                         app.run(name, task, 'B', config)
@@ -629,7 +641,7 @@ class PrepareAndRunnerTests(TempCase):
         inherited.assert_not_called()
         precheck.assert_not_called()
         paths = []
-        for name, _, _ in r.SMOKE:
+        for name, _, _ in r.smoke_slots():
             path = Path(self.runtime['smoke_output']) / name / 'rp-verdict.json'
             path.parent.mkdir(parents=True)
             paths.append(path)
@@ -696,6 +708,56 @@ class PrepareAndRunnerTests(TempCase):
         with self.assertRaisesRegex(ValueError, 'already stopped'):
             self.app.prior_deleted('o01')
 
+    def test_smoke_attempt_requires_positive_integer(self):
+        for value in (0, -1, True, 2.0, '2', None):
+            r.write(self.runtime_path, dict(self.runtime, smoke_attempt=value))
+            with self.subTest(value=value), self.assertRaisesRegex(ValueError, 'smoke_attempt'):
+                r.Runner(self.runtime_path)
+        self.assertEqual(self.app.runtime['smoke_attempt'], 1)
+
+    def test_second_attempt_uses_only_fresh_smoke_repos_and_current_output(self):
+        old_output = Path(self.runtime['smoke_output'])
+        for name, _, _ in r.smoke_slots():
+            path = old_output / name / 'rp-verdict.json'
+            path.parent.mkdir(parents=True)
+            r.write(path, dict(status='STOP'))
+        old_files = {path: path.read_bytes() for path in old_output.rglob('*') if path.is_file()}
+        output = self.root / 'stage2/smoke-output'
+        r.write(self.runtime_path, dict(self.runtime, smoke_attempt=2, smoke_output=str(output)))
+        app = r.Runner(self.runtime_path, phase='smoke')
+        expected = ['smoke2-claude', 'smoke2-codex', *[f'o{i:02}' for i in range(1, 9)]]
+        repositories = [app.repository(name) for name in expected]
+        self.assertEqual(app.remaining('smoke2-claude'), repositories)
+        self.assertEqual(app.remaining('smoke2-codex'), repositories[1:])
+        self.assertEqual([name for name, _, _ in app.slots()], expected[:2])
+        fake_root = self.root / 'attempt2-remotes'
+        fake_root.mkdir()
+        fake = FakeGitHub(fake_root, repositories)
+        with patch.object(g, 'command', fake):
+            g.precheck(app.remaining('smoke2-claude'))
+            for repository in repositories:
+                fake.states[repository]['pulls'] = [dict(number=1)]
+                with self.assertRaisesRegex(g.EvidenceError, 'not empty'):
+                    g.precheck(app.remaining('smoke2-claude'))
+                fake.states[repository]['pulls'] = []
+        app.prior_deleted('smoke2-claude')
+        measured = r.Runner(self.runtime_path)
+        with self.assertRaises(FileNotFoundError):
+            measured.prior_deleted('o01')
+        for name in expected[:2]:
+            path = output / name / 'rp-verdict.json'
+            path.parent.mkdir(parents=True)
+            r.write(path, dict(status='ADJUDICATE', repository_cleanup=dict(repository=app.repository(name),
+                status='DELETED', http_status=404, archive_manifest_sha256='archive')))
+        measured.prior_deleted('o01')
+        r.write(path, dict(status='STOP'))
+        with self.assertRaisesRegex(ValueError, 'already stopped'):
+            measured.prior_deleted('o01')
+        with self.assertRaisesRegex(ValueError, 'unregistered'):
+            app.run('smoke-claude', 'SM', 'B', 'claude')
+        for path, raw in old_files.items():
+            self.assertEqual(path.read_bytes(), raw)
+
     def test_smoke_repositories_are_first_in_emptiness_precheck(self):
         expected = ['smoke-claude', 'smoke-codex', *[f'o{i:02}' for i in range(1, 9)]]
         self.assertEqual(self.app.remaining('smoke-claude'), [self.app.repository(name) for name in expected])
@@ -710,7 +772,7 @@ class PrepareAndRunnerTests(TempCase):
                 state['pulls'] = []
 
     def test_cli_selects_phase_output_and_schedule(self):
-        for phase, slots, key in (('smoke', r.SMOKE, 'smoke_output'), ('measured', r.SCHEDULE, 'output')):
+        for phase, slots, key in (('smoke', r.smoke_slots(), 'smoke_output'), ('measured', r.SCHEDULE, 'output')):
             def schedule(app):
                 self.assertEqual(app.runtime['phase'], phase)
                 self.assertEqual(app.runtime['output'], self.runtime[key])

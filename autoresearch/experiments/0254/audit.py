@@ -346,10 +346,27 @@ def reconcile(out, manifest_sha256, model, effort, account, report):
                 and child_result['totalTokens'] == sum(child_usage[k] for k in COUNTERS[:4]),
                 'child result aggregate mismatch')
     require(set(calls) == linked_tools, 'unaccounted child launch')
+    bash_tools = {block['id'] for row in transcripts[owner] if row.get('type') == 'assistant'
+                  for block in row['message'].get('content', [])
+                  if block.get('type') == 'tool_use' and block.get('name') == 'Bash'
+                  and text(block.get('id'))}
+    shell_tasks = defaultdict(list)
     for row in stream:
         if row.get('subtype') in ('task_started', 'task_notification', 'task_updated'):
-            require(row.get('task_id') in agent_paths and row.get('session_id') == session,
+            require(text(row.get('task_id')) and row.get('session_id') == session,
                     'unbound task lifecycle')
+            if row['task_id'] not in agent_paths:
+                shell_tasks[row['task_id']].append(row)
+    for rows in shell_tasks.values():
+        started = [r for r in rows if r['subtype'] == 'task_started']
+        ended = [r for r in rows if r['subtype'] == 'task_notification']
+        require(len(started) == len(ended) == 1, 'unbound task lifecycle')
+        tool = started[0].get('tool_use_id')
+        require(started[0].get('task_type') == 'local_bash'
+                and started[0].get('is_backgrounded') is False and tool in bash_tools
+                and ended[0].get('tool_use_id') == tool and ended[0].get('status') == 'completed'
+                and all(r.get('type') == 'system' and r.get('tool_use_id', tool) == tool for r in rows),
+                'unbound task lifecycle')
 
     totals = sum_usage(receipts)
     require(reported == totals, 'whole native aggregate mismatch')

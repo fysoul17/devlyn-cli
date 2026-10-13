@@ -43,8 +43,9 @@ def tree(root):
     return {str(p.relative_to(root)): digest(p) for p in sorted(root.rglob('*')) if p.is_file()}
 
 
-def smoke_catalogs(output):
-    path = output / 'verdict-smoke-claude.json'
+def smoke_catalogs(output, attempt=1):
+    name = runner.smoke_slots(attempt)[0][0]
+    path = output / f'verdict-{name}.json'
     require(path.is_file(), 'smoke-claude recorded boot catalogs are required')
     catalogs = read(path).get('boot_catalogs')
     require(isinstance(catalogs, dict) and set(catalogs) == {'skills', 'plugins', 'mcp_servers'}
@@ -54,6 +55,8 @@ def smoke_catalogs(output):
 
 
 def stage(args):
+    attempt = args.smoke_attempt
+    runner.smoke_slots(attempt)
     dest = args.stage_dir.resolve()
     phase = args.phase
     target = dest / f'runtime-{phase}.json'
@@ -68,11 +71,11 @@ def stage(args):
     for left, right in combinations(roots, 2):
         require(not (left.is_relative_to(right) or right.is_relative_to(left)),
                 'control, output, smoke output and scratch must be disjoint')
-    catalogs = {'claude': {'B': smoke_catalogs(smoke_output)}} if phase == 'measured' else {}
+    catalogs = {'claude': {'B': smoke_catalogs(smoke_output, attempt)}} if phase == 'measured' else {}
     manifest, manifest_hash = model_auth(args.auth)
     release = dict(version='4.2.18', tarball=str(dest / 'release.tgz'), sha256=digest(args.release_tarball),
         integrity='sha512-' + base64.b64encode(hashlib.sha512(args.release_tarball.read_bytes()).digest()).decode())
-    runtime = dict(run_id=args.run_id, phase=phase, release=release, image=args.image,
+    runtime = dict(run_id=args.run_id, phase=phase, smoke_attempt=attempt, release=release, image=args.image,
         control=str(control), output=str(dest / 'output'), smoke_output=str(smoke_output),
         scratch=str(dest / 'scratch'), sources=str(dest / 'sources'), source_root=str(HERE.parents[2]),
         auth=str(args.auth.absolute()), github_auth=str(args.github_auth.absolute()),
@@ -86,6 +89,7 @@ def stage(args):
     if dest.exists():
         require(phase == 'measured', 'stage already exists; preserve it')
         previous = read(dest / 'runtime-smoke.json')
+        require(attempt == previous.get('smoke_attempt', 1), 'measured smoke attempt differs from staged smoke')
         for key in ('run_id', 'image', 'release', 'control', 'models_cache', 'smoke_output'):
             require(runtime[key] == previous[key], 'measured inputs differ from staged smoke')
         runtime['models_cache_sha256'] = previous['models_cache_sha256']
@@ -143,7 +147,8 @@ def check(runtime_path):
         app.repository(name)
         app.boot_expectation('B', config)
     if runtime['phase'] == 'measured':
-        require(runtime['boot_catalogs']['claude']['B'] == smoke_catalogs(Path(runtime['smoke_output'])),
+        require(runtime['boot_catalogs']['claude']['B'] == smoke_catalogs(
+                    Path(runtime['smoke_output']), runtime['smoke_attempt']),
                 'registered boot catalogs differ from smoke-claude')
     app.prior_deleted(app.slots()[0][0])
     app.validate(app.slots()[0][0])  # includes control seal and docker image inspect
@@ -160,6 +165,7 @@ def main(argv=None):
     parser.add_argument('--github-auth', type=Path)
     parser.add_argument('--phase', choices=('smoke', 'measured'))
     parser.add_argument('--smoke-output', type=Path)
+    parser.add_argument('--smoke-attempt', type=int)
     args = parser.parse_args(argv)
     if args.check:
         if any(value is not None for key, value in vars(args).items() if key != 'check'):
@@ -172,6 +178,8 @@ def main(argv=None):
             check(args.check)
             print('rp-d1 stage check: PASS (inputs, release, credential shape, boot catalogs, image)')
         else:
+            if args.smoke_attempt is None:
+                args.smoke_attempt = 1
             print(stage(args))
         return 0
     except (OSError, ValueError, KeyError, TypeError, RuntimeError, subprocess.SubprocessError, tarfile.TarError) as exc:

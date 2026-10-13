@@ -9,9 +9,10 @@ sources cites the inherited code it relies on. Where they disagree, this file wi
 
 - A prospective adapter around 0255: GitHub transport for the cell plus a separate
   host-side delivery verdict.
-- 0254/0255 accounting is reused unchanged. Every historical runner and result
-  stays untouched.
-- There is no new accounting code. Unsupported shapes stay UNKNOWN/STOP.
+- 0255 accounting reuses 0254, whose scope was narrowly amended on 2026-10-13
+  after live smoke to admit owner-bound foreground `local_bash` lifecycle rows
+  without adding inference usage. Historical results stay untouched; unsupported
+  shapes stay UNKNOWN/STOP.
 
 ## Adopted decisions
 
@@ -169,6 +170,14 @@ sources cites the inherited code it relies on. Where they disagree, this file wi
     The owner watchdog is 5400 s and the evaluator watchdog 600 s. There are no
     budgets.
 12. **Live smoke** (separate, before registration):
+    - Smoke may be repeated after an apparatus fix using a fresh stage directory
+      and fresh repositories. `smoke_attempt` is an integer >= 1 (default 1);
+      `stage.py --smoke-attempt N` selects it. Attempt 1 keeps `smoke-claude` and
+      `smoke-codex`; N > 1 uses `smokeN-claude` and `smokeN-codex`, including in
+      `rpd1-<run-id>-<slot>` repository names. Prechecks cover the current attempt
+      and o01..o08. Earlier attempt records remain untouched and are never graded.
+      Measured o01 reads only the selected runtime's `smoke_output` and attempt;
+      measurement never starts from a failed attempt.
     - Two repositories, run serially through the same `Runner.run()` lifecycle
       as measured slots: prepare, launch, accounting, seal/PAT scan, archive,
       done-check, delete and confirm 404, final PAT scan.

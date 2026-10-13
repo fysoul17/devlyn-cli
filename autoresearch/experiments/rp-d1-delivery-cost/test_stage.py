@@ -50,7 +50,7 @@ class StageTests(unittest.TestCase):
         for name in ('hosts.yml', 'config.yml'):
             s.auth.write_private(self.github_auth, name, b'not a credential\n')
         self.args = SimpleNamespace(stage_dir=self.root / 'stage', run_id='offline', release_tarball=self.tarball,
-            image='sha256:' + 'a' * 64, auth=self.auth, github_auth=self.github_auth, phase='smoke', smoke_output=None)
+            image='sha256:' + 'a' * 64, auth=self.auth, github_auth=self.github_auth, phase='smoke', smoke_output=None, smoke_attempt=1)
 
     def stage(self):
         with patch.object(Path, 'home', return_value=self.home), \
@@ -74,8 +74,9 @@ class StageTests(unittest.TestCase):
     def smoke_receipts(self):
         output = self.args.stage_dir / 'smoke-output'
         catalogs = dict(skills=['devlyn-ideate', 'devlyn-engines'], plugins=[], mcp_servers=[])
-        s.write(output / 'verdict-smoke-claude.json', dict(boot_catalogs=catalogs))
-        for name, _, _ in s.runner.SMOKE:
+        slots = s.runner.smoke_slots(self.args.smoke_attempt)
+        s.write(output / f'verdict-{slots[0][0]}.json', dict(boot_catalogs=catalogs))
+        for name, _, _ in slots:
             (output / name).mkdir()
             s.write(output / name / 'rp-verdict.json', dict(status='ADJUDICATE', repository_cleanup=dict(
                 repository=f'fysoul17/rpd1-offline-{name}', status='DELETED', http_status=404,
@@ -121,6 +122,46 @@ class StageTests(unittest.TestCase):
         self.assertNotEqual(smoke, measured)
         for path, raw in frozen.items():
             self.assertEqual(path.read_bytes(), raw, str(path))
+
+    def test_second_attempt_stages_separately_and_measured_binds_its_catalogs(self):
+        first = self.stage()
+        self.smoke_receipts()
+        first_root = self.args.stage_dir
+        frozen = {path: path.read_bytes() for path in first_root.rglob('*') if path.is_file()}
+        self.args.smoke_attempt = 2
+        with self.assertRaisesRegex(RuntimeError, 'already staged'):
+            self.stage()
+        self.args.stage_dir = self.root / 'stage2'
+        smoke = self.stage()
+        self.assertEqual(s.read(smoke)['smoke_attempt'], 2)
+        self.check(smoke)
+        catalogs = self.smoke_receipts()
+        self.args.phase = 'measured'
+        measured = self.stage()
+        self.check(measured)
+        runtime = s.read(measured)
+        self.assertEqual(runtime['smoke_attempt'], 2)
+        self.assertEqual(runtime['smoke_output'], str(self.args.stage_dir / 'smoke-output'))
+        self.assertEqual(runtime['boot_catalogs'], {'claude': {'B': catalogs}})
+        for path, raw in frozen.items():
+            self.assertEqual(path.read_bytes(), raw)
+        self.assertNotEqual(first, smoke)
+
+    def test_stage_refuses_invalid_attempt_before_writing(self):
+        for value in (0, -1, True, 1.5, '2', None):
+            self.args.smoke_attempt = value
+            with self.subTest(value=value), self.assertRaisesRegex(ValueError, 'smoke_attempt'):
+                self.stage()
+            self.assertFalse(self.args.stage_dir.exists())
+
+    def test_measured_refuses_different_smoke_attempt(self):
+        self.stage()
+        self.args.smoke_attempt = 2
+        self.smoke_receipts()
+        self.args.phase = 'measured'
+        with self.assertRaisesRegex(RuntimeError, 'smoke attempt differs'):
+            self.stage()
+        self.assertFalse((self.args.stage_dir / 'runtime-measured.json').exists())
 
     def test_measured_refuses_absent_or_malformed_recorded_catalogs(self):
         self.stage()
