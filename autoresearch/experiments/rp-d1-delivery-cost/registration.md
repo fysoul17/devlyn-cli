@@ -131,3 +131,24 @@ Smoke tasks are unrelated to BV and Z0 and are never pooled with measured data.
 
   Its verdict hashes and the recorded Claude boot catalogs are in
   [registration.json](registration.json).
+
+## Final freeze before exposure (2026-10-14 01:15 KST)
+
+The first freeze's Claude credential would have dropped below the 6300-second
+launch floor partway through the schedule. Both registration reviewers had
+already approved the plan for this case:
+
+1. wait for the host token to renew;
+2. snapshot the new token;
+3. re-stage the measured run;
+4. regenerate [registration.json](registration.json).
+
+The host's Claude login had meanwhile switched accounts, so the measured
+account is the one now recorded. The regenerated file differs from the first
+freeze only in four places:
+
+- the account and the auth manifest;
+- the runtime hash;
+- `apparatus_commit`;
+- the input hashes of the reviewed `runner.py` STOP fix and the pre-registered
+  `summarize.py` with its tests.

@@ -1,6 +1,6 @@
 {
   "schema": "rp-d1-registration-v1",
-  "apparatus_commit": "c468b416448f5c726b28cfd43c9e4192830abf81",
+  "apparatus_commit": "40e1383a32d83f16c701950bcf0a3022b8322674",
   "run_id": "20261013a",
   "phase": "measured",
   "schedule": [
@@ -85,10 +85,10 @@
     }
   },
   "account": [
-    "02b266ea50d2",
-    "531f8e153d6b"
+    "9f2f3a391923",
+    "ea65f3b4f086"
   ],
-  "auth_manifest_sha256": "873c04d8eb4b4180cd003b24290746e998c37150b12e6fd9bcdba6f01e20f1fe",
+  "auth_manifest_sha256": "5996708e724dc67e56156c79e79c01c42205eee0f00d6d13f94f4f4ebc23969b",
   "boot_catalogs": {
     "claude": {
       "B": {
@@ -136,7 +136,7 @@
       }
     }
   },
-  "runtime_sha256": "94e9cd8fdbf10093915e3aaeec5a20c2e3a9709aaa2de4180d97573fc484397b",
+  "runtime_sha256": "01dc4f9aa326ccfaf30eb51f4be9187b0e235fe70a90dbf28e6d0a2133d78e2d",
   "smoke": {
     "attempt": 3,
     "verdicts": {
@@ -146,11 +146,11 @@
     "schedule_sha256": "aa482b025be39f4baed0b3c444dd58188fcd0ad77c078539a24790f32eb44c14"
   },
   "inputs": {
-    "~/.local/share/nx01/rp-d1-live/auth-measured/manifest.json": "873c04d8eb4b4180cd003b24290746e998c37150b12e6fd9bcdba6f01e20f1fe",
+    "~/.local/share/nx01/rp-d1-live/auth-measured2/manifest.json": "5996708e724dc67e56156c79e79c01c42205eee0f00d6d13f94f4f4ebc23969b",
     "~/.local/share/nx01/rp-d1-live/stage3/control.manifest.json": "2a5171d31847685857ca41980727ec67e09e875fa2b79c295cdedf6a367ac67d",
     "~/.local/share/nx01/rp-d1-live/stage3/models_cache.json": "8f5b764ad14f61e6bac5e05b2393cbe3a07fb10069b9cf71debdcfa8c123605f",
     "~/.local/share/nx01/rp-d1-live/stage3/release.tgz": "7b22cce865d99e1400f9c0b0bff41c1b9ae3645b132cbb868ec01cadc973393e",
-    "~/.local/share/nx01/rp-d1-live/stage3/runtime-measured.json": "94e9cd8fdbf10093915e3aaeec5a20c2e3a9709aaa2de4180d97573fc484397b",
+    "~/.local/share/nx01/rp-d1-live/stage3/runtime-measured.json": "01dc4f9aa326ccfaf30eb51f4be9187b0e235fe70a90dbf28e6d0a2133d78e2d",
     "~/Documents/GitHub/devlyn-cli.devlyn.noindex/rp-d1-apparatus/autoresearch/experiments/0208/accounting.py": "ca92ed2dd6418eade2ca3090d303717bd77529915770316701ca556108fc29ed",
     "~/Documents/GitHub/devlyn-cli.devlyn.noindex/rp-d1-apparatus/autoresearch/experiments/0210/native_accounting.py": "567168cd34808dc6f97d1121842a4cfddc2a2da60a96141cfb8df1cced326621",
     "~/Documents/GitHub/devlyn-cli.devlyn.noindex/rp-d1-apparatus/autoresearch/experiments/0211/packet.py": "fc4f31a4807d9dfa31141e2ba4ae99351a09efc0312c30750a4713757cbb031d",
@@ -298,12 +298,14 @@
     "~/Documents/GitHub/devlyn-cli.devlyn.noindex/rp-d1-apparatus/autoresearch/experiments/rp-d1-delivery-cost/github.py": "df38071572a6979b0dff64c3c34fc4af02c12ca64b177d655750525a9e797215",
     "~/Documents/GitHub/devlyn-cli.devlyn.noindex/rp-d1-apparatus/autoresearch/experiments/rp-d1-delivery-cost/oracle.py": "4c2d454662fd3c299dfac136bbff01d439ccd23af5b331d13b2e42cf44dab959",
     "~/Documents/GitHub/devlyn-cli.devlyn.noindex/rp-d1-apparatus/autoresearch/experiments/rp-d1-delivery-cost/prepare.py": "6531b2958d81bbf4baff52fd118b61f43a05c26400569c4e2eb955947e5feb77",
-    "~/Documents/GitHub/devlyn-cli.devlyn.noindex/rp-d1-apparatus/autoresearch/experiments/rp-d1-delivery-cost/runner.py": "317490697ffd19ccc532bebd521260a527f05e0b60c76c2668da635128e0f176",
+    "~/Documents/GitHub/devlyn-cli.devlyn.noindex/rp-d1-apparatus/autoresearch/experiments/rp-d1-delivery-cost/runner.py": "337af3003f76ec0407abf341752613c6bf87b094d47ffd7217d8f42ac115e811",
     "~/Documents/GitHub/devlyn-cli.devlyn.noindex/rp-d1-apparatus/autoresearch/experiments/rp-d1-delivery-cost/smoke-tasks.json": "cdd53075655181b2f9de5c2e238b6a4518253cd18d984e7518e7dbb79df55687",
     "~/Documents/GitHub/devlyn-cli.devlyn.noindex/rp-d1-apparatus/autoresearch/experiments/rp-d1-delivery-cost/stage.py": "4df45ad97f0f6622e59879e3d4c7091e2bac9694eb875dd345ec3c3a42522476",
+    "~/Documents/GitHub/devlyn-cli.devlyn.noindex/rp-d1-apparatus/autoresearch/experiments/rp-d1-delivery-cost/summarize.py": "44950e737883a55869c4a726ee50d977dcf4d6540d9adcc861f252f3ebac3b87",
     "~/Documents/GitHub/devlyn-cli.devlyn.noindex/rp-d1-apparatus/autoresearch/experiments/rp-d1-delivery-cost/tasks.json": "12f4ef121cc0544ab1ffe42caf4cf5cc17d6df096cc1d2dcdd2565732c4f7ef7",
-    "~/Documents/GitHub/devlyn-cli.devlyn.noindex/rp-d1-apparatus/autoresearch/experiments/rp-d1-delivery-cost/test_apparatus.py": "6afc6d74ab6eb187ddf03a0c0dcaea1a1e347f459728a7fac6091cd74c0eef8c",
-    "~/Documents/GitHub/devlyn-cli.devlyn.noindex/rp-d1-apparatus/autoresearch/experiments/rp-d1-delivery-cost/test_stage.py": "4bef963e12d7ecce1ca0c448c823845767c3282a58cd9cd4566a2cdaba81f2ea"
+    "~/Documents/GitHub/devlyn-cli.devlyn.noindex/rp-d1-apparatus/autoresearch/experiments/rp-d1-delivery-cost/test_apparatus.py": "28997c33a641fdf5521cf29d60cbf64a2820ba274352e1e0bb5a7bad2770f2da",
+    "~/Documents/GitHub/devlyn-cli.devlyn.noindex/rp-d1-apparatus/autoresearch/experiments/rp-d1-delivery-cost/test_stage.py": "4bef963e12d7ecce1ca0c448c823845767c3282a58cd9cd4566a2cdaba81f2ea",
+    "~/Documents/GitHub/devlyn-cli.devlyn.noindex/rp-d1-apparatus/autoresearch/experiments/rp-d1-delivery-cost/test_summarize.py": "1c1286d4dea54c2ec6dc97151e5332cfcdad5d0b84c0fda7d67fcad36748bd8a"
   },
   "watchdog_seconds": {
     "owner": 5400,
