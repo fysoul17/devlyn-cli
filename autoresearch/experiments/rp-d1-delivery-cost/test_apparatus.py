@@ -483,7 +483,8 @@ class PrepareAndRunnerTests(TempCase):
         tarball = self.root / 'release.tgz'
         with tarfile.open(tarball, 'w:gz') as archive:
             archive.add(package, arcname='package')
-        self.runtime = dict(output=str(self.root / 'output'), control=str(self.control), phase='measured',
+        self.runtime = dict(output=str(self.root / 'output'), smoke_output=str(self.root / 'smoke-output'),
+            control=str(self.control), phase='measured',
             image='sha256:' + 'a' * 64, run_id='offline', sources=str(self.root), account=['a' * 12, 'b' * 12],
             release=dict(version='4.2.18', tarball=str(tarball), sha256=g.digest(tarball),
                 integrity='sha512-' + base64.b64encode(hashlib.sha512(tarball.read_bytes()).digest()).decode()))
@@ -491,7 +492,199 @@ class PrepareAndRunnerTests(TempCase):
         self.runtime_path = self.root / 'runtime.json'
         r.write(self.runtime_path, self.runtime)
         self.app = r.Runner(self.runtime_path)
-        self.fake = FakeGitHub(self.root, self.app.remaining('smoke'))
+        self.fake = FakeGitHub(self.root, self.app.remaining('smoke-claude'))
+
+    def test_smoke_shared_lifecycle_order_receipts_and_separate_outputs(self):
+        app = r.Runner(self.runtime_path, phase='smoke')
+        output = Path(self.runtime['smoke_output'])
+        events = []
+
+        def install(runtime, work, home, config, arm):
+            (work / 'AGENTS.md').write_text('installed from fixture tarball')
+            p.bootstrap_git(work, 'add', '-A')
+            p.bootstrap_git(work, 'commit', '-qm', 'install B')
+
+        def inherited(name, task, arm, config):
+            events.append(('prepare', name))
+            out = app.prepare(name, task, arm, config)
+            caller = r.read(out / 'harness/caller.json')
+            self.assertIn('slugify(text)', caller['request'])
+            self.assertEqual(caller['allowed'], app.task('SM')['allowed'])
+            self.assertEqual(r.read(out / 'baseline.json')['tasks_sha256'], g.digest(HERE / 'smoke-tasks.json'))
+            self.assertFalse((out / 'cell/work/src/expiry').exists())
+            self.assertFalse((out / 'cell/work/src/limitcli').exists())
+            (out / 'run').mkdir()
+            r.write(out / 'run/started.json', {})
+            c.seal(out, app.runtime, lambda _: ('sealed', []))
+            r.write(output / f'verdict-{name}.json', dict(status='CHECKS_PASS', usage='COMPLETE',
+                input_tokens=7, output_tokens=3, teardown='CLEAN', evidence_manifest_sha256='sealed', snapshot={}))
+
+        def done(out, *_):
+            events.append(('done', out.name))
+            return dict(status='ADJUDICATE', checklist={})
+
+        delete_archived = g.delete_archived
+
+        def delete(repository, root, manifest):
+            result = delete_archived(repository, root, manifest)
+            events.append(('deleted', root.name))
+            return result
+
+        with patch.object(app, 'validate'), patch.object(app, 'inputs', return_value={'fixture': 'sealed'}), \
+                patch.object(app.frame, 'control_unchanged', return_value=True), \
+                patch.object(app.frame.prepare, 'install', side_effect=install), \
+                patch.object(r.legacy.Runner, 'run', side_effect=inherited) as launch, \
+                patch.object(g, 'command', self.fake), patch.object(c, 'scan', wraps=c.scan) as scan, \
+                patch.object(g, 'done_check', side_effect=done), patch.object(g, 'delete_archived', side_effect=delete):
+            self.assertEqual(app.schedule(), 0)
+            self.assertEqual([call.args for call in launch.call_args_list],
+                             [('smoke-claude', 'SM', 'B', 'claude'), ('smoke-codex', 'SM', 'B', 'codex')])
+            for name, task, config in r.SMOKE:
+                with self.assertRaisesRegex(ValueError, 'never replay'):
+                    app.run(name, task, 'B', config)
+            self.assertEqual(launch.call_count, 2)
+        self.assertEqual(events, [(action, name) for name in ('smoke-claude', 'smoke-codex')
+                                  for action in ('prepare', 'done', 'deleted')])
+        self.assertEqual([call.kwargs.get('root', call.args[0]) for call in scan.call_args_list],
+                         [output / 'smoke-claude', output / 'archives/smoke-claude',
+                          output / 'smoke-codex', output / 'archives/smoke-codex'])
+        self.assertFalse(Path(self.runtime['output']).exists())
+        summary = r.read(output / 'rp-schedule.json')
+        self.assertEqual((summary['phase'], summary['dispatched']), ('smoke', 2))
+        for row in summary['slots']:
+            self.assertEqual((row['phase'], row['measurement_eligible']), ('smoke', False))
+            self.assertEqual((row['input_tokens'], row['output_tokens']), (7, 3))
+            self.assertEqual(row['repository_cleanup']['http_status'], 404)
+            self.assertEqual(row['repository_cleanup']['status'], 'DELETED')
+        self.app.prior_deleted('o01')
+        (output / 'smoke-claude/rp-verdict.json').unlink()
+        with self.assertRaises(FileNotFoundError):
+            self.app.prior_deleted('o01')
+
+    def test_phases_reject_each_others_slots_and_changed_task_manifests(self):
+        smoke = r.Runner(self.runtime_path, phase='smoke')
+        self.assertEqual([task['id'] for task in smoke.tasks['tasks']], ['SM'])
+        self.assertEqual([task['id'] for task in self.app.tasks['tasks']], ['BV', 'Z0'])
+        with patch.object(r.legacy.Runner, 'run') as inherited:
+            for app, foreign in ((smoke, r.SCHEDULE), (self.app, r.SMOKE)):
+                for name, task, config in foreign:
+                    with self.assertRaisesRegex(ValueError, 'unregistered'):
+                        app.run(name, task, 'B', config)
+                app.tasks['tasks'][0]['request'] = 'changed'
+                name, task, config = app.slots()[0]
+                with self.assertRaisesRegex(ValueError, 'frozen'):
+                    app.run(name, task, 'B', config)
+        inherited.assert_not_called()
+        self.assertFalse(Path(self.runtime['output']).exists())
+        self.assertFalse(Path(self.runtime['smoke_output']).exists())
+
+    def test_output_roots_must_be_disjoint_in_both_phases(self):
+        measured = Path(self.runtime['output'])
+        alias = self.root / 'alias'
+        alias.symlink_to(measured, target_is_directory=True)
+        for root in (measured, measured / 'nested', measured.parent, alias):
+            r.write(self.runtime_path, dict(self.runtime, smoke_output=str(root)))
+            for phase in ('smoke', 'measured'):
+                with self.subTest(root=root, phase=phase), self.assertRaisesRegex(ValueError, 'must not overlap'):
+                    r.Runner(self.runtime_path, phase=phase)
+
+    def test_o01_refuses_missing_invalid_or_stopped_smoke_receipts(self):
+        with patch.object(r.legacy.Runner, 'run') as inherited, patch.object(g, 'precheck') as precheck:
+            self.assertEqual(self.app.run('o01', 'BV', 'B', 'claude'), 2)
+        inherited.assert_not_called()
+        precheck.assert_not_called()
+        paths = []
+        for name, _, _ in r.SMOKE:
+            path = Path(self.runtime['smoke_output']) / name / 'rp-verdict.json'
+            path.parent.mkdir(parents=True)
+            paths.append(path)
+            r.write(path, dict(status='ADJUDICATE', repository_cleanup=dict(repository=self.app.repository(name),
+                status='DELETED', http_status=404, archive_manifest_sha256='archive')))
+        self.app.prior_deleted('o01')
+        for path in paths:
+            original = r.read(path)
+            path.unlink()
+            with self.assertRaises(FileNotFoundError):
+                self.app.prior_deleted('o01')
+            for key, value in (('repository', self.app.repository('o01')), ('status', 'PENDING'),
+                               ('http_status', 403), ('archive_manifest_sha256', None)):
+                record = deepcopy(original)
+                record['repository_cleanup'][key] = value
+                r.write(path, record)
+                with self.assertRaisesRegex(ValueError, 'deletion/404'):
+                    self.app.prior_deleted('o01')
+            for status in ('STOP', 'UNKNOWN', 'NOT_RUN'):
+                r.write(path, dict(original, status=status))
+                with self.assertRaisesRegex(ValueError, 'already stopped'):
+                    self.app.prior_deleted('o01')
+            r.write(path, dict(original, status='PRODUCT_INCOMPLETE'))
+            with self.assertRaisesRegex(ValueError, 'working delivery'):
+                self.app.prior_deleted('o01')
+            r.write(path, original)
+
+    def test_smoke_delivery_failure_keeps_cost_and_stops_codex_and_measurement(self):
+        app = r.Runner(self.runtime_path, phase='smoke')
+        output = Path(self.runtime['smoke_output'])
+
+        def inherited(name, *_):
+            (output / name / 'run').mkdir(parents=True)
+            r.write(output / name / 'run/started.json', {})
+            r.write(output / f'verdict-{name}.json', dict(status='CHECKS_PASS', usage='COMPLETE',
+                input_tokens=7, output_tokens=3, teardown='CLEAN', evidence_manifest_sha256='sealed', snapshot={}))
+
+        with patch.object(g, 'precheck'), patch.object(r.legacy.Runner, 'run', side_effect=inherited), \
+                patch.object(g, 'archive', return_value=dict(manifest_sha256='archive')), patch.object(c, 'scan'), \
+                patch.object(g, 'done_check', return_value=dict(status='PRODUCT_INCOMPLETE', checklist={})), \
+                patch.object(g, 'delete_archived', return_value=dict(repository=app.repository('smoke-claude'),
+                    status='DELETED', http_status=404, archive_manifest_sha256='archive')):
+            self.assertEqual(app.schedule(), 2)
+        summary = r.read(output / 'rp-schedule.json')
+        self.assertEqual([row['status'] for row in summary['slots']], ['PRODUCT_INCOMPLETE', 'NOT_RUN'])
+        self.assertEqual((summary['slots'][0]['input_tokens'], summary['slots'][0]['output_tokens']), (7, 3))
+        self.assertEqual(summary['dispatched'], 1)
+        with self.assertRaisesRegex(ValueError, 'working delivery'):
+            self.app.prior_deleted('o01')
+
+    def test_smoke_codex_requires_claude_receipt_and_stop_prevents_replay(self):
+        app = r.Runner(self.runtime_path, phase='smoke')
+        with self.assertRaises(FileNotFoundError):
+            app.prior_deleted('smoke-codex')
+        with patch.object(g, 'precheck', side_effect=g.EvidenceError('offline refusal')), \
+                patch.object(r.legacy.Runner, 'run') as inherited:
+            self.assertEqual(app.schedule(), 2)
+            with self.assertRaisesRegex(ValueError, 'never replay'):
+                app.run('smoke-codex', 'SM', 'B', 'codex')
+        inherited.assert_not_called()
+        summary = r.read(Path(self.runtime['smoke_output']) / 'rp-schedule.json')
+        self.assertEqual([row['status'] for row in summary['slots']], ['STOP', 'NOT_RUN'])
+        self.assertEqual(summary['dispatched'], 0)
+        with self.assertRaisesRegex(ValueError, 'already stopped'):
+            self.app.prior_deleted('o01')
+
+    def test_smoke_repositories_are_first_in_emptiness_precheck(self):
+        expected = ['smoke-claude', 'smoke-codex', *[f'o{i:02}' for i in range(1, 9)]]
+        self.assertEqual(self.app.remaining('smoke-claude'), [self.app.repository(name) for name in expected])
+        self.assertEqual(self.app.remaining('smoke-codex'), [self.app.repository(name) for name in expected[1:]])
+        with patch.object(g, 'command', self.fake):
+            g.precheck(self.app.remaining('smoke-claude'))
+            for name in expected[:2]:
+                state = self.fake.states[self.app.repository(name)]
+                state['pulls'] = [dict(number=1)]
+                with self.assertRaisesRegex(g.EvidenceError, 'not empty'):
+                    g.precheck(self.app.remaining('smoke-claude'))
+                state['pulls'] = []
+
+    def test_cli_selects_phase_output_and_schedule(self):
+        for phase, slots, key in (('smoke', r.SMOKE, 'smoke_output'), ('measured', r.SCHEDULE, 'output')):
+            def schedule(app):
+                self.assertEqual(app.runtime['phase'], phase)
+                self.assertEqual(app.runtime['output'], self.runtime[key])
+                self.assertEqual(app.slots(), slots)
+                return 2
+
+            with patch.object(sys, 'argv', ['runner.py', str(self.runtime_path), phase]), \
+                    patch.object(r.Runner, 'schedule', schedule):
+                self.assertEqual(r.main(), 2)
 
     def test_prompt_is_exact_design_prompt_and_caller_unchanged(self):
         text = (HERE / 'DESIGN.md').read_text()
@@ -752,11 +945,29 @@ class PrepareAndRunnerTests(TempCase):
             inputs = self.app.inputs()
         self.assertEqual(inputs['historical'], 'unchanged')
         for name in ('runner.py', 'prepare.py', 'cell.py', 'github.py', 'oracle.py', 'build.sh', 'Dockerfile',
-                     'common.txt', 'tasks.json', 'fixtures/BV/.user-state/draft.txt'):
+                     'common.txt', 'tasks.json', 'smoke-tasks.json', 'fixtures/BV/.user-state/draft.txt',
+                     'fixtures/SM/.user-state/draft.txt'):
             self.assertEqual(inputs[str(HERE / name)], g.digest(HERE / name))
 
 
 class OracleTests(TempCase):
+    def test_smoke_original_fails_and_correct_fixture_with_public_regression_passes(self):
+        original = oracle.check('SM', HERE / 'fixtures/SM')
+        self.assertEqual([row['id'] for row in original['rows']], r.read(HERE / 'smoke-tasks.json')['tasks'][0]['oracle'])
+        self.assertTrue(all(row['status'] == 'FAIL' for row in original['rows']))
+        dest = self.root / 'SM'
+        shutil.copytree(HERE / 'fixtures/SM', dest)
+        (dest / oracle.IMPLEMENTATION['SM']).write_text(
+            'import re\ndef slugify(text):\n'
+            '    if not isinstance(text, str):\n        raise TypeError("expected text")\n'
+            '    return re.sub(r"[^A-Za-z0-9]+", "-", text).strip("-").lower()\n')
+        (dest / 'tests/test_regression.py').write_text(
+            'from slugtools import slugify\ndef test_words():\n    assert slugify(" Hello World! ") == "hello-world"\n')
+        public = subprocess.run([sys.executable, '-B', '-m', 'pytest', '-q'], cwd=dest,
+                                capture_output=True, text=True)
+        self.assertEqual(public.returncode, 0, public.stdout + public.stderr)
+        self.assertTrue(all(row['status'] == 'PASS' for row in oracle.check('SM', dest)['rows']))
+
     def test_float_implementation_passes_public_but_datetime_exception_fails_row(self):
         dest = self.root / 'BV'
         shutil.copytree(HERE / 'fixtures/BV', dest)

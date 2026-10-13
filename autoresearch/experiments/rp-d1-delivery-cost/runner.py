@@ -1,7 +1,8 @@
 """rp-d1 adapter over unchanged 0255/0254 accounting; serial, fail-closed delivery.
 
+runner.py <runtime.json> smoke | measured
 Runtime adds run_id, github_auth (private directory path), release (version,
-tarball, sha256, registry integrity), and smoke_deletion (archived 404 receipt).
+tarball, sha256, registry integrity), and smoke_output (separate from output).
 No credential value belongs in runtime, plan, command arguments or records.
 """
 import argparse
@@ -30,6 +31,7 @@ read, write, digest = legacy.read, legacy.write, legacy.digest
 SCHEDULE = [('o01', 'BV', 'claude'), ('o02', 'BV', 'codex'), ('o03', 'Z0', 'codex'),
             ('o04', 'Z0', 'claude'), ('o05', 'Z0', 'claude'), ('o06', 'Z0', 'codex'),
             ('o07', 'BV', 'codex'), ('o08', 'BV', 'claude')]
+SMOKE = [('smoke-claude', 'SM', 'claude'), ('smoke-codex', 'SM', 'codex')]
 
 
 def solo_route(tasks, config, _arm):
@@ -44,8 +46,20 @@ legacy.policy.route_for = solo_route
 
 
 class Runner(legacy.Runner):
-    def __init__(self, runtime_path, tasks_path=None):
-        super().__init__(runtime_path, tasks_path or read(runtime_path).get('tasks_file', HERE / 'tasks.json'))
+    def __init__(self, runtime_path, tasks_path=None, *, phase=None):
+        runtime = read(runtime_path)
+        phase = phase or runtime['phase']
+        if phase not in ('smoke', 'measured'):
+            raise ValueError('runtime phase must be smoke or measured')
+        output, smoke_output = (Path(runtime[key]).resolve() for key in ('output', 'smoke_output'))
+        if output.is_relative_to(smoke_output) or smoke_output.is_relative_to(output):
+            raise ValueError('smoke and measured output roots must not overlap')
+        default_tasks = (HERE / 'smoke-tasks.json' if phase == 'smoke' else
+                         runtime.get('tasks_file', HERE / 'tasks.json'))
+        super().__init__(runtime_path, tasks_path or default_tasks)
+        self.runtime['phase'] = phase
+        if phase == 'smoke':
+            self.runtime['output'] = str(smoke_output)
         self.frame.prepare.git = prepare.bootstrap_git
         self.frame.prepare.prepare = self.materialize
         self.frame.harness_unchanged = prepare.harness_unchanged
@@ -69,8 +83,11 @@ class Runner(legacy.Runner):
         return repository
 
     def remaining(self, name):
-        slots = ['smoke', *(row[0] for row in SCHEDULE)]
+        slots = [row[0] for row in SMOKE + SCHEDULE]
         return [self.repository(slot) for slot in slots[slots.index(name):]]
+
+    def slots(self):
+        return {'smoke': SMOKE, 'measured': SCHEDULE}[self.runtime['phase']]
 
     def native_prompt(self, caller):
         return (HERE / 'common.txt').read_text() + '\nCALLER CONTRACT\n' + json.dumps(caller, indent=2)
@@ -78,7 +95,8 @@ class Runner(legacy.Runner):
     def inputs(self):
         result = super().inputs()
         paths = [HERE / name for name in ('runner.py', 'prepare.py', 'cell.py', 'github.py', 'oracle.py',
-                  'common.txt', 'tasks.json', 'Dockerfile', 'build.sh', 'DESIGN.md', 'test_apparatus.py')]
+                  'common.txt', 'tasks.json', 'smoke-tasks.json', 'Dockerfile', 'build.sh', 'DESIGN.md',
+                  'test_apparatus.py')]
         paths += [p for p in (HERE / 'fixtures').rglob('*') if p.is_file() and '__pycache__' not in p.parts]
         paths.append(Path(self.runtime['release']['tarball']))
         result.update({str(path): digest(path) for path in paths})
@@ -125,33 +143,35 @@ class Runner(legacy.Runner):
         return dict(public=public, rows=decoded['rows'], raw=[raw])
 
     def prior_deleted(self, name):
-        if name == 'smoke':
-            return
-        index = [row[0] for row in SCHEDULE].index(name)
-        if index == 0:
-            receipt = read(self.runtime['smoke_deletion'])
-            previous = 'smoke'
-        else:
-            previous = SCHEDULE[index - 1][0]
-            record = read(Path(self.runtime['output']) / previous / 'rp-verdict.json')
+        slots = [row[0] for row in SMOKE + SCHEDULE]
+        index = slots.index(name)
+        # o01 independently requires both smoke verdicts, even if one is lost later.
+        predecessors = slots[:2] if name == 'o01' else slots[max(0, index - 1):index]
+        for previous in predecessors:
+            root = self.runtime['smoke_output' if previous in slots[:2] else 'output']
+            record = read(Path(root) / previous / 'rp-verdict.json')
             if record['status'] in ('STOP', 'UNKNOWN', 'NOT_RUN'):
                 raise ValueError('schedule already stopped')
+            if previous in slots[:2] and record['status'] not in ('PASS', 'ADJUDICATE'):
+                raise ValueError('smoke did not establish working delivery')
             receipt = record['repository_cleanup']
-        if (receipt.get('repository') != self.repository(previous) or receipt.get('status') != 'DELETED'
-                or receipt.get('http_status') != 404 or not receipt.get('archive_manifest_sha256')):
-            raise ValueError('previous repository has no archived deletion/404 receipt')
+            if (receipt.get('repository') != self.repository(previous) or receipt.get('status') != 'DELETED'
+                    or receipt.get('http_status') != 404 or not receipt.get('archive_manifest_sha256')):
+                raise ValueError('previous repository has no archived deletion/404 receipt')
 
     def run(self, name, task, arm, config):
-        if arm != 'B' or (name, task, config) not in SCHEDULE:
+        if arm != 'B' or (name, task, config) not in self.slots():
             raise ValueError('unregistered rp-d1 slot/task/route')
-        if self.runtime['phase'] != 'measured' or self.tasks != read(HERE / 'tasks.json'):
-            raise ValueError('measurement requires the frozen rp-d1 tasks; smoke is a separate prerequisite')
+        tasks_file = 'smoke-tasks.json' if self.runtime['phase'] == 'smoke' else 'tasks.json'
+        if self.tasks != read(HERE / tasks_file):
+            raise ValueError('phase requires its frozen rp-d1 tasks')
         output = Path(self.runtime['output'])
         out = output / name
         if out.exists() or (output / f'verdict-{name}.json').exists():
             raise ValueError('slot already attempted; preserve it, never replay')
         output.mkdir(parents=True, exist_ok=True)
         record = dict(schema='rp-d1-verdict-v1', cell=name, task=task, config=config,
+                      phase=self.runtime['phase'], measurement_eligible=self.runtime['phase'] == 'measured',
                       status='STOP', delivery_assessment='NOT_ASSESSED', dispatched=False,
                       usage='UNKNOWN', input_tokens=None, output_tokens=None)
         try:
@@ -204,15 +224,17 @@ class Runner(legacy.Runner):
                           delivery_assessment='NOT_ASSESSED', revocation_required=True,
                           reason='PAT scan hit or failed; revoke PAT immediately')
         write(out / 'rp-verdict.json', record)
-        return 2 if record['status'] in ('STOP', 'UNKNOWN') else 0
+        return 2 if (record['status'] in ('STOP', 'UNKNOWN') or
+                     self.runtime['phase'] == 'smoke' and record['status'] not in ('PASS', 'ADJUDICATE')) else 0
 
     def schedule(self):
         records, stopped = [], False
-        for name, task, config in SCHEDULE:
+        for name, task, config in self.slots():
             if stopped:
                 out = Path(self.runtime['output']) / name
                 out.mkdir(parents=True, exist_ok=False)
                 record = dict(cell=name, task=task, config=config, status='NOT_RUN',
+                              phase=self.runtime['phase'], measurement_eligible=self.runtime['phase'] == 'measured',
                               delivery_assessment='NOT_ASSESSED', dispatched=False,
                               reason='earlier slot stopped the schedule')
                 write(out / 'rp-verdict.json', record)
@@ -220,7 +242,7 @@ class Runner(legacy.Runner):
                 stopped = self.run(name, task, 'B', config) != 0
                 record = read(Path(self.runtime['output']) / name / 'rp-verdict.json')
             records.append(record)
-        result = dict(status='STOP' if stopped else 'RECORDED', slots=records,
+        result = dict(status='STOP' if stopped else 'RECORDED', phase=self.runtime['phase'], slots=records,
                       dispatched=sum(row['dispatched'] for row in records))
         write(Path(self.runtime['output']) / 'rp-schedule.json', result)
         return 2 if stopped else 0
@@ -229,8 +251,9 @@ class Runner(legacy.Runner):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('runtime', type=Path)
+    parser.add_argument('phase', choices=('smoke', 'measured'))
     args = parser.parse_args()
-    return Runner(args.runtime).schedule()
+    return Runner(args.runtime, phase=args.phase).schedule()
 
 
 if __name__ == '__main__':

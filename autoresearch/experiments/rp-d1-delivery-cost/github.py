@@ -60,7 +60,7 @@ def git(repo, *args, env=None, ok=(0,)):
 
 def url(repository):
     require(isinstance(repository, str) and re.fullmatch(
-        r'fysoul17/rpd1-[A-Za-z0-9][A-Za-z0-9-]*-(?:smoke|o0[1-8])', repository),
+        r'fysoul17/rpd1-[A-Za-z0-9][A-Za-z0-9-]*-(?:smoke-claude|smoke-codex|o0[1-8])', repository),
         'unregistered repository name')
     return 'https://github.com/' + repository + '.git'
 

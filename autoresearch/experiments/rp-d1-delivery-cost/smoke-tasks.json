@@ -1,0 +1,61 @@
+{
+  "assessors": [],
+  "routes": {
+    "claude": {
+      "owner": {
+        "effort": "max",
+        "engine": "claude",
+        "model": "claude-opus-5-5"
+      }
+    },
+    "codex": {
+      "owner": {
+        "child_effort": "high",
+        "child_model": "gpt-6-sol",
+        "effort": "high",
+        "engine": "codex",
+        "model": "gpt-6-sol"
+      }
+    }
+  },
+  "schema": "rp-d1-delivery-cost-v1",
+  "tasks": [
+    {
+      "allowed": [
+        "src/slugtools/__init__.py",
+        "tests/test_regression.py"
+      ],
+      "id": "SM",
+      "obligations": [
+        "Raise TypeError for non-string inputs.",
+        "Add a regression test in tests/test_regression.py."
+      ],
+      "oracle": [
+        "words",
+        "separators",
+        "empty",
+        "errors",
+        "regression"
+      ],
+      "public_checks": [
+        "python3 -B -m pytest -q"
+      ],
+      "request": "Implement slugify(text): lowercase ASCII letters, replace each run of characters outside ASCII letters and digits with one hyphen, and strip leading/trailing hyphens. Empty or separator-only text returns an empty string.",
+      "source_dir": "autoresearch/experiments/rp-d1-delivery-cost/fixtures/SM",
+      "source_sha256": {
+        ".gitignore": "5b52f58c05b8fb01d4dbac3e2b2b89c1b730bef875d6d9b77d2ad33965a44623",
+        ".user-state/draft.txt": "3420adc1bb0532d76c0471baad222ea8aa045f4971fc233acf2eae47a9c9a576",
+        "docs/user-notes.txt": "3fba8bb979c8951d0e6d74390dd6b90e2f5f5582fa30fc87ec5c1132589eeb5d",
+        "pyproject.toml": "4c86a6d971ca08289661b9453296da4c3427ae997a823be2b6e666a30e741257",
+        "src/slugtools/__init__.py": "860e201617dfc0813584a141e0fefe9e53d07812c88c901ea06cb35dad94f7cf",
+        "tests/test_existing.py": "7f9dd186871a9d627449a8b14ae1c6142ee9d080d809d60c42b65c7d96d1596a"
+      }
+    }
+  ],
+  "watchdog_seconds": {
+    "assessor": 600,
+    "evaluator": 600,
+    "owner": 5400,
+    "review": 600
+  }
+}

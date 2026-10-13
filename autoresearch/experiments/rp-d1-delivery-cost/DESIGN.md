@@ -16,9 +16,9 @@ sources cites the inherited code it relies on. Where they disagree, this file wi
 ## Adopted decisions
 
 1. **Repositories.**
-   - Nine empty private repositories under `fysoul17`, one smoke and o01–o08,
-     named `rpd1-<run-id>-<slot>`. Each observation gets its own repository and
-     a fresh cell and HOME.
+   - Ten empty private repositories under `fysoul17`: `rpd1-<run-id>-smoke-claude`,
+     `rpd1-<run-id>-smoke-codex` and `rpd1-<run-id>-o01` through `o08`.
+     Each slot gets its own repository and a fresh cell and HOME.
    - Before seeding a repository, the host checks that it and every later
      repository are still empty: no refs and no PRs. If any is not, STOP.
    - After each slot's teardown and seal, the host uses the owner's host
@@ -30,8 +30,8 @@ sources cites the inherited code it relies on. Where they disagree, this file wi
         it returns 404, including after a scan hit or failure;
      4. only then start the next slot.
 2. **Credential: one fine-grained PAT (S1).**
-   - The owner creates it once in the web UI after the nine repositories
-     exist. It selects only those nine repositories, with permissions
+   - The owner creates it once in the web UI after the ten repositories
+     exist. It selects only those ten repositories, with permissions
      Contents RW, Pull requests RW and Metadata R, and a short expiry.
    - The owner deletes it after the run, or immediately after a token-byte hit.
    - It is stored in a private directory outside both the cell output and
@@ -93,7 +93,7 @@ sources cites the inherited code it relies on. Where they disagree, this file wi
      to change.
 6. **Image.**
    - Build a new minimal Dockerfile (`build.sh` + `Dockerfile`) from the 0232
-     pins, keeping only what these two Python tasks need:
+     pins, keeping only what the Python tasks need:
      - the pinned python base digest;
      - git, ca-certificates, xz-utils, procps, less;
      - node 22.23.2;
@@ -151,26 +151,41 @@ sources cites the inherited code it relies on. Where they disagree, this file wi
     - Each fixture includes a tracked `docs/user-notes.txt` and an ignored
       `.user-state/draft.txt`.
 11. **Order.**
+    `smoke-claude SM Claude, smoke-codex SM Codex`, then measured
     `o01 BV Claude, o02 BV Codex, o03 Z0 Codex, o04 Z0 Claude, o05 Z0 Claude, o06 Z0 Codex, o07 BV Codex, o08 BV Claude`.
+    Emptiness prechecks follow this same order. Each successor requires its
+    predecessor's archived DELETED/404 receipt; o01 requires both smoke receipts
+    from `runtime.smoke_output`, ending with smoke-codex. No slot is replayed.
     The owner watchdog is 5400 s and the evaluator watchdog 600 s. There are no
     budgets.
 12. **Live smoke** (separate, before registration):
-    - One smoke repository and two serial owner sessions, one per engine, on
-      unrelated tiny requests.
+    - Two repositories, run serially through the same `Runner.run()` lifecycle
+      as measured slots: prepare, launch, accounting, seal/PAT scan, archive,
+      archive scan, done-check, delete and confirm 404.
+    - Both use SM (`fixtures/SM`, `smoke-tasks.json`): a tiny `slugify(text)`
+      helper with a public check and independent oracle rows, unrelated to BV/Z0.
+    - `runner.py <runtime.json> smoke` selects phase `smoke` and writes only to
+      `runtime.smoke_output`; `runner.py <runtime.json> measured` selects phase
+      `measured` and writes to `runtime.output`. The roots must not overlap.
+      Each phase refuses the other's slots and requires its frozen task manifest;
+      measured `tasks.json` stays unchanged. Smoke costs never enter measurement.
     - It must show `git push`, `gh pr create` and `gh pr merge` working for
-      both engines, along with accounting.
-    - Its expense is recorded separately. Neither measurement task is exposed.
+      both engines, along with accounting. Neither measurement task is exposed.
+      Smoke `PRODUCT_INCOMPLETE` stops the schedule and blocks measurement;
+      `ADJUDICATE` may proceed pending report review.
 
 ## Order of work
 
 1. Build the apparatus and run its offline tests (fake `gh`, real temporary Git).
-2. The host creates the nine repositories, with merge commits allowed and no
+2. The host creates the ten repositories, with merge commits allowed and no
    required reviews or checks.
 3. The owner creates the PAT.
 4. Provision the credential privately.
-5. Run the smoke, then archive and delete the smoke repository.
+5. Run `runner.py <runtime.json> smoke`; both serial slots must archive, delete
+   and record DELETED/404 receipts in the separate smoke output root.
 6. Freeze the registration and get reviews from Astra ultra and Grok 4.7.
-7. Run the eight slots serially, cleaning up after each one.
+7. Run `runner.py <runtime.json> measured` for the eight slots serially,
+   cleaning up after each one; o01 reads both smoke verdicts before dispatch.
 8. Review the results against the raw data, then record them.
 9. Remove the raw roots, the PAT, the containers, the volumes and the
    build-only image and context, using the recorded resource inventory and

@@ -12,9 +12,11 @@ import sys
 import tempfile
 
 HERE = Path(__file__).resolve().parent
-IMPLEMENTATION = {'BV': 'src/expiry/__init__.py', 'Z0': 'src/limitcli/__init__.py'}
+IMPLEMENTATION = {'BV': 'src/expiry/__init__.py', 'Z0': 'src/limitcli/__init__.py',
+                  'SM': 'src/slugtools/__init__.py'}
 ROWS = {'BV': ['boundary', 'before-after', 'datetime', 'errors', 'regression'],
-        'Z0': ['default', 'zero', 'positive', 'errors', 'regression']}
+        'Z0': ['default', 'zero', 'positive', 'errors', 'regression'],
+        'SM': ['words', 'separators', 'empty', 'errors', 'regression']}
 
 
 def check(task, work):
@@ -43,7 +45,7 @@ def check(task, work):
                 f(moment + datetime.timedelta(microseconds=1), moment) is True),
             'errors': lambda: all(rejects(args, TypeError) for args in ((None, 0), (0, None), (0, '0'))),
         }
-    else:
+    elif task == 'Z0':
         f = module.parse_limit
         checks = {
             'default': lambda: f([]) == 10,
@@ -51,6 +53,14 @@ def check(task, work):
             'positive': lambda: all(f(['--limit', str(n)]) == n for n in (1, 10, 23)),
             'errors': lambda: all(rejects((args,), SystemExit) for args in (
                 ['--limit', '-1'], ['--limit', 'bad'], ['--limit', '1.5'], ['--limit'], ['--unknown'])),
+        }
+    else:
+        f = module.slugify
+        checks = {
+            'words': lambda: f('Hello World 42') == 'hello-world-42' and f('Already-a-Slug') == 'already-a-slug',
+            'separators': lambda: f('  A__B...C / D\tE\n') == 'a-b-c-d-e' and f('café déjà') == 'caf-d-j',
+            'empty': lambda: all(f(text) == '' for text in ('', ' \t\n', '---___!!!')),
+            'errors': lambda: all(rejects((value,), TypeError) for value in (None, 1, b'hello', ['hello'])),
         }
     for name, probe in checks.items():
         try:
