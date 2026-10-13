@@ -308,13 +308,20 @@ def done_check(out, root, selection, locate, packet, review=None):
     anchor = out / 'cell/work'
     changed = []
     anchor_files, submitted_files = packet.tree(anchor), packet.tree(out / 'snapshot')
-    # Both the submitted tree and the retained anchor must preserve tracked user files.
-    for name, expected in baseline['files'].items():
-        if not packet.allowed(name, caller['allowed']):
-            current = anchor_files.get(name)
-            submitted = submitted_files.get(name)
-            if current != expected or submitted != expected:
-                changed.append(name)
+    outside = [name for name in baseline['files'] if not packet.allowed(name, caller['allowed'])]
+    anchor_changed = set()
+    # Git tracks content and the executable bit, not installer permissions such as 0600.
+    if outside:
+        for staged in ([], ['--cached']):
+            diff = command(['git', '-c', 'core.fsmonitor=false', '-c', 'core.filemode=true',
+                '--literal-pathspecs', '-C', str(anchor), 'diff', '--no-ext-diff', '--no-textconv',
+                '--no-renames', '--name-only', '-z', *staged, baseline['allocation_sha'], '--', *outside],
+                env=git_env())
+            anchor_changed.update(filter(None, diff.stdout.split('\0')))
+    for name in outside:
+        if (name in anchor_changed or not (anchor / name).exists() or
+                submitted_files.get(name) != baseline['files'][name]):
+            changed.append(name)
     if changed:
         failures.append('out-of-scope tracked files changed')
     try:

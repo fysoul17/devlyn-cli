@@ -118,7 +118,11 @@ sources cites the inherited code it relies on. Where they disagree, this file wi
    - The merge commit is reachable from archived `main`, and its Git tree OID
      equals the accepted source tree OID. A single tree-OID comparison is
      enough; the duplicate `packet.tree` comparison is dropped.
-   - Tracked user files outside the allowed scope are unchanged.
+   - Tracked user files outside the allowed scope are unchanged. The retained
+     anchor uses Git content/executable-bit comparisons of both the working tree
+     and index against the allocation commit, with every path still present;
+     installer permissions such as `0600` versus `0644` do not count as damage.
+     The submitted snapshot comparison remains unchanged.
    - The ignored sentinel `.user-state/draft.txt` is unchanged by bytes and
      mode.
    - The final report's verification, merge, cleanup and reconciliation
@@ -190,8 +194,10 @@ sources cites the inherited code it relies on. Where they disagree, this file wi
       measured `tasks.json` stays unchanged. Smoke costs never enter measurement.
     - It must show `git push`, `gh pr create` and `gh pr merge` working for
       both engines, along with accounting. Neither measurement task is exposed.
-      Smoke `PRODUCT_INCOMPLETE` stops the schedule and blocks measurement;
-      `ADJUDICATE` may proceed pending report review.
+      Smoke `PRODUCT_INCOMPLETE` retains its cost and permits the next smoke slot
+      after archived deletion/404; STOP/UNKNOWN stops the schedule, as measured.
+      Measured o01 still requires both current-attempt smoke slots to be
+      `PASS`/`ADJUDICATE` with deletion receipts; report review may remain pending.
 
 ## Order of work
 

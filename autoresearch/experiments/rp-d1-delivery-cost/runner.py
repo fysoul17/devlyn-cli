@@ -164,7 +164,7 @@ class Runner(legacy.Runner):
             record = read(Path(root) / previous / 'rp-verdict.json')
             if record['status'] in ('STOP', 'UNKNOWN', 'NOT_RUN'):
                 raise ValueError('schedule already stopped')
-            if previous in slots[:2] and record['status'] not in ('PASS', 'ADJUDICATE'):
+            if name == 'o01' and record['status'] not in ('PASS', 'ADJUDICATE'):
                 raise ValueError('smoke did not establish working delivery')
             receipt = record['repository_cleanup']
             if (receipt.get('repository') != self.repository(previous) or receipt.get('status') != 'DELETED'
@@ -248,8 +248,7 @@ class Runner(legacy.Runner):
                               delivery_assessment='NOT_ASSESSED', revocation_required=True,
                               reason='PAT scan hit or failed; revoke PAT immediately')
             write(out / 'rp-verdict.json', record)
-        return 2 if (record['status'] in ('STOP', 'UNKNOWN') or
-                     self.runtime['phase'] == 'smoke' and record['status'] not in ('PASS', 'ADJUDICATE')) else 0
+        return 2 if record['status'] in ('STOP', 'UNKNOWN') else 0
 
     def schedule(self):
         records, stopped = [], False

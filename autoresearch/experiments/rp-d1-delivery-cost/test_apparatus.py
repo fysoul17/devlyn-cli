@@ -259,6 +259,30 @@ class DeliveryTests(TempCase):
         self.freeze_archive()
         self.assertIn('out-of-scope tracked files changed', self.check()['failures'])
 
+    def test_tracked_file_installer_permissions_pass(self):
+        (self.anchor / 'docs/user-notes.txt').chmod(0o600)
+        self.freeze_archive()
+        checked = self.check()
+        self.assertEqual(checked['failures'], [])
+        self.assertTrue(self.check(self.review(checked))['passed'])
+
+    def test_tracked_file_deletion_and_executable_change_fail(self):
+        self.freeze_archive()
+        path = self.anchor / 'docs/user-notes.txt'
+        path.chmod(0o755)
+        self.assertIn('out-of-scope tracked files changed', self.check()['failures'])
+        path.unlink()
+        self.assertIn('out-of-scope tracked files changed', self.check()['failures'])
+
+    def test_staged_damage_with_restored_working_file_fails(self):
+        path = self.anchor / 'docs/user-notes.txt'
+        original = path.read_bytes()
+        path.write_text('staged damage')
+        g.git(self.anchor, 'add', '--', 'docs/user-notes.txt')
+        path.write_bytes(original)
+        self.freeze_archive()
+        self.assertIn('out-of-scope tracked files changed', self.check()['failures'])
+
     def test_retained_worktree_user_file_damage_fails(self):
         (self.work / 'docs/user-notes.txt').write_text('damage after acceptance')
         self.freeze_archive()
@@ -679,7 +703,7 @@ class PrepareAndRunnerTests(TempCase):
                 self.app.prior_deleted('o01')
             r.write(path, original)
 
-    def test_smoke_delivery_failure_keeps_cost_and_stops_codex_and_measurement(self):
+    def test_smoke_delivery_failure_keeps_cost_runs_codex_and_blocks_measurement(self):
         app = r.Runner(self.runtime_path, phase='smoke')
         output = Path(self.runtime['smoke_output'])
 
@@ -689,16 +713,22 @@ class PrepareAndRunnerTests(TempCase):
             r.write(output / f'verdict-{name}.json', dict(status='CHECKS_PASS', usage='COMPLETE',
                 input_tokens=7, output_tokens=3, teardown='CLEAN', evidence_manifest_sha256='sealed', snapshot={}))
 
-        with patch.object(g, 'precheck'), patch.object(r.legacy.Runner, 'run', side_effect=inherited), \
+        with patch.object(g, 'precheck'), patch.object(r.legacy.Runner, 'run', side_effect=inherited) as launch, \
                 patch.object(g, 'archive', return_value=dict(manifest_sha256='archive')), patch.object(c, 'scan'), \
-                patch.object(g, 'done_check', return_value=dict(status='PRODUCT_INCOMPLETE', checklist={})), \
-                patch.object(g, 'delete_archived', return_value=dict(repository=app.repository('smoke-claude'),
+                patch.object(g, 'done_check', side_effect=[dict(status=status, checklist={})
+                    for status in ('PRODUCT_INCOMPLETE', 'ADJUDICATE')]), \
+                patch.object(g, 'delete_archived', side_effect=lambda repository, *_: dict(repository=repository,
                     status='DELETED', http_status=404, archive_manifest_sha256='archive')):
-            self.assertEqual(app.schedule(), 2)
+            self.assertEqual(app.schedule(), 0)
+        self.assertEqual([call.args for call in launch.call_args_list],
+                         [('smoke-claude', 'SM', 'B', 'claude'), ('smoke-codex', 'SM', 'B', 'codex')])
         summary = r.read(output / 'rp-schedule.json')
-        self.assertEqual([row['status'] for row in summary['slots']], ['PRODUCT_INCOMPLETE', 'NOT_RUN'])
-        self.assertEqual((summary['slots'][0]['input_tokens'], summary['slots'][0]['output_tokens']), (7, 3))
-        self.assertEqual(summary['dispatched'], 1)
+        self.assertEqual([row['status'] for row in summary['slots']], ['PRODUCT_INCOMPLETE', 'ADJUDICATE'])
+        for row in summary['slots']:
+            self.assertEqual((row['input_tokens'], row['output_tokens']), (7, 3))
+            self.assertEqual(row['repository_cleanup']['repository'], app.repository(row['cell']))
+            self.assertEqual(row['repository_cleanup']['status'], 'DELETED')
+        self.assertEqual((summary['status'], summary['dispatched']), ('RECORDED', 2))
         with self.assertRaisesRegex(ValueError, 'working delivery'):
             self.app.prior_deleted('o01')
 
