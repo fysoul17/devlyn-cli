@@ -1,0 +1,172 @@
+{
+  "assessors": [],
+  "routes": {
+    "claude": {
+      "owner": {
+        "effort": "max",
+        "engine": "claude",
+        "model": "claude-opus-5-5"
+      },
+      "peer_routes": {
+        "H": {
+          "effort": "max",
+          "engine": "claude",
+          "model": "claude-opus-5-5"
+        },
+        "P": {
+          "child_effort": "high",
+          "child_model": "gpt-6-sol",
+          "effort": "high",
+          "engine": "codex",
+          "model": "gpt-6-sol"
+        }
+      },
+      "product_roles": {
+        "pair_judge": {
+          "child_effort": "high",
+          "child_model": "gpt-6-sol",
+          "effort": "high",
+          "engine": "codex",
+          "model": "gpt-6-sol"
+        },
+        "primary_judge": {
+          "effort": "max",
+          "engine": "claude",
+          "model": "claude-opus-5-5"
+        },
+        "worker": {
+          "effort": "max",
+          "engine": "claude",
+          "model": "claude-opus-5-5"
+        }
+      },
+      "reviewer": {
+        "child_effort": "high",
+        "child_model": "gpt-6-sol",
+        "effort": "high",
+        "engine": "codex",
+        "model": "gpt-6-sol"
+      }
+    },
+    "codex": {
+      "owner": {
+        "child_effort": "high",
+        "child_model": "gpt-6-sol",
+        "effort": "high",
+        "engine": "codex",
+        "model": "gpt-6-sol"
+      },
+      "peer_routes": {
+        "H": {
+          "child_effort": "high",
+          "child_model": "gpt-6-sol",
+          "effort": "high",
+          "engine": "codex",
+          "model": "gpt-6-sol"
+        },
+        "P": {
+          "effort": "max",
+          "engine": "claude",
+          "model": "claude-opus-5-5"
+        }
+      },
+      "product_roles": {
+        "pair_judge": {
+          "effort": "max",
+          "engine": "claude",
+          "model": "claude-opus-5-5"
+        },
+        "primary_judge": {
+          "child_effort": "high",
+          "child_model": "gpt-6-sol",
+          "effort": "high",
+          "engine": "codex",
+          "model": "gpt-6-sol"
+        },
+        "worker": {
+          "child_effort": "high",
+          "child_model": "gpt-6-sol",
+          "effort": "high",
+          "engine": "codex",
+          "model": "gpt-6-sol"
+        }
+      },
+      "reviewer": {
+        "effort": "max",
+        "engine": "claude",
+        "model": "claude-opus-5-5"
+      }
+    }
+  },
+  "schema": "rp-d1-delivery-cost-v1",
+  "tasks": [
+    {
+      "allowed": [
+        "src/expiry/__init__.py",
+        "tests/test_regression.py"
+      ],
+      "id": "BV",
+      "obligations": [
+        "Preserve before/after comparisons and TypeError for incompatible inputs.",
+        "Add a regression test in tests/test_regression.py."
+      ],
+      "oracle": [
+        "boundary",
+        "before-after",
+        "datetime",
+        "errors",
+        "regression"
+      ],
+      "public_checks": [
+        "python3 -B -m pytest -q"
+      ],
+      "request": "Fix is_expired(now, deadline): a deadline is expired at exact equality, not only after it.",
+      "source_dir": "autoresearch/experiments/rp-d1-delivery-cost/fixtures/BV",
+      "source_sha256": {
+        ".gitignore": "5b52f58c05b8fb01d4dbac3e2b2b89c1b730bef875d6d9b77d2ad33965a44623",
+        ".user-state/draft.txt": "e6e709bd3bff5552112035cea3c7ea724b36c8b4410b7c313266783edd406984",
+        "docs/user-notes.txt": "3fba8bb979c8951d0e6d74390dd6b90e2f5f5582fa30fc87ec5c1132589eeb5d",
+        "pyproject.toml": "c80d1aa44a884a182eeda2d4f9b274983b288b2682b25844d6acc2edc8a17f9b",
+        "src/expiry/__init__.py": "da9d4d0de7428792606c07b76d11f035a022049aa4051c1b48ca8ef3bd34b27b",
+        "tests/test_existing.py": "95d822ab544ad349d98e856a5a35dcc20b7b855d2549c5b2f747dcfede975cce"
+      }
+    },
+    {
+      "allowed": [
+        "src/limitcli/__init__.py",
+        "tests/test_regression.py"
+      ],
+      "id": "Z0",
+      "obligations": [
+        "Preserve positive limits and argparse error exits for negative, noninteger, missing and unknown arguments.",
+        "Add a regression test in tests/test_regression.py."
+      ],
+      "oracle": [
+        "default",
+        "zero",
+        "positive",
+        "errors",
+        "regression"
+      ],
+      "public_checks": [
+        "python3 -B -m pytest -q"
+      ],
+      "request": "Fix --limit 0 so that zero remains zero. An omitted limit must still default to 10.",
+      "source_dir": "autoresearch/experiments/rp-d1-delivery-cost/fixtures/Z0",
+      "source_sha256": {
+        ".gitignore": "5b52f58c05b8fb01d4dbac3e2b2b89c1b730bef875d6d9b77d2ad33965a44623",
+        ".user-state/draft.txt": "58ed610dcdf4061ed397f398bfc0f05399e59b05a702d4cc9b1da51f3996d6bf",
+        "docs/user-notes.txt": "3fba8bb979c8951d0e6d74390dd6b90e2f5f5582fa30fc87ec5c1132589eeb5d",
+        "pyproject.toml": "3ab4836fb673fc2b6b1bfea3ddfe133adc234b2a8001252be7bac67fdeaf2709",
+        "src/limitcli/__init__.py": "85892b1f3cf5850c1996cda4104e3f2bc9dde7961282902c16a37abe79120fee",
+        "tests/test_existing.py": "694537bc39c95e3cbe528d489a3debf6309a4d01c4ad5ea0c48f7b85b73acbc4"
+      }
+    }
+  ],
+  "watchdog_seconds": {
+    "assessor": 600,
+    "evaluator": 600,
+    "owner": 5400,
+    "review": 600
+  }
+}
