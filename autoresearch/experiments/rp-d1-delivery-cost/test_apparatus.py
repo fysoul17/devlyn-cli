@@ -269,10 +269,71 @@ class DeliveryTests(TempCase):
     def test_tracked_file_deletion_and_executable_change_fail(self):
         self.freeze_archive()
         path = self.anchor / 'docs/user-notes.txt'
-        path.chmod(0o755)
-        self.assertIn('out-of-scope tracked files changed', self.check()['failures'])
+        g.git(self.anchor, 'config', 'core.filemode', 'false')
+        for mode in (0o744, 0o654, 0o645):
+            with self.subTest(mode=oct(mode)):
+                path.chmod(mode)
+                self.assertIn('out-of-scope tracked files changed', self.check()['failures'])
         path.unlink()
         self.assertIn('out-of-scope tracked files changed', self.check()['failures'])
+
+    def test_tracked_file_type_changes_fail(self):
+        self.freeze_archive()
+        path = self.anchor / 'docs/user-notes.txt'
+        path.unlink()
+        path.symlink_to(self.work / 'docs/user-notes.txt')
+        self.assertIn('out-of-scope tracked files changed', self.check()['failures'])
+        path.unlink()
+        path.mkdir()
+        self.assertIn('out-of-scope tracked files changed', self.check()['failures'])
+
+    def test_index_flags_and_hidden_content_edits_fail(self):
+        self.freeze_archive()
+        name = 'docs/user-notes.txt'
+        path = self.anchor / name
+        original = path.read_bytes()
+        for flags, tag in ((['--assume-unchanged'], 'h'), (['--skip-worktree'], 'S'),
+                           (['--assume-unchanged', '--skip-worktree'], 's')):
+            for edited in (False, True):
+                with self.subTest(flags=flags, edited=edited):
+                    g.git(self.anchor, 'update-index', '--no-assume-unchanged', '--', name)
+                    g.git(self.anchor, 'update-index', '--no-skip-worktree', '--', name)
+                    path.write_bytes(original)
+                    for flag in flags:
+                        g.git(self.anchor, 'update-index', flag, '--', name)
+                    if edited:
+                        path.write_text('hidden damage')
+                    self.assertEqual(g.git(self.anchor, 'ls-files', '-v', '--', name), tag + ' ' + name)
+                    self.assertEqual(g.git(self.anchor, 'diff', self.base, '--', name), '')
+                    checked = self.check()
+                    self.assertIn('out-of-scope tracked files changed', checked['failures'])
+                    self.assertEqual(checked['checklist']['tracked_damage'], [name])
+
+    def test_index_flag_on_new_out_of_scope_tracked_path_fails(self):
+        name = 'docs/new notes\n.txt'
+        (self.anchor / name).write_text('new user state')
+        g.git(self.anchor, 'add', '--', name)
+        g.git(self.anchor, 'update-index', '--assume-unchanged', '--', name)
+        self.freeze_archive()
+        self.assertEqual(self.check()['checklist']['tracked_damage'], [name])
+
+    def test_index_flags_in_allowed_scope_pass(self):
+        name = 'src/expiry/__init__.py'
+        g.git(self.anchor, 'update-index', '--assume-unchanged', '--', name)
+        g.git(self.anchor, 'update-index', '--skip-worktree', '--', name)
+        self.freeze_archive()
+        self.assertEqual(self.check()['failures'], [])
+
+    def test_clean_filter_hidden_content_edit_fails(self):
+        name = 'docs/user-notes.txt'
+        (self.anchor / '.git/info/attributes').write_text(name + ' filter=hide-damage\n')
+        g.git(self.anchor, 'config', 'filter.hide-damage.clean', f'git show {self.base}:{name}')
+        (self.anchor / name).write_text('damage hidden by clean filter')
+        self.assertEqual(g.git(self.anchor, 'diff', self.base, '--', name), '')
+        self.freeze_archive()
+        checked = self.check()
+        self.assertIn('out-of-scope tracked files changed', checked['failures'])
+        self.assertEqual(checked['checklist']['tracked_damage'], [name])
 
     def test_staged_damage_with_restored_working_file_fails(self):
         path = self.anchor / 'docs/user-notes.txt'

@@ -270,6 +270,14 @@ def review_report(checklist, review=None):
     return dict(status='FAIL' if failed else 'PASS', failed=failed, checklist_sha256=binding)
 
 
+def git_mode(entry):
+    """Normalize only packet.tree's regular-file mode; preserve missing entries and symlinks."""
+    if entry is None or entry.startswith('link:'):
+        return entry
+    content, mode = entry.rsplit(':', 1)
+    return content + (':100755' if int(mode, 8) & 0o111 else ':100644')
+
+
 def done_check(out, root, selection, locate, packet, review=None):
     """Conclusive failures keep their cost; missing GitHub evidence raises STOP."""
     manifest = verify_archive(root)
@@ -306,22 +314,20 @@ def done_check(out, root, selection, locate, packet, review=None):
             if not matched:
                 failures.append('merge ancestry/tree mismatch')
     anchor = out / 'cell/work'
-    changed = []
     anchor_files, submitted_files = packet.tree(anchor), packet.tree(out / 'snapshot')
     outside = [name for name in baseline['files'] if not packet.allowed(name, caller['allowed'])]
-    anchor_changed = set()
-    # Git tracks content and the executable bit, not installer permissions such as 0600.
+    anchor_changed = {entry[2:] for entry in git(anchor, 'ls-files', '-v', '-z').split('\0')
+                      if entry[:1] in ('h', 'S', 's') and not packet.allowed(entry[2:], caller['allowed'])}
+    # Read raw files below: index flags and clean filters can hide worktree damage from Git diff.
     if outside:
-        for staged in ([], ['--cached']):
-            diff = command(['git', '-c', 'core.fsmonitor=false', '-c', 'core.filemode=true',
-                '--literal-pathspecs', '-C', str(anchor), 'diff', '--no-ext-diff', '--no-textconv',
-                '--no-renames', '--name-only', '-z', *staged, baseline['allocation_sha'], '--', *outside],
-                env=git_env())
-            anchor_changed.update(filter(None, diff.stdout.split('\0')))
-    for name in outside:
-        if (name in anchor_changed or not (anchor / name).exists() or
-                submitted_files.get(name) != baseline['files'][name]):
-            changed.append(name)
+        diff = command(['git', '-c', 'core.fsmonitor=false',
+            '--literal-pathspecs', '-C', str(anchor), 'diff', '--no-ext-diff', '--no-textconv',
+            '--no-renames', '--name-only', '-z', '--cached', baseline['allocation_sha'], '--', *outside],
+            env=git_env())
+        anchor_changed.update(filter(None, diff.stdout.split('\0')))
+    changed = sorted(anchor_changed | {name for name in outside
+        if git_mode(anchor_files.get(name)) != git_mode(baseline['files'][name]) or
+        submitted_files.get(name) != baseline['files'][name]})
     if changed:
         failures.append('out-of-scope tracked files changed')
     try:

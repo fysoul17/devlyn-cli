@@ -119,9 +119,7 @@ sources cites the inherited code it relies on. Where they disagree, this file wi
      equals the accepted source tree OID. A single tree-OID comparison is
      enough; the duplicate `packet.tree` comparison is dropped.
    - Tracked user files outside the allowed scope are unchanged. The retained
-     anchor uses Git content/executable-bit comparisons of both the working tree
-     and index against the allocation commit, with every path still present;
-     installer permissions such as `0600` versus `0644` do not count as damage.
+     anchor compares raw bytes/type with Git-normalized modes (any executable bit; `0600` equals `100644`), compares the index against the allocation commit, and rejects out-of-scope assume-unchanged/skip-worktree bits.
      The submitted snapshot comparison remains unchanged.
    - The ignored sentinel `.user-state/draft.txt` is unchanged by bytes and
      mode.
