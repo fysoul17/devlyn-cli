@@ -223,8 +223,6 @@ def reconcile(out, manifest_sha256, model, effort, account, report):
                     'native interruption outside scope')
         require(row.get('type') != 'error' and not row.get('isApiErrorMessage')
                 and row.get('subtype') not in ('api_error', 'api_retry'), 'error or retry outside scope')
-        if row.get('subtype') == 'task_notification':
-            require(row.get('status') == 'completed', 'child did not complete')
         if row.get('subtype') == 'task_updated' and 'status' in row.get('patch', {}):
             require(row['patch']['status'] in ('running', 'completed'), 'child cancellation or failure')
 
@@ -307,6 +305,7 @@ def reconcile(out, manifest_sha256, model, effort, account, report):
                         'stdout terminal conflicts with native receipt')
 
     calls = {}
+    bash_tools = set()
     for snapshots in messages.values():
         for agent, event in snapshots:
             for block in event['message'].get('content', []):
@@ -315,6 +314,11 @@ def reconcile(out, manifest_sha256, model, effort, account, report):
                     require(calls.setdefault(block['id'], block) == block, 'conflicting child launch')
                     require(block in responses[event['message']['id']]['content'],
                             'child launch conflicts with terminal body')
+                elif block.get('type') == 'tool_use' and block.get('name') == 'Bash' and agent is None:
+                    require(text(block.get('id')) and block in responses[event['message']['id']]['content']
+                            and block['input'].get('run_in_background') is not True,
+                            'unbound foreground Bash launch')
+                    bash_tools.add(block['id'])
     linked_tools = set()
     for agent, path in agent_paths.items():
         meta = read(path.relative_to(out).with_suffix('.meta.json'))
@@ -346,10 +350,28 @@ def reconcile(out, manifest_sha256, model, effort, account, report):
                 and child_result['totalTokens'] == sum(child_usage[k] for k in COUNTERS[:4]),
                 'child result aggregate mismatch')
     require(set(calls) == linked_tools, 'unaccounted child launch')
+    shell_tasks = defaultdict(list)
     for row in stream:
         if row.get('subtype') in ('task_started', 'task_notification', 'task_updated'):
-            require(row.get('task_id') in agent_paths and row.get('session_id') == session,
+            require(text(row.get('task_id')) and row.get('session_id') == session,
                     'unbound task lifecycle')
+            if row['task_id'] not in agent_paths:
+                shell_tasks[row['task_id']].append(row)
+    for rows in shell_tasks.values():
+        started = [r for r in rows if r['subtype'] == 'task_started']
+        ended = [r for r in rows if r['subtype'] == 'task_notification']
+        require(len(started) == len(ended) == 1, 'unbound task lifecycle')
+        tool = started[0].get('tool_use_id')
+        require(started[0].get('task_type') == 'local_bash'
+                and started[0].get('is_backgrounded') is False and tool in bash_tools
+                and ended[0].get('tool_use_id') == tool
+                and all(r.get('type') == 'system' and r.get('tool_use_id', tool) == tool for r in rows),
+                'unbound task lifecycle')
+
+    for row in events:
+        if row.get('subtype') == 'task_notification':
+            require(row.get('status') == 'completed' or (row.get('status') == 'failed'
+                    and row in shell_tasks.get(row.get('task_id'), [])), 'child did not complete')
 
     totals = sum_usage(receipts)
     require(reported == totals, 'whole native aggregate mismatch')

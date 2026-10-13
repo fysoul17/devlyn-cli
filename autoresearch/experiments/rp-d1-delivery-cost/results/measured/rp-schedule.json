@@ -1,0 +1,215 @@
+{
+  "dispatched": 8,
+  "phase": "measured",
+  "slots": [
+    {
+      "archive": {
+        "manifest_sha256": "f0e9476c38f4cce74261d6194138620ade66e36d61cfeff94f8b3208de42cda6",
+        "path": "/Users/aipalm/.local/share/nx01/rp-d1-live/stage3/output/archives/o01"
+      },
+      "cell": "o01",
+      "config": "claude",
+      "delivery_assessment": "ADJUDICATE",
+      "dispatched": true,
+      "inherited_status": "CHECKS_PASS",
+      "inherited_verdict_sha256": "3cdabca8d682b7e6fa4ae6bec6db398d5544fbcdac9d001f6a729a6c5aa650cd",
+      "input_tokens": 2644762,
+      "measurement_eligible": true,
+      "output_tokens": 51497,
+      "phase": "measured",
+      "repository_cleanup": {
+        "archive_manifest_sha256": "f0e9476c38f4cce74261d6194138620ade66e36d61cfeff94f8b3208de42cda6",
+        "http_status": 404,
+        "repository": "fysoul17/rpd1-20261013a-o01",
+        "status": "DELETED"
+      },
+      "schema": "rp-d1-verdict-v1",
+      "status": "ADJUDICATE",
+      "task": "BV",
+      "usage": "COMPLETE"
+    },
+    {
+      "archive": {
+        "manifest_sha256": "e478d634bc2f6ff5c55cc8417c89b44a098effab64f6d57ceda1c3ed15db6274",
+        "path": "/Users/aipalm/.local/share/nx01/rp-d1-live/stage3/output/archives/o02"
+      },
+      "cell": "o02",
+      "config": "codex",
+      "delivery_assessment": "ADJUDICATE",
+      "dispatched": true,
+      "inherited_status": "CHECKS_PASS",
+      "inherited_verdict_sha256": "9fa308debcbd0ac5fffd06826eef32fea5be12fa75826790c506fdda803cf834",
+      "input_tokens": 654025,
+      "measurement_eligible": true,
+      "output_tokens": 5892,
+      "phase": "measured",
+      "repository_cleanup": {
+        "archive_manifest_sha256": "e478d634bc2f6ff5c55cc8417c89b44a098effab64f6d57ceda1c3ed15db6274",
+        "http_status": 404,
+        "repository": "fysoul17/rpd1-20261013a-o02",
+        "status": "DELETED"
+      },
+      "schema": "rp-d1-verdict-v1",
+      "status": "ADJUDICATE",
+      "task": "BV",
+      "usage": "COMPLETE"
+    },
+    {
+      "archive": {
+        "manifest_sha256": "36d64b03f52e14f494df97e64d12d21c9476047353e5e2e838341fe2a35e6886",
+        "path": "/Users/aipalm/.local/share/nx01/rp-d1-live/stage3/output/archives/o03"
+      },
+      "cell": "o03",
+      "config": "codex",
+      "delivery_assessment": "ADJUDICATE",
+      "dispatched": true,
+      "inherited_status": "CHECKS_PASS",
+      "inherited_verdict_sha256": "700e87854e030bc787525da822db2ce0aed7ee1451b38e5a1def403e941027b0",
+      "input_tokens": 603826,
+      "measurement_eligible": true,
+      "output_tokens": 5229,
+      "phase": "measured",
+      "repository_cleanup": {
+        "archive_manifest_sha256": "36d64b03f52e14f494df97e64d12d21c9476047353e5e2e838341fe2a35e6886",
+        "http_status": 404,
+        "repository": "fysoul17/rpd1-20261013a-o03",
+        "status": "DELETED"
+      },
+      "schema": "rp-d1-verdict-v1",
+      "status": "ADJUDICATE",
+      "task": "Z0",
+      "usage": "COMPLETE"
+    },
+    {
+      "archive": {
+        "manifest_sha256": "f69393669da7ac9f23156a6ab04c4edb652e3b30352d63a2250c6cdfada0f05c",
+        "path": "/Users/aipalm/.local/share/nx01/rp-d1-live/stage3/output/archives/o04"
+      },
+      "cell": "o04",
+      "config": "claude",
+      "delivery_assessment": "ADJUDICATE",
+      "dispatched": true,
+      "inherited_status": "CHECKS_PASS",
+      "inherited_verdict_sha256": "1d02b71dd5a453532d4b09deeb25800c133e04e50ef7ce6600e523beb93992ae",
+      "input_tokens": 1756458,
+      "measurement_eligible": true,
+      "output_tokens": 65157,
+      "phase": "measured",
+      "repository_cleanup": {
+        "archive_manifest_sha256": "f69393669da7ac9f23156a6ab04c4edb652e3b30352d63a2250c6cdfada0f05c",
+        "http_status": 404,
+        "repository": "fysoul17/rpd1-20261013a-o04",
+        "status": "DELETED"
+      },
+      "schema": "rp-d1-verdict-v1",
+      "status": "ADJUDICATE",
+      "task": "Z0",
+      "usage": "COMPLETE"
+    },
+    {
+      "archive": {
+        "manifest_sha256": "23427f43c6d0abb831acf91eba49c45891728233ecda1b758973e773937c24c1",
+        "path": "/Users/aipalm/.local/share/nx01/rp-d1-live/stage3/output/archives/o05"
+      },
+      "cell": "o05",
+      "config": "claude",
+      "delivery_assessment": "ADJUDICATE",
+      "dispatched": true,
+      "inherited_status": "CHECKS_PASS",
+      "inherited_verdict_sha256": "bada1513eb83fb42487ea4a600f4e04dc3ac4d0afee74beb5e689d1f9ad7e367",
+      "input_tokens": 1447167,
+      "measurement_eligible": true,
+      "output_tokens": 52027,
+      "phase": "measured",
+      "repository_cleanup": {
+        "archive_manifest_sha256": "23427f43c6d0abb831acf91eba49c45891728233ecda1b758973e773937c24c1",
+        "http_status": 404,
+        "repository": "fysoul17/rpd1-20261013a-o05",
+        "status": "DELETED"
+      },
+      "schema": "rp-d1-verdict-v1",
+      "status": "ADJUDICATE",
+      "task": "Z0",
+      "usage": "COMPLETE"
+    },
+    {
+      "archive": {
+        "manifest_sha256": "67a1e714045faac8211419d982cbc166fe172c27ee2a78262c946d6e89df4251",
+        "path": "/Users/aipalm/.local/share/nx01/rp-d1-live/stage3/output/archives/o06"
+      },
+      "cell": "o06",
+      "config": "codex",
+      "delivery_assessment": "ADJUDICATE",
+      "dispatched": true,
+      "inherited_status": "CHECKS_PASS",
+      "inherited_verdict_sha256": "7da2d7bb95dec47686c10b8c0108ab60a74155a1ca49b0e1596bdc7cd218ae67",
+      "input_tokens": 625265,
+      "measurement_eligible": true,
+      "output_tokens": 6265,
+      "phase": "measured",
+      "repository_cleanup": {
+        "archive_manifest_sha256": "67a1e714045faac8211419d982cbc166fe172c27ee2a78262c946d6e89df4251",
+        "http_status": 404,
+        "repository": "fysoul17/rpd1-20261013a-o06",
+        "status": "DELETED"
+      },
+      "schema": "rp-d1-verdict-v1",
+      "status": "ADJUDICATE",
+      "task": "Z0",
+      "usage": "COMPLETE"
+    },
+    {
+      "archive": {
+        "manifest_sha256": "9f19d71107981336fba6b0cc1dfa707d97fc549acfffafcb28c41c3933035b04",
+        "path": "/Users/aipalm/.local/share/nx01/rp-d1-live/stage3/output/archives/o07"
+      },
+      "cell": "o07",
+      "config": "codex",
+      "delivery_assessment": "ADJUDICATE",
+      "dispatched": true,
+      "inherited_status": "CHECKS_PASS",
+      "inherited_verdict_sha256": "26f848c1f42110a163f4bedebf8fbe2bd9332ff6578d9a2dc38e568bb5ee0d54",
+      "input_tokens": 462042,
+      "measurement_eligible": true,
+      "output_tokens": 5323,
+      "phase": "measured",
+      "repository_cleanup": {
+        "archive_manifest_sha256": "9f19d71107981336fba6b0cc1dfa707d97fc549acfffafcb28c41c3933035b04",
+        "http_status": 404,
+        "repository": "fysoul17/rpd1-20261013a-o07",
+        "status": "DELETED"
+      },
+      "schema": "rp-d1-verdict-v1",
+      "status": "ADJUDICATE",
+      "task": "BV",
+      "usage": "COMPLETE"
+    },
+    {
+      "archive": {
+        "manifest_sha256": "2ec8d79166b5293506cea0ad29f60d28b7a55c796a032b3128cb61fd9bf9f837",
+        "path": "/Users/aipalm/.local/share/nx01/rp-d1-live/stage3/output/archives/o08"
+      },
+      "cell": "o08",
+      "config": "claude",
+      "delivery_assessment": "PRODUCT_INCOMPLETE",
+      "dispatched": true,
+      "inherited_status": "CHECKS_PASS",
+      "inherited_verdict_sha256": "02181579fbc10f0f9823a31a220bca7ae94dabbb957cc891a431bfc889eaf1ff",
+      "input_tokens": 1815605,
+      "measurement_eligible": true,
+      "output_tokens": 55121,
+      "phase": "measured",
+      "repository_cleanup": {
+        "archive_manifest_sha256": "2ec8d79166b5293506cea0ad29f60d28b7a55c796a032b3128cb61fd9bf9f837",
+        "http_status": 404,
+        "repository": "fysoul17/rpd1-20261013a-o08",
+        "status": "DELETED"
+      },
+      "schema": "rp-d1-verdict-v1",
+      "status": "PRODUCT_INCOMPLETE",
+      "task": "BV",
+      "usage": "COMPLETE"
+    }
+  ],
+  "status": "RECORDED"
+}

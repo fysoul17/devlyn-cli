@@ -1,0 +1,3 @@
+Fixed `--limit 0` so it returns 0; omitting the limit still returns 10. Added regression coverage for zero and argparse exits for missing and unknown arguments, while existing tests cover positive, negative, and noninteger limits.
+
+Verified with `python3 -B -m pytest -q`: **7 passed**. PR #1 merged, the local checkout is clean, and nothing remains unresolved.

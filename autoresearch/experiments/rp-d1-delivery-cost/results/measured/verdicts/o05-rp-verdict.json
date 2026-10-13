@@ -1,0 +1,26 @@
+{
+  "archive": {
+    "manifest_sha256": "23427f43c6d0abb831acf91eba49c45891728233ecda1b758973e773937c24c1",
+    "path": "/Users/aipalm/.local/share/nx01/rp-d1-live/stage3/output/archives/o05"
+  },
+  "cell": "o05",
+  "config": "claude",
+  "delivery_assessment": "ADJUDICATE",
+  "dispatched": true,
+  "inherited_status": "CHECKS_PASS",
+  "inherited_verdict_sha256": "bada1513eb83fb42487ea4a600f4e04dc3ac4d0afee74beb5e689d1f9ad7e367",
+  "input_tokens": 1447167,
+  "measurement_eligible": true,
+  "output_tokens": 52027,
+  "phase": "measured",
+  "repository_cleanup": {
+    "archive_manifest_sha256": "23427f43c6d0abb831acf91eba49c45891728233ecda1b758973e773937c24c1",
+    "http_status": 404,
+    "repository": "fysoul17/rpd1-20261013a-o05",
+    "status": "DELETED"
+  },
+  "schema": "rp-d1-verdict-v1",
+  "status": "ADJUDICATE",
+  "task": "Z0",
+  "usage": "COMPLETE"
+}
