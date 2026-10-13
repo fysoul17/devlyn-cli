@@ -193,7 +193,7 @@ class StageTests(unittest.TestCase):
             self.check(runtime)
 
     def test_stage_refuses_overlapping_smoke_output_before_writing(self):
-        for name in ('control/public', 'control', 'output', 'output/nested', 'scratch', 'scratch/nested'):
+        for name in ('control/public', 'Control/public', 'control', 'output', 'output/nested', 'scratch', 'scratch/nested'):
             with self.subTest(name=name):
                 self.args.stage_dir = self.root / name.replace('/', '-')
                 self.args.smoke_output = self.args.stage_dir / name

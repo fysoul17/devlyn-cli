@@ -62,8 +62,10 @@ def stage(args):
     require(smoke_output.is_relative_to(dest) and smoke_output != dest,
             'smoke output must be under the stage directory')
     control = dest / 'control'
-    for left, right in combinations((control.resolve(), (dest / 'output').resolve(),
-                                     smoke_output, (dest / 'scratch').resolve()), 2):
+    # Case-folded: on a case-insensitive volume, Control/ and control/ are one directory.
+    roots = [Path(str(path).casefold()) for path in (control.resolve(), (dest / 'output').resolve(),
+                                                    smoke_output, (dest / 'scratch').resolve())]
+    for left, right in combinations(roots, 2):
         require(not (left.is_relative_to(right) or right.is_relative_to(left)),
                 'control, output, smoke output and scratch must be disjoint')
     catalogs = {'claude': {'B': smoke_catalogs(smoke_output)}} if phase == 'measured' else {}
