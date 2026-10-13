@@ -247,6 +247,8 @@ class Runner(legacy.Runner):
                 record.update(status='UNKNOWN', usage='UNKNOWN', input_tokens=None, output_tokens=None,
                               delivery_assessment='NOT_ASSESSED', revocation_required=True,
                               reason='PAT scan hit or failed; revoke PAT immediately')
+            if record['status'] == 'STOP':
+                record['delivery_assessment'] = 'NOT_ASSESSED'
             write(out / 'rp-verdict.json', record)
         return 2 if record['status'] in ('STOP', 'UNKNOWN') else 0
 

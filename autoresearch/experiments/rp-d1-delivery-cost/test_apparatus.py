@@ -1182,6 +1182,54 @@ class PrepareAndRunnerTests(TempCase):
         self.assertEqual(result['repository_cleanup']['status'], 'RETAINED')
         self.assertIn('manual cleanup', result['repository_cleanup']['reason'])
 
+    def test_deletion_failure_after_done_check_clears_assessment_and_retains_costs_and_evidence(self):
+        for status in ('PASS', 'ADJUDICATE', 'PRODUCT_INCOMPLETE'):
+            for error in (g.EvidenceError, OSError):
+                with self.subTest(status=status, error=error.__name__):
+                    output = self.root / f'{status}-{error.__name__}'
+                    self.runtime['output'] = self.app.runtime['output'] = str(output)
+                    out, archive = output / 'o01', output / 'archives/o01'
+                    done = dict(status=status, checklist={'verification': 'PASS'})
+                    evidence = {}
+
+                    def inherited(*args):
+                        self.inherited_run(*args, status='CHECKS_PASS', usage='COMPLETE')
+                        path = output / 'verdict-o01.json'
+                        r.write(path, dict(r.read(path), teardown='CLEAN', evidence_manifest_sha256='sealed',
+                                           snapshot={}, owner_seconds=12.5))
+
+                    def freeze_archive(repository, root):
+                        root.mkdir(parents=True)
+                        r.write(root / 'manifest.json', dict(repository=repository))
+                        return dict(manifest_sha256=g.digest(root / 'manifest.json'))
+
+                    def fail_delete(*args):
+                        self.assertEqual(r.read(out / 'github-delivery.json'), done)
+                        evidence.update({path: path.read_bytes() for path in output.rglob('*') if path.is_file()})
+                        raise error('repository deletion failed')
+
+                    with patch.object(self.app, 'prior_deleted'), patch.object(g, 'precheck'), \
+                            patch.object(r.legacy.Runner, 'run', side_effect=inherited), \
+                            patch.object(g, 'archive', side_effect=freeze_archive), \
+                            patch.object(g, 'done_check', return_value=done), \
+                            patch.object(g, 'delete_archived', side_effect=fail_delete) as delete:
+                        self.assertEqual(self.app.run('o01', 'BV', 'B', 'claude'), 2)
+                    delete.assert_called_once_with(self.app.repository('o01'), archive,
+                                                   g.digest(archive / 'manifest.json'))
+                    result = r.read(out / 'rp-verdict.json')
+                    self.assertEqual((result['status'], result['delivery_assessment']), ('STOP', 'NOT_ASSESSED'))
+                    self.assertEqual((result['usage'], result['input_tokens'], result['output_tokens']),
+                                     ('COMPLETE', 7, 3))
+                    self.assertEqual(r.read(output / 'verdict-o01.json')['owner_seconds'], 12.5)
+                    self.assertEqual(result['inherited_verdict_sha256'], g.digest(output / 'verdict-o01.json'))
+                    self.assertEqual(result['archive'], dict(manifest_sha256=g.digest(archive / 'manifest.json')))
+                    self.assertEqual(result['repository_cleanup']['repository'], self.app.repository('o01'))
+                    self.assertEqual(result['repository_cleanup']['status'], 'RETAINED')
+                    self.assertIn('manual cleanup', result['repository_cleanup']['reason'])
+                    self.assertEqual(r.read(out / 'report-checklist.json'), done['checklist'])
+                    for path, raw in evidence.items():
+                        self.assertEqual(path.read_bytes(), raw, str(path))
+
     def test_partial_archive_pat_is_scanned_and_repository_retained(self):
         source = self.root / 'seed'
         self.repo(source)
