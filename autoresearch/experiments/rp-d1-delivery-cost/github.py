@@ -46,6 +46,7 @@ def command(argv, *, env=None, ok=(0,)):
 
 def git_env():
     # Do not inherit an ambient Git command scope or the cell's credential mount.
+    # Optional index refreshes would break the seal even on read-only inspection.
     return {key: value for key, value in os.environ.items()
             if not key.startswith('GIT_')} | {
         'GIT_CONFIG_NOSYSTEM': '1', 'GIT_CONFIG_GLOBAL': '/dev/null',

@@ -6,6 +6,7 @@ from datetime import datetime
 import hashlib
 import importlib.util
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -188,6 +189,23 @@ class DeliveryFixture(TempCase):
 
 
 class DeliveryTests(DeliveryFixture):
+    def test_done_check_preserves_index_bytes_with_stale_worktree_stat(self):
+        self.freeze_archive()
+        tracked = self.anchor / 'src/expiry/__init__.py'
+        stat = tracked.stat()
+        os.utime(tracked, ns=(stat.st_atime_ns, stat.st_mtime_ns + 2_000_000_000))
+        index = self.anchor / '.git/index'
+        before = index.read_bytes()
+        with patch.dict(os.environ, {'GIT_OPTIONAL_LOCKS': '1'}):
+            self.assertEqual(g.git_env()['GIT_OPTIONAL_LOCKS'], '0')
+            self.assertEqual(self.check()['status'], 'ADJUDICATE')
+            self.assertEqual(index.read_bytes(), before)
+            g.git(self.anchor, 'status', '--porcelain')
+            self.assertEqual(index.read_bytes(), before)
+        # Positive control: the stale stat really does trigger a Git index write.
+        g.git(self.anchor, 'update-index', '--refresh')
+        self.assertNotEqual(index.read_bytes(), before)
+
     def test_different_commit_same_tree_and_truthful_pending_report_pass(self):
         before = packet.tree(self.out)
         self.freeze_archive()
