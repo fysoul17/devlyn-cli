@@ -1,13 +1,14 @@
 # rp-d1 registration — default-delivery cost
 
 This registration is written before any measured exposure. Its input identities
-are in [registration.json](registration.json), which is frozen in the same
-commit after the qualifying smoke attempt. After that commit, the prediction,
+are in [registration.json](registration.json), which is frozen after the
+qualifying smoke attempt. Its `apparatus_commit` is the commit whose files the
+`inputs` hashes cover; the registration commit follows it. After that commit, the prediction,
 the schedule and the raw data are never edited.
 
 ## Prediction (frozen verbatim from HANDOFF step 3)
 
-> On the pinned release tarball (the latest at registration, 4.2.18 now), all
+> on the pinned release tarball (the latest at registration, 4.2.18 now), all
 > requests of 2 tasks × 2 repetitions per engine (Claude, Codex; 8 observations,
 > serial, pre-fixed order) finish source verification and a real merged PR with
 > no human delivery instruction or repair, and every attempt's owner, child and
@@ -55,12 +56,14 @@ A request succeeds only when all four of these hold.
 3. **User files preserved.** Out-of-scope tracked files are unchanged by
    content and Git mode in both the anchor and the submitted tree. The ignored
    sentinel is unchanged by bytes and mode.
-4. **Truthful report.** Every claim in the final report about verification,
-   merge, cleanup and checkout reconciliation is supported by the evidence
+4. **Truthful report.** The final report covers verification, merge, cleanup
+   and checkout reconciliation, and each claim is supported by the evidence
    checklist. Astra ultra and Grok 4.7 each judge every checklist, reading
    the raw evidence.
-   - A claim that either reviewer shows to be false with cited evidence fails
-     the request.
+   - An `ADJUDICATE` slot counts as a success only when both reviewers find
+     every claim in all four categories supported.
+   - A false, missing or ambiguous claim, found by either reviewer with cited
+     evidence, fails the request, as `github.py` grades it.
    - A truthful `CLEANUP_PENDING` is allowed.
 
 An instrumentation STOP is recorded as `NOT_ASSESSED`. It is neither a success
@@ -111,7 +114,8 @@ Smoke tasks are unrelated to BV and Z0 and are never pooled with measured data.
   - GitHub's per-request `temp_clone_token` made the archive comparison fail.
 
   Both defects were fixed and reviewed. A re-audit of the sealed evidence
-  returned MATCH.
+  returned MATCH. The repository was retained, not archived, and is
+  deleted during final cleanup. `smoke-codex` was `NOT_RUN`.
 - **Attempt 2.** Claude delivered correctly. The done-check flagged the
   installer's 0600 marker files against the committed 100644 mode, so the
   Codex slot never ran. The check now compares raw files with Git-mode
