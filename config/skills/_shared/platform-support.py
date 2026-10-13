@@ -115,6 +115,15 @@ def system_exit_code(code):
     return code - 0x100000000 if os.name == "nt" and code >= 0x80000000 else code
 
 
+def mark_not_content_indexed(path):
+    """Disable Windows content indexing for a directory and children created afterwards."""
+    if os.name != "nt":
+        return
+    attrs = _kernel.GetFileAttributesW(str(path))
+    _checked(attrs != 0xFFFFFFFF, _kernel.GetFileAttributesW, (str(path),))  # INVALID_FILE_ATTRIBUTES.
+    _kernel.SetFileAttributesW(str(path), attrs | stat.FILE_ATTRIBUTE_NOT_CONTENT_INDEXED)
+
+
 if os.name == "nt":
     import _winapi
     import ctypes
@@ -164,12 +173,16 @@ if os.name == "nt":
         ("DuplicateHandle", [wintypes.HANDLE, wintypes.HANDLE, wintypes.HANDLE, ctypes.POINTER(wintypes.HANDLE), wintypes.DWORD, wintypes.BOOL, wintypes.DWORD], wintypes.BOOL),
         ("CloseHandle", [wintypes.HANDLE], wintypes.BOOL),
         ("PeekNamedPipe", [wintypes.HANDLE, ctypes.c_void_p, wintypes.DWORD, ctypes.c_void_p, ctypes.POINTER(wintypes.DWORD), ctypes.c_void_p], wintypes.BOOL),
+        ("SetFileAttributesW", [wintypes.LPCWSTR, wintypes.DWORD], wintypes.BOOL),
     ):
         _function = getattr(_kernel, _name)
         _function.argtypes, _function.restype, _function.errcheck = _args, _result, _checked
 
     _kernel.WaitForSingleObject.argtypes = [wintypes.HANDLE, wintypes.DWORD]
     _kernel.WaitForSingleObject.restype = wintypes.DWORD  # WAIT_OBJECT_0 is successful zero, not BOOL.
+
+    _kernel.GetFileAttributesW.argtypes = [wintypes.LPCWSTR]
+    _kernel.GetFileAttributesW.restype = wintypes.DWORD  # Failure is INVALID_FILE_ATTRIBUTES, not zero.
 
     def _read_control(fd, count):
         deadline = time.monotonic() + 10

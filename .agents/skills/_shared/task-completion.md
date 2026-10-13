@@ -52,10 +52,12 @@ not write to the shared checkout. Queue drains retain their allocation order.
 ```sh
 python3 "$DEVLYN_SHARED_DIR/task-complete.py" allocate --repo . \
   --task '<task identity>' --branch '<absent task branch>' \
-  --worktree '<absent path>' --repository '<owner/repo>' --remote origin --base main
+  --worktree '<repo parent>/<repo name>.devlyn.noindex/<task directory>' \
+  --repository '<owner/repo>' --remote origin --base main
 ```
 
-Every delivery allocation owns a linked worktree; `--worktree` is required.
+Every delivery allocation owns a linked worktree; `--worktree` is required and
+must name an absent path.
 A publication allocation normally starts at the exact fetched remote base,
 independent of the anchor's branch or dirty state, and leaves the anchor's
 HEAD, index and files untouched. For a commit request, local-only work or

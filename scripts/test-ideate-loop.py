@@ -17,6 +17,7 @@ import runpy
 import shlex
 import shutil
 import signal
+import stat
 import subprocess
 import sys
 import tempfile
@@ -1112,6 +1113,145 @@ class LoopFixture(unittest.TestCase):
         self.assertIn("recovery conflict:", self.tasks(result)["aa.t1"]["reason"])
         self.assertEqual((self.calls("aa.t1"), path.read_text(encoding="utf-8")), (0, original))
 
+    def test_default_drain_allocates_noindex_worktree_outside_anchor(self):
+        # Prediction: a default drain passes the real allocation's absent/disjoint check and accepts a task in
+        # <anchor parent>/<anchor name>.devlyn.noindex/<loop>/<task>, outside the anchor on every OS.
+        self.plan("nx", [CHAIN[0]], {"nx.t1": {"product": "greeting"}})
+        task = self.tasks(self.drain())["nx.t1"]
+        receipt = self.receipt("nx.t1")
+        work = Path(receipt["worktree"])
+        self.assertEqual(work, self.anchor.parent / f"{self.anchor.name}.devlyn.noindex" / "nx" / "t1")
+        self.assertFalse(work.is_relative_to(self.anchor))
+        self.assertFalse(self.anchor.is_relative_to(work))
+        self.assertEqual(receipt["allocation"], "owned")
+        self.assertEqual(Path(self.g("rev-parse", "--show-toplevel", work=work)), work)
+        self.assertEqual((task["result"], task["delivery"], self.calls("nx.t1")), ("accepted", "LOCAL_ONLY", 1))
+
+    def allow_content_indexing(self, path):
+        # Fixture control: a Windows temp ancestor may already have the not-content-indexed bit.
+        self.queue["shared"]("platform-support")["_kernel"].SetFileAttributesW(
+            str(path), path.stat().st_file_attributes & ~stat.FILE_ATTRIBUTE_NOT_CONTENT_INDEXED)
+        self.assertFalse(path.stat().st_file_attributes & stat.FILE_ATTRIBUTE_NOT_CONTENT_INDEXED)
+
+    @unittest.skipIf(os.name != "nt", "Windows file attributes")
+    def test_windows_default_drain_disables_content_indexing_with_inheritance(self):
+        # Prediction: setting the newly created default root before Git allocates makes its loop/task directories,
+        # checked-out file and .git file inherit the bit, even when the root's parent does not have it.
+        self.allow_content_indexing(self.root)
+        self.plan("nx", [CHAIN[0]], {"nx.t1": {"product": "greeting"}})
+        task = self.tasks(self.drain())["nx.t1"]
+        work = Path(self.receipt("nx.t1")["worktree"])
+        for path in (work.parent.parent, work.parent, work, work / ".gitignore", work / ".git"):
+            with self.subTest(path=path):
+                self.assertTrue(path.stat().st_file_attributes & stat.FILE_ATTRIBUTE_NOT_CONTENT_INDEXED)
+        self.assertEqual((task["result"], task["delivery"], self.calls("nx.t1")), ("accepted", "LOCAL_ONLY", 1))
+
+    @unittest.skipIf(os.name != "nt", "Windows file attributes")
+    def test_windows_existing_default_root_keeps_content_indexing(self):
+        # Prediction: an existing default root and its new task keep their owner's content-indexing setting.
+        root = self.anchor.parent / f"{self.anchor.name}.devlyn.noindex"
+        root.mkdir()
+        self.allow_content_indexing(root)
+        self.plan("nx", [CHAIN[0]], {"nx.t1": {"product": "greeting"}})
+        self.assertEqual(self.tasks(self.drain())["nx.t1"]["result"], "accepted")
+        for path in (root, Path(self.receipt("nx.t1")["worktree"])):
+            self.assertFalse(path.stat().st_file_attributes & stat.FILE_ATTRIBUTE_NOT_CONTENT_INDEXED)
+
+    @unittest.skipIf(os.name != "nt", "Windows file attributes")
+    def test_windows_explicit_worktree_root_keeps_content_indexing(self):
+        # Prediction: explicit roots are untouched, including an explicit spelling of the default path.
+        self.allow_content_indexing(self.root)
+        for loop, root in (("ex", self.root / "custom"), ("nx", self.anchor.parent / f"{self.anchor.name}.devlyn.noindex")):
+            with self.subTest(root=root):
+                self.plan(loop, [CHAIN[0]], {f"{loop}.t1": {"product": "greeting"}})
+                self.assertEqual(self.tasks(self.fault_drain("", root=root))[f"{loop}.t1"]["result"], "accepted")
+                for path in (root, Path(self.receipt(f"{loop}.t1")["worktree"])):
+                    self.assertFalse(path.stat().st_file_attributes & stat.FILE_ATTRIBUTE_NOT_CONTENT_INDEXED)
+
+    @unittest.skipIf(os.name != "nt", "Windows file attributes")
+    def test_windows_content_indexing_failure_is_diagnostic_and_tasks_run(self):
+        # Prediction: one failed attribute call leaves indexing enabled, survives later queue views as a cleanup
+        # diagnostic, and neither blocks the first task nor retries on the now-existing root for its dependent.
+        self.allow_content_indexing(self.root)
+        self.plan("nx", CHAIN, {"nx.t1": {"product": "greeting"}, "nx.t2": {"product": "app"}})
+        result = self.fault_drain("def mark(path):\n    raise OSError('fixture attribute denied')\n"
+                                  "q['shared']('platform-support')['mark_not_content_indexed'] = mark\n")
+        root = self.anchor.parent / f"{self.anchor.name}.devlyn.noindex"
+        self.assertEqual(result["cleanup"], [
+            f"content indexing unchanged: {root}: could not set FILE_ATTRIBUTE_NOT_CONTENT_INDEXED: fixture attribute denied; continuing"])
+        self.assertFalse(root.stat().st_file_attributes & stat.FILE_ATTRIBUTE_NOT_CONTENT_INDEXED)
+        self.assertEqual({identity: (task["result"], task["delivery"], self.calls(identity))
+                          for identity, task in self.tasks(result).items()},
+                         {"nx.t1": ("accepted", "LOCAL_ONLY", 1), "nx.t2": ("accepted", "LOCAL_ONLY", 1)})
+
+    @unittest.skipIf(os.name != "nt", "Windows file attributes")
+    def test_mark_not_content_indexed_preserves_attributes_and_reports_read_failure(self):
+        # Prediction: marking preserves an unrelated hidden bit, and an unreadable attribute call raises OSError.
+        path = self.root / "attributes"
+        path.mkdir()
+        self.allow_content_indexing(path)
+        platform = self.queue["shared"]("platform-support")
+        platform["_kernel"].SetFileAttributesW(str(path), path.stat().st_file_attributes | stat.FILE_ATTRIBUTE_HIDDEN)
+        before = path.stat().st_file_attributes
+        platform["mark_not_content_indexed"](path)
+        self.assertEqual(path.stat().st_file_attributes, before | stat.FILE_ATTRIBUTE_NOT_CONTENT_INDEXED)
+        with self.assertRaises(OSError):
+            platform["mark_not_content_indexed"](self.root / "missing")
+
+    @unittest.skipIf(os.name == "nt", "POSIX no-op")
+    def test_mark_not_content_indexed_is_noop_on_posix(self):
+        # Prediction: on POSIX the helper does nothing, even for a nonexistent path.
+        self.assertIsNone(self.queue["shared"]("platform-support")["mark_not_content_indexed"](self.root / "missing"))
+
+    def test_default_drain_creates_no_root_without_fresh_allocation(self):
+        # Prediction: no runnable task, allocation preflight refusal and resuming an old-root receipt each leave the
+        # default root absent; only a fresh allocation that passed queue preflight needs it.
+        root = self.anchor.parent / f"{self.anchor.name}.devlyn.noindex"
+        self.assertEqual(self.drain()["tasks"], [])
+        self.assertFalse(root.exists())
+        self.plan("nx", [CHAIN[0]], {"nx.t1": {"product": "greeting"}})
+        result = self.fault_drain("g['evidence_ignored'] = lambda *args: False\n")
+        self.assertIn(".devlyn/ is not ignored", self.tasks(result)["nx.t1"]["reason"])
+        self.assertEqual(self.calls("nx.t1"), 0)
+        self.assertFalse(root.exists())
+        self.behaviors["nx.t1"] = {"exit_now": 1}
+        old_root = self.anchor.parent / f"{self.anchor.name}.devlyn"
+        self.assertEqual(self.tasks(self.fault_drain("", root=old_root))["nx.t1"]["result"], "active")
+        self.behaviors["nx.t1"] = {"product": "greeting"}
+        self.assertEqual(self.tasks(self.drain())["nx.t1"]["result"], "accepted")
+        self.assertEqual(Path(self.receipt("nx.t1")["worktree"]), old_root / "nx" / "t1")
+        self.assertFalse(root.exists())
+
+    def test_default_drain_resumes_old_root_receipt_and_allocates_new_task_noindex(self):
+        # Prediction: interruption after an owned allocation under the old .devlyn root resumes at its recorded path;
+        # the same default drain allocates the fresh dependent under .devlyn.noindex, without duplicating the old tree.
+        self.plan("nx", CHAIN, {"nx.t1": {"product": "greeting"}, "nx.t2": {"product": "app"}})
+        old_root = self.anchor.parent / f"{self.anchor.name}.devlyn"
+        new_root = self.anchor.parent / f"{self.anchor.name}.devlyn.noindex"
+        argv = self.drain_argv()
+        argv[argv.index("--"):argv.index("--")] = ["--worktree-root", str(old_root)]
+        crashed = subprocess.run([sys.executable, "-c", CRASH, "replace", "packet.json", *argv[1:]], cwd=self.root,
+                                 env=self.env, capture_output=True, text=True, encoding="utf-8")
+        self.assertEqual(crashed.returncode, 9, crashed.stdout + crashed.stderr)
+        original = self.receipt("nx.t1")
+        self.assertEqual((original["allocation"], Path(original["worktree"])), ("owned", old_root / "nx" / "t1"))
+        self.assertTrue(Path(original["worktree"]).is_dir())
+        self.assertFalse(self.receipt_path("nx.t1").with_name("packet.json").exists())
+        self.assertFalse(self.receipt_path("nx.t2").exists())
+        self.assertFalse(new_root.exists())
+        self.assertEqual((self.calls("nx.t1"), self.calls("nx.t2")), (0, 0))
+
+        tasks = self.tasks(self.drain())
+        resumed = self.receipt("nx.t1")
+        self.assertEqual(resumed["worktree"], original["worktree"])
+        self.assertEqual(resumed["worktree_identity"], original["worktree_identity"])
+        self.assertEqual(Path(self.receipt("nx.t2")["worktree"]), new_root / "nx" / "t2")
+        self.assertFalse((new_root / "nx" / "t1").exists())
+        self.assertFalse((old_root / "nx" / "t2").exists())
+        self.assertEqual({identity: (task["result"], task["delivery"]) for identity, task in tasks.items()},
+                         {"nx.t1": ("accepted", "LOCAL_ONLY"), "nx.t2": ("accepted", "LOCAL_ONLY")})
+        self.assertEqual((self.calls("nx.t1"), self.calls("nx.t2")), (1, 1))
+
     def test_robust_07_existing_allocations_are_never_adopted(self):
         # Prediction: existing branches or workspaces refuse only their allocation, preserve their bytes and let bb run.
         self.plan("aa", [CHAIN[0]], {"aa.t1": {"product": "greeting"}})
@@ -1122,7 +1262,7 @@ class LoopFixture(unittest.TestCase):
         self.assertIn("existing branch cannot be adopted", self.tasks(result)["aa.t1"]["reason"])
         self.assertEqual(self.g("rev-parse", "devlyn/aa/t1"), self.base)
         self.g("branch", "-D", "devlyn/aa/t1")  # Explicit fixture recovery.
-        work = self.root / "repo.devlyn/aa/t1"
+        work = self.root / "repo.devlyn.noindex/aa/t1"
         work.mkdir(parents=True)
         (work / "sentinel").write_text("keep", encoding="utf-8")
         self.independent("cc")
@@ -2227,7 +2367,7 @@ class LoopFixture(unittest.TestCase):
         tasks = self.tasks(self.drain(local=False))
         self.assertEqual({identity: task["delivery"] for identity, task in tasks.items()}, {"sd.t1": "COMPLETE", "sd.t2": "COMPLETE"})
         self.assertEqual([Path(self.receipt(identity)["worktree"]).exists() for identity in tasks], [False, False])
-        parent = self.root / "repo.devlyn/sd"
+        parent = self.root / "repo.devlyn.noindex/sd"
         self.assertFalse(parent.exists())
         self.assertTrue(parent.parent.is_dir())
         parent.mkdir()  # Model interruption between worktree removal and empty-parent pruning.
@@ -2766,7 +2906,7 @@ class LoopFixture(unittest.TestCase):
                 identity = f"{loop}.t1"
                 self.assertEqual(self.calls(identity), 0)
                 self.assertFalse(self.receipt_path(identity).exists())
-                self.assertFalse((self.anchor.parent / f"{self.anchor.name}.devlyn" / loop / "t1").exists())
+                self.assertFalse((self.anchor.parent / f"{self.anchor.name}.devlyn.noindex" / loop / "t1").exists())
                 self.assertEqual(tasks[identity]["result"], "pending")
                 self.assertEqual(tasks[identity]["reason"], f"{mode} delivery base main is not the repository's default branch release; "
                                  "plan the loop on release, or drain with --local-only")
