@@ -32,6 +32,9 @@ SCHEDULE = [('o01', 'BV', 'claude'), ('o02', 'BV', 'codex'), ('o03', 'Z0', 'code
             ('o04', 'Z0', 'claude'), ('o05', 'Z0', 'claude'), ('o06', 'Z0', 'codex'),
             ('o07', 'BV', 'codex'), ('o08', 'BV', 'claude')]
 SMOKE = [('smoke-claude', 'SM', 'claude'), ('smoke-codex', 'SM', 'codex')]
+BOOT_REFUSALS = {'runtime phase must be smoke or measured',
+                 'measured Claude requires boot_catalogs.claude.B',
+                 'boot catalog must explicitly list skills, plugins and mcp_servers'}
 
 
 def solo_route(tasks, config, _arm):
@@ -96,7 +99,7 @@ class Runner(legacy.Runner):
         result = super().inputs()
         paths = [HERE / name for name in ('runner.py', 'prepare.py', 'cell.py', 'github.py', 'oracle.py',
                   'common.txt', 'tasks.json', 'smoke-tasks.json', 'Dockerfile', 'build.sh', 'DESIGN.md',
-                  'test_apparatus.py')]
+                  'test_apparatus.py', 'stage.py', 'test_stage.py')]
         paths += [p for p in (HERE / 'fixtures').rglob('*') if p.is_file() and '__pycache__' not in p.parts]
         paths.append(Path(self.runtime['release']['tarball']))
         result.update({str(path): digest(path) for path in paths})
@@ -167,6 +170,7 @@ class Runner(legacy.Runner):
             raise ValueError('phase requires its frozen rp-d1 tasks')
         output = Path(self.runtime['output'])
         out = output / name
+        root = output / 'archives' / name
         if out.exists() or (output / f'verdict-{name}.json').exists():
             raise ValueError('slot already attempted; preserve it, never replay')
         output.mkdir(parents=True, exist_ok=True)
@@ -193,11 +197,11 @@ class Runner(legacy.Runner):
             # Cleanup is allowed after a STOP only with proven teardown and seal.
             if (verdict.get('teardown') == 'CLEAN' and verdict.get('evidence_manifest_sha256') and
                     not (out / 'pat-scan.json').exists()):
-                root = output / 'archives' / name
+                record['repository_cleanup'] = dict(repository=self.repository(name), status='RETAINED',
+                    reason='repository remains for manual cleanup; deletion requires a verified archive and confirmed 404')
                 archived = github.archive(self.repository(name), root)
                 record['archive'] = archived
                 try:
-                    cell.scan(out, self.runtime, root=root)
                     if verdict['status'] != 'STOP':
                         done = github.done_check(out, root, verdict['snapshot'], self.frame.locate, self.packet)
                         write(out / 'report-checklist.json', done['checklist'])
@@ -216,14 +220,25 @@ class Runner(legacy.Runner):
             record.update(status='STOP', reason=str(exc))
         except (OSError, ValueError, KeyError, TypeError, RuntimeError, subprocess.SubprocessError) as exc:
             # Do not serialize arbitrary subprocess output or exception payloads.
-            record.update(status='STOP', reason='rp-d1 instrumentation failed: ' + type(exc).__name__)
-        out.mkdir(parents=True, exist_ok=True, mode=0o700)
-        record['dispatched'] = (out / 'run/started.json').exists()
-        if (out / 'pat-scan.json').exists():
-            record.update(status='UNKNOWN', usage='UNKNOWN', input_tokens=None, output_tokens=None,
-                          delivery_assessment='NOT_ASSESSED', revocation_required=True,
-                          reason='PAT scan hit or failed; revoke PAT immediately')
-        write(out / 'rp-verdict.json', record)
+            reason = str(exc) if type(exc) is ValueError and str(exc) in BOOT_REFUSALS else (
+                'rp-d1 instrumentation failed: ' + type(exc).__name__)
+            record.update(status='STOP', reason=reason)
+        finally:
+            out.mkdir(parents=True, exist_ok=True, mode=0o700)
+            record['dispatched'] = (out / 'run/started.json').exists()
+            scan_failed = False
+            try:
+                # Include partial archives and the inherited records outside the slot directory.
+                roots = [out] + [path for path in (root, output / f'verdict-{name}.json',
+                         output / f'not-dispatched-{name}.json') if path.exists() or path.is_symlink()]
+                cell.scan(out, self.runtime, roots=roots)
+            except (OSError, ValueError):
+                scan_failed = True
+            if scan_failed or (out / 'pat-scan.json').exists():
+                record.update(status='UNKNOWN', usage='UNKNOWN', input_tokens=None, output_tokens=None,
+                              delivery_assessment='NOT_ASSESSED', revocation_required=True,
+                              reason='PAT scan hit or failed; revoke PAT immediately')
+            write(out / 'rp-verdict.json', record)
         return 2 if (record['status'] in ('STOP', 'UNKNOWN') or
                      self.runtime['phase'] == 'smoke' and record['status'] not in ('PASS', 'ADJUDICATE')) else 0
 

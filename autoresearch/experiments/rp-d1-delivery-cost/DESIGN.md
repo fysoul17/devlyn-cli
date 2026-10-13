@@ -26,9 +26,10 @@ sources cites the inherited code it relies on. Where they disagree, this file wi
      1. archive the repository with `git clone --mirror`, the full PR JSON,
         the repository settings and the refs;
      2. hash the archive and check that it is complete;
-     3. scan the archive for PAT bytes, then delete the repository and confirm
-        it returns 404, including after a scan hit or failure;
-     4. only then start the next slot.
+     3. perform the delivery check, then delete the repository and confirm 404;
+        a failed archive forbids deletion and records manual cleanup;
+     4. run the final PAT scan before finalizing `rp-verdict.json` or starting
+        the next slot.
 2. **Credential: one fine-grained PAT (S1).**
    - The owner creates it once in the web UI after the ten repositories
      exist. It selects only those ten repositories, with permissions
@@ -58,10 +59,14 @@ sources cites the inherited code it relies on. Where they disagree, this file wi
        and a `[shell_environment_policy.set]` table that restores the variables
        above. `set` runs after the KEY/SECRET/TOKEN filter; `include_only`
        cannot restore excluded names.
-   - Before sealing and after archiving, scan raw files and streamed Git object
-     contents, including registered worktree storage and archive mirrors. A hit
-     or scan failure makes the observation and usage UNKNOWN, requires PAT
-     revocation and stops the schedule. Scan errors never record hit locations.
+   - Keep the pre-seal PAT scan. One final scan in `Runner.run()`'s `finally`
+     path covers the whole slot directory, its inherited verdict/refusal files
+     and any archive root, including partial archives. It runs after evaluator,
+     delivery and cleanup records, before `rp-verdict.json` is finalized.
+     Both scans inspect raw files and streamed Git objects, including worktree
+     storage and archive mirrors. A hit or scan failure makes observation and
+     usage UNKNOWN, requires revocation and stops the schedule, without a hit
+     location in the verdict. Deletion still requires a verified archive.
 3. **Prompt (S2).**
    - Replace `0232/common.txt` and omit `0237/local-delivery.txt`.
    - Then append the inherited `CALLER CONTRACT` JSON unchanged.
@@ -137,6 +142,11 @@ sources cites the inherited code it relies on. Where they disagree, this file wi
      rule.
    - Native children use the owner's model.
    - Unused peer, judge and reviewer routes are omitted.
+   - Measured `runtime.boot_catalogs.claude.B` copies the smoke-claude slot's
+     recorded `boot_catalogs` from `verdict-smoke-claude.json`. This is the
+     registered expectation, frozen with the measured runtime. Missing catalogs
+     refuse before dispatch; known fixed preflight/boot refusal text is retained
+     in `rp-verdict.json`, never arbitrary exception payloads.
 10. **Tasks.**
     - **BV:** `is_expired(now, deadline)` uses `>` where `>=` is correct.
     - **Z0:** `--limit 0` falls back to the default of 10.
@@ -161,7 +171,7 @@ sources cites the inherited code it relies on. Where they disagree, this file wi
 12. **Live smoke** (separate, before registration):
     - Two repositories, run serially through the same `Runner.run()` lifecycle
       as measured slots: prepare, launch, accounting, seal/PAT scan, archive,
-      archive scan, done-check, delete and confirm 404.
+      done-check, delete and confirm 404, final PAT scan.
     - Both use SM (`fixtures/SM`, `smoke-tasks.json`): a tiny `slugify(text)`
       helper with a public check and independent oracle rows, unrelated to BV/Z0.
     - `runner.py <runtime.json> smoke` selects phase `smoke` and writes only to
@@ -181,12 +191,25 @@ sources cites the inherited code it relies on. Where they disagree, this file wi
    required reviews or checks.
 3. The owner creates the PAT.
 4. Provision the credential privately.
-5. Run `runner.py <runtime.json> smoke`; both serial slots must archive, delete
+5. Stage smoke with `stage.py <stage-dir> --run-id <id> --release-tarball <path>
+   --image <sha256:...> --auth <0251-auth-dir> --github-auth <private-dir> --phase smoke`,
+   then run `stage.py --check <stage-dir>/runtime-smoke.json`.
+   Staging copies the selected, already verified 4.2.18 tarball, hidden oracle and
+   fixtures, required public mounts, and host Codex models cache with its hash.
+   Runtime roots stay under the stage directory; `--smoke-output` selects a
+   different smoke subdirectory. Auth account/hash come from the 0251 manifest.
+   Stage/check never dispatch, contact GitHub or read the PAT; check validates
+   local inputs, release, credential shape/bindings/expiry, catalogs, smoke
+   deletion receipts for measurement, and the image via Docker inspect.
+6. Run `runner.py <stage-dir>/runtime-smoke.json smoke`; both serial slots must archive, delete
    and record DELETED/404 receipts in the separate smoke output root.
-6. Freeze the registration and get reviews from Astra ultra and Grok 4.7.
-7. Run `runner.py <runtime.json> measured` for the eight slots serially,
+7. Stage measured in the same directory with the same arguments and `--phase measured`;
+   it retains smoke's package/cache and copies the recorded Claude catalogs,
+   refusing absent catalogs. Run `stage.py --check <stage-dir>/runtime-measured.json`,
+   then freeze the registration and get reviews from Astra ultra and Grok 4.7.
+8. Run `runner.py <stage-dir>/runtime-measured.json measured` for the eight slots serially,
    cleaning up after each one; o01 reads both smoke verdicts before dispatch.
-8. Review the results against the raw data, then record them.
-9. Remove the raw roots, the PAT, the containers, the volumes and the
+9. Review the results against the raw data, then record them.
+10. Remove the raw roots, the PAT, the containers, the volumes and the
    build-only image and context, using the recorded resource inventory and
    never a broad prune.
