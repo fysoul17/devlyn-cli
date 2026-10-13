@@ -88,6 +88,8 @@ as `NOT_RUN`.
 - **Stage attribution** (for example, delivery versus implementation) is
   reported only where the native receipts support it, never by estimate.
 - Smoke attempts are recorded separately and are never pooled.
+- All per-request and per-engine numbers come from [summarize.py](summarize.py),
+  written before exposure. Reviewers fill its `--review-template` per slot.
 
 ## Decision afterwards (HANDOFF step 7)
 

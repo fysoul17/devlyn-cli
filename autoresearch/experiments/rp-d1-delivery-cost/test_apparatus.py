@@ -1352,7 +1352,8 @@ class PrepareAndRunnerTests(TempCase):
             inputs = self.app.inputs()
         self.assertEqual(inputs['historical'], 'unchanged')
         for name in ('runner.py', 'prepare.py', 'cell.py', 'github.py', 'oracle.py', 'build.sh', 'Dockerfile', 'stage.py',
-                     'common.txt', 'tasks.json', 'smoke-tasks.json', 'fixtures/BV/.user-state/draft.txt',
+                     'common.txt', 'tasks.json', 'smoke-tasks.json', 'summarize.py', 'test_summarize.py',
+                     'fixtures/BV/.user-state/draft.txt',
                      'fixtures/SM/.user-state/draft.txt'):
             self.assertEqual(inputs[str(HERE / name)], g.digest(HERE / name))
 

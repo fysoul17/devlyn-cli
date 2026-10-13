@@ -108,7 +108,7 @@ class Runner(legacy.Runner):
         result = super().inputs()
         paths = [HERE / name for name in ('runner.py', 'prepare.py', 'cell.py', 'github.py', 'oracle.py',
                   'common.txt', 'tasks.json', 'smoke-tasks.json', 'Dockerfile', 'build.sh', 'DESIGN.md',
-                  'test_apparatus.py', 'stage.py', 'test_stage.py')]
+                  'test_apparatus.py', 'stage.py', 'test_stage.py', 'summarize.py', 'test_summarize.py')]
         paths += [p for p in (HERE / 'fixtures').rglob('*') if p.is_file() and '__pycache__' not in p.parts]
         paths.append(Path(self.runtime['release']['tarball']))
         result.update({str(path): digest(path) for path in paths})
