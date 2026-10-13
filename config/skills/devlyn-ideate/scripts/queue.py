@@ -1062,6 +1062,17 @@ def allocate(v, row, opts):
     if values["start"] and (drift := instruction_drift(anchor, start)):
         return (f"the installed instructions ({drift}) in this checkout differ from those in its start commit {start}, so it would run "
                 f"without them; commit them and push them to origin/{manifest['base_ref']}")
+    if os.name == "nt" and opts.default_worktree_root:
+        try:
+            opts.worktree_root.mkdir(exist_ok=False)
+        except FileExistsError:
+            pass  # An existing root belongs to its owner; never change its attributes.
+        else:
+            try:
+                shared("platform-support")["mark_not_content_indexed"](opts.worktree_root)
+            except OSError as exc:
+                opts.root_diagnostics.append(
+                    f"content indexing unchanged: {opts.worktree_root}: could not set FILE_ATTRIBUTE_NOT_CONTENT_INDEXED: {exc}; continuing")
     result = task_complete("allocate", exclude_receipts=v["invalid_receipts"], **values)
     progress(identity, f"allocated {result['worktree']}")
     return None
@@ -1426,7 +1437,9 @@ def drain(args):
     args.repo = anchor  # Preserve the repository root for failures reported by main.
     diagnostics = skill_diagnostics(anchor)
     require(any("{packet}" in part for part in args.executor), "executor argv must contain {packet}, replaced by the task packet path")
-    args.worktree_root = Path(args.worktree_root).resolve() if args.worktree_root else anchor.parent / f"{anchor.name}.devlyn"
+    args.default_worktree_root = args.worktree_root is None
+    args.root_diagnostics = []
+    args.worktree_root = Path(args.worktree_root).resolve() if args.worktree_root else anchor.parent / f"{anchor.name}.devlyn.noindex"
     with lock(common, "drain.lock", blocking=False):
         attempted, last, status, reason, refused = set(), None, "DRAINED", None, {}
         try:
@@ -1455,6 +1468,7 @@ def drain(args):
                 last = view(anchor, common, args.local_only)
         if last is None:
             return {"status": status, "reason": reason, **diagnostics}
+        last["cleanup"].extend(args.root_diagnostics)
         annotate(last, refused)
         prune_parents(last, args.worktree_root)
         return {"status": status, "reason": reason, **diagnostics,
