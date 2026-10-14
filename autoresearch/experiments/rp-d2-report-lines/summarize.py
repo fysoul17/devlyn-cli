@@ -31,8 +31,7 @@ def aggregate(rows):
     complete = all(row['usage'] == 'COMPLETE' for row in dispatched)
     counts = {key: sum(row['status'] == status for row in rows) for key, status in
               (('successes', 'SUCCESS'), ('failures', 'FAILED'), ('pending', 'PENDING'), ('not_assessed', 'NOT_ASSESSED'))}
-    totals = {key: sum(row[key] for row in dispatched) if (key == 'owner_seconds' or complete) and
-              all(row[key] is not None for row in dispatched) else None
+    totals = {key: sum(row[key] for row in dispatched) if all(row[key] is not None for row in dispatched) else None
               for key in METRICS}
     return dict(attempts_dispatched=len(dispatched), **counts, totals=totals,
         completeness='COMPLETE' if complete else 'UNKNOWN',

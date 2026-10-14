@@ -65,12 +65,3 @@ python3 -m pytest "$p" "$d" -q
 
 Tests use synthetic tarballs/auth and mocked external boundaries, never real
 credentials, models, Docker or GitHub.
-
-Measured slots continue after an accounting-only usage UNKNOWN: preserve the
-inherited STOP in `accounting-stop.json`, verify identity, sealed evidence,
-credentials/bindings and teardown, then run the normal checks and delivery grading
-before repository deletion, in rp-d1's archive/done-check/delete/404/scan order.
-No attempt is retried or replaced. Other instrumentation/security failures and
-smoke UNKNOWNs still stop. Quality counts and numeric wall time remain; the
-affected arm × engine's token totals and costs per success are UNKNOWN, which
-blocks adoption on a compared cost row.

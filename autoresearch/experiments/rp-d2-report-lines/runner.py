@@ -5,8 +5,6 @@ import importlib.util
 import json
 from pathlib import Path
 import re
-import subprocess
-import time
 
 HERE = Path(__file__).resolve().parent
 spec = importlib.util.spec_from_file_location('prepare_rpd2_runner', HERE / 'prepare.py')
@@ -69,88 +67,7 @@ legacy.SCHEDULE = SCHEDULE
 legacy.BOOT_REFUSALS |= {'measured Claude requires boot_catalogs.claude.' + arm for arm in ('X', 'Y')}
 
 
-def accounting_only(verdict):
-    """Recognize counter uncertainty, never an arbitrary accounting/parser failure."""
-    gaps = verdict.get('usage_gaps')
-    if not gaps:
-        return False
-    if verdict['config'] == 'claude':
-        allowed = {'error or retry outside scope', 'usage is not an object',
-                   'invalid thinking counter object', 'invalid token counter',
-                   'terminal counters incomplete', 'thinking exceeds output',
-                   'invalid native aggregate counters', 'child result aggregate mismatch',
-                   'whole native aggregate mismatch', 'owner-only aggregate mismatch'}
-        return all(gap in allowed for gap in gaps)
-    return all(re.fullmatch(r'rollout \S+ has no usable counters|'
-                            r'plain root \S+: footer (?:None|\d+) vs trace (?:None|\d+)|'
-                            r'thread \S+: rollout counters \[[\d, None]+\] vs trace \[[\d, None]+\]', gap)
-               for gap in gaps)
-
-
-class AccountingContinuation(legacy.legacy.Runner):
-    """Resume the skipped checks before rp-d1 archives/deletes, without rerunning the owner."""
-
-    def run(self, name, task, arm, config):
-        result = super().run(name, task, arm, config)
-        path = Path(self.runtime['output']) / f'verdict-{name}.json'
-        if self.runtime['phase'] != 'measured' or not path.exists():
-            return result
-        verdict = read(path)
-        if not (verdict['status'] == 'STOP' and verdict['usage'] == 'UNKNOWN' and
-                verdict.get('reason') == 'ValueError: whole-run usage UNKNOWN' and accounting_only(verdict)):
-            return result
-        out = path.parent / name
-        # Preserve the original verdict, including its wall time and accounting diagnostics.
-        original = out / 'accounting-stop.json'
-        original.write_bytes(path.read_bytes())
-        verdict['accounting_stop_sha256'] = digest(original)
-        try:
-            require(verdict['identity']['status'] == 'MATCH', 'model identity is not MATCH')
-            pair = verdict['peer_policy']
-            require(pair['status'] == 'MATCH' and not pair['gaps'] and not pair['violations'],
-                    'peer identity/evidence is not MATCH')
-            require(verdict['teardown'] == 'CLEAN' and not (out / 'pat-scan.json').exists(),
-                    'continuation requires clean teardown and PAT scans')
-            manifest_path = github.safe_file(out, 'evidence.manifest.json')
-            require(digest(manifest_path) == verdict['evidence_manifest_sha256'], 'evidence seal binding changed')
-            manifest = read(manifest_path)
-            require(not manifest['failures'] and bool(manifest['files']), 'incomplete evidence seal')
-            for filename, expected in manifest['files'].items():
-                require(digest(github.safe_file(out, filename)) == expected, 'sealed evidence changed')
-            # These are the same post-accounting gates and grading order as 0255/0238.
-            expected_catalogs = self.boot_expectation(arm, config)
-            verdict['boot_catalogs'] = self.boot_catalogs(out, config)
-            if expected_catalogs is not None:
-                expected_catalogs = {key: sorted(value, key=lambda item: json.dumps(item, sort_keys=True))
-                                     for key, value in expected_catalogs.items()}
-                require(verdict['boot_catalogs'] == expected_catalogs, 'boot catalog contamination or drift')
-            verdict['quota'] = self.frame.quota.classify(out)
-            require(not verdict['quota']['execution'], 'authentication or quota fault during execution')
-            self.unchanged(out)
-            verdict['snapshot'] = self.frame.locate.locate(out)
-            started = time.monotonic()
-            checked = self.frame.check.check(out, self.runtime)
-            delivered = legacy.legacy.delivery.check(out, verdict['snapshot'], self.frame.locate, self.packet)
-            write(out / 'delivery.json', delivered)
-            verdict.update(checked, source_check_pass=checked['product_check_pass'], delivery=delivered,
-                           delivery_pass=delivered['passed'], deterministic_seconds=time.monotonic() - started)
-            verdict['status'] = ('PRODUCT_INCOMPLETE' if not delivered['passed'] or
-                                verdict['owner_status'] != 'EXITED_0' or pair['protocol_violations'] else
-                                'ADJUDICATE' if checked['adjudication_needed'] else
-                                'CHECKS_PASS' if checked['product_check_pass'] else 'PRODUCT_INCOMPLETE')
-            write(out / 'checked.json', dict(snapshot=self.packet.tree(out / 'snapshot'),
-                  checks_sha256=digest(out / 'checks.json'), delivery_sha256=digest(out / 'delivery.json')))
-        except (OSError, ValueError, KeyError, TypeError, RuntimeError, subprocess.SubprocessError) as exc:
-            # No exception payload may leak a credential into a verdict.
-            verdict.update(status='STOP', reason='rp-d2 continuation failed: ' + type(exc).__name__)
-        verdict.update(usage='UNKNOWN', input_tokens=None, output_tokens=None)
-        write(path, verdict)
-        return 2 if verdict['status'] == 'STOP' else 0
-
-
-# The diamond puts this hook between rp-d1's lifecycle and its 0255 owner runner.
-# rp-d1 still owns archive -> done_check -> delete/404 -> final PAT scan for every cell.
-class Runner(legacy.Runner, AccountingContinuation):
+class Runner(legacy.Runner):
     def __init__(self, runtime_path, tasks_path=None, *, phase=None):
         original = read(runtime_path)
         require(phase is None or phase == original['phase'], 'phase differs from staged runtime')

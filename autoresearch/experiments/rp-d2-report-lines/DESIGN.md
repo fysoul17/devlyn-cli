@@ -100,17 +100,20 @@ repetitions. They run serially, with no replay.
 - **Repository handling.** It follows rp-d1: check that the repository is
   empty, archive it, verify the archive, delete the repository, then confirm
   it returns 404. Raw evidence is kept until final adjudication.
-- **Accounting-only UNKNOWN (measured phase).** A measured cell whose only
-  defect is UNKNOWN usage from the unchanged 0254 or Codex accounting, such as
-  a dropped-connection retry, is graded like any other cell. Its token fields
-  stay UNKNOWN, and the schedule continues. The cell is never retried or
-  replaced. Any other STOP cause still stops the run:
-  - a security or PAT finding;
-  - an archive, delete or 404 failure;
-  - an auth, identity or evidence failure.
+- **UNKNOWN usage STOPs, as in rp-d1.** One proposed rule would have
+  continued after an accounting-only UNKNOWN. It was implemented, reviewed
+  (REVISE, both: [Astra](results/cont-r1-review-astra.md),
+  [Grok](results/cont-r1-review-grok.md)), corrected, then withdrawn before
+  exposure, for two reasons:
+  - **The rule would not have applied to the real case.** The ECONNRESET cell
+    from smoke attempt 1 has its retry rows filtered out, but it still fails
+    the unchanged 0254 audit, on two unindexed request bodies
+    ([eligibility](results/cont-fix-real-eligibility.json)).
+  - **A compared UNKNOWN cost row blocks adoption either way.** Continuing
+    would add descriptive data only. It could not change the decision.
 
-  Smoke keeps STOP, because qualification needs COMPLETE usage. Both
-  reviewers chose this rule before exposure.
+  The rp-d1 STOP rule is therefore kept, with no added code. A STOP makes the
+  run inconclusive.
 
 ## Success and cost
 
@@ -179,8 +182,8 @@ All four repositories were archived, then deleted and confirmed 404.
 **Decision before registration.** The smoke evidence was put to Astra and Grok
 ([Astra](results/smoke-decision-astra.md), [Grok](results/smoke-decision-grok.md)).
 
-- **Both reviewers.** Both proposed the accounting-only UNKNOWN rule in
-  Schedule.
+- **Both reviewers.** Both proposed an accounting-only UNKNOWN continuation.
+  It was later withdrawn; see Schedule.
 - **Astra.** Register Y unchanged. One SM observation cannot establish no
   effect on BV/Z0.
 - **Grok, dissenting.** The prompt's closing sentence ("Finish with what you
