@@ -54,8 +54,8 @@ The owner chose candidate 1. Host route changes made by a VPN client are a
 confirmed cause of drops on the morning of 2026-10-15. They are the likely
 cause of the 2026-10-14 drops, a match on timing only. Docker is not needed
 for a drop, because host sessions dropped as well. One retry remains
-unexplained. The text above is unchanged. "Silent" there means no transcript row was written; it
-does not mean the connection carried no bytes.
+unexplained. The text above is unchanged. "Silent" there means no transcript
+row was written; it does not mean the connection carried no bytes.
 
 - **Host sessions outside Docker dropped the same way.** Host Claude Code
   transcripts record nine `api_error` ECONNRESET retries on 2026-10-14, from
@@ -64,7 +64,7 @@ does not mean the connection carried no bytes.
   18:54 KST on 2026-10-14 there were none, across about 600 requests that
   waited 80 s or more. Successful requests on the same evening waited up to
   1,020 s, so a fixed limit on total request time does not explain the drops.
-Transcript gaps do not measure idle time on the wire.
+  Transcript gaps do not measure idle time on the wire.
 - **Codex dropped in the same morning window.** Three Codex streams failed with
   `Can't assign requested address` (EADDRNOTAVAIL): the socket's local
   address had disappeared.
@@ -89,7 +89,7 @@ Transcript gaps do not measure idle time on the wire.
   - The first host drop followed at 18:54:20. Smoke attempt 1 dropped at about
     20:20 and m01 at about 23:05, each about two minutes after a stamp.
 - **Docker cells share the host's routes.** Docker Desktop opens container
-  connections from the host, so a host route change breaks them as well.
+  connections from the host, so a host route change can break them as well.
 
 **Consequence.** A live run needs a fixed host network. No VPN may connect or
 disconnect, and the host may not switch networks, while a cell runs.
