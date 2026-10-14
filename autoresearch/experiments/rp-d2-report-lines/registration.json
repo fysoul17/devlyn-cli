@@ -1,0 +1,228 @@
+{
+ "schema": "rp-d2-registration-v1",
+ "apparatus_commit": "21699994b1257ccaccfae3129a68529e0c6040f9",
+ "run_id": "20261014a",
+ "phase": "measured",
+ "schedule": [
+  {
+   "slot": "m01",
+   "task": "BV",
+   "engine": "claude",
+   "arm": "X"
+  },
+  {
+   "slot": "m02",
+   "task": "BV",
+   "engine": "claude",
+   "arm": "Y"
+  },
+  {
+   "slot": "m03",
+   "task": "BV",
+   "engine": "codex",
+   "arm": "Y"
+  },
+  {
+   "slot": "m04",
+   "task": "BV",
+   "engine": "codex",
+   "arm": "X"
+  },
+  {
+   "slot": "m05",
+   "task": "Z0",
+   "engine": "codex",
+   "arm": "X"
+  },
+  {
+   "slot": "m06",
+   "task": "Z0",
+   "engine": "codex",
+   "arm": "Y"
+  },
+  {
+   "slot": "m07",
+   "task": "Z0",
+   "engine": "claude",
+   "arm": "Y"
+  },
+  {
+   "slot": "m08",
+   "task": "Z0",
+   "engine": "claude",
+   "arm": "X"
+  },
+  {
+   "slot": "m09",
+   "task": "Z0",
+   "engine": "claude",
+   "arm": "X"
+  },
+  {
+   "slot": "m10",
+   "task": "Z0",
+   "engine": "claude",
+   "arm": "Y"
+  },
+  {
+   "slot": "m11",
+   "task": "Z0",
+   "engine": "codex",
+   "arm": "Y"
+  },
+  {
+   "slot": "m12",
+   "task": "Z0",
+   "engine": "codex",
+   "arm": "X"
+  },
+  {
+   "slot": "m13",
+   "task": "BV",
+   "engine": "codex",
+   "arm": "X"
+  },
+  {
+   "slot": "m14",
+   "task": "BV",
+   "engine": "codex",
+   "arm": "Y"
+  },
+  {
+   "slot": "m15",
+   "task": "BV",
+   "engine": "claude",
+   "arm": "Y"
+  },
+  {
+   "slot": "m16",
+   "task": "BV",
+   "engine": "claude",
+   "arm": "X"
+  }
+ ],
+ "repositories": [
+  "fysoul17/rpd2-20261014a-m01",
+  "fysoul17/rpd2-20261014a-m02",
+  "fysoul17/rpd2-20261014a-m03",
+  "fysoul17/rpd2-20261014a-m04",
+  "fysoul17/rpd2-20261014a-m05",
+  "fysoul17/rpd2-20261014a-m06",
+  "fysoul17/rpd2-20261014a-m07",
+  "fysoul17/rpd2-20261014a-m08",
+  "fysoul17/rpd2-20261014a-m09",
+  "fysoul17/rpd2-20261014a-m10",
+  "fysoul17/rpd2-20261014a-m11",
+  "fysoul17/rpd2-20261014a-m12",
+  "fysoul17/rpd2-20261014a-m13",
+  "fysoul17/rpd2-20261014a-m14",
+  "fysoul17/rpd2-20261014a-m15",
+  "fysoul17/rpd2-20261014a-m16"
+ ],
+ "releases": {
+  "X": {
+   "integrity": "sha512-yud5j6xq791XQlg6eVy8WkWTB/Ee7X0pn/Orbt0db4NvAKatEq577wyTT1Wo/x0FRKFRoXax1q+xxns97UXekw==",
+   "manifest_sha256": "cd68caa4bcb0d64df14faa0c8647479ef532b6d84889aac096728b57f08cb2f5",
+   "sha256": "7b22cce865d99e1400f9c0b0bff41c1b9ae3645b132cbb868ec01cadc973393e",
+   "source": {
+    "registry": "devlyn-cli@4.2.18"
+   },
+   "version": "4.2.18"
+  },
+  "Y": {
+   "integrity": "sha512-eOKh4//n1WyIGfYBWLxs+7sTKgozAv5skd9MTJL9eA8qRrJ7Pz92UF7rV38smKDBLWMdAGn5YBV/TRMdURgUMg==",
+   "manifest_sha256": "4141d0da1a6250d3af6c7614ef482726aa5d01619e941887438b17c0ad8996d7",
+   "sha256": "c45bc13aec01f625a6687a9697854e705b3eb201fc2b0f1e01626e9f8dcaf603",
+   "source": {
+    "candidate_commit": "a623b382e655e893f6b39b96199ef8675afdde05",
+    "registry": "devlyn-cli@4.2.18"
+   },
+   "version": "4.2.18"
+  }
+ },
+ "image": "sha256:b55cbb940b6f7d21ca67e7ee39f221966b525c334608766eff31347571564eb0",
+ "cli": {
+  "claude": "2.1.296",
+  "codex": "0.162.1",
+  "gh": "2.83.2"
+ },
+ "routes": {
+  "claude": {
+   "owner": {
+    "effort": "max",
+    "engine": "claude",
+    "model": "claude-opus-5-5"
+   }
+  },
+  "codex": {
+   "owner": {
+    "child_effort": "high",
+    "child_model": "gpt-6-sol",
+    "effort": "high",
+    "engine": "codex",
+    "model": "gpt-6-sol"
+   }
+  }
+ },
+ "account": [
+  "02b266ea50d2",
+  "531f8e153d6b"
+ ],
+ "codex_account": "65ad276127a5",
+ "auth_manifest_sha256": "9841482c834e99af9f58546fe95e7f7d10bdea336a7f5542b13a2e6ba34c3e3a",
+ "smoke_account": [
+  "cc43a4e02ede",
+  "2905f4abf05b"
+ ],
+ "smoke_codex_account": "65ad276127a5",
+ "runtime_sha256": "dfca27ffaf58b563ecd484644ff10b541f6cca38b998e0c794cf10a1fa30f075",
+ "void_runtime_sha256": "513ec8521ec68bcccd1a357be4f8fd9c3663adcde724d531fb28d98f53dcc785",
+ "smoke": {
+  "attempt": 2,
+  "verdicts": {
+   "smoke2-claude-X": "c594e01b6382cdb7ee22db49ca0a15cfdf1db503bee10016248f1d93a4bbca6c",
+   "smoke2-claude-Y": "572501ad8032b2b0a72492e3401cad9393cd07fb401e7504866484be0f5648af",
+   "smoke2-codex-X": "300b1ba76f78e790b5af7afc7b4d92e834fe38ba2596533127afd2697eb3be8b",
+   "smoke2-codex-Y": "5c2092ec903e00fc7ed41cd961a33b23a9d2f2075cf05a394fb101428b047db6"
+  },
+  "schedule_sha256": "8a4a225e6bd07556ab7687ef1bc7be8a8e81e5dfefffa7031fa3aeb2849beaf3",
+  "stopped_attempt_1_schedule_sha256": "427adc72521099e30278f35d4739a4cfbfae9bc8dc01f8b7f23f319f9c972bbc"
+ },
+ "inputs": {
+  "autoresearch/experiments/rp-d1-delivery-cost/Dockerfile": "6b9131a724e90aa381bb0e59411d31cdcff15a85a36a738df9f8f13278930b89",
+  "autoresearch/experiments/rp-d1-delivery-cost/build.sh": "aefbfa7f764399804b3e8931a03afa1ac18c64aa2c168a199eb4e0c3869e582e",
+  "autoresearch/experiments/rp-d1-delivery-cost/cell.py": "2a0f07a972fdfbab0d4c53039025507bda437d73c8f5e95163795c0e512d8678",
+  "autoresearch/experiments/rp-d1-delivery-cost/common.txt": "2ccc7f6a11891f6270685c09ada44cc4376bbedb047f8a0864f950b415bf50cf",
+  "autoresearch/experiments/rp-d1-delivery-cost/github.py": "64537542ff976cb280c4dcfb9e2bf65fddeef56684e034c5fea3304ae0d2aca9",
+  "autoresearch/experiments/rp-d1-delivery-cost/oracle.py": "4c2d454662fd3c299dfac136bbff01d439ccd23af5b331d13b2e42cf44dab959",
+  "autoresearch/experiments/rp-d1-delivery-cost/prepare.py": "6531b2958d81bbf4baff52fd118b61f43a05c26400569c4e2eb955947e5feb77",
+  "autoresearch/experiments/rp-d1-delivery-cost/reevaluate.py": "4d122ddceedbeff80dbac9f93fb86ba8ac87b2fbc0b3037da7d8fdbde776e128",
+  "autoresearch/experiments/rp-d1-delivery-cost/runner.py": "337af3003f76ec0407abf341752613c6bf87b094d47ffd7217d8f42ac115e811",
+  "autoresearch/experiments/rp-d1-delivery-cost/summarize.py": "eb223d5222d6d50ee4c791a40dd49f26af0271c792ae799fb2cb484205e99be1",
+  "autoresearch/experiments/rp-d1-delivery-cost/tasks.json": "12f4ef121cc0544ab1ffe42caf4cf5cc17d6df096cc1d2dcdd2565732c4f7ef7",
+  "autoresearch/experiments/rp-d2-report-lines/DESIGN.md": "e623d7a8c8a39063c317813f50d083ebdbc0bdc37378e7159b51a09245022ddc",
+  "autoresearch/experiments/rp-d2-report-lines/README.md": "3aa1ea55eee7889f9133b78244a9d48c72fafa5c6a6b4cb06e10cc918aded9ab",
+  "autoresearch/experiments/rp-d2-report-lines/pack.py": "302f9f48c4bb3a3cb4a3c4d99d26f89e7ef6f3118f3b165fa574191f527b5aff",
+  "autoresearch/experiments/rp-d2-report-lines/prepare.py": "43bffb00427388c1b2fc0f013cd1adf56130e979b2fb7f1d8bdd7ad1665aba76",
+  "autoresearch/experiments/rp-d2-report-lines/reevaluate.py": "feb4129fa21ab55d81448d579ecd6a0be6e31a566308fe7f4d8c3422ab23ec44",
+  "autoresearch/experiments/rp-d2-report-lines/runner.py": "6008e540d586ec9707fbe98016a558346241c398016a806e66f791ac4e1674a3",
+  "autoresearch/experiments/rp-d2-report-lines/stage.py": "b4703ffae17e66242f0531e49c7656dd41faf74ddfcb68a954b3e14d242290e8",
+  "autoresearch/experiments/rp-d2-report-lines/summarize.py": "92878ec0ea1225c8c25d2a8e2771eb75b788674b7200ee32cb866a64cfbdf4d2",
+  "autoresearch/experiments/rp-d2-report-lines/test_rpd2_pack.py": "065553d0908a6555038b409526b88748b3a892bbbd4c973a174ebdb709421e7f",
+  "autoresearch/experiments/rp-d2-report-lines/test_rpd2_runner.py": "6759792ed3b291f08e9c1171262f2b838b4ced4d3c6bbd26ad9235c985022cd1",
+  "autoresearch/experiments/rp-d2-report-lines/test_rpd2_summary.py": "2e572d4cdb11b796f4be18d3f58f8501d8201172f2248f277d9e22d5eb599914",
+  "autoresearch/experiments/rp-d2-report-lines/token_gate.py": "ec59c4f604fac2145cf9fa397b7ef0fe28493095839a5248fa962a5ff5cca7e7"
+ },
+ "live_inputs": {
+  "arms.json": "60a97ad511ae2e2ce366a9b7905fb8c25c3bfaf718c12e24d822dde6d3236caa",
+  "X.tgz": "7b22cce865d99e1400f9c0b0bff41c1b9ae3645b132cbb868ec01cadc973393e",
+  "Y.tgz": "c45bc13aec01f625a6687a9697854e705b3eb201fc2b0f1e01626e9f8dcaf603",
+  "control.manifest.json": "499d0476ec6fbfd1de222eef450ae0bdd3df25a7cbda0125ab441faf707e6db5",
+  "models_cache.json": "0371c1bc63b4b9c8b7594484c072628543fb34e036174d64181a0fb43937ebeb",
+  "model-auth manifest.json": "9841482c834e99af9f58546fe95e7f7d10bdea336a7f5542b13a2e6ba34c3e3a"
+ },
+ "watchdog_seconds": {
+  "owner": 5400,
+  "evaluator_or_review": 600
+ }
+}

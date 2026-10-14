@@ -1,0 +1,9 @@
+- **HIGH — [prepare.py:80](/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/rp-d2-report-lines/autoresearch/experiments/rp-d2-report-lines/prepare.py:80): X/Y breaks inherited grading after dispatch.** The plan receives `arm=X/Y`, but the effective inherited policy checker recognizes only A/B/S as solo arms. It looks up nonexistent `peer_routes` for X/Y. Confirmed through the actual checker for both engines and arms: `KeyError: 'peer_routes'`. An otherwise healthy first smoke runs the owner, then records STOP and leaves subsequent cells NOT_RUN. Bind the effective solo-policy function while preserving X/Y identity.
+
+- **HIGH — [stage.py:99](/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/rp-d2-report-lines/autoresearch/experiments/rp-d2-report-lines/stage.py:99): Renewal does not freeze the Codex account.** The inherited `manifest.account` contains Claude’s account and organization identifiers—not Claude and Codex identities. Switching Codex login before a permitted renewal passes the account comparison and launch preflight. An in-memory probe accepted snapshots with different Codex account IDs. Bind Codex identity separately across renewals.
+
+- **LOW — [reevaluate.py:10](/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/rp-d2-report-lines/autoresearch/experiments/rp-d2-report-lines/reevaluate.py:10): Rebinding the summary leaves incompatible exception classes.** Its `EvidenceError` comes from another loaded GitHub module. An arm/schedule mismatch therefore bypasses the reevaluator’s handlers, producing a traceback and FAILED report without its diagnostic `error` field. Confirmed; remains fail-closed.
+
+The adoption rule, schedule, launch lifetime floor, and inherited repository cleanup/PAT checks otherwise match the contract. No material overengineering finding.
+
+VERDICT: REVISE

@@ -1,0 +1,22 @@
+{
+  "actual_phase_eligible": false,
+  "case": "smoke-claude-X",
+  "eligibility": {
+    "gaps": [
+      "orphan or missing body file"
+    ],
+    "retry_rows": 2,
+    "status": "STOP"
+  },
+  "missing_indexed_files": 0,
+  "native_files_verified": 81,
+  "original_gaps": [
+    "error or retry outside scope"
+  ],
+  "original_status": "STOP",
+  "phase": "smoke",
+  "phase_reason": "smoke never continues",
+  "real_credentials_read": false,
+  "source_manifest_and_verdict_unchanged": true,
+  "unindexed_body_files": 2
+}

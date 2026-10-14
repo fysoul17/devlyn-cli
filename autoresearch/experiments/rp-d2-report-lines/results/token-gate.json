@@ -1,0 +1,18 @@
+{
+  "path": "config/skills/_shared/task-completion.md",
+  "control": {
+    "rev": "7516ebc9",
+    "bytes": 14320,
+    "words": 1989,
+    "claude": 4873,
+    "o200k": 2982
+  },
+  "candidate": {
+    "rev": "a623b382e655e893f6b39b96199ef8675afdde05",
+    "bytes": 14316,
+    "words": 1987,
+    "claude": 4872,
+    "o200k": 2981
+  },
+  "passed": true
+}
