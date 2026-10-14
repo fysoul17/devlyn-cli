@@ -50,9 +50,11 @@ a compared UNKNOWN cost row blocks adoption.
 
 ## Diagnosis (added 2026-10-15, after merge)
 
-The owner chose candidate 1. The drops come from host route changes made by
-a VPN client. They are not caused by Docker, the product or the API. The text
-above is unchanged. "Silent" there means no transcript row was written; it
+The owner chose candidate 1. Host route changes made by a VPN client are a
+confirmed cause of drops on the morning of 2026-10-15. They are the likely
+cause of the 2026-10-14 drops, a match on timing only. Docker is not needed
+for a drop, because host sessions dropped as well. One retry remains
+unexplained. The text above is unchanged. "Silent" there means no transcript row was written; it
 does not mean the connection carried no bytes.
 
 - **Host sessions outside Docker dropped the same way.** Host Claude Code
@@ -61,22 +63,24 @@ does not mean the connection carried no bytes.
   followed on the morning of 2026-10-15, by 08:48 KST. From 2026-09-29 until
   18:54 KST on 2026-10-14 there were none, across about 600 requests that
   waited 80 s or more. Successful requests on the same evening waited up to
-  1,020 s, so no fixed timeout explains the drops.
-- **Codex dropped at the same moments.** Codex logs show streams failing with
+  1,020 s, so a fixed limit on total request time does not explain the drops.
+Transcript gaps do not measure idle time on the wire.
+- **Codex dropped in the same morning window.** Three Codex streams failed with
   `Can't assign requested address` (EADDRNOTAVAIL): the socket's local
   address had disappeared.
 - **This morning's logs show the trigger.**
   - Cisco Secure Client brought up a full-tunnel VPN, with a VPN default
     route, at 08:22:55 KST.
   - A user-requested disconnect ended it at 08:29:10–08:29:12.
-  - Codex streams then failed at 08:29:59, 08:30:08 (twice) and 08:31:20, all
-    with EADDRNOTAVAIL.
+  - Codex streams then failed with EADDRNOTAVAIL at 08:29:59, 08:30:08 and
+    08:31:20. A fourth, at 08:30:08, failed with `error decoding response
+    body`.
   - A host Claude request that began at 08:28:09, inside the tunnel window,
     failed with ECONNRESET at 08:30:20.
   - The tunnel came up again at 08:46:38. A host Claude request failed with
     ECONNRESET at 08:47:47.
-  - One more host retry, at 08:45:01, had no route event in the minutes
-    before it. Its cause is not established.
+  - One more host retry came at 08:45:01. The system log from 08:44:30 to
+    08:45:05 has no VPN, tunnel or route event. Its cause is not established.
 - **Yesterday matches on timing (inferred).** The detailed agent log for
   2026-10-14 has rotated out, and only process stamps remain.
   - The Cisco Secure Client app started at 18:53:35 KST.
@@ -90,7 +94,7 @@ does not mean the connection carried no bytes.
 **Consequence.** A live run needs a fixed host network. No VPN may connect or
 disconnect, and the host may not switch networks, while a cell runs.
 [benchmark/README.md](../../../benchmark/README.md) now states this as a hard
-rule. The rule removes the verified cause. It does not prove that every drop
+rule. The rule removes the confirmed cause. It does not prove that every drop
 goes away, and a drop during a cell still stops the run as registered.
 Candidates 2 and 3 remain for the owner.
 
