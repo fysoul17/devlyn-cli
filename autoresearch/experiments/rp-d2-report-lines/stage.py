@@ -53,7 +53,8 @@ def stage(args):
         arms_file=str(arms_file), image=args.image, control=str(control), output=str(dest / 'output'),
         smoke_output=str(smoke_output), scratch=str(dest / 'scratch'), sources=str(dest / 'sources'),
         source_root=str(HERE.parents[2]), auth=str(args.auth.absolute()), github_auth=str(args.github_auth.absolute()),
-        account=manifest['account'], auth_manifest_sha256=manifest_hash, boot_catalogs=catalogs,
+        account=manifest['account'], codex_account=runner.codex_account(args.auth),
+        auth_manifest_sha256=manifest_hash, boot_catalogs=catalogs,
         tasks_file=str(runner.PRIOR / ('smoke-tasks.json' if phase == 'smoke' else 'tasks.json')),
         models_cache=str(dest / 'models_cache.json'))
     for output in (runtime['output'], runtime['smoke_output']):
@@ -62,7 +63,7 @@ def stage(args):
         require(phase == 'measured', 'stage already exists; preserve it')
         previous = read(dest / 'runtime-smoke.json')
         for key in ('run_id', 'image', 'releases', 'arms_file', 'control', 'models_cache', 'smoke_output',
-                    'smoke_attempt', 'github_auth', 'account'):
+                    'smoke_attempt', 'github_auth', 'account', 'codex_account'):
             require(runtime[key] == previous[key], 'measured inputs/account differ from staged smoke: ' + key)
         runtime['models_cache_sha256'] = previous['models_cache_sha256']
         require(digest(Path(runtime['models_cache'])) == runtime['models_cache_sha256'], 'models cache changed')
@@ -113,6 +114,8 @@ def renew(runtime_path, auth_path):
         app.prior_deleted(runner.SCHEDULE[len(completed)][0])
     manifest, manifest_hash = model_auth(auth_path)
     renewal_allowed(previous, manifest['account'], completed)
+    require(runner.codex_account(auth_path) == previous['codex_account'],
+            'model auth renewal requires the identical Codex account')
     auth.lifetime(manifest['expires_at_ms'])
     updated = dict(previous, auth=str(auth_path.absolute()), auth_manifest_sha256=manifest_hash,
                    renewed_from=dict(path=str(runtime_path.resolve()), sha256=digest(runtime_path)))

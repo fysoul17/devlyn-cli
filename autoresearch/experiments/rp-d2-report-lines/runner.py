@@ -45,6 +45,23 @@ def runtime_binding(runtime):
     return hashlib.sha256(json.dumps(frozen_runtime(runtime), sort_keys=True).encode()).hexdigest()
 
 
+def solo_route(tasks, config, arm):
+    require(arm in ('X', 'Y'), 'unregistered rp-d2 arm')
+    return legacy.solo_route(tasks, config, arm)
+
+
+def codex_account(path):
+    raw = cell.auth.read_private(cell.auth.directory(path), 'codex.json')
+    try:
+        account = json.loads(raw)['tokens']['account_id']
+    except (ValueError, KeyError, TypeError):
+        raise ValueError('invalid Codex account identity') from None
+    require(isinstance(account, str) and bool(account.strip()), 'invalid Codex account identity')
+    return hashlib.sha256(account.encode()).hexdigest()[:12]
+
+
+# Both grading paths call 0242's global; keep 0238's unused H/P initializer probes separate.
+legacy.legacy.policy.check.__globals__['base_policy'].route_for = solo_route
 legacy.smoke_slots = smoke_slots
 legacy.SCHEDULE = SCHEDULE
 legacy.BOOT_REFUSALS |= {'measured Claude requires boot_catalogs.claude.' + arm for arm in ('X', 'Y')}
@@ -61,12 +78,13 @@ class Runner(legacy.Runner):
             require(digest(Path(previous['path'])) == previous['sha256'], 'previous runtime binding changed')
             require(frozen_runtime(read(previous['path'])) == frozen_runtime(original),
                     'renewal changed frozen inputs/account')
-        # Ancestor inputs() hashes one release; the override below hashes both.
+        # rp-d1 inputs() requires release; retain its full census and add both tarballs below.
         self.runtime['release'] = self.runtime['releases']['X']
         self.active_arm = None
         launch = self.frame.cell_run.run
 
         def bound_launch(out, runtime):
+            require(codex_account(runtime['auth']) == runtime['codex_account'], 'Codex account binding mismatch')
             prepare.verify_release(runtime)
             prepare.binding(out, runtime, arm_for(out.name))
             return launch(out, runtime)
@@ -83,6 +101,7 @@ class Runner(legacy.Runner):
 
     def validate(self, name):
         require(runtime_binding(read(self.runtime_path)) == self.frozen, 'staged runtime changed')
+        require(codex_account(self.runtime['auth']) == self.runtime['codex_account'], 'Codex account binding mismatch')
         require(digest(Path(self.runtime['models_cache'])) == self.runtime['models_cache_sha256'], 'models cache changed')
         prepare.verify_release(self.runtime)
         return super().validate(name)
@@ -122,7 +141,8 @@ class Runner(legacy.Runner):
             require(record['arm'] == arm_for(slot) and
                     record['release'] == prepare.release_identity(self.runtime, arm_for(slot)),
                     'previous slot arm/package binding mismatch')
-            require(record['account'] == self.runtime['account'], 'account pair changed since smoke')
+            require(record['account'] == self.runtime['account'] and
+                    record['codex_account'] == self.runtime['codex_account'], 'model accounts changed since smoke')
             if slot in ARMS:
                 require(record['frozen_runtime_sha256'] == self.frozen, 'frozen runtime changed between slots')
             if name in ARMS and int(name[1:]) % 2 == 0:
@@ -137,7 +157,7 @@ class Runner(legacy.Runner):
             path = Path(self.runtime['output']) / name / 'rp-verdict.json'
             record = read(path)
             record.update(schema='rp-d2-verdict-v1', arm=arm, release=prepare.release_identity(self.runtime, arm),
-                          account=self.runtime['account'], auth=self.runtime['auth'],
+                          account=self.runtime['account'], codex_account=self.runtime['codex_account'], auth=self.runtime['auth'],
                           auth_manifest_sha256=self.runtime['auth_manifest_sha256'], frozen_runtime_sha256=self.frozen)
             write(path, record)
             return result

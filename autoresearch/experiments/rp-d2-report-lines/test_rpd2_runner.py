@@ -1,5 +1,6 @@
 """Offline two-arm staging, installer binding and serial lifecycle contracts."""
 import hashlib
+import json
 from pathlib import Path
 import shutil
 import subprocess
@@ -39,10 +40,10 @@ def staged(tmp_path, monkeypatch):
     return s, args, path
 
 
-def snapshot(s, path, account, salt='', seconds=10000):
+def snapshot(s, path, account, salt='', seconds=10000, codex_account='offline-codex-account'):
     path.mkdir(mode=0o700)
     files = {'claude.env': b'CLAUDE_CODE_OAUTH_TOKEN=offline\nCLAUDE_CODE_OAUTH_SCOPES=user:profile\n',
-             'codex.json': ('{"synthetic":' + repr(salt).replace("'", '"') + '}').encode()}
+             'codex.json': s.auth.encoded(dict(tokens=dict(account_id=codex_account, access_token='offline' + salt)))}
     manifest = dict(schema_version=1, account=account, expires_at_ms=(time.time() + seconds) * 1000,
                     files={name: hashlib.sha256(data).hexdigest() for name, data in files.items()})
     for name, data in (files | {'manifest.json': s.auth.encoded(manifest)}).items():
@@ -55,6 +56,7 @@ def record(s, app, name, task, engine):
     return dict(cell=name, task=task, config=engine, arm=arm, status='ADJUDICATE', dispatched=True,
         phase=app.runtime['phase'], measurement_eligible=app.runtime['phase'] == 'measured',
         release=s.runner.prepare.release_identity(app.runtime, arm), account=app.runtime['account'],
+        codex_account=app.runtime['codex_account'],
         auth=app.runtime['auth'], auth_manifest_sha256=app.runtime['auth_manifest_sha256'],
         frozen_runtime_sha256=app.frozen, repository_cleanup=dict(repository=app.repository(name),
             status='DELETED', http_status=404, archive_manifest_sha256='a' * 64))
@@ -133,6 +135,45 @@ def test_stage_refuses_account_change_since_smoke(staged, tmp_path):
         s.stage(args)
 
 
+@pytest.mark.parametrize('boundary', ['stage', 'renew', 'validate', 'launch'])
+def test_codex_only_account_switch_refused(staged, tmp_path, monkeypatch, boundary):
+    s, args, path = staged
+    manifest = s.read(args.auth / 'manifest.json')
+    monkeypatch.setattr(time, 'time', lambda: manifest['expires_at_ms'] / 1000 - 10000)
+    foreign = snapshot(s, tmp_path / 'foreign-codex', manifest['account'], codex_account='other-codex-account')
+    replacement, _ = s.model_auth(foreign)
+    assert replacement == dict(manifest, files=dict(manifest['files'], **{
+        'codex.json': replacement['files']['codex.json']}))
+    if boundary == 'stage':
+        smoke_receipts(s, path)
+        args.phase, args.auth = 'measured', foreign
+        with pytest.raises(RuntimeError, match='codex_account'):
+            s.stage(args)
+    elif boundary == 'renew':
+        s, _, path = measured(staged)
+        before = path.read_bytes()
+        with pytest.raises(RuntimeError, match='Codex account'):
+            s.renew(path, foreign)
+        assert path.read_bytes() == before
+        assert not list(path.parent.glob('runtime-measured-auth-*.json'))
+    else:
+        app = s.runner.Runner(path)
+        # A valid replacement manifest must not authorize a different Codex account.
+        app.runtime.update(auth=str(foreign), auth_manifest_sha256=s.digest(foreign / 'manifest.json'))
+        with pytest.raises(RuntimeError, match='Codex account'):
+            if boundary == 'validate':
+                app.validate('smoke-codex-X')
+            else:
+                app.frame.cell_run.run(Path(app.runtime['output']) / 'smoke-codex-X', app.runtime)
+
+
+def test_staged_codex_identity_is_nonsecret(staged):
+    s, _, path = staged
+    assert s.read(path)['codex_account'] == hashlib.sha256(b'offline-codex-account').hexdigest()[:12]
+    assert 'offline-codex-account' not in path.read_text()
+    assert 'access_token' not in path.read_text()
+
+
 def test_release_tree_tampering_or_swapped_arms_fails(staged):
     s, _, path = staged
     runtime = s.read(path)
@@ -172,7 +213,7 @@ def test_spare_smoke_stages_fresh_and_supplies_its_own_catalogs(staged, tmp_path
 
 
 @pytest.mark.parametrize('arm,engine', [('X', 'claude'), ('Y', 'claude'), ('X', 'codex'), ('Y', 'codex')])
-def test_unchanged_installer_mount_and_plan_bind_each_arm(staged, monkeypatch, arm, engine):
+def test_installer_plan_and_inherited_policy_bind_each_arm(staged, monkeypatch, arm, engine):
     s, _, path = staged
     app = s.runner.Runner(path)
     name = f'smoke-{engine}-{arm}'
@@ -203,6 +244,21 @@ def test_unchanged_installer_mount_and_plan_bind_each_arm(staged, monkeypatch, a
         assert row['release']['sha256'] == app.runtime['releases'][arm]['sha256']
     app.unchanged(out)
     s.runner.prepare.binding(out, app.runtime, arm)
+    plan = s.read(out / 'plan.json')
+    (out / 'run').mkdir()
+    event = (dict(type='thread.started', thread_id='offline-owner') if engine == 'codex' else
+             dict(type='system', subtype='init', session_id='offline-owner'))
+    (out / 'run/stdout').write_text(json.dumps(event) + '\n')
+    for generation in ('0255', '0238'):
+        entry = next(cls.__dict__['run'] for cls in type(app).__mro__ if 'run' in cls.__dict__ and
+                     Path(cls.__dict__['run'].__code__.co_filename).parent.name == generation)
+        policy = entry.__globals__['policy']
+        assert Path(policy.check.__globals__['base_policy'].__file__).parent.name == '0242'
+        result = policy.check(out, plan, app.tasks, app.frame.cell_run.evidence)
+        assert result['status'] == 'MATCH'
+        assert not result['gaps'] and not result['violations'] and not result['protocol_violations']
+        with pytest.raises((ValueError, RuntimeError), match='unregistered rp-d2 arm'):
+            policy.check(out, dict(plan, arm='UNKNOWN'), app.tasks, app.frame.cell_run.evidence)
     baseline = s.read(out / 'baseline.json')
     installed = next(name for name in baseline['installed_files'] if name.endswith('task-completion.md'))
     other = 'Y' if arm == 'X' else 'X'
@@ -255,6 +311,7 @@ def test_renewal_same_accounts_only_between_complete_pairs(staged, tmp_path):
     renewed = s.renew(path, replacement)
     assert path.read_bytes() == before
     updated = s.read(renewed)
+    assert updated['codex_account'] == app.runtime['codex_account']
     assert s.runner.frozen_runtime(updated) == s.runner.frozen_runtime(s.read(path))
     assert updated['auth'] == str(replacement)
     resumed = s.runner.Runner(renewed)

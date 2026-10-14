@@ -8,6 +8,8 @@ summary = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(summary)
 legacy = summary.runner.load('reevaluate_rpd1_rpd2', summary.runner.PRIOR / 'reevaluate.py')
 legacy.summary = summary
+legacy.github = summary.github
+legacy.read, legacy.write, legacy.require = summary.read, summary.write, summary.require
 reevaluate, census, main = legacy.reevaluate, legacy.census, legacy.main
 
 

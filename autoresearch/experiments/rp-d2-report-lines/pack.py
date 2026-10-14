@@ -96,11 +96,9 @@ def content(path):
 
 def paragraph_diff(before, after):
     require(before.count(OLD) == 1, 'control paragraph must occur exactly once')
-    expected = before.replace(OLD, NEW, 1)
-    diff = lambda raw: ''.join(difflib.unified_diff(before.decode().splitlines(True),
-                              raw.decode().splitlines(True), fromfile='X/' + FILE, tofile='Y/' + FILE))
-    require(after == expected and diff(after) == diff(expected), 'candidate differs from the registered three-line change')
-    return diff(after)
+    require(after == before.replace(OLD, NEW, 1), 'candidate differs from the registered three-line change')
+    return ''.join(difflib.unified_diff(before.decode().splitlines(True), after.decode().splitlines(True),
+                                      fromfile='X/' + FILE, tofile='Y/' + FILE))
 
 
 def verify_pair(paths):

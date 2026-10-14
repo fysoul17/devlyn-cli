@@ -173,3 +173,24 @@ def test_reevaluator_uses_sixteen_slot_census_without_mutating_raw(evidence, tmp
     assert report['raw_census'] == dict(before=before, after=before, unchanged=True)
     assert e.census(output) == before
     assert len(e.legacy.summary.measured_records(output)) == 16
+
+
+@pytest.mark.parametrize('mismatch', ['arm', 'schedule'])
+def test_reevaluator_reports_mismatch_diagnostic(evidence, tmp_path, capsys, mismatch):
+    output, _, records = evidence
+    if mismatch == 'arm':
+        records[0]['arm'] = 'Y'
+    else:
+        records.pop()
+    flush(output, records)
+    e = load('reevaluate')
+    dest = tmp_path / 'corrections'
+    with pytest.raises(SystemExit) as stopped:
+        e.main([str(output), str(dest)])
+    assert stopped.value.code == 2
+    diagnostic = 'arm mismatch' if mismatch == 'arm' else 'schedule differs'
+    assert diagnostic in capsys.readouterr().err
+    report = s.read(dest / 'reevaluation.json')
+    assert report['status'] == 'FAILED'
+    assert diagnostic in report['error']
+    assert report['raw_census']['unchanged']

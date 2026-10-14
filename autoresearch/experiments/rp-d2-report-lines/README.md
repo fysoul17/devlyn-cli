@@ -27,7 +27,9 @@ Keep all stage, auth, archive and build directories outside the repository.
    Preserve attempt 1; no third attempt is registered.
 5. Stage measured with the same arguments and directory, changing only
    `--phase measured`. This freezes one Claude smoke catalog per arm and
-   requires the same account pair. Check `runtime-measured.json` as above;
+   requires the same Claude account/org and Codex account. Runtime binds Codex
+   by the 12-hex SHA-256 prefix of `codex.json`'s `tokens.account_id`.
+   Check `runtime-measured.json` as above;
    all four selected smoke cells must have working delivery and archived
    deletion/404 receipts. Freeze inputs and obtain registration reviews before exposure.
 6. Run `python3 "$d/runner.py" /path/stage/runtime-measured.json measured`.
@@ -35,7 +37,7 @@ Keep all stage, auth, archive and build directories outside the repository.
    `python3 "$d/stage.py" --renew /path/stage/runtime-measured.json --auth /path/new-model-auth`.
    Check and resume using the printed new runtime path. Earlier runtimes and
    slots remain intact; only the auth snapshot may change, on the identical
-   account pair. Mid-pair renewal and stopped-run recovery are refused.
+   Claude account/org and Codex account. Mid-pair renewal and stopped-run recovery are refused.
    The inherited 6300-second credential lifetime floor applies at every launch.
 7. Generate each review with
    `python3 "$d/summarize.py" /path/stage/output m01 --review-template`.
