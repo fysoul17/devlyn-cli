@@ -147,6 +147,36 @@ def test_unknown_usage_and_missing_wall_keep_totals_honest(evidence):
     assert result['adoption']['decision'] == 'INCONCLUSIVE'
 
 
+@pytest.mark.parametrize('product_status,quality', [('ADJUDICATE', 'SUCCESS'), ('PRODUCT_INCOMPLETE', 'FAILED')])
+def test_one_unknown_attempt_keeps_quality_and_wall_but_blocks_compared_cost(evidence, product_status, quality):
+    output, reviews, records = evidence
+    records[0].update(status=product_status, usage='UNKNOWN', input_tokens=None, output_tokens=None)
+    # The other engine improves, so UNKNOWN must veto an otherwise adoptable result.
+    next(row for row in records if row['config'] == 'codex' and row['arm'] == 'X')['status'] = 'PRODUCT_INCOMPLETE'
+    flush(output, records)
+    result = s.summarize(output, reviews)
+    assert result['slots'][0]['status'] == quality
+    x = result['arms']['X']['claude']
+    assert x['attempts_dispatched'] == 4
+    assert x['successes'] == (4 if quality == 'SUCCESS' else 3)
+    assert x['failures'] == (0 if quality == 'SUCCESS' else 1)
+    assert x['pending'] == x['not_assessed'] == 0
+    assert x['totals'] == dict(owner_seconds=400, input_tokens=None, output_tokens=None)
+    assert x['wall_completeness'] == 'COMPLETE'
+    assert x['cost_per_success'] == dict.fromkeys(s.METRICS)
+    assert result['adoption']['decision'] == 'INCONCLUSIVE'
+    assert [row['status'] for row in result['adoption']['rows']] == [
+        'UNCHANGED' if quality == 'SUCCESS' else 'IMPROVED', 'UNKNOWN', 'IMPROVED', 'IMPROVED']
+    assert 'UNKNOWN' in s.markdown(result)
+
+
+def test_aggregate_never_sums_unknown_token_lower_bounds():
+    result = s.aggregate([dict(status='SUCCESS', dispatched=True, usage='UNKNOWN',
+                               owner_seconds=12.5, input_tokens=7, output_tokens=3)])
+    assert result['totals'] == dict(owner_seconds=12.5, input_tokens=None, output_tokens=None)
+    assert result['cost_per_success'] == dict.fromkeys(s.METRICS)
+
+
 def test_template_and_schedule_arm_validation(evidence):
     output, _, records = evidence
     template = s.review_template(output, 'm01')

@@ -100,6 +100,17 @@ repetitions. They run serially, with no replay.
 - **Repository handling.** It follows rp-d1: check that the repository is
   empty, archive it, verify the archive, delete the repository, then confirm
   it returns 404. Raw evidence is kept until final adjudication.
+- **Accounting-only UNKNOWN (measured phase).** A measured cell whose only
+  defect is UNKNOWN usage from the unchanged 0254 or Codex accounting, such as
+  a dropped-connection retry, is graded like any other cell. Its token fields
+  stay UNKNOWN, and the schedule continues. The cell is never retried or
+  replaced. Any other STOP cause still stops the run:
+  - a security or PAT finding;
+  - an archive, delete or 404 failure;
+  - an auth, identity or evidence failure.
+
+  Smoke keeps STOP, because qualification needs COMPLETE usage. Both
+  reviewers chose this rule before exposure.
 
 ## Success and cost
 
@@ -147,6 +158,43 @@ Two repetitions support this task and model setting only. Extra artifact
 differences, unequal repairs, a mid-pair account or model change, selective
 retries, changed grading, missing usage or damaged evidence all void
 attribution.
+
+## Qualification and the pre-registration decision
+
+All four repositories were archived, then deleted and confirmed 404.
+
+- **Smoke attempt 1** stopped on its first cell, Claude X. The owner delivered
+  correctly, but a dropped connection (`system/api_error`, ECONNRESET) was
+  retried. The 0254 accounting therefore returns UNKNOWN, by design.
+- **Smoke attempt 2**, the spares, qualified all four cells. Every cell
+  delivered, its usage was COMPLETE, and its report checklist was set to
+  ADJUDICATE.
+  - **Codex, both arms.** The report ended in the rp-d1 shape: "PR #1 merged,
+    and the local checkout is clean. Nothing remains unresolved."
+  - **Codex Y read the new paragraph.** It ran `cat` on
+    `task-completion.md`, and the output was not truncated.
+  - **Claude, both arms.** The report named the merge, the fast-forward, the
+    clean tree and the removal of the worktree, branch and scratch.
+
+**Decision before registration.** The smoke evidence was put to Astra and Grok
+([Astra](results/smoke-decision-astra.md), [Grok](results/smoke-decision-grok.md)).
+
+- **Both reviewers.** Both proposed the accounting-only UNKNOWN rule in
+  Schedule.
+- **Astra.** Register Y unchanged. One SM observation cannot establish no
+  effect on BV/Z0.
+- **Grok, dissenting.** The prompt's closing sentence ("Finish with what you
+  changed, what you verified and anything unresolved") sets Codex's report
+  shape. Grok would replace the arms with a prompt ablation.
+
+**Resolution.** Y is measured as designed, because the owner chose a product
+instruction fix. The prompt ablation is the registered next candidate if Y is
+not adopted.
+
+Interpretation is narrowed accordingly. rp-d2 measures whether Y improves
+report coverage under this frozen prompt. A null result does not show that
+the product's reporting rule is wrong in general. Delivery outcomes and report
+outcomes are shown separately.
 
 ## Review
 

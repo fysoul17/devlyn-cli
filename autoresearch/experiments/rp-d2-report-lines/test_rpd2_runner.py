@@ -423,3 +423,190 @@ def test_pair_pause_resume_and_stop_never_replay(staged, monkeypatch):
     assert s.read(Path(app.runtime['output']) / 'rp-schedule.json')['status'] == 'PAUSED'
     assert app.schedule(2) == 0
     assert calls == ['m01', 'm02', 'm03', 'm04']
+
+
+@pytest.fixture
+def accounting_lifecycle(staged, monkeypatch):
+    def setup(*, phase='measured', engine='claude', defect=None, product_failure=None):
+        s, _, path = measured(staged) if phase == 'measured' else staged
+        r = s.runner
+        app = r.Runner(path)
+        target = next(name for name, _, config in app.slots() if config == engine)
+        events, originals = [], {}
+
+        def event(label):
+            events.append(label)
+            if defect == label:
+                raise r.github.EvidenceError('synthetic ' + label + ' failure')
+
+        def inherited(_self, name, task, route, config):
+            assert route == 'B'
+            event('owner:' + name)
+            out = Path(app.runtime['output']) / name
+            (out / 'run').mkdir(parents=True)
+            s.write(out / 'run/started.json', {})
+            (out / 'run/stdout').write_text('synthetic sealed owner evidence\n')
+            s.write(out / 'evidence.manifest.json', dict(failures=[], files={
+                'run/started.json': r.digest(out / 'run/started.json'),
+                'run/stdout': r.digest(out / 'run/stdout')}))
+            verdict = dict(cell=name, task=task, arm=route, config=config, status='CHECKS_PASS',
+                usage='COMPLETE', input_tokens=7, output_tokens=3, owner_seconds=12.5,
+                owner_status='EXITED_0', identity=dict(status='MATCH', owner='MATCH'),
+                peer_policy=dict(status='MATCH', gaps=[], violations=[], protocol_violations=[]),
+                teardown='CLEAN', evidence_manifest_sha256=r.digest(out / 'evidence.manifest.json'), snapshot={})
+            if name == target:
+                verdict.update(status='STOP', reason='ValueError: whole-run usage UNKNOWN',
+                    usage='UNKNOWN', input_tokens=None, output_tokens=None,
+                    usage_gaps=['error or retry outside scope' if config == 'claude' else
+                                'rollout offline-owner has no usable counters'])
+                verdict.pop('snapshot')
+                if defect == 'identity':
+                    verdict['identity']['status'] = 'UNKNOWN'
+                elif defect == 'peer':
+                    verdict['peer_policy']['gaps'] = ['unbound invocation']
+                elif defect == 'teardown':
+                    verdict['teardown'] = 'UNKNOWN'
+                elif defect == 'seal':
+                    verdict['evidence_manifest_sha256'] = 'wrong'
+                elif defect == 'evidence':
+                    (out / 'run/stdout').write_text('damaged evidence\n')
+                elif defect == 'collection':
+                    manifest = s.read(out / 'evidence.manifest.json')
+                    manifest['failures'] = ['unreadable file']
+                    s.write(out / 'evidence.manifest.json', manifest)
+                    verdict['evidence_manifest_sha256'] = r.digest(out / 'evidence.manifest.json')
+                elif defect == 'accounting-instrumentation':
+                    verdict['usage_gaps'].append('native scope inventory failed: ValueError')
+                elif defect == 'other-stop':
+                    verdict['reason'] = 'ValueError: authentication failed'
+                elif defect == 'pat':
+                    s.write(out / 'pat-scan.json', dict(revocation_required=True))
+                if product_failure == 'owner':
+                    verdict['owner_status'] = 'EXITED_1'
+                elif product_failure == 'protocol':
+                    verdict['peer_policy']['protocol_violations'] = ['protocol failure']
+            file = out.parent / f'verdict-{name}.json'
+            s.write(file, verdict)
+            originals[name] = file.read_bytes()
+            return 2 if verdict['status'] == 'STOP' else 0
+
+        def boot(out, config):
+            event('boot')
+            expected = app.boot_expectation('B', config)
+            return {key: sorted(value) for key, value in expected.items()} if expected is not None else {}
+
+        def quota(_):
+            event('quota')
+            return dict(execution=[dict(fault='auth')] if defect == 'auth' else [])
+
+        def locate(_):
+            event('locate')
+            return dict(kind='accepted')
+
+        def checks(out, runtime):
+            event('checks')
+            checked = dict(product_check_pass=product_failure != 'checks', adjudication_needed=False)
+            s.write(out / 'checks.json', checked)
+            return checked
+
+        def delivery(*_):
+            event('delivery')
+            return dict(passed=product_failure != 'delivery')
+
+        def archive(repository, root):
+            event('archive')
+            root.mkdir(parents=True)
+            return dict(manifest_sha256='verified archive')
+
+        def done(out, root, selection, locate, packet):
+            event('done')
+            if out.name == target:
+                assert (out / 'checked.json').exists()
+                assert selection == dict(kind='accepted')
+            return dict(status='PRODUCT_INCOMPLETE' if product_failure == 'preservation' else 'ADJUDICATE',
+                        checklist=dict(report='synthetic report', facts=dict(merge='MERGED')))
+
+        def delete(repository, root, manifest):
+            event('delete')
+            event('404')
+            return dict(repository=repository, status='DELETED', http_status=404,
+                        archive_manifest_sha256=manifest)
+
+        def scan(out, runtime, *, roots):
+            events.append('scan')
+            assert out in roots and out.parent / f'verdict-{out.name}.json' in roots
+            if defect == 'scan':
+                raise ValueError('synthetic PAT scan failure')
+
+        monkeypatch.setattr(r.legacy.legacy.Runner, 'run', inherited)
+        monkeypatch.setattr(r.github, 'precheck', lambda _: event('precheck'))
+        monkeypatch.setattr(app, 'boot_catalogs', boot)
+        monkeypatch.setattr(app.frame.quota, 'classify', quota)
+        monkeypatch.setattr(app, 'unchanged', lambda _: event('bindings'))
+        monkeypatch.setattr(app.frame.locate, 'locate', locate)
+        monkeypatch.setattr(app.frame.check, 'check', checks)
+        monkeypatch.setattr(r.legacy.legacy.delivery, 'check', delivery)
+        monkeypatch.setattr(r.github, 'archive', archive)
+        monkeypatch.setattr(r.github, 'done_check', done)
+        monkeypatch.setattr(r.github, 'delete_archived', delete)
+        monkeypatch.setattr(r.cell, 'scan', scan)
+        return s, app, target, events, originals
+    return setup
+
+
+@pytest.mark.parametrize('engine', ['claude', 'codex'])
+@pytest.mark.parametrize('product_failure', [None, 'checks', 'delivery', 'preservation', 'owner', 'protocol'])
+def test_measured_accounting_unknown_grades_and_continues_once(accounting_lifecycle, engine, product_failure):
+    s, app, target, events, originals = accounting_lifecycle(engine=engine, product_failure=product_failure)
+    assert app.schedule() == 0
+    output = Path(app.runtime['output'])
+    schedule = s.read(output / 'rp-schedule.json')
+    row = next(row for row in schedule['slots'] if row['cell'] == target)
+    assert row['status'] == ('PRODUCT_INCOMPLETE' if product_failure else 'ADJUDICATE')
+    assert row['delivery_assessment'] != 'NOT_ASSESSED'
+    assert row['usage'] == 'UNKNOWN' and row['input_tokens'] is row['output_tokens'] is None
+    inherited = s.read(output / f'verdict-{target}.json')
+    assert inherited['owner_seconds'] == 12.5
+    assert inherited['usage'] == 'UNKNOWN' and inherited['input_tokens'] is inherited['output_tokens'] is None
+    assert (output / target / 'accounting-stop.json').read_bytes() == originals[target]
+    assert inherited['accounting_stop_sha256'] == s.runner.digest(output / target / 'accounting-stop.json')
+    assert (output / target / 'report-checklist.json').exists()
+    assert schedule['status'] == 'RECORDED' and schedule['dispatched'] == 16
+    assert [value for value in events if value.startswith('owner:')] == [
+        'owner:' + name for name, _, _ in app.slots()]
+    start = events.index('owner:' + target)
+    assert events[start:start + 12] == ['owner:' + target, 'boot', 'quota', 'bindings', 'locate',
+        'checks', 'delivery', 'archive', 'done', 'delete', '404', 'scan']
+    before = list(events)
+    assert app.schedule() == 0 and events == before
+    task, config = next((task, config) for name, task, config in app.slots() if name == target)
+    with pytest.raises(ValueError, match='never replay'):
+        app.run(target, task, s.runner.arm_for(target), config)
+
+
+@pytest.mark.parametrize('defect', ['identity', 'peer', 'teardown', 'seal', 'evidence', 'collection',
+    'accounting-instrumentation', 'other-stop', 'pat', 'boot', 'auth', 'bindings', 'locate', 'checks',
+    'delivery', 'archive', 'done', 'delete', '404', 'scan'])
+def test_accounting_unknown_with_other_defect_stops(accounting_lifecycle, defect):
+    s, app, target, events, _ = accounting_lifecycle(defect=defect)
+    assert app.schedule() == 2
+    rows = s.read(Path(app.runtime['output']) / 'rp-schedule.json')['slots']
+    assert rows[0]['cell'] == target
+    assert rows[0]['status'] == ('UNKNOWN' if defect in ('pat', 'scan') else 'STOP')
+    assert rows[0]['delivery_assessment'] == 'NOT_ASSESSED'
+    assert [row['status'] for row in rows[1:]] == ['NOT_RUN'] * 15
+    assert [value for value in events if value.startswith('owner:')] == ['owner:' + target]
+    assert events[-1] == 'scan'
+
+
+@pytest.mark.parametrize('engine', ['claude', 'codex'])
+def test_smoke_accounting_unknown_still_stops(accounting_lifecycle, engine):
+    s, app, target, events, _ = accounting_lifecycle(phase='smoke', engine=engine)
+    assert app.schedule() == 2
+    output = Path(app.runtime['output'])
+    rows = s.read(output / 'rp-schedule.json')['slots']
+    index = next(i for i, row in enumerate(rows) if row['cell'] == target)
+    assert rows[index]['status'] == 'STOP' and rows[index]['delivery_assessment'] == 'NOT_ASSESSED'
+    assert all(row['status'] == 'NOT_RUN' for row in rows[index + 1:])
+    assert not (output / target / 'accounting-stop.json').exists()
+    assert events[events.index('owner:' + target):] == ['owner:' + target, 'archive', 'delete', '404', 'scan']
