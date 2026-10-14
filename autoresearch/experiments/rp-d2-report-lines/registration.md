@@ -110,6 +110,33 @@ The verdict hashes and both schedule hashes are in
 [registration.json](registration.json). Smoke reports are not graded and are
 never pooled with measured data.
 
+## Freeze revision before exposure
+
+The first registration review returned SHIP from Grok and REVISE from Astra,
+which raised one MEDIUM ([Astra](results/registration-r1-review-astra.md),
+[Grok](results/registration-r1-review-grok.md)): `summarize.py` let REJECT win
+over a STOP. It now returns INCONCLUSIVE whenever a row is UNKNOWN, matching
+the STOP rule above. Grok's three wording LOWs are corrected.
+
+Before any measured slot ran, the snapshot crossed the 6300-second floor.
+Meanwhile the host's Claude login had switched accounts, so the staged
+credential could not be renewed on the same account. rp-d1 handled the same
+event the same way:
+
+- **Void runtime.** The first measured runtime, which never ran, is kept as
+  `runtime-measured-void-account-switch.json`. Its hash is recorded in
+  `void_runtime_sha256`.
+- **Re-staged account.** The measured run was re-staged on the current Claude
+  account pair. The Codex account is unchanged.
+- **Recorded smoke accounts.** The smoke qualification accounts are recorded
+  as `smoke_account` and `smoke_codex_account`. The apparatus checks the smoke
+  verdicts against those recorded accounts.
+- **Measured account freeze.** All 16 measured slots must use the one
+  registered account pair and the one Codex account. Renewal is allowed only
+  between pairs, only on the identical accounts.
+
+[registration.json](registration.json) was regenerated for this commit.
+
 ## Review
 
 1. **Before exposure.** Astra ultra and Grok 4.7 review this registration.

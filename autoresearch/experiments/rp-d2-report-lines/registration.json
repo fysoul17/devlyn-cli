@@ -1,6 +1,6 @@
 {
  "schema": "rp-d2-registration-v1",
- "apparatus_commit": "425eb41ba6c744033ba76abc3c61ecf41e110808",
+ "apparatus_commit": "21699994b1257ccaccfae3129a68529e0c6040f9",
  "run_id": "20261014a",
  "phase": "measured",
  "schedule": [
@@ -165,12 +165,18 @@
   }
  },
  "account": [
+  "02b266ea50d2",
+  "531f8e153d6b"
+ ],
+ "codex_account": "65ad276127a5",
+ "auth_manifest_sha256": "9841482c834e99af9f58546fe95e7f7d10bdea336a7f5542b13a2e6ba34c3e3a",
+ "smoke_account": [
   "cc43a4e02ede",
   "2905f4abf05b"
  ],
- "codex_account": "65ad276127a5",
- "auth_manifest_sha256": "c67e0e29db8e93bd9c61b43d828e5e73afef6f29d7e3dcd7a1386d8bbb5ac5bd",
- "runtime_sha256": "513ec8521ec68bcccd1a357be4f8fd9c3663adcde724d531fb28d98f53dcc785",
+ "smoke_codex_account": "65ad276127a5",
+ "runtime_sha256": "dfca27ffaf58b563ecd484644ff10b541f6cca38b998e0c794cf10a1fa30f075",
+ "void_runtime_sha256": "513ec8521ec68bcccd1a357be4f8fd9c3663adcde724d531fb28d98f53dcc785",
  "smoke": {
   "attempt": 2,
   "verdicts": {
@@ -194,17 +200,17 @@
   "autoresearch/experiments/rp-d1-delivery-cost/runner.py": "337af3003f76ec0407abf341752613c6bf87b094d47ffd7217d8f42ac115e811",
   "autoresearch/experiments/rp-d1-delivery-cost/summarize.py": "eb223d5222d6d50ee4c791a40dd49f26af0271c792ae799fb2cb484205e99be1",
   "autoresearch/experiments/rp-d1-delivery-cost/tasks.json": "12f4ef121cc0544ab1ffe42caf4cf5cc17d6df096cc1d2dcdd2565732c4f7ef7",
-  "autoresearch/experiments/rp-d2-report-lines/DESIGN.md": "b0f5b2b0c87fd939ec42f50673b7ecdfd3e9d908c75fae299c9310315d251081",
-  "autoresearch/experiments/rp-d2-report-lines/README.md": "668e22a491a98527df08781051088fe39ed07155003ef931adafac1856139009",
+  "autoresearch/experiments/rp-d2-report-lines/DESIGN.md": "e623d7a8c8a39063c317813f50d083ebdbc0bdc37378e7159b51a09245022ddc",
+  "autoresearch/experiments/rp-d2-report-lines/README.md": "3aa1ea55eee7889f9133b78244a9d48c72fafa5c6a6b4cb06e10cc918aded9ab",
   "autoresearch/experiments/rp-d2-report-lines/pack.py": "302f9f48c4bb3a3cb4a3c4d99d26f89e7ef6f3118f3b165fa574191f527b5aff",
   "autoresearch/experiments/rp-d2-report-lines/prepare.py": "43bffb00427388c1b2fc0f013cd1adf56130e979b2fb7f1d8bdd7ad1665aba76",
   "autoresearch/experiments/rp-d2-report-lines/reevaluate.py": "feb4129fa21ab55d81448d579ecd6a0be6e31a566308fe7f4d8c3422ab23ec44",
-  "autoresearch/experiments/rp-d2-report-lines/runner.py": "fab0dcaa582be47b364fafd59305a43e34795f6bc99e42572083ba59f4946983",
-  "autoresearch/experiments/rp-d2-report-lines/stage.py": "95ff914921236dcfa2fb08ca3a51730562e4d57a00bbbdf65f90094f919d7942",
-  "autoresearch/experiments/rp-d2-report-lines/summarize.py": "02da15a4419d111cd2c0e236964fad6cc780d15fbd583a519739aaf46647f449",
+  "autoresearch/experiments/rp-d2-report-lines/runner.py": "6008e540d586ec9707fbe98016a558346241c398016a806e66f791ac4e1674a3",
+  "autoresearch/experiments/rp-d2-report-lines/stage.py": "b4703ffae17e66242f0531e49c7656dd41faf74ddfcb68a954b3e14d242290e8",
+  "autoresearch/experiments/rp-d2-report-lines/summarize.py": "92878ec0ea1225c8c25d2a8e2771eb75b788674b7200ee32cb866a64cfbdf4d2",
   "autoresearch/experiments/rp-d2-report-lines/test_rpd2_pack.py": "065553d0908a6555038b409526b88748b3a892bbbd4c973a174ebdb709421e7f",
-  "autoresearch/experiments/rp-d2-report-lines/test_rpd2_runner.py": "8801fdba260babfe0920c37205546a196ede487e1ca631847be9bccfe4ce7fa9",
-  "autoresearch/experiments/rp-d2-report-lines/test_rpd2_summary.py": "bf4dfd90a75962b0d8a1f60b9ba954b5c299402b11ccc169b67942b2dbab077b",
+  "autoresearch/experiments/rp-d2-report-lines/test_rpd2_runner.py": "6759792ed3b291f08e9c1171262f2b838b4ced4d3c6bbd26ad9235c985022cd1",
+  "autoresearch/experiments/rp-d2-report-lines/test_rpd2_summary.py": "2e572d4cdb11b796f4be18d3f58f8501d8201172f2248f277d9e22d5eb599914",
   "autoresearch/experiments/rp-d2-report-lines/token_gate.py": "ec59c4f604fac2145cf9fa397b7ef0fe28493095839a5248fa962a5ff5cca7e7"
  },
  "live_inputs": {
@@ -213,7 +219,7 @@
   "Y.tgz": "c45bc13aec01f625a6687a9697854e705b3eb201fc2b0f1e01626e9f8dcaf603",
   "control.manifest.json": "499d0476ec6fbfd1de222eef450ae0bdd3df25a7cbda0125ab441faf707e6db5",
   "models_cache.json": "0371c1bc63b4b9c8b7594484c072628543fb34e036174d64181a0fb43937ebeb",
-  "model-auth manifest.json": "c67e0e29db8e93bd9c61b43d828e5e73afef6f29d7e3dcd7a1386d8bbb5ac5bd"
+  "model-auth manifest.json": "9841482c834e99af9f58546fe95e7f7d10bdea336a7f5542b13a2e6ba34c3e3a"
  },
  "watchdog_seconds": {
   "owner": 5400,
