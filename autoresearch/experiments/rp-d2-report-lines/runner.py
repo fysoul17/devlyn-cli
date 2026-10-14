@@ -128,6 +128,7 @@ class Runner(legacy.Runner):
         slots = [row[0] for row in self.smoke + SCHEDULE]
         index = slots.index(name)
         previous = slots[:4] if name == 'm01' else slots[max(0, index - 1):index]
+        account_prefix = 'smoke_' if name == 'm01' else ''
         for slot in previous:
             root = self.runtime['smoke_output' if slot in slots[:4] else 'output']
             record = read(Path(root) / slot / 'rp-verdict.json')
@@ -141,8 +142,9 @@ class Runner(legacy.Runner):
             require(record['arm'] == arm_for(slot) and
                     record['release'] == prepare.release_identity(self.runtime, arm_for(slot)),
                     'previous slot arm/package binding mismatch')
-            require(record['account'] == self.runtime['account'] and
-                    record['codex_account'] == self.runtime['codex_account'], 'model accounts changed since smoke')
+            require(record['account'] == self.runtime[account_prefix + 'account'] and
+                    record['codex_account'] == self.runtime[account_prefix + 'codex_account'],
+                    'previous slot model account binding mismatch')
             if slot in ARMS:
                 require(record['frozen_runtime_sha256'] == self.frozen, 'frozen runtime changed between slots')
             if name in ARMS and int(name[1:]) % 2 == 0:

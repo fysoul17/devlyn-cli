@@ -105,7 +105,7 @@ repetitions. They run serially, with no replay.
   (REVISE, both: [Astra](results/cont-r1-review-astra.md),
   [Grok](results/cont-r1-review-grok.md)), corrected, then withdrawn before
   exposure, for two reasons:
-  - **The rule would not have applied to the real case.** The ECONNRESET cell
+  - **The rule would not have applied to the real case.** The dropped-connection cell
     from smoke attempt 1 has its retry rows filtered out, but it still fails
     the unchanged 0254 audit, on two unindexed request bodies
     ([eligibility](results/cont-fix-real-eligibility.json)).
@@ -167,17 +167,19 @@ attribution.
 All four repositories were archived, then deleted and confirmed 404.
 
 - **Smoke attempt 1** stopped on its first cell, Claude X. The owner delivered
-  correctly, but a dropped connection (`system/api_error`, ECONNRESET) was
-  retried. The 0254 accounting therefore returns UNKNOWN, by design.
+  correctly, but a dropped connection was retried (`api_error`/`api_retry`;
+  the transcript names ECONNRESET). The 0254 accounting therefore returns UNKNOWN, by design.
 - **Smoke attempt 2**, the spares, qualified all four cells. Every cell
   delivered, its usage was COMPLETE, and its report checklist was set to
   ADJUDICATE.
-  - **Codex, both arms.** The report ended in the rp-d1 shape: "PR #1 merged,
-    and the local checkout is clean. Nothing remains unresolved."
+  - **Codex, both arms.** The report kept the rp-d1 shape: the merged PR, "the
+    checkout is clean" and "Nothing remains unresolved." Y's wording was "PR #1
+    merged, and the local checkout is clean."
   - **Codex Y read the new paragraph.** It ran `cat` on
     `task-completion.md`, and the output was not truncated.
   - **Claude, both arms.** The report named the merge, the fast-forward, the
-    clean tree and the removal of the worktree, branch and scratch.
+    clean tree and the removal of the worktree and branch. Y also named the
+    scratch area.
 
 **Decision before registration.** The smoke evidence was put to Astra and Grok
 ([Astra](results/smoke-decision-astra.md), [Grok](results/smoke-decision-grok.md)).

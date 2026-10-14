@@ -25,9 +25,11 @@ Keep all stage, auth, archive and build directories outside the repository.
    `python3 "$d/runner.py" /path/stage/runtime-smoke.json smoke`.
    A complete repeat uses a fresh stage directory and `--smoke-attempt 2`.
    Preserve attempt 1; no third attempt is registered.
-5. Stage measured with the same arguments and directory, changing only
-   `--phase measured`. This freezes one Claude smoke catalog per arm and
-   requires the same Claude account/org and Codex account. Runtime binds Codex
+5. Stage measured with the same directory and arguments except `--phase measured`
+   and optionally a new `--auth` snapshot: this freezes one Claude smoke catalog
+   per arm, permits different Claude account/org and Codex identities from smoke,
+   and records the smoke identities as `smoke_account` / `smoke_codex_account`.
+   Runtime binds Codex
    by the 12-hex SHA-256 prefix of `codex.json`'s `tokens.account_id`.
    Check `runtime-measured.json` as above;
    all four selected smoke cells must have working delivery and archived

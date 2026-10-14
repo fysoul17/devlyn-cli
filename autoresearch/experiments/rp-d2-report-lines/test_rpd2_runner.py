@@ -114,6 +114,8 @@ def test_stage_check_both_arms_and_per_arm_boot_catalogs(staged, monkeypatch):
     s, args, path = measured(staged)
     s.check(path)
     runtime = s.read(path)
+    assert runtime['smoke_account'] == runtime['account']
+    assert runtime['smoke_codex_account'] == runtime['codex_account']
     assert runtime['boot_catalogs']['claude']['X']['skills'][-1] == 'X'
     assert runtime['boot_catalogs']['claude']['Y']['skills'][-1] == 'Y'
     assert set(runtime['releases']) == {'X', 'Y'}
@@ -126,31 +128,42 @@ def test_stage_check_both_arms_and_per_arm_boot_catalogs(staged, monkeypatch):
         s.check(path)
 
 
-def test_stage_refuses_account_change_since_smoke(staged, tmp_path):
+@pytest.mark.parametrize('smoke_attempt', [1, 2])
+@pytest.mark.parametrize('change', ['claude', 'codex', 'both'])
+def test_stage_records_smoke_accounts_with_measured_account_change(staged, tmp_path, monkeypatch,
+                                                                 smoke_attempt, change):
     s, args, smoke = staged
+    if smoke_attempt == 2:
+        args.stage_dir, args.smoke_attempt = tmp_path / 'stage2', smoke_attempt
+        smoke = s.stage(args)
+    before = smoke.read_bytes()
+    previous = s.read(smoke)
     smoke_receipts(s, smoke)
     args.phase = 'measured'
-    args.auth = snapshot(s, tmp_path / 'foreign-auth', ['c' * 12, 'b' * 12])
-    with pytest.raises(RuntimeError, match='account'):
-        s.stage(args)
+    account = ['c' * 12, 'd' * 12] if change in ('claude', 'both') else previous['account']
+    codex = 'other-codex-account' if change in ('codex', 'both') else 'offline-codex-account'
+    args.auth = snapshot(s, tmp_path / 'foreign-auth', account, codex_account=codex)
+    path = s.stage(args)
+    runtime = s.read(path)
+    assert runtime['account'] == account
+    assert runtime['codex_account'] == hashlib.sha256(codex.encode()).hexdigest()[:12]
+    assert runtime['smoke_account'] == previous['account']
+    assert runtime['smoke_codex_account'] == previous['codex_account']
+    assert smoke.read_bytes() == before
+    monkeypatch.setattr(subprocess, 'check_output', lambda *_a, **_k: args.image + '\n')
+    s.check(path)
 
 
-@pytest.mark.parametrize('boundary', ['stage', 'renew', 'validate', 'launch'])
+@pytest.mark.parametrize('boundary', ['renew', 'validate', 'launch'])
 def test_codex_only_account_switch_refused(staged, tmp_path, monkeypatch, boundary):
-    s, args, path = staged
+    s, args, path = measured(staged)
     manifest = s.read(args.auth / 'manifest.json')
     monkeypatch.setattr(time, 'time', lambda: manifest['expires_at_ms'] / 1000 - 10000)
     foreign = snapshot(s, tmp_path / 'foreign-codex', manifest['account'], codex_account='other-codex-account')
     replacement, _ = s.model_auth(foreign)
     assert replacement == dict(manifest, files=dict(manifest['files'], **{
         'codex.json': replacement['files']['codex.json']}))
-    if boundary == 'stage':
-        smoke_receipts(s, path)
-        args.phase, args.auth = 'measured', foreign
-        with pytest.raises(RuntimeError, match='codex_account'):
-            s.stage(args)
-    elif boundary == 'renew':
-        s, _, path = measured(staged)
+    if boundary == 'renew':
         before = path.read_bytes()
         with pytest.raises(RuntimeError, match='Codex account'):
             s.renew(path, foreign)
@@ -162,9 +175,9 @@ def test_codex_only_account_switch_refused(staged, tmp_path, monkeypatch, bounda
         app.runtime.update(auth=str(foreign), auth_manifest_sha256=s.digest(foreign / 'manifest.json'))
         with pytest.raises(RuntimeError, match='Codex account'):
             if boundary == 'validate':
-                app.validate('smoke-codex-X')
+                app.validate('m03')
             else:
-                app.frame.cell_run.run(Path(app.runtime['output']) / 'smoke-codex-X', app.runtime)
+                app.frame.cell_run.run(Path(app.runtime['output']) / 'm03', app.runtime)
 
 
 def test_staged_codex_identity_is_nonsecret(staged):
@@ -292,6 +305,33 @@ def test_all_four_smoke_deletion_receipts_required(staged):
             s.write(file, changed)
             with pytest.raises(RuntimeError):
                 app.prior_deleted('m01')
+        s.write(file, original)
+
+
+@pytest.mark.parametrize('key', ['account', 'codex_account'])
+def test_predecessor_accounts_match_their_phase(staged, tmp_path, key):
+    s, args, _ = staged
+    args.auth = snapshot(s, tmp_path / 'measured-auth', ['c' * 12, 'd' * 12],
+                         codex_account='measured-codex-account')
+    s, _, path = measured(staged)
+    app = s.runner.Runner(path)
+    app.prior_deleted('m01')
+    for name, _, _ in app.smoke:
+        file = Path(app.runtime['smoke_output']) / name / 'rp-verdict.json'
+        original = s.read(file)
+        s.write(file, dict(original, **{key: app.runtime[key]}))
+        with pytest.raises(RuntimeError, match='account'):
+            app.prior_deleted('m01')
+        s.write(file, original)
+    for previous, following in zip(s.runner.SCHEDULE, s.runner.SCHEDULE[1:]):
+        file = Path(app.runtime['output']) / previous[0] / 'rp-verdict.json'
+        file.parent.mkdir()
+        original = record(s, app, *previous)
+        s.write(file, original)
+        app.prior_deleted(following[0])
+        s.write(file, dict(original, **{key: app.runtime['smoke_' + key]}))
+        with pytest.raises(RuntimeError, match='account'):
+            app.prior_deleted(following[0])
         s.write(file, original)
 
 

@@ -63,8 +63,10 @@ def stage(args):
         require(phase == 'measured', 'stage already exists; preserve it')
         previous = read(dest / 'runtime-smoke.json')
         for key in ('run_id', 'image', 'releases', 'arms_file', 'control', 'models_cache', 'smoke_output',
-                    'smoke_attempt', 'github_auth', 'account', 'codex_account'):
-            require(runtime[key] == previous[key], 'measured inputs/account differ from staged smoke: ' + key)
+                    'smoke_attempt', 'github_auth'):
+            require(runtime[key] == previous[key], 'measured inputs differ from staged smoke: ' + key)
+        runtime['smoke_account'] = previous['account']
+        runtime['smoke_codex_account'] = previous['codex_account']
         runtime['models_cache_sha256'] = previous['models_cache_sha256']
         require(digest(Path(runtime['models_cache'])) == runtime['models_cache_sha256'], 'models cache changed')
     else:

@@ -67,7 +67,7 @@ def adoption(arms):
                           'lower Y cost per success: ' + ', '.join(better) if better else 'all costs per success equal')
             rows.append(dict(engine=engine, row='cost', status=status, reason=reason, metrics=metrics))
     statuses = {row['status'] for row in rows}
-    decision = ('REJECT' if 'WORSE' in statuses else 'INCONCLUSIVE' if 'UNKNOWN' in statuses else
+    decision = ('INCONCLUSIVE' if 'UNKNOWN' in statuses else 'REJECT' if 'WORSE' in statuses else
                 'ADOPT' if 'IMPROVED' in statuses else 'REJECT')
     return dict(decision=decision, rows=rows,
                 reason='no engine improves' if statuses <= {'UNCHANGED', 'NO_BASELINE'} else

@@ -22,7 +22,7 @@ schedule, the grading and the raw data are never edited.
 
 **Smoke evidence known at registration.** On SM, Codex Y read the new
 paragraph in full, yet still reported only "PR #1 merged, and the local
-checkout is clean". This is one observation on an unrelated task. It lowers
+checkout is clean. Nothing remains unresolved." This is one observation on an unrelated task. It lowers
 expectations and leaves the prediction unchanged.
 
 ## What runs
@@ -94,7 +94,8 @@ expectations and leaves the prediction unchanged.
 ## Qualification
 
 **Smoke attempt 1 stopped** on Claude X. Its delivery was correct, but its
-usage was UNKNOWN after an ECONNRESET retry. The other three cells did not run.
+usage was UNKNOWN after a dropped-connection retry
+(`api_error`/`api_retry`; the transcript names ECONNRESET). The other three cells did not run.
 
 **Smoke attempt 2**, the registered spares, qualified all four cells.
 

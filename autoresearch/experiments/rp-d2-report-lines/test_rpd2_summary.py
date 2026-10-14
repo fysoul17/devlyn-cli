@@ -43,8 +43,9 @@ def test_each_cost_metric_can_improve_or_veto_adoption(metric):
 
 
 @pytest.mark.parametrize('arm', ['X', 'Y'])
-def test_unknown_compared_usage_or_wall_blocks_adoption(arm):
-    value = arms(2, 3)
+@pytest.mark.parametrize('x,y', [(2, 3), (3, 2)])
+def test_unknown_compared_usage_or_wall_blocks_adoption(arm, x, y):
+    value = arms(x, y)
     value[arm]['claude']['completeness'] = 'UNKNOWN'
     assert s.adoption(value)['decision'] == 'INCONCLUSIVE'
     assert s.adoption(value)['rows'][1]['status'] == 'UNKNOWN'
@@ -144,6 +145,27 @@ def test_unknown_usage_and_missing_wall_keep_totals_honest(evidence):
     assert x['cost_per_success'] == dict.fromkeys(s.METRICS)
     assert y['totals']['owner_seconds'] is None
     assert y['totals']['input_tokens'] == 4000
+    assert result['adoption']['decision'] == 'INCONCLUSIVE'
+
+
+def test_instrumentation_stop_overrides_completed_engine_regression(evidence):
+    output, reviews, records = evidence
+    for row in records[:14]:
+        if row['config'] == 'codex' and row['cell'] != 'm04':
+            row['status'] = 'PRODUCT_INCOMPLETE'
+    records[14].update(status='STOP', usage='UNKNOWN', input_tokens=None, output_tokens=None)
+    records[15].update(status='NOT_RUN', dispatched=False)
+    flush(output, records)
+    result = s.summarize(output, reviews)
+    for arm, successes in [('X', 1), ('Y', 0)]:
+        assert result['arms'][arm]['codex']['successes'] == successes
+        assert result['arms'][arm]['codex']['attempts_dispatched'] == 4
+    assert [(row['cell'], row['config'], row['runner_status'], row['status'])
+            for row in result['slots'][-2:]] == [
+        ('m15', 'claude', 'STOP', 'NOT_ASSESSED'),
+        ('m16', 'claude', 'NOT_RUN', 'NOT_ASSESSED')]
+    assert [row['status'] for row in result['adoption']['rows']] == [
+        'UNKNOWN', 'UNKNOWN', 'WORSE', 'NO_BASELINE']
     assert result['adoption']['decision'] == 'INCONCLUSIVE'
 
 
