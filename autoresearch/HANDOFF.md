@@ -1,6 +1,6 @@
 # Minimal solo harness — 0255 receipt runner (2026-10-11 UTC)
 
-> Next session: rp-d1 is measured and closed ([results](experiments/rp-d1-delivery-cost/results.md)): prediction refuted; Claude 3/4, Codex 0/4 by report coverage; no removal candidate. Next work needs an owner choice (see [Next work — rp-d1](#next-work--rp-d1-default-delivery-cost-selected-2026-10-13)).
+> Next session: rp-d2 (Codex report-lines fix, X/Y paired) is closed INCONCLUSIVE ([results](experiments/rp-d2-report-lines/results.md)): the first measured slot stopped on a Claude connection-drop retry (usage UNKNOWN); Y not adopted, paragraph reverted. Next needs an owner choice: diagnose the drops, Grok's prompt ablation, or an unchanged rerun. rp-d1 background: [results](experiments/rp-d1-delivery-cost/results.md).
 
 [0255](experiments/0255/README.md) connects unchanged 0254 receipt accounting to
 a prospective Claude solo A/B/S execution boundary, preserving the inherited
@@ -235,6 +235,8 @@ Selected with Astra ultra after 4.2.10–4.2.17 closed the product follow-ups th
   - a registered instruction-only fix for Codex's final report (reconciliation and cleanup lines);
   - a repetition and stage-attribution analysis of the retained summaries.
 - **Disclosed deviations.** A post-exposure Git-mode correction of the reconciliation fact changed no status. The orchestrator's `git status` refreshed o02's index after evaluation.
+
+**rp-d2 (2026-10-14): closed INCONCLUSIVE.** The owner chose the registered instruction-only fix for Codex's final report. See the [design](experiments/rp-d2-report-lines/DESIGN.md), [registration](experiments/rp-d2-report-lines/registration.md) and [results](experiments/rp-d2-report-lines/results.md). m01 stopped on an ECONNRESET retry, the second today after a single 150–180 s silent request; rp-d1 had none. In smoke, Codex Y read the new paragraph and still used the prompt's report shape. The paragraph is reverted.
 
 **Owner answers (2026-10-13):** the test repository is approved as recommended: a new private throwaway repository, deleted afterwards like `devlyn-e2e-auto-20261011`. Spotlight is done in 4.2.18. **Still open (recommended default in brackets):** lift the ideate deferral for rp-d3 bounded defaults and queued-loop withdrawal [no, minimal solo first]; queued-loop withdrawal scope if resumed [only loops not yet started]; `_devlynjudge` uid 450 removal [keep separate and deferred].
 
