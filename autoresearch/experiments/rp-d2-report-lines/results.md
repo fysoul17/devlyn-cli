@@ -33,8 +33,11 @@ the same way:
   been silent for 150–180 s. In m01 that happened at 886 s of 987 s; in the
   smoke cell at 563 s of 879 s.
 - **Smoke attempt 2.** Its Claude cells completed without a drop.
-- **rp-d1, the day before.** It ran the same image, CLI, model and effort and
-  recorded no drop in any Claude cell.
+- **rp-d1, earlier the same date.** Its final freeze was at 01:15 KST, and
+  the two drops came at 20:20 and 23:05 KST. It used the same image
+  definition, CLI, model and effort; the image was rebuilt for rp-d2, with a
+  different ID. Every rp-d1 Claude cell recorded COMPLETE usage, with no
+  drop.
 
 The cause is not established. One hypothesis is that something on the path
 between the cell and the API resets long-silent streaming connections. The
@@ -78,7 +81,8 @@ Next candidates, for the owner to choose:
 
 ## Cleanup
 
-Everything tested was removed:
+Cleanup is done after this write-up merges. The PR records each removal once
+it is verified:
 
 - the 18 never-used, empty `rpd2-20261014a-*` repositories: m02–m16 and the
   three attempt-1 smoke cells that did not run. The apparatus had already
