@@ -56,11 +56,12 @@ above is unchanged. "Silent" there means no transcript row was written; it
 does not mean the connection carried no bytes.
 
 - **Host sessions outside Docker dropped the same way.** Host Claude Code
-  transcripts record 10 `api_error` ECONNRESET retries on 2026-10-14, from
-  18:54 to 23:26 KST. Each came 82–160 s after the previous row. From
-  2026-09-29 until 18:54 KST that day there were none, across about 600
-  requests that waited 80 s or more. Successful requests on the same evening
-  waited up to 1,020 s, so no fixed timeout explains the drops.
+  transcripts record nine `api_error` ECONNRESET retries on 2026-10-14, from
+  18:54 to 23:26 KST. Each came 82–160 s after the previous row. Three more
+  followed on the morning of 2026-10-15, by 08:48 KST. From 2026-09-29 until
+  18:54 KST on 2026-10-14 there were none, across about 600 requests that
+  waited 80 s or more. Successful requests on the same evening waited up to
+  1,020 s, so no fixed timeout explains the drops.
 - **Codex dropped at the same moments.** Codex logs show streams failing with
   `Can't assign requested address` (EADDRNOTAVAIL): the socket's local
   address had disappeared.
@@ -72,6 +73,10 @@ does not mean the connection carried no bytes.
     with EADDRNOTAVAIL.
   - A host Claude request that began at 08:28:09, inside the tunnel window,
     failed with ECONNRESET at 08:30:20.
+  - The tunnel came up again at 08:46:38. A host Claude request failed with
+    ECONNRESET at 08:47:47.
+  - One more host retry, at 08:45:01, had no route event in the minutes
+    before it. Its cause is not established.
 - **Yesterday matches on timing (inferred).** The detailed agent log for
   2026-10-14 has rotated out, and only process stamps remain.
   - The Cisco Secure Client app started at 18:53:35 KST.
@@ -85,7 +90,8 @@ does not mean the connection carried no bytes.
 **Consequence.** A live run needs a fixed host network. No VPN may connect or
 disconnect, and the host may not switch networks, while a cell runs.
 [benchmark/README.md](../../../benchmark/README.md) now states this as a hard
-rule. Under that rule, the drops no longer block a Claude-inclusive rerun.
+rule. The rule removes the verified cause. It does not prove that every drop
+goes away, and a drop during a cell still stops the run as registered.
 Candidates 2 and 3 remain for the owner.
 
 ## Descriptive signal (not measured data)
