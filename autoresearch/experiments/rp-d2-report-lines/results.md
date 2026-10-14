@@ -48,6 +48,46 @@ The 0254 accounting cannot count such a retry. The withdrawn continuation rule
 case also fails the unchanged audit, on unindexed request bodies. In addition,
 a compared UNKNOWN cost row blocks adoption.
 
+## Diagnosis (added 2026-10-15, after merge)
+
+The owner chose candidate 1. The drops come from host route changes made by
+a VPN client. They are not caused by Docker, the product or the API. The text
+above is unchanged. "Silent" there means no transcript row was written; it
+does not mean the connection carried no bytes.
+
+- **Host sessions outside Docker dropped the same way.** Host Claude Code
+  transcripts record 10 `api_error` ECONNRESET retries on 2026-10-14, from
+  18:54 to 23:26 KST. Each came 82–160 s after the previous row. From
+  2026-09-29 until 18:54 KST that day there were none, across about 600
+  requests that waited 80 s or more. Successful requests on the same evening
+  waited up to 1,020 s, so no fixed timeout explains the drops.
+- **Codex dropped at the same moments.** Codex logs show streams failing with
+  `Can't assign requested address` (EADDRNOTAVAIL): the socket's local
+  address had disappeared.
+- **This morning's logs show the trigger.**
+  - Cisco Secure Client brought up a full-tunnel VPN, with a VPN default
+    route, at 08:22:55 KST.
+  - A user-requested disconnect ended it at 08:29:10–08:29:12.
+  - Codex streams then failed at 08:29:59, 08:30:08 (twice) and 08:31:20, all
+    with EADDRNOTAVAIL.
+  - A host Claude request that began at 08:28:09, inside the tunnel window,
+    failed with ECONNRESET at 08:30:20.
+- **Yesterday matches on timing (inferred).** The detailed agent log for
+  2026-10-14 has rotated out, and only process stamps remain.
+  - The Cisco Secure Client app started at 18:53:35 KST.
+  - VPN agent helper processes appeared at 18:51–18:53, 19:49, 20:18, 23:02
+    and 23:21.
+  - The first host drop followed at 18:54:20. Smoke attempt 1 dropped at about
+    20:20 and m01 at about 23:05, each about two minutes after a stamp.
+- **Docker cells share the host's routes.** Docker Desktop opens container
+  connections from the host, so a host route change breaks them as well.
+
+**Consequence.** A live run needs a fixed host network. No VPN may connect or
+disconnect, and the host may not switch networks, while a cell runs.
+[benchmark/README.md](../../../benchmark/README.md) now states this as a hard
+rule. Under that rule, the drops no longer block a Claude-inclusive rerun.
+Candidates 2 and 3 remain for the owner.
+
 ## Descriptive signal (not measured data)
 
 In smoke attempt 2, on SM, one observation per cell:
