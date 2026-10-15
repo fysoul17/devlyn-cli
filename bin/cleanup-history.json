@@ -1,0 +1,97 @@
+{
+  "source": "scripts/update-cleanup-history.js: LF-normalized Git blobs from first-parent config/agents-config/optional-skills history and all tags; excludes optional-addon hashes and third-party web-design-guidelines",
+  "files": {
+    ".claude/agents/evaluator.md": [
+      "146a229b0218938bca2de6b426cda642ae9826dc2dfa8c3687c6fd5de9160cf6",
+      "537c4af183aac692ff2abecfd42b4fe0854549b2ecf14fca3bc6a86ae58837fa",
+      "b8a48da212e070bab9d4818630cee2cd0de9846ad4e3a34b3a45f0a9a1a913b6",
+      "d5615e73af2401ea7418e02fc76d850506e59a64fff00f084ad272e474e138ba"
+    ],
+    ".claude/commit-conventions.md": [
+      "7e75c25d3067dba650781c57f1d94b52090badc2cb034b00759e9c6ed74a5a94"
+    ],
+    ".claude/templates/prompt-templates.md": [
+      "19029bcff7c4e9b579011d93a4f6eecfbe6a260f3cee12072252a6a7402d79e7",
+      "3fb7804dbd6e026def99829dda5daccc56a68e93997d8e6f540ee98bb288329e",
+      "7318764baa5dc7cd406bc8552848653ad6368982b43faecc6618f697a9ae059f",
+      "e583be4175366101bfa0df512b1106f65b18f215b4717eadebbc8129c3d96be5"
+    ],
+    ".claude/templates/template-feature.spec.md": [
+      "16eb59b48f062aa0894b3fe8ba1c8f9e970652fda0bdd0d9e3248acb8e40d3bc"
+    ],
+    ".claude/templates/template-product-spec.md": [
+      "42b5b2c32fd72b1324432da0cf652cf11854e3ac40e020b812ef64d894116d92"
+    ],
+    ".cursor/rules/evaluator.md": [
+      "146a229b0218938bca2de6b426cda642ae9826dc2dfa8c3687c6fd5de9160cf6",
+      "537c4af183aac692ff2abecfd42b4fe0854549b2ecf14fca3bc6a86ae58837fa",
+      "b8a48da212e070bab9d4818630cee2cd0de9846ad4e3a34b3a45f0a9a1a913b6",
+      "d5615e73af2401ea7418e02fc76d850506e59a64fff00f084ad272e474e138ba"
+    ],
+    ".github/copilot/agents/evaluator.md": [
+      "146a229b0218938bca2de6b426cda642ae9826dc2dfa8c3687c6fd5de9160cf6",
+      "537c4af183aac692ff2abecfd42b4fe0854549b2ecf14fca3bc6a86ae58837fa",
+      "b8a48da212e070bab9d4818630cee2cd0de9846ad4e3a34b3a45f0a9a1a913b6",
+      "d5615e73af2401ea7418e02fc76d850506e59a64fff00f084ad272e474e138ba"
+    ],
+    ".windsurf/rules/evaluator.md": [
+      "146a229b0218938bca2de6b426cda642ae9826dc2dfa8c3687c6fd5de9160cf6",
+      "537c4af183aac692ff2abecfd42b4fe0854549b2ecf14fca3bc6a86ae58837fa",
+      "b8a48da212e070bab9d4818630cee2cd0de9846ad4e3a34b3a45f0a9a1a913b6",
+      "d5615e73af2401ea7418e02fc76d850506e59a64fff00f084ad272e474e138ba"
+    ]
+  },
+  "skills": {
+    "code-health-standards": [
+      "962a82b5ebeafac515f81f5c68494c67dbf31c3e3e453f23c4452d4725e21355",
+      "df2838904c938aa0306ed333cc460cfc5c2cf0ffa20bb5ade57067c6e0acf9be"
+    ],
+    "code-review-standards": [
+      "3bc8587a9143487328be2470dec8df17a19cb14f94e6ec916ed58de660d0e1c4",
+      "56abe5736f505c53ca9ce14087a9891cc8661be783abaec7b5b924e3f339cc2a",
+      "586dde5014f9ac2f9a13d43fa1c8c257a3ae998a3fc1b867b23b3b2e44f77eca",
+      "9c906f2b2a88c2d0aaeec9714405945da5177de6ec433f1acf520c6c4385b875"
+    ],
+    "feature-gap-analysis": [
+      "d2328d990305280cf0d08443130cdba63eb5ed8040f5e5b6719c58050c4d3ada"
+    ],
+    "investigate": [
+      "5025c346d1e246d49681650e7b630477d1ef67f4357e5fd7f3e5f02e5a860288"
+    ],
+    "root-cause-analysis": [
+      "0eac104bfcde8bdf14d4c284be6f3f4cb243219a679bf569433c2465df84c6c3",
+      "1793dcb0f72621c78cc20c905fe5dd7a0af3115e904bf737a6a983a7b9d2c2b6",
+      "aab22d1bddc66c6a798f08cdf7be9b45fbe80ccfc928b068ef5d9e2ad951bdda",
+      "e200ddd04196435af3162a9e13595f8eb5ac68b06465026e0155e453b1bd1c93",
+      "e66d15a9585c07e819acfd89c1f6d030517130f6d8f8924bda3120307949fb2e"
+    ],
+    "ui-implementation-standards": [
+      "13c709c0e2b01ae94997c271043a685200e969192d2056534bd787c5682874e8",
+      "1ff64816454171b3f879e9e5cf3c15e3d9c5f2ffc81b73262155f6bc93a1b054",
+      "505ca42b1efd53925d51c570b21df4e05cbc6bc640dd1f7f4e03f15d2d4437c5",
+      "e2473e35474e78f2b581e225cb33a1e711bb79519a02e9780fc9606e582b878f"
+    ],
+    "workflow-routing": [
+      "7fec2bb20d808a873a975d64a6223e404bc5b328c800760bb77257ae6b2f467a",
+      "8bfdaeff2ce48d5a79b5653de3bbe0d56a61a7fd750ed3ad11149fec5a502ecf"
+    ]
+  },
+  "evaluators": [
+    {
+      "length": 3081,
+      "sha256": "01a566bbecfb7eaef16b53c2000dc58050a3348072019868fbe23cbd6503095d"
+    },
+    {
+      "length": 1559,
+      "sha256": "04403ca3008e87adbd0f75f3136a20d6d5262eb7576f8d31cec2d03686dc9898"
+    },
+    {
+      "length": 2980,
+      "sha256": "481557b50619e1d47c209b1e1c916919361031f57cf2ee8f27644c2a101cfdb6"
+    },
+    {
+      "length": 2980,
+      "sha256": "6c7066a91aa18a62b1257956f0adf4f08603034d8a6eb2fae052a1ea8d0d9a4b"
+    }
+  ]
+}

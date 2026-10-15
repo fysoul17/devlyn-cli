@@ -41,7 +41,7 @@ CURRENT_RULES = (
 
 def environment():
     env = {k: v for k, v in os.environ.items() if not k.startswith(('DEVLYN_', 'CODEX_MONITORED_', 'GIT_'))
-           and k not in ('CODEX_BLOCKED', 'CODEX_BIN', 'CODEX_REAL_BIN', 'PYTHONUTF8', 'PYTHONIOENCODING')}
+           and k not in ('CODEX_BLOCKED', 'CODEX_BIN', 'CODEX_REAL_BIN', 'PYTHONUTF8', 'PYTHONIOENCODING', 'CODEX_HOME', 'CLAUDE_CONFIG_DIR')}
     env.update(GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM='1', PYTHONDONTWRITEBYTECODE='1')
     return env
 
@@ -62,7 +62,7 @@ def npm(args, temp):
         command = [shutil.which('node'), cli]
     else:
         command = [str(binary)]
-    return run([*command, *args, '--cache', str(temp / 'npm-cache')], timeout=90)
+    return run([*command, *args, '--cache', os.environ.get('npm_config_cache', str(temp / 'npm-cache'))], timeout=90)
 
 
 def helper(name):
@@ -144,10 +144,12 @@ m._compile(source + '\\n' + process.argv[3], filename);
         self.env = environment(); self.env['DEVLYN_TEST_HOME'] = str(self.home)
 
     def invoke(self, body, package=None, code=0):
+        self.env.update(HOME=str(self.home), USERPROFILE=str(self.home))
         return run(['node', '--require', self.preload, self.invoker,
                     (package or self.package) / 'bin/devlyn.js', body], cwd=self.project, env=self.env, code=code)
 
     def cli(self, *args, code=0):
+        self.env.update(HOME=str(self.home), USERPROFILE=str(self.home))
         return run(['node', '--require', self.preload, self.package / 'bin/devlyn.js', *args],
                    cwd=self.project, env=self.env, code=code)
 
@@ -182,7 +184,8 @@ init({options});
                     result = self.cli(*args)
                     self.assertNotIn(b'SECRET', result.stdout + result.stderr)
                     self.assertEqual(dest.read_bytes() if dest.exists() else None, before)
-                    self.assertEqual(command.read_bytes(), b'my command\r\n')
+                    if '--global' in args:
+                        self.assertFalse(command.exists())
         settings = json.loads((self.project / '.claude/settings.json').read_bytes())
         self.assertEqual(settings['env']['ENABLE_PROMPT_CACHING_1H'], 'true')
 
@@ -207,6 +210,8 @@ init({options});
         # one-hour prompt caching — and keeps every other key as it was.
         dest = self.project / '.claude/settings.json'; dest.parent.mkdir()
         for value in (None, {'custom': {'keep': [1, 2]}},
+                      {'env': {'BASH_MAX_TIMEOUT_MS': '600000', 'ENABLE_PROMPT_CACHING_1H': False}},
+                      {'env': {'BASH_MAX_TIMEOUT_MS': 'owner-value', 'ENABLE_PROMPT_CACHING_1H': ''}},
                       {'custom': True, 'env': {'TEAM_VAR': 'keep', 'ENABLE_PROMPT_CACHING_1H': 'false',
                                                'BASH_MAX_TIMEOUT_MS': '7200000'}}):
             with self.subTest(value=value):
@@ -744,9 +749,7 @@ install(['agents'], false);
         command.parent.mkdir()
         command.write_bytes(b'retired fixture\n')
         run(['git', 'add', '--', '.claude/commands'], cwd=self.project)
-        # A test-only known shipped fingerprint exercises the real removal and Git deletion status.
-        result = self.invoke("SKILL_HISTORY.commands['commands/devlyn.resolve.md'] = "
-                             f"['{hashlib.sha256(command.read_bytes()).hexdigest()}']; install(['agents', 'claude'], false);")
+        result = self.invoke("install(['agents', 'claude'], false);")
         self.assert_commit_notice(result, ['.claude/commands/devlyn.resolve.md'])
 
     def test_project_commit_notice_nested_repo_and_git_environment(self):
@@ -813,8 +816,7 @@ cp.spawnSync = (file, args, options) => {{
         command.write_bytes(b'retired fixture\n')
         self.commit_install_fixture()
         result = self.invoke(f"DEPRECATED_FILES.push({json.dumps(name.removeprefix('.claude/'))}); "
-                             f"SKILL_HISTORY.commands[{json.dumps(name.removeprefix('.claude/'))}] = "
-                             f"['{hashlib.sha256(command.read_bytes()).hexdigest()}']; install(['claude'], false);")
+                             "install(['claude'], false);")
         self.assert_commit_notice(result, [*self.installed_skill_paths('claude'), 'CLAUDE.md', '.gitignore', '.claude/settings.json', name])
 
     def test_fresh_project_markers_are_unignored_and_committed_reinstall_is_identical(self):
@@ -873,9 +875,6 @@ cp.spawnSync = (file, args, options) => {{
                 self.project = self.case / f'project-{case}'
                 for path, data in planted.items():
                     (self.project / path).parent.mkdir(parents=True, exist_ok=True); (self.project / path).write_bytes(data)
-                if case == '0.x':
-                    self.assert_install_refused('-y', paths=[self.project / '.claude/commands'])
-                    continue  # Commands remain strict; removal-only skill names do not select Claude.
                 self.cli('-y')
                 claude = case not in ('4.x', '3.x', 'none', 'addons')
                 self.assertEqual(self.markers(self.project), {'.agents', '.claude'} if claude else {'.agents'})
@@ -883,7 +882,8 @@ cp.spawnSync = (file, args, options) => {{
                 self.assertTrue((self.project / 'AGENTS.md').is_file())
                 # Removed or refreshed by the Claude update; a user's own skill stays as it was.
                 for path, data in planted.items():
-                    self.assertEqual((self.project / path).exists() and (self.project / path).read_bytes() == data, not claude)
+                    preserved = case == 'none' or (case == 'addons' and all(c not in path for c in (':', '\uf03a')))
+                    self.assertEqual((self.project / path).exists() and (self.project / path).read_bytes() == data, preserved)
                 if claude:
                     marker = json.loads((self.project / '.claude/skills/.devlyn-install.json').read_bytes())
                     self.assertEqual(marker['version'], version)
@@ -1071,7 +1071,7 @@ cp.spawnSync = (file, args, options) => {{
                 duplicated = files()['CLAUDE.md']
                 self.assertIn(CURRENT_DEFAULTS, duplicated)
                 result = update()
-                expected = {**direct, 'CLAUDE.md': before or direct['CLAUDE.md']}
+                expected = {**direct, 'CLAUDE.md': duplicated.split(b'<!-- devlyn:instructions:begin', 1)[0]}
                 self.assertEqual(files(), expected)
                 self.assertIn(b'Removed Devlyn defaults from CLAUDE.md', result.stdout)
                 self.assertIn(duplicated, [p.read_bytes() for p in
@@ -1189,20 +1189,19 @@ cp.spawnSync = (file, args, options) => {{
             return f"Global devlyn {roots[root]} in {Path('~', root, 'skills')} — {advice}."
 
         result = self.cli('-y')
-        self.assertEqual(notices(result), [f'\x1b[33m{line(root)}\x1b[0m' for root in ('.agents', '.codex', '.claude')]
-                         + [f"\x1b[33m{line('.grok', 'delete it')}\x1b[0m"])
+        self.assertEqual(notices(result), [f'\x1b[33m{line(root)}\x1b[0m' for root in ('.agents', '.codex', '.claude')])
         self.assertEqual({p: p.read_bytes() if p.is_file() else None for p in self.home.rglob('*')}, before)
         # --global refreshes every user root it installs, Claude's too once it has a marker there.
         result = self.cli('-y', '--global')
-        self.assertEqual(notices(result), [f"\x1b[33m{line('.grok', 'delete it')}\x1b[0m"])
-        self.assertEqual(notices(self.cli('-y')), [f"\x1b[33m{line('.grok', 'delete it')}\x1b[0m"])
+        self.assertEqual(notices(result), [])
+        self.assertEqual(notices(self.cli('-y')), [])
         version = json.loads((self.package / 'package.json').read_bytes())['version']
         for root in ('.agents', '.codex', '.claude'):
             self.assertEqual(json.loads((self.home / root / 'skills/.devlyn-install.json').read_bytes())['version'], version)
             self.assertEqual((self.home / root / 'skills/user-skill/keep').read_bytes(), b'mine')
         grok = self.home / '.grok'
         self.assertEqual({p: p.read_bytes() if p.is_file() else None for p in grok.rglob('*')},
-                         {p: data for p, data in before.items() if grok in p.parents})
+                         {p: data for p, data in before.items() if grok in p.parents and p.name != '.devlyn-install.json'})
 
     def test_update_refreshes_existing_installs_and_preserves_user_bytes(self):
         self.cli('-y', '--claude'); self.cli('-y', '--global', '--claude')
@@ -1249,7 +1248,7 @@ cp.spawnSync = (file, args, options) => {{
         result = self.cli('update')
         self.assertEqual(list(self.project.iterdir()), [])
         self.assertEqual(self.markers(self.home), {'.agents', '.codex', '.grok'})
-        self.assertIn(b'delete it', result.stdout)
+        self.assertNotIn(b'delete it', result.stdout)
         for p, data in before.items():
             self.assertEqual(p.read_bytes(), data)
 
@@ -1525,7 +1524,7 @@ install(['agents', 'claude'], true, ['devlyn-reap']);
         for command in ('update();', "install(['agents'], false);"):
             with self.subTest(command=command):
                 output = re.sub(r'\x1b\[[0-9;]*m', '', self.invoke(command).stdout.decode())
-                self.assertLess(output.index('Global devlyn'), output.index('Optional — commit (and push)'))
+                self.assertNotIn('delete it', output)
                 self.assertIn('git commit -m', output.strip().splitlines()[-1])
 
     def test_update_preflights_all_scopes_before_writing(self):
@@ -1618,79 +1617,402 @@ install(['agents', 'claude'], true, ['devlyn-reap']);
         self.assertEqual(self.snapshot(), before)
         return result
 
-    def test_deprecated_mixed_verified_and_unknown(self):
-        for command in (('-y', '--claude'), ('update',)):
-            with self.subTest(command=command):
-                self.project = self.case / command[0]; self.project.mkdir()
-                self.home = self.case / (command[0] + '-home'); self.home.mkdir()
-                self.env['DEVLYN_TEST_HOME'] = str(self.home)
-                self.cli('-y', '--claude'); self.cli('-y', '--global', '--claude')
-                roots = self.roots() if command == ('update',) else self.roots()[:2]
-                retained = []
-                for root in roots:
-                    self.seed_pre_4_1(root, '4.0.1', 'devlyn-resolve')
-                    for name in ('devlyn-review', 'devlyn-clean'):
-                        folder = root / name; folder.mkdir()
-                        (folder / 'SKILL.md').write_bytes(b'local contents')
-                    retained.append(root / 'devlyn-review')
-                self.invoke(f"""
-for (const root of {json.dumps([str(root) for root in roots])}) {{
-  const marker = path.join(root, DEVLYN_INSTALL_MARKER);
-  const data = JSON.parse(fs.readFileSync(marker, 'utf8'));
-  data.skills['devlyn-clean'] = fingerprint(path.join(root, 'devlyn-clean'));
-  data.skills['devlyn-review'] = 'previous fingerprint';
-  fs.writeFileSync(marker, JSON.stringify(data));
-}}
+    def evaluator_block(self):
+        raw = (Path(__file__).parent / 'fixtures/instructions/evaluator-0.5.7.md').read_bytes()
+        return b'\n\n---\n\n# Devlyn Agent Instructions\n\n' + raw + b'\n'
+
+    def test_cleanup_instruction_owner_bytes_every_target(self):
+        names = ['CLAUDE.md', 'AGENTS.md', 'GEMINI.md', '.cursorrules', '.windsurfrules', '.github/copilot-instructions.md']
+        for name in names:
+            file = self.project / name; file.parent.mkdir(parents=True, exist_ok=True)
+            file.write_bytes(SHORT_PAYLOAD + self.evaluator_block() + SHORT_PAYLOAD)
+        self.cli('-y', '--claude')
+        for name in names:
+            data = (self.project / name).read_bytes()
+            outside = re.sub(rb'<!-- devlyn:instructions:begin[^\n]*\n.*?<!-- devlyn:instructions:end -->\r?\n', b'', data, flags=re.S)
+            if name in ['CLAUDE.md', 'AGENTS.md']:
+                self.assertEqual(outside, SHORT_PAYLOAD * 2 + b'\r\n\r\n')
+            else:
+                self.assertEqual(outside, SHORT_PAYLOAD * 2)
+                self.assertNotIn(b'devlyn:instructions:begin', data)
+            backup = list((self.project / '.devlyn/instructions').glob('*.backup'))
+            self.assertTrue(any(p.read_bytes() == SHORT_PAYLOAD + self.evaluator_block() + SHORT_PAYLOAD for p in backup))
+
+        # These bytes are recognized project evidence, never evidence of a home-level install.
+        block = (Path(__file__).parent / 'fixtures/instructions/agents-4.1.0.md').read_bytes()
+        paragraph = b'# Project Instructions\n\n' + block.split(b'# Project Instructions\n\n', 1)[1].split(b'\n\n', 1)[0] + b'\n\n'
+        global_files = {}
+        for name in names + ['.claude/CLAUDE.md', '.codex/AGENTS.md']:
+            global_files[name] = SHORT_PAYLOAD + paragraph + block + self.evaluator_block() + SHORT_PAYLOAD
+        raw = self.evaluator_block().split(b'# Devlyn Agent Instructions\n\n', 1)[1][:-1]
+        for folder in ['.claude/agents', '.cursor/rules', '.github/copilot/agents', '.windsurf/rules']:
+            global_files[folder + '/evaluator.md'] = raw
+        for name in ['prompt-templates.md', 'template-feature.spec.md', 'template-product-spec.md']:
+            global_files['.claude/templates/' + name] = (Path(__file__).parent / 'fixtures/cleanup' / name).read_bytes()
+        for name, data in global_files.items():
+            file = self.home / name; file.parent.mkdir(parents=True, exist_ok=True); file.write_bytes(data)
+        for args in [('update',), ('-y', '--global')]:
+            self.cli(*args)
+            for name, data in global_files.items():
+                self.assertEqual((self.home / name).read_bytes(), data, (args, name))
+            self.assertFalse((self.home / '.devlyn/instructions').exists())
+
+    def test_cleanup_instruction_empty_edited_and_example(self):
+        for name, value in [('GEMINI.md', self.evaluator_block()),
+                            ('.cursorrules', self.evaluator_block() + b'owner tail'),
+                            ('.windsurfrules', self.evaluator_block().replace(b'evaluator', b'owner-evaluator', 1)),
+                            ('.github/copilot-instructions.md', b'```markdown\n' + self.evaluator_block() + b'```\n')]:
+            file = self.project / name; file.parent.mkdir(parents=True, exist_ok=True); file.write_bytes(value)
+        edited = (self.project / '.windsurfrules').read_bytes()
+        example = (self.project / '.github/copilot-instructions.md').read_bytes()
+        self.cli('-y')
+        self.assertFalse((self.project / 'GEMINI.md').exists())
+        self.assertEqual((self.project / '.cursorrules').read_bytes(), b'owner tail')
+        self.assertEqual((self.project / '.windsurfrules').read_bytes(), edited)
+        self.assertEqual((self.project / '.github/copilot-instructions.md').read_bytes(), example)
+
+    def test_cleanup_generic_files_and_skills_preserve_edits(self):
+        raw = self.evaluator_block().split(b'# Devlyn Agent Instructions\n\n', 1)[1][:-1]
+        for folder in ['.claude/agents', '.cursor/rules', '.github/copilot/agents', '.windsurf/rules']:
+            root = self.project / folder; root.mkdir(parents=True)
+            (root / 'evaluator.md').write_bytes(raw.replace(b'\n', b'\r\n'))
+            (root / 'owner.md').write_bytes(SHORT_PAYLOAD)
+        edited = self.project / '.cursor/rules/evaluator.md'; edited.write_bytes(raw + SHORT_PAYLOAD)
+        self.cli('-y')
+        self.assertEqual(edited.read_bytes(), raw + SHORT_PAYLOAD)
+        for folder in ['.claude/agents', '.cursor/rules', '.github/copilot/agents', '.windsurf/rules']:
+            root = self.project / folder
+            self.assertEqual((root / 'owner.md').read_bytes(), SHORT_PAYLOAD)
+            if folder != '.cursor/rules': self.assertFalse((root / 'evaluator.md').exists())
+        # Arbitrary/edited generic skills are never removed or named.
+        generic = self.home / '.agents/skills/code-review-standards'; generic.mkdir(parents=True)
+        (generic / 'SKILL.md').write_bytes(SHORT_PAYLOAD)
+        result = self.cli('-y', '--global')
+        self.assertEqual((generic / 'SKILL.md').read_bytes(), SHORT_PAYLOAD)
+        self.assertNotIn(str(generic).encode(), result.stdout)
+
+    def test_cleanup_scope_and_clean_only_roots(self):
+        roots = self.roots() + [self.home / '.grok/skills']
+        for root in roots:
+            folder = root / 'devlyn-review'; folder.mkdir(parents=True)
+            (folder / 'SKILL.md').write_bytes(b'old')
+            foreign = root / 'foreign'; foreign.mkdir(); (foreign / 'keep').write_bytes(SHORT_PAYLOAD)
+        self.cli('-y')
+        self.assertFalse((self.project / '.claude/skills/devlyn-review').exists())
+        self.assertFalse((self.project / '.claude/skills/.devlyn-install.json').exists())
+        for root in roots[2:]: self.assertTrue((root / 'devlyn-review').exists())
+        self.cli('update')
+        for root in roots:
+            self.assertFalse((root / 'devlyn-review').exists())
+            self.assertEqual((root / 'foreign/keep').read_bytes(), SHORT_PAYLOAD)
+        for root in roots[1:]: self.assertFalse((root / '.devlyn-install.json').exists())
+        folder = self.project / '.claude/skills/devlyn-clean'; folder.mkdir()
+        self.cli('-y', '--global')
+        self.assertTrue(folder.exists())
+        # update from HOME cleans global roots only and never treats HOME as a project.
+        self.project = self.home
+        self.cli('update')
+        self.assertFalse((self.home / 'AGENTS.md').exists())
+
+    def test_cleanup_retired_root_marker_evidence_and_stale_lock(self):
+        root = self.home / '.grok/skills'; root.mkdir(parents=True)
+        for name in ['devlyn-custom-retired', 'generic-shipped', 'generic-edited', 'foreign']:
+            folder = root / name; folder.mkdir(); (folder / 'file').write_bytes(SHORT_PAYLOAD)
+        self.invoke(f"""
+const root = {json.dumps(str(root))};
+fs.writeFileSync(path.join(root, DEVLYN_INSTALL_MARKER), JSON.stringify({{
+  package: PKG.name, schemaVersion: 1, version: '4.0.1', skills: {{
+    'devlyn-custom-retired': 'not verified',
+    'generic-shipped': fingerprint(path.join(root, 'generic-shipped')),
+    'generic-edited': 'old hash'
+  }}
+}}));
+fs.writeFileSync(path.join(root, DEVLYN_INSTALL_LOCK), JSON.stringify({{pid: 2147483647, token: 'old'}}));
 """)
-                run(['git', 'init', '-q', self.project])
-                run(['git', '-C', self.project, 'add', '.agents/skills', '.claude/skills'])
-                index = (self.project / '.git/index').read_bytes()
-                for attempt in range(2):
-                    result = self.cli(*command)
-                    output = result.stdout.decode('utf-8')
-                    notice = 'Left in place (not verified as unchanged devlyn-cli copies):'
-                    self.assertEqual(output.count(notice), 1)
-                    self.assertIn('\x1b[33m' + notice, output)
-                    self.assertGreater(output.index(notice), output.index('✅ devlyn'))
-                    guidance = output[output.index('Optional — commit (and push)'):]
-                    self.assertLess(output.index(notice), output.index('Optional — commit (and push)'))
-                    self.assertIn('These retired skills may still be visible to agents and may call removed helpers. '
-                                  'Move them out of the skills folder, or delete them, if you no longer use them.', output)
-                    for root, folder in zip(roots, retained):
-                        self.assertFalse((root / 'devlyn-resolve').exists())
-                        self.assertFalse((root / 'devlyn-clean').exists())
-                        self.assertEqual((folder / 'SKILL.md').read_bytes(), b'local contents')
-                        self.assertEqual(output.count(str(folder)), 1)
-                        self.assertNotIn(folder.name, guidance)
-                        marker = json.loads((root / '.devlyn-install.json').read_bytes())
-                        self.assertEqual(marker['skills']['devlyn-review'], 'previous fingerprint')
-                    self.assertEqual((self.project / '.git/index').read_bytes(), index)
+        def tree():
+            return {p.relative_to(root): p.read_bytes() if p.is_file() else None for p in root.rglob('*')}
+        before = tree()
+        result = self.cli('-y', '--global')
+        self.assertEqual(result.stdout.count(f'Cannot clean up {root}:'.encode()), 1)
+        self.assertEqual(tree(), before)
+        (root / '.devlyn-install.lock').unlink()
+        self.cli('-y', '--global')
+        self.assertEqual({p.name for p in root.iterdir()}, {'generic-edited', 'foreign'})
+        for name in ['generic-edited', 'foreign']:
+            self.assertEqual((root / name / 'file').read_bytes(), SHORT_PAYLOAD)
+
+    def test_cleanup_failure_warns_once_and_succeeds(self):
+        root = self.project / '.agents/skills/devlyn-review'; root.mkdir(parents=True)
+        (root / 'SKILL.md').write_bytes(b'old')
+        result = self.invoke(f"""
+const rm = fs.rmSync;
+fs.rmSync = (file, ...args) => {{
+  if (file === {json.dumps(str(root))}) throw Object.assign(new Error('fixture deletion denied'), {{code: 'EACCES'}});
+  return rm(file, ...args);
+}};
+install(['agents'], false);
+""")
+        self.assertEqual(result.stdout.count(b'fixture deletion denied'), 1)
+        self.assertIn(str(root).encode(), result.stdout)
+        self.assertTrue(root.exists())
+        self.assertTrue((root.parent / '.devlyn-install.json').exists())
+
+    def test_cleanup_linked_roots_and_generic_links_preserved(self):
+        outside = self.case / 'outside'; outside.mkdir()
+        (outside / 'devlyn-review').mkdir(); (outside / 'devlyn-review/keep').write_bytes(SHORT_PAYLOAD)
+        agent = self.home / '.grok'; agent.mkdir()
+        run(['node', '-e', "require('fs').symlinkSync(process.argv[1], process.argv[2], 'junction')", outside, agent / 'skills'])
+        self.cli('-y', '--global')
+        self.assertEqual((outside / 'devlyn-review/keep').read_bytes(), SHORT_PAYLOAD)
+        self.assertEqual({p.name for p in outside.iterdir()}, {'devlyn-review'})
+
+    def test_cleanup_hardlinked_settings_and_marker_preserve_other_names(self):
+        settings = self.home / '.claude/settings.json'; settings.parent.mkdir()
+        owner = self.case / 'owner-settings.json'
+        raw = b'{"env":{"CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS":"1","OWNER":"keep"}}'
+        owner.write_bytes(raw); os.link(owner, settings)
+        root = self.home / '.claude/skills'; root.mkdir()
+        old = root / 'devlyn-review'; old.mkdir(); (old / 'SKILL.md').write_bytes(b'old')
+        other = self.case / 'owner-marker.json'
+        marker_raw = b'{"package":"devlyn-cli","schemaVersion":1,"version":"4.0.1","skills":{"devlyn-review":"old"}}'
+        other.write_bytes(marker_raw); os.link(other, root / '.devlyn-install.json')
+        self.invoke("cleanupScope(os.homedir(), true, []);")
+        self.assertEqual(owner.read_bytes(), raw)
+        self.assertEqual(other.read_bytes(), marker_raw)
+        self.assertEqual(settings.read_bytes(), raw)
+        self.assertEqual(json.loads((root / '.devlyn-install.json').read_bytes())['skills'], {})
+
+    def test_cleanup_failed_retired_root_preserves_evidence_for_retry(self):
+        root = self.home / '.grok/skills'; root.mkdir(parents=True)
+        old = root / 'generic-old'; old.mkdir(); (old / 'file').write_bytes(SHORT_PAYLOAD)
+        self.invoke(f"""
+const root = {json.dumps(str(root))};
+const old = path.join(root, 'generic-old');
+fs.writeFileSync(path.join(root, DEVLYN_INSTALL_MARKER), JSON.stringify({{package: PKG.name,
+  schemaVersion: 1, version: '4.0.1', skills: {{'generic-old': fingerprint(old)}}}}));
+const rm = fs.rmSync;
+fs.rmSync = (file, ...args) => {{ if (file === old) throw new Error('fixture denied'); return rm(file, ...args); }};
+update();
+""")
+        self.assertTrue((root / '.devlyn-install.json').exists())
+        self.cli('update')
+        self.assertFalse(old.exists())
+        self.assertFalse((root / '.devlyn-install.json').exists())
+
+    def test_cleanup_foreign_marker_does_not_block_exact_names(self):
+        root = self.home / '.grok/skills'; root.mkdir(parents=True)
+        for raw in [b'null', b'{}', b'{']:
+            marker = root / '.devlyn-install.json'; marker.write_bytes(raw)
+            old = root / 'devlyn-review'; old.mkdir()
+            self.cli('update')
+            self.assertFalse(old.exists())
+            self.assertEqual(marker.read_bytes(), raw)
+
+    def test_cleanup_renamed_optional_preserves_foreign_new_name(self):
+        root = self.project / '.agents/skills'; root.mkdir(parents=True)
+        old = root / ('devlyn\uf03areap' if os.name == 'nt' else 'devlyn:reap'); old.mkdir()
+        (old / 'SKILL.md').write_bytes(b'edited old copy')
+        new = root / 'devlyn-reap'; new.mkdir(); (new / 'SKILL.md').write_bytes(SHORT_PAYLOAD)
+        self.cli('-y')
+        self.assertFalse(old.exists())
+        self.assertEqual((new / 'SKILL.md').read_bytes(), SHORT_PAYLOAD)
+
+    def test_cleanup_markerless_grok_shared_requires_shipped_tree(self):
+        root = self.home / '.grok/skills'
+        for name in ['_shared', '_Shared']:
+            with self.subTest(name=name):
+                self.seed_4_1(root)
+                for entry in root.iterdir():
+                    if entry.name != '_shared':
+                        shutil.rmtree(entry) if entry.is_dir() else entry.unlink()
+                folder = root / name
+                if name != '_shared': (root / '_shared').rename(folder)
+                (folder / 'owner-file').write_bytes(SHORT_PAYLOAD)
+                self.cli('-y', '--global')
+                self.assertEqual((folder / 'owner-file').read_bytes(), SHORT_PAYLOAD)
+                (folder / 'owner-file').unlink()
+                self.cli('-y', '--global')
+                self.assertFalse(folder.exists())
+                self.assertFalse((root / '.devlyn-install.json').exists())
+
+    def test_cleanup_instruction_delete_failure_warns_and_succeeds(self):
+        file = self.project / 'GEMINI.md'; file.write_bytes(self.evaluator_block())
+        result = self.invoke(f"""
+const unlink = fs.unlinkSync;
+fs.unlinkSync = (file, ...args) => {{
+  if (file === {json.dumps(str(file))}) throw new Error('fixture instruction deletion denied');
+  return unlink(file, ...args);
+}};
+update();
+""")
+        self.assertEqual(result.stdout.count(b'fixture instruction deletion denied'), 1)
+        self.assertEqual(file.read_bytes(), self.evaluator_block())
+        self.assertEqual(self.markers(self.project), set())
+
+    def test_cleanup_settings_only_exact_retired_values(self):
+        data = {'env': {'CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS': '1', 'OWNER': 'yes',
+                        'BASH_MAX_TIMEOUT_MS': '600000', 'ENABLE_PROMPT_CACHING_1H': False},
+                'permissions': {'allow': ['Write(.devlyn/**)', 'Edit(.devlyn/**)', 'Bash(git add *)',
+                    'Bash(git commit *)', 'Bash(git diff *)', 'Bash(git status *)', 'Bash(git log *)', 'owner']},
+                'hooks': {'Stop': [{'hooks': [{'type': 'command', 'command': 'owner hook'}]}]}}
+        raw = (json.dumps(data, indent=4) + '\n\n').encode()
+        paths = [base / '.claude/settings.json' for base in [self.project, self.home]]
+        for settings in paths:
+            settings.parent.mkdir(); settings.write_bytes(raw)
+        for args in [('-y', '--claude'), ('update',), ('-y', '--global', '--claude')]:
+            self.cli(*args)
+            for settings in paths:
+                self.assertEqual(settings.read_bytes(), raw)
+
+    def test_cleanup_bom_settings_only_exact_retired_hook(self):
+        retired = {'type': 'command', 'command': 'python3 "$CLAUDE_PROJECT_DIR/.claude/skills/_shared/resolve-stop-hook.py"'}
+        owner = {'type': 'command', 'command': SHORT_PAYLOAD.decode('utf-8')}
+        data = {'env': {'CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS': '1', 'OWNER': SHORT_PAYLOAD.decode('utf-8')},
+                'permissions': {'allow': ['Write(.devlyn/**)', 'Bash(git add *)', 'owner']},
+                'hooks': {'Stop': [{'hooks': [retired, owner]}]}}
+        raw = b'\xef\xbb\xbf' + (json.dumps(data, ensure_ascii=False, indent=4) + '\n\n').encode('utf-8')
+        expected = {**data, 'hooks': {'Stop': [{'hooks': [owner]}]}}
+        paths = [base / '.claude/settings.json' for base in [self.project, self.home]]
+        for args in [('update',), ('-y', '--global')]:
+            with self.subTest(args=args):
+                for settings in paths:
+                    settings.parent.mkdir(exist_ok=True); settings.write_bytes(raw)
+                self.cli(*args)
+                for settings in paths if args == ('update',) else paths[1:]:
+                    after = settings.read_bytes()
+                    self.assertFalse(after.startswith(b'\xef\xbb\xbf'))
+                    self.assertTrue(after.endswith(b'\n'))
+                    parsed = json.loads(after)
+                    self.assertEqual(parsed, expected)
+                    self.assertEqual(parsed['env']['OWNER'].encode('utf-8'), SHORT_PAYLOAD)
+                    self.assertEqual(parsed['hooks']['Stop'][0]['hooks'][0]['command'].encode('utf-8'), SHORT_PAYLOAD)
+                if args == ('update',):
+                    self.assertEqual(self.markers(self.project), set())
+                    self.assertEqual(self.markers(self.home), set())
+                else:
+                    self.assertEqual(paths[0].read_bytes(), raw)
+
+    def test_cleanup_historical_optional_and_third_party_skills_survive(self):
+        fixtures = Path(__file__).parent / 'fixtures/cleanup'
+        copies = {'prompt-engineering': (fixtures / 'prompt-engineering-2.5.3.md').read_bytes(),
+                  'web-design-guidelines': (fixtures / 'web-design-guidelines-0.0.1.md').read_bytes()}
+        for root in self.roots() + [self.home / '.grok/skills']:
+            for name, raw in copies.items():
+                folder = root / name; folder.mkdir(parents=True); (folder / 'SKILL.md').write_bytes(raw)
+        self.cli('-y', '--claude'); self.cli('update'); self.cli('-y', '--global', '--claude')
+        for root in self.roots() + [self.home / '.grok/skills']:
+            for name, raw in copies.items():
+                self.assertEqual((root / name / 'SKILL.md').read_bytes(), raw)
+
+    def test_cleanup_mixed_case_generic_requires_shipped_bytes(self):
+        raw = (Path(__file__).parent / 'fixtures/cleanup/workflow-routing-1.15.0.md').read_bytes()
+        for root in [self.project / '.claude/skills', self.home / '.grok/skills']:
+            folder = root / 'Workflow-Routing'; folder.mkdir(parents=True)
+            (folder / 'SKILL.md').write_bytes(raw + SHORT_PAYLOAD)
+            self.invoke('cleanupScope(projectDir(), false, []); cleanupScope(os.homedir(), true, []);')
+            self.assertEqual((folder / 'SKILL.md').read_bytes(), raw + SHORT_PAYLOAD)
+            (folder / 'SKILL.md').write_bytes(raw.replace(b'\n', b'\r\n'))
+            self.invoke('cleanupScope(projectDir(), false, []); cleanupScope(os.homedir(), true, []);')
+            self.assertFalse(folder.exists())
+
+    def test_cleanup_only_lock_prevents_marker_overwrite_race(self):
+        root = self.home / '.claude/skills'; root.mkdir(parents=True)
+        (root / 'devlyn-review').mkdir()
+        marker = root / '.devlyn-install.json'
+        marker.write_text(json.dumps({'package': 'devlyn-cli', 'schemaVersion': 1, 'version': '4.0.1',
+                                     'skills': {'devlyn-review': 'old'}}))
+        self.invoke(f"""
+const assert = require('assert/strict');
+const root = {json.dumps(str(root))}, marker = path.join(root, DEVLYN_INSTALL_MARKER);
+const lock = path.join(root, DEVLYN_INSTALL_LOCK), read = fs.readFileSync;
+let raced = false;
+fs.readFileSync = (file, ...args) => {{
+  const bytes = read(file, ...args);
+  if (file === marker && !raced) {{
+    raced = true;
+    // A competing installer attempts its normal exclusive lock after cleanup reads old evidence.
+    try {{
+      const fd = fs.openSync(lock, 'wx');
+      fs.writeFileSync(fd, JSON.stringify({{pid: process.pid, token: 'competitor'}})); fs.closeSync(fd);
+      fs.writeFileSync(marker, JSON.stringify({{package: PKG.name, schemaVersion: 1,
+        version: PKG.version, skills: {{'devlyn-ideate': 'new'}}}}));
+      assert.fail('competing installer acquired lock while cleanup held old marker evidence');
+    }} catch (error) {{ if (error.code !== 'EEXIST') throw error; }}
+  }}
+  return bytes;
+}};
+cleanupScope(os.homedir(), true, []);
+assert.equal(raced, true);
+assert.equal(fs.existsSync(lock), false);
+assert.deepEqual(JSON.parse(read(marker)).skills, {{}});
+""")
+        # A pre-existing lock (even with our PID) is not a lock owned by this invocation.
+        for root in [self.home / '.claude/skills', self.home / '.grok/skills']:
+            root.mkdir(parents=True, exist_ok=True)
+            (root / 'devlyn-review').mkdir()
+            result = self.invoke(f"""
+const root = {json.dumps(str(root))};
+fs.writeFileSync(path.join(root, DEVLYN_INSTALL_LOCK), JSON.stringify({{pid: process.pid, token: 'other'}}));
+cleanupScope(os.homedir(), true, []);
+""")
+            self.assertEqual(result.stdout.count(f'Cannot clean up {root}:'.encode()), 1)
+            self.assertTrue((root / 'devlyn-review').exists())
+            self.assertTrue((root / '.devlyn-install.lock').exists())
+            (root / '.devlyn-install.lock').unlink()
+
+    def test_cleanup_existing_only_keeps_recreated_root(self):
+        root = self.home / '.grok/skills'; root.mkdir(parents=True)
+        self.invoke(f"""
+const assert = require('assert/strict');
+const root = {json.dumps(str(root))};
+const lstat = fs.lstatSync, open = fs.openSync, mkdir = fs.mkdirSync, rmdir = fs.rmdirSync;
+let inspections = 0, recreated = false;
+fs.lstatSync = (file, ...args) => {{
+  const stat = lstat(file, ...args);
+  if (file === root && ++inspections === 2) rmdir(root);
+  return stat;
+}};
+fs.openSync = (file, ...args) => {{
+  if (file === path.join(root, DEVLYN_INSTALL_LOCK)) {{ mkdir(root); recreated = true; }}
+  return open(file, ...args);
+}};
+fs.mkdirSync = () => assert.fail('existingOnly must not create directories');
+withUserSkillLocks([root], () => {{}}, {{existingOnly: true}});
+assert.equal(recreated, true);
+assert.equal(fs.existsSync(root), true);
+assert.deepEqual(fs.readdirSync(root), []);
+""")
+
+    def test_deprecated_mixed_verified_and_unknown(self):
+        for root in self.roots():
+            self.seed_4_1(root)
+            for name in ('devlyn-discover-product', 'devlyn-implement-ui', 'devlyn-review',
+                         'devlyn-team-design-ui', 'devlyn-team-review', 'devlyn-resolve'):
+                folder = root / name; folder.mkdir(exist_ok=True)
+                (folder / 'SKILL.md').write_bytes(b'unverified field case')
+            foreign = root / 'owner-skill'; foreign.mkdir(); (foreign / 'keep').write_bytes(SHORT_PAYLOAD)
+        run(['git', 'init', '-q', self.project])
+        run(['git', '-C', self.project, 'add', '.agents', '.claude'])
+        result = self.cli('update')
+        self.assertNotIn(b'Left in place', result.stdout)
+        for root in self.roots():
+            self.assertEqual({p.name for p in root.iterdir()},
+                             {'devlyn-ideate', 'devlyn-engines', '_shared', '.devlyn-install.json', 'owner-skill'})
+            self.assertEqual((root / 'owner-skill/keep').read_bytes(), SHORT_PAYLOAD)
+        for name in ['.agents/skills/devlyn-review', '.claude/skills/devlyn-review']:
+            self.assertIn(name.encode(), result.stdout[result.stdout.index('Optional — commit'.encode()):])
 
     def test_deprecated_only_discovery(self):
         roots = [self.home / '.agents/skills', self.home / '.codex/skills', self.project / '.claude/skills']
         for root in roots:
-            foreign = root / 'devlyn-review'; foreign.mkdir(parents=True)
-            (foreign / 'SKILL.md').write_bytes(b'foreign review')
-        before = self.snapshot()
-        result = self.cli('update', code=1)
-        self.assertIn(b'No devlyn install here to update', result.stderr)
-        self.assertEqual(self.snapshot(), before)
-        self.cli('-y')
+            folder = root / 'devlyn-review'; folder.mkdir(parents=True)
+            (folder / 'SKILL.md').write_bytes(b'unverified')
+        self.cli('update')
         for root in roots:
-            self.assertFalse((root / 'devlyn-ideate').exists())
-            self.assertFalse((root / '.devlyn-install.json').exists())
-            self.assertEqual((root / 'devlyn-review/SKILL.md').read_bytes(), b'foreign review')
+            self.assertEqual(list(root.iterdir()), [])
+        self.assertEqual(self.markers(self.home), set())
         self.assertFalse((self.project / 'CLAUDE.md').exists())
         self.assertFalse((self.project / '.claude/settings.json').exists())
-        for root in roots:
-            self.seed_pre_4_1(root, '4.0.1', 'devlyn-resolve')
-        result = self.cli('update')
-        for root in roots:
-            self.assertFalse((root / 'devlyn-resolve').exists())
-            self.assertTrue((root / 'devlyn-ideate/SKILL.md').is_file())
-            self.assertEqual((root / 'devlyn-review/SKILL.md').read_bytes(), b'foreign review')
-            self.assertEqual(result.stdout.count(str(root / 'devlyn-review').encode()), 1)
-        self.assertTrue((self.project / 'CLAUDE.md').is_file())
 
     def test_deprecated_discovery_leaves_invalid_markers_to_preflight(self):
         for scope in ('user', 'project-claude'):
@@ -1742,66 +2064,28 @@ if (!{'hasDevlynInstall(' + json.dumps(str(root)) + ')' if scope == 'user' else 
                             self.assertNotRegex(output, rb'(?m)^\s+at ')
 
     def test_deprecated_case_insensitive_discovery(self):
-        probe = self.case / 'CaseProbe'; probe.write_bytes(b'probe')
-        if not (self.case / 'caseprobe').exists():
-            self.skipTest('test volume is case-sensitive')
-        spellings = ['-', '\uf03a'] if os.name == 'nt' else ['-', ':', '\uf03a']
-        for colon in spellings:
-            with self.subTest(spelling=colon):
-                self.project = self.case / f'case-{ord(colon)}'; self.project.mkdir()
-                self.home = self.case / f'case-{ord(colon)}-home'; self.home.mkdir()
-                self.env['DEVLYN_TEST_HOME'] = str(self.home)
-                roots = [self.home / '.agents/skills', self.home / '.codex/skills',
-                         self.project / '.claude/skills']
-                for root in roots:
-                    foreign = root / f'devlyn{colon}Review'; foreign.mkdir(parents=True)
-                    (foreign / 'SKILL.md').write_bytes(b'foreign review')
-                before = self.snapshot()
-                result = self.cli('update', code=1)
-                self.assertIn(b'No devlyn install here to update', result.stderr)
-                self.assertEqual(self.snapshot(), before)
-                self.cli('-y')
-                self.assertFalse((self.project / 'CLAUDE.md').exists())
-                self.assertFalse((self.project / '.claude/settings.json').exists())
-                self.assertEqual(self.markers(self.home), set())
-                for root in roots:
-                    old = self.seed_pre_4_1(root, '4.0.1', 'devlyn-resolve')
-                    # Two renames work even when a case-only rename is treated as a no-op.
-                    staging = root / 'rename-staging'; old.rename(staging)
-                    staging.rename(root / f'Devlyn{colon}Resolve')
-                self.cli('update')
-                for root in roots:
-                    self.assertFalse((root / f'Devlyn{colon}Resolve').exists())
-                    self.assertTrue((root / 'devlyn-ideate/SKILL.md').is_file())
-                    self.assertEqual((root / f'devlyn{colon}Review/SKILL.md').read_bytes(), b'foreign review')
-                self.assertTrue((self.project / 'CLAUDE.md').is_file())
+        for colon in (['-', '\uf03a'] if os.name == 'nt' else ['-', ':', '\uf03a']):
+            root = self.home / '.agents/skills'; root.mkdir(parents=True, exist_ok=True)
+            folder = root / f'DeVlYn{colon}Review'; folder.mkdir()
+            (folder / 'SKILL.md').write_bytes(b'unverified')
+            self.cli('update')
+            self.assertFalse(folder.exists())
+            self.assertFalse((root / '.devlyn-install.json').exists())
 
     def test_deprecated_removal_plan_boundary(self):
-        source = self.seed_pre_4_1(self.case / 'historical', '4.0.1', 'devlyn-resolve')
-        for command in ("install(['agents', 'claude'], false);", 'update();'):
-            with self.subTest(command=command):
-                self.project = self.case / ('install-boundary' if command.startswith('install') else 'update-boundary')
-                self.project.mkdir()
-                self.cli('-y', '--claude')
-                roots = self.roots()[:2]
-                self.invoke(f"""
-const preflight = preflightSkills;
-let calls = 0;
-preflightSkills = (...args) => {{
-  const plan = preflight(...args);
-  calls++;
-  for (const root of {json.dumps([str(root) for root in roots])}) {{
-    fs.cpSync({json.dumps(str(source))}, path.join(root, 'devlyn-resolve'), {{ recursive: true }});
-  }}
-  return plan;
-}};
-{command}
-if (calls !== 1) throw new Error('preflight ran more than once');
-""")
-                for root in roots:
-                    self.assertEqual((root / 'devlyn-resolve/SKILL.md').read_bytes(), (source / 'SKILL.md').read_bytes())
+        self.cli('-y')
+        root = self.project / '.agents/skills'
+        retired = root / 'devlyn-review'; retired.mkdir(); (retired / 'SKILL.md').write_bytes(b'old')
+        active = root / 'devlyn-ideate/SKILL.md'; active.write_bytes(b'owner edit')
+        self.assert_install_refused('-y', paths=[active.parent])
+        self.assertEqual((retired / 'SKILL.md').read_bytes(), b'old')
+        # A later copy failure must also leave cleanup-only paths intact.
+        active.write_bytes((self.package / 'config/skills/devlyn-ideate/SKILL.md').read_bytes())
+        result = self.invoke("fs.copyFileSync = () => { throw new Error('injected copy failure'); }; install(['agents'], false);", code=None)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual((retired / 'SKILL.md').read_bytes(), b'old')
 
-    def test_deprecated_unverifiable_paths_are_retained(self):
+    def test_deprecated_unverifiable_paths_are_removed(self):
         root = self.project / '.agents/skills'; root.mkdir(parents=True)
         unreadable = root / 'devlyn-review'; unreadable.mkdir()
         (unreadable / 'SKILL.md').write_bytes(b'cannot fingerprint')
@@ -1823,15 +2107,10 @@ fs.readdirSync = (dir, ...args) => {{
 install(['agents'], false);
 """)
         for folder in retained:
-            self.assertTrue(folder.exists())
-            self.assertEqual(result.stdout.count(str(folder).encode()), 1)
-        self.assertEqual((unreadable / 'SKILL.md').read_bytes(), b'cannot fingerprint')
-        self.assertEqual(regular.read_bytes(), b'ordinary file')
-        self.assertTrue(link.is_symlink() if os.name != 'nt' else link.is_dir())
+            self.assertFalse(os.path.lexists(folder))
         self.assertEqual((target / 'SKILL.md').read_bytes(), b'linked content')
         marker = json.loads((root / '.devlyn-install.json').read_bytes())
         self.assertFalse(set(marker['skills']) & {folder.name for folder in retained})
-
 
     def test_tracked_pristine_retired_skill_is_removed(self):
         root = self.project / '.claude/skills'
@@ -1872,33 +2151,18 @@ install(['agents'], false);
         self.assertFalse((root / 'devlyn-resolve').exists())
         self.assertTrue((root / 'devlyn-reap/SKILL.md').is_file())
 
-    def test_retired_command_is_removed_only_as_shipped(self):
-        # 0.0.1-0.5.8 shipped .claude/commands/devlyn.*.md; an edited one is the user's.
+    def test_retired_commands_and_linked_command_root(self):
         commands = self.project / '.claude/commands'; commands.mkdir(parents=True)
-        mine = commands / 'devlyn.resolve.md'
-        mine.write_bytes(b'# my resolve\n')
-        run(['git', 'init', '-q', self.project])
-        run(['git', '-C', self.project, 'add', '.claude/commands'])
-        self.assert_install_refused('-y', '--claude', paths=[mine], reason='git-tracked; fingerprint mismatch')
-        # A folder under a retired command's name is never installer-owned either.
-        mine.unlink(); mine.mkdir()
-        self.assert_install_refused('-y', '--claude', paths=[mine], reason='link or special file')
-        mine.rmdir()
-        # A linked commands folder is another installation's, shipped bytes or not.
-        elsewhere = self.case / 'global-commands'; elsewhere.mkdir()
-        commands.rename(self.case / 'project-commands')
-        run(['node', '-e', "require('fs').symlinkSync(process.argv[1], process.argv[2], 'junction')", elsewhere, commands])
-        self.assert_install_refused('-y', '--claude', paths=[commands], reason='not a real directory')
-        commands.rmdir() if os.name == 'nt' else commands.unlink()  # a junction is removed as a directory
-        (self.case / 'project-commands').rename(commands)
-        # Shipped bytes go, CRLF checkout or not; the user's other commands stay.
-        shipped = b'# shipped resolve\n'
-        mine.write_bytes(shipped.replace(b'\n', b'\r\n'))
-        (commands / 'mine.md').write_bytes(b'kept')
-        self.invoke("SKILL_HISTORY.commands['commands/devlyn.resolve.md'] = "
-                    f"['{hashlib.sha256(shipped).hexdigest()}']; install(['claude'], false);")
+        mine = commands / 'devlyn.resolve.md'; mine.write_bytes(b'edited')
+        (commands / 'mine.md').write_bytes(SHORT_PAYLOAD)
+        self.cli('-y')
         self.assertFalse(mine.exists())
-        self.assertEqual((commands / 'mine.md').read_bytes(), b'kept')
+        self.assertEqual((commands / 'mine.md').read_bytes(), SHORT_PAYLOAD)
+        elsewhere = self.case / 'global-commands'; commands.rename(elsewhere)
+        (elsewhere / 'devlyn.resolve.md').write_bytes(b'target bytes')
+        run(['node', '-e', "require('fs').symlinkSync(process.argv[1], process.argv[2], 'junction')", elsewhere, commands])
+        self.cli('-y', '--claude')
+        self.assertEqual((elsewhere / 'devlyn.resolve.md').read_bytes(), b'target bytes')
 
     def test_tracked_modified_or_missing_skill_refuses(self):
         root = self.project / '.claude/skills'
@@ -1920,9 +2184,10 @@ install(['agents'], false);
                     else:
                         before = {p.relative_to(skill.parent): p.read_bytes() for p in skill.parent.rglob('*') if p.is_file()}
                         self.cli('-y', '--claude')
-                        self.assertEqual({p.relative_to(skill.parent): p.read_bytes() for p in skill.parent.rglob('*') if p.is_file()}, before)
-                        self.assertEqual(skill.parent.exists(), state != 'missing')
+                        self.assertFalse(skill.parent.exists())
                     self.assertEqual((self.project / '.git/index').read_bytes(), index)
+                    if name == 'devlyn-resolve' and state != 'missing':
+                        skill.parent.mkdir(exist_ok=True); skill.write_bytes(b'edited')
 
     def test_crlf_checkout_and_os_metadata_still_match_shipped_copies(self):
         # Git for Windows checks text out with CRLF; Finder and Explorer drop metadata files.
@@ -2100,15 +2365,15 @@ writeInstallMarker(process.cwd(), [], {});
                 self.assertEqual((self.project / target / 'skills' / name / 'new-default').read_bytes(),
                                  b'New package default')
 
-    def test_unknown_provenance_retired_is_retained(self):
+    def test_unknown_provenance_retired_is_removed(self):
         root = self.project / '.agents/skills/devlyn-design-ui'
         root.mkdir(parents=True)
         (root / 'SKILL.md').write_bytes(b'Unknown copy')
         copy = self.case / 'no-history-package'; shutil.copytree(self.package, copy)
         (copy / 'bin/skill-history.json').write_text('{"skills": {}}', encoding='utf-8')
         result = self.invoke("install(['agents'], false);", package=copy)
-        self.assertIn(str(root).encode(), result.stdout)
-        self.assertEqual((root / 'SKILL.md').read_bytes(), b'Unknown copy')
+        self.assertIn(b'devlyn-design-ui (removed)', result.stdout)
+        self.assertFalse(root.exists())
 
     def seed_pre_4_1(self, root, version, name, *, stamped=False):
         # Exact published skill bytes; archive paths use Windows-safe logical names.
@@ -2888,7 +3153,7 @@ console.log(JSON.stringify(Object.fromEntries(DEVLYN_CORE_SKILLS.map((name) =>
         # 0.2.0-1.15.0 shipped workflow-routing; a folder of that name the user wrote stays.
         mine = self.project / '.claude/skills/workflow-routing'
         mine.mkdir(parents=True); (mine / 'SKILL.md').write_text('---\nname: workflow-routing\n---\nmine\n', encoding='utf-8')
-        self.invoke("installClaudeCore();")
+        self.invoke("install(['claude'], false);")
         self.assertEqual((mine / 'SKILL.md').read_text(encoding='utf-8'), '---\nname: workflow-routing\n---\nmine\n')
         # A shipped copy with an extra dotfile or a folder named like OS metadata stays; only
         # the exact single-file copy goes, beside at most a Finder or Explorer metadata file.
@@ -2897,14 +3162,14 @@ console.log(JSON.stringify(Object.fromEntries(DEVLYN_CORE_SKILLS.map((name) =>
         for extra in ('.notes', '.DS_Store/notes'):
             (mine / extra).parent.mkdir(exist_ok=True); (mine / extra).write_bytes(b'x')
             self.invoke("RETIRED_SKILL_MD_SHA256['workflow-routing'] = new Set(["
-                        f"'{hashlib.sha256(shipped).hexdigest()}']); installClaudeCore();")
+                        f"'{hashlib.sha256(shipped).hexdigest()}']); install(['claude'], false);")
             self.assertTrue((mine / extra).exists())
             (mine / extra).unlink()
             if (mine / '.DS_Store').is_dir():
                 (mine / '.DS_Store').rmdir()
         (mine / '.DS_Store').write_bytes(b'x')
         self.invoke("RETIRED_SKILL_MD_SHA256['workflow-routing'] = new Set(["
-                    f"'{hashlib.sha256(shipped).hexdigest()}']); installClaudeCore();")
+                    f"'{hashlib.sha256(shipped).hexdigest()}']); install(['claude'], false);")
         self.assertFalse(mine.exists())
 
     def test_opted_in_and_own_standards_skills_survive_updates(self):
@@ -2931,7 +3196,7 @@ console.log(JSON.stringify(Object.fromEntries(DEVLYN_CORE_SKILLS.map((name) =>
         self.assertIn(b'Incomplete devlyn skill install', result.stderr)
         self.assertEqual(self.markers(self.home), set())
 
-    def test_unknown_pre_4_names_refuse_in_every_selected_root(self):
+    def test_unknown_pre_4_names_removed_in_every_selected_root(self):
         spellings = ['\uf03a'] if os.name == 'nt' else [':', '\uf03a']
         for root in self.roots():
             for name in ('resolve', 'ideate', 'engines', 'pencil-pull', 'reap'):
@@ -2940,12 +3205,11 @@ console.log(JSON.stringify(Object.fromEntries(DEVLYN_CORE_SKILLS.map((name) =>
                     (old / 'SKILL.md').write_text(f'---\nname: devlyn:{name}\n---\n', encoding='utf-8')
         for args in (('-y', '--claude'), ('-y', '--global', '--claude')):
             selected = self.roots()[2:] if '--global' in args else self.roots()[:2]
-            conflicts = [root / f'devlyn{colon}{name}' for root in selected
-                         for name in ('ideate', 'engines', 'pencil-pull', 'reap') for colon in spellings]
-            result = self.assert_install_refused(*args, paths=conflicts)
-            for root in self.roots():
-                for colon in spellings:
-                    self.assertNotIn(str(root / f'devlyn{colon}resolve').encode(), result.stderr)
+            self.cli(*args)
+            for root in selected:
+                for name in ('resolve', 'ideate', 'engines', 'pencil-pull', 'reap'):
+                    for colon in spellings:
+                        self.assertFalse((root / f'devlyn{colon}{name}').exists())
 
     def test_upgrade_removes_retired_resolve_design_ui_and_queue(self):
         # Core skills through 4.1.0, `devlyn:<name>` before 4.0.0 (npm extracts ':' as U+F03A on
@@ -2968,7 +3232,8 @@ console.log(JSON.stringify(Object.fromEntries(DEVLYN_CORE_SKILLS.map((name) =>
                              {'devlyn-ideate', 'devlyn-engines'}, root)
             self.assertEqual((root / 'my-skill/keep').read_bytes(), b'mine')
             self.assertTrue((root / '.devlyn-install.json').is_file())
-        self.assertEqual(snapshot(other), kept)
+        self.assertEqual({p.name for p in other.iterdir()}, {'my-skill'})
+        self.assertEqual((other / 'my-skill/keep').read_bytes(), b'mine')
         # Upgrading again changes nothing.
         before = snapshot(self.case)
         install()
@@ -2993,14 +3258,14 @@ console.log(JSON.stringify(Object.fromEntries(DEVLYN_CORE_SKILLS.map((name) =>
         old, old_core = root / f'devlyn{colon}pencil-pull', root / f'devlyn{colon}ideate'
         for folder in (old, old_core):
             folder.mkdir(parents=True); (folder / 'keep').write_bytes(b'old')
-        result = self.invoke("installClaudeCore();", package=copy, code=None)
+        result = self.invoke("install(['claude'], false);", package=copy, code=None)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn(b'Incomplete devlyn skill install', result.stderr)
         self.assertEqual((old / 'keep').read_bytes(), b'old')
         # Old names go only after the new core skills are in place.
         self.assertTrue((root / 'devlyn-ideate/SKILL.md').is_file())
         self.assertFalse((root / '.devlyn-install.json').exists())
-        self.invoke("installClaudeCore();")
+        self.invoke("install(['claude'], false);")
         self.assertFalse(old.exists() or old_core.exists())
         self.assertTrue((root / 'devlyn-pencil-pull/SKILL.md').is_file())
         self.assertTrue((root / '.devlyn-install.json').is_file())
@@ -3232,6 +3497,8 @@ console.log(JSON.stringify(Object.fromEntries(DEVLYN_CORE_SKILLS.map((name) =>
                             shutil.copytree(root / 'devlyn-resolve', root / f'devlyn{c}resolve')
                 settings = self.project / '.claude/settings.json'
                 settings.write_text(json.dumps(old_settings), encoding='utf-8')
+                global_settings = self.home / '.claude/settings.json'
+                global_settings.write_bytes(settings.read_bytes())
                 for name in ('AGENTS.md', 'CLAUDE.md'):
                     block = (fixtures / f'{name[:-3].lower()}-{version}.md').read_bytes()
                     self.assertIn(b'asks to ship' if version == '415e2d14' else b'devlyn-resolve', block)
@@ -3242,17 +3509,18 @@ console.log(JSON.stringify(Object.fromEntries(DEVLYN_CORE_SKILLS.map((name) =>
                     self.assertEqual({p.name for p in root.iterdir() if p.name.startswith('devlyn')}, {'devlyn-ideate', 'devlyn-engines'}, root)
                     self.assertEqual({p.name for p in (root / '_shared').iterdir()}, shipped, root)
                     self.assertEqual((root / 'my-skill/keep').read_bytes(), b'mine')
-                self.assertEqual({p.name for p in other.iterdir()},
-                                 {'my-skill', '_shared', '.devlyn-install.json', 'devlyn-ideate', 'devlyn-engines', 'devlyn-design-ui',
-                                  'devlyn-queue', *(f'devlyn{c}resolve' for c in spellings)})
+                self.assertEqual({p.name for p in other.iterdir()}, {'my-skill'})
                 upgraded = json.loads(settings.read_bytes())
-                self.assertEqual((upgraded['env'], upgraded['permissions']), (old_settings['env'], old_settings['permissions']))
+                self.assertEqual(global_settings.read_bytes(), settings.read_bytes())
+                self.assertEqual(upgraded['env'], old_settings['env'])
+                self.assertEqual(upgraded['permissions'], old_settings['permissions'])
                 self.assertEqual(upgraded['hooks'], {'Stop': [{'hooks': [mine]}, {'matcher': '*', 'hooks': []}],
                                                      'PreToolUse': [{'hooks': [managed]}]})
                 notices = [line for line in result.stdout.decode('utf-8').splitlines() if 'Retired devlyn settings' in line]
-                self.assertEqual(len(notices), 1, notices)
-                for setting in ('CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS', *allow):
-                    self.assertIn(setting, notices[0])
+                self.assertEqual(len(notices), 1)
+                self.assertIn('CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS', notices[0])
+                for rule in allow: self.assertIn(rule, notices[0])
+
                 for name in ('AGENTS.md', 'CLAUDE.md'):
                     data = (self.project / name).read_bytes()
                     self.assertTrue(data.startswith(prefix)); self.assertTrue(data.endswith(suffix))

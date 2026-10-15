@@ -48,9 +48,7 @@ try {
 }
 history.source = 'skills: config/skills/* and optional-skills/* trees from every first-parent HEAD commit '
   + 'touching those paths and every local tag, derived by scripts/update-skill-history.js using '
-  + 'bin/skill-ownership.js normalization (LF, install-path stamps, OS metadata and Python bytecode); '
-  + 'deprecated commands: commands/ and optional-commands/*/ files of devlyn-cli 0.0.1-0.5.8 '
-  + '(every published version that shipped them), LF-normalized SHA-256';
+  + 'bin/skill-ownership.js normalization (LF, install-path stamps, OS metadata and Python bytecode)';
 history.skills = Object.fromEntries([...skills.keys()].sort()
   .map((name) => [name, [...skills.get(name)].sort()]));
 fs.writeFileSync(historyPath, JSON.stringify(history, null, 2) + '\n');

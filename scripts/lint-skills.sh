@@ -276,7 +276,7 @@ fi
 # 5b. Every completed managed-skills install writes its own version marker.
 # ---------------------------------------------------------------------------
 section "Check 5b: Installed skill roots carry exact version markers"
-if make_temp_dir tmp_install_marker /tmp/devlyn-install-marker.XXXXXX; then
+if make_temp_dir tmp_install_marker "${TMPDIR:-/tmp}/devlyn-install-marker.XXXXXX"; then
   marker_home="$tmp_install_marker/home"
   marker_project="$tmp_install_marker/project"
   timeout_low="$tmp_install_marker/timeout-low"
@@ -287,13 +287,13 @@ if make_temp_dir tmp_install_marker /tmp/devlyn-install-marker.XXXXXX; then
   printf '{"env":{"BASH_MAX_TIMEOUT_MS":"7200000"}}\n' > "$timeout_high/.claude/settings.json"
 
   if (cd "$marker_project" \
-      && HOME="$marker_home" node "$installer" -y --claude >"$tmp_install_marker/project.log" 2>&1 \
-      && HOME="$marker_home" node "$installer" -y --global --claude >"$tmp_install_marker/global.log" 2>&1) \
-      && (cd "$timeout_low" && HOME="$marker_home" node "$installer" -y --claude >"$tmp_install_marker/timeout-low.log" 2>&1) \
+      && HOME="$marker_home" USERPROFILE="$marker_home" node "$installer" -y --claude >"$tmp_install_marker/project.log" 2>&1 \
+      && HOME="$marker_home" USERPROFILE="$marker_home" node "$installer" -y --global --claude >"$tmp_install_marker/global.log" 2>&1) \
+      && (cd "$timeout_low" && HOME="$marker_home" USERPROFILE="$marker_home" node "$installer" -y --claude >"$tmp_install_marker/timeout-low.log" 2>&1) \
       && cp "$timeout_low/.claude/settings.json" "$tmp_install_marker/timeout-low-first.json" \
-      && (cd "$timeout_low" && HOME="$marker_home" node "$installer" -y >"$tmp_install_marker/timeout-low-second.log" 2>&1) \
+      && (cd "$timeout_low" && HOME="$marker_home" USERPROFILE="$marker_home" node "$installer" -y >"$tmp_install_marker/timeout-low-second.log" 2>&1) \
       && cmp -s "$timeout_low/.claude/settings.json" "$tmp_install_marker/timeout-low-first.json" \
-      && (cd "$timeout_high" && HOME="$marker_home" node "$installer" -y --claude >"$tmp_install_marker/timeout-high.log" 2>&1); then
+      && (cd "$timeout_high" && HOME="$marker_home" USERPROFILE="$marker_home" node "$installer" -y --claude >"$tmp_install_marker/timeout-high.log" 2>&1); then
     if python3 - "$installer" "$marker_home" "$marker_project" "$timeout_low" "$timeout_high" <<'PY'
 import json
 import pathlib
@@ -331,7 +331,7 @@ for root in roots:
         raise SystemExit(f"{root}: stale marker temp file")
 for target, expected_timeout in (
     (project, "3600000"),
-    (timeout_low, "3600000"),
+    (timeout_low, "600000"),
     (timeout_high, "7200000"),
 ):
     env = json.loads((target / ".claude" / "settings.json").read_text())["env"]
@@ -344,7 +344,7 @@ PY
       if grep -Fxq '.devlyn/' "$marker_project/.gitignore" \
          && ! grep -Fxq '.claude/skills/.devlyn-install.json' "$marker_project/.gitignore" \
          && ! grep -Fxq '.agents/skills/.devlyn-install.json' "$marker_project/.gitignore"; then
-        ok "managed roots have exact 0600 markers; Bash max is installed, raised, preserved, and idempotent"
+        ok "managed roots have exact 0600 markers; Bash max defaults are installed, existing values preserved, and reinstall is idempotent"
       else
         bad "project installs must ignore pipeline state, not skill markers"
       fi
@@ -362,9 +362,9 @@ PY
   printf '{"schemaVersion":1,"package":"devlyn-cli","version":"stale"}\n' > "$incomplete/home/.agents/skills/.devlyn-install.json"
   printf '{"schemaVersion":1,"package":"devlyn-cli","version":"stale"}\n' > "$incomplete/project/.agents/skills/.devlyn-install.json"
   if ! (cd "$incomplete/project" \
-      && HOME="$incomplete/home" node "$incomplete/package/bin/devlyn.js" -y >"$incomplete/project.log" 2>&1) \
+      && HOME="$incomplete/home" USERPROFILE="$incomplete/home" node "$incomplete/package/bin/devlyn.js" -y >"$incomplete/project.log" 2>&1) \
       && ! (cd "$incomplete/project" \
-      && HOME="$incomplete/home" node "$incomplete/package/bin/devlyn.js" -y --global >"$incomplete/global.log" 2>&1) \
+      && HOME="$incomplete/home" USERPROFILE="$incomplete/home" node "$incomplete/package/bin/devlyn.js" -y --global >"$incomplete/global.log" 2>&1) \
       && grep -Fq 'Incomplete devlyn skill install; missing: devlyn-engines' "$incomplete/project.log" \
       && grep -Fq 'Incomplete devlyn skill install; missing: devlyn-engines' "$incomplete/global.log" \
       && [ -d "$incomplete/project/.agents/skills/devlyn-ideate" ] \
@@ -494,7 +494,7 @@ fi
 # ---------------------------------------------------------------------------
 section "Check 10a: codex-monitored.sh rejects invalid numeric settings"
 wrapper_env_ok=1
-if make_temp_dir tmp_env /tmp/codex-monitored-env.XXXXXX; then
+if make_temp_dir tmp_env "${TMPDIR:-/tmp}/codex-monitored-env.XXXXXX"; then
   if CODEX_MONITORED_HEARTBEAT=0 CODEX_BIN=/bin/true \
     bash config/skills/_shared/codex-monitored.sh prompt \
     >"$tmp_env/heartbeat.stdout" 2>"$tmp_env/heartbeat.stderr"; then
