@@ -113,14 +113,14 @@ Upgrading to 4.1.0: `npx devlyn-cli -y` in a 4.x project keeps its Claude Code i
 current and adds `AGENTS.md` + `.agents/skills/`. Earlier releases put the Codex, omp, Pi
 and Grok skills in `~/.codex/skills`, `~/.agents/skills` and `~/.grok/skills`; a project
 install no longer refreshes them and names each one it finds. Refresh them with `--global`
-or delete them; delete `~/.grok/skills`, since Grok now reads `~/.agents/skills`.
+or delete them; global installs and `update` clean Devlyn’s retired `~/.grok/skills` entries automatically.
 `npx devlyn-cli agents` was removed.
 
 <!-- legacy-surface-map:begin — retired command names below are documented as OLD, not current; lint Checks 5e and 10c skip this block -->
 Upgrading to 4.2.0: `/devlyn-resolve` and the pipeline helpers only it used are retired;
 no measured replacement ships in their place. Run the installer again where devlyn is
 installed. It removes the `devlyn-resolve` folders (and pre-4.0.0 `devlyn:resolve` ones)
-only when they are unchanged devlyn-cli copies; others are left in place and named. It
+by their exact retired names, including edited copies and links (link targets stay intact). It
 removes the Stop hook it added to `.claude/settings.json` while keeping your own hooks,
 and names the other settings it once added for the pipeline
 (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` and its `.devlyn` and git permissions) without
@@ -148,7 +148,7 @@ devlyn skill by its old name or path (for example Codex `[[skills.config]]` or o
 `disabledExtensions`) needs the new name. A project that committed the old `devlyn:*`
 folders checks out on Windows once that re-sync is committed.
 
-Earlier versions of devlyn-cli shipped 16+ slash commands. The iter-0034 Phase 4 cutover (2026-05-04) and the 2026-05-14 follow-up consolidated them, 4.0.0 renamed every devlyn skill to the Agent Skills naming standard (`devlyn-<name>`: lowercase, digits and hyphens, the same as its folder), and after 4.1.0 resolve and design-ui were retired and the queue moved into ideate. Upgrades remove legacy skill directories only when they are unchanged devlyn-cli copies; others are left in place and named.
+Earlier versions of devlyn-cli shipped 16+ slash commands. The iter-0034 Phase 4 cutover (2026-05-04) and the 2026-05-14 follow-up consolidated them, 4.0.0 renamed every devlyn skill to the Agent Skills naming standard (`devlyn-<name>`: lowercase, digits and hyphens, the same as its folder), and after 4.1.0 resolve and design-ui were retired and the queue moved into ideate. Install/update deletes exact retired Devlyn names in its scope; generic files and old instruction text are removed only with evidence matching shipped copies. Other skills, edited generic files, and your instruction text are preserved; instruction changes keep a recovery backup.
 
 | Old command | Now use |
 |---|---|

@@ -3,6 +3,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { Lexer } = require('marked');
 const legacyTemplates = require('./instruction-templates.json');
+const cleanupHistory = require('./cleanup-history.json');
 
 const BEGIN = '<!-- devlyn:instructions:begin';
 const END = '<!-- devlyn:instructions:end -->';
@@ -147,7 +148,7 @@ function importsAgentsMd(text) {
 
 function customInstructions(text, name, template, managed = false) {
   const known = new Set([
-    ...legacyTemplates.paragraphs[name],
+    ...(legacyTemplates.paragraphs[name] || []),
     ...instructionParagraphs(template).map((p) => p.key),
   ]);
   const bom = text.startsWith('\uFEFF') ? '\uFEFF' : '';
@@ -167,6 +168,22 @@ function customInstructions(text, name, template, managed = false) {
     }
   }
   return bom + paragraphs.filter((_, index) => keep.has(index)).map((p) => p.text).join('');
+}
+
+// Only the complete appended bytes are owned, including the separator added by old installers.
+// A heading inside a fenced example is not an installed instruction block.
+function removeEvaluatorBlocks(text) {
+  const headings = new Set(instructionParagraphs(text).filter((p) => p.level === 1).map((p) => p.start));
+  const ranges = [];
+  for (const match of text.matchAll(/\r?\n\r?\n---\r?\n\r?\n(?=# Devlyn Agent Instructions\r?\n)/g)) {
+    if (!headings.has(match.index + match[0].length)) continue;
+    for (const template of cleanupHistory.evaluators) {
+      const end = matchedEnd(text, match.index, template);
+      if (end !== null) { ranges.push({ start: match.index, end }); break; }
+    }
+  }
+  for (const { start, end } of ranges.reverse()) text = text.slice(0, start) + text.slice(end);
+  return text;
 }
 
 // Devlyn defaults in an instruction file: a managed block, or stock paragraphs of a template
@@ -196,22 +213,23 @@ function retainFile(file, bytes) {
 
 // `withBlock` false removes the devlyn defaults the file holds, keeping everything else. `write` false writes nothing
 // and returns whether the file needs an update, a merge included.
-function updateInstructions(name, initial = '', withBlock = true, write = true) {
-  const projectPackage = path.join(process.cwd(), 'package.json');
-  if (fs.existsSync(path.join(process.cwd(), 'bin', 'devlyn.js')) && fs.existsSync(projectPackage)
+function updateInstructions(name, initial = '', withBlock = true, write = true, directory = process.cwd(), evaluatorOnly = false) {
+  const projectPackage = path.join(directory, 'package.json');
+  if (fs.existsSync(path.join(directory, 'bin', 'devlyn.js')) && fs.existsSync(projectPackage)
       && JSON.parse(fs.readFileSync(projectPackage, 'utf8'))?.name === 'devlyn-cli') {
     console.log(`  → Skipping ${name}; shipped instruction template in devlyn-cli source checkout`);
     return false;
   }
-  const templatePath = path.join(__dirname, '..', name);
-  const template = fs.readFileSync(templatePath, 'utf8');
+  const templateName = path.basename(name);
+  const templatePath = path.join(__dirname, '..', templateName);
+  const template = ['CLAUDE.md', 'AGENTS.md'].includes(templateName) ? fs.readFileSync(templatePath, 'utf8') : '';
   if (template.includes(BEGIN) || template.includes(END)) {
     throw new Error(`Packaged instruction template contains managed markers: ${templatePath}`);
   }
-  const dest = path.join(process.cwd(), name);
+  const dest = path.join(directory, name);
   const stat = fs.lstatSync(dest, { throwIfNoEntry: false });
-  const sourceStat = fs.statSync(templatePath);
-  if (stat?.isFile() && stat.dev === sourceStat.dev && stat.ino === sourceStat.ino) {
+  const sourceStat = template ? fs.statSync(templatePath) : null;
+  if (stat?.isFile() && stat.dev === sourceStat?.dev && stat.ino === sourceStat?.ino) {
     console.log(`  → Using source ${name}; packaged template left unchanged`);
     return false;
   }
@@ -227,15 +245,16 @@ function updateInstructions(name, initial = '', withBlock = true, write = true) 
   } catch (cause) {
     throw new InstructionError(`${name} must be UTF-8; original preserved. Convert its encoding and rerun installation.`, { cause });
   }
+  current = removeEvaluatorBlocks(current);
   const eol = current.match(/\r?\n/)?.[0] || '\n';
   const block = managedBlock(template, eol);
   const inserted = withBlock ? block : '';
-  const recovery = path.join(process.cwd(), '.devlyn', 'instructions');
+  const recovery = path.join(directory, '.devlyn', 'instructions');
   const conflict = (reason) => {
     if (!write) return true;
-    const incoming = path.join(recovery, `${name}.${digest(block)}.incoming`);
-    const backup = path.join(recovery, `${name}.${digest(before)}.backup`);
-    const guide = path.join(recovery, `${name}.${digest(before)}.${digest(block)}.merge.md`);
+    const incoming = path.join(recovery, `${encodeURIComponent(name)}.${digest(block)}.incoming`);
+    const backup = path.join(recovery, `${encodeURIComponent(name)}.${digest(before)}.backup`);
+    const guide = path.join(recovery, `${encodeURIComponent(name)}.${digest(before)}.${digest(block)}.merge.md`);
     retainFile(backup, before);
     retainFile(incoming, Buffer.from(block));
     retainFile(guide, Buffer.from(`# Merge ${name}\n\n`
@@ -252,7 +271,9 @@ function updateInstructions(name, initial = '', withBlock = true, write = true) 
       + `Installation is incomplete; earlier selected agents may already have been updated.`);
   };
   let content;
-  if (current.includes(BEGIN) || current.includes(END)) {
+  if (evaluatorOnly) {
+    content = current;
+  } else if (current.includes(BEGIN) || current.includes(END)) {
     const starts = [...current.matchAll(/^\uFEFF?<!-- devlyn:instructions:begin sha256=([a-f0-9]{64}) -->\r?\n/gm)];
     const ends = [...current.matchAll(/^<!-- devlyn:instructions:end -->(?:\r?\n|$)/gm)];
     if (starts.length !== 1 || ends.length !== 1
@@ -265,29 +286,27 @@ function updateInstructions(name, initial = '', withBlock = true, write = true) 
     if (end.index < bodyStart) return conflict('reversed managed markers');
     const previous = current.slice(bodyStart, end.index);
     const custom = digest(normalize(previous)) === start[1] ? ''
-      : customInstructions(previous, name,
+      : customInstructions(previous, templateName,
         'Project-specific instructions outside this managed block take precedence over these defaults.\n\n' + template, true);
     const after = current.slice(end.index + end[0].length);
     content = current.slice(0, start.index + (start[0].startsWith('\uFEFF') ? 1 : 0))
       + custom + (custom ? eol : '') + inserted + after;
-    // A block removed from the end takes along the blank lines that set it apart.
-    if (!inserted && !after) content = content.replace(/(\r?\n)(?:\r?\n)+$/, '$1');
   } else {
     const normalized = normalize(template);
     const bodyStart = normalized.indexOf('## North Star\n');
     const preamble = normalized.slice(0, bodyStart);
     const body = normalized.slice(bodyStart);
     const ranges = legacyRanges(current, [
-      { length: normalized.length, sha256: digest(normalized),
-        ...(bodyStart > 0 ? { preamble, body: { length: body.length, sha256: digest(body) } } : {}) },
-      ...(legacyTemplates[name] || []),
+      ...(normalized ? [{ length: normalized.length, sha256: digest(normalized),
+        ...(bodyStart > 0 ? { preamble, body: { length: body.length, sha256: digest(body) } } : {}) }] : []),
+      ...(legacyTemplates[templateName] || []),
     ]);
     if (ranges.length === 1 && !LEGACY.test(current.slice(0, ranges[0].start)
         + ranges[0].custom + current.slice(ranges[0].end))) {
       const { start, end, custom } = ranges[0];
       content = current.slice(0, start) + custom + inserted + current.slice(end);
     } else {
-      const custom = customInstructions(current, name, template);
+      const custom = customInstructions(current, templateName, template);
       content = custom + (custom && inserted ? eol + eol : '') + inserted;
     }
   }
@@ -295,7 +314,7 @@ function updateInstructions(name, initial = '', withBlock = true, write = true) 
   if (bytes.equals(before)) return false;
   if (!write) return true;
   if (exists) {
-    const backup = path.join(recovery, `${name}.${digest(before)}.backup`);
+    const backup = path.join(recovery, `${encodeURIComponent(name)}.${digest(before)}.backup`);
     retainFile(backup, before);
     console.log(`  → Saved previous ${name}: ${backup}`);
   }
@@ -306,11 +325,12 @@ function updateInstructions(name, initial = '', withBlock = true, write = true) 
     if (fs.existsSync(dest) !== exists || (exists && !fs.readFileSync(dest).equals(before))) {
       throw new InstructionError(`${name} changed during installation; preserved it. Rerun installation.`);
     }
-    fs.renameSync(temp, dest);
+    if (!withBlock && content === '') fs.unlinkSync(dest);
+    else fs.renameSync(temp, dest);
   } finally {
     if (fs.existsSync(temp)) fs.unlinkSync(temp);
   }
-  console.log(!exists ? `  → Created ${name}`
+  console.log(!withBlock && content === '' ? `  ✕ ${name} (removed)` : !exists ? `  → Created ${name}`
     : `  → ${withBlock ? 'Updated Devlyn defaults in' : 'Removed Devlyn defaults from'} ${name}; project-specific instructions preserved`);
   return true;
 }

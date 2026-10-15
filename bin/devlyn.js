@@ -12,6 +12,7 @@ const PKG = require('../package.json');
 const { updateInstructions, InstructionError, holdsDevlynDefaults, importsAgentsMd } = require('./instructions');
 const { contentHash, fingerprint, gitEnvironment, isIgnoredEntry, trackedPaths } = require('./skill-ownership');
 const SKILL_HISTORY = require('./skill-history.json');
+const CLEANUP_HISTORY = require('./cleanup-history.json');
 
 // The devlyn skill bundle installed into every skill-capable agent's loader
 // directory. Single source of truth so codex/omp/pi stay in lockstep — adding a
@@ -39,7 +40,13 @@ const RETIRED_PERMISSIONS = ['Write(.devlyn/**)', 'Edit(.devlyn/**)', 'Bash(git 
 
 // Every spelling a colon name can have on disk: its own and npm's U+F03A extraction alias.
 function legacySkillPaths(root, name) {
-  return [...new Set([name, name.replace(/:/g, '\uF03A')])].map((spelling) => path.join(root, spelling));
+  const spellings = new Set([name, name.replace(/:/g, '\uF03A')]);
+  if (fs.lstatSync(root, { throwIfNoEntry: false })?.isDirectory()) {
+    for (const entry of fs.readdirSync(root)) {
+      if ([...spellings].some((spelling) => spelling.toLowerCase() === entry.toLowerCase())) spellings.add(entry);
+    }
+  }
+  return [...spellings].map((spelling) => path.join(root, spelling));
 }
 
 // SKILL.md of the pencil skills 0.6.0-0.7.1 installed under today's names, without the
@@ -53,36 +60,8 @@ const PRE_STANDARD_SKILL_MD_SHA256 = new Set([
 // Skills devlyn-cli installed by default and later deleted or made opt-in, by SHA-256 of their
 // only file, SKILL.md (LF endings): an opted-in copy or a user's own folder of the same name is
 // never removed.
-const RETIRED_SKILL_MD_SHA256 = {
-  // 0.2.0-1.15.0; deleted in iter-0034, it still routes agents to retired commands.
-  'workflow-routing': new Set([
-    '7fec2bb20d808a873a975d64a6223e404bc5b328c800760bb77257ae6b2f467a',
-    '8bfdaeff2ce48d5a79b5653de3bbe0d56a61a7fd750ed3ad11149fec5a502ecf',
-  ]),
-  // The standards skills, 0.1.0-3.2.1; 3.3.0 (0221) made them optional addons.
-  'code-health-standards': new Set([
-    'df2838904c938aa0306ed333cc460cfc5c2cf0ffa20bb5ade57067c6e0acf9be',
-    '962a82b5ebeafac515f81f5c68494c67dbf31c3e3e453f23c4452d4725e21355',
-  ]),
-  'code-review-standards': new Set([
-    '9c906f2b2a88c2d0aaeec9714405945da5177de6ec433f1acf520c6c4385b875',
-    '3bc8587a9143487328be2470dec8df17a19cb14f94e6ec916ed58de660d0e1c4',
-    '56abe5736f505c53ca9ce14087a9891cc8661be783abaec7b5b924e3f339cc2a',
-    '586dde5014f9ac2f9a13d43fa1c8c257a3ae998a3fc1b867b23b3b2e44f77eca',
-  ]),
-  'root-cause-analysis': new Set([
-    'e200ddd04196435af3162a9e13595f8eb5ac68b06465026e0155e453b1bd1c93',
-    '1793dcb0f72621c78cc20c905fe5dd7a0af3115e904bf737a6a983a7b9d2c2b6',
-    'aab22d1bddc66c6a798f08cdf7be9b45fbe80ccfc928b068ef5d9e2ad951bdda',
-    '0eac104bfcde8bdf14d4c284be6f3f4cb243219a679bf569433c2465df84c6c3',
-    'e66d15a9585c07e819acfd89c1f6d030517130f6d8f8924bda3120307949fb2e',
-  ]),
-  'ui-implementation-standards': new Set([
-    'e2473e35474e78f2b581e225cb33a1e711bb79519a02e9780fc9606e582b878f',
-    '1ff64816454171b3f879e9e5cf3c15e3d9c5f2ffc81b73262155f6bc93a1b054',
-    '13c709c0e2b01ae94997c271043a685200e969192d2056534bd787c5682874e8',
-  ]),
-};
+const RETIRED_SKILL_MD_SHA256 = Object.fromEntries(
+  Object.entries(CLEANUP_HISTORY.skills).map(([name, hashes]) => [name, new Set(hashes)]));
 
 // Whether `dir` is a real folder whose only file, besides generated metadata, is a SKILL.md
 // with an LF-normalized SHA-256 in `hashes`: an unedited copy devlyn-cli shipped, not something
@@ -92,7 +71,7 @@ function isShippedCopy(dir, hashes) {
   return fs.lstatSync(dir, { throwIfNoEntry: false })?.isDirectory() === true
     && fs.readdirSync(dir).filter((name) => !isIgnoredEntry(path.join(dir, name))).length === 1
     && fs.lstatSync(skill, { throwIfNoEntry: false })?.isFile() === true
-    && hashes.has(contentHash(skill));
+    && hashes.has(crypto.createHash('sha256').update(fs.readFileSync(skill).toString('latin1').replace(/\r\n/g, '\n'), 'latin1').digest('hex'));
 }
 
 // Skill roots of each target. In a project, `.agents/skills` serves Codex, omp, Pi and Grok,
@@ -116,7 +95,7 @@ function hasDevlynInstall(root) {
     return !!stat(path.join(root, DEVLYN_INSTALL_LOCK))
       || names.some((name) => [...legacySkillPaths(root, name.replace(/^devlyn-/, 'devlyn:')),
         path.join(root, name.replace(/:/g, '-'))].some((full) => stat(full)?.isDirectory()))
-      || planDeprecatedSkills(root, {}).removals.size > 0
+      || hasHistoricalRetiredSkill(root)
       || (!!stat(path.join(root, DEVLYN_INSTALL_MARKER)) && stat(path.join(root, '_shared'))?.isDirectory());
   } catch (error) {
     if (error.code === 'ENOTDIR') return false;
@@ -138,11 +117,9 @@ function hasDevlynClaude(global) {
   const instructions = path.join(path.dirname(claudeDir), 'CLAUDE.md');
   const claude = fs.lstatSync(instructions, { throwIfNoEntry: false })?.isFile() ? fs.readFileSync(instructions, 'utf8') : '';
   const root = path.join(claudeDir, 'skills');
-  const deprecated = new Map([...deprecatedSkillPaths(root)].map((full) => [path.basename(full).toLowerCase(), full]));
-  const { removals } = planDeprecatedSkills(root, {});
+  const deprecated = new Set([...deprecatedSkillPaths(root)].map((full) => path.basename(full).toLowerCase()));
   return names(root).some((name) => {
-    const canonical = deprecated.get(name.toLowerCase());
-    if (canonical) return removals.has(canonical);
+    if (deprecated.has(name.toLowerCase())) return historicalSkill(path.join(root, name));
     return name === DEVLYN_INSTALL_MARKER
       || (name.startsWith('devlyn') && !optional.has(name.replace(/[:\uF03A]/g, '-')));
   })
@@ -150,9 +127,10 @@ function hasDevlynClaude(global) {
     || holdsDevlynDefaults('CLAUDE.md', claude) || importsAgentsDefaults(claude);
 }
 
-// Commands removed in previous versions; the project Claude install deletes them from .claude/
-// when they hold the bytes a version shipped (SKILL_HISTORY.commands).
+// Exact Devlyn command names removed by previous versions, in either scope.
 const DEPRECATED_FILES = [
+  'commands/devlyn.ui.md',
+  'commands/devlyn.team-ui.md',
   'commands/devlyn.handoff.md', // removed in v0.2.0
   'commands/devlyn.clean.md', // migrated to skills in v0.6.0
   'commands/devlyn.design-system.md',
@@ -176,7 +154,7 @@ const DEPRECATED_FILES = [
 // Skill directories renamed from devlyn-* to devlyn:* in v0.7.x, plus
 // iter-0034 Phase 4 cutover (2026-05-03): 15 user skills deleted and 3 moved
 // to optional-skills/. Listed here so post-cutover `npx devlyn-cli` upgrades
-// remove verified, unchanged legacy skill dirs from downstream `~/.claude/skills/`
+// remove these exact retired skill names from downstream skill roots
 // even though the source dirs no longer exist (the installer replaces only
 // the skills it ships — without this list, deleted-from-source skills persist
 // in user installs forever).
@@ -375,30 +353,16 @@ function listContents() {
   log('');
 }
 
-// Old and retired skills in one skill root; nothing outside it.
-function cleanupDeprecated(skillsDir, written, removals) {
-  let removed = 0;
-  for (const fullPath of removals) {
-    if (path.dirname(fullPath) === skillsDir) {
-      fs.rmSync(fullPath, { recursive: true });
-      written.push(fullPath);
-      log(`  ✕ skills/${path.basename(fullPath)}/ (removed)`, 'dim');
-      removed++;
-    }
-  }
-  return removed;
-}
-
 // Remove every old spelling of the renamed skills in `skillsDir`, after the new core skills
 // are in place. An optional skill found under an old spelling is installed under its new name
 // before the old copy goes, so an interrupted migration never loses it. An unedited 0.6.0-0.7.1
 // copy is refreshed in place. Any other folder under a 4.0 name is the user's own; `-y` leaves it.
-function retireRenamedSkills(skillsDir, written, installedSkills) {
+function refreshRenamedSkills(skillsDir, written, installedSkills) {
   const optional = new Set(OPTIONAL_ADDONS.filter((addon) => addon.type === 'local').map((addon) => addon.name));
   const refreshed = [];
   for (const [oldName, newName] of Object.entries(RENAMED_SKILLS)) {
     const found = legacySkillPaths(skillsDir, oldName).filter((fullPath) => fs.existsSync(fullPath));
-    if (found.length > 0 && optional.has(newName)) {
+    if (found.length > 0 && optional.has(newName) && canRefreshRenamed(skillsDir, newName)) {
       installOptionalSkillInto(skillsDir, newName, written, installedSkills);
       refreshed.push(newName);
     } else if (isShippedCopy(path.join(skillsDir, newName), PRE_STANDARD_SKILL_MD_SHA256)) {
@@ -406,11 +370,6 @@ function retireRenamedSkills(skillsDir, written, installedSkills) {
       written.push(path.join(skillsDir, newName));
       installedSkills.set(path.join(skillsDir, newName), [path.join(skillsDir, newName, 'SKILL.md')]);
       refreshed.push(newName);
-    }
-    for (const fullPath of found) {
-      fs.rmSync(fullPath, { recursive: true, force: true });
-      written.push(fullPath);
-      log(`  ✕ ${path.basename(fullPath)}/ (renamed to ${newName})`, 'dim');
     }
   }
   return refreshed;
@@ -455,27 +414,34 @@ function readInstallManifest(root) {
   return marker.skills || {};
 }
 
+// A retired optional name must not make a foreign copy under its new name an install conflict.
+function canRefreshRenamed(root, name) {
+  const dest = path.join(root, name);
+  if (!fs.lstatSync(dest, { throwIfNoEntry: false })) return true;
+  try { verifySkill(dest, name, readInstallManifest(root)); return true; }
+  catch { return false; } // No ownership proof: preserve the new-name entry without installing over it.
+}
+
 // Enumerate every directory this install may replace, migrate or remove, before
 // touching any target. Optional addons must be selected before this preflight too.
 function plannedSkills(root, optionalNames = []) {
   const names = new Set([...DEVLYN_CORE_SKILLS, ...optionalNames]);
   for (const [oldName, newName] of Object.entries(RENAMED_SKILLS)) {
     const oldPaths = legacySkillPaths(root, oldName);
-    oldPaths.forEach((full) => names.add(path.basename(full)));
-    if (oldPaths.some((full) => fs.lstatSync(full, { throwIfNoEntry: false }))
+    if ((oldPaths.some((full) => fs.lstatSync(full, { throwIfNoEntry: false })) && canRefreshRenamed(root, newName))
         || isShippedCopy(path.join(root, newName), PRE_STANDARD_SKILL_MD_SHA256)) names.add(newName);
   }
   return names;
 }
 
-function verifySkill(dest, name, manifest, removalOnly = false) {
+function verifySkill(dest, name, manifest) {
   const actual = fingerprint(dest);
   const logicalName = name.replace(/[:\uF03A]/g, '-');
   const source = path.join(DEVLYN_CORE_SKILLS.includes(logicalName)
     ? path.join(CONFIG_SOURCE, 'skills') : OPTIONAL_SKILLS_SOURCE, logicalName);
-  const current = !removalOnly && fs.existsSync(source) && fingerprint(source) === actual;
+  const current = fs.existsSync(source) && fingerprint(source) === actual;
   const historical = SKILL_HISTORY.skills[logicalName]?.includes(actual);
-  const hashes = RETIRED_SKILL_MD_SHA256[name] || (removalOnly ? new Set() : PRE_STANDARD_SKILL_MD_SHA256);
+  const hashes = RETIRED_SKILL_MD_SHA256[name.toLowerCase()] || PRE_STANDARD_SKILL_MD_SHA256;
   const singleFile = isShippedCopy(dest, hashes);
   if (!current && !historical && !singleFile && manifest[name] !== actual) {
     throw new Error(manifest[name] ? 'modified contents (install manifest fingerprint mismatch)'
@@ -485,55 +451,31 @@ function verifySkill(dest, name, manifest, removalOnly = false) {
   }
 }
 
-// Removal-only paths never block an install: unverifiable copies stay with their owner.
+// Discovery keeps its historical ownership boundary; cleanup below uses exact retired names.
 function deprecatedSkillPaths(root) {
-  return new Set(DEPRECATED_DIRS.flatMap((relative) => legacySkillPaths(root, path.basename(relative))));
+  return new Set(DEPRECATED_DIRS.flatMap((relative) => {
+    const name = path.basename(relative);
+    return [...legacySkillPaths(root, name.replace(/^devlyn-/, 'devlyn:')),
+      path.join(root, name.replace(/:/g, '-'))];
+  }));
 }
 
-function planDeprecatedSkills(root, manifest) {
-  const removals = new Set();
-  const retained = new Set();
-  for (const dest of deprecatedSkillPaths(root)) {
-    try {
-      if (!fs.lstatSync(dest, { throwIfNoEntry: false })) continue;
-      verifySkill(dest, path.basename(dest), manifest, true);
-      removals.add(dest);
-    } catch (error) {
-      retained.add(dest);
-    }
-  }
-  return { removals, retained };
-}
-
-function planSkillRemovals(root, manifest) {
-  const plan = planDeprecatedSkills(root, manifest);
-  for (const [name, hashes] of Object.entries(RETIRED_SKILL_MD_SHA256)) {
-    const dest = path.join(root, name);
-    if (isShippedCopy(dest, hashes)) plan.removals.add(dest);
-  }
-  return plan;
-}
-
-// `commandDir`: the project .claude/ whose DEPRECATED_FILES this install deletes, or null.
-function preflightSkills(roots, optionalNames = [], commandDir = null) {
-  const conflicts = [];
-  const plan = { removals: new Set(), retained: new Set() };
+function historicalSkill(dest) {
   try {
-    // Do not follow a commands link into another installation either.
-    const commands = commandDir && fs.lstatSync(path.join(commandDir, 'commands'), { throwIfNoEntry: false });
-    if (commands && !commands.isDirectory()) throw new Error('not a real directory');
-    const tracked = commandDir ? trackedPaths(path.join(commandDir, 'commands')) : [];
-    for (const relPath of commandDir ? DEPRECATED_FILES : []) {
-      const fullPath = path.join(commandDir, relPath);
-      const stat = fs.lstatSync(fullPath, { throwIfNoEntry: false });
-      if (!stat || (stat.isFile() && SKILL_HISTORY.commands[relPath].includes(contentHash(fullPath)))) continue;
-      const isTracked = tracked.some((file) => file.toLowerCase() === fullPath.toLowerCase());
-      conflicts.push(`${fullPath}: ${isTracked ? 'git-tracked; ' : ''}`
-        + (stat.isFile() ? 'fingerprint mismatch with known shipped copies' : 'link or special file'));
-    }
-  } catch (error) {
-    conflicts.push(`${path.join(commandDir, 'commands')}: ${error.message}`);
+    return SKILL_HISTORY.skills[path.basename(dest).toLowerCase().replace(/[:\uF03A]/g, '-')]?.includes(fingerprint(dest)) === true;
+  } catch {
+    // A link, unreadable or partial tree is not evidence of an install to refresh.
+    return false;
   }
+}
+
+function hasHistoricalRetiredSkill(root) {
+  return [...deprecatedSkillPaths(root)].some(historicalSkill);
+}
+
+// Validate only paths this run installs; removal-only names never refuse an install.
+function preflightSkills(roots, optionalNames = []) {
+  const conflicts = [];
   for (const root of roots) {
     try {
       // Do not follow an agent-directory or skill-root link into another installation.
@@ -549,9 +491,6 @@ function preflightSkills(roots, optionalNames = [], commandDir = null) {
         conflicts.push(`${path.join(root, DEVLYN_INSTALL_MARKER)}: ${error.message}`);
         continue;
       }
-      const deprecated = planSkillRemovals(root, manifest);
-      for (const dest of deprecated.removals) plan.removals.add(dest);
-      for (const dest of deprecated.retained) plan.retained.add(dest);
       for (const name of plannedSkills(root, optionalNames)) {
         const dest = path.join(root, name);
         const isTracked = tracked.some((file) => file.toLowerCase() === dest.toLowerCase()
@@ -577,7 +516,7 @@ function preflightSkills(roots, optionalNames = [], commandDir = null) {
       + '\nFor tracked paths, also remove them from the Git index.'
       + '\nRerun the same command after resolving every conflict; -y does not bypass this check.');
   }
-  return plan;
+  return {};
 }
 
 function assertCompleteSkillInstall(sourceSkillsDir, skillsDir, skillNames) {
@@ -688,16 +627,19 @@ function installLocalSkill(skillName, roots, written = [], installedSkills = new
 // copy under its name before the 4.0.0 rename goes only once the new one is complete.
 function installOptionalSkillInto(target, skillName, written, installedSkills) {
   const dest = path.join(target, skillName);
-  fs.rmSync(dest, { recursive: true, force: true });
-  installedSkills.set(dest, copyRecursive(path.join(OPTIONAL_SKILLS_SOURCE, skillName), dest, target));
-  assertCompleteSkillInstall(OPTIONAL_SKILLS_SOURCE, target, [skillName]);
-  written.push(dest);
-  const oldName = Object.keys(RENAMED_SKILLS).find((name) => RENAMED_SKILLS[name] === skillName);
-  for (const fullPath of oldName ? legacySkillPaths(target, oldName) : []) {
-    if (!fs.existsSync(fullPath)) continue;
-    fs.rmSync(fullPath, { recursive: true, force: true });
-    written.push(fullPath);
+  const stage = fs.mkdtempSync(path.join(target, '.devlyn-skill-'));
+  const stagedSkill = path.join(stage, skillName);
+  try {
+    const files = copyRecursive(path.join(OPTIONAL_SKILLS_SOURCE, skillName), stagedSkill, stage);
+    assertCompleteSkillInstall(OPTIONAL_SKILLS_SOURCE, stage, [skillName]);
+    fs.rmSync(dest, { recursive: true, force: true });
+    fs.renameSync(stagedSkill, dest);
+    installedSkills.set(dest, files.map((file) => path.join(dest, path.relative(stagedSkill, file))));
+    written.push(dest);
+  } finally {
+    fs.rmSync(stage, { recursive: true, force: true });
   }
+
 }
 
 // A 0.6.0-0.7.1 copy is one SKILL.md, the file that identifies it. A failed swap leaves
@@ -751,17 +693,12 @@ function installAddon(addon) {
 
 // The core skills into one skill root, replacing older copies and retired skills, then the
 // marker that records a complete install.
-function installCoreSkills(skillsDir, written = [], installedSkills = new Map(), plan) {
+function installCoreSkills(skillsDir, written = [], installedSkills = new Map()) {
   const sourceSkillsDir = path.join(CONFIG_SOURCE, 'skills');
   log(`\n📁 Installing devlyn skills to ${skillsDir.replace(os.homedir(), '~')}`, 'green');
   fs.mkdirSync(skillsDir, { recursive: true });
   const previous = readInstallManifest(skillsDir);
-  plan ??= planSkillRemovals(skillsDir, previous);
   clearInstallMarker(skillsDir);
-  const removed = cleanupDeprecated(skillsDir, written, plan.removals);
-  if (removed > 0) {
-    log(`\n🧹 Cleaned up ${removed} deprecated file${removed > 1 ? 's' : ''}`, 'yellow');
-  }
   for (const skillName of DEVLYN_CORE_SKILLS) {
     const src = path.join(sourceSkillsDir, skillName);
     const dest = path.join(skillsDir, skillName);
@@ -772,7 +709,7 @@ function installCoreSkills(skillsDir, written = [], installedSkills = new Map(),
     written.push(dest);
   }
   assertCompleteSkillInstall(sourceSkillsDir, skillsDir, DEVLYN_CORE_SKILLS);
-  const refreshed = retireRenamedSkills(skillsDir, written, installedSkills);
+  const refreshed = refreshRenamedSkills(skillsDir, written, installedSkills);
   writeInstallMarker(skillsDir, [...DEVLYN_CORE_SKILLS, ...refreshed], previous);
   written.push(path.join(skillsDir, DEVLYN_INSTALL_MARKER));
 }
@@ -848,7 +785,7 @@ function agentsMdIsClaudeMd() {
   return target !== null && fs.existsSync(target) && fs.realpathSync.native(target) === fs.realpathSync.native(claude);
 }
 
-function installAgentsProject(withClaude, installedSkills = new Map(), plan) {
+function installAgentsProject(withClaude, installedSkills = new Map()) {
   const written = [];
   if (!agentsMdIsClaudeMd()) {
     if (updateInstructions('AGENTS.md')) written.push('AGENTS.md');
@@ -858,7 +795,7 @@ function installAgentsProject(withClaude, installedSkills = new Map(), plan) {
     throw new InstructionError('AGENTS.md is CLAUDE.md under another name here. Choose CLAUDE.md as well '
       + '(npx devlyn-cli -y --claude) so the devlyn block is written once, into CLAUDE.md.');
   }
-  installCoreSkills(skillRoots('agents', false)[0], written, installedSkills, plan);
+  installCoreSkills(skillRoots('agents', false)[0], written, installedSkills);
   if (updateProjectGitignore('.agents/skills/.devlyn-install.json')) written.push('.gitignore');
   return written;
 }
@@ -890,13 +827,15 @@ function installClaudeInstructions() {
 }
 
 // Project CLAUDE.md and .claude/: skills and settings.
-function installClaudeCore(installedSkills = new Map(), plan) {
+function installClaudeCore(installedSkills = new Map()) {
   const skillsDir = skillRoots('claude', false)[0];
   const targetDir = path.dirname(skillsDir);
   // Read before any write, so settings this install cannot merge leave the Claude target as it was.
   const settingsPath = path.join(targetDir, 'settings.json');
   const unmergeable = (reason) => new InstructionError(`Cannot merge .claude/settings.json: ${reason}. `
     + 'CLAUDE.md and .claude/ are unchanged; fix the file and rerun the same install command.');
+  const settingsStat = fs.lstatSync(settingsPath, { throwIfNoEntry: false });
+  if (settingsStat && !settingsStat.isFile()) throw unmergeable('not a regular file');
   let settings = {};
   if (fs.existsSync(settingsPath)) {
     try {
@@ -914,15 +853,7 @@ function installClaudeCore(installedSkills = new Map(), plan) {
     throw unmergeable('env must be a JSON object');
   }
   const written = installClaudeInstructions() ? ['CLAUDE.md'] : [];
-  for (const relPath of DEPRECATED_FILES) {
-    const fullPath = path.join(targetDir, relPath);
-    if (fs.existsSync(fullPath)) {
-      fs.unlinkSync(fullPath);
-      log(`  ✕ ${relPath} (deprecated)`, 'dim');
-      written.push(`.claude/${relPath}`);
-    }
-  }
-  installCoreSkills(skillsDir, written, installedSkills, plan);
+  installCoreSkills(skillsDir, written, installedSkills);
   if (updateProjectGitignore('.claude/skills/.devlyn-install.json')) written.push('.gitignore');
 
   // One-hour foreground Bash calls and one-hour prompt caching serve a drain host that waits in the foreground.
@@ -931,28 +862,17 @@ function installClaudeCore(installedSkills = new Map(), plan) {
     settings.env = {};
     settingsChanged = true;
   }
-  if (!settings.env.ENABLE_PROMPT_CACHING_1H) {
+  if (!Object.prototype.hasOwnProperty.call(settings.env, 'ENABLE_PROMPT_CACHING_1H')) {
     settings.env.ENABLE_PROMPT_CACHING_1H = 'true';
     settingsChanged = true;
   }
-  const bashMaxTimeoutMs = Number.parseInt(settings.env.BASH_MAX_TIMEOUT_MS, 10);
-  if (!Number.isFinite(bashMaxTimeoutMs) || bashMaxTimeoutMs < 3600000) {
+  if (!Object.prototype.hasOwnProperty.call(settings.env, 'BASH_MAX_TIMEOUT_MS')) {
     settings.env.BASH_MAX_TIMEOUT_MS = '3600000';
     settingsChanged = true;
   }
-  // Remove exactly the retired Stop hook command, and its entry only when nothing else is left in it.
-  const retiredHook = (hook) => hook?.type === 'command' && hook.command === RETIRED_STOP_HOOK;
-  const stop = Array.isArray(settings.hooks?.Stop) ? settings.hooks.Stop : [];
-  for (let i = stop.length - 1; i >= 0; i--) {
-    const hooks = stop[i]?.hooks;
-    if (!Array.isArray(hooks) || !hooks.some(retiredHook)) continue;
-    stop[i].hooks = hooks.filter((hook) => !retiredHook(hook));
-    if (stop[i].hooks.length === 0 && Object.keys(stop[i]).length === 1) stop.splice(i, 1);
-    log('  ✕ settings.json Stop hook of the retired pipeline (removed)', 'dim');
-    settingsChanged = true;
-  }
+  settingsChanged = cleanRetiredSettings(settings) || settingsChanged;
   if (settingsChanged) {
-    fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n');
+    replaceFile(settingsPath, JSON.stringify(settings, null, 2) + '\n');
     log('  → settings.json', 'dim');
     written.push('.claude/settings.json');
   }
@@ -967,9 +887,38 @@ function installClaudeCore(installedSkills = new Map(), plan) {
   return written;
 }
 
+// Replace this directory entry, never a hardlink's other names.
+function replaceFile(file, text) {
+  const temp = `${file}.${crypto.randomUUID()}.tmp`;
+  try {
+    const mode = fs.lstatSync(file, { throwIfNoEntry: false })?.mode & 0o777;
+    fs.writeFileSync(temp, text, { flag: 'wx', mode: mode || 0o600 });
+    fs.renameSync(temp, file);
+  } finally {
+    fs.rmSync(temp, { force: true });
+  }
+}
+
+function cleanRetiredSettings(settings) {
+  let changed = false;
+  // Remove exactly the retired Stop hook command, and its entry only when nothing else is left in it.
+  const retiredHook = (hook) => hook?.type === 'command' && hook.command === RETIRED_STOP_HOOK;
+  const stop = Array.isArray(settings.hooks?.Stop) ? settings.hooks.Stop : [];
+  for (let i = stop.length - 1; i >= 0; i--) {
+    const hooks = stop[i]?.hooks;
+    if (!Array.isArray(hooks) || !hooks.some(retiredHook)) continue;
+    stop[i].hooks = hooks.filter((hook) => !retiredHook(hook));
+    if (stop[i].hooks.length === 0 && Object.keys(stop[i]).length === 1) stop.splice(i, 1);
+    log('  ✕ settings.json Stop hook of the retired pipeline (removed)', 'dim');
+    changed = true;
+  }
+  return changed;
+}
+
 // Shared user roots need one writer from ownership checks through the last addon write.
 // Never reap a foreign lock: PID reuse and slow installs make age/liveness unsafe evidence.
-function withUserSkillLocks(roots, action) {
+const heldSkillLocks = new Set();
+function withUserSkillLocks(roots, action, { existingOnly = false } = {}) {
   const locks = [];
   const createdDirs = [];
   try {
@@ -980,18 +929,22 @@ function withUserSkillLocks(roots, action) {
           const stat = fs.lstatSync(dir, { throwIfNoEntry: false });
           if (stat && !stat.isDirectory()) throw new Error(`not a real directory: ${dir}`);
         }
-        const missing = [];
-        for (let dir = root; !fs.existsSync(dir); dir = path.dirname(dir)) {
-          missing.push(dir);
-          if (path.dirname(dir) === dir) break;
+        if (existingOnly && !fs.lstatSync(root, { throwIfNoEntry: false })?.isDirectory()) return;
+        if (!existingOnly) {
+          const missing = [];
+          for (let dir = root; !fs.existsSync(dir); dir = path.dirname(dir)) {
+            missing.push(dir);
+            if (path.dirname(dir) === dir) break;
+          }
+          fs.mkdirSync(root, { recursive: true });
+          createdDirs.push(...missing);
         }
-        fs.mkdirSync(root, { recursive: true });
-        createdDirs.push(...missing);
         const token = crypto.randomBytes(16).toString('hex');
         const fd = fs.openSync(lock, 'wx', 0o600);
         try {
           fs.writeFileSync(fd, JSON.stringify({ pid: process.pid, token }) + '\n');
           locks.push({ lock, token });
+          heldSkillLocks.add(root);
         } catch (error) {
           // A failed initial write may not leave parseable JSON; verify the open file's identity.
           const opened = fs.fstatSync(fd);
@@ -1019,6 +972,7 @@ function withUserSkillLocks(roots, action) {
   } finally {
     const errors = [];
     for (const { lock, token } of locks.reverse()) {
+      heldSkillLocks.delete(path.dirname(lock));
       try {
         if (JSON.parse(fs.readFileSync(lock, 'utf8')).token === token) fs.unlinkSync(lock);
       } catch (error) {
@@ -1038,7 +992,7 @@ function withUserSkillLocks(roots, action) {
 }
 
 // Installs the targets in one scope; returns the skill roots written.
-function install(targets, global, optionalNames = [], plan) {
+function install(targets, global, optionalNames = [], plan, afterInstall = () => {}) {
   // In the home folder CLAUDE.md, AGENTS.md (agents read a parent folder's too) and
   // .claude/settings.json would apply to every project. Same folder by identity, so a link or
   // another spelling of the path is caught too.
@@ -1053,30 +1007,147 @@ function install(targets, global, optionalNames = [], plan) {
     const written = [];
     const installedSkills = new Map();
     if (!global) readProjectGitignore();
-    plan ??= preflightSkills(roots, optionalNames,
-      !global && targets.includes('claude') ? path.dirname(skillRoots('claude', false)[0]) : null);
+    plan ??= preflightSkills(roots, optionalNames);
     // AGENTS.md first, whatever order the menu gave: a new CLAUDE.md holds the block only when AGENTS.md does not.
     for (const target of ['agents', 'claude'].filter((name) => targets.includes(name))) {
-      if (global) skillRoots(target, true).forEach((root) => installCoreSkills(root, [], installedSkills, plan));
-      else if (target === 'agents') written.push(...installAgentsProject(targets.includes('claude'), installedSkills, plan));
-      else written.push(...installClaudeCore(installedSkills, plan));
+      if (global) skillRoots(target, true).forEach((root) => installCoreSkills(root, [], installedSkills));
+      else if (target === 'agents') written.push(...installAgentsProject(targets.includes('claude'), installedSkills));
+      else written.push(...installClaudeCore(installedSkills));
     }
     for (const name of optionalNames) installLocalSkill(name, roots, written, installedSkills);
+    afterInstall();
     log(`\n✅ devlyn ${PKG.version} installed`, 'green');
     if (global) log('The principles block installs per project: run npx devlyn-cli in the project without --global.');
     noticeGlobalDrift(roots);
-    noticeRetainedSkills(plan.retained);
+    cleanupScope(global ? os.homedir() : projectDir(), global, written,
+      global ? [] : targets.map((target) => target === 'agents' ? 'AGENTS.md' : 'CLAUDE.md'));
     if (!global) noticeProjectChanges(written, installedSkills);
     return roots;
   });
 }
 
-function noticeRetainedSkills(retained) {
-  if (!retained.size) return;
-  log('Left in place (not verified as unchanged devlyn-cli copies):\n'
-    + [...retained].map((dest) => `  ${dest}`).join('\n')
-    + '\nThese retired skills may still be visible to agents and may call removed helpers. '
-    + 'Move them out of the skills folder, or delete them, if you no longer use them.', 'yellow');
+// Cleanup visits existing paths in the command's scope; it never creates an install.
+function cleanupScope(base, global, written, activeInstructions = []) {
+  const warned = new Set();
+  let found = false;
+  const warning = (file, error) => {
+    if (!warned.has(file)) log(`Cannot clean up ${file}: ${error.message}`, 'yellow');
+    warned.add(file);
+  };
+  const attempt = (file, action) => {
+    try { return action(); } catch (error) { warning(file, error); return false; }
+  };
+  const realParents = (file) => {
+    let dir = base;
+    if (!fs.lstatSync(dir, { throwIfNoEntry: false })?.isDirectory()) return false;
+    for (const part of path.relative(base, path.dirname(file)).split(path.sep).filter(Boolean)) {
+      if (part === '..') return false;
+      dir = path.join(dir, part);
+      if (!fs.lstatSync(dir, { throwIfNoEntry: false })?.isDirectory()) return false;
+    }
+    return true;
+  };
+  const remove = (file) => attempt(file, () => {
+    if (!realParents(file) || !fs.lstatSync(file, { throwIfNoEntry: false })) return false;
+    found = true;
+    fs.rmSync(file, { recursive: true }); // lstat/realParents never follows a link; rm removes the link itself.
+    written.push(file);
+    log(`  ✕ ${path.relative(base, file)} (removed)`, 'dim');
+    return true;
+  });
+  const hash = (file) => crypto.createHash('sha256')
+    .update(fs.readFileSync(file).toString('latin1').replace(/\r\n/g, '\n'), 'latin1').digest('hex');
+  for (const dir of global ? ['.agents', '.codex', '.claude', '.grok'] : ['.agents', '.claude']) {
+    const root = path.join(base, dir, 'skills');
+    attempt(root, () => {
+      if (!realParents(root) || !fs.lstatSync(root, { throwIfNoEntry: false })?.isDirectory()) return;
+      const retiredRoot = dir === '.grok';
+      const clean = () => {
+        const marker = path.join(root, DEVLYN_INSTALL_MARKER);
+        let manifest;
+        if (fs.lstatSync(marker, { throwIfNoEntry: false })?.isFile()) {
+          try {
+            const data = JSON.parse(fs.readFileSync(marker, 'utf8'));
+            if (data && data.package === PKG.name && data.schemaVersion === 1
+                && (data.skills === undefined || (data.skills && typeof data.skills === 'object' && !Array.isArray(data.skills)))) manifest = data.skills || {};
+          } catch (error) {
+            if (!(error instanceof SyntaxError)) throw error;
+            // A malformed/foreign marker is not ownership evidence and stays in place.
+          }
+        }
+        const exact = new Set([...deprecatedSkillPaths(root),
+          ...Object.keys(RENAMED_SKILLS).flatMap((name) => legacySkillPaths(root, name))]
+          .map((file) => path.basename(file).toLowerCase()));
+        if (retiredRoot) for (const name of [...DEVLYN_CORE_SKILLS, ...Object.values(RENAMED_SKILLS)]
+          .filter((name) => name.startsWith('devlyn'))) exact.add(name);
+        const removed = new Set();
+        for (const name of fs.readdirSync(root)) {
+          const file = path.join(root, name);
+          attempt(file, () => {
+            const listed = manifest && Object.prototype.hasOwnProperty.call(manifest, name);
+            let owned = exact.has(name.toLowerCase()) || (retiredRoot && listed && /^devlyn[-:\uF03A]/i.test(name));
+            if (!owned && RETIRED_SKILL_MD_SHA256[name.toLowerCase()]) owned = isShippedCopy(file, RETIRED_SKILL_MD_SHA256[name.toLowerCase()]);
+            if (!owned && retiredRoot && name.toLowerCase() === '_shared') owned = historicalSkill(file);
+            if (!owned && retiredRoot && listed && fs.lstatSync(file).isDirectory()) {
+              try { owned = fingerprint(file) === manifest[name]; }
+              catch { /* Links or special files cannot prove a generic tree is an unedited copy. */ }
+            }
+            if (owned && remove(file)) removed.add(name);
+          });
+        }
+        if (retiredRoot && manifest) {
+          if (![...warned].some((file) => path.dirname(file) === root)) remove(marker);
+        } else if (manifest && [...removed].some((name) => Object.prototype.hasOwnProperty.call(manifest, name))) {
+          // Keep current markers accurate after cleaning a previously listed retired entry.
+          attempt(marker, () => {
+            const data = JSON.parse(fs.readFileSync(marker, 'utf8'));
+            for (const name of removed) delete data.skills[name];
+            replaceFile(marker, JSON.stringify(data, null, 2) + '\n');
+            written.push(marker);
+          });
+        }
+      };
+      if (heldSkillLocks.has(root)) clean();
+      else withUserSkillLocks([root], clean, { existingOnly: true });
+    });
+  }
+  const commands = path.join(base, '.claude', 'commands');
+  attempt(commands, () => {
+    if (!realParents(commands) || !fs.lstatSync(commands, { throwIfNoEntry: false })?.isDirectory()) return;
+    const names = new Set(DEPRECATED_FILES.map((file) => path.basename(file).toLowerCase()));
+    for (const name of fs.readdirSync(commands)) if (names.has(name.toLowerCase())) remove(path.join(commands, name));
+  });
+  for (const [name, hashes] of global ? [] : Object.entries(CLEANUP_HISTORY.files)) {
+    const file = path.join(base, name);
+    attempt(file, () => {
+      if (realParents(file) && fs.lstatSync(file, { throwIfNoEntry: false })?.isFile() && hashes.includes(hash(file))) remove(file);
+    });
+  }
+  const settingsFile = path.join(base, '.claude', 'settings.json');
+  attempt(settingsFile, () => {
+    if (!realParents(settingsFile) || !fs.lstatSync(settingsFile, { throwIfNoEntry: false })?.isFile()) return;
+    let settings;
+    try { settings = JSON.parse(fs.readFileSync(settingsFile, 'utf8').replace(/^\uFEFF/, '')); }
+    catch (error) { if (error instanceof SyntaxError) return; throw error; }
+    if (settings && typeof settings === 'object' && cleanRetiredSettings(settings)) {
+      found = true;
+      replaceFile(settingsFile, JSON.stringify(settings, null, 2) + '\n');
+      written.push(settingsFile);
+      log('  ✕ .claude/settings.json retired entries (removed)', 'dim');
+    }
+  });
+  const instructions = global ? [] : ['CLAUDE.md', 'AGENTS.md', 'GEMINI.md', '.cursorrules', '.windsurfrules', '.github/copilot-instructions.md'];
+  for (const name of instructions.filter((name) => !activeInstructions.includes(name))) {
+    const file = path.join(base, name);
+    attempt(file, () => {
+      if (!realParents(file) || !fs.lstatSync(file, { throwIfNoEntry: false })?.isFile()) return;
+      const evaluatorOnly = ['CLAUDE.md', 'AGENTS.md'].includes(name);
+      if (!updateInstructions(name, '', false, false, base, evaluatorOnly)) return;
+      found = true;
+      if (updateInstructions(name, '', false, true, base, evaluatorOnly)) written.push(file);
+    });
+  }
+  return found;
 }
 
 // Advisory only: a successful install stays successful when Git is unavailable or fails.
@@ -1147,7 +1218,7 @@ function noticeProjectChanges(paths, installedSkills = new Map()) {
 // A devlyn install in a user root this run does not refresh drifts and can shadow the
 // project's copy; name it without touching it.
 function noticeGlobalDrift(installed) {
-  for (const dir of ['.agents', '.codex', '.claude', '.grok']) {
+  for (const dir of ['.agents', '.codex', '.claude']) {
     const root = path.join(os.homedir(), dir, 'skills');
     const marker = path.join(root, DEVLYN_INSTALL_MARKER);
     if (installed.includes(root) || !fs.existsSync(marker)) continue;
@@ -1157,9 +1228,8 @@ function noticeGlobalDrift(installed) {
     } catch (error) {
       version = `(unreadable marker: ${error.message})`;
     }
-    if (dir !== '.grok' && version === PKG.version) continue;
-    // 4.0's Grok root; Grok now reads ~/.agents/skills, so --global never refreshes it.
-    const advice = dir === '.grok' ? 'delete it' : 'refresh it with --global, or delete it';
+    if (version === PKG.version) continue;
+    const advice = 'refresh it with --global, or delete it';
     log(`Global devlyn ${version} in ${root.replace(os.homedir(), '~')} — ${advice}.`, 'yellow');
   }
 }
@@ -1203,12 +1273,16 @@ function update() {
   const projectRoots = targets.flatMap((target) => skillRoots(target, false));
   const roots = [...userRoots, ...projectRoots];
   if (!roots.length) {
+    const written = [];
+    const userCleanup = cleanupScope(os.homedir(), true, written);
+    const projectCleanup = (home?.dev !== here.dev || home?.ino !== here.ino) && cleanupScope(projectDir(), false, written);
+    if (userCleanup || projectCleanup) { noticeProjectChanges(written.filter((file) => !path.isAbsolute(file) || file.startsWith(projectDir() + path.sep))); return; }
     throw new InstructionError(['No devlyn install here to update. Run npx devlyn-cli to install.', ...linkNotices].join('\n'));
   }
 
   return withUserSkillLocks(userRoots, () => {
     if (targets.length) readProjectGitignore();
-    const plan = preflightSkills(roots, [], targets.includes('claude') ? path.dirname(skillRoots('claude', false)[0]) : null);
+    const plan = preflightSkills(roots);
     // Ownership preflight has already refused unreadable or invalid markers.
     const current = PKG.version.split('.').map(BigInt);
     const newer = roots.flatMap((root) => {
@@ -1231,12 +1305,17 @@ function update() {
         + newer.join('\n') + '\nRun npx devlyn-cli@latest update.');
     }
 
-    userRoots.forEach((root) => installCoreSkills(root, [], new Map(), plan));
-    if (targets.length) install(targets, false, [], plan);
+    userRoots.forEach((root) => installCoreSkills(root, [], new Map()));
+    if (targets.length) install(targets, false, [], plan, () => cleanupScope(os.homedir(), true, []));
     else {
+      cleanupScope(os.homedir(), true, []);
       log(`\n✅ devlyn ${PKG.version} installed`, 'green');
       noticeGlobalDrift(userRoots);
-      noticeRetainedSkills(plan.retained);
+    }
+    if (!targets.length && (home?.dev !== here.dev || home?.ino !== here.ino)) {
+      const written = [];
+      cleanupScope(projectDir(), false, written);
+      noticeProjectChanges(written);
     }
   });
 }

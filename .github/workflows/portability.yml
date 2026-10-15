@@ -4,9 +4,10 @@ on:
   # Runner minutes are billed, so this runs per release, not per PR (owner,
   # 2026-10-07): publish.yml calls it on the release tag and publishes only
   # after it passes. Before merging, run the POSIX half locally: npm ci &&
-  # node scripts/update-instruction-templates.js && node scripts/update-skill-history.js &&
+  # node scripts/update-cleanup-history.js && node scripts/update-instruction-templates.js &&
+  # node scripts/update-skill-history.js &&
   # node --test scripts/test-installer-menu.cjs && bash scripts/lint-skills.sh &&
-  # python3 scripts/test-ideate-loop.py (then restore the two bin/*.json files)
+  # python3 scripts/test-ideate-loop.py (then restore the generated bin/*.json files)
   workflow_call:
   workflow_dispatch:
 
@@ -42,6 +43,7 @@ jobs:
         run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Regenerate offline manifests
         run: |
+          node scripts/update-cleanup-history.js
           node scripts/update-instruction-templates.js
           node scripts/update-skill-history.js
       - name: Validate POSIX source
@@ -66,7 +68,8 @@ jobs:
               assert subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode().strip() == os.environ['GITHUB_SHA']
               subprocess.run(['git', 'diff', '--exit-code', 'HEAD', '--', '.',
                               ':(exclude)bin/instruction-templates.json',
-                              ':(exclude)bin/skill-history.json'], check=True)
+                              ':(exclude)bin/skill-history.json',
+                              ':(exclude)bin/cleanup-history.json'], check=True)
               subprocess.run(['git', 'diff', '--cached', '--exit-code', 'HEAD', '--'], check=True)
           check_source()
           root = pathlib.Path(os.environ['RUNNER_TEMP']) / 'portability'
@@ -79,13 +82,10 @@ jobs:
           test = driver / 'test-windows-portability.py'
           shutil.copyfile('scripts/test-windows-portability.py', test)
           shutil.copyfile('scripts/test-ideate-loop.py', driver / 'test-ideate-loop.py')
-          shutil.copytree('scripts/fixtures/instructions', driver / 'fixtures/instructions')
-          shutil.copyfile('scripts/fixtures/installer-4.1.0.tar.gz', driver / 'fixtures/installer-4.1.0.tar.gz')
-          shutil.copyfile('scripts/fixtures/installer-pre-4.1.tar.gz', driver / 'fixtures/installer-pre-4.1.tar.gz')
+          shutil.copytree('scripts/fixtures', driver / 'fixtures')
           check_source()
-          driver_files = [test, driver / 'test-ideate-loop.py', driver / 'fixtures/installer-4.1.0.tar.gz',
-                          driver / 'fixtures/installer-pre-4.1.tar.gz',
-                          *sorted((driver / 'fixtures/instructions').glob('*.md'))]
+          driver_files = [test, driver / 'test-ideate-loop.py',
+                          *sorted(p for p in (driver / 'fixtures').rglob('*') if p.is_file())]
           for copied in driver_files:
               source = 'scripts/' + copied.relative_to(driver).as_posix()
               assert copied.read_bytes() == subprocess.check_output([
