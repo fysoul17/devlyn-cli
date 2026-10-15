@@ -120,8 +120,9 @@ or delete them; delete `~/.grok/skills`, since Grok now reads `~/.agents/skills`
 Upgrading to 4.2.0: `/devlyn-resolve` and the pipeline helpers only it used are retired;
 no measured replacement ships in their place. Run the installer again where devlyn is
 installed. It removes the `devlyn-resolve` folders (and pre-4.0.0 `devlyn:resolve` ones)
-where it installs, removes the Stop hook it added to `.claude/settings.json` while keeping
-your own hooks, and names the other settings it once added for the pipeline
+only when they are unchanged devlyn-cli copies; others are left in place and named. It
+removes the Stop hook it added to `.claude/settings.json` while keeping your own hooks,
+and names the other settings it once added for the pipeline
 (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` and its `.devlyn` and git permissions) without
 deleting them. `/devlyn-engines` keeps only the executor pin: `pair_judge_priority` and
 `roles` in `.devlyn/engines.json` stay as written, select nothing, and `clear` removes them.
@@ -147,7 +148,7 @@ devlyn skill by its old name or path (for example Codex `[[skills.config]]` or o
 `disabledExtensions`) needs the new name. A project that committed the old `devlyn:*`
 folders checks out on Windows once that re-sync is committed.
 
-Earlier versions of devlyn-cli shipped 16+ slash commands. The iter-0034 Phase 4 cutover (2026-05-04) and the 2026-05-14 follow-up consolidated them, 4.0.0 renamed every devlyn skill to the Agent Skills naming standard (`devlyn-<name>`: lowercase, digits and hyphens, the same as its folder), and after 4.1.0 resolve and design-ui were retired and the queue moved into ideate. Upgrades automatically purge the legacy skill directories.
+Earlier versions of devlyn-cli shipped 16+ slash commands. The iter-0034 Phase 4 cutover (2026-05-04) and the 2026-05-14 follow-up consolidated them, 4.0.0 renamed every devlyn skill to the Agent Skills naming standard (`devlyn-<name>`: lowercase, digits and hyphens, the same as its folder), and after 4.1.0 resolve and design-ui were retired and the queue moved into ideate. Upgrades remove legacy skill directories only when they are unchanged devlyn-cli copies; others are left in place and named.
 
 | Old command | Now use |
 |---|---|
