@@ -147,3 +147,40 @@ event the same way:
 4. **Write-up.** If Y is not adopted, the write-up reverts the paragraph
    before merge. The prompt ablation recorded in DESIGN.md is then the next
    candidate.
+
+## Rerun 20261015a (registered 2026-10-15, before exposure)
+
+Run 20261014a closed INCONCLUSIVE ([results](results.md)). The owner chose
+candidate 3 there: an unchanged rerun after the drop diagnosis. Everything
+above applies unchanged to run 20261015a: the prediction, the arms, the
+schedule, the grading, the cost and adoption rules, STOP and renewal. Its
+identities are in
+[registration-20261015a.json](registration-20261015a.json).
+
+- **Unchanged inputs.** The apparatus files, DESIGN.md, README.md, both arm
+  tarballs, `arms.json`, the control manifest, the image, the CLI versions and
+  the routes hash identically to [registration.json](registration.json).
+  `apparatus_commit` is the current main; no apparatus code changed since the
+  first registration.
+- **New per-run inputs.** The run ID, the 24 repositories, the GitHub PAT
+  (selected repositories only, Contents and Pull requests write), the model
+  auth snapshot and the Codex models cache. The cache is copied from the host
+  at staging, so its `fetched_at` differs. The Claude account pair is
+  `45eff57aaa45`/`b6b7768fd228` for smoke and measured; the Codex account is
+  unchanged.
+- **Network.** [Benchmark hard rule 5](../../../benchmark/README.md) applies:
+  the host network is held fixed for the whole run. A watcher logs every change
+  of the host's default-route interface. A change during a cell is reported
+  with that cell; it does not change any rule above.
+- **Smoke attempt 1 qualified all four cells.** No stream retry or API error
+  was recorded.
+
+| Cell | Owner s | Input | Output | Usage | Delivery | Repository |
+|---|---:|---:|---:|---|---|---|
+| Claude X | 572.4 | 2,519,890 | 59,060 | COMPLETE | passed | archived, deleted (404) |
+| Claude Y | 758.5 | 3,140,290 | 78,545 | COMPLETE | passed | archived, deleted (404) |
+| Codex X | 175.0 | 514,105 | 6,903 | COMPLETE | passed | archived, deleted (404) |
+| Codex Y | 131.8 | 381,285 | 5,889 | COMPLETE | passed | archived, deleted (404) |
+
+The run 20261014a smoke and measured records stay as they are and are never
+pooled with this run.
