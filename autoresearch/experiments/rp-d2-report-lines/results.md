@@ -48,6 +48,56 @@ The 0254 accounting cannot count such a retry. The withdrawn continuation rule
 case also fails the unchanged audit, on unindexed request bodies. In addition,
 a compared UNKNOWN cost row blocks adoption.
 
+## Diagnosis (added 2026-10-15, after merge)
+
+The owner chose candidate 1. Host route changes made by a VPN client are the
+likely cause. On the morning of 2026-10-15, failures followed each VPN change
+within about a minute. For 2026-10-14 the match rests on timing alone. Docker is not needed
+for a drop, because host sessions dropped as well. One retry remains
+unexplained. The text above is unchanged. "Silent" there means no transcript
+row was written; it does not mean the connection carried no bytes.
+
+- **Host sessions outside Docker dropped the same way.** Host Claude Code
+  transcripts record nine `api_error` ECONNRESET retries on 2026-10-14, from
+  18:54 to 23:26 KST. Each came 82–160 s after the previous row. Three more
+  followed on the morning of 2026-10-15, by 08:48 KST. From 2026-09-29 until
+  18:54 KST on 2026-10-14 there were none, across about 600 requests that
+  waited 80 s or more. Successful requests on the same evening waited up to
+  1,020 s, so a fixed limit on total request time does not explain the drops.
+  Transcript gaps do not measure idle time on the wire.
+- **Codex dropped in the same morning window.** Three Codex streams failed with
+  `Can't assign requested address` (EADDRNOTAVAIL), which fits a local
+  address that is no longer available.
+- **This morning's logs pair VPN changes with failures.**
+  - Cisco Secure Client brought up a full-tunnel VPN, with a VPN default
+    route, at 08:22:55 KST.
+  - A user-requested disconnect ended it at 08:29:10–08:29:12.
+  - Codex streams then failed with EADDRNOTAVAIL at 08:29:59, 08:30:08 and
+    08:31:20. A fourth, at 08:30:08, failed with `error decoding response
+    body`.
+  - A host Claude request that began at 08:28:09, inside the tunnel window,
+    failed with ECONNRESET at 08:30:20.
+  - The tunnel came up again at 08:46:38. A host Claude request failed with
+    ECONNRESET at 08:47:47.
+  - One more host retry came at 08:45:01. The system log from 08:44:30 to
+    08:45:05 has no VPN, tunnel or route event. Its cause is not established.
+- **Yesterday matches on timing (inferred).** The detailed agent log for
+  2026-10-14 has rotated out, and only process stamps remain.
+  - The Cisco Secure Client app started at 18:53:35 KST.
+  - VPN agent helper processes appeared at 18:51–18:53, 19:49, 20:18, 23:02
+    and 23:21.
+  - The first host drop followed at 18:54:20. Smoke attempt 1 dropped at about
+    20:20 and m01 at about 23:05, each about two minutes after a stamp.
+- **Docker cells share the host's routes.** Docker Desktop opens container
+  connections from the host, so a host route change can break them as well.
+
+**Consequence.** A live run needs a fixed host network. No VPN may connect or
+disconnect, and the host may not switch networks, while a cell runs.
+[benchmark/README.md](../../../benchmark/README.md) now states this as a hard
+rule. The rule avoids the likely trigger. It does not prove that every drop
+goes away, and a drop during a cell still stops the run as registered.
+Candidates 2 and 3 remain for the owner.
+
 ## Descriptive signal (not measured data)
 
 In smoke attempt 2, on SM, one observation per cell:
