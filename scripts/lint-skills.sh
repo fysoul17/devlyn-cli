@@ -180,7 +180,7 @@ fi
 
 # ---------------------------------------------------------------------------
 # 5c. Live text does not use a pre-4.0.0 skill name. History (benchmark/,
-#     autoresearch/, docs/), the legacy instruction fixtures and fingerprints,
+#     autoresearch/, docs/), the legacy instruction and cleanup fixtures and fingerprints,
 #     the README legacy map, the installer's rename and removal tables and
 #     comments, and the tests that plant old installs keep them.
 # ---------------------------------------------------------------------------
@@ -188,7 +188,7 @@ section "Check 5c: no pre-4.0.0 skill names in live text"
 old_names='devlyn:(pencil-pull|pencil-push|design-ui|resolve|ideate|engines|queue|reap)([^a-z0-9-]|$)'
 offenders=$(
   {
-    git grep -nIE "$old_names" -- . ':!benchmark' ':!autoresearch' ':!docs' ':!scripts/fixtures/instructions' \
+    git grep -nIE "$old_names" -- . ':!benchmark' ':!autoresearch' ':!docs' ':!scripts/fixtures/instructions' ':!scripts/fixtures/cleanup' \
       ':!bin/instruction-templates.json' ':!bin/devlyn.js' ':!README.md' ':!scripts/lint-skills.sh' \
       ':!scripts/test-windows-portability.py' || true
     sed '/<!-- legacy-surface-map:begin/,/<!-- legacy-surface-map:end/s/.*//' README.md \
@@ -251,14 +251,14 @@ fi
 # 5e. Shipped and CI files name resolve's skill, helpers and flags only where
 #     removal or migration needs them: the installer's removal table and
 #     retired Stop-hook command, the README legacy map, the tests that plant
-#     old installs, and the historical instruction fixtures and fingerprints.
+#     old installs, and the historical instruction and cleanup fixtures and fingerprints.
 # ---------------------------------------------------------------------------
 section "Check 5e: retired resolve names appear only in removal and migration text"
 retired_names='devlyn[-:]resolve|resolve-stop-hook|archive_run|collect-codex-findings|finish-gate|grok-anchor-guard|judge-output-parser|judge-role-evidence|phase-prompt-render|process-evidence|resolve-bootstrap|spec-verify-check|state-phase-write|terminal-claim-check|verify-merge-findings|codex-config\.md|run-bounded|--pair-verify|--no-pair|--risk-probes|--no-risk-probes|--role-config|--verify-only'
 offenders=$(
   {
     git grep -nIE "$retired_names" -- bin config .agents scripts .github CLAUDE.md AGENTS.md package.json \
-      ':!scripts/lint-skills.sh' ':!scripts/test-windows-portability.py' ':!scripts/fixtures/instructions' \
+      ':!scripts/lint-skills.sh' ':!scripts/test-windows-portability.py' ':!scripts/fixtures/instructions' ':!scripts/fixtures/cleanup' \
       ':!bin/instruction-templates.json' ':!bin/skill-history.json' ':!bin/devlyn.js' || true
     sed '/<!-- legacy-surface-map:begin/,/<!-- legacy-surface-map:end/s/.*//' README.md \
       | grep -nE "$retired_names" | sed 's#^#README.md:#' || true
