@@ -455,7 +455,7 @@ init({options});
         if not ignored:
             self.assertNotIn('Git ignores', output)
             return
-        notice = f'\x1b[2mGit ignores {ignored} installed files (example rule: {rule}).\x1b[0m'
+        notice = f'\x1b[2mGit ignores {ignored} installed file{"" if ignored == 1 else "s"} (example rule: {rule}).\x1b[0m'
         self.assertEqual([line for line in raw.splitlines() if 'Git ignores' in line], [notice])
         version = json.loads((self.package / 'package.json').read_bytes())['version']
         self.assertGreater(raw.index(notice), raw.index(f'✅ devlyn {version} installed'))
@@ -554,9 +554,9 @@ init({options});
 
     def test_project_install_notice_partially_ignored_scripts(self):
         run(['git', 'init', '-q', self.project])
-        (self.project / '.gitignore').write_text('# project scripts\n' * 12 + 'scripts/\n', encoding='utf-8')
+        (self.project / '.gitignore').write_text('# project scripts\n' * 12 + '**/scripts/queue.py\n', encoding='utf-8')
         result = self.cli('-y')
-        self.assert_install_notice(result, ignored=2, rule='.gitignore:13: scripts/')
+        self.assert_install_notice(result, ignored=1, rule='.gitignore:13: **/scripts/queue.py')
         self.assertEqual(run(['git', 'ls-files'], cwd=self.project).stdout, b'')
 
     def test_project_install_notice_wholly_ignored_skill_folders(self):

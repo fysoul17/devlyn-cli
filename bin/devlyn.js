@@ -1155,7 +1155,7 @@ function noticeIgnoredInstallFiles(installedSkills) {
   const verbose = git(['check-ignore', '-v', '-z', '--stdin'], ignored[0] + '\0');
   if (verbose.error || verbose.status !== 0) return;
   const [source, line, pattern] = verbose.stdout.split('\0');
-  log(`Git ignores ${ignored.length} installed files (example rule: ${source}:${line}: ${pattern}).`, 'dim');
+  log(`Git ignores ${ignored.length} installed file${ignored.length === 1 ? '' : 's'} (example rule: ${source}:${line}: ${pattern}).`, 'dim');
 }
 
 // A devlyn install in a user root this run does not refresh drifts and can shadow the
