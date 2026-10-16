@@ -21,6 +21,7 @@ import stat
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 import uuid
 
@@ -377,7 +378,7 @@ def gh(receipt, *args):
 
 
 def repository_info(repository):
-    info = json.loads(command(["gh", "repo", "view", "github.com/"+repository, "--json", "nameWithOwner,url,defaultBranchRef,mergeCommitAllowed"]))
+    info = json.loads(command(["gh", "repo", "view", "github.com/"+repository, "--json", "nameWithOwner,url,defaultBranchRef,mergeCommitAllowed,autoMergeAllowed"]))
     require(info["nameWithOwner"].lower() == repository.lower() and info["url"].lower() == "https://github.com/"+repository.lower(), "GitHub repository identity changed")
     return info
 
@@ -791,7 +792,17 @@ def complete(args):
             if not pr.get("autoMergeRequest"):
                 try:
                     require(info["mergeCommitAllowed"], "repository disallows merge commits")
-                    gh(receipt, "pr", "merge", str(pr["number"]), "--auto", "--merge", "--match-head-commit", receipt["publish_sha"])
+                    auto = ["--auto"] if info["autoMergeAllowed"] else []
+                    if not auto:
+                        # gh --auto enables auto-merge on UNKNOWN; let GitHub compute
+                        # mergeability before a direct attempt in repos that forbid it.
+                        for attempt in range(3):
+                            state = json.loads(gh(receipt, "pr", "view", str(pr["number"]), "--json", "mergeStateStatus"))
+                            if state["mergeStateStatus"] != "UNKNOWN":
+                                break
+                            if attempt < 2:
+                                time.sleep(2)
+                    gh(receipt, "pr", "merge", str(pr["number"]), *auto, "--merge", "--match-head-commit", receipt["publish_sha"])
                 except CompletionError as error:
                     refused = str(error)
             pr = json.loads(gh(receipt, "pr", "view", str(pr["number"]), "--json", PR_FIELDS))
@@ -883,8 +894,8 @@ def remote(ref):
     r = subprocess.run([os.environ['REAL_GIT'], '--git-dir', d['bare'], 'rev-parse', '--verify', ref], capture_output=True, text=True, encoding="utf-8")
     return r.stdout.strip() if r.returncode == 0 else None
 if a[:2] == ['repo', 'view']:
-    assert a[2:] == ['github.com/test/project', '--json', 'nameWithOwner,url,defaultBranchRef,mergeCommitAllowed'], 'unsupported gh repo view arguments: '+str(a)
-    print(json.dumps({'nameWithOwner':'test/project', 'url':'https://github.com/test/project', 'defaultBranchRef':{'name':d.get('default_branch','main')}, 'mergeCommitAllowed':d.get('merge_allowed',True)}))
+    assert a[2:] == ['github.com/test/project', '--json', 'nameWithOwner,url,defaultBranchRef,mergeCommitAllowed,autoMergeAllowed'], 'unsupported gh repo view arguments: '+str(a)
+    print(json.dumps({'nameWithOwner':'test/project', 'url':'https://github.com/test/project', 'defaultBranchRef':{'name':d.get('default_branch','main')}, 'mergeCommitAllowed':d.get('merge_allowed',True), 'autoMergeAllowed':d.get('auto_allowed',True)}))
 elif a[:2] == ['pr', 'list']:
     assert '--repo' in a and a[a.index('--repo')+1] == 'github.com/test/project'
     print(json.dumps([pr for pr in prs if pr['headRefName'] == a[a.index('--head')+1]]))
@@ -898,21 +909,38 @@ elif a[:2] == ['pr', 'create']:
     print(url)
     if d.pop('interrupt_create',False): save(); sys.exit(1)
 elif a[:2] == ['pr', 'view']:
-    print(json.dumps(prs[int(a[2])-1]))
+    pr = prs[int(a[2])-1]
+    fields = a[4]
+    assert a[3:] == ['--json', fields, '--repo', 'github.com/test/project']
+    assert fields in ('mergeStateStatus', 'number,url,headRefName,baseRefName,headRefOid,headRepository,headRepositoryOwner,isCrossRepository,state,mergedAt,mergeCommit,autoMergeRequest')
+    if fields == 'mergeStateStatus':
+        if d.get('merge_states'):
+            d['merge_state'] = d['merge_states'].pop(0)
+        state = d.get('merge_state', 'BLOCKED' if d.get('pending') else 'CLEAN')
+        d.setdefault('merge_state_views', []).append(state)
+        save()
+        print(json.dumps({'mergeStateStatus': state}))
+    else:
+        print(json.dumps(pr))
 elif a[:2] == ['pr', 'merge'] and '--disable-auto' in a:
     d['disables'] = d.get('disables',0)+1
     prs[int(a[2])-1]['autoMergeRequest'] = None
     save()
 elif a[:2] == ['pr', 'merge']:
-    assert '--admin' not in a and '--delete-branch' not in a
-    assert '--auto' in a and '--merge' in a and '--match-head-commit' in a
     pr = prs[int(a[2])-1]
     sha = a[a.index('--match-head-commit')+1]
+    auto = ['--auto'] if '--auto' in a else []
+    assert a[3:] == auto + ['--merge', '--match-head-commit', sha, '--repo', 'github.com/test/project']
     assert sha == remote('refs/heads/'+pr['headRefName'])
     d['merges'] = d.get('merges',0)+1
-    if not d.get('auto_allowed',True) and d.get('pending'):
+    d.setdefault('merge_calls', []).append(a)
+    state = d.get('merge_state', 'BLOCKED' if d.get('pending') else 'CLEAN')
+    immediately_mergeable = state in {'CLEAN', 'HAS_HOOKS', 'UNSTABLE'}
+    if auto and not immediately_mergeable and not d.get('auto_allowed',True):
         save(); print('repository disallows auto merge',file=sys.stderr); sys.exit(1)
-    if d.get('pending'):
+    if not auto and not immediately_mergeable:
+        save(); print('pull request is not mergeable: '+state,file=sys.stderr); sys.exit(1)
+    if auto and not immediately_mergeable:
         pr['autoMergeRequest'] = {'enabledAt':'now'}
     else:
         g = [os.environ['REAL_GIT'],'--git-dir',d['bare']]
@@ -1042,7 +1070,7 @@ class CompletionTests(unittest.TestCase):
 
     def merge_pr(self):
         self.configure(pending=False)
-        self.run_cmd(["gh", "pr", "merge", "1", "--auto", "--merge", "--match-head-commit", self.sha])
+        self.run_cmd(["gh", "pr", "merge", "1", "--auto", "--merge", "--match-head-commit", self.sha, "--repo", "github.com/test/project"])
 
     def anchor_state(self, work=None):
         work = work or self.work
@@ -2119,6 +2147,60 @@ ctypes.CDLL(None).pthread_exit(None)
         self.assertEqual(self.g("ls-remote", "origin", "refs/heads/task/fixture").split()[0], race)
         self.assertNotEqual(self.g("branch", "--list", "task/fixture"), "")
 
+    def test_auto_disallowed_unknown_then_clean_merges_directly(self):
+        self.allocate(); self.accept()
+        self.configure(auto_allowed=False, merge_states=["UNKNOWN", "UNKNOWN", "CLEAN"])
+        result, _ = self.complete("--mode", "auto", "--writers-stopped")
+        self.assertEqual(result["status"], "COMPLETE")
+        d = json.loads(self.data.read_text(encoding="utf-8"))
+        self.assertEqual(d["merge_state_views"], ["UNKNOWN", "UNKNOWN", "CLEAN"])
+        self.assertEqual(d["merge_calls"], [["pr", "merge", "1", "--merge", "--match-head-commit", self.sha,
+                                            "--repo", "github.com/test/project"]])
+        self.assertEqual(d["prs"][0]["state"], "MERGED")
+        self.assertIsNone(d["prs"][0]["autoMergeRequest"])
+
+    def test_auto_disallowed_blocked_reports_direct_refusal(self):
+        self.allocate(); self.accept()
+        self.configure(auto_allowed=False, merge_state="BLOCKED")
+        result, _ = self.complete("--mode", "auto")
+        self.assertEqual(result["status"], "PR")
+        self.assertIn("not mergeable: BLOCKED", result["merge_refused"])
+        d = json.loads(self.data.read_text(encoding="utf-8"))
+        self.assertEqual(d["merge_state_views"], ["BLOCKED"])
+        self.assertEqual(d["merge_calls"], [["pr", "merge", "1", "--merge", "--match-head-commit", self.sha,
+                                            "--repo", "github.com/test/project"]])
+        self.assertEqual(d["prs"][0]["state"], "OPEN")
+        self.assertIsNone(d["prs"][0]["autoMergeRequest"])
+        self.assertTrue(self.task.exists())
+
+    def test_auto_allowed_unknown_keeps_auto_pending(self):
+        self.allocate(); self.accept()
+        self.configure(auto_allowed=True, merge_state="UNKNOWN")
+        result, _ = self.complete("--mode", "auto")
+        self.assertEqual(result["status"], "PENDING")
+        self.assertNotIn("merge_refused", result)
+        d = json.loads(self.data.read_text(encoding="utf-8"))
+        self.assertEqual(d.get("merge_state_views", []), [])
+        self.assertEqual(d["merge_calls"], [["pr", "merge", "1", "--auto", "--merge", "--match-head-commit", self.sha,
+                                            "--repo", "github.com/test/project"]])
+        self.assertEqual(d["prs"][0]["state"], "OPEN")
+        self.assertTrue(d["prs"][0]["autoMergeRequest"])
+        self.assertTrue(self.task.exists())
+
+    def test_auto_disallowed_unknown_bound_attempts_direct_merge_once(self):
+        self.allocate(); self.accept()
+        self.configure(auto_allowed=False, merge_state="UNKNOWN")
+        result, _ = self.complete("--mode", "auto")
+        self.assertEqual(result["status"], "PR")
+        self.assertIn("not mergeable: UNKNOWN", result["merge_refused"])
+        d = json.loads(self.data.read_text(encoding="utf-8"))
+        self.assertEqual(d["merge_state_views"], ["UNKNOWN"] * 3)
+        self.assertEqual(d["merge_calls"], [["pr", "merge", "1", "--merge", "--match-head-commit", self.sha,
+                                            "--repo", "github.com/test/project"]])
+        self.assertEqual(d["prs"][0]["state"], "OPEN")
+        self.assertIsNone(d["prs"][0]["autoMergeRequest"])
+        self.assertTrue(self.task.exists())
+
     def test_policy_and_local_only_persist(self):
         self.allocate(); self.accept()
         self.configure(merge_allowed=False)
@@ -2133,7 +2215,7 @@ ctypes.CDLL(None).pthread_exit(None)
         self.configure(merge_allowed=True, auto_allowed=False, pending=True)
         result, _ = self.complete("--mode", "auto")
         self.assertEqual(result["status"], "PR")
-        self.assertIn("disallows auto merge", result["merge_refused"])
+        self.assertIn("not mergeable: BLOCKED", result["merge_refused"])
         self.assertTrue(self.task.exists())
         # Local-only cannot rewrite the delivery of a pushed PR; a local allocation keeps it (test_local_chain_*).
         result, _ = self.complete("--no-push", success=False)
