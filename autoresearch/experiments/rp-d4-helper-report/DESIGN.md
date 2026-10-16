@@ -1,12 +1,13 @@
 # rp-d4 design — the helper states cleanup
 
-DRAFT for design review (round 4, cost rule only). Nothing is
+DRAFT for design review (round 5, decision rule only). Nothing is
 registered yet. Rounds 0 and 1: Astra ultra and Grok 4.7 REVISE; round 2:
 Astra REVISE (one HIGH), Grok SHIP
 ([r0 Astra](results/design-r0-astra.md), [r0 Grok](results/design-r0-grok.md),
 [r1 Astra](results/design-r1-astra.md), [r1 Grok](results/design-r1-grok.md),
 [r2 Astra](results/design-r2-astra.md), [r2 Grok](results/design-r2-grok.md),
-[r3 Astra](results/design-r3-astra.md) SHIP, [r3 Grok](results/design-r3-grok.md) REVISE);
+[r3 Astra](results/design-r3-astra.md) SHIP, [r3 Grok](results/design-r3-grok.md) REVISE,
+[r4 Astra](results/design-r4-astra.md) REVISE (MEDIUM), [r4 Grok](results/design-r4-grok.md) REVISE (MEDIUM));
 every finding is applied below.
 
 ## Why
@@ -206,9 +207,12 @@ Branches are checked in this order; the first match wins.
      over the zero-success control, reported as such with no raw-sum
      comparison substituted; otherwise Y's wall, input and output per
      success are each ≤ X's;
+   - strict improvement (0232 §6 ties): S_Y > S_X, or at least one
+     per-success cost strictly lower (dominance counts); equal successes
+     with all three costs tied do not qualify;
    - both Claude guard reports pass.
-4. **COST HOLD:** every ADOPT condition except cost holds. No adoption; the
-   owner decides whether to measure further.
+4. **HOLD:** every ADOPT condition except cost or strict improvement
+   holds. No adoption; the owner decides the follow-up.
 5. **MIXED:** anything else; no adoption. A guard failure blocks adoption and
    gets no cause.
 
@@ -220,6 +224,7 @@ next candidate.
 Four slots per arm on two tasks, one model per engine. Three favourable
 discordant pairs give a paired one-sided exact p of 0.125; the gate is a
 small-sample routing rule, not confirmation. Pair outcomes are published.
-Cost is strict (Y ≤ X) as the ladder rule requires, but four slots cannot
-resolve a one-sentence change inside ~450k-token runs; a COST HOLD is a
-noise-limited outcome, not evidence that the sentence costs more.
+Cost is strict (Y ≤ X) as the ladder rule requires. A HOLD from a
+per-success ≤ miss is noise-limited: four slots cannot resolve a one-sentence
+change inside ~450k-token runs. A HOLD from a tie or from S_Y = 0 is an exact
+0232 §6 outcome.
