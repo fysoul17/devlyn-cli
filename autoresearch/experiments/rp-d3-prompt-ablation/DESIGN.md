@@ -8,8 +8,10 @@ slots (0/2 per arm). rp-d2's product paragraph (arm Y) did not change that
 shape. Grok's recorded dissent ([rp-d2 DESIGN.md](../rp-d2-report-lines/DESIGN.md))
 is that the benchmark prompt's closing sentence sets Codex's report shape.
 rp-d3 tests that dissent, which rp-d2 registered as its next candidate.
-Design reviews (round 0, both REVISE; every finding is applied below):
-[Astra](results/design-r0-astra.md), [Grok](results/design-r0-grok.md).
+Design reviews: round 0 both REVISE ([Astra](results/design-r0-astra.md),
+[Grok](results/design-r0-grok.md)); round 1 Astra SHIP, Grok REVISE
+([Astra](results/design-r1-astra.md), [Grok](results/design-r1-grok.md)).
+Every finding is applied below.
 
 ## Question
 
@@ -67,7 +69,9 @@ Eight measured slots `m01`–`m08`; they are never replaced.
 attempt repeats both cells, and a stopped smoke is discarded as a pair.
 Smoke qualifies delivery, the prompt-hash binding, the single-tarball
 binding and checklist emission. Smoke reports are not graded, and smoke
-results never change the prediction, the arms or the thresholds. That is 12
+results never change the prediction, the arms or the thresholds. Measured
+slots run only after a qualified smoke; an unqualified spare stops the run.
+That is 12
 repositories: 8 measured, 2 smoke and 2 spare.
 
 ## Grading
@@ -90,18 +94,19 @@ Attribution needs all eight slots dispatched, every delivery passing and
 every report adjudicated by both reviewers. Otherwise the result is
 INCONCLUSIVE, and a STOP overrides every branch.
 
-- **PROMPT-SENSITIVE:** P1 report ≥ 3/4 and P0 report ≤ 1/4. The sentence
-  blocks Codex's four-category report on these tasks. Next: a registered
+- **PROMPT-SENSITIVE:** P1 report ≥ 3/4 and P0 report ≤ 1/4. The result is
+  consistent with the sentence constraining Codex's four-category report on
+  these tasks. Next: a registered
   benchmark-prompt change with its own Claude check (owner decision).
 - **NO RESCUE:** P0 report ≤ 1/4, P1 report ≤ 1/4, P1 cleanup ≤ 1/4 and
   P1 reconciliation ≤ 1/4. The historical outline survived the deletion.
   Next: a product reporting candidate.
-- **MIXED:** every other pattern. Follow-ups:
+- **MIXED:** every other pattern. If P0 report ≥ 2/4, there is no
+  attribution and no follow-up. Otherwise (P0 report ≤ 1/4):
   - P1 cleanup ≥ 3/4 with P1 report ≤ 2/4: follow the category that still
     fails.
   - P1 reconciliation ≥ 3/4 with P1 cleanup ≤ 1/4: measure the rp-d2 Y
     cleanup paragraph with this sentence still absent.
-  - P0 report ≥ 2/4: no attribution.
 
 A 3/4 against 0/4 table has a one-sided Fisher p of about 0.07. The
 thresholds are gates for the next experiment, not proof.
