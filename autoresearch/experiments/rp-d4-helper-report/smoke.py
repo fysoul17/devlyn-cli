@@ -238,15 +238,13 @@ def tool_results(rows, engine):
                 yield dict(id=item['id'], tool=tool, input=input_, output=output)
 
 
-def native_calls(out, *, sealed=False):
-    """Native stdout JSON plus owner protocol-event payloads (the inherited carriers)."""
+def native_calls(out):
+    """Sealed native results for matching the smoke observer's captures only."""
     out = Path(out)
     plan = read(out / 'plan.json')
-    manifest = read(out / 'evidence.manifest.json') if sealed else None
-    if sealed:
-        require(not manifest.get('failures'), 'helper evidence seal failed')
-    files = manifest['files'] if manifest else {}
-    path_for = lambda relative: sealed_file(out, relative, files) if sealed else safe_file(out, relative)
+    manifest = read(out / 'evidence.manifest.json')
+    require(not manifest.get('failures'), 'helper evidence seal failed')
+    path_for = lambda relative: sealed_file(out, relative, manifest['files'])
     stream = read_jsonl(path_for('run/stdout'))
     require(bool(stream), 'native transcript is empty')
     calls = list(tool_results(stream, plan['engine']))
@@ -367,9 +365,10 @@ def bind_receipt(out, receipt, expected):
     require(receipt_matches(out, receipt, expected), 'helper call belongs to a different receipt')
 
 
-def complete_outputs(out, *, sealed=False):
+def complete_outputs(out):
+    """Reconstruct smoke output solely to qualify the observer's call records."""
     pending, streams = {}, []
-    for call in native_calls(out, sealed=sealed):
+    for call in native_calls(out):
         incoming = continuation_input(call)
         owners = {pending[identity] for identity in incoming if identity in pending}
         # Continuation identities only reassemble split stdout. Every native
@@ -403,8 +402,28 @@ def complete_outputs(out, *, sealed=False):
 
 
 def merge_refused(out):
-    """Retain any refusal, including a refused call followed by successful delivery."""
-    return any(result.get('merge_refused') is not None for result in complete_outputs(out))
+    """Scan retained native bytes; envelopes and continuations need no parsing.
+
+    Each cell owns one receipt. A false positive is safely INCONCLUSIVE.
+    The inherited seal inventories files even if they have since disappeared.
+    """
+    out = Path(out)
+    manifest = read(out / 'evidence.manifest.json')
+    require(not manifest.get('failures'), 'helper evidence seal failed')
+    files = manifest['files']
+    require('run/stdout' in files, 'native transcript is missing')
+    patterns = (b'"merge_refused": "', br'\"merge_refused\": \"', br'\\\"merge_refused\\\": \\\"')
+    refused = False
+    for name, expected in files.items():
+        if (name == 'run/stdout' or name.startswith(('cell/trace/', 'home/.claude/api-bodies/')) or
+                name.endswith('.jsonl') and name.startswith(('home/.codex/sessions/', 'home/.claude/projects/'))):
+            raw = safe_file(out, name).read_bytes()
+            require(hashlib.sha256(raw).hexdigest() == expected,
+                    'helper evidence is missing or changed after sealing')
+            require(name != 'run/stdout' or bool(raw.strip()), 'native transcript is empty')
+            # Do not return early: a later unreadable file must still STOP.
+            refused |= any(pattern in raw for pattern in patterns)
+    return refused
 
 
 def qualify(out):
@@ -431,7 +450,7 @@ def qualify(out):
         bind_receipt(out, result['receipt'], receipt_file)
         check_call(result, record['actions'], resources)
         observed.append(result)
-    outputs = complete_outputs(out, sealed=True)
+    outputs = complete_outputs(out)
     key = lambda value: json.dumps(value, sort_keys=True, separators=(',', ':'))
     require(Counter(map(key, observed)) == Counter(map(key, outputs)), 'helper stdout and observed call records differ')
     require(not any('merge_refused' in result for result in outputs), 'smoke helper refused a merge')

@@ -335,6 +335,35 @@ def test_y_smoke_qualification_failure_stops_pair(staged, monkeypatch):
     assert rows[0]['smoke_qualification']['status'] == 'PASS'
 
 
+@pytest.mark.parametrize('fault', ['missing', 'unreadable'])
+def test_native_evidence_read_failure_stops_pair(staged, monkeypatch, fault):
+    s, _, path = staged
+    app = s.runner.Runner(path)
+    def inherited(_self, name, task, _route, engine):
+        out = Path(app.runtime['output']) / name
+        (out / 'run').mkdir(parents=True)
+        s.write(out / 'rp-verdict.json', record(s, app, name, task, engine))
+        stdout = out / 'run/stdout'
+        stdout.write_bytes(b'{}\n')
+        s.write(out / 'evidence.manifest.json', dict(files={'run/stdout': s.runner.smoke.digest(stdout)}, failures=[]))
+        if fault == 'missing':
+            stdout.unlink()
+        else:
+            read_bytes = Path.read_bytes
+            def unreadable(target):
+                if target == stdout:
+                    raise PermissionError('synthetic unreadable native transcript')
+                return read_bytes(target)
+            monkeypatch.setattr(Path, 'read_bytes', unreadable)
+        return 0
+    monkeypatch.setattr(s.runner.legacy.legacy.Runner, 'run', inherited)
+    assert app.schedule() == 2
+    rows = s.read(Path(app.runtime['output']) / 'rp-schedule.json')['slots']
+    assert rows[0]['status'] == 'STOP'
+    assert rows[0]['reason'] == 'helper evidence qualification failed'
+    assert not rows[1]['dispatched']
+
+
 @pytest.mark.parametrize('completed_count', range(11))
 def test_renewal_is_limited_to_complete_pair_boundaries(staged, completed_count):
     s, _, path = staged
