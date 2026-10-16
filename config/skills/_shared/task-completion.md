@@ -182,7 +182,7 @@ the user's delivery restriction. These per-task choices persist in the receipt; 
 head and base PR. While OPEN, it cancels owned auto-merge, reports `PR` with its URL
 and retains the checkout. Once MERGED by any method, either mode cleans released
 resources in that call, on resume or at the next allocation. Default `auto` also requests
-`gh pr merge --auto --merge --match-head-commit <accepted SHA>`. Repository
+a `--merge --match-head-commit <accepted SHA>` merge. Repository
 checks/reviews and merge policy remain authoritative: no admin bypass, strategy
 fallback or repository setting changes. When the repository disallows merge
 commits or refuses the request, delivery reports `PR` with `merge_refused` and
