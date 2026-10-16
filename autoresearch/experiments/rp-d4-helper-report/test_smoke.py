@@ -3,7 +3,6 @@ from copy import deepcopy
 import importlib.util
 import json
 import os
-import shlex
 from pathlib import Path
 import subprocess
 import sys
@@ -246,48 +245,168 @@ class EvidenceTests(unittest.TestCase):
         (self.out / 'run/stdout').write_text(''.join(json.dumps(row) + '\n' for row in rows))
         self.assertTrue(s.merge_refused(self.out))
 
-    def test_quoted_python_path_flags_and_shell_sequence_are_recognized(self):
-        for command in ('pwd && /usr/bin/python3 -B ".agents/skills/_shared/task-complete.py" complete --receipt task',
-                        'pwd\npython3 -u -B .agents/skills/_shared/task-complete.py complete --receipt task',
-                        './task-complete.py complete --receipt task'):
-            with self.subTest(command=command):
-                self.assertTrue(s.is_complete(dict(tool='command_execution', input={'command': command})))
-        self.assertFalse(s.is_complete(dict(tool='command_execution', input={'command':
-            'echo task-complete.py complete'})))
-
-    def test_nested_shell_tool_stdout_envelope(self):
-        refused = result(status='PR') | {'merge_refused': 'repository disallows merge commits'}
-        call = dict(id='nested', tool='functions.exec', input='text(await tools.exec_command({cmd: '
-                    '"python3 .agents/skills/_shared/task-complete.py complete --receipt task"}));')
-        rows = [dict(type='item.started', item=call), dict(type='item.completed', item=dict(
-            id='nested', exit_code=0, aggregated_output=json.dumps({'output': json.dumps(refused)})))]
-        (self.out / 'run/stdout').write_text(''.join(json.dumps(row) + '\n' for row in rows))
-        self.assertTrue(s.merge_refused(self.out))
-
-    def call_rows(self, tool, input_, output, id_):
+    def call_rows(self, tool, input_, output, id_, engine):
+        if engine == 'claude':
+            return [dict(type='assistant', message={'content': [dict(
+                        type='tool_use', id=id_, name=tool, input=input_)]}),
+                    dict(type='user', message={'content': [dict(
+                        type='tool_result', tool_use_id=id_, content=output)]})]
         return [dict(type='item.started', item=dict(id=id_, tool=tool, input=input_)),
                 dict(type='item.completed', item=dict(id=id_, exit_code=0, aggregated_output=output))]
 
-    def write_calls(self, *calls):
-        rows = [dict(type='thread.started', thread_id='owner')]
+    def write_calls(self, *calls, engine='codex'):
+        self.write('plan.json', s.read(self.out / 'plan.json') | {'engine': engine})
+        rows = [dict(type='thread.started', thread_id='owner')] if engine == 'codex' else []
         for index, (tool, input_, output) in enumerate(calls):
-            rows.extend(self.call_rows(tool, input_, output, str(index)))
+            rows.extend(self.call_rows(tool, input_, output, str(index), engine))
         (self.out / 'run/stdout').write_text(''.join(json.dumps(row) + '\n' for row in rows))
+
+    def carriers(self, command, output):
+        for engine, tool in (('codex', 'command_execution'), ('codex', 'exec_command'),
+                             ('codex', 'shell_command'), ('claude', 'Bash')):
+            key = 'cmd' if tool == 'exec_command' else 'command'
+            yield engine, (tool, {key: command}, output)
+        for engine in ('codex', 'claude'):
+            yield engine, ('functions.exec', 'text(await tools.exec_command({cmd: ' +
+                           json.dumps(command) + '}));', json.dumps({'output': output}))
+
+    def assert_refusal_survives_success(self, command):
+        refused = result(status='PR') | {'merge_refused': 'synthetic refusal'}
+        for engine, call in self.carriers(command, json.dumps(refused)):
+            with self.subTest(engine=engine, tool=call[0], command=command):
+                tool = 'Bash' if engine == 'claude' else 'command_execution'
+                success = (tool, {'command': 'python3 task-complete.py complete'}, json.dumps(self.value))
+                self.write_calls(call, success, engine=engine)
+                self.assertEqual(s.complete_outputs(self.out), [refused, self.value])
+                self.assertTrue(s.merge_refused(self.out))
+
+    def test_sourced_variable_refusal_survives_literal_success(self):
+        self.assert_refusal_survives_success('source /tmp/helper-env; python3 "$helper" complete --receipt task')
+
+    def test_trailing_comment_refusal_survives_literal_success(self):
+        self.assert_refusal_survives_success('python3 task-complete.py complete --receipt task # --help')
+
+    def test_wrapper_refusal_survives_literal_success(self):
+        self.assert_refusal_survives_success('/tmp/finish-task --receipt task')
+
+    def test_source_inspection_interleaved_with_completions_does_not_stop(self):
+        inspection = 'def complete(args):\n    return result("PR", merge_refused=refused)\n'
+        commands = ('rg -n "def complete|merge_refused" .agents/skills/_shared/task-complete.py',
+                    'grep -n complete .agents/skills/_shared/task-complete.py',
+                    'cat .agents/skills/_shared/task-complete.py')
+        for engine in ('codex', 'claude'):
+            for code_mode in (False, True):
+                with self.subTest(engine=engine, code_mode=code_mode):
+                    tool = 'Bash' if engine == 'claude' else 'exec_command'
+                    calls = []
+                    for command, output in ((commands[0], inspection),
+                                            ('python3 task-complete.py complete', json.dumps(result(status='PR'))),
+                                            (commands[1], inspection),
+                                            ('python3 task-complete.py complete', json.dumps(self.value)),
+                                            (commands[2], inspection)):
+                        calls.append(('functions.exec', 'text(await tools.exec_command({cmd: ' +
+                                      json.dumps(command) + '}));', json.dumps({'output': output})) if code_mode else
+                                     (tool, {'command': command}, output))
+                    self.write_calls(*calls, engine=engine)
+                    self.assertEqual(s.complete_outputs(self.out), [result(status='PR'), self.value])
+                    self.assertFalse(s.merge_refused(self.out))
+
+    def test_refusal_for_another_receipt_is_ignored(self):
+        refused = result(status='PR') | {'merge_refused': 'synthetic refusal',
+            'receipt': '/cell/work/.git/devlyn-completion/other/receipt.json'}
+        for engine, call in self.carriers('python3 task-complete.py complete', json.dumps(refused)):
+            with self.subTest(engine=engine, tool=call[0]):
+                self.write_calls(call, ('Bash', {'command': 'finish-task'}, json.dumps(self.value)), engine=engine)
+                self.assertEqual(s.complete_outputs(self.out), [self.value])
+                self.assertFalse(s.merge_refused(self.out))
+
+    def test_echoed_text_without_a_bound_result_is_ignored(self):
+        outputs = ('task-complete.py complete: merge_refused=synthetic refusal', '{broken', '{}',
+                   json.dumps({'receipt': self.value['receipt'], 'merge_refused': 'synthetic refusal'}),
+                   json.dumps({'status': 'PR', 'delivery_status': 'PR', 'merge_refused': 'synthetic refusal'}),
+                   json.dumps({'status': 'COMPLETE', 'delivery_status': 'PR',
+                               'receipt': self.value['receipt'], 'merge_refused': 'synthetic refusal'}))
+        for output in outputs:
+            for engine, call in self.carriers('echo task-complete.py complete', output):
+                with self.subTest(engine=engine, tool=call[0], output=output):
+                    self.write_calls(call, engine=engine)
+                    self.assertEqual(s.complete_outputs(self.out), [])
+                    self.assertFalse(s.merge_refused(self.out))
+
+    def test_only_non_null_merge_refused_marks_a_bound_result(self):
+        for refusal in (None, '', False, 0, {}, [], 'synthetic refusal'):
+            with self.subTest(refusal=refusal):
+                value = result(status='PR') | {'merge_refused': refusal}
+                self.write_calls(('exec_command', {'cmd': 'finish-task'}, json.dumps(value)))
+                self.assertEqual(s.complete_outputs(self.out), [value])
+                self.assertEqual(s.merge_refused(self.out), refusal is not None)
+
+    def test_multiple_results_in_one_tool_output_keep_refusal(self):
+        refused = result(status='PR') | {'merge_refused': 'synthetic refusal'}
+        for engine, call in self.carriers('finish-task; finish-task',
+                                          json.dumps(refused) + '\n' + json.dumps(self.value)):
+            with self.subTest(engine=engine, tool=call[0]):
+                self.write_calls(call, engine=engine)
+                self.assertEqual(s.complete_outputs(self.out), [refused, self.value])
+                self.assertTrue(s.merge_refused(self.out))
+
+    def test_batched_code_mode_results_keep_refusal_after_success(self):
+        refused = result(status='PR') | {'merge_refused': 'synthetic refusal'}
+        for engine in ('codex', 'claude'):
+            with self.subTest(engine=engine):
+                output = json.dumps([{'status': 'fulfilled', 'value': {
+                    'output': json.dumps(refused), 'exit_code': 0}}])
+                self.write_calls(
+                    ('functions.exec', 'text(await Promise.allSettled([tools.exec_command({cmd})]));', output),
+                    ('functions.exec', 'text(await tools.exec_command({cmd}));', json.dumps(self.value)),
+                    engine=engine)
+                self.assertEqual(s.complete_outputs(self.out), [refused, self.value])
+                self.assertTrue(s.merge_refused(self.out))
+
+    def test_claude_content_blocks_contain_completion_output(self):
+        refused = result(status='PR') | {'merge_refused': 'synthetic refusal'}
+        self.write_calls(('Bash', {'command': 'finish-task'},
+                          [{'type': 'text', 'text': json.dumps(refused)}]), engine='claude')
+        self.assertEqual(s.complete_outputs(self.out), [refused])
+        self.assertTrue(s.merge_refused(self.out))
+
+    def test_native_results_without_a_start_event_are_scanned(self):
+        refused = result(status='PR') | {'merge_refused': 'synthetic refusal'}
+        for engine, call in self.carriers('finish-task', json.dumps(refused)):
+            with self.subTest(engine=engine, tool=call[0]):
+                self.write_calls(call, engine=engine)
+                path = self.out / 'run/stdout'
+                rows = [json.loads(line) for line in path.read_text().splitlines()]
+                path.write_text(''.join(json.dumps(row) + '\n' for row in rows
+                                        if row['type'] not in ('item.started', 'assistant')))
+                self.assertEqual(s.complete_outputs(self.out), [refused])
+                self.assertTrue(s.merge_refused(self.out))
+
+    def test_assistant_prose_is_not_a_native_tool_result(self):
+        refused = result(status='PR') | {'merge_refused': 'synthetic refusal'}
+        for engine in ('codex', 'claude'):
+            with self.subTest(engine=engine):
+                self.write_calls(engine=engine)
+                row = (dict(type='item.completed', item=dict(id='prose', type='agent_message',
+                            text=json.dumps(refused))) if engine == 'codex' else
+                       dict(type='assistant', message={'content': [dict(type='text', text=json.dumps(refused))]}))
+                with (self.out / 'run/stdout').open('a') as stream:
+                    stream.write(json.dumps(row) + '\n')
+                self.assertFalse(s.merge_refused(self.out))
 
     def test_helper_shell_process_continuation_retains_refusal(self):
         refused = result(status='PR') | {'merge_refused': 'synthetic refusal'}
         self.write_calls(
-            ('exec_command', {'cmd': 'python3 task-complete.py complete'}, json.dumps({'session_id': 42, 'output': ''})),
+            ('exec_command', {'cmd': 'finish-task'}, json.dumps({'session_id': 42, 'output': ''})),
             ('write_stdin', {'session_id': 42}, json.dumps({'output': json.dumps(refused), 'exit_code': 0})),
             ('exec_command', {'cmd': 'python3 task-complete.py complete'}, json.dumps(self.value)))
         self.assertTrue(s.merge_refused(self.out))
         self.assertEqual(s.complete_outputs(self.out), [refused, self.value])
 
-    def test_exec_cell_wait_to_shell_stdin_preserves_provenance(self):
+    def test_exec_cell_wait_to_shell_stdin_retains_refusal(self):
         refused = result(status='PR') | {'merge_refused': 'synthetic refusal'}
         self.write_calls(
-            ('functions.exec', 'text(await tools.exec_command({cmd: "python3 task-complete.py complete"}));',
-             'Script running with cell ID cell-1'),
+            ('functions.exec', 'text(await tools.exec_command({cmd}));', 'Script running with cell ID cell-1'),
             ('functions.wait', {'cell_id': 'cell-1'}, 'Script running with cell ID cell-1'),
             ('functions.wait', {'cell_id': 'cell-1'}, json.dumps({'session_id': 12, 'output': ''})),
             ('functions.exec', 'text(await tools.write_stdin({session_id: 12, chars: ""}));',
@@ -298,190 +417,67 @@ class EvidenceTests(unittest.TestCase):
         encoded = json.dumps(self.value)
         middle = len(encoded) // 2
         self.write_calls(
-            ('exec_command', {'cmd': 'python3 task-complete.py complete'}, json.dumps({'session_id': 42, 'output': encoded[:middle]})),
+            ('exec_command', {'cmd': 'finish-task'}, json.dumps({'session_id': 42, 'output': encoded[:middle]})),
             ('write_stdin', {'session_id': 42}, json.dumps({'session_id': 42, 'output': ''})),
             ('write_stdin', {'session_id': 42}, json.dumps({'output': encoded[middle:], 'exit_code': 0})))
         self.seal()
         self.assertEqual(s.qualify(self.out)['calls'], 1)
 
-    def test_foreign_continuation_cannot_inject_a_refusal(self):
+    def test_bound_result_from_any_continuation_is_counted(self):
         refused = result(status='PR') | {'merge_refused': 'synthetic refusal'}
         self.write_calls(
-            ('exec_command', {'cmd': 'python3 task-complete.py complete'}, json.dumps({'session_id': 42, 'output': ''})),
+            ('exec_command', {'cmd': 'finish-task'}, json.dumps({'session_id': 42, 'output': ''})),
             ('write_stdin', {'session_id': 99}, json.dumps({'output': json.dumps(refused), 'exit_code': 0})),
             ('write_stdin', {'session_id': 42}, json.dumps({'output': json.dumps(self.value), 'exit_code': 0})))
+        self.assertTrue(s.merge_refused(self.out))
+        self.assertCountEqual(s.complete_outputs(self.out), [refused, self.value])
+
+    def test_unfinished_unrelated_tool_does_not_stop_output_scanning(self):
+        self.write_calls(
+            ('exec_command', {'cmd': 'start-server'}, json.dumps({'session_id': 42, 'output': ''})),
+            ('exec_command', {'cmd': 'finish-task'}, json.dumps(self.value)))
         self.assertFalse(s.merge_refused(self.out))
         self.assertEqual(s.complete_outputs(self.out), [self.value])
 
-    def test_terminal_continuation_id_is_not_reused_without_a_new_helper(self):
+    def test_batched_continuations_do_not_stop_output_scanning(self):
         refused = result(status='PR') | {'merge_refused': 'synthetic refusal'}
         self.write_calls(
-            ('exec_command', {'cmd': 'python3 task-complete.py complete'}, json.dumps({'session_id': 42, 'output': ''})),
-            ('write_stdin', {'session_id': 42}, json.dumps({'output': json.dumps(self.value), 'exit_code': 0})),
-            ('exec_command', {'cmd': 'echo unrelated'}, json.dumps({'session_id': 42, 'output': ''})),
-            ('write_stdin', {'session_id': 42}, json.dumps({'output': json.dumps(refused), 'exit_code': 0})))
-        self.assertFalse(s.merge_refused(self.out))
-
-    def test_unresolved_helper_continuation_is_not_a_negative_refusal_result(self):
-        for tool, input_, output in (
-                ('exec_command', {'cmd': 'python3 task-complete.py complete'}, json.dumps({'session_id': 42, 'output': ''})),
-                ('functions.exec', 'text(await tools.exec_command({cmd: "python3 task-complete.py complete"}));',
-                 'Script running with cell ID cell-1')):
-            with self.subTest(tool=tool):
-                self.write_calls((tool, input_, output))
-                with self.assertRaisesRegex(ValueError, 'no captured terminal response'):
-                    s.merge_refused(self.out)
+            ('exec_command', {'cmd': 'start-server'}, json.dumps({'session_id': 41, 'output': ''})),
+            ('exec_command', {'cmd': 'finish-task'}, json.dumps({'session_id': 42, 'output': ''})),
+            ('functions.exec', 'text(await tools.write_stdin({session_id: 41})); '
+             'text(await tools.write_stdin({session_id: 42}));',
+             json.dumps({'output': 'ready\n'}) + '\n' + json.dumps({'output': json.dumps(refused)})))
+        self.assertEqual(s.complete_outputs(self.out), [refused])
+        self.assertTrue(s.merge_refused(self.out))
 
     def test_running_cell_marker_does_not_corrupt_partial_stdout(self):
         encoded = json.dumps(self.value)
         middle = len(encoded) // 2
         self.write_calls(
-            ('functions.exec', 'text(await tools.exec_command({cmd: "python3 task-complete.py complete"}));',
+            ('functions.exec', 'text(await tools.exec_command({cmd}));',
              json.dumps({'cell_id': 'cell-1', 'output': encoded[:middle]})),
             ('functions.wait', {'cell_id': 'cell-1'}, 'Script running with cell ID cell-1'),
             ('functions.wait', {'cell_id': 'cell-1'}, json.dumps({'output': encoded[middle:]})))
         self.assertEqual(s.complete_outputs(self.out), [self.value])
 
-    def test_missing_or_malformed_synchronous_helper_output_fails_closed(self):
-        for output in ('', '{broken', '{}', json.dumps({'status': 'COMPLETE', 'receipt': '/cell/receipt.json'}),
-                       json.dumps({'status': 'COMPLETE', 'receipt': None, 'delivery_status': 'COMPLETE'})):
-            with self.subTest(output=output):
-                self.write_calls(('exec_command', {'cmd': 'python3 task-complete.py complete'}, output))
-                with self.assertRaisesRegex(ValueError, 'no captured valid completion or BLOCKED result'):
+    def test_unreadable_transcript_fails_closed(self):
+        path = self.out / 'run/stdout'
+        for content in (None, '', '{broken\n', '[]\n', b'\xff',
+                        json.dumps({'type': 'thread.started', 'thread_id': 'owner'}) + '\n{broken\n'):
+            with self.subTest(content=content):
+                path.unlink(missing_ok=True)
+                if isinstance(content, bytes):
+                    path.write_bytes(content)
+                elif content is not None:
+                    path.write_text(content)
+                with self.assertRaises((OSError, ValueError)):
                     s.merge_refused(self.out)
 
-    def test_later_success_does_not_hide_an_unknown_helper_invocation(self):
-        self.write_calls(
-            ('exec_command', {'cmd': 'python3 task-complete.py complete'}, '{broken'),
-            ('exec_command', {'cmd': 'python3 task-complete.py complete'}, json.dumps(self.value)))
-        with self.assertRaisesRegex(ValueError, 'no captured valid completion or BLOCKED result'):
+    def test_corrupt_owner_trace_fails_closed(self):
+        self.write('cell/trace/trace-owner/manifest.json', dict(root_thread_id='owner', raw_event_log='trace.jsonl'))
+        (self.out / 'cell/trace/trace-owner/trace.jsonl').write_text('{broken\n')
+        with self.assertRaises(ValueError):
             s.merge_refused(self.out)
-
-    def test_ambiguous_shell_invocations_stop_even_before_a_later_success(self):
-        nested = 'python3 task-complete.py complete'
-        for _ in range(6):
-            nested = 'sh -c ' + shlex.quote(nested)
-        commands = (
-            'helper=/path/task-complete.py; python3 "$helper" complete --receipt task',
-            'env python3 task-complete.py complete --receipt task',
-            'echo <(python3 task-complete.py complete)',
-            'echo >(python3 task-complete.py complete)',
-            'echo =(python3 task-complete.py complete)',
-            "python3 -c 'import subprocess; subprocess.run([\"python3\", \"task-complete.py\", \"complete\"])'",
-            nested,
-            'python3 task-complete.py complete "unterminated',
-            'python3 task-complete.py complete --help; helper=task-complete.py; python3 "$helper" complete',
-        )
-        refused = result(status='PR') | {'merge_refused': 'synthetic refusal'}
-        for command in commands:
-            for tool, input_ in (('exec_command', {'cmd': command}),
-                                 ('functions.exec', 'text(await tools.exec_command({cmd: ' + json.dumps(command) + '}));')):
-                with self.subTest(command=command, tool=tool):
-                    self.write_calls((tool, input_, json.dumps(refused)),
-                                     ('exec_command', {'cmd': 'python3 task-complete.py complete'}, json.dumps(self.value)))
-                    with self.assertRaisesRegex(ValueError, 'helper command cannot be classified'):
-                        s.merge_refused(self.out)
-
-    def test_compound_shell_separators_cannot_hide_refusal_after_echo(self):
-        refused = result(status='PR') | {'merge_refused': 'synthetic refusal'}
-        for separator in (';\n', '&&\n', '||\n', '\n\n', '&\n', '|\n'):
-            for prefix in ('echo ready', 'python3 task-complete.py complete --help; echo ready',
-                           'python3 task-complete.py complete; echo ready'):
-                command = prefix + separator + 'python3 task-complete.py complete'
-                for tool, input_ in (('exec_command', {'cmd': command}),
-                                     ('functions.exec', 'text(await tools.exec_command({cmd: ' + json.dumps(command) + '}));')):
-                    with self.subTest(separator=separator, prefix=prefix, tool=tool):
-                        self.write_calls((tool, input_, json.dumps(refused)),
-                                         ('exec_command', {'cmd': 'python3 task-complete.py complete'}, json.dumps(self.value)))
-                        self.assertTrue(s.merge_refused(self.out))
-                        ambiguous = prefix + separator + 'env python3 task-complete.py complete'
-                        input_ = ({'cmd': ambiguous} if tool == 'exec_command' else
-                                  'text(await tools.exec_command({cmd: ' + json.dumps(ambiguous) + '}));')
-                        self.write_calls((tool, input_, json.dumps(self.value)))
-                        with self.assertRaisesRegex(ValueError, 'helper command cannot be classified'):
-                            s.merge_refused(self.out)
-
-    def test_foreign_receipt_cannot_certify_a_helper_invocation(self):
-        for value in (dict(self.value, receipt='/cell/work/.git/devlyn-completion/other/receipt.json'),
-                      dict(status='BLOCKED', reason='owned writer remains', receipt='/cell/other.json', resume='complete')):
-            with self.subTest(status=value['status']):
-                self.write_calls(('exec_command', {'cmd': 'python3 task-complete.py complete'}, json.dumps(value)),
-                                 ('exec_command', {'cmd': 'python3 task-complete.py complete'}, json.dumps(self.value)))
-                with self.assertRaisesRegex(ValueError, 'different receipt'):
-                    s.merge_refused(self.out)
-
-    def test_explicit_blocked_is_known_but_not_a_successful_complete_output(self):
-        blocked = dict(status='BLOCKED', reason='owned writer remains', receipt=self.value['receipt'],
-                       resume='python3 task-complete.py complete --receipt task')
-        self.write_calls(('exec_command', {'cmd': 'python3 task-complete.py complete'}, json.dumps(blocked)))
-        self.assertFalse(s.merge_refused(self.out))
-        self.assertEqual(s.complete_outputs(self.out), [])
-        for key in ('reason', 'receipt', 'resume'):
-            invalid = dict(blocked)
-            del invalid[key]
-            with self.subTest(missing=key):
-                self.write_calls(('exec_command', {'cmd': 'python3 task-complete.py complete'}, json.dumps(invalid)))
-                with self.assertRaisesRegex(ValueError, 'no captured valid completion or BLOCKED result'):
-                    s.merge_refused(self.out)
-
-    def test_complete_help_is_not_an_invocation_requiring_a_result(self):
-        self.write_calls(('exec_command', {'cmd': 'python3 task-complete.py complete --help'}, 'usage: synthetic help'))
-        self.assertFalse(s.merge_refused(self.out))
-
-    def test_code_mode_complete_help_is_not_an_invocation_requiring_a_result(self):
-        self.write_calls(('functions.exec', 'text(await tools.exec_command({cmd: '
-                          '"python3 task-complete.py complete --help"}));', 'usage: synthetic help'))
-        self.assertFalse(s.merge_refused(self.out))
-
-    def test_code_mode_help_does_not_hide_an_actual_complete_in_the_same_call(self):
-        refused = result(status='PR') | {'merge_refused': 'synthetic refusal'}
-        for code in (
-                'text(await tools.exec_command({cmd: "python3 task-complete.py complete --help"})); '
-                'text(await tools.exec_command({cmd: "python3 task-complete.py complete"}));',
-                'text(await tools.exec_command({workdir: "/cell", "cmd": '
-                '"python3 task-complete.py complete --help && python3 task-complete.py complete"}));',
-                "text(await tools.shell_command({command: 'python3 task-complete.py complete'}));"):
-            with self.subTest(code=code):
-                self.write_calls(('functions.exec', code, 'usage: synthetic help\n' + json.dumps(refused)))
-                self.assertTrue(s.merge_refused(self.out))
-
-    def test_code_mode_unparsed_helper_forms_preserve_refusal_detection(self):
-        refused = result(status='PR') | {'merge_refused': 'synthetic refusal'}
-        for code in (
-                'text(await tools.exec_command({cmd: `python3 task-complete.py complete`}));',
-                'const cmd = "python3 task-complete.py complete"; text(await tools.exec_command({cmd}));',
-                'const helper = "task-complete.py"; const cmd = "python3 " + helper + " complete"; '
-                'text(await tools.exec_command({cmd}));',
-                'text(await tools.exec_command({cmd: "python3 task-complete.py complete" + suffix}));',
-                'text(await tools.exec_command({cmd: "python3 task-complete.py complete"})); '
-                'const helper = "task-complete.py"; const cmd = "python3 " + helper + " complete"; '
-                'text(await tools.exec_command({cmd}));',
-                'text(await tools.exec_command({cmd: "python3 task-complete.py complete --help"})); '
-                'const cmd = "python3 task-complete.py complete"; text(await tools.exec_command({cmd}));'):
-            with self.subTest(code=code):
-                self.write_calls(('functions.exec', code, json.dumps(refused)))
-                with self.assertRaisesRegex(ValueError, 'helper command cannot be classified'):
-                    s.merge_refused(self.out)
-                self.write_calls(('functions.exec', code, 'unavailable'))
-                with self.assertRaisesRegex(ValueError, 'helper command cannot be classified'):
-                    s.merge_refused(self.out)
-
-    def test_shell_c_payloads_are_parsed_without_treating_echo_as_execution(self):
-        for shell in ('/bin/zsh -lc', 'sh -c', 'bash -lc', 'bash -l -c'):
-            command = shell + " 'python3 .agents/skills/_shared/task-complete.py complete --receipt task'"
-            with self.subTest(shell=shell):
-                self.assertTrue(s.is_complete(dict(tool='command_execution', input={'command': command})))
-                self.assertFalse(s.is_complete(dict(tool='command_execution', input={'command': 'echo ' + command})))
-
-    def test_claude_tool_result_contains_merge_refusal(self):
-        plan = s.read(self.out / 'plan.json') | {'engine': 'claude'}
-        self.write('plan.json', plan)
-        refused = result(status='PR') | {'merge_refused': 'repository disallows merge commits'}
-        rows = [dict(type='assistant', message={'content': [dict(type='tool_use', id='call', name='Bash',
-                    input={'command': 'python3 .claude/skills/_shared/task-complete.py complete --receipt task'})]}),
-                dict(type='user', message={'content': [dict(type='tool_result', tool_use_id='call', content=json.dumps(refused))]})]
-        (self.out / 'run/stdout').write_text(''.join(json.dumps(row) + '\n' for row in rows))
-        self.assertTrue(s.merge_refused(self.out))
 
     def test_actual_python_profile_observes_unmodified_helper_return(self):
         # A harmless process exercises sitecustomize, with an explicitly synthetic

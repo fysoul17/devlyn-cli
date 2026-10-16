@@ -6,18 +6,10 @@ actions without changing the helper, its result, or its receipt.  The inherited
 cell seal covers the resulting cell/helper-actions files.
 """
 from collections import Counter
-import ast
 import hashlib
-import importlib.util
 import json
 from pathlib import Path
 import re
-import shlex
-
-HERE = Path(__file__).resolve().parent
-spec = importlib.util.spec_from_file_location('diagnostics0233_rpd4_smoke', HERE.parent / '0233/diagnostics.py')
-diagnostics = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(diagnostics)
 
 OBSERVER = '''"""rp-d4 Y-smoke observer; never loaded in measured cells."""
 import hashlib
@@ -210,6 +202,42 @@ def sealed_file(out, relative, files):
     return path
 
 
+def read_jsonl(path):
+    rows = [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
+    require(all(isinstance(row, dict) for row in rows), 'invalid native transcript event')
+    return rows
+
+
+def tool_results(rows, engine):
+    """Keep every native result, including outputs without a captured start."""
+    started = {}
+    for event in rows:
+        if engine == 'claude':
+            message = event.get('message') or {}
+            for block in message.get('content', ()):
+                if not isinstance(block, dict):
+                    continue
+                if event.get('type') == 'assistant' and block.get('type') == 'tool_use':
+                    started[block['id']] = (block.get('name', ''), block.get('input') or {})
+                elif event.get('type') == 'user' and block.get('type') == 'tool_result':
+                    identifier = block['tool_use_id']
+                    tool, input_ = started.get(identifier, ('', {}))
+                    content = block.get('content')
+                    yield dict(id=identifier, tool=tool, input=input_,
+                               output=content if isinstance(content, str) else json.dumps(content))
+        else:
+            item = event.get('item') or event.get('payload') or {}
+            if event.get('type') == 'item.started':
+                started[item['id']] = (item.get('tool') or item.get('name') or item.get('type', ''),
+                                       item.get('input') or item)
+            elif event.get('type') == 'item.completed':
+                tool, input_ = started.get(item['id'], (item.get('tool') or item.get('name') or
+                                                       item.get('type', ''), item.get('input') or item))
+                output = item.get('aggregated_output') or ''
+                require(isinstance(output, str), 'invalid native tool output')
+                yield dict(id=item['id'], tool=tool, input=input_, output=output)
+
+
 def native_calls(out, *, sealed=False):
     """Native stdout JSON plus owner protocol-event payloads (the inherited carriers)."""
     out = Path(out)
@@ -219,8 +247,9 @@ def native_calls(out, *, sealed=False):
         require(not manifest.get('failures'), 'helper evidence seal failed')
     files = manifest['files'] if manifest else {}
     path_for = lambda relative: sealed_file(out, relative, files) if sealed else safe_file(out, relative)
-    stream = diagnostics.read_jsonl(path_for('run/stdout'))
-    calls = diagnostics.calls(stream, plan['engine'])
+    stream = read_jsonl(path_for('run/stdout'))
+    require(bool(stream), 'native transcript is empty')
+    calls = list(tool_results(stream, plan['engine']))
     if plan['engine'] == 'codex':
         roots = {event['thread_id'] for event in stream if event.get('type') == 'thread.started'}
         # stdout may omit large payloads; preserve its completed calls and add
@@ -231,7 +260,7 @@ def native_calls(out, *, sealed=False):
             if metadata.get('root_thread_id') not in roots:
                 continue
             rows = []
-            events = diagnostics.read_jsonl(path_for(str(folder.relative_to(out) / metadata.get('raw_event_log', 'trace.jsonl'))))
+            events = read_jsonl(path_for(str(folder.relative_to(out) / metadata.get('raw_event_log', 'trace.jsonl'))))
             for event in events:
                 payload = event.get('payload') or {}
                 if payload.get('type') != 'protocol_event_observed' or payload.get('event_type') not in ('item.started', 'item.completed'):
@@ -241,7 +270,7 @@ def native_calls(out, *, sealed=False):
                 observed = read(path_for(str(folder.relative_to(out) / reference)))
                 if observed.get('thread_id') in (None, *roots):
                     rows.append(observed)
-            for call in diagnostics.calls(rows, 'codex'):
+            for call in tool_results(rows, 'codex'):
                 old = by_id.get(call['id'])
                 require(old is None or not old['output'] or not call['output'] or old['output'] == call['output'],
                         'native helper output carriers disagree')
@@ -249,84 +278,6 @@ def native_calls(out, *, sealed=False):
                     by_id[call['id']] = call
         calls = list(by_id.values())
     return calls
-
-
-def is_complete(call):
-    if call['tool'] not in ('command_execution', 'exec_command', 'Bash', 'shell_command', 'functions.exec', 'exec'):
-        return False
-    command = diagnostics.text_of(call)
-    if call['tool'] in ('functions.exec', 'exec'):
-        # Parse literal shell arguments, so inspecting complete --help does not
-        # become an invocation and cannot conceal a second, real completion.
-        literal = r'''(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')'''
-        arguments = r'\b(?:exec_command|shell_command)\s*\(\s*\{((?:' + literal + r'''|[^{}'"])*?)\}'''
-        property_ = r'''(?:^|,)\s*(?:cmd|command|"cmd"|"command"|'cmd'|'command')\s*:\s*(''' + literal + r')(?=\s*(?:,|$))'
-        remaining, found = list(command), False
-        for argument in re.finditer(arguments, command):
-            for value in re.finditer(property_, argument[1]):
-                try:
-                    shell = ast.literal_eval(value[1])
-                except (ValueError, SyntaxError):
-                    raise ValueError('helper shell argument literal is invalid') from None
-                found = shell_complete(shell) or found
-                start, end = argument.start(1) + value.start(1), argument.start(1) + value.end(1)
-                remaining[start:end] = ' ' * (end - start)
-        # Only understood literals prove invocation or nonexecution. A template
-        # or variable-bound command cannot silently become "no refusal".
-        remaining = ''.join(remaining)
-        require(not mentions_complete(remaining), 'helper command cannot be classified')
-        return found
-    return shell_complete(command)
-
-
-def mentions_complete(command):
-    return 'task-complete.py' in command and bool(re.search(r'\bcomplete\b', command.replace('task-complete.py', '')))
-
-
-def shell_complete(command, depth=0):
-    if not mentions_complete(command):
-        return False
-    require(depth <= 4 and not any(marker in command for marker in ('$(', '`', '<(', '>(', '=(')),
-            'helper command cannot be classified')
-    try:
-        lexer = shlex.shlex(command.strip(), posix=True, punctuation_chars=';&|\n')
-        lexer.whitespace, lexer.whitespace_split, lexer.commenters = ' \t\r', True, ''
-        words = list(lexer)
-    except ValueError:
-        raise ValueError('helper command cannot be classified') from None
-    segments = [[]]
-    for word in words:
-        if word and not word.strip(';&|\n'):
-            segments.append([])
-        else:
-            segments[-1].append(word)
-    found = False
-    for words in segments:
-        if not words or not any('task-complete.py' in word or word == 'complete' for word in words):
-            continue
-        executable = Path(words[0]).name
-        if executable in ('echo', 'printf'):
-            continue
-        if executable in ('sh', 'bash', 'zsh', 'dash', 'ksh'):
-            body = None
-            for option in range(1, len(words) - 1):
-                if not re.fullmatch('-[A-Za-z]+', words[option]):
-                    break
-                if 'c' in words[option][1:]:
-                    body = words[option + 1]
-                    break
-            require(body is not None and '$' not in body, 'helper command cannot be classified')
-            found = shell_complete(body, depth + 1) or found
-            continue
-        index = 0
-        if re.fullmatch(r'python(?:3(?:\.\d+)?)?', executable):
-            index = 1
-            while index < len(words) and words[index] in ('-B', '-u', '-E', '-I', '-s', '-S'):
-                index += 1
-        require(index < len(words) and Path(words[index]).name == 'task-complete.py' and
-                words[index + 1:index + 2] == ['complete'], 'helper command cannot be classified')
-        found = not any(argument in ('-h', '--help') for argument in words[index + 2:]) or found
-    return found
 
 
 def json_objects(text):
@@ -343,8 +294,7 @@ def json_objects(text):
         position = end
         if isinstance(value, dict):
             yield value
-            for name in ('stdout', 'output', 'aggregated_output', 'content', 'text'):
-                nested = value.get(name)
+            for nested in value.values():
                 if isinstance(nested, str):
                     yield from json_objects(nested)
                 elif isinstance(nested, (dict, list)):
@@ -406,13 +356,15 @@ def output_text(text):
     return text
 
 
-def bind_receipt(out, receipt, expected):
-    mapped = None
+def receipt_matches(out, receipt, expected):
     for prefix, root in (('/cell', 'cell'), ('/tmp', 'tmp'), ('/home/participant', 'home')):
         if isinstance(receipt, str) and receipt.startswith(prefix + '/'):
-            mapped = Path(out) / root / receipt[len(prefix) + 1:]
-            break
-    require(mapped is not None and mapped.resolve() == expected.resolve(), 'helper call belongs to a different receipt')
+            return (Path(out) / root / receipt[len(prefix) + 1:]).resolve() == expected.resolve()
+    return False
+
+
+def bind_receipt(out, receipt, expected):
+    require(receipt_matches(out, receipt, expected), 'helper call belongs to a different receipt')
 
 
 def complete_outputs(out, *, sealed=False):
@@ -420,54 +372,39 @@ def complete_outputs(out, *, sealed=False):
     for call in native_calls(out, sealed=sealed):
         incoming = continuation_input(call)
         owners = {pending[identity] for identity in incoming if identity in pending}
-        if is_complete(call):
-            require(not owners, 'helper launch and continuation share one ambiguous carrier')
-            owners.add(len(streams))
+        # Continuation identities only reassemble split stdout. Every native
+        # output is scanned, even when its launch or polling code is unknown.
+        if len(owners) == 1:
+            owner = owners.pop()
+        else:
+            owner = len(streams)
             streams.append([])
-        if not owners:
-            continue
-        require(len(owners) == 1, 'multiple helper continuations share one ambiguous carrier')
-        owner = owners.pop()
-        # A terminal response consumes the identity. A yielding response names
-        # the still-live process/cell again, including exec -> wait -> stdin.
         for identity in incoming:
-            if pending.get(identity) == owner:
-                del pending[identity]
+            pending.pop(identity, None)
         streams[owner].append(output_text(call['output']))
         for identity in continuation_output(call['output']):
-            require(identity not in pending or pending[identity] == owner,
-                    'helper continuation identity was reused while active')
             pending[identity] = owner
-    require(not pending, 'helper continuation has no captured terminal response')
-    if streams:
-        receipt = read(Path(out) / 'report-checklist.json')['evidence']['cleanup']['receipt']
-        require(isinstance(receipt, str), 'helper lacks an accepted receipt')
-        receipt_file = safe_file(Path(out), receipt)
     results = []
+    receipt_file = None
     for stream in streams:
-        recognized = False
         for value in json_objects(''.join(stream)):
-            receipt = value.get('receipt')
-            if not isinstance(receipt, str) or not receipt.startswith('/'):
+            if (not isinstance(value.get('receipt'), str) or not value['receipt'].startswith('/') or
+                    value.get('delivery_status') not in ('COMPLETE', 'PR', 'PENDING', 'LOCAL_ONLY', 'FAILED') or
+                    value.get('status') not in (value['delivery_status'], 'CLEANUP_PENDING') or
+                    (value['status'] == 'CLEANUP_PENDING' and value['delivery_status'] != 'COMPLETE')):
                 continue
-            if (value.get('status') == 'BLOCKED' and 'delivery_status' not in value and
-                    all(isinstance(value.get(key), str) and value[key].strip() for key in ('reason', 'resume'))):
-                bind_receipt(out, receipt, receipt_file)
-                recognized = True
-            elif (value.get('delivery_status') in ('COMPLETE', 'PR', 'PENDING', 'LOCAL_ONLY', 'FAILED') and
-                  value.get('status') in (value['delivery_status'], 'CLEANUP_PENDING') and
-                  (value['status'] != 'CLEANUP_PENDING' or value['delivery_status'] == 'COMPLETE') and
-                  ('merge_refused' not in value or isinstance(value['merge_refused'], str) and value['merge_refused'].strip())):
-                bind_receipt(out, receipt, receipt_file)
-                recognized = True
+            if receipt_file is None:
+                receipt = read(Path(out) / 'report-checklist.json')['evidence']['cleanup']['receipt']
+                require(isinstance(receipt, str), 'helper lacks an accepted receipt')
+                receipt_file = safe_file(Path(out), receipt)
+            if receipt_matches(out, value.get('receipt'), receipt_file):
                 results.append(value)
-        require(recognized, 'helper invocation has no captured valid completion or BLOCKED result')
     return results
 
 
 def merge_refused(out):
     """Retain any refusal, including a refused call followed by successful delivery."""
-    return any('merge_refused' in result for result in complete_outputs(out))
+    return any(result.get('merge_refused') is not None for result in complete_outputs(out))
 
 
 def qualify(out):
