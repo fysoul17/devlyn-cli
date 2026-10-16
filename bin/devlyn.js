@@ -357,17 +357,16 @@ function listContents() {
 // are in place. An optional skill found under an old spelling is installed under its new name
 // before the old copy goes, so an interrupted migration never loses it. An unedited 0.6.0-0.7.1
 // copy is refreshed in place. Any other folder under a 4.0 name is the user's own; `-y` leaves it.
-function refreshRenamedSkills(skillsDir, written, installedSkills) {
+function refreshRenamedSkills(skillsDir, installedSkills) {
   const optional = new Set(OPTIONAL_ADDONS.filter((addon) => addon.type === 'local').map((addon) => addon.name));
   const refreshed = [];
   for (const [oldName, newName] of Object.entries(RENAMED_SKILLS)) {
     const found = legacySkillPaths(skillsDir, oldName).filter((fullPath) => fs.existsSync(fullPath));
     if (found.length > 0 && optional.has(newName) && canRefreshRenamed(skillsDir, newName)) {
-      installOptionalSkillInto(skillsDir, newName, written, installedSkills);
+      installOptionalSkillInto(skillsDir, newName, installedSkills);
       refreshed.push(newName);
     } else if (isShippedCopy(path.join(skillsDir, newName), PRE_STANDARD_SKILL_MD_SHA256)) {
       refreshPreStandardCopy(skillsDir, newName);
-      written.push(path.join(skillsDir, newName));
       installedSkills.set(path.join(skillsDir, newName), [path.join(skillsDir, newName, 'SKILL.md')]);
       refreshed.push(newName);
     }
@@ -609,23 +608,22 @@ function singleSelect(message, items, initial) {
 }
 
 // After preflight has cleared every selected addon before any change.
-function installLocalSkill(skillName, roots, written = [], installedSkills = new Map()) {
+function installLocalSkill(skillName, roots, installedSkills = new Map()) {
   if (!fs.existsSync(path.join(OPTIONAL_SKILLS_SOURCE, skillName))) {
     log(`   ⚠️  Skill "${skillName}" not found`, 'yellow');
     return false;
   }
   log(`\n🛠️  Installing ${skillName}...`, 'cyan');
   for (const root of roots) {
-    installOptionalSkillInto(root, skillName, written, installedSkills);
+    installOptionalSkillInto(root, skillName, installedSkills);
     writeInstallMarker(root, [skillName], readInstallManifest(root));
-    written.push(path.join(root, DEVLYN_INSTALL_MARKER));
   }
   return true;
 }
 
 // One optional skill into one skill-loader directory, replacing any older copy of it. A
 // copy under its name before the 4.0.0 rename goes only once the new one is complete.
-function installOptionalSkillInto(target, skillName, written, installedSkills) {
+function installOptionalSkillInto(target, skillName, installedSkills) {
   const dest = path.join(target, skillName);
   const stage = fs.mkdtempSync(path.join(target, '.devlyn-skill-'));
   const stagedSkill = path.join(stage, skillName);
@@ -635,7 +633,6 @@ function installOptionalSkillInto(target, skillName, written, installedSkills) {
     fs.rmSync(dest, { recursive: true, force: true });
     fs.renameSync(stagedSkill, dest);
     installedSkills.set(dest, files.map((file) => path.join(dest, path.relative(stagedSkill, file))));
-    written.push(dest);
   } finally {
     fs.rmSync(stage, { recursive: true, force: true });
   }
@@ -693,7 +690,7 @@ function installAddon(addon) {
 
 // The core skills into one skill root, replacing older copies and retired skills, then the
 // marker that records a complete install.
-function installCoreSkills(skillsDir, written = [], installedSkills = new Map()) {
+function installCoreSkills(skillsDir, installedSkills = new Map()) {
   const sourceSkillsDir = path.join(CONFIG_SOURCE, 'skills');
   log(`\n📁 Installing devlyn skills to ${skillsDir.replace(os.homedir(), '~')}`, 'green');
   fs.mkdirSync(skillsDir, { recursive: true });
@@ -706,12 +703,10 @@ function installCoreSkills(skillsDir, written = [], installedSkills = new Map())
     // Full replace: copyRecursive is an overlay, so stale files would otherwise persist.
     fs.rmSync(dest, { recursive: true, force: true });
     installedSkills.set(dest, copyRecursive(src, dest, skillsDir));
-    written.push(dest);
   }
   assertCompleteSkillInstall(sourceSkillsDir, skillsDir, DEVLYN_CORE_SKILLS);
-  const refreshed = refreshRenamedSkills(skillsDir, written, installedSkills);
+  const refreshed = refreshRenamedSkills(skillsDir, installedSkills);
   writeInstallMarker(skillsDir, [...DEVLYN_CORE_SKILLS, ...refreshed], previous);
-  written.push(path.join(skillsDir, DEVLYN_INSTALL_MARKER));
 }
 
 function readProjectGitignore() {
@@ -763,9 +758,7 @@ function updateProjectGitignore(markerEntry) {
   if (!gitignoreContent.equals(original)) {
     fs.writeFileSync(gitignorePath, gitignoreContent);
     log('  → .gitignore (updated project install rules)', 'dim');
-    return true;
   }
-  return false;
 }
 
 // With the Claude target in the same run, an AGENTS.md that links to this project's CLAUDE.md (a
@@ -786,18 +779,16 @@ function agentsMdIsClaudeMd() {
 }
 
 function installAgentsProject(withClaude, installedSkills = new Map()) {
-  const written = [];
   if (!agentsMdIsClaudeMd()) {
-    if (updateInstructions('AGENTS.md')) written.push('AGENTS.md');
+    updateInstructions('AGENTS.md');
   } else if (withClaude) {
     log('  → AGENTS.md is CLAUDE.md here, so it gets the devlyn block written there', 'dim');
   } else {
     throw new InstructionError('AGENTS.md is CLAUDE.md under another name here. Choose CLAUDE.md as well '
       + '(npx devlyn-cli -y --claude) so the devlyn block is written once, into CLAUDE.md.');
   }
-  installCoreSkills(skillRoots('agents', false)[0], written, installedSkills);
-  if (updateProjectGitignore('.agents/skills/.devlyn-install.json')) written.push('.gitignore');
-  return written;
+  installCoreSkills(skillRoots('agents', false)[0], installedSkills);
+  updateProjectGitignore('.agents/skills/.devlyn-install.json');
 }
 
 // Whether Claude Code reads the devlyn defaults of AGENTS.md through an `@AGENTS.md` import in this CLAUDE.md text.
@@ -821,9 +812,8 @@ function installClaudeInstructions() {
     throw new InstructionError('Claude Code reads AGENTS.md here, and its devlyn defaults need an update. Codex, omp, Pi and Grok '
       + 'read them too, with .agents/skills, so choose AGENTS.md as well (npx devlyn-cli -y --claude) to update both together.');
   }
-  const changed = updateInstructions('CLAUDE.md', initial, !imported);
+  updateInstructions('CLAUDE.md', initial, !imported);
   if (imported) log('  → CLAUDE.md imports AGENTS.md, which holds the devlyn block', 'dim');
-  return changed;
 }
 
 // Project CLAUDE.md and .claude/: skills and settings.
@@ -852,9 +842,9 @@ function installClaudeCore(installedSkills = new Map()) {
       && (!settings.env || typeof settings.env !== 'object' || Array.isArray(settings.env))) {
     throw unmergeable('env must be a JSON object');
   }
-  const written = installClaudeInstructions() ? ['CLAUDE.md'] : [];
-  installCoreSkills(skillsDir, written, installedSkills);
-  if (updateProjectGitignore('.claude/skills/.devlyn-install.json')) written.push('.gitignore');
+  installClaudeInstructions();
+  installCoreSkills(skillsDir, installedSkills);
+  updateProjectGitignore('.claude/skills/.devlyn-install.json');
 
   // One-hour foreground Bash calls and one-hour prompt caching serve a drain host that waits in the foreground.
   let settingsChanged = false;
@@ -874,7 +864,6 @@ function installClaudeCore(installedSkills = new Map()) {
   if (settingsChanged) {
     replaceFile(settingsPath, JSON.stringify(settings, null, 2) + '\n');
     log('  → settings.json', 'dim');
-    written.push('.claude/settings.json');
   }
   // Their ownership cannot be established, so the other retired settings stay; name the ones present.
   const retired = [
@@ -884,7 +873,6 @@ function installClaudeCore(installedSkills = new Map()) {
   if (retired.length > 0) {
     log(`  Retired devlyn settings may remain in .claude/settings.json: ${retired.join(', ')} — delete those you did not add yourself.`, 'yellow');
   }
-  return written;
 }
 
 // Replace this directory entry, never a hardlink's other names.
@@ -991,7 +979,7 @@ function withUserSkillLocks(roots, action, { existingOnly = false } = {}) {
   }
 }
 
-// Installs the targets in one scope; returns the skill roots written.
+// Installs the targets in one scope; returns the installed skill roots.
 function install(targets, global, optionalNames = [], plan, afterInstall = () => {}) {
   // In the home folder CLAUDE.md, AGENTS.md (agents read a parent folder's too) and
   // .claude/settings.json would apply to every project. Same folder by identity, so a link or
@@ -1004,30 +992,29 @@ function install(targets, global, optionalNames = [], plan, afterInstall = () =>
   }
   const roots = targets.flatMap((target) => skillRoots(target, global));
   return withUserSkillLocks(global ? roots : [], () => {
-    const written = [];
     const installedSkills = new Map();
     if (!global) readProjectGitignore();
     plan ??= preflightSkills(roots, optionalNames);
     // AGENTS.md first, whatever order the menu gave: a new CLAUDE.md holds the block only when AGENTS.md does not.
     for (const target of ['agents', 'claude'].filter((name) => targets.includes(name))) {
-      if (global) skillRoots(target, true).forEach((root) => installCoreSkills(root, [], installedSkills));
-      else if (target === 'agents') written.push(...installAgentsProject(targets.includes('claude'), installedSkills));
-      else written.push(...installClaudeCore(installedSkills));
+      if (global) skillRoots(target, true).forEach((root) => installCoreSkills(root, installedSkills));
+      else if (target === 'agents') installAgentsProject(targets.includes('claude'), installedSkills);
+      else installClaudeCore(installedSkills);
     }
-    for (const name of optionalNames) installLocalSkill(name, roots, written, installedSkills);
+    for (const name of optionalNames) installLocalSkill(name, roots, installedSkills);
     afterInstall();
     log(`\n✅ devlyn ${PKG.version} installed`, 'green');
     if (global) log('The principles block installs per project: run npx devlyn-cli in the project without --global.');
     noticeGlobalDrift(roots);
-    cleanupScope(global ? os.homedir() : projectDir(), global, written,
+    cleanupScope(global ? os.homedir() : projectDir(), global,
       global ? [] : targets.map((target) => target === 'agents' ? 'AGENTS.md' : 'CLAUDE.md'));
-    if (!global) noticeProjectChanges(written, installedSkills);
+    if (!global) noticeIgnoredInstallFiles(installedSkills);
     return roots;
   });
 }
 
 // Cleanup visits existing paths in the command's scope; it never creates an install.
-function cleanupScope(base, global, written, activeInstructions = []) {
+function cleanupScope(base, global, activeInstructions = []) {
   const warned = new Set();
   let found = false;
   const warning = (file, error) => {
@@ -1051,7 +1038,6 @@ function cleanupScope(base, global, written, activeInstructions = []) {
     if (!realParents(file) || !fs.lstatSync(file, { throwIfNoEntry: false })) return false;
     found = true;
     fs.rmSync(file, { recursive: true }); // lstat/realParents never follows a link; rm removes the link itself.
-    written.push(file);
     log(`  ✕ ${path.relative(base, file)} (removed)`, 'dim');
     return true;
   });
@@ -1103,7 +1089,6 @@ function cleanupScope(base, global, written, activeInstructions = []) {
             const data = JSON.parse(fs.readFileSync(marker, 'utf8'));
             for (const name of removed) delete data.skills[name];
             replaceFile(marker, JSON.stringify(data, null, 2) + '\n');
-            written.push(marker);
           });
         }
       };
@@ -1132,7 +1117,6 @@ function cleanupScope(base, global, written, activeInstructions = []) {
     if (settings && typeof settings === 'object' && cleanRetiredSettings(settings)) {
       found = true;
       replaceFile(settingsFile, JSON.stringify(settings, null, 2) + '\n');
-      written.push(settingsFile);
       log('  ✕ .claude/settings.json retired entries (removed)', 'dim');
     }
   });
@@ -1144,75 +1128,34 @@ function cleanupScope(base, global, written, activeInstructions = []) {
       const evaluatorOnly = ['CLAUDE.md', 'AGENTS.md'].includes(name);
       if (!updateInstructions(name, '', false, false, base, evaluatorOnly)) return;
       found = true;
-      if (updateInstructions(name, '', false, true, base, evaluatorOnly)) written.push(file);
+      updateInstructions(name, '', false, true, base, evaluatorOnly);
     });
   }
   return found;
 }
 
-// Advisory only: a successful install stays successful when Git is unavailable or fails.
-function noticeProjectChanges(paths, installedSkills = new Map()) {
-  if (!paths.length && !installedSkills.size) return;
+// Advisory only: check files this run copied, grouped by skill; a wholly ignored skill
+// folder is deliberate. check-ignore omits tracked files, and Git failures stay silent.
+function noticeIgnoredInstallFiles(installedSkills) {
   const cwd = projectDir();
-  const relative = (name) => path.relative(cwd, path.resolve(cwd, name)).split(path.sep).join('/');
-  paths = [...new Set(paths.map(relative))];
+  const groups = [...installedSkills.values()].map((files) =>
+    files.map((file) => path.relative(cwd, file).split(path.sep).join('/')));
+  const files = groups.flat();
+  if (!files.length) return;
   const env = { ...gitEnvironment(), GIT_OPTIONAL_LOCKS: '0' };
   const git = (args, input) => spawnSync('git', ['-C', cwd, ...args], { encoding: 'utf8', env, input });
-  const repo = git(['rev-parse', '--show-toplevel']);
-  if (repo.error || repo.status !== 0) return;
-  const status = git(['status', '--porcelain=v1', '-z', '--untracked-files=all', '--no-renames',
-    '--', ...paths.map((name) => `:(icase,literal)${name}`)]);
-  if (status.error || status.status !== 0) return;
-  // Porcelain paths are repository-relative, even when installing in a nested project.
-  const changed = status.stdout.split('\0').filter(Boolean).map((entry) =>
-    path.relative(cwd, path.resolve(repo.stdout.replace(/\r?\n$/, ''), entry.slice(3))).split(path.sep).join('/'));
-  // Keep the installed folder/file scope, using Git's spelling on case-insensitive volumes.
-  const pending = [...new Set(paths.flatMap((name) => [...new Set(changed
-    .map((file) => file.split('/').slice(0, name.split('/').length).join('/')))]
-    .filter((file) => {
-      if (file === name) return true;
-      if (file.toLowerCase() !== name.toLowerCase()) return false;
-      // Case folding alone can include independently edited files on case-sensitive volumes.
-      // Removed paths have no identity left to compare, so require their exact spelling.
-      try {
-        const written = fs.lstatSync(path.resolve(cwd, name), { bigint: true, throwIfNoEntry: false });
-        const reported = fs.lstatSync(path.resolve(cwd, file), { bigint: true, throwIfNoEntry: false });
-        return written && reported && written.dev === reported.dev && written.ino === reported.ino;
-      } catch (error) {
-        log(`Cannot compare Git path ${file} with installed path ${name}: ${error.message}`, 'yellow');
-        return false;
-      }
-    })))];
-  // Check only files this run copied, grouped by skill: ignoring a whole skill is deliberate.
-  // check-ignore omits tracked files, so a complete committed install stays quiet on reruns.
-  const groups = [...installedSkills.values()].map((files) => files.map(relative));
-  const files = groups.flat();
-  let ignored = [];
-  let rule;
-  if (files.length) {
-    const result = git(['check-ignore', '-z', '--stdin'], files.join('\0') + '\0');
-    if (result.error || ![0, 1].includes(result.status)) return;
-    const matches = new Set(result.stdout.split('\0').filter(Boolean));
-    ignored = [...new Set(groups.flatMap((group) => {
-      const hidden = group.filter((file) => matches.has(file));
-      return hidden.length === group.length ? [] : hidden;
-    }))];
-    if (ignored.length) {
-      const verbose = git(['check-ignore', '-v', '-z', '--stdin'], ignored[0] + '\0');
-      if (verbose.error || verbose.status !== 0) return;
-      const [source, line, pattern] = verbose.stdout.split('\0');
-      rule = `${source}:${line}: ${pattern}`;
-    }
-  }
-  if (!pending.length && !ignored.length) return;
-  const quote = (name) => /^[a-zA-Z0-9_./-]+$/.test(name) ? name : `'${name.replace(/'/g, "'\\''")}'`;
-  log('Optional — commit (and push) these changes if teammates or /devlyn-ideate task worktrees should use them:', 'yellow');
-  if (ignored.length) log(`.gitignore hides ${ignored.length} installed files (${rule}).`, 'yellow');
-  const commands = [];
-  if (pending.length) commands.push(`git add -- ${pending.map(quote).join(' ')}`);
-  if (ignored.length) commands.push(`git add -f -- ${ignored.map(quote).join(' ')}`);
-  commands.push(`git commit -m "chore(devlyn): update devlyn-cli to ${PKG.version}"`);
-  log(`  ${commands.join(' && ')}`, 'dim');
+  const result = git(['check-ignore', '-z', '--stdin'], files.join('\0') + '\0');
+  if (result.error || ![0, 1].includes(result.status)) return;
+  const matches = new Set(result.stdout.split('\0').filter(Boolean));
+  const ignored = [...new Set(groups.flatMap((group) => {
+    const hidden = group.filter((file) => matches.has(file));
+    return hidden.length === group.length ? [] : hidden;
+  }))];
+  if (!ignored.length) return;
+  const verbose = git(['check-ignore', '-v', '-z', '--stdin'], ignored[0] + '\0');
+  if (verbose.error || verbose.status !== 0) return;
+  const [source, line, pattern] = verbose.stdout.split('\0');
+  log(`Git ignores ${ignored.length} installed files (example rule: ${source}:${line}: ${pattern}).`, 'dim');
 }
 
 // A devlyn install in a user root this run does not refresh drifts and can shadow the
@@ -1235,8 +1178,7 @@ function noticeGlobalDrift(installed) {
 }
 
 // Skip project setup in the home folder, where instructions would affect every project.
-// Lock user roots, preflight all roots, check versions, then write; user roots go first
-// so the project's commit guidance remains the last output.
+// Lock user roots, preflight all roots, check versions, then write.
 function update() {
   showLogo();
   log('─'.repeat(44), 'dim');
@@ -1273,10 +1215,9 @@ function update() {
   const projectRoots = targets.flatMap((target) => skillRoots(target, false));
   const roots = [...userRoots, ...projectRoots];
   if (!roots.length) {
-    const written = [];
-    const userCleanup = cleanupScope(os.homedir(), true, written);
-    const projectCleanup = (home?.dev !== here.dev || home?.ino !== here.ino) && cleanupScope(projectDir(), false, written);
-    if (userCleanup || projectCleanup) { noticeProjectChanges(written.filter((file) => !path.isAbsolute(file) || file.startsWith(projectDir() + path.sep))); return; }
+    const userCleanup = cleanupScope(os.homedir(), true);
+    const projectCleanup = (home?.dev !== here.dev || home?.ino !== here.ino) && cleanupScope(projectDir(), false);
+    if (userCleanup || projectCleanup) return;
     throw new InstructionError(['No devlyn install here to update. Run npx devlyn-cli to install.', ...linkNotices].join('\n'));
   }
 
@@ -1305,17 +1246,15 @@ function update() {
         + newer.join('\n') + '\nRun npx devlyn-cli@latest update.');
     }
 
-    userRoots.forEach((root) => installCoreSkills(root, [], new Map()));
-    if (targets.length) install(targets, false, [], plan, () => cleanupScope(os.homedir(), true, []));
+    userRoots.forEach((root) => installCoreSkills(root));
+    if (targets.length) install(targets, false, [], plan, () => cleanupScope(os.homedir(), true));
     else {
-      cleanupScope(os.homedir(), true, []);
+      cleanupScope(os.homedir(), true);
       log(`\n✅ devlyn ${PKG.version} installed`, 'green');
       noticeGlobalDrift(userRoots);
     }
     if (!targets.length && (home?.dev !== here.dev || home?.ino !== here.ino)) {
-      const written = [];
-      cleanupScope(projectDir(), false, written);
-      noticeProjectChanges(written);
+      cleanupScope(projectDir(), false);
     }
   });
 }
