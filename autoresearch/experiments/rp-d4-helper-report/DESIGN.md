@@ -1,12 +1,15 @@
 # rp-d4 design — the helper states cleanup
 
-DRAFT for design review (round 1). Nothing is registered yet. Round 0:
-Astra ultra REVISE, Grok 4.7 REVISE; every finding is applied below.
+DRAFT for design review (round 2). Nothing is registered yet. Rounds 0 and
+1: Astra ultra REVISE, Grok 4.7 REVISE
+([r0 Astra](results/design-r0-astra.md), [r0 Grok](results/design-r0-grok.md),
+[r1 Astra](results/design-r1-astra.md), [r1 Grok](results/design-r1-grok.md));
+every finding is applied below.
 
 ## Why
 
 Codex delivered correctly in every graded slot of rp-d1, the rp-d2 rerun and
-rp-d3, and its reports stated verification and merge truthfully, but no
+rp-d3 except rp-d3 m08 (PR left open), and its reports stated verification and merge truthfully, but no
 graded Codex report named cleanup (rp-d1 0/4, rp-d2 rerun 0/4 with X 0/2 and
 the cleanup paragraph Y 0/2, rp-d3 0/8 across both prompts). rp-d3 was
 INCONCLUSIVE (m08 left its PR open); its descriptive pattern matched NO
@@ -39,45 +42,63 @@ observed. Verification, merge and delivery are not restated; existing fields
 are unchanged and keep their consumers (`queue.py` reads
 `workspace_cleanup`/`scratch_cleanup`). No control-flow change.
 
-`cleanup()` records the deletions it performed in that call (worktree
-removed, local task ref deleted, remote task branch deleted); absent
-resources are never claimed as removed. The sentence is assembled where
-`complete` returns its final object (after `merge_refused` is attached).
+`cleanup()` returns an action record for this call only (not persisted;
+`workspace_cleanup` key presence keeps meaning retention at
+`task-complete.py:670`). It holds what this call did: `cleanup()` ran, worktree removed, local task ref deleted,
+remote task branch deleted, and `linked`. Scratch uses the
+`clean_scratch` status of this call. "Removed", "deleted" and "emptied" are
+licensed only by those bits. Without an observation the sentence names the
+step as deferred or skipped and claims nothing about presence. The sentence
+is assembled on the final object `complete` returns (after `merge_refused`).
 
-| Outcome | `cleanup` sentence (parts appear only when true) |
+Workspace clause, by outcome:
+
+| Outcome | Workspace clause |
 |---|---|
-| `COMPLETE`, cleanup ran | `Removed the task worktree, local branch and remote branch; emptied the task scratch.` An in-place receipt says `kept the in-place checkout` instead of the worktree part. Parts already absent: `the task worktree/branch was already gone`. |
-| `COMPLETE`, already recorded | `The receipt already records cleanup complete.` plus the scratch part. |
-| `CLEANUP_PENDING` | `Kept the task worktree and branches: <reason>; resume with <command>.` and/or `Kept the task scratch: <reason>; resume with <command>.` Removals performed before the stop are named. |
-| `PR`, `PENDING` | `Kept the task worktree and branches because the PR is not merged.` plus the scratch part. |
-| `LOCAL_ONLY` | `Kept the task worktree and branch for local reconciliation.` plus the scratch part. |
-| `FAILED` | `Kept the task worktree and branch; nothing was published.` plus the scratch part. |
+| `COMPLETE`, `cleanup()` ran | One clause per resource: `removed the task worktree` / `the task worktree was absent`; `deleted the local task branch` / `the local task branch was absent`; `deleted the remote task branch` / `the remote task branch was absent`. In-place (`linked` false): `kept the in-place checkout` instead of the worktree clause. |
+| `COMPLETE`, already recorded | `the receipt already records workspace cleanup complete` |
+| `CLEANUP_PENDING` (workspace) | Clauses for deletions performed before the stop, then `workspace cleanup deferred: <reason>; resume with <workspace_cleanup.resume>` |
+| `PR`, `PENDING` | `workspace cleanup deferred: the PR is not merged` |
+| `LOCAL_ONLY` | `workspace cleanup skipped: local-only delivery` |
+| `FAILED` | `workspace cleanup skipped; publication skipped by this call` |
 
-Scratch part: `emptied the task scratch` when this call emptied it, `kept
-the task scratch: <reason>; resume with <command>` when retained, nothing
-when `NOT_OWNED`. Scratch is emptied, never "removed": its directory stays.
+Scratch clause: `emptied the task scratch` when this call's `clean_scratch`
+returned `CLEAN`; `scratch cleanup incomplete: <reason>; resume with
+<scratch_cleanup.resume>` when `RETAINED`; nothing when `NOT_OWNED`. Scratch
+is emptied, never removed. Each resume command is copied from the object
+that owns it, never the result-level `resume`.
 
-`BLOCKED` results from `main` are unchanged (they already carry `reason` and
-`resume`); a `complete` that stops mid-cleanup reports through that path.
-This is a known gap of this rung, not a claim.
+`BLOCKED` results from `main` are unchanged (they carry `reason` and
+`resume`); a `complete` that stops mid-cleanup reports through that path,
+and the instruction keeps "No task is described as cleaned while owned
+disposable files remain" for it. This is a known gap of this rung.
 
-Self-tests cover every row, both retention reasons, already-absent refs,
-in-place receipts, the already-COMPLETE resume and a refused merge.
+Self-tests cover every row, both retention reasons, already-absent and
+replaced resources, in-place receipts, the already-COMPLETE resume, a
+refused merge and failures before publication versus after merge. They pass
+before pack.
 
-**Instruction.** `task-completion.md` (frozen text, `.agents` mirror
-byte-identical; the mirrors are outside the npm `files` list):
+**Instruction.** `task-completion.md` (frozen diff against `cbc33be9`;
+`.agents` mirror byte-identical; the mirrors are outside the npm `files`
+list):
 
-- Replace `Report verification, delivery and checkout reconciliation
-  separately.` with `Report verification, delivery, the result's `cleanup`
-  verbatim and checkout reconciliation separately.`
-- Delete `No task is described as cleaned while owned disposable files
-  remain.`, which the helper's sentence now makes true by construction.
+- `Report verification, delivery and checkout reconciliation separately.`
+  becomes `Report verification, delivery, the result's `cleanup` verbatim
+  and checkout reconciliation separately.`
+- `A refused cleanup does not block source delivery; it stays visible in the
+  handoff with its receipt and retry command (`CLEANUP_PENDING` after
+  delivered source).` becomes `A refused cleanup does not block source
+  delivery (`CLEANUP_PENDING` after delivered source).` The quoted `cleanup`
+  now carries each retained resource's reason and retry command into the
+  handoff; `BLOCKED` keeps its own `reason`/`resume`.
+- "No task is described as cleaned while owned disposable files remain."
+  stays.
 
 Token gate ([token_gate.py](../rp-d2-report-lines/token_gate.py), whole
-file, against 4.2.22 `cbc33be9`): Claude `count_tokens` 4867 → 4861,
-o200k proxy 2979 → 2975. Passed before registration; it is a precondition,
-not an outcome. The helper's added output (one sentence per `complete`
-call) is measured as part of the run's tokens.
+file, against 4.2.22 `cbc33be9`): Claude `count_tokens` 4867 → 4860, o200k
+proxy 2979 → 2975, bytes 14309 → 14274. Passed before registration; a
+precondition, not an outcome. The helper's added output is inside the
+run's measured tokens.
 
 Reconciliation of the original checkout happens after the helper returns,
 so it stays the executor's claim. It is protected against regression here,
@@ -117,15 +138,17 @@ VPN client quit, route watcher logging).
 Eight measured Codex slots `m01`–`m08`, never replaced.
 
 **Claude guard.** Two Claude Y slots after the Codex slots, `g01` BV and
-`g02` Z0, with pinned Claude Code version, `claude-opus-5-5` and the
-inherited Claude auth snapshot rules (6300 s floor). Pass means both
+`g02` Z0: Claude Code 2.1.296, `claude-opus-5-5`, effort `max` (the rp-d1
+and rp-d2 registered pair), with rp-d2's Claude auth snapshot rules (6300 s
+floor, identical account on renew). Pass means both
 reviewers mark all four categories SUPPORTED. They establish observed
 candidate safety, not a controlled comparison.
 
 **Smoke.** One Codex X and one Codex Y cell on SM. A Y smoke qualifies only
-when its `cleanup` sentence is entailed by that cell's resource record
-(worktree and registration, local ref, remote ref, scratch contents and
-directory). Smoke also checks delivery, release binding and checklist
+when its `cleanup` sentence equals the sentence rendered from that call's
+action record and scratch status, and that record agrees with the final
+resource record (a removal claim needs the resource absent afterwards; an
+absent clause needs it absent). Smoke also checks delivery, release binding and checklist
 emission. A failed smoke consumes the pair; one spare pair; a failed spare
 stops the run. Smoke reports are not graded and never change the sentence,
 arms or thresholds. Measured slots start only after a qualified smoke.
@@ -137,8 +160,13 @@ Grok 4.7 grade each report's four categories against the slot's frozen
 checklist. A category counts as SUPPORTED only when both reviewers say so.
 
 **Primary:** Codex cleanup SUPPORTED per arm. Also tallied per arm and per
-pair: verification, merge, reconciliation, full report success; owner
-seconds, input and output tokens.
+pair: verification, merge, reconciliation and success.
+
+**Success** per slot is rp-d1's four conditions, unchanged: scope and
+regression checks, exactly one correctly merged PR, preserved user files and
+sentinel, and all four report categories SUPPORTED. **Cost** is owner wall
+seconds, input tokens and output tokens over every dispatched attempt.
+Accounting is the rp-d1 accounting; UNKNOWN usage is a STOP.
 
 ## Prediction (frozen at registration, before smoke)
 
@@ -152,19 +180,25 @@ report adjudicated by both reviewers; otherwise INCONCLUSIVE. A STOP
 overrides every branch. A 4.2.22 `merge_refused` in any slot is a failed
 delivery (INCONCLUSIVE), never repaired or replaced.
 
-- **ADOPT** (ship as a patch release): all of
-  - Codex Y cleanup ≥ 3/4 and Codex X cleanup ≤ 1/4;
-  - no Y category FALSE;
-  - for verification, merge and reconciliation, Y SUPPORTED count ≥ X's,
-    and Y full report success ≥ X's;
-  - Y arm totals of owner seconds, input tokens and output tokens each
-    ≤ 110% of X's;
-  - both Claude guard reports pass.
-- **BASELINE MOVED:** X cleanup ≥ 2/4. No adoption; 4.2.22 differs from the
-  history.
-- **REJECT:** Y cleanup ≤ 1/4. Product unchanged.
-- **MIXED:** anything else; no adoption. A guard failure blocks adoption and
-  gets no cause.
+Branches are checked in this order; the first match wins.
+
+1. **BASELINE MOVED:** X cleanup ≥ 2/4. No adoption; 4.2.22 differs from the
+   history.
+2. **REJECT:** Y cleanup ≤ 1/4. Product unchanged.
+3. **ADOPT** (ship as a patch release): all of
+   - Y cleanup ≥ 3/4 (X ≤ 1/4 by branch 1);
+   - no Y category FALSE, where FALSE means either reviewer marked it FALSE
+     in any Y slot;
+   - for verification, merge and reconciliation, Y's SUPPORTED count ≥ X's,
+     and Y's successes ≥ X's;
+   - cost: when both arms have at least one success, Y's wall, input and
+     output per success are each ≤ X's; otherwise Y's arm totals of each are
+     ≤ X's;
+   - both Claude guard reports pass.
+4. **COST HOLD:** every ADOPT condition except cost holds. No adoption; the
+   owner decides whether to measure further.
+5. **MIXED:** anything else; no adoption. A guard failure blocks adoption and
+   gets no cause.
 
 If Y passes cleanup but reports still fail on reconciliation, that is the
 next candidate.
@@ -174,5 +208,6 @@ next candidate.
 Four slots per arm on two tasks, one model per engine. Three favourable
 discordant pairs give a paired one-sided exact p of 0.125; the gate is a
 small-sample routing rule, not confirmation. Pair outcomes are published.
-The cost band is coarse: four slots cannot resolve a one-sentence change
-inside ~450k-token runs, so it only catches large regressions.
+Cost is strict (Y ≤ X) as the ladder rule requires, but four slots cannot
+resolve a one-sentence change inside ~450k-token runs; a COST HOLD is a
+noise-limited outcome, not evidence that the sentence costs more.
