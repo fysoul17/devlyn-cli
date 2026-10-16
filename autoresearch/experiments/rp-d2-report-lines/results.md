@@ -40,7 +40,7 @@ from the registered summarizer and both reviewers' report reviews.
   `190251d6…` for m07–m08, so the renewal fell between pairs 3 and 4. By the
   operator's account (not in the saved logs), the host's shared Claude login
   had switched accounts mid-run and `stage.py --renew` refused that account.
-  The renewal snapshot came from a fresh token of the registered account.
+  The renewal snapshot is on the same registered account pair.
 
 ### Descriptive signal (not an adoption result)
 
