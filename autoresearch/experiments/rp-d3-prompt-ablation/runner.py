@@ -2,6 +2,7 @@
 import argparse
 import importlib.util
 from pathlib import Path
+from types import FunctionType
 
 HERE = Path(__file__).resolve().parent
 spec = importlib.util.spec_from_file_location('prepare_rpd3_runner', HERE / 'prepare.py')
@@ -15,6 +16,31 @@ cell = legacy.cell
 frozen_runtime, runtime_binding, codex_account = legacy.frozen_runtime, legacy.runtime_binding, legacy.codex_account
 SCHEDULE = [(f'm{i:02}', 'BV' if i <= 4 else 'Z0', 'codex') for i in range(1, 9)]
 ARMS = dict(zip((row[0] for row in SCHEDULE), ('P0', 'P1', 'P1', 'P0', 'P0', 'P1', 'P1', 'P0')))
+pat_scan = cell.scan
+
+
+def scan(out, runtime, *, roots=None):
+    roots = tuple(roots) if roots is not None else (out,)
+    pat_scan(out, runtime, roots=roots)
+    try:
+        raw = auth.read_private(auth.directory(runtime['auth']), 'codex.json')
+        tokens = auth.oauth(raw)
+        for secret in (raw, *(tokens[key].encode() for key in ('access_token', 'refresh_token', 'id_token'))):
+            # Reuse the frozen streaming/file-name/symlink/Git-object scanner with
+            # a private credential provider; never mutate its shared globals.
+            scanner = FunctionType(pat_scan.__code__, pat_scan.__globals__ | {
+                'credential': lambda _runtime: (None, secret)})
+            scanner(out, runtime, roots=roots)
+    except (OSError, ValueError, KeyError, TypeError):
+        try:
+            write(out / 'codex-scan.json', dict(status='STOP', revocation_required=True))
+        finally:
+            # Keep the inherited pat-scan stop marker too: its lifecycle uses it
+            # to forbid grading/deletion after any credential scan failure.
+            raise ValueError('Codex credential scan hit or failed; slot stopped') from None
+
+
+cell.scan = scan
 
 
 def smoke_slots(attempt=1):
@@ -146,6 +172,11 @@ class Runner(legacy.Runner):
             result = legacy.legacy.Runner.run(self, name, task, 'B', config)
             path = Path(self.runtime['output']) / name / 'rp-verdict.json'
             record = read(path)
+            if (path.parent / 'codex-scan.json').exists():
+                record.update(status='STOP', usage='UNKNOWN', input_tokens=None, output_tokens=None,
+                              delivery_assessment='NOT_ASSESSED', revocation_required=True,
+                              reason='Codex credential scan hit or failed; slot stopped')
+                result = 2
             record.update(schema='rp-d3-verdict-v1', arm=arm, prompt_sha256=prepare.PROMPT_SHA256[arm],
                           release=prepare.release_identity(self.runtime, arm), codex_account=self.runtime['codex_account'],
                           auth=self.runtime['auth'], auth_manifest_sha256=self.runtime['auth_manifest_sha256'],

@@ -55,7 +55,8 @@ def artifact(p, root, monkeypatch):
 
 def snapshot(auth, root, account='synthetic-account', token='synthetic-token'):
     source = root.parent / (root.name + '-source.json')
-    source.write_text(json.dumps(dict(tokens=dict(account_id=account, access_token=token))))
+    source.write_text(json.dumps(dict(auth_mode='chatgpt', tokens=dict(account_id=account,
+        access_token=token, refresh_token='synthetic-refresh', id_token='synthetic-id'))))
     auth.bootstrap(source, root)
     return root
 
@@ -424,7 +425,8 @@ def test_decisions_and_followups(evidence, p0, p1, cleanup, reconciliation, expe
     assert result['arms']['P1']['cleanup_supported'] == cleanup
     assert result['arms']['P1']['reconciliation_supported'] == reconciliation
     if follow == 'no attribution':
-        assert result['decision']['follow_up'] == ['no attribution']
+        assert result['decision']['follow_up'] == []
+        assert result['decision']['reason'] == 'no attribution'
     elif follow:
         assert follow in ' '.join(result['decision']['follow_up'])
     else:
@@ -610,3 +612,219 @@ def test_paused_pair_summary_is_inconclusive_without_creating_missing_slots(evid
     (out / 'm03').mkdir()
     with pytest.raises(RuntimeError, match='unrecorded attempt'):
         s.summarize(out, reviews)
+
+
+@pytest.mark.parametrize('change', [
+    {'auth_mode': 'apikey'}, {'auth_mode': 'chatgptAuthTokens'}, {'auth_mode': None},
+    {'auth_mode': 'unknown'}, {'OPENAI_API_KEY': 'synthetic-key'}, {'OPENAI_API_KEY': ''},
+    {'personal_access_token': 'synthetic-pat'}, {'agent_identity': 'synthetic-agent'},
+    {'bedrock_api_key': 'synthetic-bedrock'}, {'unexpected': 'synthetic-secret'},
+])
+def test_auth_rejects_competing_modes_and_keys(tmp_path, change):
+    auth = load('auth')
+    root = snapshot(auth, tmp_path / 'auth')
+    value = json.loads((root / 'codex.json').read_bytes()) | change
+    source = tmp_path / 'invalid.json'
+    source.write_text(json.dumps(value))
+    with pytest.raises(auth.legacy.AuthError) as error:
+        auth.bootstrap(source, tmp_path / 'refused')
+    assert 'synthetic-' not in str(error.value)
+    assert not (tmp_path / 'refused').exists()
+
+
+@pytest.mark.parametrize('fault', ['missing_mode', 'token_key', 'tokens_list', 'blank_account',
+                                       'blank_access', 'refresh_type', 'id_type', 'duplicate'])
+def test_auth_rejects_malformed_oauth(tmp_path, fault):
+    auth = load('auth')
+    root = snapshot(auth, tmp_path / 'auth')
+    value = json.loads((root / 'codex.json').read_bytes())
+    if fault == 'missing_mode':
+        del value['auth_mode']
+    elif fault == 'token_key':
+        value['tokens']['OPENAI_API_KEY'] = 'synthetic-key'
+    elif fault == 'tokens_list':
+        value['tokens'] = []
+    elif fault == 'blank_account':
+        value['tokens']['account_id'] = ' '
+    elif fault == 'blank_access':
+        value['tokens']['access_token'] = ''
+    elif fault == 'refresh_type':
+        value['tokens']['refresh_token'] = {}
+    elif fault == 'id_type':
+        value['tokens']['id_token'] = 1
+    raw = json.dumps(value)
+    if fault == 'duplicate':
+        raw = raw.replace('"auth_mode":', '"auth_mode": "apikey", "auth_mode":')
+    with pytest.raises(auth.legacy.AuthError):
+        auth.account(raw)
+
+
+@pytest.mark.parametrize('boundary', ['output', 'smoke_output', 'scratch', 'stage'])
+@pytest.mark.parametrize('relation', ['inside', 'equal', 'ancestor'])
+@pytest.mark.parametrize('operation', ['stage', 'renew'])
+def test_model_auth_disjoint_roots(staged, tmp_path, boundary, relation, operation):
+    s, args, path = measured(staged) if operation == 'renew' else staged
+    runtime = s.read(path)
+    root = path.parent if boundary == 'stage' else Path(runtime[boundary])
+    candidate = root / 'model-auth' if relation == 'inside' else root if relation == 'equal' else root.parent
+    original = path.read_bytes()
+    if operation == 'stage':
+        args.auth = candidate
+        args.phase = 'measured'
+        action = lambda: s.stage(args)
+    else:
+        action = lambda: s.renew(path, candidate)
+    with pytest.raises(RuntimeError, match='model auth.*disjoint'):
+        action()
+    assert path.read_bytes() == original
+    assert not list(path.parent.glob('runtime-measured-auth-*.json'))
+
+
+@pytest.mark.parametrize('secret', ['access_token', 'refresh_token', 'id_token', 'raw', 'pat'])
+@pytest.mark.parametrize('location', ['stdout', 'filename', 'symlink', 'git'])
+def test_secret_scan_precedes_sealing(staged, tmp_path, monkeypatch, capsys, secret, location):
+    s, args, path = staged
+    r = s.runner
+    app = r.Runner(path)
+    out = Path(app.runtime['output']) / 'synthetic-scan'
+    out.mkdir()
+    raw = (args.auth / 'codex.json').read_bytes()
+    token = (b'github_pat_synthetic' if secret == 'pat' else raw if secret == 'raw'
+             else json.loads(raw)['tokens'][secret].encode())
+    monkeypatch.setattr(r.cell, 'credential', lambda _: (args.github_auth, b'github_pat_synthetic'))
+    if location == 'stdout':
+        (out / 'stdout').write_bytes(b'x' * (1024 * 1024 - 3) + token)
+    elif location == 'filename':
+        # JSON is a legal synthetic filename here and also tests full snapshot matching.
+        (out / token.decode()).write_text('unrelated')
+    elif location == 'symlink':
+        (out / 'link').symlink_to(token.decode())
+    else:
+        subprocess.run(['git', 'init', '--bare', str(out / 'repo.git')], check=True, capture_output=True)
+        subprocess.run(['git', '--git-dir', str(out / 'repo.git'), 'hash-object', '-w', '--stdin'],
+                       input=token, check=True, capture_output=True)
+    seal = app.frame.seal_after_teardown
+    monkeypatch.setitem(seal.keywords, 'inherited', lambda _: pytest.fail('leaked evidence was sealed'))
+    with pytest.raises(ValueError) as error:
+        seal(out)
+    assert token.decode() not in str(error.value)
+    assert not capsys.readouterr().out
+    assert not (out / 'evidence-manifest.json').exists()
+
+
+@pytest.mark.parametrize('location', ['preseal', 'archive', 'verdict'])
+def test_codex_leak_stops_slot_and_remaining_schedule(staged, monkeypatch, location, capsys):
+    s, args, path = measured(staged)
+    r = s.runner
+    app = r.Runner(path)
+    events = []
+    token = 'synthetic-refresh'
+    monkeypatch.setattr(r.cell, 'credential', lambda _: (args.github_auth, b'github_pat_synthetic'))
+    monkeypatch.setattr(r.github, 'precheck', lambda *_: None)
+    monkeypatch.setitem(app.frame.seal_after_teardown.keywords, 'inherited',
+                        lambda _: pytest.fail('leaked evidence was sealed'))
+    def inherited(_self, name, *_args):
+        out = Path(app.runtime['output']) / name
+        (out / 'run').mkdir(parents=True)
+        s.write(out / 'run/started.json', {})
+        if location == 'preseal':
+            (out / 'run/stdout').write_text(token)
+            app.frame.seal_after_teardown(out)
+        s.write(out.parent / f'verdict-{name}.json', dict(status='CHECKS_PASS', usage='COMPLETE',
+            input_tokens=7, output_tokens=3, teardown='CLEAN', evidence_manifest_sha256='seal', snapshot={},
+            diagnostic=token if location == 'verdict' else 'clean'))
+    def archive(_repository, root):
+        root.mkdir(parents=True)
+        (root / 'metadata.json').write_text(token if location == 'archive' else 'clean')
+        return dict(manifest_sha256='seal')
+    def grade(*_):
+        events.append('grade')
+        return dict(status='ADJUDICATE', checklist={})
+    monkeypatch.setattr(r.legacy.legacy.legacy.Runner, 'run', inherited)
+    monkeypatch.setattr(r.github, 'archive', archive)
+    monkeypatch.setattr(r.github, 'done_check', grade)
+    monkeypatch.setattr(r.github, 'delete_archived', lambda *_: dict(status='DELETED'))
+    assert app.schedule() == 2
+    rows = s.read(Path(app.runtime['output']) / 'rp-schedule.json')['slots']
+    assert [row['status'] for row in rows] == ['STOP'] + ['NOT_RUN'] * 7
+    assert rows[0]['delivery_assessment'] == 'NOT_ASSESSED'
+    assert rows[0]['input_tokens'] is None
+    assert 'Codex credential scan' in rows[0]['reason']
+    assert token not in json.dumps(rows)
+    if location == 'preseal':
+        assert events == []
+    assert not capsys.readouterr().out
+    assert app.schedule() == 2
+
+
+def test_clean_secret_scan_allows_seal(staged, monkeypatch):
+    s, args, path = staged
+    app = s.runner.Runner(path)
+    monkeypatch.setattr(s.runner.cell, 'credential', lambda _: (args.github_auth, b'github_pat_synthetic'))
+    out = Path(app.runtime['output']) / 'clean'
+    out.mkdir()
+    (out / 'stdout').write_text('nonsecret evidence')
+    monkeypatch.setitem(app.frame.seal_after_teardown.keywords, 'inherited', lambda _: ('seal', []))
+    assert app.frame.seal_after_teardown(out) == ('seal', [])
+    assert not (out / 'codex-scan.json').exists()
+
+
+def test_oauth_null_api_key_and_metadata_are_not_credentials(tmp_path):
+    auth = load('auth')
+    root = snapshot(auth, tmp_path / 'auth')
+    value = json.loads((root / 'codex.json').read_bytes())
+    value.update(OPENAI_API_KEY=None, last_refresh='2026-10-16T00:00:00Z')
+    assert auth.account(json.dumps(value)) == hashlib.sha256(b'synthetic-account').hexdigest()[:12]
+
+
+def test_renew_rejects_valid_snapshot_inside_evidence(staged):
+    s, _, path = measured(staged)
+    app = s.runner.Runner(path)
+    for slot in s.runner.SCHEDULE[:2]:
+        out = Path(app.runtime['output']) / slot[0]
+        out.mkdir()
+        s.write(out / 'rp-verdict.json', record(s, app, *slot))
+    root = Path(app.runtime['output']) / 'm01/home'
+    root.mkdir()
+    replacement = snapshot(s.auth, root / 'model-auth', token='synthetic-renewal')
+    with pytest.raises(RuntimeError, match='model auth.*disjoint'):
+        s.renew(path, replacement)
+    assert not list(path.parent.glob('runtime-measured-auth-*.json'))
+
+
+@pytest.mark.parametrize('operation', ['stage', 'renew'])
+def test_auth_disjoint_resolves_symlink_and_case(staged, tmp_path, operation):
+    s, args, path = measured(staged) if operation == 'renew' else staged
+    alias = tmp_path / 'alias'
+    alias.symlink_to(path.parent, target_is_directory=True)
+    for candidate in (alias / 'private-auth', path.parent.with_name(path.parent.name.upper()) / 'private-auth'):
+        if operation == 'stage':
+            args.auth, args.phase = candidate, 'measured'
+            action = lambda: s.stage(args)
+        else:
+            action = lambda: s.renew(path, candidate)
+        with pytest.raises(RuntimeError, match='model auth.*disjoint'):
+            action()
+
+
+def test_raw_snapshot_scan_catches_json_escaped_secrets(staged, monkeypatch):
+    s, args, path = staged
+    raw = (args.auth / 'codex.json').read_text()
+    for key in ('access_token', 'refresh_token', 'id_token'):
+        token = json.loads(raw)['tokens'][key]
+        raw = raw.replace(token, ''.join(f'\\u{ord(char):04x}' for char in token))
+    source = args.auth.parent / 'escaped-source.json'
+    source.write_text(raw)
+    replacement = args.auth.parent / 'escaped-auth'
+    s.auth.bootstrap(source, replacement)
+    app = s.runner.Runner(path)
+    runtime = dict(app.runtime, auth=str(replacement))
+    out = Path(runtime['output']) / 'raw-leak'
+    out.mkdir()
+    (out / 'stdout').write_text(raw)
+    assert all(token.encode() not in raw.encode() for key, token in s.auth.oauth(raw).items()
+               if key != 'account_id')
+    monkeypatch.setattr(s.runner.cell, 'credential', lambda _: (args.github_auth, b'github_pat_synthetic'))
+    with pytest.raises(ValueError, match='Codex credential scan'):
+        s.runner.cell.scan(out, runtime)
+    assert s.read(out / 'codex-scan.json')['status'] == 'STOP'

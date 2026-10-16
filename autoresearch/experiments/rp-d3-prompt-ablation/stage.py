@@ -15,7 +15,17 @@ legacy.smoke_catalogs = lambda _output, _attempt: {}
 inherited_stage = legacy.stage
 
 
+def disjoint_auth(auth_path, roots):
+    model = Path(str(Path(auth_path).resolve()).casefold())
+    for root in roots:
+        boundary = Path(str(Path(root).resolve()).casefold())
+        require(not (model.is_relative_to(boundary) or boundary.is_relative_to(model)),
+                'model auth must be disjoint from output, smoke_output, scratch and stage roots')
+
+
 def stage(args):
+    dest = args.stage_dir.resolve()
+    disjoint_auth(args.auth, (dest, dest / 'output', args.smoke_output or dest / 'smoke-output', dest / 'scratch'))
     for arm in runner.prepare.PROMPT_SHA256:
         runner.prepare.prompt_body(arm)
     if args.phase == 'measured':
@@ -34,6 +44,7 @@ def renewal_allowed(previous, account, completed):
 def renew(runtime_path, auth_path):
     app = runner.Runner(runtime_path)
     previous = read(runtime_path)
+    disjoint_auth(auth_path, (runtime_path.parent, *(previous[key] for key in ('output', 'smoke_output', 'scratch'))))
     completed = app.completed_prefix()
     renewal_allowed(previous, previous['codex_account'], completed)
     if completed:
@@ -57,6 +68,7 @@ def check(runtime_path):
     runner.prepare.verify_release(runtime)
     app.check_auth(runtime)
     original = read(runtime_path)
+    disjoint_auth(original['auth'], (runtime_path.parent, *(original[key] for key in ('output', 'smoke_output', 'scratch'))))
     for output in (original['output'], original['smoke_output']):
         runner.cell.credential_directory(dict(runtime, output=output))
     hidden = Path(runtime['control']) / 'oracle/experiments/rp-d1-delivery-cost'

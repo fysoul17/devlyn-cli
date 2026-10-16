@@ -12,15 +12,34 @@ directory, read_private, write_private = legacy.directory, legacy.read_private, 
 digest, encoded = legacy.digest, legacy.encoded
 
 
-def account(raw):
+def unique_object(pairs):
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError
+        result[key] = value
+    return result
+
+
+def oauth(raw):
     try:
-        value = json.loads(raw)['tokens']['account_id']
-        token = json.loads(raw)['tokens']['access_token']
-        if not isinstance(value, str) or not value.strip() or not isinstance(token, str) or not token.strip():
+        value = json.loads(raw, object_pairs_hook=unique_object)
+        if (not isinstance(value, dict) or value.get('auth_mode') != 'chatgpt' or
+                set(value) - {'auth_mode', 'tokens', 'last_refresh', 'OPENAI_API_KEY'} or
+                value.get('OPENAI_API_KEY') is not None):
+            raise ValueError
+        tokens = value['tokens']
+        if (not isinstance(tokens, dict) or
+                set(tokens) != {'account_id', 'access_token', 'refresh_token', 'id_token'} or
+                any(not isinstance(token, str) or not token.strip() for token in tokens.values())):
             raise ValueError
     except (ValueError, TypeError, KeyError):
-        raise legacy.AuthError('invalid-Codex-account-or-access-token') from None
-    return digest(value.encode())[:12]
+        raise legacy.AuthError('invalid-Codex-ChatGPT-OAuth-snapshot') from None
+    return tokens
+
+
+def account(raw):
+    return digest(oauth(raw)['account_id'].encode())[:12]
 
 
 def model_auth(path):

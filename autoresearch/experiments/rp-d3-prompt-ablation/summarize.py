@@ -73,7 +73,7 @@ def decision(slots, arms):
                     follow_up=['a product reporting candidate'])
     follow = []
     if p0['successes'] >= 2:
-        follow.append('no attribution')
+        return dict(decision='MIXED', reason='no attribution', follow_up=[])
     elif p1['cleanup_supported'] >= 3 and p1['successes'] <= 2:
         follow.append('follow the category that still fails')
     elif p1['reconciliation_supported'] >= 3 and p1['cleanup_supported'] <= 1:
