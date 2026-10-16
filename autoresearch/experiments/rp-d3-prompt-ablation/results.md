@@ -29,14 +29,14 @@ registered summarizer and both reviewers' report reviews.
   PR was still open). Cleanup was MISSING in all eight.
 - **Category tallies** (both reviewers): cleanup P0 0/4, P1 0/4;
   reconciliation P0 0/4, P1 1/4 (m06: "Merged as PR #1 and reconciled the
-  local checkout").
+  local checkout.").
 - **Delivery** passed 3/4 in P0 and 4/4 in P1. Every repository was archived,
   deleted and confirmed 404. All eight slots used the one tarball, the
   registered prompt hash of their arm and the registered Codex account.
 - **Descriptive cost.** P0 used 1,584,821 input and 21,153 output tokens over
   480.7 s of owner time; P1 used 2,089,048 and 23,184 over 572.7 s.
 
-## m08: a product merge race, not a prompt effect
+## m08: an auto-merge refusal in the product, not a prompt effect
 
 The 4.2.18 delivery helper ran `gh pr merge --auto --merge
 --match-head-commit` right after creating the PR. GitHub answered "Auto merge
@@ -53,8 +53,9 @@ in rp-d3 succeeded with the same call.
 Under the registered rule this is INCONCLUSIVE, and no attribution is made.
 Descriptively, the pattern is the one NO RESCUE describes: P0 and P1 report
 success were both 0/4, P1 cleanup 0/4 and P1 reconciliation 1/4. With the
-closing sentence removed, Codex still closed on a merge, a clean checkout and
-nothing unresolved, and never named cleanup. Across rp-d1, the rp-d2 rerun and
+closing sentence removed, Codex still closed on a merge and a clean checkout
+(m02, m03, m07) or a reconciled checkout (m06), and never named cleanup. The
+"nothing unresolved" closer appeared only in P0 (m01, m04, m05). Across rp-d1, the rp-d2 rerun and
 rp-d3, graded Codex reports named cleanup in 0 of 16 slots. That covered
 both prompts and both product paragraphs. Grok's dissent is not supported by
 these observations.
@@ -63,9 +64,10 @@ these observations.
 
 ## Next candidates, for the owner
 
-1. **Fix the merge race.** Make delivery merge directly when the repository
-   does not allow auto-merge, or wait for the merge state before choosing.
-   It is a product bug in every release up to main, independent of reports.
+1. **Fix the auto-merge refusal.** The suspected cause is a merge-state
+   race: make delivery merge directly when the repository does not allow
+   auto-merge, or wait for the merge state before choosing. 4.2.18 and
+   current main make the same call; it is independent of reports.
 2. **A product reporting candidate.** The registered NO RESCUE follow-up
    would require cleanup to be reported, for example in the helper's own
    result line that the executor copies. It should be designed against the
@@ -75,7 +77,9 @@ these observations.
 
 Cleanup is done after this write-up merges:
 
-- all 12 `rpd3-20261016a-*` repositories, verified 404;
+- all 12 `rpd3-20261016a-*` repositories, verified 404 (the apparatus
+  archived and deleted the ten it used; the two unused spares were deleted by
+  hand);
 - the measurement image and its saved copy, the guard and the route watcher;
 - the Codex auth snapshot, the PAT credential directory and the live
   directory `~/.local/share/nx01/rp-d3-live`;
