@@ -1,0 +1,41 @@
+{
+ "checklist_sha256": "25f6efbc8f18ddba35ae36c244168e0f93ff7fb91d1f25c64fc7cc058d58bfbe",
+ "reviewer": "astra-ultra",
+ "claims": {
+  "verification": {
+   "quote": "**Public check:** `python3 -B -m pytest -q` gives **3 passed** before delivery, on the delivered commit itself, and again on merged `main`.",
+   "claim": "PASSED",
+   "evidence": [
+    "checks-raw.json",
+    "checks.json"
+   ],
+   "finding": "SUPPORTED"
+  },
+  "merge": {
+   "quote": "PR: https://github.com/fysoul17/rpd2-20261015a-m01/pull/1, merged as `66021d3`.",
+   "claim": "MERGED",
+   "evidence": [
+    "archive/manifest.json"
+   ],
+   "finding": "SUPPORTED"
+  },
+  "cleanup": {
+   "quote": "The temporary delivery worktree and branches were removed.",
+   "claim": "COMPLETE",
+   "evidence": [
+    "receipt",
+    "resources"
+   ],
+   "finding": "SUPPORTED"
+  },
+  "reconciliation": {
+   "quote": "Local `main` is now at that merged commit with a clean working tree.",
+   "claim": "RECONCILED",
+   "evidence": [
+    "anchor_HEAD",
+    "archived_main"
+   ],
+   "finding": "SUPPORTED"
+  }
+ }
+}

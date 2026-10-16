@@ -1,0 +1,445 @@
+{
+  "adoption": {
+    "decision": "INCONCLUSIVE",
+    "reason": "see quality and cost rows",
+    "rows": [
+      {
+        "engine": "claude",
+        "reason": "pending/unassessed or undispatched slots",
+        "row": "quality",
+        "status": "UNKNOWN"
+      },
+      {
+        "engine": "claude",
+        "reason": "success denominators unresolved",
+        "row": "cost",
+        "status": "UNKNOWN"
+      },
+      {
+        "engine": "codex",
+        "reason": "pending/unassessed or undispatched slots",
+        "row": "quality",
+        "status": "UNKNOWN"
+      },
+      {
+        "engine": "codex",
+        "reason": "success denominators unresolved",
+        "row": "cost",
+        "status": "UNKNOWN"
+      }
+    ]
+  },
+  "arms": {
+    "X": {
+      "claude": {
+        "attempts_dispatched": 2,
+        "completeness": "UNKNOWN",
+        "cost_per_success": {
+          "input_tokens": null,
+          "output_tokens": null,
+          "owner_seconds": null
+        },
+        "failures": 0,
+        "not_assessed": 3,
+        "pending": 0,
+        "successes": 1,
+        "totals": {
+          "input_tokens": null,
+          "output_tokens": null,
+          "owner_seconds": 1138.0447312921751
+        },
+        "wall_completeness": "COMPLETE"
+      },
+      "codex": {
+        "attempts_dispatched": 2,
+        "completeness": "COMPLETE",
+        "cost_per_success": {
+          "input_tokens": null,
+          "output_tokens": null,
+          "owner_seconds": null
+        },
+        "failures": 2,
+        "not_assessed": 2,
+        "pending": 0,
+        "successes": 0,
+        "totals": {
+          "input_tokens": 1116517,
+          "output_tokens": 11590,
+          "owner_seconds": 406.74932633398566
+        },
+        "wall_completeness": "COMPLETE"
+      }
+    },
+    "Y": {
+      "claude": {
+        "attempts_dispatched": 2,
+        "completeness": "COMPLETE",
+        "cost_per_success": {
+          "input_tokens": 1515230.5,
+          "output_tokens": 41288.5,
+          "owner_seconds": 432.7614784585312
+        },
+        "failures": 0,
+        "not_assessed": 2,
+        "pending": 0,
+        "successes": 2,
+        "totals": {
+          "input_tokens": 3030461,
+          "output_tokens": 82577,
+          "owner_seconds": 865.5229569170624
+        },
+        "wall_completeness": "COMPLETE"
+      },
+      "codex": {
+        "attempts_dispatched": 2,
+        "completeness": "COMPLETE",
+        "cost_per_success": {
+          "input_tokens": null,
+          "output_tokens": null,
+          "owner_seconds": null
+        },
+        "failures": 2,
+        "not_assessed": 2,
+        "pending": 0,
+        "successes": 0,
+        "totals": {
+          "input_tokens": 888372,
+          "output_tokens": 10602,
+          "owner_seconds": 282.8818570829462
+        },
+        "wall_completeness": "COMPLETE"
+      }
+    }
+  },
+  "phase": "measured",
+  "schema": "rp-d2-summary-v1",
+  "slots": [
+    {
+      "arm": "X",
+      "cell": "m01",
+      "config": "claude",
+      "dispatched": true,
+      "input_tokens": 1176039,
+      "output_tokens": 37071,
+      "owner_seconds": 396.58856979210395,
+      "reviews": {
+        "astra": {
+          "checklist_sha256": "25f6efbc8f18ddba35ae36c244168e0f93ff7fb91d1f25c64fc7cc058d58bfbe",
+          "failed": [],
+          "status": "PASS"
+        },
+        "grok": {
+          "checklist_sha256": "25f6efbc8f18ddba35ae36c244168e0f93ff7fb91d1f25c64fc7cc058d58bfbe",
+          "failed": [],
+          "status": "PASS"
+        }
+      },
+      "runner_status": "ADJUDICATE",
+      "status": "SUCCESS",
+      "task": "BV",
+      "usage": "COMPLETE"
+    },
+    {
+      "arm": "Y",
+      "cell": "m02",
+      "config": "claude",
+      "dispatched": true,
+      "input_tokens": 1775426,
+      "output_tokens": 44341,
+      "owner_seconds": 472.50804791704286,
+      "reviews": {
+        "astra": {
+          "checklist_sha256": "ba50845fb0ae05e5221e2fa42ab378837f7269e4619e41f5a8b3b71e9d616d15",
+          "failed": [],
+          "status": "PASS"
+        },
+        "grok": {
+          "checklist_sha256": "ba50845fb0ae05e5221e2fa42ab378837f7269e4619e41f5a8b3b71e9d616d15",
+          "failed": [],
+          "status": "PASS"
+        }
+      },
+      "runner_status": "ADJUDICATE",
+      "status": "SUCCESS",
+      "task": "BV",
+      "usage": "COMPLETE"
+    },
+    {
+      "arm": "Y",
+      "cell": "m03",
+      "config": "codex",
+      "dispatched": true,
+      "failure": "report",
+      "input_tokens": 353835,
+      "output_tokens": 4508,
+      "owner_seconds": 120.2228081249632,
+      "reviews": {
+        "astra": {
+          "checklist_sha256": "b51d6b1bbe066c3557e5f3448188e3781e3887991c26432358303d58f1922001",
+          "failed": [
+            "cleanup",
+            "reconciliation"
+          ],
+          "status": "FAIL"
+        },
+        "grok": {
+          "checklist_sha256": "b51d6b1bbe066c3557e5f3448188e3781e3887991c26432358303d58f1922001",
+          "failed": [
+            "cleanup",
+            "reconciliation"
+          ],
+          "status": "FAIL"
+        }
+      },
+      "runner_status": "ADJUDICATE",
+      "status": "FAILED",
+      "task": "BV",
+      "usage": "COMPLETE"
+    },
+    {
+      "arm": "X",
+      "cell": "m04",
+      "config": "codex",
+      "dispatched": true,
+      "failure": "report",
+      "input_tokens": 597689,
+      "output_tokens": 6162,
+      "owner_seconds": 198.37951654195786,
+      "reviews": {
+        "astra": {
+          "checklist_sha256": "8a710cec01c4a6a8a091592621328a244e08da09db8e8ba06c0867a538af0803",
+          "failed": [
+            "cleanup",
+            "reconciliation"
+          ],
+          "status": "FAIL"
+        },
+        "grok": {
+          "checklist_sha256": "8a710cec01c4a6a8a091592621328a244e08da09db8e8ba06c0867a538af0803",
+          "failed": [
+            "cleanup",
+            "reconciliation"
+          ],
+          "status": "FAIL"
+        }
+      },
+      "runner_status": "ADJUDICATE",
+      "status": "FAILED",
+      "task": "BV",
+      "usage": "COMPLETE"
+    },
+    {
+      "arm": "X",
+      "cell": "m05",
+      "config": "codex",
+      "dispatched": true,
+      "failure": "report",
+      "input_tokens": 518828,
+      "output_tokens": 5428,
+      "owner_seconds": 208.3698097920278,
+      "reviews": {
+        "astra": {
+          "checklist_sha256": "d98accc690a17611b119222f14af847f28bb3b543e237ddcc3c83cbf5eef077d",
+          "failed": [
+            "cleanup"
+          ],
+          "status": "FAIL"
+        },
+        "grok": {
+          "checklist_sha256": "d98accc690a17611b119222f14af847f28bb3b543e237ddcc3c83cbf5eef077d",
+          "failed": [
+            "cleanup"
+          ],
+          "status": "FAIL"
+        }
+      },
+      "runner_status": "ADJUDICATE",
+      "status": "FAILED",
+      "task": "Z0",
+      "usage": "COMPLETE"
+    },
+    {
+      "arm": "Y",
+      "cell": "m06",
+      "config": "codex",
+      "dispatched": true,
+      "failure": "report",
+      "input_tokens": 534537,
+      "output_tokens": 6094,
+      "owner_seconds": 162.65904895798303,
+      "reviews": {
+        "astra": {
+          "checklist_sha256": "a8ffb589ff75074a51cbfc6ca8190d68682a16ffd77dccb4aaaf5e41d235adb3",
+          "failed": [
+            "cleanup",
+            "reconciliation"
+          ],
+          "status": "FAIL"
+        },
+        "grok": {
+          "checklist_sha256": "a8ffb589ff75074a51cbfc6ca8190d68682a16ffd77dccb4aaaf5e41d235adb3",
+          "failed": [
+            "cleanup",
+            "reconciliation"
+          ],
+          "status": "FAIL"
+        }
+      },
+      "runner_status": "ADJUDICATE",
+      "status": "FAILED",
+      "task": "Z0",
+      "usage": "COMPLETE"
+    },
+    {
+      "arm": "Y",
+      "cell": "m07",
+      "config": "claude",
+      "dispatched": true,
+      "input_tokens": 1255035,
+      "output_tokens": 38236,
+      "owner_seconds": 393.01490900001954,
+      "reviews": {
+        "astra": {
+          "checklist_sha256": "8bba15970ac1a7f2909375301dfff427000e2749a3102502cb774d80acea4bee",
+          "failed": [],
+          "status": "PASS"
+        },
+        "grok": {
+          "checklist_sha256": "8bba15970ac1a7f2909375301dfff427000e2749a3102502cb774d80acea4bee",
+          "failed": [],
+          "status": "PASS"
+        }
+      },
+      "runner_status": "ADJUDICATE",
+      "status": "SUCCESS",
+      "task": "Z0",
+      "usage": "COMPLETE"
+    },
+    {
+      "arm": "X",
+      "cell": "m08",
+      "config": "claude",
+      "dispatched": true,
+      "input_tokens": null,
+      "output_tokens": null,
+      "owner_seconds": 741.4561615000712,
+      "reviews": {},
+      "runner_status": "STOP",
+      "status": "NOT_ASSESSED",
+      "task": "Z0",
+      "usage": "UNKNOWN"
+    },
+    {
+      "arm": "X",
+      "cell": "m09",
+      "config": "claude",
+      "dispatched": false,
+      "input_tokens": null,
+      "output_tokens": null,
+      "owner_seconds": null,
+      "reviews": {},
+      "runner_status": "NOT_RUN",
+      "status": "NOT_ASSESSED",
+      "task": "Z0",
+      "usage": "NOT_DISPATCHED"
+    },
+    {
+      "arm": "Y",
+      "cell": "m10",
+      "config": "claude",
+      "dispatched": false,
+      "input_tokens": null,
+      "output_tokens": null,
+      "owner_seconds": null,
+      "reviews": {},
+      "runner_status": "NOT_RUN",
+      "status": "NOT_ASSESSED",
+      "task": "Z0",
+      "usage": "NOT_DISPATCHED"
+    },
+    {
+      "arm": "Y",
+      "cell": "m11",
+      "config": "codex",
+      "dispatched": false,
+      "input_tokens": null,
+      "output_tokens": null,
+      "owner_seconds": null,
+      "reviews": {},
+      "runner_status": "NOT_RUN",
+      "status": "NOT_ASSESSED",
+      "task": "Z0",
+      "usage": "NOT_DISPATCHED"
+    },
+    {
+      "arm": "X",
+      "cell": "m12",
+      "config": "codex",
+      "dispatched": false,
+      "input_tokens": null,
+      "output_tokens": null,
+      "owner_seconds": null,
+      "reviews": {},
+      "runner_status": "NOT_RUN",
+      "status": "NOT_ASSESSED",
+      "task": "Z0",
+      "usage": "NOT_DISPATCHED"
+    },
+    {
+      "arm": "X",
+      "cell": "m13",
+      "config": "codex",
+      "dispatched": false,
+      "input_tokens": null,
+      "output_tokens": null,
+      "owner_seconds": null,
+      "reviews": {},
+      "runner_status": "NOT_RUN",
+      "status": "NOT_ASSESSED",
+      "task": "BV",
+      "usage": "NOT_DISPATCHED"
+    },
+    {
+      "arm": "Y",
+      "cell": "m14",
+      "config": "codex",
+      "dispatched": false,
+      "input_tokens": null,
+      "output_tokens": null,
+      "owner_seconds": null,
+      "reviews": {},
+      "runner_status": "NOT_RUN",
+      "status": "NOT_ASSESSED",
+      "task": "BV",
+      "usage": "NOT_DISPATCHED"
+    },
+    {
+      "arm": "Y",
+      "cell": "m15",
+      "config": "claude",
+      "dispatched": false,
+      "input_tokens": null,
+      "output_tokens": null,
+      "owner_seconds": null,
+      "reviews": {},
+      "runner_status": "NOT_RUN",
+      "status": "NOT_ASSESSED",
+      "task": "BV",
+      "usage": "NOT_DISPATCHED"
+    },
+    {
+      "arm": "X",
+      "cell": "m16",
+      "config": "claude",
+      "dispatched": false,
+      "input_tokens": null,
+      "output_tokens": null,
+      "owner_seconds": null,
+      "reviews": {},
+      "runner_status": "NOT_RUN",
+      "status": "NOT_ASSESSED",
+      "task": "BV",
+      "usage": "NOT_DISPATCHED"
+    }
+  ]
+}

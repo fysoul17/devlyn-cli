@@ -1,0 +1,468 @@
+{
+  "dispatched": 8,
+  "phase": "measured",
+  "slots": [
+    {
+      "account": [
+        "45eff57aaa45",
+        "b6b7768fd228"
+      ],
+      "archive": {
+        "manifest_sha256": "0a8f57c26f3b2497c08f13faf28aad4597fe40227de639ed1732fcae185dbdc2",
+        "path": "/Users/aipalm/.local/share/nx01/rp-d2-rerun-live/stage/output/archives/m01"
+      },
+      "arm": "X",
+      "auth": "/Users/aipalm/.local/share/nx01/rp-d2-rerun-live/model-auth-1",
+      "auth_manifest_sha256": "cd4fa3d350d13ad685c1c7f906e54060344e32f3e28cc6ea51401c6dfbf7aff5",
+      "cell": "m01",
+      "codex_account": "65ad276127a5",
+      "config": "claude",
+      "delivery_assessment": "ADJUDICATE",
+      "dispatched": true,
+      "frozen_runtime_sha256": "a495d3edb29508d2c585aebe561f25b09a7cca33b13525dae72b76899126d1b7",
+      "inherited_status": "CHECKS_PASS",
+      "inherited_verdict_sha256": "dc137ba8d27648849d9730a75bcaf7cae5f38ca3044fcb9c18aa7a30a14a21cb",
+      "input_tokens": 1176039,
+      "measurement_eligible": true,
+      "output_tokens": 37071,
+      "phase": "measured",
+      "release": {
+        "integrity": "sha512-yud5j6xq791XQlg6eVy8WkWTB/Ee7X0pn/Orbt0db4NvAKatEq577wyTT1Wo/x0FRKFRoXax1q+xxns97UXekw==",
+        "manifest_sha256": "cd68caa4bcb0d64df14faa0c8647479ef532b6d84889aac096728b57f08cb2f5",
+        "sha256": "7b22cce865d99e1400f9c0b0bff41c1b9ae3645b132cbb868ec01cadc973393e",
+        "source": {
+          "registry": "devlyn-cli@4.2.18"
+        },
+        "version": "4.2.18"
+      },
+      "repository_cleanup": {
+        "archive_manifest_sha256": "0a8f57c26f3b2497c08f13faf28aad4597fe40227de639ed1732fcae185dbdc2",
+        "http_status": 404,
+        "repository": "fysoul17/rpd2-20261015a-m01",
+        "status": "DELETED"
+      },
+      "schema": "rp-d2-verdict-v1",
+      "status": "ADJUDICATE",
+      "task": "BV",
+      "usage": "COMPLETE"
+    },
+    {
+      "account": [
+        "45eff57aaa45",
+        "b6b7768fd228"
+      ],
+      "archive": {
+        "manifest_sha256": "33dcaf0db994b0a6dfa2c8db3b61a678f04bb4abc5133dd488d52d10581fd0f7",
+        "path": "/Users/aipalm/.local/share/nx01/rp-d2-rerun-live/stage/output/archives/m02"
+      },
+      "arm": "Y",
+      "auth": "/Users/aipalm/.local/share/nx01/rp-d2-rerun-live/model-auth-1",
+      "auth_manifest_sha256": "cd4fa3d350d13ad685c1c7f906e54060344e32f3e28cc6ea51401c6dfbf7aff5",
+      "cell": "m02",
+      "codex_account": "65ad276127a5",
+      "config": "claude",
+      "delivery_assessment": "ADJUDICATE",
+      "dispatched": true,
+      "frozen_runtime_sha256": "a495d3edb29508d2c585aebe561f25b09a7cca33b13525dae72b76899126d1b7",
+      "inherited_status": "CHECKS_PASS",
+      "inherited_verdict_sha256": "3c6c085c142e286bdc46cfec98c75854e5efd00e3b1ffbe31561fa59b0b0a26a",
+      "input_tokens": 1775426,
+      "measurement_eligible": true,
+      "output_tokens": 44341,
+      "phase": "measured",
+      "release": {
+        "integrity": "sha512-eOKh4//n1WyIGfYBWLxs+7sTKgozAv5skd9MTJL9eA8qRrJ7Pz92UF7rV38smKDBLWMdAGn5YBV/TRMdURgUMg==",
+        "manifest_sha256": "4141d0da1a6250d3af6c7614ef482726aa5d01619e941887438b17c0ad8996d7",
+        "sha256": "c45bc13aec01f625a6687a9697854e705b3eb201fc2b0f1e01626e9f8dcaf603",
+        "source": {
+          "candidate_commit": "a623b382e655e893f6b39b96199ef8675afdde05",
+          "registry": "devlyn-cli@4.2.18"
+        },
+        "version": "4.2.18"
+      },
+      "repository_cleanup": {
+        "archive_manifest_sha256": "33dcaf0db994b0a6dfa2c8db3b61a678f04bb4abc5133dd488d52d10581fd0f7",
+        "http_status": 404,
+        "repository": "fysoul17/rpd2-20261015a-m02",
+        "status": "DELETED"
+      },
+      "schema": "rp-d2-verdict-v1",
+      "status": "ADJUDICATE",
+      "task": "BV",
+      "usage": "COMPLETE"
+    },
+    {
+      "account": [
+        "45eff57aaa45",
+        "b6b7768fd228"
+      ],
+      "archive": {
+        "manifest_sha256": "a7eb8b18ce500d09451a5e13a8d22d0157a7399a62151f95056f9c5a9c063b05",
+        "path": "/Users/aipalm/.local/share/nx01/rp-d2-rerun-live/stage/output/archives/m03"
+      },
+      "arm": "Y",
+      "auth": "/Users/aipalm/.local/share/nx01/rp-d2-rerun-live/model-auth-1",
+      "auth_manifest_sha256": "cd4fa3d350d13ad685c1c7f906e54060344e32f3e28cc6ea51401c6dfbf7aff5",
+      "cell": "m03",
+      "codex_account": "65ad276127a5",
+      "config": "codex",
+      "delivery_assessment": "ADJUDICATE",
+      "dispatched": true,
+      "frozen_runtime_sha256": "a495d3edb29508d2c585aebe561f25b09a7cca33b13525dae72b76899126d1b7",
+      "inherited_status": "CHECKS_PASS",
+      "inherited_verdict_sha256": "731d8932dbbc0e93854c5c72d90c17a02436b7916b139642bbe289d5bc99902b",
+      "input_tokens": 353835,
+      "measurement_eligible": true,
+      "output_tokens": 4508,
+      "phase": "measured",
+      "release": {
+        "integrity": "sha512-eOKh4//n1WyIGfYBWLxs+7sTKgozAv5skd9MTJL9eA8qRrJ7Pz92UF7rV38smKDBLWMdAGn5YBV/TRMdURgUMg==",
+        "manifest_sha256": "4141d0da1a6250d3af6c7614ef482726aa5d01619e941887438b17c0ad8996d7",
+        "sha256": "c45bc13aec01f625a6687a9697854e705b3eb201fc2b0f1e01626e9f8dcaf603",
+        "source": {
+          "candidate_commit": "a623b382e655e893f6b39b96199ef8675afdde05",
+          "registry": "devlyn-cli@4.2.18"
+        },
+        "version": "4.2.18"
+      },
+      "repository_cleanup": {
+        "archive_manifest_sha256": "a7eb8b18ce500d09451a5e13a8d22d0157a7399a62151f95056f9c5a9c063b05",
+        "http_status": 404,
+        "repository": "fysoul17/rpd2-20261015a-m03",
+        "status": "DELETED"
+      },
+      "schema": "rp-d2-verdict-v1",
+      "status": "ADJUDICATE",
+      "task": "BV",
+      "usage": "COMPLETE"
+    },
+    {
+      "account": [
+        "45eff57aaa45",
+        "b6b7768fd228"
+      ],
+      "archive": {
+        "manifest_sha256": "dc35c1545d8b43131e24769e5c4d139b733f0960a2faefb16ed06a0c4dd3cbac",
+        "path": "/Users/aipalm/.local/share/nx01/rp-d2-rerun-live/stage/output/archives/m04"
+      },
+      "arm": "X",
+      "auth": "/Users/aipalm/.local/share/nx01/rp-d2-rerun-live/model-auth-1",
+      "auth_manifest_sha256": "cd4fa3d350d13ad685c1c7f906e54060344e32f3e28cc6ea51401c6dfbf7aff5",
+      "cell": "m04",
+      "codex_account": "65ad276127a5",
+      "config": "codex",
+      "delivery_assessment": "ADJUDICATE",
+      "dispatched": true,
+      "frozen_runtime_sha256": "a495d3edb29508d2c585aebe561f25b09a7cca33b13525dae72b76899126d1b7",
+      "inherited_status": "CHECKS_PASS",
+      "inherited_verdict_sha256": "960ed1de5c6af0794ae85ce24a1181cf71e596bfc25ebe5c780f49cabc1510e6",
+      "input_tokens": 597689,
+      "measurement_eligible": true,
+      "output_tokens": 6162,
+      "phase": "measured",
+      "release": {
+        "integrity": "sha512-yud5j6xq791XQlg6eVy8WkWTB/Ee7X0pn/Orbt0db4NvAKatEq577wyTT1Wo/x0FRKFRoXax1q+xxns97UXekw==",
+        "manifest_sha256": "cd68caa4bcb0d64df14faa0c8647479ef532b6d84889aac096728b57f08cb2f5",
+        "sha256": "7b22cce865d99e1400f9c0b0bff41c1b9ae3645b132cbb868ec01cadc973393e",
+        "source": {
+          "registry": "devlyn-cli@4.2.18"
+        },
+        "version": "4.2.18"
+      },
+      "repository_cleanup": {
+        "archive_manifest_sha256": "dc35c1545d8b43131e24769e5c4d139b733f0960a2faefb16ed06a0c4dd3cbac",
+        "http_status": 404,
+        "repository": "fysoul17/rpd2-20261015a-m04",
+        "status": "DELETED"
+      },
+      "schema": "rp-d2-verdict-v1",
+      "status": "ADJUDICATE",
+      "task": "BV",
+      "usage": "COMPLETE"
+    },
+    {
+      "account": [
+        "45eff57aaa45",
+        "b6b7768fd228"
+      ],
+      "archive": {
+        "manifest_sha256": "7f81441c730bb95c502c2a9e57db7d04063ecaabeea7150d8125e3211efe4bdd",
+        "path": "/Users/aipalm/.local/share/nx01/rp-d2-rerun-live/stage/output/archives/m05"
+      },
+      "arm": "X",
+      "auth": "/Users/aipalm/.local/share/nx01/rp-d2-rerun-live/model-auth-1",
+      "auth_manifest_sha256": "cd4fa3d350d13ad685c1c7f906e54060344e32f3e28cc6ea51401c6dfbf7aff5",
+      "cell": "m05",
+      "codex_account": "65ad276127a5",
+      "config": "codex",
+      "delivery_assessment": "ADJUDICATE",
+      "dispatched": true,
+      "frozen_runtime_sha256": "a495d3edb29508d2c585aebe561f25b09a7cca33b13525dae72b76899126d1b7",
+      "inherited_status": "CHECKS_PASS",
+      "inherited_verdict_sha256": "d5084209b8e88bb3ff4537b96a41a2f00789130c7b22149d27498ed1f9625531",
+      "input_tokens": 518828,
+      "measurement_eligible": true,
+      "output_tokens": 5428,
+      "phase": "measured",
+      "release": {
+        "integrity": "sha512-yud5j6xq791XQlg6eVy8WkWTB/Ee7X0pn/Orbt0db4NvAKatEq577wyTT1Wo/x0FRKFRoXax1q+xxns97UXekw==",
+        "manifest_sha256": "cd68caa4bcb0d64df14faa0c8647479ef532b6d84889aac096728b57f08cb2f5",
+        "sha256": "7b22cce865d99e1400f9c0b0bff41c1b9ae3645b132cbb868ec01cadc973393e",
+        "source": {
+          "registry": "devlyn-cli@4.2.18"
+        },
+        "version": "4.2.18"
+      },
+      "repository_cleanup": {
+        "archive_manifest_sha256": "7f81441c730bb95c502c2a9e57db7d04063ecaabeea7150d8125e3211efe4bdd",
+        "http_status": 404,
+        "repository": "fysoul17/rpd2-20261015a-m05",
+        "status": "DELETED"
+      },
+      "schema": "rp-d2-verdict-v1",
+      "status": "ADJUDICATE",
+      "task": "Z0",
+      "usage": "COMPLETE"
+    },
+    {
+      "account": [
+        "45eff57aaa45",
+        "b6b7768fd228"
+      ],
+      "archive": {
+        "manifest_sha256": "4dfb845454eafdfb233eecff8cfb63ecbd02123c6955db9f1a21ad98ba46c091",
+        "path": "/Users/aipalm/.local/share/nx01/rp-d2-rerun-live/stage/output/archives/m06"
+      },
+      "arm": "Y",
+      "auth": "/Users/aipalm/.local/share/nx01/rp-d2-rerun-live/model-auth-1",
+      "auth_manifest_sha256": "cd4fa3d350d13ad685c1c7f906e54060344e32f3e28cc6ea51401c6dfbf7aff5",
+      "cell": "m06",
+      "codex_account": "65ad276127a5",
+      "config": "codex",
+      "delivery_assessment": "ADJUDICATE",
+      "dispatched": true,
+      "frozen_runtime_sha256": "a495d3edb29508d2c585aebe561f25b09a7cca33b13525dae72b76899126d1b7",
+      "inherited_status": "CHECKS_PASS",
+      "inherited_verdict_sha256": "67805f0df6cf17b8e7f88cea65fa4b2c771032b9d1c01cbb7e8a88ecfdcd965f",
+      "input_tokens": 534537,
+      "measurement_eligible": true,
+      "output_tokens": 6094,
+      "phase": "measured",
+      "release": {
+        "integrity": "sha512-eOKh4//n1WyIGfYBWLxs+7sTKgozAv5skd9MTJL9eA8qRrJ7Pz92UF7rV38smKDBLWMdAGn5YBV/TRMdURgUMg==",
+        "manifest_sha256": "4141d0da1a6250d3af6c7614ef482726aa5d01619e941887438b17c0ad8996d7",
+        "sha256": "c45bc13aec01f625a6687a9697854e705b3eb201fc2b0f1e01626e9f8dcaf603",
+        "source": {
+          "candidate_commit": "a623b382e655e893f6b39b96199ef8675afdde05",
+          "registry": "devlyn-cli@4.2.18"
+        },
+        "version": "4.2.18"
+      },
+      "repository_cleanup": {
+        "archive_manifest_sha256": "4dfb845454eafdfb233eecff8cfb63ecbd02123c6955db9f1a21ad98ba46c091",
+        "http_status": 404,
+        "repository": "fysoul17/rpd2-20261015a-m06",
+        "status": "DELETED"
+      },
+      "schema": "rp-d2-verdict-v1",
+      "status": "ADJUDICATE",
+      "task": "Z0",
+      "usage": "COMPLETE"
+    },
+    {
+      "account": [
+        "45eff57aaa45",
+        "b6b7768fd228"
+      ],
+      "archive": {
+        "manifest_sha256": "5c966e291a74d4ee44bc75331be3aed7cae9f578e5934579d8e0b0582e0c75bc",
+        "path": "/Users/aipalm/.local/share/nx01/rp-d2-rerun-live/stage/output/archives/m07"
+      },
+      "arm": "Y",
+      "auth": "/Users/aipalm/.local/share/nx01/rp-d2-rerun-live/model-auth-3",
+      "auth_manifest_sha256": "190251d6b0844e2bfb8e818d4a40ebd2d687365337879a82b8e6cf3ec3d743ac",
+      "cell": "m07",
+      "codex_account": "65ad276127a5",
+      "config": "claude",
+      "delivery_assessment": "ADJUDICATE",
+      "dispatched": true,
+      "frozen_runtime_sha256": "a495d3edb29508d2c585aebe561f25b09a7cca33b13525dae72b76899126d1b7",
+      "inherited_status": "CHECKS_PASS",
+      "inherited_verdict_sha256": "de1fd8f65f9836723a06a6157f3ef92f6b8dd2d1ce84b2c49ad37f3ba117840c",
+      "input_tokens": 1255035,
+      "measurement_eligible": true,
+      "output_tokens": 38236,
+      "phase": "measured",
+      "release": {
+        "integrity": "sha512-eOKh4//n1WyIGfYBWLxs+7sTKgozAv5skd9MTJL9eA8qRrJ7Pz92UF7rV38smKDBLWMdAGn5YBV/TRMdURgUMg==",
+        "manifest_sha256": "4141d0da1a6250d3af6c7614ef482726aa5d01619e941887438b17c0ad8996d7",
+        "sha256": "c45bc13aec01f625a6687a9697854e705b3eb201fc2b0f1e01626e9f8dcaf603",
+        "source": {
+          "candidate_commit": "a623b382e655e893f6b39b96199ef8675afdde05",
+          "registry": "devlyn-cli@4.2.18"
+        },
+        "version": "4.2.18"
+      },
+      "repository_cleanup": {
+        "archive_manifest_sha256": "5c966e291a74d4ee44bc75331be3aed7cae9f578e5934579d8e0b0582e0c75bc",
+        "http_status": 404,
+        "repository": "fysoul17/rpd2-20261015a-m07",
+        "status": "DELETED"
+      },
+      "schema": "rp-d2-verdict-v1",
+      "status": "ADJUDICATE",
+      "task": "Z0",
+      "usage": "COMPLETE"
+    },
+    {
+      "account": [
+        "45eff57aaa45",
+        "b6b7768fd228"
+      ],
+      "archive": {
+        "manifest_sha256": "2b989b5a197d68b4960e9863041b4ae83bbcd202c540f5c713fd1ead445db388",
+        "path": "/Users/aipalm/.local/share/nx01/rp-d2-rerun-live/stage/output/archives/m08"
+      },
+      "arm": "X",
+      "auth": "/Users/aipalm/.local/share/nx01/rp-d2-rerun-live/model-auth-3",
+      "auth_manifest_sha256": "190251d6b0844e2bfb8e818d4a40ebd2d687365337879a82b8e6cf3ec3d743ac",
+      "cell": "m08",
+      "codex_account": "65ad276127a5",
+      "config": "claude",
+      "delivery_assessment": "NOT_ASSESSED",
+      "dispatched": true,
+      "frozen_runtime_sha256": "a495d3edb29508d2c585aebe561f25b09a7cca33b13525dae72b76899126d1b7",
+      "inherited_status": "STOP",
+      "inherited_verdict_sha256": "30b53adda0e42d71f3ea839218f63cebda453d3d6399633b8f0b4a51d0db2a53",
+      "input_tokens": null,
+      "measurement_eligible": true,
+      "output_tokens": null,
+      "phase": "measured",
+      "reason": "ValueError: whole-run usage UNKNOWN",
+      "release": {
+        "integrity": "sha512-yud5j6xq791XQlg6eVy8WkWTB/Ee7X0pn/Orbt0db4NvAKatEq577wyTT1Wo/x0FRKFRoXax1q+xxns97UXekw==",
+        "manifest_sha256": "cd68caa4bcb0d64df14faa0c8647479ef532b6d84889aac096728b57f08cb2f5",
+        "sha256": "7b22cce865d99e1400f9c0b0bff41c1b9ae3645b132cbb868ec01cadc973393e",
+        "source": {
+          "registry": "devlyn-cli@4.2.18"
+        },
+        "version": "4.2.18"
+      },
+      "repository_cleanup": {
+        "archive_manifest_sha256": "2b989b5a197d68b4960e9863041b4ae83bbcd202c540f5c713fd1ead445db388",
+        "http_status": 404,
+        "repository": "fysoul17/rpd2-20261015a-m08",
+        "status": "DELETED"
+      },
+      "schema": "rp-d2-verdict-v1",
+      "status": "STOP",
+      "task": "Z0",
+      "usage": "UNKNOWN"
+    },
+    {
+      "arm": "X",
+      "cell": "m09",
+      "config": "claude",
+      "delivery_assessment": "NOT_ASSESSED",
+      "dispatched": false,
+      "frozen_runtime_sha256": "a495d3edb29508d2c585aebe561f25b09a7cca33b13525dae72b76899126d1b7",
+      "measurement_eligible": true,
+      "phase": "measured",
+      "reason": "earlier slot stopped the schedule",
+      "status": "NOT_RUN",
+      "task": "Z0"
+    },
+    {
+      "arm": "Y",
+      "cell": "m10",
+      "config": "claude",
+      "delivery_assessment": "NOT_ASSESSED",
+      "dispatched": false,
+      "frozen_runtime_sha256": "a495d3edb29508d2c585aebe561f25b09a7cca33b13525dae72b76899126d1b7",
+      "measurement_eligible": true,
+      "phase": "measured",
+      "reason": "earlier slot stopped the schedule",
+      "status": "NOT_RUN",
+      "task": "Z0"
+    },
+    {
+      "arm": "Y",
+      "cell": "m11",
+      "config": "codex",
+      "delivery_assessment": "NOT_ASSESSED",
+      "dispatched": false,
+      "frozen_runtime_sha256": "a495d3edb29508d2c585aebe561f25b09a7cca33b13525dae72b76899126d1b7",
+      "measurement_eligible": true,
+      "phase": "measured",
+      "reason": "earlier slot stopped the schedule",
+      "status": "NOT_RUN",
+      "task": "Z0"
+    },
+    {
+      "arm": "X",
+      "cell": "m12",
+      "config": "codex",
+      "delivery_assessment": "NOT_ASSESSED",
+      "dispatched": false,
+      "frozen_runtime_sha256": "a495d3edb29508d2c585aebe561f25b09a7cca33b13525dae72b76899126d1b7",
+      "measurement_eligible": true,
+      "phase": "measured",
+      "reason": "earlier slot stopped the schedule",
+      "status": "NOT_RUN",
+      "task": "Z0"
+    },
+    {
+      "arm": "X",
+      "cell": "m13",
+      "config": "codex",
+      "delivery_assessment": "NOT_ASSESSED",
+      "dispatched": false,
+      "frozen_runtime_sha256": "a495d3edb29508d2c585aebe561f25b09a7cca33b13525dae72b76899126d1b7",
+      "measurement_eligible": true,
+      "phase": "measured",
+      "reason": "earlier slot stopped the schedule",
+      "status": "NOT_RUN",
+      "task": "BV"
+    },
+    {
+      "arm": "Y",
+      "cell": "m14",
+      "config": "codex",
+      "delivery_assessment": "NOT_ASSESSED",
+      "dispatched": false,
+      "frozen_runtime_sha256": "a495d3edb29508d2c585aebe561f25b09a7cca33b13525dae72b76899126d1b7",
+      "measurement_eligible": true,
+      "phase": "measured",
+      "reason": "earlier slot stopped the schedule",
+      "status": "NOT_RUN",
+      "task": "BV"
+    },
+    {
+      "arm": "Y",
+      "cell": "m15",
+      "config": "claude",
+      "delivery_assessment": "NOT_ASSESSED",
+      "dispatched": false,
+      "frozen_runtime_sha256": "a495d3edb29508d2c585aebe561f25b09a7cca33b13525dae72b76899126d1b7",
+      "measurement_eligible": true,
+      "phase": "measured",
+      "reason": "earlier slot stopped the schedule",
+      "status": "NOT_RUN",
+      "task": "BV"
+    },
+    {
+      "arm": "X",
+      "cell": "m16",
+      "config": "claude",
+      "delivery_assessment": "NOT_ASSESSED",
+      "dispatched": false,
+      "frozen_runtime_sha256": "a495d3edb29508d2c585aebe561f25b09a7cca33b13525dae72b76899126d1b7",
+      "measurement_eligible": true,
+      "phase": "measured",
+      "reason": "earlier slot stopped the schedule",
+      "status": "NOT_RUN",
+      "task": "BV"
+    }
+  ],
+  "status": "STOP"
+}

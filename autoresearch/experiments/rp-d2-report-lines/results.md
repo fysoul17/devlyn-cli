@@ -1,5 +1,77 @@
 # rp-d2 results — report lines
 
+## Rerun 20261015a (2026-10-16)
+
+**Outcome: INCONCLUSIVE again. Y is not adopted; no product file changes.**
+
+The unchanged rerun ([registration](registration.md#rerun-20261015a-registered-2026-10-15-before-exposure),
+[registration-20261015a.json](registration-20261015a.json), both reviewers
+SHIP) stopped at m08 under the registered STOP rule. Evidence:
+[results/rerun-20261015a](results/rerun-20261015a/), with `summary.json`
+from the registered summarizer and both reviewers' report reviews.
+
+| Slot | Arm | Engine / task | Status | Report review (Astra / Grok) | Owner s | Input | Output |
+|---|---|---|---|---|---:|---:|---:|
+| m01 | X | Claude / BV | SUCCESS | PASS / PASS | 396.6 | 1,176,039 | 37,071 |
+| m02 | Y | Claude / BV | SUCCESS | PASS / PASS | 472.5 | 1,775,426 | 44,341 |
+| m03 | Y | Codex / BV | FAILED | cleanup, reconciliation fail (both) | 120.2 | 353,835 | 4,508 |
+| m04 | X | Codex / BV | FAILED | cleanup, reconciliation fail (both) | 198.4 | 597,689 | 6,162 |
+| m05 | X | Codex / Z0 | FAILED | cleanup fails (both) | 208.4 | 518,828 | 5,428 |
+| m06 | Y | Codex / Z0 | FAILED | cleanup, reconciliation fail (both) | 162.7 | 534,537 | 6,094 |
+| m07 | Y | Claude / Z0 | SUCCESS | PASS / PASS | 393.0 | 1,255,035 | 38,236 |
+| m08 | X | Claude / Z0 | STOP (`NOT_ASSESSED`) | not graded | 741.5 | UNKNOWN | UNKNOWN |
+| m09–m16 | — | — | NOT_RUN | — | — | — | — |
+
+- **Every graded slot delivered correctly.** Checks passed and the PR
+  merged. All eight dispatched repositories, m08's included, were archived,
+  deleted and confirmed 404. All eight slots ran on the registered Claude
+  account pair and Codex account.
+- **The two reviewers agreed on every category of every graded slot.**
+- **m08 stopped on a dropped connection.** Its request went out at
+  23:41:12Z and was silent until an `api_error` ECONNRESET at 23:44:13Z, then
+  one retry, so usage is UNKNOWN. The route watcher (5 s polls) logged the
+  host default route moving to the VPN tunnel interface at 23:41:44Z and back
+  to Wi-Fi at 23:46:45Z. The request was in flight across that route change.
+  No other drop and no other route change occurred during any cell.
+- **Credential renewal.** Mid-run, the host's shared Claude login switched
+  accounts, and `stage.py --renew` refused the other account, as registered.
+  The renewal used a fresh token of the registered account, taken from the
+  host keychain once it held one. It was applied between pairs 3 and 4.
+
+### Descriptive signal (not an adoption result)
+
+- **Codex failed the report in all four slots, in both arms.** Every Codex
+  report omitted cleanup. Three of the four also gave only "the checkout is
+  clean" for reconciliation. Y's paragraph did not change Codex's report
+  shape: the reports end with "PR #1 was merged, the local checkout is clean,
+  and nothing remains unresolved" in both arms.
+- **Claude passed every graded report**, in both arms.
+- **This matches rp-d1 (Codex 0/4) and smoke 20261014a.** It is consistent with
+  Grok's recorded dissent: the prompt's closing sentence may set Codex's
+  report shape.
+
+### Diagnosis update and next candidate
+
+This is the third Claude drop in rp-d2. It is the first observed directly
+against a route change, and it supports the diagnosis below. Hard rule 5 now
+also says to quit the VPN client during a run, because it can connect on its
+own.
+
+With the Y paragraph showing no effect on Codex in 2 of 2 Y slots, the
+remaining candidate is Grok's prompt ablation (candidate 2 below).
+
+### Cleanup (rerun)
+
+- **Repositories.** All 24 `rpd2-20261015a-*` repositories are verified 404.
+  The apparatus archived and deleted the 12 used ones; the 12 unused, empty
+  ones were deleted by hand.
+- **Image and live directory.** The image and its saved copy are removed, as
+  are the credential snapshots. The live directory is removed after merge.
+- **PAT.** The owner deletes the fine-grained PAT `rpd2-20261015b` (and the
+  unused `rpd2-20261015a`) in the GitHub UI.
+
+## Run 20261014a
+
 **Outcome: INCONCLUSIVE. Y is not adopted, and the paragraph is reverted.**
 
 The registered schedule stopped at its first slot, under the registered STOP
