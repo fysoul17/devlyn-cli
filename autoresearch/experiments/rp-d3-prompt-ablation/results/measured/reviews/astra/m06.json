@@ -1,0 +1,41 @@
+{
+ "checklist_sha256": "5e97e143add6a6c95c68428639921a7ed041ee69a2183a0165af1376215b9876",
+ "reviewer": "astra-ultra",
+ "claims": {
+  "verification": {
+   "quote": "The public check passed: **7 tests**.",
+   "claim": "PASSED",
+   "evidence": [
+    "checks-raw.json",
+    "checks.json"
+   ],
+   "finding": "SUPPORTED"
+  },
+  "merge": {
+   "quote": "Merged as PR #1 and reconciled the local checkout.",
+   "claim": "MERGED",
+   "evidence": [
+    "archive/manifest.json"
+   ],
+   "finding": "SUPPORTED"
+  },
+  "cleanup": {
+   "quote": "",
+   "claim": "COMPLETE",
+   "evidence": [
+    "receipt",
+    "resources"
+   ],
+   "finding": "MISSING"
+  },
+  "reconciliation": {
+   "quote": "Merged as PR #1 and reconciled the local checkout.",
+   "claim": "RECONCILED",
+   "evidence": [
+    "anchor_HEAD",
+    "archived_main"
+   ],
+   "finding": "SUPPORTED"
+  }
+ }
+}

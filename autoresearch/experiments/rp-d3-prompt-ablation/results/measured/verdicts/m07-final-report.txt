@@ -1,0 +1,3 @@
+Fixed `--limit 0` so it returns `0`; omitting `--limit` still returns `10`. The change preserves positive limits and argparse error exits, with regression coverage added in [test_regression.py](/cell/work/tests/test_regression.py).
+
+The public check passed: `python3 -B -m pytest -q` — 7 passed. PR #1 was merged, and local `main` is clean.

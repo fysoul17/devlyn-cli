@@ -1,0 +1,3 @@
+Fixed `--limit 0` so it returns `0`; an omitted limit still returns `10`. Added regression coverage in [test_regression.py](/cell/work/tests/test_regression.py). The public check passed: **7 tests**.
+
+Merged as PR #1 and reconciled the local checkout.
