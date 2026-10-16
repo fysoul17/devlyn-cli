@@ -1,0 +1,21 @@
+I fixed `--limit 0`: it now returns `0`, and leaving the option out still gives `10`. The change is merged on GitHub as PR #1, and your local `main` is up to date with it.
+
+**Changed (only the two allowed files)**
+- `src/limitcli/__init__.py`: the bug was `return args.limit or 10`. An explicit `0` counts as false, so it was replaced by the default just like a missing option. `--limit` now uses argparse's own `default=10`, which only applies when the option is absent. That made the extra `is not None` check unnecessary, so I removed it.
+- `tests/test_regression.py` (new): checks that `--limit 0` returns `0`. It also checks that `--limit` with no value and an unknown option both exit with code 2, because the existing tests didn't cover those two requirements.
+
+**Verified**
+- **Before the fix:** `--limit 0` and `--limit=0` returned `10`. With only the new test added, it failed with `assert 10 == 0` and the other 6 tests passed.
+- **After the fix:** `python3 -B -m pytest -q` gave **7 passed** in your checkout, in the delivery worktree on the exact commit, and again after updating `main`.
+- **Behavior:** no option gives 10, `0` gives 0, `3` gives 3. Negative, `bad`, `1.5`, a missing value and an unknown option all still exit with code 2 and the same argparse messages.
+- **Untouched:** `tests/test_existing.py`, `docs/user-notes.txt` and `.user-state/draft.txt` (same contents, mode 644), plus your Git config and `caller.json`.
+
+**Delivery**
+- This involved a push to GitHub. AGENTS.md says to deliver by PR and merge by default, and your instructions didn't limit that, so I followed the project policy.
+- I used the repo's delivery script (`task-complete.py`). It committed the change as `c67a7d9`, opened https://github.com/fysoul17/rpd2-20261015a-m07/pull/1 and merged it as `0559592`. I confirmed the merge on GitHub.
+- Local `main` now matches the merged result and has no uncommitted changes. The script deleted its temporary worktree and branch.
+- After the merge I edited the PR description to add a short summary and the Claude Code attribution line. The script only writes "Accepted task commit: <sha>".
+
+**Unresolved:** nothing blocking.
+- The script deliberately keeps a recovery ref (`refs/devlyn/completed/db5ed5bc…`) and the test log and acceptance record under `.git/devlyn-completion/`. These never expire on their own.
+- The PR title is just `fix-limit-zero`, because the script uses the task name as the title.

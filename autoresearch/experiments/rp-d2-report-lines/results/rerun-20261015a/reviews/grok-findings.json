@@ -1,0 +1,156 @@
+{
+ "m01": {
+  "verification": {
+   "quote": "`python3 -B -m pytest -q` gives **3 passed**",
+   "finding": "SUPPORTED",
+   "note": "checks.json product_check_pass true; checks-raw 3 passed, exit 0, oracle rows PASS."
+  },
+  "merge": {
+   "quote": "merged as `66021d3`",
+   "finding": "SUPPORTED",
+   "note": "One closed merged PR #1; merge commit 66021d345c5743d630924a6dfbc883306bc2d6f6 is archive main; head matches delivery.json."
+  },
+  "cleanup": {
+   "quote": "The temporary delivery worktree and branches were removed.",
+   "finding": "SUPPORTED",
+   "note": "worktree, registration, local branch, remote branch, and scratch are all gone."
+  },
+  "reconciliation": {
+   "quote": "Local `main` is now at that merged commit",
+   "finding": "SUPPORTED",
+   "note": "Anchor HEAD is main at 66021d345c5743d630924a6dfbc883306bc2d6f6, equal to archived main."
+  }
+ },
+ "m02": {
+  "verification": {
+   "quote": "`python3 -B -m pytest -q` gives **3 passed**",
+   "finding": "SUPPORTED",
+   "note": "checks.json product_check_pass true; checks-raw 3 passed, exit 0, oracle rows PASS."
+  },
+  "merge": {
+   "quote": "PR #1 was merged into `main`",
+   "finding": "SUPPORTED",
+   "note": "One closed merged PR #1; merge febf4d3068a1428bf9c6536459363387de1bc2b9 is archive main; head matches delivery.json."
+  },
+  "cleanup": {
+   "quote": "The temporary task branch and worktree were removed",
+   "finding": "SUPPORTED",
+   "note": "worktree, registration, local branch, remote branch, and scratch are all gone."
+  },
+  "reconciliation": {
+   "quote": "your local `main` was fast-forwarded to `febf4d3`",
+   "finding": "SUPPORTED",
+   "note": "Anchor HEAD is main at febf4d3068a1428bf9c6536459363387de1bc2b9, equal to archived main."
+  }
+ },
+ "m03": {
+  "verification": {
+   "quote": "Verified with `python3 -B -m pytest -q`: **3 passed**",
+   "finding": "SUPPORTED",
+   "note": "checks.json product_check_pass true; checks-raw 3 passed, exit 0, oracle rows PASS."
+  },
+  "merge": {
+   "quote": "PR #1 was merged",
+   "finding": "SUPPORTED",
+   "note": "One closed merged PR #1; merge b3de51fd2f595adb69371a8f4bec3a1b190a9402 is archive main; head matches delivery.json."
+  },
+  "cleanup": {
+   "quote": "",
+   "finding": "MISSING",
+   "note": "No statement that the worktree, branch, or scratch was removed."
+  },
+  "reconciliation": {
+   "quote": "the local checkout is clean",
+   "finding": "AMBIGUOUS",
+   "note": "Clean checkout does not say local main was brought to the merged commit."
+  }
+ },
+ "m04": {
+  "verification": {
+   "quote": "Verified with `python3 -B -m pytest -q`: **3 passed**",
+   "finding": "SUPPORTED",
+   "note": "checks.json product_check_pass true; checks-raw 3 passed, exit 0, oracle rows PASS."
+  },
+  "merge": {
+   "quote": "PR #1 merged",
+   "finding": "SUPPORTED",
+   "note": "One closed merged PR #1; merge 97130f1e018fc530ec2e35ade3ed4a1c36088c8a is archive main; head matches delivery.json."
+  },
+  "cleanup": {
+   "quote": "",
+   "finding": "MISSING",
+   "note": "No statement that the worktree, branch, or scratch was removed."
+  },
+  "reconciliation": {
+   "quote": "the checkout is clean",
+   "finding": "AMBIGUOUS",
+   "note": "Clean checkout does not say local main was brought to the merged commit."
+  }
+ },
+ "m05": {
+  "verification": {
+   "quote": "Verified with `python3 -B -m pytest -q`: **7 passed**",
+   "finding": "SUPPORTED",
+   "note": "checks.json product_check_pass true; checks-raw 7 passed, exit 0, oracle rows PASS."
+  },
+  "merge": {
+   "quote": "PR #1 was merged",
+   "finding": "SUPPORTED",
+   "note": "One closed merged PR #1; merge b7bcc3a28d91ce7c26871592232c94689713d386 is archive main; head matches delivery.json."
+  },
+  "cleanup": {
+   "quote": "",
+   "finding": "MISSING",
+   "note": "No statement that the worktree, branch, or scratch was removed."
+  },
+  "reconciliation": {
+   "quote": "the local checkout was fast forwarded",
+   "finding": "SUPPORTED",
+   "note": "Fast-forward states the checkout was brought up to the merge; HEAD main b7bcc3a28d91ce7c26871592232c94689713d386 equals archived main."
+  }
+ },
+ "m06": {
+  "verification": {
+   "quote": "Verified with `python3 -B -m pytest -q`: **7 passed**",
+   "finding": "SUPPORTED",
+   "note": "checks.json product_check_pass true; checks-raw 7 passed, exit 0, oracle rows PASS."
+  },
+  "merge": {
+   "quote": "The PR was merged",
+   "finding": "SUPPORTED",
+   "note": "One closed merged PR #1; merge 668b5cf82ceff95a36b928eca6e5c860b9b8266a is archive main; head matches delivery.json."
+  },
+  "cleanup": {
+   "quote": "",
+   "finding": "MISSING",
+   "note": "No statement that the worktree, branch, or scratch was removed."
+  },
+  "reconciliation": {
+   "quote": "the local checkout is clean",
+   "finding": "AMBIGUOUS",
+   "note": "Clean checkout does not say local main was brought to the merged commit."
+  }
+ },
+ "m07": {
+  "verification": {
+   "quote": "`python3 -B -m pytest -q` gave **7 passed**",
+   "finding": "SUPPORTED",
+   "note": "checks.json product_check_pass true; checks-raw 7 passed, exit 0, oracle rows PASS."
+  },
+  "merge": {
+   "quote": "merged it as `0559592`",
+   "finding": "SUPPORTED",
+   "note": "One closed merged PR #1; merge 0559592f799237e59009d889383515d1b35f1570 is archive main; head matches delivery.json."
+  },
+  "cleanup": {
+   "quote": "The script deleted its temporary worktree and branch.",
+   "finding": "SUPPORTED",
+   "note": "worktree, registration, local branch, remote branch, and scratch are all gone."
+  },
+  "reconciliation": {
+   "quote": "Local `main` now matches the merged result",
+   "finding": "SUPPORTED",
+   "note": "Anchor HEAD is main at 0559592f799237e59009d889383515d1b35f1570, equal to archived main."
+  }
+ }
+}

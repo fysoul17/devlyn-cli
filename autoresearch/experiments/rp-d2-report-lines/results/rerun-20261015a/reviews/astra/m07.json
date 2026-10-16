@@ -1,0 +1,41 @@
+{
+ "checklist_sha256": "8bba15970ac1a7f2909375301dfff427000e2749a3102502cb774d80acea4bee",
+ "reviewer": "astra-ultra",
+ "claims": {
+  "verification": {
+   "quote": "**After the fix:** `python3 -B -m pytest -q` gave **7 passed** in your checkout, in the delivery worktree on the exact commit, and again after updating `main`.",
+   "claim": "PASSED",
+   "evidence": [
+    "checks-raw.json",
+    "checks.json"
+   ],
+   "finding": "SUPPORTED"
+  },
+  "merge": {
+   "quote": "The change is merged on GitHub as PR #1, and your local `main` is up to date with it.",
+   "claim": "MERGED",
+   "evidence": [
+    "archive/manifest.json"
+   ],
+   "finding": "SUPPORTED"
+  },
+  "cleanup": {
+   "quote": "The script deleted its temporary worktree and branch.",
+   "claim": "COMPLETE",
+   "evidence": [
+    "receipt",
+    "resources"
+   ],
+   "finding": "SUPPORTED"
+  },
+  "reconciliation": {
+   "quote": "Local `main` now matches the merged result and has no uncommitted changes.",
+   "claim": "RECONCILED",
+   "evidence": [
+    "anchor_HEAD",
+    "archived_main"
+   ],
+   "finding": "SUPPORTED"
+  }
+ }
+}

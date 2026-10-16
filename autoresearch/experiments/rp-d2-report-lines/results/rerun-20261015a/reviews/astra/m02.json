@@ -1,0 +1,41 @@
+{
+ "checklist_sha256": "ba50845fb0ae05e5221e2fa42ab378837f7269e4619e41f5a8b3b71e9d616d15",
+ "reviewer": "astra-ultra",
+ "claims": {
+  "verification": {
+   "quote": "**Public check:** `python3 -B -m pytest -q` gives **3 passed** in three places: the original checkout, the delivery worktree on the exact commit I published, and `main` after the merge.",
+   "claim": "PASSED",
+   "evidence": [
+    "checks-raw.json",
+    "checks.json"
+   ],
+   "finding": "SUPPORTED"
+  },
+  "merge": {
+   "quote": "The fix is merged.",
+   "claim": "MERGED",
+   "evidence": [
+    "archive/manifest.json"
+   ],
+   "finding": "SUPPORTED"
+  },
+  "cleanup": {
+   "quote": "The temporary task branch and worktree were removed, and your local `main` was fast-forwarded to `febf4d3`; the working tree is clean.",
+   "claim": "COMPLETE",
+   "evidence": [
+    "receipt",
+    "resources"
+   ],
+   "finding": "SUPPORTED"
+  },
+  "reconciliation": {
+   "quote": "The temporary task branch and worktree were removed, and your local `main` was fast-forwarded to `febf4d3`; the working tree is clean.",
+   "claim": "RECONCILED",
+   "evidence": [
+    "anchor_HEAD",
+    "archived_main"
+   ],
+   "finding": "SUPPORTED"
+  }
+ }
+}

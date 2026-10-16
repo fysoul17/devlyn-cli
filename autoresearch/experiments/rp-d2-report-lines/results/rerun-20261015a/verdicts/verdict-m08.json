@@ -1,0 +1,86 @@
+{
+  "arm": "B",
+  "assessment": "NOT_REQUESTED",
+  "cell": "m08",
+  "claude_accounting": {
+    "gaps": [
+      "error or retry outside scope"
+    ],
+    "input_tokens": null,
+    "messages": [],
+    "output_tokens": null,
+    "reported_aggregate": {
+      "cache_creation_input_tokens": 67741,
+      "cache_read_input_tokens": 1260568,
+      "input_tokens": 48,
+      "output_tokens": 37226,
+      "thinking_tokens": 28084
+    },
+    "reported_owner_usage": {
+      "cache_creation_input_tokens": 67741,
+      "cache_read_input_tokens": 1260568,
+      "input_tokens": 48,
+      "output_tokens": 37226,
+      "thinking_tokens": 28084
+    },
+    "schema": "0254-native-receipts-v1",
+    "scope": "One successful native owner and linked foreground children; observations on UNKNOWN are not whole-run totals; not provider billing or product acceptance.",
+    "sources": {
+      "evidence.manifest.json": "771796004fbd7382dab1b9b22626ce9372c7fbfe4726b8f55238605be8a37206",
+      "home/.claude/projects/-cell-work/8a89a68f-cdbf-4cd7-9d76-5a763f037027.jsonl": "bf4b427ce0ebf8c2d5f5a14deba2c43128c06dd083af18739685b6232ae497d2",
+      "run/stdout": "a36249ff8da25894e0796b5c6b78e6719d31e4c4632d8f0d9225edf9cdd1bade"
+    },
+    "status": "UNKNOWN",
+    "totals": null
+  },
+  "config": "claude",
+  "evidence_manifest_sha256": "771796004fbd7382dab1b9b22626ce9372c7fbfe4726b8f55238605be8a37206",
+  "identity": {
+    "codex_seats": {},
+    "gaps": [],
+    "owner": "MATCH",
+    "owner_launched_sessions": [],
+    "status": "MATCH",
+    "violations": []
+  },
+  "input_tokens": null,
+  "measurement_eligible": true,
+  "output_tokens": null,
+  "owner_seconds": 741.4561615000712,
+  "owner_status": "EXITED_0",
+  "peer_policy": {
+    "activated": false,
+    "claude_roles": {
+      "8a89a68f-cdbf-4cd7-9d76-5a763f037027": [
+        "owner",
+        "8a89a68f-cdbf-4cd7-9d76-5a763f037027"
+      ]
+    },
+    "codex_roles": {},
+    "failed_attempts": [],
+    "gaps": [],
+    "protocol_violations": [],
+    "recovered": false,
+    "status": "MATCH",
+    "turns": [],
+    "validation_completion": "NOT_ACTIVATED",
+    "violations": []
+  },
+  "phase": "measured",
+  "reason": "ValueError: whole-run usage UNKNOWN",
+  "run_and_checks_seconds": 742.6902876669774,
+  "status": "STOP",
+  "task": "Z0",
+  "teardown": "CLEAN",
+  "usage": "UNKNOWN",
+  "usage_gaps": [
+    "error or retry outside scope"
+  ],
+  "venue": {
+    "account": [
+      "45eff57aaa45",
+      "b6b7768fd228"
+    ],
+    "token_seconds_left": 28257
+  }
+}

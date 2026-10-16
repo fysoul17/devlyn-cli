@@ -1,0 +1,18 @@
+`--limit 0` now returns `0`, and an omitted limit still defaults to `10`. The fix is merged to `main` as PR #1, and the public check passes (7 tests).
+
+**What I changed**
+- `src/limitcli/__init__.py:7`: the cause was `return args.limit or 10`. It treated `0` as "no value", so an explicit zero became 10. I now set the default with argparse's own `default=10` and return the parsed value directly. That made the old `is not None` check unnecessary, so I removed it.
+- `tests/test_regression.py` (new): checks that `--limit 0` returns `0`. It also checks that a missing value (`--limit`) and an unknown argument (`--unknown`) exit with code 2. The request required both of those, but no existing test covered them.
+
+**What I verified**
+- I ran the new test against the old code first, and it failed with `assert 10 == 0`. With the fix, `python3 -B -m pytest -q` gives 7 passed, both before delivery and again in your checkout after the merge.
+- I ran 17 inputs through both the old and new code. Only `--limit 0`, `--limit=0` and `--limit -0` changed, from 10 to 0. Omitted is still 10, positive values are unchanged, and the negative, non-integer, empty, missing and unknown cases still exit with code 2 and the same error messages.
+- `docs/user-notes.txt`, `.user-state/draft.txt` (including its mode), `caller.json`, `tests/test_existing.py`, `pyproject.toml` and the git config are byte-identical to before. Only the two allowed files differ from `base_sha`.
+
+**Delivery**
+You didn't say how to deliver, so I followed the project's default in `AGENTS.md` (PR and merge) using its delivery script, without checking with you first. PR [#1](https://github.com/fysoul17/rpd2-20261015a-m08/pull/1) is merged, and your local `main` is fast-forwarded to it with a clean status. The script removed its temporary worktree and branch, both locally and on GitHub.
+
+**Unresolved**
+Nothing on the request itself. Two small leftovers:
+- The delivery script keeps a recovery record: `.git/devlyn-completion/db5ed5bc…/` and the ref `refs/devlyn/completed/db5ed5bc…`. It keeps these on purpose and never deletes them automatically. You can delete them if you don't want them.
+- The acceptance record lists a second check, the 17-input comparison, that ran a temporary script I've since deleted. Its output is saved in that record, but the check can't be rerun as written.

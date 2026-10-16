@@ -1,0 +1,24 @@
+I fixed `is_expired` so a deadline counts as expired at exact equality, added the regression test, and the public check passes. Following the AGENTS.md delivery policy (no override is set), I also pushed the fix to GitHub as PR #1, which GitHub merged straight away.
+
+**What I changed**
+- `src/expiry/__init__.py:6`: `now > deadline` → `now >= deadline`. The strict `>` contradicted the function's own docstring ("including exact equality").
+- `tests/test_regression.py` (new): `test_exact_deadline_is_expired` checks that `is_expired(10, 10) is True`.
+
+**What I verified**
+- **Bug reproduced first:** `is_expired(10, 10)` returned `False`, and the new test failed with `assert False is True` before the fix.
+- **Public check:** `python3 -B -m pytest -q` gives **3 passed** before delivery, on the delivered commit itself, and again on merged `main`.
+- **Old vs new code:**
+  - Only equal values changed result: ints, int vs float, and timezone-aware datetimes, including the same instant in two timezones.
+  - Before/after results and NaN (`False`) are unchanged.
+  - `TypeError` is still raised for `None`, naive vs aware datetimes, `date` vs `datetime`, and `str` vs `int`.
+- **Scope:** only the two allowed paths differ from `base_sha`.
+- **Left alone:** `tests/test_existing.py`, `docs/user-notes.txt`, `.user-state/draft.txt` (same bytes and mode), the Git config and `caller.json` are all unchanged.
+
+**Delivery**
+- PR: https://github.com/fysoul17/rpd2-20261015a-m01/pull/1, merged as `66021d3`. It merged immediately because the repo has no required checks.
+- Local `main` is now at that merged commit with a clean working tree. The temporary delivery worktree and branches were removed.
+- The PR description written by the project's delivery script was missing the "Generated with Claude Code" line, so I added it after the merge.
+- The script deliberately keeps a recovery ref (`refs/devlyn/completed/417dbce6c3c975a1e662610f`) and its records under `.git/devlyn-completion/`. Both are inside `.git`.
+
+**Unresolved**
+Nothing is blocking. One tradeoff to know about: `>=` only works if the input type supports it. Ints, floats, `Decimal` and datetimes all do. A custom type that defines only `<` and `>` would now raise `TypeError` where it used to compare. Nothing in the repo uses such a type.

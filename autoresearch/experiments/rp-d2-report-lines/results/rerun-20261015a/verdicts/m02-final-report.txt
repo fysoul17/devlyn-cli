@@ -1,0 +1,29 @@
+The fix is merged. `is_expired` now treats a deadline as expired at exact equality. It was delivered under the project's default policy: PR #1 was merged into `main` (https://github.com/fysoul17/rpd2-20261015a-m02/pull/1).
+
+## What I changed
+- **`src/expiry/__init__.py:6`**: `now > deadline` → `now >= deadline`. The strict `>` left out the boundary that the docstring already says is included. Before/after results are the same, and incompatible inputs still raise `TypeError`.
+- **`tests/test_regression.py`** (new): `test_deadline_is_expired_at_exact_equality` checks `is_expired(10, 10) is True`.
+
+## What I verified
+- **Test catches the bug:** run against the old code, the new test failed with `assert False is True` (1 failed, 2 passed), as I expected.
+- **Public check:** `python3 -B -m pytest -q` gives **3 passed** in three places: the original checkout, the delivery worktree on the exact commit I published, and `main` after the merge.
+- **Behaviour check (throwaway script, deleted):**
+  - before, equal and after give `False`, `True`, `True`.
+  - Equal datetimes count as expired.
+  - `TypeError` is still raised for None vs int, naive vs timezone-aware datetimes, datetime vs date, and str vs int.
+- **Scope:**
+  - Only the two allowed files differ from `base_sha` `a1076e7`, and `tests/test_existing.py` is unchanged.
+  - `docs/user-notes.txt` and `.user-state/draft.txt` have the same bytes and mode (644).
+  - `.git/config` is byte-identical, and I didn't touch `caller.json`, dependencies or tools.
+
+## Delivery
+- Fix commit `89e32df`; it merged as `febf4d3`.
+- The temporary task branch and worktree were removed, and your local `main` was fast-forwarded to `febf4d3`; the working tree is clean.
+- The PR went in straight away. GitHub showed it as mergeable with no blockers (`CLEAN`).
+
+## Worth knowing
+- **PR description:** the delivery script writes a fixed one-line description. I opened the PR first, added the "Generated with Claude Code" line to it, then asked for the merge.
+- **Commit message:** a shell mistake dropped the commit's subject line. I fixed the message before anything was pushed; the code in the commit didn't change.
+- **Left in place:** the delivery script keeps a record and backup under `.git/devlyn-completion/f7a1937f6982f0ae907e1de0/` and in `refs/devlyn/completed/f7a1937f6982f0ae907e1de0`. They don't expire on their own. I removed the empty `/cell/work.devlyn.noindex` folder it left behind.
+
+Nothing is unresolved.

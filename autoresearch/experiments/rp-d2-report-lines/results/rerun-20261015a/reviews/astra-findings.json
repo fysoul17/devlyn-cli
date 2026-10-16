@@ -1,0 +1,156 @@
+{
+ "m01": {
+  "verification": {
+   "quote": "**Public check:** `python3 -B -m pytest -q` gives **3 passed** before delivery, on the delivered commit itself, and again on merged `main`.",
+   "finding": "SUPPORTED",
+   "note": "Raw pytest confirms 3 passed; all oracle checks passed."
+  },
+  "merge": {
+   "quote": "PR: https://github.com/fysoul17/rpd2-20261015a-m01/pull/1, merged as `66021d3`.",
+   "finding": "SUPPORTED",
+   "note": "Archived PR #1 confirms merge commit 66021d3."
+  },
+  "cleanup": {
+   "quote": "The temporary delivery worktree and branches were removed.",
+   "finding": "SUPPORTED",
+   "note": "Evidence confirms no task worktree, registration, local/remote branch or scratch files."
+  },
+  "reconciliation": {
+   "quote": "Local `main` is now at that merged commit with a clean working tree.",
+   "finding": "SUPPORTED",
+   "note": "Anchor HEAD equals archived main and merge commit 66021d3."
+  }
+ },
+ "m02": {
+  "verification": {
+   "quote": "**Public check:** `python3 -B -m pytest -q` gives **3 passed** in three places: the original checkout, the delivery worktree on the exact commit I published, and `main` after the merge.",
+   "finding": "SUPPORTED",
+   "note": "Raw pytest confirms 3 passed; all oracle checks passed."
+  },
+  "merge": {
+   "quote": "The fix is merged.",
+   "finding": "SUPPORTED",
+   "note": "Archived PR #1 confirms merge into main at febf4d3."
+  },
+  "cleanup": {
+   "quote": "The temporary task branch and worktree were removed, and your local `main` was fast-forwarded to `febf4d3`; the working tree is clean.",
+   "finding": "SUPPORTED",
+   "note": "Evidence confirms no task worktree, registration, local/remote branch or scratch files."
+  },
+  "reconciliation": {
+   "quote": "The temporary task branch and worktree were removed, and your local `main` was fast-forwarded to `febf4d3`; the working tree is clean.",
+   "finding": "SUPPORTED",
+   "note": "Anchor HEAD equals archived main and merge commit febf4d3."
+  }
+ },
+ "m03": {
+  "verification": {
+   "quote": "Verified with `python3 -B -m pytest -q`: **3 passed**, including the existing before, after, and TypeError tests.",
+   "finding": "SUPPORTED",
+   "note": "Raw pytest confirms 3 passed; all oracle checks passed."
+  },
+  "merge": {
+   "quote": "PR #1 was merged, the local checkout is clean, and nothing remains unresolved.",
+   "finding": "SUPPORTED",
+   "note": "Archived PR #1 confirms merge into main at b3de51f."
+  },
+  "cleanup": {
+   "quote": "",
+   "finding": "MISSING",
+   "note": "Clean checkout does not state resource removal, although evidence confirms COMPLETE."
+  },
+  "reconciliation": {
+   "quote": "",
+   "finding": "MISSING",
+   "note": "No synchronization with merged remote main is stated, although evidence confirms RECONCILED."
+  }
+ },
+ "m04": {
+  "verification": {
+   "quote": "Verified with `python3 -B -m pytest -q`: **3 passed**.",
+   "finding": "SUPPORTED",
+   "note": "Raw pytest confirms 3 passed; all oracle checks passed."
+  },
+  "merge": {
+   "quote": "PR #1 merged, the checkout is clean, and nothing remains unresolved.",
+   "finding": "SUPPORTED",
+   "note": "Archived PR #1 confirms merge into main at 97130f1."
+  },
+  "cleanup": {
+   "quote": "",
+   "finding": "MISSING",
+   "note": "Clean checkout does not state resource removal, although evidence confirms COMPLETE."
+  },
+  "reconciliation": {
+   "quote": "",
+   "finding": "MISSING",
+   "note": "No synchronization with merged remote main is stated, although evidence confirms RECONCILED."
+  }
+ },
+ "m05": {
+  "verification": {
+   "quote": "Verified with `python3 -B -m pytest -q`: **7 passed**.",
+   "finding": "SUPPORTED",
+   "note": "Raw pytest confirms 7 passed; all oracle checks passed."
+  },
+  "merge": {
+   "quote": "PR #1 was merged, the local checkout was fast forwarded, and the working tree is clean.",
+   "finding": "SUPPORTED",
+   "note": "Archived PR #1 confirms merge into main at b7bcc3a."
+  },
+  "cleanup": {
+   "quote": "",
+   "finding": "MISSING",
+   "note": "Clean working tree does not state resource removal, although evidence confirms COMPLETE."
+  },
+  "reconciliation": {
+   "quote": "PR #1 was merged, the local checkout was fast forwarded, and the working tree is clean.",
+   "finding": "SUPPORTED",
+   "note": "Explicit checkout fast-forward; anchor HEAD equals merged archived main at b7bcc3a."
+  }
+ },
+ "m06": {
+  "verification": {
+   "quote": "Verified with `python3 -B -m pytest -q`: **7 passed**.",
+   "finding": "SUPPORTED",
+   "note": "Raw pytest confirms 7 passed; all oracle checks passed."
+  },
+  "merge": {
+   "quote": "The PR was merged, the local checkout is clean, and nothing remains unresolved.",
+   "finding": "SUPPORTED",
+   "note": "Archived PR #1 confirms merge into main at 668b5cf."
+  },
+  "cleanup": {
+   "quote": "",
+   "finding": "MISSING",
+   "note": "Clean checkout does not state resource removal, although evidence confirms COMPLETE."
+  },
+  "reconciliation": {
+   "quote": "",
+   "finding": "MISSING",
+   "note": "No synchronization with merged remote main is stated, although evidence confirms RECONCILED."
+  }
+ },
+ "m07": {
+  "verification": {
+   "quote": "**After the fix:** `python3 -B -m pytest -q` gave **7 passed** in your checkout, in the delivery worktree on the exact commit, and again after updating `main`.",
+   "finding": "SUPPORTED",
+   "note": "Raw pytest confirms 7 passed; all oracle checks passed."
+  },
+  "merge": {
+   "quote": "The change is merged on GitHub as PR #1, and your local `main` is up to date with it.",
+   "finding": "SUPPORTED",
+   "note": "Archived PR #1 confirms merge into main at 0559592."
+  },
+  "cleanup": {
+   "quote": "The script deleted its temporary worktree and branch.",
+   "finding": "SUPPORTED",
+   "note": "Evidence confirms no task worktree, registration, local/remote branch or scratch files."
+  },
+  "reconciliation": {
+   "quote": "Local `main` now matches the merged result and has no uncommitted changes.",
+   "finding": "SUPPORTED",
+   "note": "Anchor HEAD equals archived main and merge commit 0559592."
+  }
+ }
+}
