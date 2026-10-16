@@ -1,11 +1,12 @@
 # rp-d4 design — the helper states cleanup
 
-DRAFT for design review (round 3, on a remaining HIGH). Nothing is
+DRAFT for design review (round 4, cost rule only). Nothing is
 registered yet. Rounds 0 and 1: Astra ultra and Grok 4.7 REVISE; round 2:
 Astra REVISE (one HIGH), Grok SHIP
 ([r0 Astra](results/design-r0-astra.md), [r0 Grok](results/design-r0-grok.md),
 [r1 Astra](results/design-r1-astra.md), [r1 Grok](results/design-r1-grok.md),
-[r2 Astra](results/design-r2-astra.md), [r2 Grok](results/design-r2-grok.md));
+[r2 Astra](results/design-r2-astra.md), [r2 Grok](results/design-r2-grok.md),
+[r3 Astra](results/design-r3-astra.md) SHIP, [r3 Grok](results/design-r3-grok.md) REVISE);
 every finding is applied below.
 
 ## Why
@@ -165,8 +166,7 @@ their state truthfully reported). A category counts as SUPPORTED only when
 both reviewers say so. Checklist match for cleanup: removal, `emptied` and
 `was absent` clauses match fact `COMPLETE` when the final resources are
 clear (an emptied scratch directory still exists and is clear); deferred,
-skipped and scratch-incomplete clauses match `CLEANUP_PENDING` or an
-undelivered fact.
+skipped and scratch-incomplete clauses match `CLEANUP_PENDING`.
 
 **Primary:** Codex cleanup SUPPORTED per arm. Also tallied per arm and per
 pair: verification, merge, reconciliation and success.
@@ -175,11 +175,8 @@ pair: verification, merge, reconciliation and success.
 regression checks, exactly one correctly merged PR, preserved user files and
 sentinel, and all four report categories SUPPORTED. **Cost** is owner wall
 seconds, input tokens and output tokens over every dispatched attempt,
-per correctly completed task (NORTH-STAR ladder rule). The task outcome is
-the delivery (the first three conditions); the report is graded separately
-by the category gates. Attribution requires every delivery to pass, so cost
-per completed task is each arm total divided by 4, and the comparison never
-lacks a denominator.
+divided by the arm's successes S (the ladder rule, O4 and
+[0232 §6](../../iterations/0232-harness-ladder.md)).
 Accounting is the rp-d1 accounting; UNKNOWN usage is a STOP.
 
 ## Prediction (frozen at registration, before smoke)
@@ -205,9 +202,10 @@ Branches are checked in this order; the first match wins.
      in any Y slot;
    - for verification, merge and reconciliation, Y's SUPPORTED count ≥ X's,
      and Y's successes ≥ X's;
-   - cost: Y's wall, input and output per completed task are each ≤ X's;
-   - when both arms have at least one success, also Y's wall, input and
-     output per success are each ≤ X's;
+   - cost (0232 §6): S_Y = 0 fails it; S_X = 0 < S_Y passes by dominance
+     over the zero-success control, reported as such with no raw-sum
+     comparison substituted; otherwise Y's wall, input and output per
+     success are each ≤ X's;
    - both Claude guard reports pass.
 4. **COST HOLD:** every ADOPT condition except cost holds. No adoption; the
    owner decides whether to measure further.
