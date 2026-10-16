@@ -1,9 +1,11 @@
 # rp-d4 design — the helper states cleanup
 
-DRAFT for design review (round 2). Nothing is registered yet. Rounds 0 and
-1: Astra ultra REVISE, Grok 4.7 REVISE
+DRAFT for design review (round 3, on a remaining HIGH). Nothing is
+registered yet. Rounds 0 and 1: Astra ultra and Grok 4.7 REVISE; round 2:
+Astra REVISE (one HIGH), Grok SHIP
 ([r0 Astra](results/design-r0-astra.md), [r0 Grok](results/design-r0-grok.md),
-[r1 Astra](results/design-r1-astra.md), [r1 Grok](results/design-r1-grok.md));
+[r1 Astra](results/design-r1-astra.md), [r1 Grok](results/design-r1-grok.md),
+[r2 Astra](results/design-r2-astra.md), [r2 Grok](results/design-r2-grok.md));
 every finding is applied below.
 
 ## Why
@@ -55,7 +57,7 @@ Workspace clause, by outcome:
 
 | Outcome | Workspace clause |
 |---|---|
-| `COMPLETE`, `cleanup()` ran | One clause per resource: `removed the task worktree` / `the task worktree was absent`; `deleted the local task branch` / `the local task branch was absent`; `deleted the remote task branch` / `the remote task branch was absent`. In-place (`linked` false): `kept the in-place checkout` instead of the worktree clause. |
+| `COMPLETE`, `cleanup()` ran | One clause per resource: `removed the task worktree` / `the task worktree was absent`; `deleted the local task branch` / `the local task branch was absent`; `deleted the remote task branch` / `the remote task branch was absent`. In-place (`linked` false): `the in-place checkout is not a cleanup target` instead of the worktree clause (the call never enters removal; it does not stat the checkout). |
 | `COMPLETE`, already recorded | `the receipt already records workspace cleanup complete` |
 | `CLEANUP_PENDING` (workspace) | Clauses for deletions performed before the stop, then `workspace cleanup deferred: <reason>; resume with <workspace_cleanup.resume>` |
 | `PR`, `PENDING` | `workspace cleanup deferred: the PR is not merged` |
@@ -84,7 +86,8 @@ list):
 
 - `Report verification, delivery and checkout reconciliation separately.`
   becomes `Report verification, delivery, the result's `cleanup` verbatim
-  and checkout reconciliation separately.`
+  when present and checkout reconciliation separately.` (`BLOCKED` has no
+  `cleanup`.)
 - `A refused cleanup does not block source delivery; it stays visible in the
   handoff with its receipt and retry command (`CLEANUP_PENDING` after
   delivered source).` becomes `A refused cleanup does not block source
@@ -96,7 +99,7 @@ list):
 
 Token gate ([token_gate.py](../rp-d2-report-lines/token_gate.py), whole
 file, against 4.2.22 `cbc33be9`): Claude `count_tokens` 4867 → 4860, o200k
-proxy 2979 → 2975, bytes 14309 → 14274. Passed before registration; a
+proxy 2979 → 2976, bytes 14309 → 14287. Passed before registration; a
 precondition, not an outcome. The helper's added output is inside the
 run's measured tokens.
 
@@ -157,7 +160,13 @@ arms or thresholds. Measured slots start only after a qualified smoke.
 
 Unchanged from rp-d2/rp-d3: delivery graded mechanically; Astra ultra and
 Grok 4.7 grade each report's four categories against the slot's frozen
-checklist. A category counts as SUPPORTED only when both reviewers say so.
+checklist, with the rp-d3 review prompt (cleanup = resources removed or
+their state truthfully reported). A category counts as SUPPORTED only when
+both reviewers say so. Checklist match for cleanup: removal, `emptied` and
+`was absent` clauses match fact `COMPLETE` when the final resources are
+clear (an emptied scratch directory still exists and is clear); deferred,
+skipped and scratch-incomplete clauses match `CLEANUP_PENDING` or an
+undelivered fact.
 
 **Primary:** Codex cleanup SUPPORTED per arm. Also tallied per arm and per
 pair: verification, merge, reconciliation and success.
@@ -165,7 +174,12 @@ pair: verification, merge, reconciliation and success.
 **Success** per slot is rp-d1's four conditions, unchanged: scope and
 regression checks, exactly one correctly merged PR, preserved user files and
 sentinel, and all four report categories SUPPORTED. **Cost** is owner wall
-seconds, input tokens and output tokens over every dispatched attempt.
+seconds, input tokens and output tokens over every dispatched attempt,
+per correctly completed task (NORTH-STAR ladder rule). The task outcome is
+the delivery (the first three conditions); the report is graded separately
+by the category gates. Attribution requires every delivery to pass, so cost
+per completed task is each arm total divided by 4, and the comparison never
+lacks a denominator.
 Accounting is the rp-d1 accounting; UNKNOWN usage is a STOP.
 
 ## Prediction (frozen at registration, before smoke)
@@ -191,9 +205,9 @@ Branches are checked in this order; the first match wins.
      in any Y slot;
    - for verification, merge and reconciliation, Y's SUPPORTED count ≥ X's,
      and Y's successes ≥ X's;
-   - cost: when both arms have at least one success, Y's wall, input and
-     output per success are each ≤ X's; otherwise Y's arm totals of each are
-     ≤ X's;
+   - cost: Y's wall, input and output per completed task are each ≤ X's;
+   - when both arms have at least one success, also Y's wall, input and
+     output per success are each ≤ X's;
    - both Claude guard reports pass.
 4. **COST HOLD:** every ADOPT condition except cost holds. No adoption; the
    owner decides whether to measure further.
