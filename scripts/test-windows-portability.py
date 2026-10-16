@@ -14,7 +14,6 @@ import os
 from pathlib import Path
 import re
 import runpy
-import shlex
 import shutil
 import subprocess
 import sys
@@ -444,44 +443,24 @@ init({options});
         run(['git', '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.test',
              '-c', 'commit.gpgsign=false', 'commit', '-qm', 'installer fixture'], cwd=self.project)
 
-    def assert_commit_notice(self, result, paths, ignored=()):
-        output = result.stdout.decode('utf-8')
-        lines = [line.split('\x1b[0m')[0].removeprefix('\x1b[2m') for line in output.splitlines()
-                 if 'git add ' in line]
+    def assert_install_notice(self, result, ignored=0, rule=None):
+        raw = result.stdout.decode('utf-8')
+        output = re.sub(r'\x1b\[[0-9;]*m', '', raw)
+        self.assertEqual(result.returncode, 0)
+        for line in output.splitlines():
+            if 'Retired devlyn settings' not in line:
+                self.assertNotIn('commit', line.lower())
+        self.assertNotIn('git add', output.lower())
+        self.assertNotIn('Optional —', output)
         if not ignored:
-            self.assertNotIn('.gitignore hides', output)
-            self.assertNotIn('git add -f --', output)
-        if not paths and not ignored:
-            self.assertEqual(lines, [])
-            self.assertNotIn('Optional — commit (and push)', output)
+            self.assertNotIn('Git ignores', output)
             return
-        self.assertEqual(len(lines), 1, output)
+        notice = f'\x1b[2mGit ignores {ignored} installed file{"" if ignored == 1 else "s"} (example rule: {rule}).\x1b[0m'
+        self.assertEqual([line for line in raw.splitlines() if 'Git ignores' in line], [notice])
         version = json.loads((self.package / 'package.json').read_bytes())['version']
-        argv = shlex.split(lines[0])
-        remaining = argv[:]
-        for prefix, expected in [(['git', 'add', '--'], paths), (['git', 'add', '-f', '--'], ignored)]:
-            if not expected:
-                continue
-            self.assertIn('&&', remaining, output)
-            divider = remaining.index('&&')
-            self.assertEqual(remaining[:len(prefix)], prefix)
-            self.assertCountEqual(remaining[len(prefix):divider], expected)
-            remaining = remaining[divider + 1:]
-        self.assertEqual(remaining, ['git', 'commit', '-m', f'chore(devlyn): update devlyn-cli to {version}'])
-        if ignored:
-            warning = f'.gitignore hides {len(ignored)} installed files'
-            self.assertEqual(output.count(warning), 1)
-            self.assertLess(output.index(warning), output.index('git add '))
-        notice = 'Optional — commit (and push) these changes if teammates or /devlyn-ideate task worktrees should use them:'
-        self.assertEqual(output.count(notice), 1)
-        self.assertGreater(output.index(notice), output.index(f'✅ devlyn {version} installed'))
-        return argv[:argv.index('&&')]
+        self.assertGreater(raw.index(notice), raw.index(f'✅ devlyn {version} installed'))
 
-    def installed_skill_paths(self, *targets):
-        return [f'.{target}/skills/{name}' for target in targets
-                for name in ('devlyn-ideate', 'devlyn-engines', '_shared', '.devlyn-install.json')]
-
-    def test_project_commit_notice_unrelated_skill_changes_are_quiet(self):
+    def test_project_install_notice_unrelated_skill_changes_are_quiet(self):
         run(['git', 'init', '-q', self.project])
         self.invoke("install(['agents', 'claude'], false, ['devlyn-reap']);")
         for target in ('agents', 'claude'):
@@ -495,109 +474,10 @@ init({options});
             (root / 'devlyn-reap/SKILL.md').write_bytes(b'edited optional skill\n')
             (root / '.devlyn-install.json.backup').write_bytes(b'untracked user backup\n')
         before = self.snapshot()
-        self.assert_commit_notice(self.cli('-y', '--claude'), [])
+        self.assert_install_notice(self.cli('-y', '--claude'))
         self.assertEqual(self.snapshot(), before)
 
-    def test_project_commit_notice_optional_install_excludes_unrelated_skills(self):
-        run(['git', 'init', '-q', self.project])
-        self.cli('-y', '--claude')
-        for target in ('agents', 'claude'):
-            personal = self.project / f'.{target}/skills/personal/SKILL.md'
-            personal.parent.mkdir()
-            personal.write_bytes(b'personal skill\n')
-        self.commit_install_fixture()
-        for target in ('agents', 'claude'):
-            root = self.project / f'.{target}/skills'
-            (root / 'personal/SKILL.md').write_bytes(b'edited personal skill\n')
-            (root / 'asset-creator-notes').write_bytes(b'untracked user notes\n')
-        result = self.invoke("install(['agents', 'claude'], false, ['asset-creator']);")
-        paths = [f'.{target}/skills/{name}' for target in ('agents', 'claude')
-                 for name in ('asset-creator', '.devlyn-install.json')]
-        add = self.assert_commit_notice(result, paths)
-        run(add, cwd=self.project)
-        staged = run(['git', 'diff', '--cached', '--name-only', '-z'], cwd=self.project).stdout
-        self.assertEqual(set(staged.decode('utf-8').split('\0')) - {''},
-                         {str(file.relative_to(self.project)).replace(os.sep, '/')
-                          for name in paths for file in [self.project / name, *(self.project / name).rglob('*')]
-                          if file.is_file()})
-
-    def test_project_commit_notice_case_folded_git_paths(self):
-        # Exercise real Git pathspecs on every filesystem, including case-sensitive Linux CI.
-        run(['git', 'init', '-q', self.project])
-        names = ['.Agents/skills/devlyn-ideate/SKILL.md', '.Agents/skills/.devlyn-install.json',
-                 '.Claude/settings.json', 'agents.md']
-        for name in names:
-            file = self.project / name
-            file.parent.mkdir(parents=True, exist_ok=True)
-            file.write_bytes(b'old bytes\n')
-        self.commit_install_fixture()
-        for name in names:
-            (self.project / name).write_bytes(b'new bytes\n')
-        paths = ['.agents/skills/devlyn-ideate', '.agents/skills/.devlyn-install.json',
-                 '.claude/settings.json', 'AGENTS.md']
-        result = self.invoke('log(`✅ devlyn ${PKG.version} installed`); '
-                             f'noticeProjectChanges({json.dumps(paths)});')
-        reported = ['.Agents/skills/devlyn-ideate', *names[1:]]
-        self.assert_commit_notice(result, [file for name, file in zip(paths, reported)
-                                           if (self.project / name).exists()
-                                           and (self.project / name).samefile(self.project / file)])
-
-    def test_project_commit_notice_case_matches_require_file_identity(self):
-        # Simulate both filesystems on every host: Git reports both spellings, while
-        # lstat supplies either the same entry or distinct entries for each pair.
-        paths = ['AGENTS.md', '.agents/skills/devlyn-ideate', '.agents/skills/devlyn-retired']
-        variants = ['agents.md', '.Agents/skills/devlyn-ideate', '.Agents/skills/devlyn-retired']
-        status = ''.join(f' M {file}\0' for file in [paths[0], variants[0],
-                         *(f'{folder}/SKILL.md' for folder in [*paths[1:], *variants[1:]])])
-        preload = self.preload.read_bytes()
-        try:
-            for identity in ('distinct-inode', 'distinct-device', 'alias', 'removed', 'unreadable'):
-                with self.subTest(identity=identity):
-                    self.preload.write_bytes(preload + f"""
-const fs = require('fs'), path = require('path'), cp = require('child_process');
-const spawn = cp.spawnSync, lstat = fs.lstatSync;
-const paths = {json.dumps(paths)}, variants = {json.dumps(variants)};
-cp.spawnSync = (file, args, options) => {{
-  if (file === 'git' && args.includes('rev-parse')) return {{ status: 0, stdout: process.cwd() + '\\n' }};
-  if (file === 'git' && args.includes('status')) return {{ status: 0, stdout: {json.dumps(status)} }};
-  return spawn(file, args, options);
-}};
-fs.lstatSync = (file, options) => {{
-  const name = path.relative(process.cwd(), file).split(path.sep).join('/');
-  const index = [...paths, ...variants].indexOf(name);
-  if (index < 0) return lstat(file, options);
-  if ({json.dumps(identity)} === 'unreadable') throw new Error('fixture lstat denied');
-  // Retired folders no longer exist; only an exact spelling can match them.
-  if ({json.dumps(identity)} === 'removed' || index % paths.length === 2) return undefined;
-  const distinct = index >= paths.length;
-  return {{ dev: distinct && {json.dumps(identity)} === 'distinct-device' ? 2n : 1n,
-            ino: BigInt(index % paths.length + (distinct && {json.dumps(identity)} === 'distinct-inode' ? 10 : 1)) }};
-}};
-""".encode())
-                    result = self.invoke('log(`✅ devlyn ${PKG.version} installed`); '
-                                         f'noticeProjectChanges({json.dumps(paths)});')
-                    self.assert_commit_notice(result, paths + (variants[:2] if identity == 'alias' else []))
-                    if identity == 'unreadable':
-                        self.assertIn(b'fixture lstat denied', result.stdout)
-        finally:
-            self.preload.write_bytes(preload)
-
-    def test_project_commit_notice_case_insensitive_install(self):
-        root = self.project / '.Agents/skills'
-        root.mkdir(parents=True)
-        if not (self.project / '.agents/skills').exists():
-            self.skipTest('requires a case-insensitive filesystem')
-        self.cli('-y')
-        marker = root / '.devlyn-install.json'
-        data = json.loads(marker.read_bytes())
-        data['version'] = '4.2.7'
-        marker.write_text(json.dumps(data), encoding='utf-8')
-        run(['git', 'init', '-q', self.project])
-        self.commit_install_fixture()
-        result = self.cli('-y')
-        self.assert_commit_notice(result, ['.Agents/skills/.devlyn-install.json'])
-
-    def test_project_commit_notice_retired_skill_folders(self):
+    def test_project_install_notice_retired_skill_folders(self):
         run(['git', 'init', '-q', self.project])
         for target in ('agents', 'claude'):
             self.seed_4_1(self.project / f'.{target}/skills')
@@ -605,12 +485,11 @@ fs.lstatSync = (file, options) => {{
         result = self.cli('-y', '--claude')
         retired = [f'.{target}/skills/devlyn-{name}' for target in ('agents', 'claude')
                    for name in ('resolve', 'design-ui', 'queue')]
-        self.assert_commit_notice(result, [*self.installed_skill_paths('agents', 'claude'), *retired,
-                                           'AGENTS.md', 'CLAUDE.md', '.gitignore', '.claude/settings.json'])
+        self.assert_install_notice(result)
         for name in retired:
             self.assertFalse((self.project / name).exists())
 
-    def test_project_commit_notice_renamed_skill_folders(self):
+    def test_project_install_notice_renamed_skill_folders(self):
         run(['git', 'init', '-q', self.project])
         self.cli('-y', '--claude')
         renamed = []
@@ -623,136 +502,129 @@ fs.lstatSync = (file, options) => {{
                     renamed.append(old)
         self.commit_install_fixture()
         result = self.cli('-y', '--claude')
-        self.assert_commit_notice(result, [*renamed,
-            *[f'.{target}/skills/{name}' for target in ('agents', 'claude')
-              for name in ('devlyn-reap', '.devlyn-install.json')]])
+        self.assert_install_notice(result)
         for name in renamed:
             self.assertFalse((self.project / name).exists())
 
-    def test_project_commit_notice_fresh_install(self):
+    def test_project_install_notice_fresh_install(self):
         run(['git', 'init', '-q', self.project])
         (self.project / 'unrelated.txt').write_text('user content', encoding='utf-8')
         result = self.cli('-y', '--claude')
-        self.assert_commit_notice(result, [*self.installed_skill_paths('agents', 'claude'), 'AGENTS.md',
-                                           'CLAUDE.md', '.gitignore', '.claude/settings.json'])
+        self.assert_install_notice(result)
         self.assertEqual(run(['git', 'ls-files'], cwd=self.project).stdout, b'')
         self.assertEqual((self.project / 'unrelated.txt').read_bytes(), b'user content')
 
-    def test_project_commit_notice_committed_rerun(self):
+    def test_project_install_notice_committed_rerun(self):
         run(['git', 'init', '-q', self.project])
-        self.assert_commit_notice(self.cli('-y', '--claude'), [*self.installed_skill_paths('agents', 'claude'), 'AGENTS.md',
-                                                              'CLAUDE.md', '.gitignore', '.claude/settings.json'])
+        self.assert_install_notice(self.cli('-y', '--claude'))
         self.commit_install_fixture()
-        self.assert_commit_notice(self.cli('-y', '--claude'), [])
+        self.assert_install_notice(self.cli('-y', '--claude'))
         self.assertEqual(run(['git', 'status', '--porcelain'], cwd=self.project).stdout, b'')
 
-    def test_project_commit_notice_ignored_install(self):
+    def test_project_install_notice_update(self):
+        run(['git', 'init', '-q', self.project])
+        self.cli('-y', '--claude')
+        self.commit_install_fixture()
+        self.assert_install_notice(self.cli('update'))
+        self.assertEqual(run(['git', 'status', '--porcelain'], cwd=self.project).stdout, b'')
+
+    def test_project_install_notice_cleanup_only_update(self):
+        run(['git', 'init', '-q', self.project])
+        for global_install in (False, True):
+            with self.subTest(global_install=global_install):
+                if global_install:
+                    self.cli('-y', '--global')
+                retired = self.project / '.agents/skills/devlyn-review'
+                retired.mkdir(parents=True)
+                (retired / 'SKILL.md').write_bytes(b'old devlyn skill')
+                result = self.cli('update')
+                self.assert_install_notice(result)
+                self.assertIn(f'✕ {os.path.relpath(retired, self.project)} (removed)'.encode(), result.stdout)
+                self.assertFalse(retired.exists())
+                self.assertEqual(self.markers(self.project), set())
+
+    def test_project_install_notice_ignored_install(self):
         run(['git', 'init', '-q', self.project])
         (self.project / '.gitignore').write_text('.agents/\nAGENTS.md\n.devlyn/\n', encoding='utf-8')
         self.commit_install_fixture()
-        self.assert_commit_notice(self.cli('-y'), [])
+        self.assert_install_notice(self.cli('-y'))
         # Removing the ignore rules makes the same install visible to Git.
         (self.project / '.gitignore').write_text('.devlyn/\n', encoding='utf-8')
-        self.assert_commit_notice(self.cli('-y'), self.installed_skill_paths('agents'))
+        self.assert_install_notice(self.cli('-y'))
 
-    def test_project_commit_notice_partially_ignored_scripts(self):
+    def test_project_install_notice_partially_ignored_scripts(self):
         run(['git', 'init', '-q', self.project])
-        (self.project / '.gitignore').write_text('# project scripts\n' * 12 + 'scripts/\n', encoding='utf-8')
+        (self.project / '.gitignore').write_text('# project scripts\n' * 12 + '**/scripts/queue.py\n', encoding='utf-8')
         result = self.cli('-y')
-        ignored = [f'.agents/skills/devlyn-ideate/scripts/{name}.py' for name in ('queue', 'acceptance')]
-        self.assert_commit_notice(result, [*self.installed_skill_paths('agents'), 'AGENTS.md', '.gitignore'], ignored)
-        self.assertIn(b'.gitignore:13: scripts/', result.stdout)
+        self.assert_install_notice(result, ignored=1, rule='.gitignore:13: **/scripts/queue.py')
         self.assertEqual(run(['git', 'ls-files'], cwd=self.project).stdout, b'')
 
-    def test_project_commit_notice_wholly_ignored_skill_folders(self):
+    def test_project_install_notice_wholly_ignored_skill_folders(self):
         run(['git', 'init', '-q', self.project])
         (self.project / '.gitignore').write_text('.agents/skills/devlyn-*\n', encoding='utf-8')
         result = self.cli('-y')
-        self.assert_commit_notice(result, ['.agents/skills/_shared', '.agents/skills/.devlyn-install.json',
-                                           'AGENTS.md', '.gitignore'])
+        self.assert_install_notice(result)
 
-    def test_project_commit_notice_ignored_scripts_after_incomplete_commit(self):
+    def test_project_install_notice_ignored_scripts_after_incomplete_commit(self):
         run(['git', 'init', '-q', self.project])
         (self.project / '.gitignore').write_text('scripts/\n', encoding='utf-8')
         self.cli('-y')
         self.commit_install_fixture()
-        before = run(['git', 'ls-files', '-z'], cwd=self.project).stdout
-        ignored = [f'.agents/skills/devlyn-ideate/scripts/{name}.py' for name in ('queue', 'acceptance')]
-        self.assert_commit_notice(self.cli('-y'), [], ignored)
-        self.assertEqual(run(['git', 'ls-files', '-z'], cwd=self.project).stdout, before)
+        index = self.project / '.git/index'
+        before = index.read_bytes()
+        self.assert_install_notice(self.cli('-y'), ignored=2, rule='.gitignore:1: scripts/')
+        self.assertEqual(index.read_bytes(), before)
         self.assertEqual(run(['git', 'status', '--porcelain'], cwd=self.project).stdout, b'')
 
-    def test_project_commit_notice_force_added_scripts_are_quiet(self):
+    def test_project_install_notice_force_added_scripts_are_quiet(self):
         run(['git', 'init', '-q', self.project])
         (self.project / '.gitignore').write_text('scripts/\n', encoding='utf-8')
         self.cli('-y')
         ignored = [f'.agents/skills/devlyn-ideate/scripts/{name}.py' for name in ('queue', 'acceptance')]
         run(['git', 'add', '-f', '--', *ignored], cwd=self.project)
+        self.assert_install_notice(self.cli('-y'))
         self.commit_install_fixture()
-        self.assert_commit_notice(self.cli('-y'), [])
+        self.assert_install_notice(self.cli('-y'))
 
-    def test_project_commit_notice_ignored_cache_is_not_installed(self):
+    def test_project_install_notice_ignored_cache_is_not_installed(self):
         run(['git', 'init', '-q', self.project])
         (self.project / '.gitignore').write_text('scripts/\n', encoding='utf-8')
         # A runtime cache appears after copying, before the advisory runs. It was not installed.
         cache = '.agents/skills/devlyn-ideate/scripts/__pycache__/queue.cpython-312.pyc'
         result = self.invoke(f"""
-const notice = noticeProjectChanges;
-noticeProjectChanges = (...args) => {{
+const notice = noticeIgnoredInstallFiles;
+noticeIgnoredInstallFiles = (...args) => {{
   fs.mkdirSync(path.dirname({json.dumps(cache)}), {{ recursive: true }});
   fs.writeFileSync({json.dumps(cache)}, 'runtime cache');
   notice(...args);
 }};
 install(['agents'], false);
 """)
-        ignored = [f'.agents/skills/devlyn-ideate/scripts/{name}.py' for name in ('queue', 'acceptance')]
-        self.assert_commit_notice(result, [*self.installed_skill_paths('agents'), 'AGENTS.md', '.gitignore'], ignored)
+        self.assert_install_notice(result, ignored=2, rule='.gitignore:1: scripts/')
         self.assertNotIn(cache.encode(), result.stdout)
         self.assertEqual((self.project / cache).read_bytes(), b'runtime cache')
 
-    def test_project_commit_notice_ignored_optional_files_and_each_target(self):
+    def test_project_install_notice_ignored_optional_files_and_each_target(self):
         run(['git', 'init', '-q', self.project])
         (self.project / '.gitignore').write_text('scripts/\n.claude/skills/devlyn-*\n', encoding='utf-8')
         result = self.invoke("install(['agents', 'claude'], false, ['polar-billing-setup']);")
-        ignored = [f'.agents/skills/devlyn-ideate/scripts/{name}.py' for name in ('queue', 'acceptance')]
-        ignored += [f'.{target}/skills/polar-billing-setup/scripts/diagnose.mjs' for target in ('agents', 'claude')]
-        paths = [*self.installed_skill_paths('agents'), '.claude/skills/_shared', '.claude/skills/.devlyn-install.json',
-                 'AGENTS.md', 'CLAUDE.md', '.gitignore', '.claude/settings.json',
-                 '.agents/skills/polar-billing-setup', '.claude/skills/polar-billing-setup']
-        self.assert_commit_notice(result, paths, ignored)
+        self.assert_install_notice(result, ignored=4, rule='.gitignore:1: scripts/')
 
-    def test_project_commit_notice_non_git(self):
-        self.assert_commit_notice(self.cli('-y', '--claude'), [])
+    def test_project_install_notice_non_git(self):
+        (self.project / '.gitignore').write_text('scripts/\n', encoding='utf-8')
+        self.assert_install_notice(self.cli('-y', '--claude'))
         run(['git', 'init', '-q', self.project])
-        self.assert_commit_notice(self.cli('-y', '--claude'), self.installed_skill_paths('agents', 'claude'))
+        self.assert_install_notice(self.cli('-y', '--claude'), ignored=4, rule='.gitignore:1: scripts/')
 
-    def test_project_commit_notice_global(self):
+    def test_project_install_notice_global(self):
         run(['git', 'init', '-q', self.project])
         run(['git', 'init', '-q', self.home])
-        self.assert_commit_notice(self.cli('-y', '--global', '--claude'), [])
-        self.assert_commit_notice(self.cli('-y', '--claude'), [*self.installed_skill_paths('agents', 'claude'), 'AGENTS.md',
-                                                              'CLAUDE.md', '.gitignore', '.claude/settings.json'])
+        for base in (self.project, self.home):
+            (base / '.gitignore').write_text('scripts/\n', encoding='utf-8')
+        self.assert_install_notice(self.cli('-y', '--global', '--claude'))
+        self.assert_install_notice(self.cli('-y', '--claude'), ignored=4, rule='.gitignore:1: scripts/')
 
-    def test_project_commit_notice_only_written_paths(self):
-        run(['git', 'init', '-q', self.project])
-        self.cli('-y', '--claude')
-        self.commit_install_fixture()
-        # The installer leaves these user changes alone; only the deleted retired command is its write.
-        for name in ['AGENTS.md', 'CLAUDE.md']:
-            with (self.project / name).open('a', encoding='utf-8') as file:
-                file.write('\nUser instructions.\n')
-        with (self.project / '.gitignore').open('a', encoding='utf-8') as file:
-            file.write('user-cache/\n')
-        settings = self.project / '.claude/settings.json'
-        settings.write_bytes(settings.read_bytes() + b'\n')
-        command = self.project / '.claude/commands/devlyn.resolve.md'
-        command.parent.mkdir()
-        command.write_bytes(b'retired fixture\n')
-        run(['git', 'add', '--', '.claude/commands'], cwd=self.project)
-        result = self.invoke("install(['agents', 'claude'], false);")
-        self.assert_commit_notice(result, ['.claude/commands/devlyn.resolve.md'])
-
-    def test_project_commit_notice_nested_repo_and_git_environment(self):
+    def test_project_install_notice_nested_repo_and_git_environment(self):
         run(['git', 'init', '-q', self.case])
         (self.project / '.gitignore').write_text('scripts/\n', encoding='utf-8')
         self.env.update(GIT_DIR=str(self.home / 'missing.git'), GIT_WORK_TREE=str(self.home),
@@ -760,38 +632,35 @@ install(['agents'], false);
                         GIT_LITERAL_PATHSPECS='1', GIT_GLOB_PATHSPECS='1', GIT_NOGLOB_PATHSPECS='1',
                         GIT_ICASE_PATHSPECS='1', GIT_CEILING_DIRECTORIES=str(self.project))
         result = self.cli('-y')
-        ignored = [f'.agents/skills/devlyn-ideate/scripts/{name}.py' for name in ('queue', 'acceptance')]
-        self.assert_commit_notice(result, [*self.installed_skill_paths('agents'), 'AGENTS.md', '.gitignore'], ignored)
-        self.assertIn(b'project/.gitignore:1: scripts/', result.stdout)
+        self.assert_install_notice(result, ignored=2, rule='project/.gitignore:1: scripts/')
 
-    def test_project_commit_notice_settings_migration(self):
+    def test_project_install_notice_settings_migration(self):
         run(['git', 'init', '-q', self.project])
         self.cli('-y', '--claude')
         (self.project / '.claude/settings.json').write_text('{}\n', encoding='utf-8')
         self.commit_install_fixture()
-        self.assert_commit_notice(self.cli('-y', '--claude'), ['.claude/settings.json'])
+        self.assert_install_notice(self.cli('-y', '--claude'))
 
-    def test_project_commit_notice_optional_skill_after_committed_install(self):
+    def test_project_install_notice_optional_skill_after_committed_install(self):
         run(['git', 'init', '-q', self.project])
         self.cli('-y')
         self.commit_install_fixture()
         result = self.interact([['\r'], ['\r'], [' ', '\r']])
         self.assertTrue((self.project / '.agents/skills/asset-creator/SKILL.md').is_file())
-        self.assert_commit_notice(result, ['.agents/skills/asset-creator', '.agents/skills/.devlyn-install.json'])
+        self.assert_install_notice(result)
 
-    def test_project_commit_notice_git_unavailable_or_query_fails(self):
+    def test_project_install_notice_git_unavailable_or_query_fails(self):
         run(['git', 'init', '-q', self.project])
         (self.project / '.gitignore').write_text('scripts/\n', encoding='utf-8')
         preload = self.preload.read_bytes()
         try:
-            for failure in ['missing', 'status', 'check-ignore', 'ignore-rule']:
+            for failure in ['missing', 'check-ignore', 'ignore-rule', 'none']:
                 with self.subTest(failure=failure):
                     self.preload.write_bytes(preload + f"""
 const cp = require('child_process');
 const spawn = cp.spawnSync;
 cp.spawnSync = (file, args, options) => {{
   if (file === 'git' && {json.dumps(failure)} === 'missing') return {{ error: {{ code: 'ENOENT' }} }};
-  if (file === 'git' && args.includes('status') && {json.dumps(failure)} === 'status') return {{ status: 1 }};
   if (file === 'git' && args.includes('check-ignore')) {{
     if (options.env.GIT_OPTIONAL_LOCKS !== '0') throw new Error('advisory must disable optional Git locks');
     if ({json.dumps(failure)} === 'check-ignore' || ({json.dumps(failure)} === 'ignore-rule' && args.includes('-v'))) {{
@@ -802,22 +671,12 @@ cp.spawnSync = (file, args, options) => {{
 }};
 """.encode())
                     result = self.cli('-y')
-                    self.assert_commit_notice(result, [])
+                    self.assert_install_notice(result, ignored=2 if failure == 'none' else 0,
+                                               rule='.gitignore:1: scripts/')
                     self.assertIn(b' installed', result.stdout)
                     self.assertEqual(result.stderr, b'')
         finally:
             self.preload.write_bytes(preload)
-
-    def test_project_commit_notice_quotes_pathspecs(self):
-        run(['git', 'init', '-q', self.project])
-        name = ".claude/commands/old 'skill.md"
-        command = self.project / name
-        command.parent.mkdir(parents=True)
-        command.write_bytes(b'retired fixture\n')
-        self.commit_install_fixture()
-        result = self.invoke(f"DEPRECATED_FILES.push({json.dumps(name.removeprefix('.claude/'))}); "
-                             "install(['claude'], false);")
-        self.assert_commit_notice(result, [*self.installed_skill_paths('claude'), 'CLAUDE.md', '.gitignore', '.claude/settings.json', name])
 
     def test_fresh_project_markers_are_unignored_and_committed_reinstall_is_identical(self):
         run(['git', 'init', '-q', self.project])
@@ -1516,16 +1375,16 @@ install(['agents', 'claude'], true, ['devlyn-reap']);
         self.assertIn(f'Cannot inspect {self.home / ".agents/skills"}'.encode(), result.stderr)
         self.assertIn(b'Check its permissions and run again.', result.stderr)
 
-    def test_project_commit_guidance_is_last_after_update_and_drift_notice(self):
+    def test_project_install_notice_after_update_and_drift_notice(self):
         run(['git', 'init', '-q', self.project])
         self.cli('-y'); self.cli('-y', '--global')
         grok = self.home / '.grok/skills'; grok.mkdir(parents=True)
         (grok / '.devlyn-install.json').write_bytes(b'{"version":"4.0.1"}')
         for command in ('update();', "install(['agents'], false);"):
             with self.subTest(command=command):
-                output = re.sub(r'\x1b\[[0-9;]*m', '', self.invoke(command).stdout.decode())
-                self.assertNotIn('delete it', output)
-                self.assertIn('git commit -m', output.strip().splitlines()[-1])
+                result = self.invoke(command)
+                self.assert_install_notice(result)
+                self.assertNotIn(b'delete it', result.stdout)
 
     def test_update_preflights_all_scopes_before_writing(self):
         self.cli('-y', '--claude'); self.cli('-y', '--global', '--claude')
@@ -1776,7 +1635,7 @@ install(['agents'], false);
         other = self.case / 'owner-marker.json'
         marker_raw = b'{"package":"devlyn-cli","schemaVersion":1,"version":"4.0.1","skills":{"devlyn-review":"old"}}'
         other.write_bytes(marker_raw); os.link(other, root / '.devlyn-install.json')
-        self.invoke("cleanupScope(os.homedir(), true, []);")
+        self.invoke("cleanupScope(os.homedir(), true);")
         self.assertEqual(owner.read_bytes(), raw)
         self.assertEqual(other.read_bytes(), marker_raw)
         self.assertEqual(settings.read_bytes(), raw)
@@ -1909,10 +1768,10 @@ update();
         for root in [self.project / '.claude/skills', self.home / '.grok/skills']:
             folder = root / 'Workflow-Routing'; folder.mkdir(parents=True)
             (folder / 'SKILL.md').write_bytes(raw + SHORT_PAYLOAD)
-            self.invoke('cleanupScope(projectDir(), false, []); cleanupScope(os.homedir(), true, []);')
+            self.invoke('cleanupScope(projectDir(), false); cleanupScope(os.homedir(), true);')
             self.assertEqual((folder / 'SKILL.md').read_bytes(), raw + SHORT_PAYLOAD)
             (folder / 'SKILL.md').write_bytes(raw.replace(b'\n', b'\r\n'))
-            self.invoke('cleanupScope(projectDir(), false, []); cleanupScope(os.homedir(), true, []);')
+            self.invoke('cleanupScope(projectDir(), false); cleanupScope(os.homedir(), true);')
             self.assertFalse(folder.exists())
 
     def test_cleanup_only_lock_prevents_marker_overwrite_race(self):
@@ -1941,7 +1800,7 @@ fs.readFileSync = (file, ...args) => {{
   }}
   return bytes;
 }};
-cleanupScope(os.homedir(), true, []);
+cleanupScope(os.homedir(), true);
 assert.equal(raced, true);
 assert.equal(fs.existsSync(lock), false);
 assert.deepEqual(JSON.parse(read(marker)).skills, {{}});
@@ -1953,7 +1812,7 @@ assert.deepEqual(JSON.parse(read(marker)).skills, {{}});
             result = self.invoke(f"""
 const root = {json.dumps(str(root))};
 fs.writeFileSync(path.join(root, DEVLYN_INSTALL_LOCK), JSON.stringify({{pid: process.pid, token: 'other'}}));
-cleanupScope(os.homedir(), true, []);
+cleanupScope(os.homedir(), true);
 """)
             self.assertEqual(result.stdout.count(f'Cannot clean up {root}:'.encode()), 1)
             self.assertTrue((root / 'devlyn-review').exists())
@@ -1999,8 +1858,9 @@ assert.deepEqual(fs.readdirSync(root), []);
             self.assertEqual({p.name for p in root.iterdir()},
                              {'devlyn-ideate', 'devlyn-engines', '_shared', '.devlyn-install.json', 'owner-skill'})
             self.assertEqual((root / 'owner-skill/keep').read_bytes(), SHORT_PAYLOAD)
+        self.assert_install_notice(result)
         for name in ['.agents/skills/devlyn-review', '.claude/skills/devlyn-review']:
-            self.assertIn(name.encode(), result.stdout[result.stdout.index('Optional — commit'.encode()):])
+            self.assertIn(f'✕ {name.replace("/", os.sep)} (removed)'.encode(), result.stdout)
 
     def test_deprecated_only_discovery(self):
         roots = [self.home / '.agents/skills', self.home / '.codex/skills', self.project / '.claude/skills']
