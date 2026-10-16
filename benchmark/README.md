@@ -92,4 +92,4 @@ python3 benchmark/instruction-sensitivity/scripts/score-behavior.py \
 3. **Don't mix lanes.** Each lane's fixtures answer its own question; running them in another lane's mode contaminates both signals.
 4. **Results are evidence, not opinions.** Cite the run-id, the gate JSON path, and the exact verdict — never a paraphrase.
 5. **Hold the host network fixed during live runs.** Do not connect or disconnect a VPN or switch networks while a cell runs. Quit the VPN client
-for the run, because it can connect on its own. A route change can interrupt in-flight API streams on the host and in Docker cells (rp-d2 [diagnosis](../autoresearch/experiments/rp-d2-report-lines/results.md#diagnosis-added-2026-10-15-after-merge)).
+for the run. A route change can interrupt in-flight API streams on the host and in Docker cells (rp-d2 [diagnosis](../autoresearch/experiments/rp-d2-report-lines/results.md#diagnosis-added-2026-10-15-after-merge)).

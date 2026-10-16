@@ -26,25 +26,29 @@ from the registered summarizer and both reviewers' report reviews.
   merged. All eight dispatched repositories, m08's included, were archived,
   deleted and confirmed 404. All eight slots ran on the registered Claude
   account pair and Codex account.
-- **The two reviewers agreed on every category of every graded slot.**
-- **m08 stopped on a dropped connection.** Its request went out at
-  23:41:12Z and was silent until an `api_error` ECONNRESET at 23:44:13Z, then
-  one retry, so usage is UNKNOWN. The route watcher (5 s polls) logged the
-  host default route moving to the VPN tunnel interface at 23:41:44Z and back
-  to Wi-Fi at 23:46:45Z. The request was in flight across that route change.
-  No other drop and no other route change occurred during any cell.
-- **Credential renewal.** Mid-run, the host's shared Claude login switched
-  accounts, and `stage.py --renew` refused the other account, as registered.
-  The renewal used a fresh token of the registered account, taken from the
-  host keychain once it held one. It was applied between pairs 3 and 4.
+- **The two reviewers agreed on the pass or fail of every category of every
+  graded slot.** On m03, m04 and m06 reconciliation, Astra recorded `MISSING`
+  and Grok `AMBIGUOUS`; both fail.
+- **m08 stopped on a dropped connection.** Its last transcript row before a
+  gap is at 23:41:12Z. The only `api_error`, ECONNRESET, came at 23:44:13Z and
+  was retried once, so usage is UNKNOWN. The route watcher (`sleep 5` polls)
+  logged the host default route moving from `en0` to the tunnel interface
+  `utun4` at 23:41:44Z, during that silence, and back to `en0` at 23:46:45Z.
+  The drop came while `utun4` held the route. No other `api_error` and no
+  other route change occurred during any cell.
+- **Credential renewal.** The auth manifest is `cd4fa3d3…` for m01–m06 and
+  `190251d6…` for m07–m08, so the renewal fell between pairs 3 and 4. By the
+  operator's account (not in the saved logs), the host's shared Claude login
+  had switched accounts mid-run and `stage.py --renew` refused that account.
+  The renewal snapshot came from a fresh token of the registered account.
 
 ### Descriptive signal (not an adoption result)
 
 - **Codex failed the report in all four slots, in both arms.** Every Codex
-  report omitted cleanup. Three of the four also gave only "the checkout is
-  clean" for reconciliation. Y's paragraph did not change Codex's report
-  shape: the reports end with "PR #1 was merged, the local checkout is clean,
-  and nothing remains unresolved" in both arms.
+  report omitted cleanup. In m03, m04 and m06, reconciliation was only a clean
+  checkout; m05 (X) reported a fast-forward. Each report closes with the merge,
+  a clean checkout and nothing unresolved, in both arms. Y's paragraph did not
+  change that shape.
 - **Claude passed every graded report**, in both arms.
 - **This matches rp-d1 (Codex 0/4) and smoke 20261014a.** It is consistent with
   Grok's recorded dissent: the prompt's closing sentence may set Codex's
@@ -52,10 +56,9 @@ from the registered summarizer and both reviewers' report reviews.
 
 ### Diagnosis update and next candidate
 
-This is the third Claude drop in rp-d2. It is the first observed directly
-against a route change, and it supports the diagnosis below. Hard rule 5 now
-also says to quit the VPN client during a run, because it can connect on its
-own.
+This is the third Claude drop in rp-d2. It is the first logged while a
+route change was in effect, and it supports the diagnosis below. Hard rule 5
+now also says to quit the VPN client for the run.
 
 With the Y paragraph showing no effect on Codex in 2 of 2 Y slots, the
 remaining candidate is Grok's prompt ablation (candidate 2 below).
