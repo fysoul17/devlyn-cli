@@ -199,8 +199,8 @@ identify the original checkout and outstanding operation; after allocation,
 include the receipt-based resume command. Headless execution neither waives
 permissions nor silently changes delivery policy.
 
-Report verification, delivery, the result's `cleanup` verbatim and checkout
-reconciliation separately. A delivery error does not rewrite an accepted
+Report verification, delivery, the result's `cleanup` verbatim when present and
+checkout reconciliation separately. A delivery error does not rewrite an accepted
 product result; unperformed verification must never be reported as accepted.
 
 ## Yield and retain recoverability
