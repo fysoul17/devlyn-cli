@@ -1,6 +1,7 @@
 """Reuse rp-d2 offline staging with two packages and separate Codex/Claude snapshots."""
 import argparse
 import importlib.util
+import json
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -40,6 +41,40 @@ def recorded_stage_root(runtime):
     return root
 
 
+def reserve_smoke(args, guard):
+    runner.smoke_slots(args.smoke_attempt)
+    root = runner.smoke_registry(args.run_id)
+    inputs = runner.smoke_inputs(dict(arms_file=args.arms, image=args.image,
+        codex_account=auth.codex_account(args.auth), claude_account=guard['account'],
+        models_cache_sha256=digest(Path.home() / '.codex/models_cache.json')))
+    previous = root / 'attempt-1.json'
+    if args.smoke_attempt == 2:
+        first = read(previous)
+        runner.smoke_registration(read(first['runtime']))
+        require(first['status'] == 'FAILED', 'spare requires a failed first smoke without credential revocation')
+        require(first['inputs'] == inputs, 'spare changed registered arms, accounts, image or models cache')
+        for verdict in first['verdicts']:
+            record = read(verdict)
+            if record['dispatched']:
+                receipt = record.get('repository_cleanup', {})
+                require(receipt.get('repository') == f'fysoul17/rpd4-{args.run_id}-{record["cell"]}' and
+                        receipt.get('status') == 'DELETED' and receipt.get('http_status') == 404 and
+                        receipt.get('archive_manifest_sha256'),
+                        'failed smoke repository has no archived deletion/404 receipt')
+    else:
+        require(not previous.exists() and not (root / 'attempt-2.json').exists(), 'run already staged; never replay')
+    state = dict(status='STAGING', inputs=inputs,
+                 runtime=str(args.stage_dir.resolve() / 'runtime-smoke.json'))
+    if args.smoke_attempt == 2:
+        state['previous_sha256'] = digest(previous)
+    root.mkdir(parents=True, exist_ok=True, mode=0o700)
+    path = root / f'attempt-{args.smoke_attempt}.json'
+    # Exclusive creation consumes the attempt even if staging is interrupted.
+    with path.open('x') as stream:
+        json.dump(state, stream, indent=2)
+    return path, state
+
+
 def stage(args):
     guard, guard_hash = auth.claude_model_auth(args.claude_auth)
     require(auth.codex_account(args.claude_auth) == auth.codex_account(args.auth),
@@ -53,12 +88,20 @@ def stage(args):
         previous = read(args.stage_dir / 'runtime-smoke.json')
         require(auth.codex_account(args.auth) == previous['codex_account'] and
                 guard['account'] == previous['claude_account'], 'staging changed the registered accounts')
-        runner.Runner(args.stage_dir / 'runtime-smoke.json').prior_deleted('m01')
+        app = runner.Runner(args.stage_dir / 'runtime-smoke.json')
+        app.finish_smoke()
+        app.prior_deleted('m01')
+    else:
+        registration, state = reserve_smoke(args, guard)
     target = inherited_stage(args)
     runtime = read(target)
     runtime.update(claude_auth=str(args.claude_auth.absolute()), claude_account=guard['account'],
                    claude_auth_manifest_sha256=guard_hash)
     write(target, runtime)
+    if args.phase == 'smoke':
+        state.update(status='STAGED', runtime_sha256=digest(target))
+        require(state['inputs'] == runner.smoke_inputs(runtime), 'staged smoke inputs changed')
+        write(registration, state)
     return target
 
 

@@ -3,6 +3,7 @@ from copy import deepcopy
 import importlib.util
 import json
 import os
+import shlex
 from pathlib import Path
 import subprocess
 import sys
@@ -356,9 +357,62 @@ class EvidenceTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'no captured valid completion or BLOCKED result'):
             s.merge_refused(self.out)
 
+    def test_ambiguous_shell_invocations_stop_even_before_a_later_success(self):
+        nested = 'python3 task-complete.py complete'
+        for _ in range(6):
+            nested = 'sh -c ' + shlex.quote(nested)
+        commands = (
+            'helper=/path/task-complete.py; python3 "$helper" complete --receipt task',
+            'env python3 task-complete.py complete --receipt task',
+            'echo <(python3 task-complete.py complete)',
+            'echo >(python3 task-complete.py complete)',
+            'echo =(python3 task-complete.py complete)',
+            "python3 -c 'import subprocess; subprocess.run([\"python3\", \"task-complete.py\", \"complete\"])'",
+            nested,
+            'python3 task-complete.py complete "unterminated',
+            'python3 task-complete.py complete --help; helper=task-complete.py; python3 "$helper" complete',
+        )
+        refused = result(status='PR') | {'merge_refused': 'synthetic refusal'}
+        for command in commands:
+            for tool, input_ in (('exec_command', {'cmd': command}),
+                                 ('functions.exec', 'text(await tools.exec_command({cmd: ' + json.dumps(command) + '}));')):
+                with self.subTest(command=command, tool=tool):
+                    self.write_calls((tool, input_, json.dumps(refused)),
+                                     ('exec_command', {'cmd': 'python3 task-complete.py complete'}, json.dumps(self.value)))
+                    with self.assertRaisesRegex(ValueError, 'helper command cannot be classified'):
+                        s.merge_refused(self.out)
+
+    def test_compound_shell_separators_cannot_hide_refusal_after_echo(self):
+        refused = result(status='PR') | {'merge_refused': 'synthetic refusal'}
+        for separator in (';\n', '&&\n', '||\n', '\n\n', '&\n', '|\n'):
+            for prefix in ('echo ready', 'python3 task-complete.py complete --help; echo ready',
+                           'python3 task-complete.py complete; echo ready'):
+                command = prefix + separator + 'python3 task-complete.py complete'
+                for tool, input_ in (('exec_command', {'cmd': command}),
+                                     ('functions.exec', 'text(await tools.exec_command({cmd: ' + json.dumps(command) + '}));')):
+                    with self.subTest(separator=separator, prefix=prefix, tool=tool):
+                        self.write_calls((tool, input_, json.dumps(refused)),
+                                         ('exec_command', {'cmd': 'python3 task-complete.py complete'}, json.dumps(self.value)))
+                        self.assertTrue(s.merge_refused(self.out))
+                        ambiguous = prefix + separator + 'env python3 task-complete.py complete'
+                        input_ = ({'cmd': ambiguous} if tool == 'exec_command' else
+                                  'text(await tools.exec_command({cmd: ' + json.dumps(ambiguous) + '}));')
+                        self.write_calls((tool, input_, json.dumps(self.value)))
+                        with self.assertRaisesRegex(ValueError, 'helper command cannot be classified'):
+                            s.merge_refused(self.out)
+
+    def test_foreign_receipt_cannot_certify_a_helper_invocation(self):
+        for value in (dict(self.value, receipt='/cell/work/.git/devlyn-completion/other/receipt.json'),
+                      dict(status='BLOCKED', reason='owned writer remains', receipt='/cell/other.json', resume='complete')):
+            with self.subTest(status=value['status']):
+                self.write_calls(('exec_command', {'cmd': 'python3 task-complete.py complete'}, json.dumps(value)),
+                                 ('exec_command', {'cmd': 'python3 task-complete.py complete'}, json.dumps(self.value)))
+                with self.assertRaisesRegex(ValueError, 'different receipt'):
+                    s.merge_refused(self.out)
+
     def test_explicit_blocked_is_known_but_not_a_successful_complete_output(self):
-        blocked = dict(status='BLOCKED', reason='owned writer remains', receipt='/cell/receipt.json',
-                       resume='python3 task-complete.py complete --receipt /cell/receipt.json')
+        blocked = dict(status='BLOCKED', reason='owned writer remains', receipt=self.value['receipt'],
+                       resume='python3 task-complete.py complete --receipt task')
         self.write_calls(('exec_command', {'cmd': 'python3 task-complete.py complete'}, json.dumps(blocked)))
         self.assertFalse(s.merge_refused(self.out))
         self.assertEqual(s.complete_outputs(self.out), [])
@@ -396,13 +450,20 @@ class EvidenceTests(unittest.TestCase):
         for code in (
                 'text(await tools.exec_command({cmd: `python3 task-complete.py complete`}));',
                 'const cmd = "python3 task-complete.py complete"; text(await tools.exec_command({cmd}));',
+                'const helper = "task-complete.py"; const cmd = "python3 " + helper + " complete"; '
+                'text(await tools.exec_command({cmd}));',
+                'text(await tools.exec_command({cmd: "python3 task-complete.py complete" + suffix}));',
+                'text(await tools.exec_command({cmd: "python3 task-complete.py complete"})); '
+                'const helper = "task-complete.py"; const cmd = "python3 " + helper + " complete"; '
+                'text(await tools.exec_command({cmd}));',
                 'text(await tools.exec_command({cmd: "python3 task-complete.py complete --help"})); '
                 'const cmd = "python3 task-complete.py complete"; text(await tools.exec_command({cmd}));'):
             with self.subTest(code=code):
                 self.write_calls(('functions.exec', code, json.dumps(refused)))
-                self.assertTrue(s.merge_refused(self.out))
+                with self.assertRaisesRegex(ValueError, 'helper command cannot be classified'):
+                    s.merge_refused(self.out)
                 self.write_calls(('functions.exec', code, 'unavailable'))
-                with self.assertRaisesRegex(ValueError, 'no captured valid completion or BLOCKED result'):
+                with self.assertRaisesRegex(ValueError, 'helper command cannot be classified'):
                     s.merge_refused(self.out)
 
     def test_shell_c_payloads_are_parsed_without_treating_echo_as_execution(self):
@@ -440,6 +501,27 @@ class EvidenceTests(unittest.TestCase):
         captured = s.read(records[0])
         self.assertEqual(captured['actions'], {'ran': False})
         self.assertEqual(captured['result'], json.loads(done.stdout))
+
+    def test_observer_failures_leave_helper_return_and_locals_untouched(self):
+        for failure in ('missing-actions', 'serialize', 'open'):
+            with self.subTest(failure=failure):
+                action = {'missing-actions': '', 'serialize': '    actions = {"unserializable": set()}\n',
+                          'open': '    actions = {"ran": False}\n'}[failure]
+                self.helper.write_text('import json\ndef complete():\n' + action +
+                    '    return {"status": "PR", "cleanup": "synthetic"}\n'
+                    'print(json.dumps(complete(), sort_keys=True))\n')
+                config = s.read(self.out / 'harness/helper-observer.json')
+                config.update(helper_sha256=s.digest(self.helper),
+                              records=str(self.out / ('missing-records' if failure == 'open' else 'cell/helper-actions')))
+                self.write('harness/helper-observer.json', config)
+                for path in (self.out / 'cell/helper-actions').glob('*.json'):
+                    path.unlink()
+                done = subprocess.run([sys.executable, '-B', str(self.helper)], env={**os.environ,
+                    'PYTHONPATH': str(self.out / 'harness')}, capture_output=True, text=True)
+                self.assertEqual(done.returncode, 0)
+                self.assertEqual(done.stderr, '')
+                self.assertEqual(json.loads(done.stdout), {'status': 'PR', 'cleanup': 'synthetic'})
+                self.assertEqual(list((self.out / 'cell/helper-actions').glob('*.json')), [])
 
 
 if __name__ == '__main__':

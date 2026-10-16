@@ -113,7 +113,8 @@ def test_ordered_cleanup_branches(evidence, x, y, expected):
 
 
 @pytest.mark.parametrize('fault', ['stop', 'unknown_status', 'unknown_usage', 'not_run', 'delivery',
-    'merge_refused', 'guard_delivery', 'guard_stop', 'missing_review', 'stale_review',
+    'merge_refused', 'missing_merge_refused', 'guard_missing_merge_refused',
+    'guard_delivery', 'guard_stop', 'missing_review', 'stale_review',
     'wrong_reviewer', 'unfinished_review', 'guard_missing_review', 'source_checks'])
 def test_inconclusive_precedes_baseline_moved(evidence, fault):
     s, _, reviews, rows = evidence
@@ -129,6 +130,8 @@ def test_inconclusive_precedes_baseline_moved(evidence, fault):
             status='PRODUCT_INCOMPLETE', delivery_assessment='PRODUCT_INCOMPLETE')
     elif fault == 'merge_refused':
         rows[1]['merge_refused'] = True
+    elif fault in ('missing_merge_refused', 'guard_missing_merge_refused'):
+        rows[8 if fault == 'guard_missing_merge_refused' else 0].pop('merge_refused')
     elif fault == 'source_checks':
         rows[0].update(status='PRODUCT_INCOMPLETE', inherited_status='PRODUCT_INCOMPLETE',
                        delivery_assessment='ADJUDICATE')

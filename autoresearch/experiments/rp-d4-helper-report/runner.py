@@ -4,6 +4,7 @@ import hashlib
 import importlib.util
 import json
 from pathlib import Path
+import re
 from types import FunctionType
 
 HERE = Path(__file__).resolve().parent
@@ -31,9 +32,33 @@ SCHEDULE = [(f'm{i:02}', 'BV' if i <= 4 else 'Z0', 'codex') for i in range(1, 9)
 ARMS = dict(zip((row[0] for row in SCHEDULE), ('X', 'Y', 'Y', 'X', 'X', 'Y', 'Y', 'X', 'Y', 'Y')))
 prior_runner = load('runner_rpd3_scan_rpd4', HERE.parent / 'rp-d3-prompt-ablation/runner.py')
 # Reuse the exact rp-d3 token scan with this private module's credential provider.
-scan = FunctionType(prior_runner.scan.__code__, prior_runner.scan.__globals__ | {
+codex_scan = FunctionType(prior_runner.scan.__code__, prior_runner.scan.__globals__ | {
     'auth': auth, 'pat_scan': cell.scan, 'write': write})
-scan.__kwdefaults__ = prior_runner.scan.__kwdefaults__
+codex_scan.__kwdefaults__ = prior_runner.scan.__kwdefaults__
+pat_scan = cell.scan
+
+
+def scan(out, runtime, *, roots=None):
+    roots = tuple(roots) if roots is not None else (out,)
+    codex_scan(out, runtime, roots=roots)
+    if runtime.get('auth_engine', 'codex') != 'claude':
+        return
+    try:
+        raw = auth.read_private(auth.directory(runtime['auth']), 'claude.env')
+        tokens = [line.partition(b'=')[2] for line in raw.splitlines()
+                  if line.startswith(b'CLAUDE_CODE_OAUTH_TOKEN=')]
+        if len(tokens) != 1 or not tokens[0] or b'\0' in tokens[0]:
+            raise ValueError('invalid Claude bearer snapshot')
+        scanner = FunctionType(pat_scan.__code__, pat_scan.__globals__ | {
+            'credential': lambda _runtime: (None, tokens[0])})
+        scanner(out, runtime, roots=roots)
+    except (OSError, ValueError, KeyError, TypeError):
+        try:
+            write(out / 'claude-scan.json', dict(status='STOP', revocation_required=True))
+        finally:
+            raise ValueError('Claude credential scan hit or failed; slot stopped') from None
+
+
 cell.scan = scan
 smoke = load('smoke_rpd4_runner', HERE / 'smoke.py')
 
@@ -42,6 +67,40 @@ def smoke_slots(attempt=1):
     require(type(attempt) is int and attempt in (1, 2), 'smoke_attempt must be 1 or 2')
     prefix = 'smoke' if attempt == 1 else 'smoke2'
     return [(f'{prefix}-codex-{arm}', 'SM', 'codex') for arm in ('X', 'Y')]
+
+
+def smoke_registry(run_id):
+    require(isinstance(run_id, str) and re.fullmatch('[A-Za-z0-9][A-Za-z0-9-]*', run_id), 'invalid run_id')
+    return Path.home() / '.devlyn/rp-d4-runs' / run_id
+
+
+def smoke_inputs(runtime):
+    return dict(arms_sha256=digest(runtime['arms_file']), **{key: runtime[key] for key in
+        ('image', 'codex_account', 'claude_account', 'models_cache_sha256')})
+
+
+def smoke_evidence(state):
+    require(digest(state['runtime']) == state['runtime_sha256'], 'registered smoke runtime changed')
+    for path, binding in state.get('verdicts', {}).items():
+        require(digest(path) == binding, 'registered smoke evidence changed')
+
+
+def smoke_registration(runtime):
+    root = smoke_registry(runtime['run_id'])
+    latest = 2 if (root / 'attempt-2.json').exists() else 1
+    require(runtime['smoke_attempt'] == latest, 'smoke attempt was superseded; never replay')
+    path = root / f'attempt-{latest}.json'
+    state = read(path)
+    require(state['status'] != 'STAGING', 'smoke staging did not finish')
+    require(state['runtime'] == str(Path(runtime['control']).parent / 'runtime-smoke.json') and
+            state['inputs'] == smoke_inputs(runtime), 'registered smoke inputs or stage changed')
+    smoke_evidence(state)
+    if latest == 2:
+        previous = root / 'attempt-1.json'
+        require(digest(previous) == state['previous_sha256'] and read(previous)['status'] == 'FAILED',
+                'spare smoke is not bound to its failed first attempt')
+        smoke_evidence(read(previous))
+    return path, state
 
 
 def arm_for(name):
@@ -66,6 +125,7 @@ legacy.legacy.legacy.policy.check.__globals__['base_policy'].route_for = solo_ro
 class Runner(legacy.Runner):
     def __init__(self, runtime_path, tasks_path=None, *, phase=None):
         original = read(runtime_path)
+        smoke_registration(original)
         require(phase is None or phase == original['phase'], 'phase differs from staged runtime')
         # Skip only rp-d2's two-release constructor; keep every lower lifecycle hook.
         legacy.legacy.Runner.__init__(self, runtime_path, tasks_path, phase=phase)
@@ -142,6 +202,8 @@ class Runner(legacy.Runner):
                 record['release'] == prepare.release_identity(self.runtime, arm), 'verdict prompt/release binding mismatch')
 
     def prior_deleted(self, name):
+        _, state = smoke_registration(self.base_runtime)
+        require(state['status'] == ('QUALIFIED' if name in ARMS else 'STAGED'), 'smoke attempt is consumed or unqualified')
         slots = [row[0] for row in self.smoke + SCHEDULE]
         index = slots.index(name)
         previous = slots[:2] if name == 'm01' else slots[max(0, index - 1):index]
@@ -167,6 +229,8 @@ class Runner(legacy.Runner):
 
     def run(self, name, task, arm, config):
         require((name, task, config) in self.slots() and arm == arm_for(name), 'unregistered slot/task/engine/arm')
+        _, state = smoke_registration(self.base_runtime)
+        require(state['status'] == ('QUALIFIED' if name in ARMS else 'STAGED'), 'smoke attempt is consumed or unqualified')
         self.active_arm = arm
         self.runtime = auth.for_engine(self.base_runtime, config)
         self.frame.seal_after_teardown.keywords['runtime'] = self.runtime
@@ -174,10 +238,10 @@ class Runner(legacy.Runner):
             result = legacy.legacy.Runner.run(self, name, task, 'B', config)
             path = Path(self.runtime['output']) / name / 'rp-verdict.json'
             record = read(path)
-            if (path.parent / 'codex-scan.json').exists():
+            if any((path.parent / (engine + '-scan.json')).exists() for engine in ('codex', 'claude')):
                 record.update(status='STOP', usage='UNKNOWN', input_tokens=None, output_tokens=None,
                               delivery_assessment='NOT_ASSESSED', revocation_required=True,
-                              reason='Codex credential scan hit or failed; slot stopped')
+                              reason='Model credential scan hit or failed; slot stopped')
                 result = 2
             if record['dispatched'] and not record.get('revocation_required'):
                 try:
@@ -195,11 +259,32 @@ class Runner(legacy.Runner):
                           auth=self.runtime['auth'], auth_manifest_sha256=self.runtime['auth_manifest_sha256'],
                           frozen_runtime_sha256=self.frozen)
             write(path, record)
+            if self.runtime['phase'] == 'smoke':
+                state = self.finish_smoke()
+                if state['status'] in ('FAILED', 'STOP'):
+                    result = 2
             return result
         finally:
             self.active_arm = None
             self.runtime = self.base_runtime
             self.frame.seal_after_teardown.keywords['runtime'] = self.base_runtime
+
+    def finish_smoke(self):
+        path, state = smoke_registration(self.base_runtime)
+        if state['status'] != 'STAGED':
+            return state
+        records = self.completed_prefix()
+        failed = any(row['status'] not in ('PASS', 'ADJUDICATE') or
+                     row.get('smoke_qualification', {}).get('status') != 'PASS' for row in records)
+        if not failed and len(records) != len(self.smoke):
+            return state
+        state['status'] = ('STOP' if self.runtime['smoke_attempt'] == 2 or
+                           any(row.get('revocation_required') for row in records) else 'FAILED') if failed else 'QUALIFIED'
+        state['verdicts'] = {str(Path(self.runtime['smoke_output']) / row['cell'] / 'rp-verdict.json'):
+                            digest(Path(self.runtime['smoke_output']) / row['cell'] / 'rp-verdict.json')
+                            for row in records}
+        write(path, state)
+        return state
 
     def completed_prefix(self):
         records = super().completed_prefix()

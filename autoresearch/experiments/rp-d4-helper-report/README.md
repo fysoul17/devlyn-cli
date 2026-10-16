@@ -59,7 +59,12 @@ Keep release, stage, auth and evidence directories outside the repository.
    emission. Y additionally requires the deterministic cleanup check below.
    Smoke reports are not graded. A failed smoke consumes the pair; preserve
    it and use a fresh stage directory with `--smoke-attempt 2` for both spare
-   cells. A failed spare stops the run. There is no third attempt.
+   cells, retaining the same run ID, arms, accounts, image and models cache.
+   `~/.devlyn/rp-d4-runs/<run-id>/` preserves shared attempt reservations and
+   bound verdicts across stage directories. Preserve that registry with the
+   evidence; changing the stage or release directory cannot reset it. A failed
+   spare stops the run. Credential revocation stops either attempt. There is
+   no replay or third attempt.
 7. Stage measured with the same arguments/directory and `--phase measured`.
    Both selected smoke verdicts must qualify and carry archive/deletion/404
    receipts. Accounts must remain identical; a renewed snapshot may be used.

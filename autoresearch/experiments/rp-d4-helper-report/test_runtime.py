@@ -390,18 +390,42 @@ def test_renewal_refuses_stopped_schedule(staged):
         s.renewal_allowed(previous, previous['codex_account'], [dict(status='STOP'), dict(status='NOT_RUN')])
 
 
-def test_guard_selected_codex_snapshot_is_scanned_before_sealing(staged, monkeypatch, capsys):
+@pytest.mark.parametrize('secret', ['codex', 'claude'])
+@pytest.mark.parametrize('location', ['stdout', 'filename', 'symlink', 'git'])
+def test_guard_selected_snapshot_is_scanned_before_sealing(staged, monkeypatch, capsys, secret, location):
     s, args, path = measured(staged)
     app = s.runner.Runner(path)
     for slot in s.runner.SCHEDULE[:8]:
         append_record(s, app, slot)
-    token = json.loads((args.claude_auth / 'codex.json').read_bytes())['tokens']['access_token']
+    token = (json.loads((args.claude_auth / 'codex.json').read_bytes())['tokens']['access_token']
+             if secret == 'codex' else 'synthetic-claude')
     assert token != json.loads((args.auth / 'codex.json').read_bytes())['tokens']['access_token']
     monkeypatch.setattr(s.runner.cell, 'credential', lambda _: (args.github_auth, b'github_pat_synthetic'))
     def inherited(_self, name, _task, _route, _engine):
         out = Path(app.runtime['output']) / name
         out.mkdir()
-        (out / 'stdout').write_text(token)
+        if location == 'stdout':
+            (out / 'stdout').write_text('x' * (1024 * 1024 - 3) + token)
+        elif location == 'filename':
+            (out / token).write_text('unrelated')
+        elif location == 'symlink':
+            (out / 'link').symlink_to(token)
+        else:
+            (out / '.git').mkdir()
+            class Objects:
+                stdout = io.BytesIO()
+                def __enter__(self):
+                    self.stdout = io.BytesIO(token.encode())
+                    return self
+                def __exit__(self, *_):
+                    self.stdout.close()
+                def wait(self):
+                    return 0
+            def objects(argv, **_kwargs):
+                assert argv[:3] == ['git', '--git-dir', str(out / '.git')]
+                assert '--batch-all-objects' in argv
+                return Objects()
+            monkeypatch.setattr(s.runner.cell.subprocess, 'Popen', objects)
         app.frame.seal_after_teardown(out)
         pytest.fail('leaked evidence reached sealing')
     monkeypatch.setattr(s.runner.legacy.legacy.Runner, 'run', inherited)
@@ -412,7 +436,98 @@ def test_guard_selected_codex_snapshot_is_scanned_before_sealing(staged, monkeyp
     assert token not in str(error.value)
     assert capsys.readouterr().out == ''
     assert not (Path(app.runtime['output']) / 'g01/evidence-manifest.json').exists()
+    assert s.read(Path(app.runtime['output']) / ('g01/' + secret + '-scan.json')) == dict(
+        status='STOP', revocation_required=True)
     assert app.frame.seal_after_teardown.keywords['runtime'] == app.base_runtime
+
+
+@pytest.mark.parametrize('location', ['preseal', 'archive', 'verdict'])
+def test_claude_leak_stops_guard_and_remaining_schedule(staged, monkeypatch, capsys, location):
+    s, args, path = measured(staged)
+    r = s.runner
+    app = r.Runner(path)
+    for slot in r.SCHEDULE[:8]:
+        append_record(s, app, slot)
+    token = 'synthetic-claude'
+    graded = []
+    monkeypatch.setattr(r.cell, 'credential', lambda _: (args.github_auth, b'github_pat_synthetic'))
+    monkeypatch.setattr(r.github, 'precheck', lambda *_: None)
+    monkeypatch.setitem(app.frame.seal_after_teardown.keywords, 'inherited',
+                        lambda _: pytest.fail('leaked evidence was sealed'))
+    def inherited(_self, name, *_args):
+        out = Path(app.runtime['output']) / name
+        (out / 'run').mkdir(parents=True)
+        s.write(out / 'run/started.json', {})
+        if location == 'preseal':
+            (out / 'run/stdout').write_text(token)
+            app.frame.seal_after_teardown(out)
+        s.write(out.parent / f'verdict-{name}.json', dict(status='CHECKS_PASS', usage='COMPLETE',
+            input_tokens=7, output_tokens=3, teardown='CLEAN', evidence_manifest_sha256='seal', snapshot={},
+            diagnostic=token if location == 'verdict' else 'clean'))
+    def archive(_repository, root):
+        root.mkdir(parents=True)
+        (root / 'metadata.json').write_text(token if location == 'archive' else 'clean')
+        return dict(manifest_sha256='seal')
+    def grade(*_):
+        graded.append(True)
+        return dict(status='ADJUDICATE', checklist={})
+    monkeypatch.setattr(r.legacy.legacy.legacy.Runner, 'run', inherited)
+    monkeypatch.setattr(r.github, 'archive', archive)
+    monkeypatch.setattr(r.github, 'done_check', grade)
+    monkeypatch.setattr(r.github, 'delete_archived', lambda *_: dict(status='DELETED'))
+    assert app.schedule() == 2
+    rows = s.read(Path(app.runtime['output']) / 'rp-schedule.json')['slots']
+    assert [row['status'] for row in rows[8:]] == ['STOP', 'NOT_RUN']
+    assert rows[8]['delivery_assessment'] == 'NOT_ASSESSED'
+    assert rows[8]['revocation_required'] is True
+    assert rows[8]['input_tokens'] is None
+    assert s.read(Path(app.runtime['output']) / 'g01/claude-scan.json') == dict(
+        status='STOP', revocation_required=True)
+    assert token not in json.dumps(rows)
+    if location == 'preseal':
+        assert graded == []
+        assert not (Path(app.runtime['output']) / 'g01/evidence-manifest.json').exists()
+    assert capsys.readouterr().out == ''
+    assert app.schedule() == 2
+
+
+@pytest.mark.parametrize('fault', ['read', 'missing', 'empty', 'duplicate'])
+def test_claude_scan_failure_is_nonsecret_and_closed(staged, monkeypatch, capsys, fault):
+    s, args, path = staged
+    r = s.runner
+    runtime = s.auth.for_engine(s.read(path), 'claude')
+    out = Path(runtime['output']) / 'scan-failure'
+    out.mkdir()
+    monkeypatch.setattr(r.cell, 'credential', lambda _: (args.github_auth, b'github_pat_synthetic'))
+    private = r.auth.read_private
+    def read_private(root, name):
+        if name != 'claude.env':
+            return private(root, name)
+        if fault == 'read':
+            raise OSError('synthetic-claude')
+        return {'missing': b'', 'empty': b'CLAUDE_CODE_OAUTH_TOKEN=\n',
+                'duplicate': b'CLAUDE_CODE_OAUTH_TOKEN=first\nCLAUDE_CODE_OAUTH_TOKEN=second\n'}[fault]
+    monkeypatch.setattr(r.auth, 'read_private', read_private)
+    with pytest.raises(ValueError, match='Claude credential scan') as error:
+        r.scan(out, runtime)
+    assert 'synthetic-claude' not in str(error.value)
+    assert s.read(out / 'claude-scan.json') == dict(status='STOP', revocation_required=True)
+    assert capsys.readouterr().out == ''
+
+
+@pytest.mark.parametrize('engine', ['codex', 'claude'])
+def test_clean_snapshot_scan_allows_sealing(staged, monkeypatch, engine):
+    s, args, path = staged
+    app = s.runner.Runner(path)
+    out = Path(app.runtime['output']) / 'clean-scan'
+    out.mkdir()
+    (out / 'stdout').write_text('nonsecret evidence')
+    monkeypatch.setattr(s.runner.cell, 'credential', lambda _: (args.github_auth, b'github_pat_synthetic'))
+    seal = app.frame.seal_after_teardown
+    monkeypatch.setitem(seal.keywords, 'runtime', s.auth.for_engine(app.base_runtime, engine))
+    monkeypatch.setitem(seal.keywords, 'inherited', lambda _: ('sealed', []))
+    assert seal(out) == ('sealed', [])
+    assert not list(out.glob('*-scan.json'))
 
 
 @pytest.mark.parametrize('phase,arm,engine,observed', [

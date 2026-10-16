@@ -37,20 +37,25 @@ def install():
     sequence = 0
     def observe(frame, event, value):
         nonlocal sequence
-        if (event != "return" or frame.f_code.co_name != "complete" or
-                Path(frame.f_code.co_filename).resolve() != target or not isinstance(value, dict)):
+        try:
+            if (event != "return" or frame.f_code.co_name != "complete" or
+                    Path(frame.f_code.co_filename).resolve() != target or not isinstance(value, dict)):
+                return
+            actions = frame.f_locals.get("actions")
+            if not isinstance(actions, dict):
+                return
+            sequence += 1
+            path = Path(config["records"]) / (str(os.getpid()) + "-" + str(sequence) + ".json")
+            record = dict(schema="rp-d4-helper-call-v1", helper_sha256=helper_hash,
+                          actions=actions, result=value)
+            encoded = json.dumps(record, sort_keys=True)
+            with path.open("x") as stream:
+                stream.write(encoded + "\\n")
+            path.chmod(0o600)
+        except Exception:
+            # Observation must not change the helper. Missing/invalid evidence
+            # fails qualification against native stdout after the run.
             return
-        actions = frame.f_locals.get("actions")
-        if not isinstance(actions, dict):
-            raise RuntimeError("rp-d4 helper action record unavailable")
-        sequence += 1
-        path = Path(config["records"]) / (str(os.getpid()) + "-" + str(sequence) + ".json")
-        record = dict(schema="rp-d4-helper-call-v1", helper_sha256=helper_hash,
-                      actions=actions, result=value)
-        with path.open("x") as stream:
-            json.dump(record, stream, sort_keys=True)
-            stream.write("\\n")
-        path.chmod(0o600)
     sys.setprofile(observe)
 
 install()
@@ -255,61 +260,73 @@ def is_complete(call):
         # become an invocation and cannot conceal a second, real completion.
         literal = r'''(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')'''
         arguments = r'\b(?:exec_command|shell_command)\s*\(\s*\{((?:' + literal + r'''|[^{}'"])*?)\}'''
-        property_ = r'''(?:^|,)\s*(?:cmd|command|"cmd"|"command"|'cmd'|'command')\s*:\s*(''' + literal + ')'
-        remaining = list(command)
+        property_ = r'''(?:^|,)\s*(?:cmd|command|"cmd"|"command"|'cmd'|'command')\s*:\s*(''' + literal + r')(?=\s*(?:,|$))'
+        remaining, found = list(command), False
         for argument in re.finditer(arguments, command):
             for value in re.finditer(property_, argument[1]):
                 try:
                     shell = ast.literal_eval(value[1])
                 except (ValueError, SyntaxError):
                     raise ValueError('helper shell argument literal is invalid') from None
-                if shell_complete(shell):
-                    return True
+                found = shell_complete(shell) or found
                 start, end = argument.start(1) + value.start(1), argument.start(1) + value.end(1)
                 remaining[start:end] = ' ' * (end - start)
-        # Only understood literals can prove help/nonexecution. Preserve the
-        # original conservative detection for templates and variable-bound cmd:
-        # unavailable helper output must fail closed, not become "no refusal".
+        # Only understood literals prove invocation or nonexecution. A template
+        # or variable-bound command cannot silently become "no refusal".
         remaining = ''.join(remaining)
-        return bool(re.search(r'\b(?:exec_command|shell_command)\s*\(', remaining) and
-                    re.search(r'task-complete\.py[\'\"]?\s+complete\b', remaining))
+        require(not mentions_complete(remaining), 'helper command cannot be classified')
+        return found
     return shell_complete(command)
 
 
+def mentions_complete(command):
+    return 'task-complete.py' in command and bool(re.search(r'\bcomplete\b', command.replace('task-complete.py', '')))
+
+
 def shell_complete(command, depth=0):
-    if depth > 4:
+    if not mentions_complete(command):
         return False
+    require(depth <= 4 and not any(marker in command for marker in ('$(', '`', '<(', '>(', '=(')),
+            'helper command cannot be classified')
     try:
-        words = shlex.split(command)
+        lexer = shlex.shlex(command.strip(), posix=True, punctuation_chars=';&|\n')
+        lexer.whitespace, lexer.whitespace_split, lexer.commenters = ' \t\r', True, ''
+        words = list(lexer)
     except ValueError:
-        return False
-    for index, word in enumerate(words):
-        if (Path(word).name in ('sh', 'bash', 'zsh', 'dash', 'ksh') and
-                (index == 0 or words[index - 1] in ('&&', '||', ';'))):
-            for option in range(index + 1, len(words) - 1):
+        raise ValueError('helper command cannot be classified') from None
+    segments = [[]]
+    for word in words:
+        if word and not word.strip(';&|\n'):
+            segments.append([])
+        else:
+            segments[-1].append(word)
+    found = False
+    for words in segments:
+        if not words or not any('task-complete.py' in word or word == 'complete' for word in words):
+            continue
+        executable = Path(words[0]).name
+        if executable in ('echo', 'printf'):
+            continue
+        if executable in ('sh', 'bash', 'zsh', 'dash', 'ksh'):
+            body = None
+            for option in range(1, len(words) - 1):
                 if not re.fullmatch('-[A-Za-z]+', words[option]):
                     break
                 if 'c' in words[option][1:]:
-                    if shell_complete(words[option + 1], depth + 1):
-                        return True
+                    body = words[option + 1]
                     break
-    for index, word in enumerate(words):
-        if Path(word).name != 'task-complete.py' or words[index + 1:index + 2] != ['complete']:
+            require(body is not None and '$' not in body, 'helper command cannot be classified')
+            found = shell_complete(body, depth + 1) or found
             continue
-        arguments = []
-        for argument in words[index + 2:]:
-            if argument in ('&&', '||', ';'):
-                break
-            arguments.append(argument)
-        if any(argument in ('-h', '--help') for argument in arguments):
-            continue
-        previous = index - 1
-        while previous >= 0 and words[previous] in ('-B', '-u', '-E', '-I', '-s', '-S'):
-            previous -= 1
-        if (previous < 0 or words[previous] in ('&&', '||', ';') or
-                re.fullmatch(r'python(?:3(?:\.\d+)?)?', Path(words[previous]).name)):
-            return True
-    return False
+        index = 0
+        if re.fullmatch(r'python(?:3(?:\.\d+)?)?', executable):
+            index = 1
+            while index < len(words) and words[index] in ('-B', '-u', '-E', '-I', '-s', '-S'):
+                index += 1
+        require(index < len(words) and Path(words[index]).name == 'task-complete.py' and
+                words[index + 1:index + 2] == ['complete'], 'helper command cannot be classified')
+        found = not any(argument in ('-h', '--help') for argument in words[index + 2:]) or found
+    return found
 
 
 def json_objects(text):
@@ -389,6 +406,15 @@ def output_text(text):
     return text
 
 
+def bind_receipt(out, receipt, expected):
+    mapped = None
+    for prefix, root in (('/cell', 'cell'), ('/tmp', 'tmp'), ('/home/participant', 'home')):
+        if isinstance(receipt, str) and receipt.startswith(prefix + '/'):
+            mapped = Path(out) / root / receipt[len(prefix) + 1:]
+            break
+    require(mapped is not None and mapped.resolve() == expected.resolve(), 'helper call belongs to a different receipt')
+
+
 def complete_outputs(out, *, sealed=False):
     pending, streams = {}, []
     for call in native_calls(out, sealed=sealed):
@@ -413,6 +439,10 @@ def complete_outputs(out, *, sealed=False):
                     'helper continuation identity was reused while active')
             pending[identity] = owner
     require(not pending, 'helper continuation has no captured terminal response')
+    if streams:
+        receipt = read(Path(out) / 'report-checklist.json')['evidence']['cleanup']['receipt']
+        require(isinstance(receipt, str), 'helper lacks an accepted receipt')
+        receipt_file = safe_file(Path(out), receipt)
     results = []
     for stream in streams:
         recognized = False
@@ -422,11 +452,13 @@ def complete_outputs(out, *, sealed=False):
                 continue
             if (value.get('status') == 'BLOCKED' and 'delivery_status' not in value and
                     all(isinstance(value.get(key), str) and value[key].strip() for key in ('reason', 'resume'))):
+                bind_receipt(out, receipt, receipt_file)
                 recognized = True
             elif (value.get('delivery_status') in ('COMPLETE', 'PR', 'PENDING', 'LOCAL_ONLY', 'FAILED') and
                   value.get('status') in (value['delivery_status'], 'CLEANUP_PENDING') and
                   (value['status'] != 'CLEANUP_PENDING' or value['delivery_status'] == 'COMPLETE') and
                   ('merge_refused' not in value or isinstance(value['merge_refused'], str) and value['merge_refused'].strip())):
+                bind_receipt(out, receipt, receipt_file)
                 recognized = True
                 results.append(value)
         require(recognized, 'helper invocation has no captured valid completion or BLOCKED result')
@@ -459,12 +491,7 @@ def qualify(out):
         require(record.get('schema') == 'rp-d4-helper-call-v1' and record.get('helper_sha256') == binding['helper_sha256'],
                 'helper action evidence binding differs')
         result = record['result']
-        mapped = None
-        for prefix, root in (('/cell', 'cell'), ('/tmp', 'tmp'), ('/home/participant', 'home')):
-            if result['receipt'].startswith(prefix + '/'):
-                mapped = out / root / result['receipt'][len(prefix) + 1:]
-                break
-        require(mapped is not None and mapped.resolve() == receipt_file.resolve(), 'helper call belongs to a different receipt')
+        bind_receipt(out, result['receipt'], receipt_file)
         check_call(result, record['actions'], resources)
         observed.append(result)
     outputs = complete_outputs(out, sealed=True)

@@ -92,7 +92,7 @@ def cost_gate(x, y):
 def decision(slots, arms, guard_pass):
     ready = len(slots) == 10 and all(
         row['dispatched'] and row['runner_status'] not in ('STOP', 'UNKNOWN', 'NOT_RUN') and
-        row['delivery_pass'] and not row.get('merge_refused', False) and row['usage'] == 'COMPLETE' and
+        row['delivery_pass'] and row.get('merge_refused') is False and row['usage'] == 'COMPLETE' and
         set(row['reviews']) == set(REVIEWERS) and
         all(grade['status'] in ('PASS', 'FAIL') for grade in row['reviews'].values()) for row in slots)
     if not ready:
@@ -136,7 +136,7 @@ def summarize(output, reviews, checklists=None):
     for row in slots:
         record = records[row['cell']]
         row['arm'] = runner.arm_for(row['cell'])
-        row['merge_refused'] = record.get('merge_refused', False)
+        row['merge_refused'] = record.get('merge_refused')
         delivery = row.get('corrected_status', record['delivery_assessment'])
         effective = row.get('corrected_status', record['status'])
         row['delivery_pass'] = (delivery in ('PASS', 'ADJUDICATE') and effective in ('PASS', 'ADJUDICATE') and
