@@ -1,6 +1,6 @@
 # rp-d3 — prompt ablation
 
-[DESIGN.md](DESIGN.md) at `0a95b3b0` is authoritative. The apparatus imports
+[DESIGN.md](DESIGN.md) is authoritative. The apparatus imports
 rp-d2 and, through it, the frozen rp-d1/0255/0251/0233 code by path. Delivery,
 checklists, seals, accounting, archive/deletion receipts and PAT scans retain
 their inherited implementations. No measured slot may be replaced.
