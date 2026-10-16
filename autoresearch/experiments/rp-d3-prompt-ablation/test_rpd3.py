@@ -807,24 +807,104 @@ def test_auth_disjoint_resolves_symlink_and_case(staged, tmp_path, operation):
             action()
 
 
-def test_raw_snapshot_scan_catches_json_escaped_secrets(staged, monkeypatch):
+@pytest.mark.parametrize('key', ['access_token', 'refresh_token', 'id_token', 'account_id'])
+def test_auth_refuses_unicode_escaped_snapshot(staged, key):
     s, args, path = staged
     raw = (args.auth / 'codex.json').read_text()
-    for key in ('access_token', 'refresh_token', 'id_token'):
-        token = json.loads(raw)['tokens'][key]
-        raw = raw.replace(token, ''.join(f'\\u{ord(char):04x}' for char in token))
+    token = json.loads(raw)['tokens'][key]
+    raw = raw.replace(token, ''.join(f'\\u{ord(char):04x}' for char in token))
     source = args.auth.parent / 'escaped-source.json'
     source.write_text(raw)
     replacement = args.auth.parent / 'escaped-auth'
-    s.auth.bootstrap(source, replacement)
+    assert json.loads(raw)['tokens'][key] == token
+    assert token.encode() not in source.read_bytes()
+    with pytest.raises(s.auth.legacy.AuthError, match='invalid-Codex-ChatGPT-OAuth-snapshot'):
+        s.auth.bootstrap(source, replacement)
+    assert not replacement.exists()
+
+
+@pytest.mark.parametrize('key', ['access_token', 'refresh_token', 'id_token', 'account_id'])
+@pytest.mark.parametrize('value', ['', None, 123, 'has space', 'quote"', 'back\\slash', 'nonascii-é', 'trailing\n'])
+def test_auth_requires_canonical_token_charset(tmp_path, key, value):
+    auth = load('auth')
+    source = tmp_path / 'source.json'
+    tokens = dict.fromkeys(('access_token', 'refresh_token', 'id_token', 'account_id'), 'abc.AZ09_~+/=-')
+    tokens[key] = value
+    source.write_text(json.dumps(dict(auth_mode='chatgpt', tokens=tokens)))
+    with pytest.raises(auth.legacy.AuthError, match='invalid-Codex-ChatGPT-OAuth-snapshot'):
+        auth.bootstrap(source, tmp_path / 'auth')
+    assert not (tmp_path / 'auth').exists()
+
+
+@pytest.mark.parametrize('key', ['access_token', 'refresh_token', 'id_token'])
+def test_secret_scan_catches_canonical_token_in_json_envelope(staged, monkeypatch, key):
+    s, args, path = staged
     app = s.runner.Runner(path)
+    value = json.loads((args.auth / 'codex.json').read_bytes())
+    token = value['tokens'][key] = 'canonical.AZ09_~+/=-'
+    raw = json.dumps(value)
+    source = args.auth.parent / 'canonical-source.json'
+    source.write_text(raw)
+    replacement = args.auth.parent / 'canonical-auth'
+    s.auth.bootstrap(source, replacement)
     runtime = dict(app.runtime, auth=str(replacement))
-    out = Path(runtime['output']) / 'raw-leak'
+    envelope = json.dumps(dict(type='item.completed', item=dict(
+        type='command_execution', aggregated_output=f'"credential"\n{token}\n"end"')))
+    assert '\\"' in envelope and '\\n' in envelope and token in envelope
+    assert raw not in envelope
+    out = Path(app.runtime['output']) / 'envelope-leak'
     out.mkdir()
-    (out / 'stdout').write_text(raw)
-    assert all(token.encode() not in raw.encode() for key, token in s.auth.oauth(raw).items()
-               if key != 'account_id')
+    (out / 'stdout').write_text(envelope)
     monkeypatch.setattr(s.runner.cell, 'credential', lambda _: (args.github_auth, b'github_pat_synthetic'))
     with pytest.raises(ValueError, match='Codex credential scan'):
         s.runner.cell.scan(out, runtime)
     assert s.read(out / 'codex-scan.json')['status'] == 'STOP'
+
+
+@pytest.mark.parametrize('alias_kind', ['symlink', 'copy'])
+@pytest.mark.parametrize('operation', ['renew', 'check'])
+def test_runtime_alias_cannot_hide_original_stage(staged, tmp_path, alias_kind, operation):
+    s, args, path = measured(staged)
+    replacement = snapshot(s.auth, args.stage_dir / 'private-auth', token='synthetic-renewal')
+    if operation == 'check':
+        runtime = s.read(path)
+        _, binding = s.model_auth(replacement)
+        runtime.update(auth=str(replacement), auth_manifest_sha256=binding)
+        s.write(path, runtime)
+    alias = tmp_path / 'aliases/runtime.json'
+    alias.parent.mkdir()
+    if alias_kind == 'symlink':
+        alias.symlink_to(path)
+    else:
+        shutil.copyfile(path, alias)
+    with pytest.raises(RuntimeError, match='model auth.*disjoint'):
+        s.renew(alias, replacement) if operation == 'renew' else s.check(alias)
+    assert not list(tmp_path.rglob('runtime-measured-auth-*.json'))
+
+
+@pytest.mark.parametrize('alias_kind', ['symlink', 'copy'])
+def test_runtime_alias_preserves_valid_stage_binding(staged, tmp_path, monkeypatch, alias_kind):
+    s, args, path = measured(staged)
+    alias = tmp_path / 'aliases/runtime.json'
+    alias.parent.mkdir()
+    if alias_kind == 'symlink':
+        alias.symlink_to(path)
+    else:
+        shutil.copyfile(path, alias)
+    monkeypatch.setattr(subprocess, 'check_output', lambda *_a, **_k: args.image + '\n')
+    s.check(alias)
+    replacement = snapshot(s.auth, tmp_path / 'renewed', token='synthetic-renewal')
+    renewed = s.renew(alias, replacement)
+    assert s.recorded_stage_root(s.read(renewed)) == args.stage_dir.resolve()
+    s.check(renewed)
+
+
+@pytest.mark.parametrize('key', ['control', 'output', 'scratch', 'sources', 'arms_file', 'models_cache', 'smoke_output'])
+@pytest.mark.parametrize('operation', ['renew', 'check'])
+def test_runtime_recorded_roots_must_match(staged, tmp_path, key, operation):
+    s, args, path = measured(staged)
+    runtime = s.read(path)
+    runtime[key] = str(tmp_path / 'elsewhere' / Path(runtime[key]).name)
+    s.write(path, runtime)
+    with pytest.raises(RuntimeError, match='recorded stage roots'):
+        s.renew(path, args.auth) if operation == 'renew' else s.check(path)

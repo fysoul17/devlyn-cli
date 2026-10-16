@@ -23,6 +23,22 @@ def disjoint_auth(auth_path, roots):
                 'model auth must be disjoint from output, smoke_output, scratch and stage roots')
 
 
+def recorded_stage_root(runtime):
+    # The frozen control path records the original stage, even through a runtime
+    # symlink or copy. All staged paths must still describe that same layout.
+    root = Path(runtime['control']).parent.resolve()
+    for key, relative in (('control', 'control'), ('output', 'output'), ('scratch', 'scratch'),
+                          ('sources', 'sources'), ('arms_file', 'arms/arms.json'),
+                          ('models_cache', 'models_cache.json')):
+        path = Path(runtime[key])
+        require(path.is_absolute() and path.resolve() == root / relative,
+                'runtime recorded stage roots do not match: ' + key)
+    smoke = Path(runtime['smoke_output'])
+    require(smoke.is_absolute() and smoke.resolve().is_relative_to(root) and smoke.resolve() != root,
+            'runtime recorded stage roots do not match: smoke_output')
+    return root
+
+
 def stage(args):
     dest = args.stage_dir.resolve()
     disjoint_auth(args.auth, (dest, dest / 'output', args.smoke_output or dest / 'smoke-output', dest / 'scratch'))
@@ -42,9 +58,9 @@ def renewal_allowed(previous, account, completed):
 
 
 def renew(runtime_path, auth_path):
-    app = runner.Runner(runtime_path)
     previous = read(runtime_path)
-    disjoint_auth(auth_path, (runtime_path.parent, *(previous[key] for key in ('output', 'smoke_output', 'scratch'))))
+    disjoint_auth(auth_path, (recorded_stage_root(previous),))
+    app = runner.Runner(runtime_path)
     completed = app.completed_prefix()
     renewal_allowed(previous, previous['codex_account'], completed)
     if completed:
@@ -60,6 +76,8 @@ def renew(runtime_path, auth_path):
 
 
 def check(runtime_path):
+    original = read(runtime_path)
+    disjoint_auth(original['auth'], (recorded_stage_root(original),))
     app = runner.Runner(runtime_path)
     runtime = app.runtime
     expected = runner.PRIOR / ('smoke-tasks.json' if runtime['phase'] == 'smoke' else 'tasks.json')
@@ -67,8 +85,6 @@ def check(runtime_path):
     app.inputs()
     runner.prepare.verify_release(runtime)
     app.check_auth(runtime)
-    original = read(runtime_path)
-    disjoint_auth(original['auth'], (runtime_path.parent, *(original[key] for key in ('output', 'smoke_output', 'scratch'))))
     for output in (original['output'], original['smoke_output']):
         runner.cell.credential_directory(dict(runtime, output=output))
     hidden = Path(runtime['control']) / 'oracle/experiments/rp-d1-delivery-cost'

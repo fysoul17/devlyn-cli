@@ -25,7 +25,10 @@ def scan(out, runtime, *, roots=None):
     try:
         raw = auth.read_private(auth.directory(runtime['auth']), 'codex.json')
         tokens = auth.oauth(raw)
-        for secret in (raw, *(tokens[key].encode() for key in ('access_token', 'refresh_token', 'id_token'))):
+        # Auth requires canonical ASCII token spellings, verbatim in the snapshot.
+        # JSON/shell transport quoting escapes the surrounding quotes/newlines,
+        # not this token charset, so decoded needles survive JSON envelopes too.
+        for secret in (tokens[key].encode() for key in ('access_token', 'refresh_token', 'id_token')):
             # Reuse the frozen streaming/file-name/symlink/Git-object scanner with
             # a private credential provider; never mutate its shared globals.
             scanner = FunctionType(pat_scan.__code__, pat_scan.__globals__ | {

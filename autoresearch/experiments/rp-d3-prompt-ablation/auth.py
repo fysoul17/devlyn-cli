@@ -3,6 +3,7 @@ import argparse
 import importlib.util
 import json
 from pathlib import Path
+import re
 
 HERE = Path(__file__).resolve().parent
 spec = importlib.util.spec_from_file_location('auth0251_rpd3', HERE.parent / '0251/auth.py')
@@ -23,6 +24,7 @@ def unique_object(pairs):
 
 def oauth(raw):
     try:
+        raw = raw.encode() if isinstance(raw, str) else raw
         value = json.loads(raw, object_pairs_hook=unique_object)
         if (not isinstance(value, dict) or value.get('auth_mode') != 'chatgpt' or
                 set(value) - {'auth_mode', 'tokens', 'last_refresh', 'OPENAI_API_KEY'} or
@@ -31,7 +33,8 @@ def oauth(raw):
         tokens = value['tokens']
         if (not isinstance(tokens, dict) or
                 set(tokens) != {'account_id', 'access_token', 'refresh_token', 'id_token'} or
-                any(not isinstance(token, str) or not token.strip() for token in tokens.values())):
+                any(not isinstance(token, str) or re.fullmatch(r'[A-Za-z0-9._~+/=-]+', token) is None or
+                    token.encode() not in raw for token in tokens.values())):
             raise ValueError
     except (ValueError, TypeError, KeyError):
         raise legacy.AuthError('invalid-Codex-ChatGPT-OAuth-snapshot') from None
