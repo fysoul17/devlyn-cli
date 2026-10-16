@@ -1,13 +1,14 @@
 # rp-d4 design — the helper states cleanup
 
-DRAFT for design review (round 5, decision rule only). Nothing is
-registered yet. Rounds 0 and 1: Astra ultra and Grok 4.7 REVISE; round 2:
+Design frozen after round 5 (both SHIP); registration follows the
+apparatus. Rounds 0 and 1: Astra ultra and Grok 4.7 REVISE; round 2:
 Astra REVISE (one HIGH), Grok SHIP
 ([r0 Astra](results/design-r0-astra.md), [r0 Grok](results/design-r0-grok.md),
 [r1 Astra](results/design-r1-astra.md), [r1 Grok](results/design-r1-grok.md),
 [r2 Astra](results/design-r2-astra.md), [r2 Grok](results/design-r2-grok.md),
 [r3 Astra](results/design-r3-astra.md) SHIP, [r3 Grok](results/design-r3-grok.md) REVISE,
-[r4 Astra](results/design-r4-astra.md) REVISE (MEDIUM), [r4 Grok](results/design-r4-grok.md) REVISE (MEDIUM));
+[r4 Astra](results/design-r4-astra.md) REVISE (MEDIUM), [r4 Grok](results/design-r4-grok.md) REVISE (MEDIUM); round 5 both SHIP:
+[r5 Astra](results/design-r5-astra.md), [r5 Grok](results/design-r5-grok.md));
 every finding is applied below.
 
 ## Why
