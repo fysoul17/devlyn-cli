@@ -1,0 +1,408 @@
+{
+  "arms": {
+    "P0": {
+      "attempts_dispatched": 4,
+      "cleanup_supported": 0,
+      "completeness": "COMPLETE",
+      "cost_per_success": {
+        "input_tokens": null,
+        "output_tokens": null,
+        "owner_seconds": null
+      },
+      "delivery_pass": 3,
+      "failures": 4,
+      "not_assessed": 0,
+      "pending": 0,
+      "reconciliation_supported": 0,
+      "successes": 0,
+      "totals": {
+        "input_tokens": 1584821,
+        "output_tokens": 21153,
+        "owner_seconds": 480.6982957512373
+      },
+      "wall_completeness": "COMPLETE"
+    },
+    "P1": {
+      "attempts_dispatched": 4,
+      "cleanup_supported": 0,
+      "completeness": "COMPLETE",
+      "cost_per_success": {
+        "input_tokens": null,
+        "output_tokens": null,
+        "owner_seconds": null
+      },
+      "delivery_pass": 4,
+      "failures": 4,
+      "not_assessed": 0,
+      "pending": 0,
+      "reconciliation_supported": 1,
+      "successes": 0,
+      "totals": {
+        "input_tokens": 2089048,
+        "output_tokens": 23184,
+        "owner_seconds": 572.6518482079264
+      },
+      "wall_completeness": "COMPLETE"
+    }
+  },
+  "decision": {
+    "decision": "INCONCLUSIVE",
+    "follow_up": [],
+    "reason": "requires all eight dispatched, every delivery passed and both reviews adjudicated; STOP overrides"
+  },
+  "pairs": [
+    {
+      "outcomes": [
+        {
+          "arm": "P0",
+          "cell": "m01",
+          "cleanup_supported": false,
+          "delivery_pass": true,
+          "reconciliation_supported": false,
+          "status": "FAILED"
+        },
+        {
+          "arm": "P1",
+          "cell": "m02",
+          "cleanup_supported": false,
+          "delivery_pass": true,
+          "reconciliation_supported": false,
+          "status": "FAILED"
+        }
+      ],
+      "pair": 1,
+      "task": "BV"
+    },
+    {
+      "outcomes": [
+        {
+          "arm": "P1",
+          "cell": "m03",
+          "cleanup_supported": false,
+          "delivery_pass": true,
+          "reconciliation_supported": false,
+          "status": "FAILED"
+        },
+        {
+          "arm": "P0",
+          "cell": "m04",
+          "cleanup_supported": false,
+          "delivery_pass": true,
+          "reconciliation_supported": false,
+          "status": "FAILED"
+        }
+      ],
+      "pair": 2,
+      "task": "BV"
+    },
+    {
+      "outcomes": [
+        {
+          "arm": "P0",
+          "cell": "m05",
+          "cleanup_supported": false,
+          "delivery_pass": true,
+          "reconciliation_supported": false,
+          "status": "FAILED"
+        },
+        {
+          "arm": "P1",
+          "cell": "m06",
+          "cleanup_supported": false,
+          "delivery_pass": true,
+          "reconciliation_supported": true,
+          "status": "FAILED"
+        }
+      ],
+      "pair": 3,
+      "task": "Z0"
+    },
+    {
+      "outcomes": [
+        {
+          "arm": "P1",
+          "cell": "m07",
+          "cleanup_supported": false,
+          "delivery_pass": true,
+          "reconciliation_supported": false,
+          "status": "FAILED"
+        },
+        {
+          "arm": "P0",
+          "cell": "m08",
+          "cleanup_supported": false,
+          "delivery_pass": false,
+          "reconciliation_supported": false,
+          "status": "FAILED"
+        }
+      ],
+      "pair": 4,
+      "task": "Z0"
+    }
+  ],
+  "phase": "measured",
+  "schema": "rp-d3-summary-v1",
+  "slots": [
+    {
+      "arm": "P0",
+      "cell": "m01",
+      "cleanup_supported": false,
+      "config": "codex",
+      "delivery_pass": true,
+      "dispatched": true,
+      "failure": "report",
+      "input_tokens": 349246,
+      "output_tokens": 4994,
+      "owner_seconds": 134.56617812509649,
+      "reconciliation_supported": false,
+      "reviews": {
+        "astra": {
+          "checklist_sha256": "f66b207671e3e7389458b5fa017a18ecef375357c00345c492156ca1ad1cf57d",
+          "failed": [
+            "cleanup",
+            "reconciliation"
+          ],
+          "status": "FAIL"
+        },
+        "grok": {
+          "checklist_sha256": "f66b207671e3e7389458b5fa017a18ecef375357c00345c492156ca1ad1cf57d",
+          "failed": [
+            "cleanup",
+            "reconciliation"
+          ],
+          "status": "FAIL"
+        }
+      },
+      "runner_status": "ADJUDICATE",
+      "status": "FAILED",
+      "task": "BV",
+      "usage": "COMPLETE"
+    },
+    {
+      "arm": "P1",
+      "cell": "m02",
+      "cleanup_supported": false,
+      "config": "codex",
+      "delivery_pass": true,
+      "dispatched": true,
+      "failure": "report",
+      "input_tokens": 504723,
+      "output_tokens": 5440,
+      "owner_seconds": 157.3681065000128,
+      "reconciliation_supported": false,
+      "reviews": {
+        "astra": {
+          "checklist_sha256": "3964cefc360df51673ea58391ad68a9a2be2805a691dadd4e693ff44ace3b13f",
+          "failed": [
+            "cleanup",
+            "reconciliation"
+          ],
+          "status": "FAIL"
+        },
+        "grok": {
+          "checklist_sha256": "3964cefc360df51673ea58391ad68a9a2be2805a691dadd4e693ff44ace3b13f",
+          "failed": [
+            "cleanup",
+            "reconciliation"
+          ],
+          "status": "FAIL"
+        }
+      },
+      "runner_status": "ADJUDICATE",
+      "status": "FAILED",
+      "task": "BV",
+      "usage": "COMPLETE"
+    },
+    {
+      "arm": "P1",
+      "cell": "m03",
+      "cleanup_supported": false,
+      "config": "codex",
+      "delivery_pass": true,
+      "dispatched": true,
+      "failure": "report",
+      "input_tokens": 396300,
+      "output_tokens": 4788,
+      "owner_seconds": 130.28608800005168,
+      "reconciliation_supported": false,
+      "reviews": {
+        "astra": {
+          "checklist_sha256": "bc19263f139655789a7f40ad02812b6f55b227dfe895e0d34fd33c413e79901f",
+          "failed": [
+            "cleanup",
+            "reconciliation"
+          ],
+          "status": "FAIL"
+        },
+        "grok": {
+          "checklist_sha256": "bc19263f139655789a7f40ad02812b6f55b227dfe895e0d34fd33c413e79901f",
+          "failed": [
+            "cleanup",
+            "reconciliation"
+          ],
+          "status": "FAIL"
+        }
+      },
+      "runner_status": "ADJUDICATE",
+      "status": "FAILED",
+      "task": "BV",
+      "usage": "COMPLETE"
+    },
+    {
+      "arm": "P0",
+      "cell": "m04",
+      "cleanup_supported": false,
+      "config": "codex",
+      "delivery_pass": true,
+      "dispatched": true,
+      "failure": "report",
+      "input_tokens": 437652,
+      "output_tokens": 5101,
+      "owner_seconds": 111.14938358403742,
+      "reconciliation_supported": false,
+      "reviews": {
+        "astra": {
+          "checklist_sha256": "823ed0a833d98839201edd021d54238206796a9a5da6c46ab8e8f4f115cae254",
+          "failed": [
+            "cleanup",
+            "reconciliation"
+          ],
+          "status": "FAIL"
+        },
+        "grok": {
+          "checklist_sha256": "823ed0a833d98839201edd021d54238206796a9a5da6c46ab8e8f4f115cae254",
+          "failed": [
+            "cleanup",
+            "reconciliation"
+          ],
+          "status": "FAIL"
+        }
+      },
+      "runner_status": "ADJUDICATE",
+      "status": "FAILED",
+      "task": "BV",
+      "usage": "COMPLETE"
+    },
+    {
+      "arm": "P0",
+      "cell": "m05",
+      "cleanup_supported": false,
+      "config": "codex",
+      "delivery_pass": true,
+      "dispatched": true,
+      "failure": "report",
+      "input_tokens": 438379,
+      "output_tokens": 6434,
+      "owner_seconds": 140.05275229201652,
+      "reconciliation_supported": false,
+      "reviews": {
+        "astra": {
+          "checklist_sha256": "ce55ff3d20e4dfd57c8798aa71cd262a9d54a55af6c8ded7e41d08688d36f6c8",
+          "failed": [
+            "cleanup",
+            "reconciliation"
+          ],
+          "status": "FAIL"
+        },
+        "grok": {
+          "checklist_sha256": "ce55ff3d20e4dfd57c8798aa71cd262a9d54a55af6c8ded7e41d08688d36f6c8",
+          "failed": [
+            "cleanup",
+            "reconciliation"
+          ],
+          "status": "FAIL"
+        }
+      },
+      "runner_status": "ADJUDICATE",
+      "status": "FAILED",
+      "task": "Z0",
+      "usage": "COMPLETE"
+    },
+    {
+      "arm": "P1",
+      "cell": "m06",
+      "cleanup_supported": false,
+      "config": "codex",
+      "delivery_pass": true,
+      "dispatched": true,
+      "failure": "report",
+      "input_tokens": 568981,
+      "output_tokens": 5419,
+      "owner_seconds": 123.36897433293052,
+      "reconciliation_supported": true,
+      "reviews": {
+        "astra": {
+          "checklist_sha256": "5e97e143add6a6c95c68428639921a7ed041ee69a2183a0165af1376215b9876",
+          "failed": [
+            "cleanup"
+          ],
+          "status": "FAIL"
+        },
+        "grok": {
+          "checklist_sha256": "5e97e143add6a6c95c68428639921a7ed041ee69a2183a0165af1376215b9876",
+          "failed": [
+            "cleanup"
+          ],
+          "status": "FAIL"
+        }
+      },
+      "runner_status": "ADJUDICATE",
+      "status": "FAILED",
+      "task": "Z0",
+      "usage": "COMPLETE"
+    },
+    {
+      "arm": "P1",
+      "cell": "m07",
+      "cleanup_supported": false,
+      "config": "codex",
+      "delivery_pass": true,
+      "dispatched": true,
+      "failure": "report",
+      "input_tokens": 619044,
+      "output_tokens": 7537,
+      "owner_seconds": 161.62867937493138,
+      "reconciliation_supported": false,
+      "reviews": {
+        "astra": {
+          "checklist_sha256": "7f33d8d9173ce440933a4ab13817da3301bd09d82c447dcfa722034c30455131",
+          "failed": [
+            "cleanup",
+            "reconciliation"
+          ],
+          "status": "FAIL"
+        },
+        "grok": {
+          "checklist_sha256": "7f33d8d9173ce440933a4ab13817da3301bd09d82c447dcfa722034c30455131",
+          "failed": [
+            "cleanup",
+            "reconciliation"
+          ],
+          "status": "FAIL"
+        }
+      },
+      "runner_status": "ADJUDICATE",
+      "status": "FAILED",
+      "task": "Z0",
+      "usage": "COMPLETE"
+    },
+    {
+      "arm": "P0",
+      "cell": "m08",
+      "cleanup_supported": false,
+      "config": "codex",
+      "delivery_pass": false,
+      "dispatched": true,
+      "failure": "product",
+      "input_tokens": 359544,
+      "output_tokens": 4624,
+      "owner_seconds": 94.92998175008688,
+      "reconciliation_supported": false,
+      "reviews": {},
+      "runner_status": "PRODUCT_INCOMPLETE",
+      "status": "FAILED",
+      "task": "Z0",
+      "usage": "COMPLETE"
+    }
+  ]
+}

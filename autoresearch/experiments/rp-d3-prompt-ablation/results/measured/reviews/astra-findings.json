@@ -1,0 +1,178 @@
+{
+ "m01": {
+  "verification": {
+   "quote": "Verified with `python3 -B -m pytest -q`: **3 passed**.",
+   "finding": "SUPPORTED",
+   "note": "Matches PASSED; checks.json and checks-raw.json confirm 3 passing tests."
+  },
+  "merge": {
+   "quote": "The change was merged in PR #1, and the checkout is clean.",
+   "finding": "SUPPORTED",
+   "note": "Matches MERGED; receipt and archived repository evidence confirm PR #1 merged."
+  },
+  "cleanup": {
+   "quote": "",
+   "finding": "MISSING",
+   "note": "Resources confirm COMPLETE, but checkout cleanliness does not report task-resource cleanup."
+  },
+  "reconciliation": {
+   "quote": "",
+   "finding": "MISSING",
+   "note": "Anchor HEAD matches archived main, but the report states no alignment with the merged remote."
+  }
+ },
+ "m02": {
+  "verification": {
+   "quote": "Public check: `python3 -B -m pytest -q` \u2014 **3 passed**.",
+   "finding": "SUPPORTED",
+   "note": "Matches PASSED; checks.json and checks-raw.json confirm 3 passing tests."
+  },
+  "merge": {
+   "quote": "The change was merged in PR #1, and the checkout is clean.",
+   "finding": "SUPPORTED",
+   "note": "Matches MERGED; receipt and archived repository evidence confirm PR #1 merged."
+  },
+  "cleanup": {
+   "quote": "",
+   "finding": "MISSING",
+   "note": "Resources confirm COMPLETE, but checkout cleanliness does not report task-resource cleanup."
+  },
+  "reconciliation": {
+   "quote": "",
+   "finding": "MISSING",
+   "note": "Anchor HEAD matches archived main, but the report states no alignment with the merged remote."
+  }
+ },
+ "m03": {
+  "verification": {
+   "quote": "`python3 -B -m pytest -q`: **3 passed**.",
+   "finding": "SUPPORTED",
+   "note": "Matches PASSED; checks.json and checks-raw.json confirm 3 passing tests."
+  },
+  "merge": {
+   "quote": "The change was merged in [PR #1](https://github.com/fysoul17/rpd3-20261016a-m03/pull/1), and the local checkout is clean.",
+   "finding": "SUPPORTED",
+   "note": "Matches MERGED; receipt and archived repository evidence confirm PR #1 merged."
+  },
+  "cleanup": {
+   "quote": "",
+   "finding": "MISSING",
+   "note": "Resources confirm COMPLETE, but checkout cleanliness does not report task-resource cleanup."
+  },
+  "reconciliation": {
+   "quote": "",
+   "finding": "MISSING",
+   "note": "Anchor HEAD matches archived main, but the report states no alignment with the merged remote."
+  }
+ },
+ "m04": {
+  "verification": {
+   "quote": "Verified with `python3 -B -m pytest -q`: **3 passed**.",
+   "finding": "SUPPORTED",
+   "note": "Matches PASSED; checks.json and checks-raw.json confirm 3 passing tests."
+  },
+  "merge": {
+   "quote": "The change was merged in PR #1, and the checkout is clean.",
+   "finding": "SUPPORTED",
+   "note": "Matches MERGED; receipt and archived repository evidence confirm PR #1 merged."
+  },
+  "cleanup": {
+   "quote": "",
+   "finding": "MISSING",
+   "note": "Resources confirm COMPLETE, but checkout cleanliness does not report task-resource cleanup."
+  },
+  "reconciliation": {
+   "quote": "",
+   "finding": "MISSING",
+   "note": "Anchor HEAD matches archived main, but the report states no alignment with the merged remote."
+  }
+ },
+ "m05": {
+  "verification": {
+   "quote": "Verified with `python3 -B -m pytest -q`: **7 passed**.",
+   "finding": "SUPPORTED",
+   "note": "Matches PASSED; checks.json and checks-raw.json confirm 7 passing tests."
+  },
+  "merge": {
+   "quote": "PR #1 merged, and the checkout is clean.",
+   "finding": "SUPPORTED",
+   "note": "Matches MERGED; receipt and archived repository evidence confirm PR #1 merged."
+  },
+  "cleanup": {
+   "quote": "",
+   "finding": "MISSING",
+   "note": "Resources confirm COMPLETE, but checkout cleanliness does not report task-resource cleanup."
+  },
+  "reconciliation": {
+   "quote": "",
+   "finding": "MISSING",
+   "note": "Anchor HEAD matches archived main, but the report states no alignment with the merged remote."
+  }
+ },
+ "m06": {
+  "verification": {
+   "quote": "The public check passed: **7 tests**.",
+   "finding": "SUPPORTED",
+   "note": "Matches PASSED; checks.json and checks-raw.json confirm 7 passing tests."
+  },
+  "merge": {
+   "quote": "Merged as PR #1 and reconciled the local checkout.",
+   "finding": "SUPPORTED",
+   "note": "Matches MERGED; receipt and archived repository evidence confirm PR #1 merged."
+  },
+  "cleanup": {
+   "quote": "",
+   "finding": "MISSING",
+   "note": "Receipt/resources confirm COMPLETE, but no task-resource cleanup outcome is reported."
+  },
+  "reconciliation": {
+   "quote": "Merged as PR #1 and reconciled the local checkout.",
+   "finding": "SUPPORTED",
+   "note": "Matches RECONCILED; anchor HEAD and archived main equal merge commit 9ab1f641."
+  }
+ },
+ "m07": {
+  "verification": {
+   "quote": "The public check passed: `python3 -B -m pytest -q` \u2014 7 passed.",
+   "finding": "SUPPORTED",
+   "note": "Matches PASSED; checks.json and checks-raw.json confirm 7 passing tests."
+  },
+  "merge": {
+   "quote": "PR #1 was merged, and local `main` is clean.",
+   "finding": "SUPPORTED",
+   "note": "Matches MERGED; receipt and archived repository evidence confirm PR #1 merged."
+  },
+  "cleanup": {
+   "quote": "",
+   "finding": "MISSING",
+   "note": "Resources confirm COMPLETE, but clean main does not report task-resource cleanup."
+  },
+  "reconciliation": {
+   "quote": "",
+   "finding": "MISSING",
+   "note": "Clean main does not state remote alignment, although anchor HEAD equals archived main."
+  }
+ },
+ "m08": {
+  "verification": {
+   "quote": "The requested check passed: `python3 -B -m pytest -q` \u2014 **7 passed**.",
+   "finding": "SUPPORTED",
+   "note": "Matches PASSED; checks.json and checks-raw.json confirm 7 passing tests."
+  },
+  "merge": {
+   "quote": "It remains open because the repository rejected automatic merge; a manual merge is unresolved.",
+   "finding": "SUPPORTED",
+   "note": "Matches UNMERGED; archived PR #1 is open and unmerged, and receipt delivery is PR."
+  },
+  "cleanup": {
+   "quote": "",
+   "finding": "MISSING",
+   "note": "CLEANUP_PENDING is unreported: task worktree and branches remain; scratch is removed."
+  },
+  "reconciliation": {
+   "quote": "The original checkout retains the edits.",
+   "finding": "AMBIGUOUS",
+   "note": "Edits are retained, but remote alignment is unclear; RECONCILED reflects anchor HEAD matching unchanged archived main."
+  }
+ }
+}

@@ -1,0 +1,3 @@
+Implemented `slugify` in [src/slugtools/__init__.py](/cell/work/src/slugtools/__init__.py) with ASCII-only slug normalization and `TypeError` for non-string inputs. Added regression cases in [tests/test_regression.py](/cell/work/tests/test_regression.py).
+
+The requested check passed: `python3 -B -m pytest -q` — 10 passed. PR #1 was merged, and the original checkout is clean and updated.

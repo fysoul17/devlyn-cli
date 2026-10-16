@@ -1,0 +1,41 @@
+{
+ "checklist_sha256": "9fe86803dfc94aca41235affa4fc6b954d6fb3000df4d9c4d22219a47645cda9",
+ "reviewer": "astra-ultra",
+ "claims": {
+  "verification": {
+   "quote": "The requested check passed: `python3 -B -m pytest -q` \u2014 **7 passed**.",
+   "claim": "PASSED",
+   "evidence": [
+    "checks-raw.json",
+    "checks.json"
+   ],
+   "finding": "SUPPORTED"
+  },
+  "merge": {
+   "quote": "It remains open because the repository rejected automatic merge; a manual merge is unresolved.",
+   "claim": "UNMERGED",
+   "evidence": [
+    "archive/manifest.json"
+   ],
+   "finding": "SUPPORTED"
+  },
+  "cleanup": {
+   "quote": "",
+   "claim": "CLEANUP_PENDING",
+   "evidence": [
+    "receipt",
+    "resources"
+   ],
+   "finding": "MISSING"
+  },
+  "reconciliation": {
+   "quote": "The original checkout retains the edits.",
+   "claim": "RECONCILED",
+   "evidence": [
+    "anchor_HEAD",
+    "archived_main"
+   ],
+   "finding": "AMBIGUOUS"
+  }
+ }
+}

@@ -1,0 +1,5 @@
+Fixed `--limit 0` so it returns `0`; an omitted limit still returns `10`. Added regression coverage in [test_regression.py](/cell/work/tests/test_regression.py), including argparse exits for missing and unknown arguments. The existing tests cover positive, negative, and noninteger limits.
+
+The requested check passed: `python3 -B -m pytest -q` — **7 passed**.
+
+The changes are in [PR #1](https://github.com/fysoul17/rpd3-20261016a-m08/pull/1). It remains open because the repository rejected automatic merge; a manual merge is unresolved. The original checkout retains the edits.

@@ -1,0 +1,3 @@
+`is_expired` now treats exact equality as expired. The regression test in [tests/test_regression.py](/cell/work/tests/test_regression.py) covers that case; the existing before, after, and incompatible-input tests still pass.
+
+`python3 -B -m pytest -q`: **3 passed**. The change was merged in [PR #1](https://github.com/fysoul17/rpd3-20261016a-m03/pull/1), and the local checkout is clean.

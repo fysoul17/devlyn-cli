@@ -1,0 +1,335 @@
+{
+  "dispatched": 8,
+  "phase": "measured",
+  "slots": [
+    {
+      "archive": {
+        "manifest_sha256": "9fc1592b1a1d9ff7487ec2eeb56e9485308b50d7b56ea921082d120770a33f15",
+        "path": "/Users/aipalm/.local/share/nx01/rp-d3-live/stage/output/archives/m01"
+      },
+      "arm": "P0",
+      "auth": "/Users/aipalm/.local/share/nx01/rp-d3-live/model-auth-1",
+      "auth_manifest_sha256": "3f0750ddf27b7e2f57f6d51a27e5254720140a7f8aff815a19b9ad554aabb941",
+      "cell": "m01",
+      "codex_account": "65ad276127a5",
+      "config": "codex",
+      "delivery_assessment": "ADJUDICATE",
+      "dispatched": true,
+      "frozen_runtime_sha256": "c339bcb5426a29003a93aadea65941ae6ecc1e060db2fe200234967ddc9c454a",
+      "inherited_status": "CHECKS_PASS",
+      "inherited_verdict_sha256": "4bea98b810eaff52d3d42483894db5884bdd0fc7218f51e881735c3ecf46dc1e",
+      "input_tokens": 349246,
+      "measurement_eligible": true,
+      "output_tokens": 4994,
+      "phase": "measured",
+      "prompt_sha256": "2ccc7f6a11891f6270685c09ada44cc4376bbedb047f8a0864f950b415bf50cf",
+      "release": {
+        "integrity": "sha512-yud5j6xq791XQlg6eVy8WkWTB/Ee7X0pn/Orbt0db4NvAKatEq577wyTT1Wo/x0FRKFRoXax1q+xxns97UXekw==",
+        "manifest_sha256": "cd68caa4bcb0d64df14faa0c8647479ef532b6d84889aac096728b57f08cb2f5",
+        "sha256": "7b22cce865d99e1400f9c0b0bff41c1b9ae3645b132cbb868ec01cadc973393e",
+        "source": {
+          "registry": "devlyn-cli@4.2.18"
+        },
+        "version": "4.2.18"
+      },
+      "repository_cleanup": {
+        "archive_manifest_sha256": "9fc1592b1a1d9ff7487ec2eeb56e9485308b50d7b56ea921082d120770a33f15",
+        "http_status": 404,
+        "repository": "fysoul17/rpd3-20261016a-m01",
+        "status": "DELETED"
+      },
+      "schema": "rp-d3-verdict-v1",
+      "status": "ADJUDICATE",
+      "task": "BV",
+      "usage": "COMPLETE"
+    },
+    {
+      "archive": {
+        "manifest_sha256": "daa4e7a4d6dad71d7df8bf4033eea988db4a33c1f60b83c6c99edb240b9bf964",
+        "path": "/Users/aipalm/.local/share/nx01/rp-d3-live/stage/output/archives/m02"
+      },
+      "arm": "P1",
+      "auth": "/Users/aipalm/.local/share/nx01/rp-d3-live/model-auth-1",
+      "auth_manifest_sha256": "3f0750ddf27b7e2f57f6d51a27e5254720140a7f8aff815a19b9ad554aabb941",
+      "cell": "m02",
+      "codex_account": "65ad276127a5",
+      "config": "codex",
+      "delivery_assessment": "ADJUDICATE",
+      "dispatched": true,
+      "frozen_runtime_sha256": "c339bcb5426a29003a93aadea65941ae6ecc1e060db2fe200234967ddc9c454a",
+      "inherited_status": "CHECKS_PASS",
+      "inherited_verdict_sha256": "f0cf37ccf7d8ba8e371f589292ce1d64add2a67c8d57f479f2614327ccb197de",
+      "input_tokens": 504723,
+      "measurement_eligible": true,
+      "output_tokens": 5440,
+      "phase": "measured",
+      "prompt_sha256": "ea77742f3d54f28638d1ca5e7240b8ce7fa1df9644429784239d6c806f601a21",
+      "release": {
+        "integrity": "sha512-yud5j6xq791XQlg6eVy8WkWTB/Ee7X0pn/Orbt0db4NvAKatEq577wyTT1Wo/x0FRKFRoXax1q+xxns97UXekw==",
+        "manifest_sha256": "cd68caa4bcb0d64df14faa0c8647479ef532b6d84889aac096728b57f08cb2f5",
+        "sha256": "7b22cce865d99e1400f9c0b0bff41c1b9ae3645b132cbb868ec01cadc973393e",
+        "source": {
+          "registry": "devlyn-cli@4.2.18"
+        },
+        "version": "4.2.18"
+      },
+      "repository_cleanup": {
+        "archive_manifest_sha256": "daa4e7a4d6dad71d7df8bf4033eea988db4a33c1f60b83c6c99edb240b9bf964",
+        "http_status": 404,
+        "repository": "fysoul17/rpd3-20261016a-m02",
+        "status": "DELETED"
+      },
+      "schema": "rp-d3-verdict-v1",
+      "status": "ADJUDICATE",
+      "task": "BV",
+      "usage": "COMPLETE"
+    },
+    {
+      "archive": {
+        "manifest_sha256": "e1353d9091ed3c360cf826d1e5ece2cbf0fa169382a59974eff4ecaac3f27b09",
+        "path": "/Users/aipalm/.local/share/nx01/rp-d3-live/stage/output/archives/m03"
+      },
+      "arm": "P1",
+      "auth": "/Users/aipalm/.local/share/nx01/rp-d3-live/model-auth-1",
+      "auth_manifest_sha256": "3f0750ddf27b7e2f57f6d51a27e5254720140a7f8aff815a19b9ad554aabb941",
+      "cell": "m03",
+      "codex_account": "65ad276127a5",
+      "config": "codex",
+      "delivery_assessment": "ADJUDICATE",
+      "dispatched": true,
+      "frozen_runtime_sha256": "c339bcb5426a29003a93aadea65941ae6ecc1e060db2fe200234967ddc9c454a",
+      "inherited_status": "CHECKS_PASS",
+      "inherited_verdict_sha256": "172cd796e7376e38309567dd30353ea174e7d917e6a76153bfe60281152d8018",
+      "input_tokens": 396300,
+      "measurement_eligible": true,
+      "output_tokens": 4788,
+      "phase": "measured",
+      "prompt_sha256": "ea77742f3d54f28638d1ca5e7240b8ce7fa1df9644429784239d6c806f601a21",
+      "release": {
+        "integrity": "sha512-yud5j6xq791XQlg6eVy8WkWTB/Ee7X0pn/Orbt0db4NvAKatEq577wyTT1Wo/x0FRKFRoXax1q+xxns97UXekw==",
+        "manifest_sha256": "cd68caa4bcb0d64df14faa0c8647479ef532b6d84889aac096728b57f08cb2f5",
+        "sha256": "7b22cce865d99e1400f9c0b0bff41c1b9ae3645b132cbb868ec01cadc973393e",
+        "source": {
+          "registry": "devlyn-cli@4.2.18"
+        },
+        "version": "4.2.18"
+      },
+      "repository_cleanup": {
+        "archive_manifest_sha256": "e1353d9091ed3c360cf826d1e5ece2cbf0fa169382a59974eff4ecaac3f27b09",
+        "http_status": 404,
+        "repository": "fysoul17/rpd3-20261016a-m03",
+        "status": "DELETED"
+      },
+      "schema": "rp-d3-verdict-v1",
+      "status": "ADJUDICATE",
+      "task": "BV",
+      "usage": "COMPLETE"
+    },
+    {
+      "archive": {
+        "manifest_sha256": "d08052170e53766cd393bc739697b93297546abf935132975a411b39aa76bcb7",
+        "path": "/Users/aipalm/.local/share/nx01/rp-d3-live/stage/output/archives/m04"
+      },
+      "arm": "P0",
+      "auth": "/Users/aipalm/.local/share/nx01/rp-d3-live/model-auth-1",
+      "auth_manifest_sha256": "3f0750ddf27b7e2f57f6d51a27e5254720140a7f8aff815a19b9ad554aabb941",
+      "cell": "m04",
+      "codex_account": "65ad276127a5",
+      "config": "codex",
+      "delivery_assessment": "ADJUDICATE",
+      "dispatched": true,
+      "frozen_runtime_sha256": "c339bcb5426a29003a93aadea65941ae6ecc1e060db2fe200234967ddc9c454a",
+      "inherited_status": "CHECKS_PASS",
+      "inherited_verdict_sha256": "0770dc1e7eed09e00c9bb9586a8fa6665f7aebd671d3350398e152d61419010c",
+      "input_tokens": 437652,
+      "measurement_eligible": true,
+      "output_tokens": 5101,
+      "phase": "measured",
+      "prompt_sha256": "2ccc7f6a11891f6270685c09ada44cc4376bbedb047f8a0864f950b415bf50cf",
+      "release": {
+        "integrity": "sha512-yud5j6xq791XQlg6eVy8WkWTB/Ee7X0pn/Orbt0db4NvAKatEq577wyTT1Wo/x0FRKFRoXax1q+xxns97UXekw==",
+        "manifest_sha256": "cd68caa4bcb0d64df14faa0c8647479ef532b6d84889aac096728b57f08cb2f5",
+        "sha256": "7b22cce865d99e1400f9c0b0bff41c1b9ae3645b132cbb868ec01cadc973393e",
+        "source": {
+          "registry": "devlyn-cli@4.2.18"
+        },
+        "version": "4.2.18"
+      },
+      "repository_cleanup": {
+        "archive_manifest_sha256": "d08052170e53766cd393bc739697b93297546abf935132975a411b39aa76bcb7",
+        "http_status": 404,
+        "repository": "fysoul17/rpd3-20261016a-m04",
+        "status": "DELETED"
+      },
+      "schema": "rp-d3-verdict-v1",
+      "status": "ADJUDICATE",
+      "task": "BV",
+      "usage": "COMPLETE"
+    },
+    {
+      "archive": {
+        "manifest_sha256": "a395498bf3f953cb8b60dadcc7c538aeb6f8925d84591f34e84b934e2bca5e42",
+        "path": "/Users/aipalm/.local/share/nx01/rp-d3-live/stage/output/archives/m05"
+      },
+      "arm": "P0",
+      "auth": "/Users/aipalm/.local/share/nx01/rp-d3-live/model-auth-1",
+      "auth_manifest_sha256": "3f0750ddf27b7e2f57f6d51a27e5254720140a7f8aff815a19b9ad554aabb941",
+      "cell": "m05",
+      "codex_account": "65ad276127a5",
+      "config": "codex",
+      "delivery_assessment": "ADJUDICATE",
+      "dispatched": true,
+      "frozen_runtime_sha256": "c339bcb5426a29003a93aadea65941ae6ecc1e060db2fe200234967ddc9c454a",
+      "inherited_status": "CHECKS_PASS",
+      "inherited_verdict_sha256": "7d7faac492f89bd67832bb26a65bbfcb6e28188858fd22338c58718ea2af5dba",
+      "input_tokens": 438379,
+      "measurement_eligible": true,
+      "output_tokens": 6434,
+      "phase": "measured",
+      "prompt_sha256": "2ccc7f6a11891f6270685c09ada44cc4376bbedb047f8a0864f950b415bf50cf",
+      "release": {
+        "integrity": "sha512-yud5j6xq791XQlg6eVy8WkWTB/Ee7X0pn/Orbt0db4NvAKatEq577wyTT1Wo/x0FRKFRoXax1q+xxns97UXekw==",
+        "manifest_sha256": "cd68caa4bcb0d64df14faa0c8647479ef532b6d84889aac096728b57f08cb2f5",
+        "sha256": "7b22cce865d99e1400f9c0b0bff41c1b9ae3645b132cbb868ec01cadc973393e",
+        "source": {
+          "registry": "devlyn-cli@4.2.18"
+        },
+        "version": "4.2.18"
+      },
+      "repository_cleanup": {
+        "archive_manifest_sha256": "a395498bf3f953cb8b60dadcc7c538aeb6f8925d84591f34e84b934e2bca5e42",
+        "http_status": 404,
+        "repository": "fysoul17/rpd3-20261016a-m05",
+        "status": "DELETED"
+      },
+      "schema": "rp-d3-verdict-v1",
+      "status": "ADJUDICATE",
+      "task": "Z0",
+      "usage": "COMPLETE"
+    },
+    {
+      "archive": {
+        "manifest_sha256": "6e9c417846fd97e87e378d78361fc19b6bc975b7c784f4f4597ea51905770050",
+        "path": "/Users/aipalm/.local/share/nx01/rp-d3-live/stage/output/archives/m06"
+      },
+      "arm": "P1",
+      "auth": "/Users/aipalm/.local/share/nx01/rp-d3-live/model-auth-1",
+      "auth_manifest_sha256": "3f0750ddf27b7e2f57f6d51a27e5254720140a7f8aff815a19b9ad554aabb941",
+      "cell": "m06",
+      "codex_account": "65ad276127a5",
+      "config": "codex",
+      "delivery_assessment": "ADJUDICATE",
+      "dispatched": true,
+      "frozen_runtime_sha256": "c339bcb5426a29003a93aadea65941ae6ecc1e060db2fe200234967ddc9c454a",
+      "inherited_status": "CHECKS_PASS",
+      "inherited_verdict_sha256": "cb925d8a5e4f92dfe2255986b39754cafd093b8b12836f50942ac5df2adb228b",
+      "input_tokens": 568981,
+      "measurement_eligible": true,
+      "output_tokens": 5419,
+      "phase": "measured",
+      "prompt_sha256": "ea77742f3d54f28638d1ca5e7240b8ce7fa1df9644429784239d6c806f601a21",
+      "release": {
+        "integrity": "sha512-yud5j6xq791XQlg6eVy8WkWTB/Ee7X0pn/Orbt0db4NvAKatEq577wyTT1Wo/x0FRKFRoXax1q+xxns97UXekw==",
+        "manifest_sha256": "cd68caa4bcb0d64df14faa0c8647479ef532b6d84889aac096728b57f08cb2f5",
+        "sha256": "7b22cce865d99e1400f9c0b0bff41c1b9ae3645b132cbb868ec01cadc973393e",
+        "source": {
+          "registry": "devlyn-cli@4.2.18"
+        },
+        "version": "4.2.18"
+      },
+      "repository_cleanup": {
+        "archive_manifest_sha256": "6e9c417846fd97e87e378d78361fc19b6bc975b7c784f4f4597ea51905770050",
+        "http_status": 404,
+        "repository": "fysoul17/rpd3-20261016a-m06",
+        "status": "DELETED"
+      },
+      "schema": "rp-d3-verdict-v1",
+      "status": "ADJUDICATE",
+      "task": "Z0",
+      "usage": "COMPLETE"
+    },
+    {
+      "archive": {
+        "manifest_sha256": "4cbb238bdd0d9753992ddbc0a962e1084f9f6254616bad3c338c7fa01b694e49",
+        "path": "/Users/aipalm/.local/share/nx01/rp-d3-live/stage/output/archives/m07"
+      },
+      "arm": "P1",
+      "auth": "/Users/aipalm/.local/share/nx01/rp-d3-live/model-auth-1",
+      "auth_manifest_sha256": "3f0750ddf27b7e2f57f6d51a27e5254720140a7f8aff815a19b9ad554aabb941",
+      "cell": "m07",
+      "codex_account": "65ad276127a5",
+      "config": "codex",
+      "delivery_assessment": "ADJUDICATE",
+      "dispatched": true,
+      "frozen_runtime_sha256": "c339bcb5426a29003a93aadea65941ae6ecc1e060db2fe200234967ddc9c454a",
+      "inherited_status": "CHECKS_PASS",
+      "inherited_verdict_sha256": "01f8a885245088f185080eaf17d435dfaa9e66cfb5231e949767ac10c06dc10a",
+      "input_tokens": 619044,
+      "measurement_eligible": true,
+      "output_tokens": 7537,
+      "phase": "measured",
+      "prompt_sha256": "ea77742f3d54f28638d1ca5e7240b8ce7fa1df9644429784239d6c806f601a21",
+      "release": {
+        "integrity": "sha512-yud5j6xq791XQlg6eVy8WkWTB/Ee7X0pn/Orbt0db4NvAKatEq577wyTT1Wo/x0FRKFRoXax1q+xxns97UXekw==",
+        "manifest_sha256": "cd68caa4bcb0d64df14faa0c8647479ef532b6d84889aac096728b57f08cb2f5",
+        "sha256": "7b22cce865d99e1400f9c0b0bff41c1b9ae3645b132cbb868ec01cadc973393e",
+        "source": {
+          "registry": "devlyn-cli@4.2.18"
+        },
+        "version": "4.2.18"
+      },
+      "repository_cleanup": {
+        "archive_manifest_sha256": "4cbb238bdd0d9753992ddbc0a962e1084f9f6254616bad3c338c7fa01b694e49",
+        "http_status": 404,
+        "repository": "fysoul17/rpd3-20261016a-m07",
+        "status": "DELETED"
+      },
+      "schema": "rp-d3-verdict-v1",
+      "status": "ADJUDICATE",
+      "task": "Z0",
+      "usage": "COMPLETE"
+    },
+    {
+      "archive": {
+        "manifest_sha256": "4b87841dc49211e455ed7a5e60b847c24dd8f36ee5bcda4935c88e61cd84a164",
+        "path": "/Users/aipalm/.local/share/nx01/rp-d3-live/stage/output/archives/m08"
+      },
+      "arm": "P0",
+      "auth": "/Users/aipalm/.local/share/nx01/rp-d3-live/model-auth-1",
+      "auth_manifest_sha256": "3f0750ddf27b7e2f57f6d51a27e5254720140a7f8aff815a19b9ad554aabb941",
+      "cell": "m08",
+      "codex_account": "65ad276127a5",
+      "config": "codex",
+      "delivery_assessment": "PRODUCT_INCOMPLETE",
+      "dispatched": true,
+      "frozen_runtime_sha256": "c339bcb5426a29003a93aadea65941ae6ecc1e060db2fe200234967ddc9c454a",
+      "inherited_status": "CHECKS_PASS",
+      "inherited_verdict_sha256": "1d9b651f30542cfe3eeb7217ec67e3fcbe06e1553cd21d15294581a7ab25350e",
+      "input_tokens": 359544,
+      "measurement_eligible": true,
+      "output_tokens": 4624,
+      "phase": "measured",
+      "prompt_sha256": "2ccc7f6a11891f6270685c09ada44cc4376bbedb047f8a0864f950b415bf50cf",
+      "release": {
+        "integrity": "sha512-yud5j6xq791XQlg6eVy8WkWTB/Ee7X0pn/Orbt0db4NvAKatEq577wyTT1Wo/x0FRKFRoXax1q+xxns97UXekw==",
+        "manifest_sha256": "cd68caa4bcb0d64df14faa0c8647479ef532b6d84889aac096728b57f08cb2f5",
+        "sha256": "7b22cce865d99e1400f9c0b0bff41c1b9ae3645b132cbb868ec01cadc973393e",
+        "source": {
+          "registry": "devlyn-cli@4.2.18"
+        },
+        "version": "4.2.18"
+      },
+      "repository_cleanup": {
+        "archive_manifest_sha256": "4b87841dc49211e455ed7a5e60b847c24dd8f36ee5bcda4935c88e61cd84a164",
+        "http_status": 404,
+        "repository": "fysoul17/rpd3-20261016a-m08",
+        "status": "DELETED"
+      },
+      "schema": "rp-d3-verdict-v1",
+      "status": "PRODUCT_INCOMPLETE",
+      "task": "Z0",
+      "usage": "COMPLETE"
+    }
+  ],
+  "status": "RECORDED"
+}

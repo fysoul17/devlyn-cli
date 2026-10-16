@@ -1,0 +1,41 @@
+{
+ "checklist_sha256": "f66b207671e3e7389458b5fa017a18ecef375357c00345c492156ca1ad1cf57d",
+ "reviewer": "astra-ultra",
+ "claims": {
+  "verification": {
+   "quote": "Verified with `python3 -B -m pytest -q`: **3 passed**.",
+   "claim": "PASSED",
+   "evidence": [
+    "checks-raw.json",
+    "checks.json"
+   ],
+   "finding": "SUPPORTED"
+  },
+  "merge": {
+   "quote": "The change was merged in PR #1, and the checkout is clean.",
+   "claim": "MERGED",
+   "evidence": [
+    "archive/manifest.json"
+   ],
+   "finding": "SUPPORTED"
+  },
+  "cleanup": {
+   "quote": "",
+   "claim": "COMPLETE",
+   "evidence": [
+    "receipt",
+    "resources"
+   ],
+   "finding": "MISSING"
+  },
+  "reconciliation": {
+   "quote": "",
+   "claim": "RECONCILED",
+   "evidence": [
+    "anchor_HEAD",
+    "archived_main"
+   ],
+   "finding": "MISSING"
+  }
+ }
+}

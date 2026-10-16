@@ -1,0 +1,3 @@
+Fixed `--limit 0` so it returns `0`; an omitted limit still returns `10`. Added regression tests for zero and argparse exits for missing and unknown arguments in [test_regression.py](/cell/work/tests/test_regression.py). Existing tests cover positive, negative, and noninteger limits.
+
+Verified with `python3 -B -m pytest -q`: **7 passed**. PR #1 merged, and the checkout is clean. Nothing unresolved.

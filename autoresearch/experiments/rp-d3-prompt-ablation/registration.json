@@ -1,0 +1,146 @@
+{
+ "schema": "rp-d3-registration-v1",
+ "apparatus_commit": "8f0260dd11d43efe3b00674257f33396c7212996",
+ "run_id": "20261016a",
+ "phase": "measured",
+ "schedule": [
+  {
+   "slot": "m01",
+   "task": "BV",
+   "engine": "codex",
+   "arm": "P0"
+  },
+  {
+   "slot": "m02",
+   "task": "BV",
+   "engine": "codex",
+   "arm": "P1"
+  },
+  {
+   "slot": "m03",
+   "task": "BV",
+   "engine": "codex",
+   "arm": "P1"
+  },
+  {
+   "slot": "m04",
+   "task": "BV",
+   "engine": "codex",
+   "arm": "P0"
+  },
+  {
+   "slot": "m05",
+   "task": "Z0",
+   "engine": "codex",
+   "arm": "P0"
+  },
+  {
+   "slot": "m06",
+   "task": "Z0",
+   "engine": "codex",
+   "arm": "P1"
+  },
+  {
+   "slot": "m07",
+   "task": "Z0",
+   "engine": "codex",
+   "arm": "P1"
+  },
+  {
+   "slot": "m08",
+   "task": "Z0",
+   "engine": "codex",
+   "arm": "P0"
+  }
+ ],
+ "repositories": [
+  "fysoul17/rpd3-20261016a-m01",
+  "fysoul17/rpd3-20261016a-m02",
+  "fysoul17/rpd3-20261016a-m03",
+  "fysoul17/rpd3-20261016a-m04",
+  "fysoul17/rpd3-20261016a-m05",
+  "fysoul17/rpd3-20261016a-m06",
+  "fysoul17/rpd3-20261016a-m07",
+  "fysoul17/rpd3-20261016a-m08"
+ ],
+ "prompt_body_sha256": {
+  "P0": "2ccc7f6a11891f6270685c09ada44cc4376bbedb047f8a0864f950b415bf50cf",
+  "P1": "ea77742f3d54f28638d1ca5e7240b8ce7fa1df9644429784239d6c806f601a21"
+ },
+ "task_completion_blob": "faff9b9c8303ccc5bcbb52bbd19456f8584ea00b",
+ "releases": {
+  "B": {
+   "integrity": "sha512-yud5j6xq791XQlg6eVy8WkWTB/Ee7X0pn/Orbt0db4NvAKatEq577wyTT1Wo/x0FRKFRoXax1q+xxns97UXekw==",
+   "manifest_sha256": "cd68caa4bcb0d64df14faa0c8647479ef532b6d84889aac096728b57f08cb2f5",
+   "sha256": "7b22cce865d99e1400f9c0b0bff41c1b9ae3645b132cbb868ec01cadc973393e",
+   "source": {
+    "registry": "devlyn-cli@4.2.18"
+   },
+   "version": "4.2.18"
+  }
+ },
+ "image": "sha256:82561172c0712e664534af0d4c4757fddc461610e795e4794bb5c49e75e4cf6c",
+ "cli": {
+  "codex": "0.162.1",
+  "gh": "2.83.2"
+ },
+ "model": {
+  "codex": "gpt-6-sol",
+  "effort": "high"
+ },
+ "codex_account": "65ad276127a5",
+ "smoke_codex_account": "65ad276127a5",
+ "auth_manifest_sha256": "3f0750ddf27b7e2f57f6d51a27e5254720140a7f8aff815a19b9ad554aabb941",
+ "runtime_sha256": "c6b27a6186e36353b51c42c8383f62414de8f300a8db20a34acd926eb914ebea",
+ "smoke": {
+  "attempt": 1,
+  "verdicts": {
+   "smoke-codex-P0": "6131992bd073b7f1b1dd719c0331def74489b3dfaf622bb525b20fd4f9fbb8b1",
+   "smoke-codex-P1": "54fc1ac1a9029f580b0c1de223a25470e9869936656c77c48116666b5c812b78"
+  },
+  "schedule_sha256": "754f544413e4c8caedd5a2e4359789d1b13948e44f0a33efe517ffd0f08db3e3"
+ },
+ "inputs": {
+  "autoresearch/experiments/rp-d1-delivery-cost/Dockerfile": "6b9131a724e90aa381bb0e59411d31cdcff15a85a36a738df9f8f13278930b89",
+  "autoresearch/experiments/rp-d1-delivery-cost/build.sh": "aefbfa7f764399804b3e8931a03afa1ac18c64aa2c168a199eb4e0c3869e582e",
+  "autoresearch/experiments/rp-d1-delivery-cost/cell.py": "2a0f07a972fdfbab0d4c53039025507bda437d73c8f5e95163795c0e512d8678",
+  "autoresearch/experiments/rp-d1-delivery-cost/common.txt": "2ccc7f6a11891f6270685c09ada44cc4376bbedb047f8a0864f950b415bf50cf",
+  "autoresearch/experiments/rp-d1-delivery-cost/github.py": "64537542ff976cb280c4dcfb9e2bf65fddeef56684e034c5fea3304ae0d2aca9",
+  "autoresearch/experiments/rp-d1-delivery-cost/oracle.py": "4c2d454662fd3c299dfac136bbff01d439ccd23af5b331d13b2e42cf44dab959",
+  "autoresearch/experiments/rp-d1-delivery-cost/prepare.py": "6531b2958d81bbf4baff52fd118b61f43a05c26400569c4e2eb955947e5feb77",
+  "autoresearch/experiments/rp-d1-delivery-cost/reevaluate.py": "4d122ddceedbeff80dbac9f93fb86ba8ac87b2fbc0b3037da7d8fdbde776e128",
+  "autoresearch/experiments/rp-d1-delivery-cost/runner.py": "337af3003f76ec0407abf341752613c6bf87b094d47ffd7217d8f42ac115e811",
+  "autoresearch/experiments/rp-d1-delivery-cost/summarize.py": "eb223d5222d6d50ee4c791a40dd49f26af0271c792ae799fb2cb484205e99be1",
+  "autoresearch/experiments/rp-d1-delivery-cost/tasks.json": "12f4ef121cc0544ab1ffe42caf4cf5cc17d6df096cc1d2dcdd2565732c4f7ef7",
+  "autoresearch/experiments/rp-d2-report-lines/pack.py": "302f9f48c4bb3a3cb4a3c4d99d26f89e7ef6f3118f3b165fa574191f527b5aff",
+  "autoresearch/experiments/rp-d2-report-lines/prepare.py": "43bffb00427388c1b2fc0f013cd1adf56130e979b2fb7f1d8bdd7ad1665aba76",
+  "autoresearch/experiments/rp-d2-report-lines/reevaluate.py": "feb4129fa21ab55d81448d579ecd6a0be6e31a566308fe7f4d8c3422ab23ec44",
+  "autoresearch/experiments/rp-d2-report-lines/runner.py": "6008e540d586ec9707fbe98016a558346241c398016a806e66f791ac4e1674a3",
+  "autoresearch/experiments/rp-d2-report-lines/stage.py": "b4703ffae17e66242f0531e49c7656dd41faf74ddfcb68a954b3e14d242290e8",
+  "autoresearch/experiments/rp-d2-report-lines/summarize.py": "92878ec0ea1225c8c25d2a8e2771eb75b788674b7200ee32cb866a64cfbdf4d2",
+  "autoresearch/experiments/rp-d2-report-lines/test_rpd2_pack.py": "065553d0908a6555038b409526b88748b3a892bbbd4c973a174ebdb709421e7f",
+  "autoresearch/experiments/rp-d2-report-lines/test_rpd2_runner.py": "6759792ed3b291f08e9c1171262f2b838b4ced4d3c6bbd26ad9235c985022cd1",
+  "autoresearch/experiments/rp-d2-report-lines/test_rpd2_summary.py": "2e572d4cdb11b796f4be18d3f58f8501d8201172f2248f277d9e22d5eb599914",
+  "autoresearch/experiments/rp-d2-report-lines/token_gate.py": "ec59c4f604fac2145cf9fa397b7ef0fe28493095839a5248fa962a5ff5cca7e7",
+  "autoresearch/experiments/rp-d3-prompt-ablation/DESIGN.md": "e7ddd3d5466d2dd5e58d803a09c5c3a6e7a8a2c158be592da95ab96745af1db3",
+  "autoresearch/experiments/rp-d3-prompt-ablation/README.md": "1147bb420dabe248954ef50bfc1d157f0e592aac3928f1f6b2225c2c76e74b77",
+  "autoresearch/experiments/rp-d3-prompt-ablation/auth.py": "d1f89938c5733b44a8952002ea66ac6e3d8b0ccc0a98b7a5e8fb9486944c92aa",
+  "autoresearch/experiments/rp-d3-prompt-ablation/pack.py": "fbb1506fc4535be85af84ba207724f7937268fbdd84e1820a72933134419879b",
+  "autoresearch/experiments/rp-d3-prompt-ablation/prepare.py": "35ed0c0ee92824b764f9429e3e564df4d0fe1d46e2e7badac3f0bd0db3a8d589",
+  "autoresearch/experiments/rp-d3-prompt-ablation/runner.py": "2c29e0a5be56a31eca8180b389d3332612d3f9cbc608fa3577d2a2082e9b7a59",
+  "autoresearch/experiments/rp-d3-prompt-ablation/stage.py": "ba2700455bd858a401df9064f1c6bcb786ec7e9a0ab8367d3978e1fef0f9e5da",
+  "autoresearch/experiments/rp-d3-prompt-ablation/summarize.py": "11561214f1accb1052dea261735d23fb969a93683cbb722397c1773d4c5b152d",
+  "autoresearch/experiments/rp-d3-prompt-ablation/test_rpd3.py": "73fd7f77f368c764f3a72e165fc3d2784103e6b780c0db0903bf4c9ac2a25960"
+ },
+ "live_inputs": {
+  "arms.json": "cd0be248d63ea291d5546d0296bf9e70a6907e91f18737e34580e9099b020953",
+  "B.tgz": "7b22cce865d99e1400f9c0b0bff41c1b9ae3645b132cbb868ec01cadc973393e",
+  "control.manifest.json": "2a5171d31847685857ca41980727ec67e09e875fa2b79c295cdedf6a367ac67d",
+  "models_cache.json": "d67fbecdc1603f271dbe50cc8e674f0a2383f336257365adba674f1353e9e8a1",
+  "model-auth manifest.json": "3f0750ddf27b7e2f57f6d51a27e5254720140a7f8aff815a19b9ad554aabb941"
+ },
+ "watchdog_seconds": {
+  "owner": 5400,
+  "evaluator_or_review": 600
+ }
+}
