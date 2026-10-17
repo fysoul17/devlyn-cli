@@ -106,7 +106,8 @@ def test_same_failed_delivery_can_satisfy_prediction_without_efficiency(evidence
     assert pair['efficiency']['eligible'] is False
 
 
-@pytest.mark.parametrize('inherited', [None, 'NOT_RUN', 'PASS', 'ADJUDICATE'])
+@pytest.mark.parametrize('inherited', [None, 'NOT_RUN', 'LOCAL_ONLY', 'PRODUCT_INCOMPLETE',
+                                      'STOP', 'UNKNOWN', 'FAIL', 'CHECKS_PASS', 'PASS', 'ADJUDICATE'])
 def test_delivery_requires_passing_inherited_status(evidence, inherited):
     row = evidence[2][0]
     if inherited is None:
@@ -114,9 +115,19 @@ def test_delivery_requires_passing_inherited_status(evidence, inherited):
     else:
         row['inherited_status'] = inherited
     result = flush(evidence)
-    passed = inherited in ('PASS', 'ADJUDICATE')
+    passed = inherited in ('CHECKS_PASS', 'PASS', 'ADJUDICATE')
     assert result['slots'][0]['delivery_outcome'] == ('PASS' if passed else 'FAIL')
     assert result['comparisons'][0]['efficiency']['eligible'] is passed
+
+
+@pytest.mark.parametrize('slot', ['g01', 'g02'])
+def test_retained_rpd4_claude_delivery_passes(summary, slot):
+    retained = HERE.parent / 'rp-d4-helper-report/results/measured'
+    inherited = summary.read(retained / 'verdicts' / f'verdict-{slot}.json')
+    record = next(row for row in summary.read(retained / 'rp-schedule.json')['slots']
+                  if row['cell'] == slot)
+    assert record['inherited_status'] == inherited['status'] == 'CHECKS_PASS'
+    assert summary.delivery_outcome(record) == 'PASS'
 
 
 @pytest.mark.parametrize('fault', ['STOP', 'UNKNOWN', 'usage', 'reconciliation'])

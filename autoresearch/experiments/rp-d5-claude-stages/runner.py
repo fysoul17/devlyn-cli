@@ -163,7 +163,7 @@ class Runner(legacy.Runner):
                 effort=effort_for(name), prompt_sha256=prepare.PROMPT_SHA256[arm],
                 release=prepare.release_identity(self.runtime, arm), codex_account=self.runtime['codex_account'],
                 auth=self.runtime['auth'], auth_manifest_sha256=self.runtime['auth_manifest_sha256'],
-                frozen_runtime_sha256=self.frozen, effort_binding='STOP')
+                frozen_runtime_sha256=self.frozen, effort_binding='UNKNOWN')
             inherited = out.parent / ('verdict-' + name + '.json')
             if inherited.is_file():
                 receipt = read(inherited)
@@ -207,7 +207,8 @@ class Runner(legacy.Runner):
         if state['status'] != 'STAGED':
             return state
         records = self.completed_prefix()
-        terminal = any(row.get('revocation_required') or row.get('effort_binding') != 'MATCH' for row in records)
+        terminal = any(row.get('revocation_required') or
+                       (row['dispatched'] and row.get('effort_binding') == 'STOP') for row in records)
         failed = terminal or any(row['status'] not in ('PASS', 'ADJUDICATE') or
                      row.get('smoke_qualification', {}).get('status') != 'PASS' for row in records)
         if not failed and len(records) != len(self.smoke):

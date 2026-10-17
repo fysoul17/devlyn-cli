@@ -326,6 +326,39 @@ def test_effort_mismatch_in_first_smoke_stops_and_refuses_spare(staged, monkeypa
     assert not args.stage_dir.exists()
 
 
+@pytest.mark.parametrize('dispatched', [False, True])
+def test_unanalyzed_first_smoke_allows_spare(staged, monkeypatch, dispatched):
+    s, args, path = staged
+    app = s.runner.Runner(path)
+    fake_inherited(s, app, monkeypatch)
+    inherited = app.inherited_run
+    analyzed = []
+    def failed_inherited(name, task, config):
+        inherited(name, task, config)
+        target = Path(app.runtime['output']) / name / 'rp-verdict.json'
+        row = s.read(target)
+        row.update(dispatched=dispatched, status='STOP', delivery_assessment='NOT_ASSESSED')
+        if not dispatched:
+            row.pop('repository_cleanup')
+        s.write(target, row)
+        return 2
+    def failed_analysis(*_args, **_kwargs):
+        analyzed.append(True)
+        raise ValueError('synthetic analysis failure')
+    monkeypatch.setattr(app, 'inherited_run', failed_inherited)
+    monkeypatch.setattr(s.runner, 'load', lambda *_a: SimpleNamespace(analyze=failed_analysis))
+    assert app.schedule() == 2
+    assert analyzed == ([True] if dispatched else [])
+    row = s.read(Path(app.runtime['output']) / 'smoke-claude/rp-verdict.json')
+    assert row['status'] == 'STOP'
+    registry = s.runner.smoke_registry(args.run_id)
+    assert s.read(registry / 'attempt-1.json')['status'] == 'FAILED'
+    args.stage_dir = args.stage_dir.parent / 'spare-stage'
+    args.smoke_attempt = 2
+    assert s.stage(args).is_file()
+    assert s.read(registry / 'attempt-2.json')['status'] == 'STAGED'
+
+
 def test_delivery_failure_allows_spare_and_stops_failed_spare(staged, monkeypatch):
     s, args, path = staged
     app = s.runner.Runner(path)
