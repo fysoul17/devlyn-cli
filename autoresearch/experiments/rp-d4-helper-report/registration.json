@@ -1,0 +1,244 @@
+{
+ "schema": "rp-d4-registration-v1",
+ "apparatus_commit": "13e6b9f9db9fd13be7a24fafe694537401d1e50a",
+ "run_id": "20261017a",
+ "phase": "measured",
+ "schedule": [
+  {
+   "slot": "m01",
+   "task": "BV",
+   "engine": "codex",
+   "arm": "X"
+  },
+  {
+   "slot": "m02",
+   "task": "BV",
+   "engine": "codex",
+   "arm": "Y"
+  },
+  {
+   "slot": "m03",
+   "task": "BV",
+   "engine": "codex",
+   "arm": "Y"
+  },
+  {
+   "slot": "m04",
+   "task": "BV",
+   "engine": "codex",
+   "arm": "X"
+  },
+  {
+   "slot": "m05",
+   "task": "Z0",
+   "engine": "codex",
+   "arm": "X"
+  },
+  {
+   "slot": "m06",
+   "task": "Z0",
+   "engine": "codex",
+   "arm": "Y"
+  },
+  {
+   "slot": "m07",
+   "task": "Z0",
+   "engine": "codex",
+   "arm": "Y"
+  },
+  {
+   "slot": "m08",
+   "task": "Z0",
+   "engine": "codex",
+   "arm": "X"
+  },
+  {
+   "slot": "g01",
+   "task": "BV",
+   "engine": "claude",
+   "arm": "Y"
+  },
+  {
+   "slot": "g02",
+   "task": "Z0",
+   "engine": "claude",
+   "arm": "Y"
+  }
+ ],
+ "repositories": [
+  "fysoul17/rpd4-20261017a-m01",
+  "fysoul17/rpd4-20261017a-m02",
+  "fysoul17/rpd4-20261017a-m03",
+  "fysoul17/rpd4-20261017a-m04",
+  "fysoul17/rpd4-20261017a-m05",
+  "fysoul17/rpd4-20261017a-m06",
+  "fysoul17/rpd4-20261017a-m07",
+  "fysoul17/rpd4-20261017a-m08",
+  "fysoul17/rpd4-20261017a-g01",
+  "fysoul17/rpd4-20261017a-g02"
+ ],
+ "prompt_body_sha256": "2ccc7f6a11891f6270685c09ada44cc4376bbedb047f8a0864f950b415bf50cf",
+ "candidate": {
+  "commit": "c048fd3122f408da01d9aeed4a86f410f6053a95",
+  "blobs": {
+   "config/skills/_shared/task-complete.py": "c08c1e806d2493203ed23273fa9f340ef715aa2e",
+   "config/skills/_shared/task-completion.md": "b0805de76306147c744eba05367a57a01b11fd95"
+  },
+  "token_gate": {
+   "control": "cbc33be9",
+   "claude": [
+    4867,
+    4862
+   ],
+   "o200k": [
+    2979,
+    2976
+   ],
+   "bytes": [
+    14309,
+    14287
+   ]
+  }
+ },
+ "releases": {
+  "X": {
+   "integrity": "sha512-PsTQkzNrfz3TENHtBLff/fmbnxmV2YzMSl4DLKI7dFwOXyO4m9x5CxlhSjkGR5FEfFwjqOHabIrpqKb0O3GOpQ==",
+   "manifest_sha256": "ae0f0bafb984dba10997b9db4a896a25d8f5841e8581fbe75037c28b2b5d340d",
+   "sha256": "799c609141e7f1c05c0e798177522d807cc93cfcf580532f38cfbe31a205ca61",
+   "source": {
+    "registry": "devlyn-cli@4.2.22"
+   },
+   "version": "4.2.22"
+  },
+  "Y": {
+   "integrity": "sha512-3woak0Fh1N4psBUPDZaZBDiBlPviL2gtRQJPrhKD9AMW9WZL/Ex7xwM77f2RpLHr/4V1O+Swd0WBNOAbfgnCug==",
+   "manifest_sha256": "f90b7e848024eb164f3295e85d70c9ce39b249f078d713388749f5ddaaf66feb",
+   "sha256": "248e7cca6d024556b8a4dc5a0d379de3de909f67fdcabd38c6504c61b8068b01",
+   "source": {
+    "candidate_blobs": {
+     "config/skills/_shared/task-complete.py": "c08c1e806d2493203ed23273fa9f340ef715aa2e",
+     "config/skills/_shared/task-completion.md": "b0805de76306147c744eba05367a57a01b11fd95"
+    },
+    "candidate_commit": "c048fd3122f408da01d9aeed4a86f410f6053a95",
+    "registry": "devlyn-cli@4.2.22"
+   },
+   "version": "4.2.22"
+  }
+ },
+ "image": "sha256:a41cec603493d1420076cf428a8b72e45820be2e328f11c031c8ed49537b2c1a",
+ "cli": {
+  "codex": "0.162.1",
+  "claude": "2.1.296",
+  "gh": "2.83.2"
+ },
+ "model": {
+  "codex": "gpt-6-sol",
+  "codex_effort": "high",
+  "claude": "claude-opus-5-5",
+  "claude_effort": "max"
+ },
+ "codex_account": "9ca44b8a38f2",
+ "claude_account": [
+  "9f2f3a391923",
+  "ea65f3b4f086"
+ ],
+ "auth_manifest_sha256": {
+  "codex": "c3d572634f592ea836646a67e82df08c80e7b25cd4eabb3e3625873f8d342cab",
+  "claude": "fc8c59e1ff9e2dfba019042af9706788be3c2f7ad4b8eedd08448a95a1c9bca8"
+ },
+ "runtime_sha256": "8769f7bd88edd76a85a2d2f84a7f0b47353cc65500b2e40e13f90851ac38be9a",
+ "smoke": {
+  "attempt": 1,
+  "schedule_sha256": "b891cbb920c4b9a1d7d9b8c586ca742648788765eef695354c8fdcb556728bf0",
+  "verdicts": {
+   "smoke-codex-X": "8046081017ff194df8db0a2f3380a71b9f9fbd762daf775fd393c949689ec0d7",
+   "smoke-codex-Y": "c456b1233dd994196064c04ecf6a4786edc4232f6682b8dd5111647633aa11b3"
+  }
+ },
+ "live_inputs": {
+  "arms.json": "7bf0348077ee97e09ab8fdbd62292c81d4b2585f573613dbe4b0d55b4bebee2d",
+  "X.tgz": "799c609141e7f1c05c0e798177522d807cc93cfcf580532f38cfbe31a205ca61",
+  "Y.tgz": "248e7cca6d024556b8a4dc5a0d379de3de909f67fdcabd38c6504c61b8068b01",
+  "control.manifest.json": "9eed78969da85e7eeb10b0d51bdf2b9baa8ced986bde77e172a58032b7ce1082",
+  "models_cache.json": "aee6807a73c1ffdc4701de73d93d9ab29f84474ed22dc536d914de3585a78bde"
+ },
+ "inputs": {
+  "autoresearch/experiments/rp-d1-delivery-cost/DESIGN.md": "8971b8bb90d9a5880cd5c3b2e43dceb06b2b32e307838b334ba973ba7cd65add",
+  "autoresearch/experiments/rp-d1-delivery-cost/Dockerfile": "6b9131a724e90aa381bb0e59411d31cdcff15a85a36a738df9f8f13278930b89",
+  "autoresearch/experiments/rp-d1-delivery-cost/README.md": "b461491e8055a972b3984c26b829668257cfad09556652dfd972cccc43c933d8",
+  "autoresearch/experiments/rp-d1-delivery-cost/build.sh": "aefbfa7f764399804b3e8931a03afa1ac18c64aa2c168a199eb4e0c3869e582e",
+  "autoresearch/experiments/rp-d1-delivery-cost/cell.py": "2a0f07a972fdfbab0d4c53039025507bda437d73c8f5e95163795c0e512d8678",
+  "autoresearch/experiments/rp-d1-delivery-cost/common.txt": "2ccc7f6a11891f6270685c09ada44cc4376bbedb047f8a0864f950b415bf50cf",
+  "autoresearch/experiments/rp-d1-delivery-cost/fixtures/BV/.user-state/draft.txt": "e6e709bd3bff5552112035cea3c7ea724b36c8b4410b7c313266783edd406984",
+  "autoresearch/experiments/rp-d1-delivery-cost/fixtures/BV/docs/user-notes.txt": "3fba8bb979c8951d0e6d74390dd6b90e2f5f5582fa30fc87ec5c1132589eeb5d",
+  "autoresearch/experiments/rp-d1-delivery-cost/fixtures/BV/src/expiry/__init__.py": "da9d4d0de7428792606c07b76d11f035a022049aa4051c1b48ca8ef3bd34b27b",
+  "autoresearch/experiments/rp-d1-delivery-cost/fixtures/BV/tests/test_existing.py": "95d822ab544ad349d98e856a5a35dcc20b7b855d2549c5b2f747dcfede975cce",
+  "autoresearch/experiments/rp-d1-delivery-cost/fixtures/SM/.user-state/draft.txt": "3420adc1bb0532d76c0471baad222ea8aa045f4971fc233acf2eae47a9c9a576",
+  "autoresearch/experiments/rp-d1-delivery-cost/fixtures/SM/docs/user-notes.txt": "3fba8bb979c8951d0e6d74390dd6b90e2f5f5582fa30fc87ec5c1132589eeb5d",
+  "autoresearch/experiments/rp-d1-delivery-cost/fixtures/SM/src/slugtools/__init__.py": "860e201617dfc0813584a141e0fefe9e53d07812c88c901ea06cb35dad94f7cf",
+  "autoresearch/experiments/rp-d1-delivery-cost/fixtures/SM/tests/test_existing.py": "7f9dd186871a9d627449a8b14ae1c6142ee9d080d809d60c42b65c7d96d1596a",
+  "autoresearch/experiments/rp-d1-delivery-cost/fixtures/Z0/.user-state/draft.txt": "58ed610dcdf4061ed397f398bfc0f05399e59b05a702d4cc9b1da51f3996d6bf",
+  "autoresearch/experiments/rp-d1-delivery-cost/fixtures/Z0/docs/user-notes.txt": "3fba8bb979c8951d0e6d74390dd6b90e2f5f5582fa30fc87ec5c1132589eeb5d",
+  "autoresearch/experiments/rp-d1-delivery-cost/fixtures/Z0/src/limitcli/__init__.py": "85892b1f3cf5850c1996cda4104e3f2bc9dde7961282902c16a37abe79120fee",
+  "autoresearch/experiments/rp-d1-delivery-cost/fixtures/Z0/tests/test_existing.py": "694537bc39c95e3cbe528d489a3debf6309a4d01c4ad5ea0c48f7b85b73acbc4",
+  "autoresearch/experiments/rp-d1-delivery-cost/github.py": "64537542ff976cb280c4dcfb9e2bf65fddeef56684e034c5fea3304ae0d2aca9",
+  "autoresearch/experiments/rp-d1-delivery-cost/oracle.py": "4c2d454662fd3c299dfac136bbff01d439ccd23af5b331d13b2e42cf44dab959",
+  "autoresearch/experiments/rp-d1-delivery-cost/prepare.py": "6531b2958d81bbf4baff52fd118b61f43a05c26400569c4e2eb955947e5feb77",
+  "autoresearch/experiments/rp-d1-delivery-cost/reevaluate.py": "4d122ddceedbeff80dbac9f93fb86ba8ac87b2fbc0b3037da7d8fdbde776e128",
+  "autoresearch/experiments/rp-d1-delivery-cost/registration.json": "aeecb93ba423388aa324e3b31072bee9afd18d8ba71b16240f4d0ead6608f466",
+  "autoresearch/experiments/rp-d1-delivery-cost/registration.md": "18c0f676b9a7163cebea176eb9a824a7e857fb436855c4ff80d11e53ae433a9d",
+  "autoresearch/experiments/rp-d1-delivery-cost/results.md": "5d4095dff400cb4fa09612c86c87ec22d93a6beec159dec5320d027ed1396042",
+  "autoresearch/experiments/rp-d1-delivery-cost/runner.py": "337af3003f76ec0407abf341752613c6bf87b094d47ffd7217d8f42ac115e811",
+  "autoresearch/experiments/rp-d1-delivery-cost/smoke-tasks.json": "cdd53075655181b2f9de5c2e238b6a4518253cd18d984e7518e7dbb79df55687",
+  "autoresearch/experiments/rp-d1-delivery-cost/stage.py": "4df45ad97f0f6622e59879e3d4c7091e2bac9694eb875dd345ec3c3a42522476",
+  "autoresearch/experiments/rp-d1-delivery-cost/summarize.py": "eb223d5222d6d50ee4c791a40dd49f26af0271c792ae799fb2cb484205e99be1",
+  "autoresearch/experiments/rp-d1-delivery-cost/tasks.json": "12f4ef121cc0544ab1ffe42caf4cf5cc17d6df096cc1d2dcdd2565732c4f7ef7",
+  "autoresearch/experiments/rp-d1-delivery-cost/test_apparatus.py": "b7ab9a0841ff7756fa7c024d85a129e7914c8654ee9aa06bf4a92a5333520f8a",
+  "autoresearch/experiments/rp-d1-delivery-cost/test_reevaluate.py": "a62ff2b2d6a6237fcd1394c675500b8e2bfca77f405f69f623b7c0908ded79d8",
+  "autoresearch/experiments/rp-d1-delivery-cost/test_stage.py": "4bef963e12d7ecce1ca0c448c823845767c3282a58cd9cd4566a2cdaba81f2ea",
+  "autoresearch/experiments/rp-d1-delivery-cost/test_summarize.py": "0eb7475fc6ee635b56f605dc6cf16287489b7d6fbeb3ed909b6eb917d2162195",
+  "autoresearch/experiments/rp-d2-report-lines/DESIGN.md": "e623d7a8c8a39063c317813f50d083ebdbc0bdc37378e7159b51a09245022ddc",
+  "autoresearch/experiments/rp-d2-report-lines/README.md": "3aa1ea55eee7889f9133b78244a9d48c72fafa5c6a6b4cb06e10cc918aded9ab",
+  "autoresearch/experiments/rp-d2-report-lines/pack.py": "302f9f48c4bb3a3cb4a3c4d99d26f89e7ef6f3118f3b165fa574191f527b5aff",
+  "autoresearch/experiments/rp-d2-report-lines/prepare.py": "43bffb00427388c1b2fc0f013cd1adf56130e979b2fb7f1d8bdd7ad1665aba76",
+  "autoresearch/experiments/rp-d2-report-lines/reevaluate.py": "feb4129fa21ab55d81448d579ecd6a0be6e31a566308fe7f4d8c3422ab23ec44",
+  "autoresearch/experiments/rp-d2-report-lines/registration-20261015a.json": "d59439b048fd4873f7d083e1984a8b2f0baa1dd0432b9e1956d4b654fee8b462",
+  "autoresearch/experiments/rp-d2-report-lines/registration.json": "61f338d8de46fcb8ffb370bb65272f1e0d6f602e11e4a4547f88d12970d86095",
+  "autoresearch/experiments/rp-d2-report-lines/registration.md": "884b7c83e606883e2f7022acff61bbf7f00405a491b697a61fb8e4c43be91aa0",
+  "autoresearch/experiments/rp-d2-report-lines/results.md": "3f1a531b02ab3ff86df9fc3226f4d4de228296cd63c0549eb640f04e559f9af3",
+  "autoresearch/experiments/rp-d2-report-lines/runner.py": "6008e540d586ec9707fbe98016a558346241c398016a806e66f791ac4e1674a3",
+  "autoresearch/experiments/rp-d2-report-lines/stage.py": "b4703ffae17e66242f0531e49c7656dd41faf74ddfcb68a954b3e14d242290e8",
+  "autoresearch/experiments/rp-d2-report-lines/summarize.py": "92878ec0ea1225c8c25d2a8e2771eb75b788674b7200ee32cb866a64cfbdf4d2",
+  "autoresearch/experiments/rp-d2-report-lines/test_rpd2_pack.py": "065553d0908a6555038b409526b88748b3a892bbbd4c973a174ebdb709421e7f",
+  "autoresearch/experiments/rp-d2-report-lines/test_rpd2_runner.py": "6759792ed3b291f08e9c1171262f2b838b4ced4d3c6bbd26ad9235c985022cd1",
+  "autoresearch/experiments/rp-d2-report-lines/test_rpd2_summary.py": "2e572d4cdb11b796f4be18d3f58f8501d8201172f2248f277d9e22d5eb599914",
+  "autoresearch/experiments/rp-d2-report-lines/token_gate.py": "ec59c4f604fac2145cf9fa397b7ef0fe28493095839a5248fa962a5ff5cca7e7",
+  "autoresearch/experiments/rp-d3-prompt-ablation/DESIGN.md": "e7ddd3d5466d2dd5e58d803a09c5c3a6e7a8a2c158be592da95ab96745af1db3",
+  "autoresearch/experiments/rp-d3-prompt-ablation/README.md": "1147bb420dabe248954ef50bfc1d157f0e592aac3928f1f6b2225c2c76e74b77",
+  "autoresearch/experiments/rp-d3-prompt-ablation/auth.py": "d1f89938c5733b44a8952002ea66ac6e3d8b0ccc0a98b7a5e8fb9486944c92aa",
+  "autoresearch/experiments/rp-d3-prompt-ablation/pack.py": "fbb1506fc4535be85af84ba207724f7937268fbdd84e1820a72933134419879b",
+  "autoresearch/experiments/rp-d3-prompt-ablation/prepare.py": "35ed0c0ee92824b764f9429e3e564df4d0fe1d46e2e7badac3f0bd0db3a8d589",
+  "autoresearch/experiments/rp-d3-prompt-ablation/registration.json": "e5d8193e4bb8f6130ad0e50884592b32f053476f75e352da47a14488f1459c0a",
+  "autoresearch/experiments/rp-d3-prompt-ablation/registration.md": "45b92e6f941117fc6d55246f022ac3f6de4cb96c07144ed0c4e69b4c3d639cb4",
+  "autoresearch/experiments/rp-d3-prompt-ablation/results.md": "981d46d94b4ac385e434ae6bf518a39185e805e24144446a96481e15a8a9af8d",
+  "autoresearch/experiments/rp-d3-prompt-ablation/runner.py": "2c29e0a5be56a31eca8180b389d3332612d3f9cbc608fa3577d2a2082e9b7a59",
+  "autoresearch/experiments/rp-d3-prompt-ablation/stage.py": "ba2700455bd858a401df9064f1c6bcb786ec7e9a0ab8367d3978e1fef0f9e5da",
+  "autoresearch/experiments/rp-d3-prompt-ablation/summarize.py": "11561214f1accb1052dea261735d23fb969a93683cbb722397c1773d4c5b152d",
+  "autoresearch/experiments/rp-d3-prompt-ablation/test_rpd3.py": "73fd7f77f368c764f3a72e165fc3d2784103e6b780c0db0903bf4c9ac2a25960",
+  "autoresearch/experiments/rp-d4-helper-report/DESIGN.md": "ef1f0fa41649e56a06fc4259f01e607adaf31591c28d7b5a8d839790e2bcc2b8",
+  "autoresearch/experiments/rp-d4-helper-report/README.md": "c8c5b1c2223c8fb50e96ed2daf42b6be927d20999d850f9bf69160b4797263b2",
+  "autoresearch/experiments/rp-d4-helper-report/auth.py": "b4ef03cd1697336e65dd3e914f6023d60893e885afc7bdf26f670cf3df676da1",
+  "autoresearch/experiments/rp-d4-helper-report/pack.py": "460b4582faec0dc841cbbe0c68e4dcc58406bbea059710e18aca78401453799d",
+  "autoresearch/experiments/rp-d4-helper-report/prepare.py": "ef38116ed4c9b56c04b4b409184e35a2af8139f6e74e4efc00869629bed17717",
+  "autoresearch/experiments/rp-d4-helper-report/runner.py": "f1f965985c64a0276783139c95d2583be3a721bd7459bd8072dbb0831e22e302",
+  "autoresearch/experiments/rp-d4-helper-report/smoke.py": "3f823727aae97cdaaa1b6c502e1902c2b93fe0d08adba24400ba36d67e8245d3",
+  "autoresearch/experiments/rp-d4-helper-report/stage.py": "3d4276ec4e2b053faf9a79251e5abeaa85f0edd847f7da18930c88967d224307",
+  "autoresearch/experiments/rp-d4-helper-report/summarize.py": "a87c1df3fa797286a795f4796198823c5863538655397acc074ff94324ef83df",
+  "autoresearch/experiments/rp-d4-helper-report/test_pack.py": "7a81240b21a563000a35f687fa4ffb3c4d85a15d8028f28abffbfa763eb3d18f",
+  "autoresearch/experiments/rp-d4-helper-report/test_refusal.py": "e1beb6290b85e66b023a7a40ccde54d95dbb494f3ea6e8b83ed9fe8599488165",
+  "autoresearch/experiments/rp-d4-helper-report/test_runtime.py": "e12e569732f90a67c150a29a1eaf74bc2dee5a4041c2b9084e6e9e97a4fe6406",
+  "autoresearch/experiments/rp-d4-helper-report/test_smoke.py": "a2177a82db1d978d0c8025edd416fc5292a92b386bb8a682f165968c843821ec",
+  "autoresearch/experiments/rp-d4-helper-report/test_spare.py": "e479abf655febc9ed09b7c6cce813078bd406e2d73677bfcfef37b7bd255fecb",
+  "autoresearch/experiments/rp-d4-helper-report/test_summary.py": "1682f34cc78c2e996a7cbfa3473f4a91feb6feaab3a6589db9121238446fd6b3"
+ }
+}
