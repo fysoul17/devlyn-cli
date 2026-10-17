@@ -1,0 +1,11 @@
+The three round-1 medium fixes are in place for the cases they name. One spare-path hole is still open.
+
+Effort mismatch on a dispatched smoke writes registry status `STOP`, and `reserve_smoke` rejects the spare. A dispatched delivery failure whose binding is `MATCH` stays `FAILED` and still accepts one spare. Non-literal `open()` modes are accepted only as an `ast` string constant, so `"w" if flag else "r"` and concatenation stay mutation-unknown, do not set the first write, and leave the Explore/Verify split unsupported. `rg`/`grep` take `-e`/`-f` before the positional pattern, and real redirections are removed from read operands with quotes kept. The three reported commands (`rg CLAUDE.md -e needle`, `grep CLAUDE.md -f /tmp/patterns`, `cat CLAUDE.md >/tmp/copy`) classify as Orient. The five round-1 low notes are addressed in `check()`, `delivery_outcome`, `qualify`, the coverage assertion, and the README fence.
+
+**MEDIUM — A smoke that never gets a binding check is recorded as an effort STOP, so the spare is refused.** `Runner.run` writes `effort_binding='STOP'` on every verdict before analysis (`runner.py` around line 166). Analysis replaces that only when the slot dispatched (`runner.py` around line 176). `finish_smoke` then treats every binding other than `MATCH` as terminal (`runner.py` around line 210), including this initial value. A first smoke that stops before `run/started.json`, or that throws before analysis assigns a binding, gets registry status `STOP`. `reserve_smoke` accepts a spare only when that status is `FAILED` (`stage.py` line 32). The same function still allows a non-dispatched first attempt through without a 404 receipt (`stage.py` lines 36–40), and attempt 1 cannot be staged again once `attempt-1.json` exists. DESIGN keeps one spare for a failed smoke and reserves terminal STOP for an effort mismatch, a failed spare, or credential revocation. The mismatch test covers a dispatched `STOP` binding. It does not cover a smoke that never reached a request check.
+
+Fix: set the terminal spare refusal only for credential revocation or for a dispatched slot whose analysis returned `effort_binding='STOP'`. Leave an unanalyzed first smoke as `FAILED` so the spare still stages. Add that case next to the existing mismatch and delivery-failure tests.
+
+Pytest was not executed in this review.
+
+VERDICT: REVISE
