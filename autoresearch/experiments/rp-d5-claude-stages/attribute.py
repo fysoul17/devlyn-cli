@@ -3,6 +3,7 @@
 No transcript token accounting or timestamp-derived stage wall partition occurs here.
 """
 import argparse
+import ast
 from collections import defaultdict
 import hashlib
 import importlib.util
@@ -80,7 +81,8 @@ def shell_commands(text):
         elif char in ('"', "'"):
             current.append(char)
             quote = char
-        elif char in '|;\n' or char == '&' and (text[offset:offset + 2] == '&&' or offset > 0 and text[offset - 1] == '&'):
+        elif (char in ';\n' or char == '|' and not (offset > 0 and text[offset - 1] == '>') or
+              char == '&' and (text[offset:offset + 2] == '&&' or offset > 0 and text[offset - 1] == '&')):
             if current:
                 commands.append(''.join(current))
                 current = []
@@ -90,10 +92,13 @@ def shell_commands(text):
         commands.append(''.join(current))
     parsed = []
     for command in commands:
-        tokens = shlex.split(command)
         # Preserve quote provenance independently of shlex's unquoting.
         raw, words, quote, escaped = [], [], None, False
-        for char in command + ' ':
+        skip = 0
+        for offset, char in enumerate(command + ' '):
+            if skip:
+                skip -= 1
+                continue
             if escaped:
                 raw.append(char)
                 escaped = False
@@ -107,14 +112,32 @@ def shell_commands(text):
             elif char in ('"', "'"):
                 raw.append(char)
                 quote = char
+            elif char in '<>':
+                prefix = ''.join(raw)
+                if prefix and not prefix.isdigit() and prefix != '&':
+                    words.append(prefix)
+                raw = []
+                operator = re.match(r'(?:<<<|<<-?|<>|>>?|<)[&|]?', command[offset:]).group()
+                words.append(('&' if prefix == '&' else '') + operator)
+                skip = len(operator) - 1
             elif char.isspace():
                 if raw:
                     words.append(''.join(raw))
                     raw = []
             else:
                 raw.append(char)
-        if len(words) != len(tokens):
-            raise ValueError('ambiguous shell tokens')
+        operands, redirect = [], False
+        for word in words:
+            if redirect:
+                redirect = False
+            elif re.fullmatch(r'(?:&>>?|<<<|<<-?|<>|>>?|<)[&|]?', word):
+                redirect = True
+            else:
+                operands.append(word)
+        if redirect or quote:
+            raise ValueError('incomplete shell redirection or quote')
+        words = operands
+        tokens = [shlex.split(word)[0] for word in words]
         index = 0
         while index < len(tokens):
             token = tokens[index]
@@ -158,11 +181,10 @@ def read_paths(command, args, worktree, task_worktrees):
                         pattern = True
                 index += 1
                 continue
-            if command in ('rg', 'grep') and not pattern:
-                pattern = True
-            else:
-                paths.append(token)
+            paths.append(token)
             index += 1
+        if command in ('rg', 'grep') and not pattern:
+            paths = paths[1:]
     if command == 'git':
         # Revision-shaped bare tokens (HEAD, hashes, ranges) are not paths.
         # Relative file paths are recognized by slash/dot or task-file existence
@@ -237,9 +259,12 @@ def bash_predicates(command, *, worktree='/cell/work', task_worktrees=(), check_
         write = bool(re.search(r'\bwrite_(?:text|bytes)\s*\(', text))
         dynamic_open = False
         for mode in open_modes(text):
-            literal = re.fullmatch(r'''\s*(['"])(.*?)\1\s*''', mode, re.S)
-            if literal:
-                write |= literal.group(2).startswith(('w', 'a', 'x'))
+            try:
+                literal = ast.parse(mode, mode='eval').body
+            except (SyntaxError, ValueError):
+                literal = None
+            if isinstance(literal, ast.Constant) and isinstance(literal.value, str):
+                write |= literal.value.startswith(('w', 'a', 'x'))
             else:
                 dynamic_open = True
         return write, dynamic_open
@@ -387,7 +412,9 @@ def classify_rows(rows, **context):
         row['stage'] = stage
     unsupported = any(row['mutation_unknown'] and (first_write is None or i < first_write)
                       for i, row in enumerate(classified))
-    return classified, dict(explore_verify_supported=not unsupported, first_write_row=
+    other_share = sum(row['stage'] == 'Other' for row in classified) / len(classified)
+    return classified, dict(other_turn_share=other_share, low_coverage=other_share > .2,
+        explore_verify_supported=not unsupported, first_write_row=
         classified[first_write]['row_id'] if first_write is not None else None,
         delivery_boundary_row=classified[boundary]['row_id'] if boundary is not None else None,
         unparseable_complete_row=classified[unparseable]['row_id'] if unparseable is not None else None)
@@ -530,9 +557,7 @@ def analyze(out, *, manifest_sha256=None, expected_effort=None, account=None,
                       'attribution row sums do not reconcile')
         rows, flags = classify_rows(rows, worktree=worktree, task_worktrees=task_worktrees, check_scripts=check_scripts)
         stages = [dict(stage=stage, **totals([r for r in rows if r['stage'] == stage])) for stage in STAGES]
-        other_share = sum(row['stage'] == 'Other' for row in rows) / len(rows)
-        flags.update(other_turn_share=other_share, low_coverage=other_share > .2,
-                     mutation_unknown=any(r['mutation_unknown'] for r in rows))
+        flags.update(mutation_unknown=any(r['mutation_unknown'] for r in rows))
         result.update(status='MATCH', totals=row_totals, rows=rows, stages=stages, repeats=repeats(rows),
             first_row=dict(row_id=rows[0]['row_id'], **rows[0]['usage']), sensitivity=totals(rows[1:]),
             cache_read_series=[dict(row_id=r['row_id'], cache_read_input_tokens=r['usage']['cache_read_input_tokens'])

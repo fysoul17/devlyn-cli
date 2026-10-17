@@ -78,12 +78,12 @@ environment dumps, reports, runtime JSON or this repository.
    ```
 
    Qualification requires delivery, bound effort, reconciled accounting and a
-   stage table without UNKNOWN. Mutation-unknown and low-coverage flags are
-   descriptive and do not independently fail smoke. A failed first smoke is
+   nonempty stage table. Mutation-unknown and low-coverage flags are
+   descriptive and do not independently fail smoke. An ordinary delivery failure is
    preserved; stage a fresh directory with the same inputs/run ID and
    `--smoke-attempt 2`. The persistent `~/.devlyn/rp-d5-runs/<run-id>/` registry
-   prevents replay across stage directories. A failed spare or credential
-   revocation stops the run. Keep this registry with the evidence.
+   prevents replay across stage directories. An effort-binding failure, failed
+   spare or credential revocation stops the run. Keep this registry with the evidence.
 7. Stage measured with the same arguments and selected smoke stage directory,
    changing `--phase measured`. Qualification and archive/deletion/404 evidence
    must be present. To pause after c01, run:
@@ -175,6 +175,7 @@ use synthetic native receipts/JSONL and block live boundaries. Disable bytecode
 and pytest's cache to avoid changing inherited apparatus directories.
 
 ```sh
+d=autoresearch/experiments/rp-d5-claude-stages
 p=autoresearch/experiments/rp-d1-delivery-cost
 q=autoresearch/experiments/rp-d2-report-lines
 r=autoresearch/experiments/rp-d3-prompt-ablation

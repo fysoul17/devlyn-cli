@@ -29,7 +29,7 @@ def reserve_smoke(args, manifest):
     if args.smoke_attempt == 2:
         first = read(previous)
         runner.smoke_registration(read(first['runtime']))
-        require(first['status'] == 'FAILED', 'spare requires a failed first smoke without credential revocation')
+        require(first['status'] == 'FAILED', 'spare requires a failed first smoke without credential revocation or effort failure')
         require(first['inputs'] == inputs, 'spare changed registered release, accounts, image or models cache')
         for verdict in first['verdicts']:
             row = read(verdict)
@@ -123,6 +123,7 @@ def check(runtime_path):
     runtime = app.runtime
     runner.prepare.verify_release(runtime)
     manifest, binding = model_auth(runtime['auth'])
+    auth.claude.lifetime(manifest['expires_at_ms'])
     require(binding == runtime['auth_manifest_sha256'] == runtime['claude_auth_manifest_sha256'] and
             manifest['account'] == runtime['account'] == runtime['claude_account'], 'snapshot binding mismatch')
     for output in (original['output'], original['smoke_output']):

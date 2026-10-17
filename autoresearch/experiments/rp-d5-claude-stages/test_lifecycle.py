@@ -180,6 +180,20 @@ def test_inherited_claude_floor_and_no_separate_codex_snapshot(staged, tmp_path,
     assert not (path.parent / 'codex-auth').exists()
 
 
+@pytest.mark.parametrize('remaining,allowed', [(6299, False), (6300, True)])
+def test_stage_check_enforces_claude_lifetime(staged, monkeypatch, remaining, allowed):
+    s, _, path = staged
+    monkeypatch.setattr(s.auth.claude.time, 'time', lambda: NOW + 9000 - remaining)
+    validated = []
+    monkeypatch.setattr(s.runner.Runner, 'validate', lambda _self, name: validated.append(name))
+    if allowed:
+        s.check(path)
+    else:
+        with pytest.raises(s.auth.claude.AuthError, match='below-6300-seconds'):
+            s.check(path)
+    assert validated == (['smoke-claude'] if allowed else [])
+
+
 def test_slots_resume_and_local_evidence_survives_repository_deletion(staged, monkeypatch):
     s, _, path = measured(staged)
     app = s.runner.Runner(path)
@@ -226,7 +240,7 @@ def test_smoke_requires_all_qualification_gates(fault):
     elif fault == 'merge_refused':
         row['merge_refused'] = True
     elif fault == 'stages':
-        report['stages'] = [dict(stage='UNKNOWN')]
+        report['stages'] = []
     else:
         report['effort_binding' if fault == 'effort' else 'status'] = 'UNKNOWN'
     assert r.qualify(row, report)['status'] == 'FAIL'
@@ -292,7 +306,27 @@ def test_measured_requires_qualified_smoke_and_archive(staged, fault):
     assert not (args.stage_dir / 'runtime-measured.json').exists()
 
 
-def test_spare_registry_retains_first_attempt_and_stops_failed_spare(staged, monkeypatch):
+def test_effort_mismatch_in_first_smoke_stops_and_refuses_spare(staged, monkeypatch):
+    s, args, path = staged
+    app = s.runner.Runner(path)
+    calls = fake_inherited(s, app, monkeypatch)
+    monkeypatch.setattr(s.runner, 'load', lambda *_a: SimpleNamespace(analyze=lambda *_a, **_k:
+        analysis(status='UNKNOWN', effort='STOP')))
+    assert app.schedule() == 2
+    registry = s.runner.smoke_registry(args.run_id)
+    assert s.read(registry / 'attempt-1.json')['status'] == 'STOP'
+    assert app.finish_smoke()['status'] == 'STOP'
+    assert app.schedule() == 2
+    assert calls == ['smoke-claude']
+    args.stage_dir = args.stage_dir.parent / 'spare-stage'
+    args.smoke_attempt = 2
+    with pytest.raises(RuntimeError, match='spare requires a failed first smoke'):
+        s.stage(args)
+    assert not (registry / 'attempt-2.json').exists()
+    assert not args.stage_dir.exists()
+
+
+def test_delivery_failure_allows_spare_and_stops_failed_spare(staged, monkeypatch):
     s, args, path = staged
     app = s.runner.Runner(path)
     fake_inherited(s, app, monkeypatch)

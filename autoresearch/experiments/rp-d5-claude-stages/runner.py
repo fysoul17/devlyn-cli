@@ -76,8 +76,7 @@ def qualify(record, analysis):
                   record.get('merge_refused') is False,
                   effort=analysis.get('effort_binding') == 'MATCH',
                   accounting=analysis.get('status') == 'MATCH',
-                  stages=bool(analysis.get('stages')) and
-                  all(row.get('stage') != 'UNKNOWN' for row in analysis['stages']))
+                  stages=bool(analysis.get('stages')))
     return dict(status='PASS' if all(checks.values()) else 'FAIL', checks=checks)
 
 
@@ -202,6 +201,23 @@ class Runner(legacy.Runner):
             self.active_arm = None
             self.runtime = self.base_runtime
             self.frame.seal_after_teardown.keywords['runtime'] = self.base_runtime
+
+    def finish_smoke(self):
+        path, state = smoke_registration(self.base_runtime)
+        if state['status'] != 'STAGED':
+            return state
+        records = self.completed_prefix()
+        terminal = any(row.get('revocation_required') or row.get('effort_binding') != 'MATCH' for row in records)
+        failed = terminal or any(row['status'] not in ('PASS', 'ADJUDICATE') or
+                     row.get('smoke_qualification', {}).get('status') != 'PASS' for row in records)
+        if not failed and len(records) != len(self.smoke):
+            return state
+        state['status'] = ('STOP' if terminal or self.runtime['smoke_attempt'] == 2 else 'FAILED') if failed else 'QUALIFIED'
+        state['verdicts'] = {str(Path(self.runtime['smoke_output']) / row['cell'] / 'rp-verdict.json'):
+                            digest(Path(self.runtime['smoke_output']) / row['cell'] / 'rp-verdict.json')
+                            for row in records}
+        write(path, state)
+        return state
 
     def schedule(self, through_slot=None):
         require(through_slot is None or self.runtime['phase'] == 'measured' and

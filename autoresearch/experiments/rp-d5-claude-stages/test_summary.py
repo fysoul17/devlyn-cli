@@ -106,6 +106,19 @@ def test_same_failed_delivery_can_satisfy_prediction_without_efficiency(evidence
     assert pair['efficiency']['eligible'] is False
 
 
+@pytest.mark.parametrize('inherited', [None, 'NOT_RUN', 'PASS', 'ADJUDICATE'])
+def test_delivery_requires_passing_inherited_status(evidence, inherited):
+    row = evidence[2][0]
+    if inherited is None:
+        row.pop('inherited_status')
+    else:
+        row['inherited_status'] = inherited
+    result = flush(evidence)
+    passed = inherited in ('PASS', 'ADJUDICATE')
+    assert result['slots'][0]['delivery_outcome'] == ('PASS' if passed else 'FAIL')
+    assert result['comparisons'][0]['efficiency']['eligible'] is passed
+
+
 @pytest.mark.parametrize('fault', ['STOP', 'UNKNOWN', 'usage', 'reconciliation'])
 def test_unknown_numbers_never_establish_prediction_or_efficiency(evidence, fault):
     if fault in ('STOP', 'UNKNOWN'):

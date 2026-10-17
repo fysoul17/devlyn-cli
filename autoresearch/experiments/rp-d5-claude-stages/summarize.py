@@ -81,7 +81,7 @@ def delivery_outcome(record):
         return 'UNKNOWN'
     if (record['status'] in ('PASS', 'ADJUDICATE') and
             record.get('delivery_assessment') in ('PASS', 'ADJUDICATE') and
-            record.get('inherited_status') not in ('PRODUCT_INCOMPLETE', 'STOP', 'UNKNOWN') and
+            record.get('inherited_status') in ('PASS', 'ADJUDICATE') and
             record.get('merge_refused') is False):
         return 'PASS'
     if record.get('merge_refused') is None:

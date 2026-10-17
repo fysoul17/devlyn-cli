@@ -60,6 +60,10 @@ BASH_ORACLE = [
     ('''python3 -c 'open(p, "w")' ''', 'Edit', {'write'}),
     ('''python3 -c 'open(p, "rb")' ''', 'Other', {'unknown'}),
     ("python3 -c 'open(p, mode)'", 'Other', {'unknown'}),
+    ('''python3 -c 'open(p, "w" if flag else "r")' ''', 'Other', {'unknown'}),
+    ('''python3 -c 'open(p, "w" + suffix)' ''', 'Other', {'unknown'}),
+    ('''python3 -c 'open(p, mode="w" + "b")' ''', 'Other', {'unknown'}),
+    ('''python3 -c 'open(p, mode=("w"))' ''', 'Edit', {'write'}),
     ('echo hello 2>&1', 'Other', set()),
     ('echo hello >/dev/null', 'Other', set()),
     ('echo hello >/tmp/x', 'Other', set()),
@@ -104,6 +108,19 @@ BASH_ORACLE = [
     ('rg -e is_expired -A 2 src/expiry/__init__.py', 'Explore', {'look'}),
     ('rg --glob=*.md --regexp=complete AGENTS.md', 'Orient', {'orient'}),
     ('grep -f /tmp/patterns AGENTS.md', 'Orient', {'orient'}),
+    ('rg CLAUDE.md -e needle', 'Orient', {'orient'}),
+    ('rg -e needle CLAUDE.md', 'Orient', {'orient'}),
+    ('grep CLAUDE.md -f /tmp/patterns', 'Orient', {'orient'}),
+    ('grep -f /tmp/patterns CLAUDE.md', 'Orient', {'orient'}),
+    ('cat CLAUDE.md >/tmp/copy', 'Orient', {'orient'}),
+    ('cat CLAUDE.md > /tmp/copy', 'Orient', {'orient'}),
+    ('cat CLAUDE.md >>"/tmp/copy with spaces"', 'Orient', {'orient'}),
+    ('cat CLAUDE.md 2>/dev/null', 'Orient', {'orient'}),
+    ('cat CLAUDE.md 2>&1', 'Orient', {'orient'}),
+    ('cat CLAUDE.md </tmp/input', 'Orient', {'orient'}),
+    ('cat CLAUDE.md ">/tmp/copy"', 'Other', set()),
+    ('cat "CLAUDE.md >/tmp/copy"', 'Explore', {'look'}),
+    (r'cat CLAUDE.md \>/tmp/copy', 'Other', set()),
     ('tail -n 40 CLAUDE.md', 'Orient', {'orient'}),
     ("python3 -c 'print(1)' && python3 -c 'p.write_text(1)'", 'Edit', {'write', 'unknown'}),
     ("python3 -c 'print(1)' && python3 - <<'PY'\np.write_text('x')\nPY", 'Edit', {'write', 'unknown'}),
@@ -152,6 +169,16 @@ def test_look_after_unknown_remains_explore_but_split_is_unsupported():
     assert [r['stage'] for r in rows] == ['Other', 'Explore', 'Edit']
     assert flags['explore_verify_supported'] is False
     assert rows[0]['mutation_unknown'] is True
+
+
+@pytest.mark.parametrize('mode', ['"w" if flag else "r"', '"w" + "b"'])
+def test_dynamic_open_mode_does_not_establish_first_write(mode):
+    rows, flags = a.classify_rows([
+        row(bash(f"python3 -c 'open(p, {mode})'"), identifier='unknown'),
+        row(tool('Read', {'file_path': 'x'}), identifier='look')])
+    assert [r['stage'] for r in rows] == ['Other', 'Explore']
+    assert flags['first_write_row'] is None
+    assert flags['explore_verify_supported'] is False
 
 
 def test_first_write_in_mixed_opens_verify_and_late_unknown_does_not_break_split():
@@ -344,11 +371,13 @@ def test_nonbash_result_preserves_is_error(tmp_path):
     assert result['rows'][1]['calls'][0]['exit_code'] is None
 
 
-def test_unknown_low_coverage_threshold_is_strict():
+@pytest.mark.parametrize('looks,share,low', [(4, .2, False), (3, .25, True)])
+def test_unknown_low_coverage_threshold_is_strict(looks, share, low):
     fixture_rows = [row(bash('dispatch'), identifier='other')] + [
-        row(tool('Read', {'file_path': 'x'}), identifier=f'look-{i}') for i in range(4)]
-    rows, _ = a.classify_rows(fixture_rows)
-    assert sum(r['stage'] == 'Other' for r in rows) / len(rows) == .2
+        row(tool('Read', {'file_path': 'x'}), identifier=f'look-{i}') for i in range(looks)]
+    _, flags = a.classify_rows(fixture_rows)
+    assert flags['other_turn_share'] == share
+    assert flags['low_coverage'] is low
 
 
 def test_check_script_execution_not_mention_and_external_task_root():
