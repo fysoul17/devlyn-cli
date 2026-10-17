@@ -1,11 +1,13 @@
 # rp-d5 design — where Claude's delivery time goes
 
-DRAFT for design review (round 4, confirming round-3 fixes). Research only: no
+Design closed after round 4; the remaining classifier detail is fixed in
+the code and its frozen oracle (below), reviewed with the apparatus. Research only: no
 product change, no release. Rounds 0–2: Astra ultra REVISE, Grok 4.7 REVISE
 ([r0 Astra](results/design-r0-astra.md), [r0 Grok](results/design-r0-grok.md),
 [r1 Astra](results/design-r1-astra.md), [r1 Grok](results/design-r1-grok.md),
 [r2 Astra](results/design-r2-astra.md), [r2 Grok](results/design-r2-grok.md),
-[r3 Astra](results/design-r3-astra.md), [r3 Grok](results/design-r3-grok.md));
+[r3 Astra](results/design-r3-astra.md), [r3 Grok](results/design-r3-grok.md),
+[r4 Astra](results/design-r4-astra.md), [r4 Grok](results/design-r4-grok.md));
 every finding is applied below.
 
 ## Why
@@ -119,19 +121,25 @@ worktree root, is a task-tree look.
 
 **Bash.** Two views of each command. The **pipeline view** is the
 heredoc-stripped text, split into commands on `|`, `;`, `&&`, `||` and
-newlines, each command split with `shlex`; a command word is the first token
-of a command (after `env`/`sudo`-style prefixes and `VAR=value`
-assignments). The **full view** is the whole text, heredoc payloads
+newlines **outside quotes**, each command split with `shlex`; a `shlex`
+failure makes that call Other. A command word is the first token of a
+command after the prefixes `sudo`, `command`, `nohup`, `time`, `env` and
+leading `VAR=value`; a quoted word is never a command word. The **full view** is the whole text, heredoc payloads
 included. Command-word predicates use the pipeline view only;
 in-process-write patterns use the full view only. A file named as an
 argument is a read or a mention, never an execution (`cat
 .../task-complete.py` reads it; `python3 .../task-complete.py complete`
 runs it).
 
-**Shell-read paths.** For `rg` and `grep` the first non-flag token is the
-pattern (unless `-e` or `-f` is present) and the remaining non-flag tokens
-are paths; for `cat`, `ls`, `head`, `tail`, `sed -n`, `find`, `git diff`,
-`git log` and `git show` every non-flag, non-revision token is a path.
+**Shell-read paths.** Only path-position tokens are judged. Flags in a
+pinned consume-list take the next token (`head`/`tail -n`; the `sed -n`
+script; `rg -g/-t/-A/-B/-C/-e/-f/-m` and long forms; `grep -e/-f/-m/-A/-B/-C`).
+For `rg` and `grep` the first remaining token is the pattern unless `-e`
+or `-f` gave one; the rest are paths. For `cat`, `ls`, `head`, `tail` and
+`sed -n` every remaining token is a path. For `find` only the start paths
+before the first predicate are paths. For `git diff`, `git log` and
+`git show` a token that does not normalize into the worktree is a revision
+and is ignored.
 Zero paths, or all paths in the task tree or at its root, is a task look;
 all paths under instruction paths is orient; a mix, or a token that is not a
 worktree path, makes the call Other.
@@ -140,7 +148,7 @@ Call predicates:
 
 | Predicate | Calls |
 |---|---|
-| write | Edit, Write, NotebookEdit; pipeline command word `tee`, `sed -i`, `patch`, `git apply`, `cp`, `mv`, `rm`; a redirection target matched by the `0234/diagnostics.py` regex outside its exclude prefixes (`/dev/null`, `/tmp/`, `/private/tmp/`, `$TMPDIR/`, `tmp/`, `.devlyn/`); full-view `\bwrite_text\s*\(`, `\bwrite_bytes\s*\(`, or `open(` with a literal mode beginning `w`, `a` or `x` |
+| write | Edit, Write, NotebookEdit; pipeline command `tee`, `patch`, `git apply`; `sed` with an argument `-i`, `--in-place` or starting `-i`; `cp`, `mv`, `rm` when a path argument normalizes into the task tree outside the exclude prefixes (all-excluded is not a write; any other path is unknown); a redirection target matched by the `0234/diagnostics.py` regex outside its exclude prefixes (`/dev/null`, `/tmp/`, `/private/tmp/`, `$TMPDIR/`, `tmp/`, `.devlyn/`); full-view `\bwrite_text\s*\(`, `\bwrite_bytes\s*\(`, or `open(` with a literal mode beginning `w`, `a` or `x` |
 | check | pipeline command `pytest` or `python`/`python3` with `-m pytest` (any flags, e.g. `python3 -B -m pytest -q`), or a task check script named in `tasks.json` |
 | deliver | pipeline command running `task-complete.py`, or command words `git add/commit/push/fetch/merge/worktree/branch`, `gh` |
 | orient | Read/Grep/Glob of instruction paths; shell reads whose paths are all instruction paths |
@@ -153,7 +161,10 @@ A row's stage, applied in this order:
    row with no tool call is **Other**.
 2. **After delivery:** every row after the first `complete` result whose
    stdout object has `status` `COMPLETE` or `CLEANUP_PENDING` (with
-   `delivery_status` `COMPLETE`). `PR`, `PENDING`, `LOCAL_ONLY`, `FAILED`
+   `delivery_status` `COMPLETE`). The object is found by `raw_decode` from
+   each `{` in the tool-result text (string content as is, other content
+   JSON-encoded, as in `0234/diagnostics.py`), so a trailer such as
+   `Local commit: …` does not hide it. The invoking row stays Deliver. `PR`, `PENDING`, `LOCAL_ONLY`, `FAILED`
    and `BLOCKED` do not open it. If a `complete` stdout cannot be parsed,
    the boundary and every later row are **Other**.
 3. If the row's calls (or one Bash string) match two or more of write,
@@ -169,16 +180,27 @@ mutation-unknown. If a mutation-unknown row precedes the first write, the
 slot's look counts are still shown but its Explore/Verify split is marked
 unsupported (this does not fail the smoke; accounting UNKNOWN does).
 
-Fixtures, frozen before the run: a heredoc payload with `write_text` and
-one containing the word `cp`; `open(p, "w")`, `open(p, "rb")` and
-`open(p, mode)`; `2>&1`, `>/dev/null`, `>/tmp/x`; `dispatch`; `cat` of the
-helper versus running it; `rg is_expired src/expiry/__init__.py`,
-`grep -n deadline src/limitcli/__init__.py`, `ls -la`, `cat CLAUDE.md
-src/expiry/__init__.py`; Bash reads of instruction files; pathless
-Grep/Glob; Read+Edit in one row; `cat x && sed -i ... x`; `python3 fix.py`
-and a look after `python3 -c 'print(1)'`; PR/PENDING before COMPLETE;
-children; unparseable `complete` stdout. The function is not changed after
-the run.
+**Definition by code.** `attribute.py` at the registered commit is the
+classifier; this section states its rules. Its fixture oracle gives the
+expected label of every case named in design rounds 3 and 4, including: a
+heredoc payload with `write_text` and one containing the word `cp`;
+`open(p, "w")`, `open(p, "rb")`, `open(p, mode)`; `2>&1`, `>/dev/null`,
+`>/tmp/x`, `rm /tmp/x`, `sudo cp a b`, `sed -i.bak f`; `dispatch`; `cat` of
+the helper versus running it; `rg is_expired src/expiry/__init__.py`,
+`rg "is_expired|stale" src/expiry/__init__.py`, `rg -g '*.py' is_expired
+src/expiry/__init__.py`, `rg -n "def complete|merge_refused"
+.agents/skills/_shared/task-complete.py`, `grep -n deadline
+src/limitcli/__init__.py`, `head -n 40 src/expiry/__init__.py`,
+`sed -n '1,40p' CLAUDE.md`, `ls -la`, `cat CLAUDE.md
+src/expiry/__init__.py`, `git diff HEAD`, `git log -n 5`,
+`find . -name '*.py'`; pathless Grep/Glob; Read+Edit in one row;
+`cat x && sed -i ... x`; `python3 fix.py`; a look after
+`python3 -c 'print(1)'`; `python3 -c 'print(1); cp a b'`; PR/PENDING before
+COMPLETE; a `complete` stdout with the `Local commit:` trailer; children;
+unparseable stdout. The oracle is reviewed with the apparatus, frozen with
+the registration, and must pass before c01. Nothing in this section or the
+code changes after the run. Each slot's table shows Other's share of
+turns; a slot with Other above 20% of its turns is marked low-coverage.
 
 ## Repeats (descriptive)
 
