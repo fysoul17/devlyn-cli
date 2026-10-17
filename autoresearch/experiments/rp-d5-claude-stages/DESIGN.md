@@ -1,10 +1,11 @@
 # rp-d5 design — where Claude's delivery time goes
 
-DRAFT for design review (round 3, on remaining HIGHs). Research only: no
+DRAFT for design review (round 4, confirming round-3 fixes). Research only: no
 product change, no release. Rounds 0–2: Astra ultra REVISE, Grok 4.7 REVISE
 ([r0 Astra](results/design-r0-astra.md), [r0 Grok](results/design-r0-grok.md),
 [r1 Astra](results/design-r1-astra.md), [r1 Grok](results/design-r1-grok.md),
-[r2 Astra](results/design-r2-astra.md), [r2 Grok](results/design-r2-grok.md));
+[r2 Astra](results/design-r2-astra.md), [r2 Grok](results/design-r2-grok.md),
+[r3 Astra](results/design-r3-astra.md), [r3 Grok](results/design-r3-grok.md));
 every finding is applied below.
 
 ## Why
@@ -116,26 +117,35 @@ Paths are normalized to the cell worktree. **Instruction paths** are
 worktree or its task worktree. A Read/Grep/Glob with no path, or with the
 worktree root, is a task-tree look.
 
-**Bash.** Heredoc bodies are stripped only for shell-redirection scanning;
-the full text (heredoc payload included) is kept for every other predicate
-and for operation identity. Redirection is a write only when its target is
-a file path other than `/dev/null` or a temporary directory (`2>&1`,
-`>/dev/null` are not writes). Command words match on word boundaries (`cp`,
-`mv`, `tee`, `patch` never match inside `dispatch`). A command is
-**executed** when it is a command word of the pipeline, not when its name
-appears as an argument (so `cat .../task-complete.py` reads a file, and
-`python3 .../task-complete.py complete` runs the helper).
+**Bash.** Two views of each command. The **pipeline view** is the
+heredoc-stripped text, split into commands on `|`, `;`, `&&`, `||` and
+newlines, each command split with `shlex`; a command word is the first token
+of a command (after `env`/`sudo`-style prefixes and `VAR=value`
+assignments). The **full view** is the whole text, heredoc payloads
+included. Command-word predicates use the pipeline view only;
+in-process-write patterns use the full view only. A file named as an
+argument is a read or a mention, never an execution (`cat
+.../task-complete.py` reads it; `python3 .../task-complete.py complete`
+runs it).
+
+**Shell-read paths.** For `rg` and `grep` the first non-flag token is the
+pattern (unless `-e` or `-f` is present) and the remaining non-flag tokens
+are paths; for `cat`, `ls`, `head`, `tail`, `sed -n`, `find`, `git diff`,
+`git log` and `git show` every non-flag, non-revision token is a path.
+Zero paths, or all paths in the task tree or at its root, is a task look;
+all paths under instruction paths is orient; a mix, or a token that is not a
+worktree path, makes the call Other.
 
 Call predicates:
 
 | Predicate | Calls |
 |---|---|
-| write | Edit, Write, NotebookEdit; Bash with a file redirection, or executing `tee`, `sed -i`, `patch`, `git apply`, `cp`, `mv`, or containing `write_text(` or `open(...)` in write/append mode in its full text |
-| check | Bash executing `pytest` (any prefix, e.g. `python3 -B -m pytest -q`) or a task check script named in `tasks.json` |
-| deliver | Bash executing `task-complete.py`, `git add`, `git commit`, `git push`, `git fetch`, `git merge`, `git worktree`, `git branch`, or `gh` |
-| orient | Read/Grep/Glob of instruction paths; Bash executing `cat`, `sed -n`, `head`, `tail`, `rg`, `grep` or `ls` whose path arguments are all instruction paths |
-| look | Read/Grep/Glob of task paths or the task tree; Bash executing `cat`, `sed -n`, `head`, `tail`, `rg`, `grep`, `ls`, `find`, `git status`, `git diff`, `git log`, `git show` on task paths, the tree or no path |
-| unknown | Bash running an inline script (`python`/`node` with `-c` or a heredoc) that matches none of the above |
+| write | Edit, Write, NotebookEdit; pipeline command word `tee`, `sed -i`, `patch`, `git apply`, `cp`, `mv`, `rm`; a redirection target matched by the `0234/diagnostics.py` regex outside its exclude prefixes (`/dev/null`, `/tmp/`, `/private/tmp/`, `$TMPDIR/`, `tmp/`, `.devlyn/`); full-view `\bwrite_text\s*\(`, `\bwrite_bytes\s*\(`, or `open(` with a literal mode beginning `w`, `a` or `x` |
+| check | pipeline command `pytest` or `python`/`python3` with `-m pytest` (any flags, e.g. `python3 -B -m pytest -q`), or a task check script named in `tasks.json` |
+| deliver | pipeline command running `task-complete.py`, or command words `git add/commit/push/fetch/merge/worktree/branch`, `gh` |
+| orient | Read/Grep/Glob of instruction paths; shell reads whose paths are all instruction paths |
+| look | Read/Grep/Glob of task paths, no path or the root; shell reads that are task looks; `git status` |
+| unknown | a pipeline command running a script or interpreter (`python3 x.py`, `node x.js`, `python -c`, `python - <<`) that matches none of the above, or `open(` with a non-literal mode |
 
 A row's stage, applied in this order:
 
@@ -147,29 +157,40 @@ A row's stage, applied in this order:
    and `BLOCKED` do not open it. If a `complete` stdout cannot be parsed,
    the boundary and every later row are **Other**.
 3. If the row's calls (or one Bash string) match two or more of write,
-   check, deliver, orient, look-before-first-write and
-   look-after-first-write, it is **Mixed** (its predicates listed).
+   check, deliver, orient and look, it is **Mixed** (its predicates
+   listed).
 4. Otherwise: orient → **Orient**; write → **Edit**; check → **Verify**;
-   deliver → **Deliver**; look before the first write → **Explore**; look
-   after the first write → **Verify**; unknown or anything else → **Other**.
+   deliver → **Deliver**; look → **Explore** if the row precedes the first
+   write, **Verify** if it follows it; unknown or anything else → **Other**.
 
 The **first write** is the first row (index order) containing a write call,
-whether its stage is Edit or Mixed. A row with an unknown call is reported
-as mutation-unknown. The function is tested on synthetic receipts and
-JSONL before the run (heredoc payloads with `write_text`, `2>&1`,
-`>/dev/null`, `dispatch`, `cat` of the helper versus running it, Bash reads
-of instruction files, pathless Grep/Glob, compound Bash, PR/PENDING before
-COMPLETE, children, unparseable stdout) and is not changed after it.
+whether its stage is Edit or Mixed. A row with an unknown call is
+mutation-unknown. If a mutation-unknown row precedes the first write, the
+slot's look counts are still shown but its Explore/Verify split is marked
+unsupported (this does not fail the smoke; accounting UNKNOWN does).
+
+Fixtures, frozen before the run: a heredoc payload with `write_text` and
+one containing the word `cp`; `open(p, "w")`, `open(p, "rb")` and
+`open(p, mode)`; `2>&1`, `>/dev/null`, `>/tmp/x`; `dispatch`; `cat` of the
+helper versus running it; `rg is_expired src/expiry/__init__.py`,
+`grep -n deadline src/limitcli/__init__.py`, `ls -la`, `cat CLAUDE.md
+src/expiry/__init__.py`; Bash reads of instruction files; pathless
+Grep/Glob; Read+Edit in one row; `cat x && sed -i ... x`; `python3 fix.py`
+and a look after `python3 -c 'print(1)'`; PR/PENDING before COMPLETE;
+children; unparseable `complete` stdout. The function is not changed after
+the run.
 
 ## Repeats (descriptive)
 
-An **operation** is a tool call identified by its tool name, its full input
-(every argument, including Read offset/limit and Grep pattern and options,
-and the full Bash text with heredoc payload) and the working directory. The
+An **operation** is a tool call identified by its tool name and its
+canonical JSON input (every argument, including Read offset/limit, Grep
+pattern and options, and the full Bash text with heredoc payload). The
 analysis lists every operation that occurs more than once in a slot, with
-its stage, its occurrences, whether a write call or a mutation-unknown row
-came between occurrences, and the occurrences' marginal tokens. It makes no
-claim that a repeat was unnecessary or devlyn-caused.
+its stage, the row ids of its occurrences, and whether a write call or a
+mutation-unknown row came between occurrences. Tokens shown beside an
+occurrence are its **enclosing row's** tokens: shared with the row's other
+calls and not additive. The table makes no claim that a repeat was
+unnecessary or devlyn-caused.
 
 No candidate is nominated in this run. The write-up gives the stage and
 repeat tables and the observed effort deltas; any reduction candidate is a
