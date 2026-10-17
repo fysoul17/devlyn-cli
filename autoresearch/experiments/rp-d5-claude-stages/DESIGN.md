@@ -1,9 +1,10 @@
 # rp-d5 design — where Claude's delivery time goes
 
-DRAFT for design review (round 2). Research only: no product change, no
-release. Rounds 0 and 1: Astra ultra REVISE, Grok 4.7 REVISE
+DRAFT for design review (round 3, on remaining HIGHs). Research only: no
+product change, no release. Rounds 0–2: Astra ultra REVISE, Grok 4.7 REVISE
 ([r0 Astra](results/design-r0-astra.md), [r0 Grok](results/design-r0-grok.md),
-[r1 Astra](results/design-r1-astra.md), [r1 Grok](results/design-r1-grok.md));
+[r1 Astra](results/design-r1-astra.md), [r1 Grok](results/design-r1-grok.md),
+[r2 Astra](results/design-r2-astra.md), [r2 Grok](results/design-r2-grok.md));
 every finding is applied below.
 
 ## Why
@@ -37,7 +38,7 @@ earlier runs were deleted, so a new run is needed.
 On BV and Z0 under the shipped 4.2.22 (rp-d4 X), at effort `max` and at
 `high`: how do Claude's turns and marginal tokens split across delivery
 stages, how do slot wall time, turns and tokens differ between the two
-efforts, and does any repeated devlyn-caused operation change no outcome?
+efforts, and which exact operations repeat?
 
 The Codex gap is not attributed: only within-Claude, within-task max/high
 deltas are reported.
@@ -71,8 +72,7 @@ exactly one correctly merged PR, preserved user files); the report is not
 graded. rp-d1 o08 showed the unchanged prompt can lead Claude to stop at
 `LOCAL_ONLY`; such a slot is a failed delivery. An efficiency conclusion for
 a task is drawn only when both of its slots pass delivery; otherwise the
-task's outcomes and costs are reported as they are. A failed slot yields no
-removal candidate. A STOP, UNKNOWN usage or an unreconciled slot (below) is
+task's outcomes and costs are reported as they are. A STOP, UNKNOWN usage or an unreconciled slot (below) is
 reported as UNKNOWN for the affected numbers.
 
 ## Accounting (reuse 0254; no new token accounting)
@@ -90,7 +90,7 @@ reported as UNKNOWN for the affected numbers.
   thinking (already inside output). Row sums must equal the auditor's slot
   totals, or the slot's token figures are UNKNOWN.
 - **Marginal tokens.** A row's marginal tokens are its output plus cache
-  write. This is a ranking proxy for nomination only; it is not a saving.
+  write. It is a descriptive proxy, not a saving.
   Cache read is shown per row as a series and is never charged to a stage.
 - **Wall.** Reported per slot only, as the owner's `owner_seconds`
   (monotonic, around `docker start -a`). There is no per-stage wall split:
@@ -106,17 +106,29 @@ reported as UNKNOWN for the affected numbers.
 Paths are normalized to the cell worktree. **Instruction paths** are
 `CLAUDE.md`, `AGENTS.md` and any path under a `skills/` directory (including
 `skills/_shared/`). **Task paths** are every other path in the cell
-worktree or its task worktree. Each Bash string is heredoc-stripped first.
+worktree or its task worktree. A Read/Grep/Glob with no path, or with the
+worktree root, is a task-tree look.
+
+**Bash.** Heredoc bodies are stripped only for shell-redirection scanning;
+the full text (heredoc payload included) is kept for every other predicate
+and for operation identity. Redirection is a write only when its target is
+a file path other than `/dev/null` or a temporary directory (`2>&1`,
+`>/dev/null` are not writes). Command words match on word boundaries (`cp`,
+`mv`, `tee`, `patch` never match inside `dispatch`). A command is
+**executed** when it is a command word of the pipeline, not when its name
+appears as an argument (so `cat .../task-complete.py` reads a file, and
+`python3 .../task-complete.py complete` runs the helper).
 
 Call predicates:
 
 | Predicate | Calls |
 |---|---|
-| orient | Read/Grep/Glob of instruction paths |
-| write | Edit, Write, NotebookEdit; Bash containing redirection `>`/`>>` to a file, `tee`, `sed -i`, `patch`, `git apply`, `cp`, `mv`, or an in-process file write (`write_text`, `open(..., 'w'/'a')`) |
-| check | Bash containing `pytest` (any prefix, e.g. `python3 -B -m pytest -q`) or a task check script named in `tasks.json` |
-| look | Read/Grep/Glob of task paths; Bash `git status`, `git diff`, `git log`, `git show`, `ls`, `cat`, `sed -n`, `rg`, `grep` |
-| deliver | Bash containing `task-complete.py`, `git add`, `git commit`, `git push`, `git fetch`, `git merge`, `git worktree`, `git branch`, `gh` |
+| write | Edit, Write, NotebookEdit; Bash with a file redirection, or executing `tee`, `sed -i`, `patch`, `git apply`, `cp`, `mv`, or containing `write_text(` or `open(...)` in write/append mode in its full text |
+| check | Bash executing `pytest` (any prefix, e.g. `python3 -B -m pytest -q`) or a task check script named in `tasks.json` |
+| deliver | Bash executing `task-complete.py`, `git add`, `git commit`, `git push`, `git fetch`, `git merge`, `git worktree`, `git branch`, or `gh` |
+| orient | Read/Grep/Glob of instruction paths; Bash executing `cat`, `sed -n`, `head`, `tail`, `rg`, `grep` or `ls` whose path arguments are all instruction paths |
+| look | Read/Grep/Glob of task paths or the task tree; Bash executing `cat`, `sed -n`, `head`, `tail`, `rg`, `grep`, `ls`, `find`, `git status`, `git diff`, `git log`, `git show` on task paths, the tree or no path |
+| unknown | Bash running an inline script (`python`/`node` with `-c` or a heredoc) that matches none of the above |
 
 A row's stage, applied in this order:
 
@@ -128,54 +140,36 @@ A row's stage, applied in this order:
    and `BLOCKED` do not open it. If a `complete` stdout cannot be parsed,
    the boundary and every later row are **Other**.
 3. If the row's calls (or one Bash string) match two or more of write,
-   check, deliver, orient, look-before-first-write, look-after-first-write,
-   it is **Mixed** (its predicates listed).
+   check, deliver, orient, look-before-first-write and
+   look-after-first-write, it is **Mixed** (its predicates listed).
 4. Otherwise: orient → **Orient**; write → **Edit**; check → **Verify**;
    deliver → **Deliver**; look before the first write → **Explore**; look
-   after the first write → **Verify**; anything else → **Other**.
+   after the first write → **Verify**; unknown or anything else → **Other**.
 
 The **first write** is the first row (index order) containing a write call,
-whether its stage is Edit or Mixed. Mixed and Other are reported with their
-costs and are never eligible for nomination. The function is tested on
-synthetic receipts and JSONL (heredocs, compound Bash, PR/PENDING before
-COMPLETE, children, unparseable stdout) before the run and is not changed
-after it.
+whether its stage is Edit or Mixed. A row with an unknown call is reported
+as mutation-unknown. The function is tested on synthetic receipts and
+JSONL before the run (heredoc payloads with `write_text`, `2>&1`,
+`>/dev/null`, `dispatch`, `cat` of the helper versus running it, Bash reads
+of instruction files, pathless Grep/Glob, compound Bash, PR/PENDING before
+COMPLETE, children, unparseable stdout) and is not changed after it.
 
-## Removal hypothesis rule (frozen)
+## Repeats (descriptive)
 
-An **operation key** is the tool name plus its normalized path set, or the
-heredoc-stripped Bash command. An occurrence is a **redundant repeat** when
-the same key already succeeded earlier in the same slot (Bash exit code 0,
-otherwise `is_error` false) and no write call (by the write predicate,
-Edit or Mixed rows included) touched any of its paths in between.
+An **operation** is a tool call identified by its tool name, its full input
+(every argument, including Read offset/limit and Grep pattern and options,
+and the full Bash text with heredoc payload) and the working directory. The
+analysis lists every operation that occurs more than once in a slot, with
+its stage, its occurrences, whether a write call or a mutation-unknown row
+came between occurrences, and the occurrences' marginal tokens. It makes no
+claim that a repeat was unnecessary or devlyn-caused.
 
-**Required operations** are never nominated. Frozen from the installed
-4.2.22 `task-completion.md` before the run: `task-complete.py` allocate,
-accept and complete calls; `git fetch`; `git merge --ff-only`; `git restore`
-of copied edits; `git worktree remove` and `git branch -d` after local
-delivery; `git status` and `git diff` at verification and commit points
-(line 29); and re-running checks after a changed base, conflict resolution
-or copy into the worktree (lines 99–102).
-
-A key is nominated only if all hold:
-
-1. it is not a required operation;
-2. in each task's slot at the same effort, its redundant repeats occur in
-   rows whose every call is a redundant repeat of that key (rows with any
-   other call are excluded);
-3. in both tasks those rows' marginal tokens are at least 15% of the slot's
-   marginal tokens;
-4. if claimed independent of effort, the `high` slot of each task also
-   meets 2 and 3.
-
-Keys are ranked by the smaller of the two tasks' shares; ties go to the
-earlier stage in table order, then the lexically smaller key. Families of
-keys are never pooled. The top key is a hypothesis for a later registered
-experiment judged by the ladder rule (total wall, input and output per
-success, failures included). This run adopts nothing. If no key qualifies,
-the result says so and reports the observed effort deltas. Effort is a user
-setting: a large effort delta is reported, and whether future benchmarks
-pin Claude at `high` is a separate owner decision.
+No candidate is nominated in this run. The write-up gives the stage and
+repeat tables and the observed effort deltas; any reduction candidate is a
+separate design, with its own review, judged later by the ladder rule
+(total wall, input and output per success, failures included). Effort is a
+user setting: a large effort delta is reported, and whether future
+benchmarks pin Claude at `high` is a separate owner decision.
 
 ## Apparatus
 
@@ -191,4 +185,4 @@ image prune guard. Evidence stays until the analysis is reviewed.
 
 One slot per task per effort. The split is what these four runs did, not a
 rate. Slot wall includes model latency, which the harness does not
-control. A nominated operation is a hypothesis, not a proven saving.
+control. A repeat is an observation, not a proven saving.
