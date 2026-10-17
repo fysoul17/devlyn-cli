@@ -66,13 +66,20 @@ Codex slots. **Effort binding:** every sealed request body's
 `output_config.effort` must equal the slot's effort; a mismatch STOPs the
 run before the next slot.
 
+**Smoke.** One Claude cell on SM at `high` before c01, ungraded. It
+qualifies delivery, the effort binding, receipt reconciliation and a stage
+table without UNKNOWN. A failed smoke is kept; one spare smoke; a failed
+spare stops the run. Smoke never changes the function, the schedule or the
+prediction.
+
 **Failure handling.** Every dispatched slot is kept with its costs; none is
 replaced. Delivery is graded as in rp-d1 (scope and regression checks,
 exactly one correctly merged PR, preserved user files); the report is not
 graded. rp-d1 o08 showed the unchanged prompt can lead Claude to stop at
 `LOCAL_ONLY`; such a slot is a failed delivery. An efficiency conclusion for
 a task is drawn only when both of its slots pass delivery; otherwise the
-task's outcomes and costs are reported as they are. A STOP, UNKNOWN usage or an unreconciled slot (below) is
+task's outcomes and costs are reported as they are. A STOP, UNKNOWN
+usage or an unreconciled slot (below) is
 reported as UNKNOWN for the affected numbers.
 
 ## Accounting (reuse 0254; no new token accounting)
