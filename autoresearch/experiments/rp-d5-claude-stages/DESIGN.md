@@ -1,8 +1,9 @@
 # rp-d5 design — where Claude's delivery time goes
 
-DRAFT for design review (round 1). Research only: no product change, no
-release. Round 0: Astra ultra REVISE, Grok 4.7 REVISE
-([Astra](results/design-r0-astra.md), [Grok](results/design-r0-grok.md));
+DRAFT for design review (round 2). Research only: no product change, no
+release. Rounds 0 and 1: Astra ultra REVISE, Grok 4.7 REVISE
+([r0 Astra](results/design-r0-astra.md), [r0 Grok](results/design-r0-grok.md),
+[r1 Astra](results/design-r1-astra.md), [r1 Grok](results/design-r1-grok.md));
 every finding is applied below.
 
 ## Why
@@ -33,10 +34,10 @@ earlier runs were deleted, so a new run is needed.
 
 ## Question
 
-On BV and Z0 under the shipped 4.2.22 (rp-d4 X), how do Claude's turns,
-marginal tokens and wall time split across delivery stages at effort `max`
-and at `high`, and which stages, if any, contain repeated devlyn-caused
-operations that change no outcome?
+On BV and Z0 under the shipped 4.2.22 (rp-d4 X), at effort `max` and at
+`high`: how do Claude's turns and marginal tokens split across delivery
+stages, how do slot wall time, turns and tokens differ between the two
+efforts, and does any repeated devlyn-caused operation change no outcome?
 
 The Codex gap is not attributed: only within-Claude, within-task max/high
 deltas are reported.
@@ -68,78 +69,111 @@ run before the next slot.
 replaced. Delivery is graded as in rp-d1 (scope and regression checks,
 exactly one correctly merged PR, preserved user files); the report is not
 graded. rp-d1 o08 showed the unchanged prompt can lead Claude to stop at
-`LOCAL_ONLY`; such a slot is a failed delivery. If the two slots of a task
-differ in delivery outcome, that task's effort delta is reported but no
-efficiency conclusion is drawn from it, and a failed slot yields no removal
-candidate. A STOP, UNKNOWN usage or an unreconciled slot (below) is
+`LOCAL_ONLY`; such a slot is a failed delivery. An efficiency conclusion for
+a task is drawn only when both of its slots pass delivery; otherwise the
+task's outcomes and costs are reported as they are. A failed slot yields no
+removal candidate. A STOP, UNKNOWN usage or an unreconciled slot (below) is
 reported as UNKNOWN for the affected numbers.
 
 ## Accounting (reuse 0254; no new token accounting)
 
-- **Turns.** One row per terminal assistant message (`stop_reason` set),
-  the last copy of each message id, from the parent project JSONL and any
-  `subagents/agent-*.jsonl`, each subagent row tied to its parent `Agent`
-  call. Provisional lines are never summed.
+- **Rows.** One row per audited 0254 receipt (one native terminal response
+  body per message id, parent and foreground children), in
+  `api-bodies/index.jsonl` order. The auditor's own checks (identity,
+  conflict, effort, thinking ≤ output) apply unchanged; a slot the auditor
+  refuses is UNKNOWN. Tool calls come from that response body's `content[]`.
+  Tool results (Bash exit code scraped from the result text as in
+  `0234/diagnostics.py`, `is_error` otherwise) come from the project JSONL,
+  joined by tool-use id. A child's rows are classified by their own tools;
+  the parent `Agent` row does not take the child's class.
 - **Tokens.** Per row: uncached input, cache read, cache write, output and
-  thinking (`usage.output_tokens_details.thinking_tokens`, an integer ≤
-  output, already inside output). Row sums must equal the slot's audited
-  0254 totals, or the slot's token figures are UNKNOWN.
-- **Marginal cost.** A stage's marginal tokens are its rows' output plus
-  cache write. Cache read is reported per turn as a series, never charged
-  as a stage's cause; dropping a turn would save its output plus the cache
-  reads of later turns, which the write-up states only as an estimate.
-- **Wall.** Each request's span runs from its `api-bodies/index.jsonl`
-  timestamp to the next request's timestamp; it covers that inference plus
-  the tool execution it triggered, and is charged to that row's stage. The
-  leading residual (launch to first request) and trailing residual (last
-  request to owner exit) are explicit rows. Stage walls plus residuals must
-  equal `owner_seconds` within 1 s, or the slot's wall split is UNKNOWN.
-  Deliver wall includes GitHub round-trips and is reported as is.
-- **Cold cache.** c01 is the first slot. The first request's cache write and
-  wall are shown as their own line and excluded from every effort delta.
+  thinking (already inside output). Row sums must equal the auditor's slot
+  totals, or the slot's token figures are UNKNOWN.
+- **Marginal tokens.** A row's marginal tokens are its output plus cache
+  write. This is a ranking proxy for nomination only; it is not a saving.
+  Cache read is shown per row as a series and is never charged to a stage.
+- **Wall.** Reported per slot only, as the owner's `owner_seconds`
+  (monotonic, around `docker start -a`). There is no per-stage wall split:
+  the semantics of the index timestamps are not validated, and a
+  telescoping partition would reconcile even when misattributed.
+- **First request.** Every slot's first row (cache write, cache read) is
+  shown on its own line. Effort deltas are reported raw; a sensitivity line
+  repeats them with every slot's first row excluded. Neither is called
+  cold-cache overhead.
 
-## Stage attribution (closed table, frozen before the run)
+## Stage attribution (closed function, frozen before the run)
 
-Each terminal row is classified by its tool calls with these predicates:
+Paths are normalized to the cell worktree. **Instruction paths** are
+`CLAUDE.md`, `AGENTS.md` and any path under a `skills/` directory (including
+`skills/_shared/`). **Task paths** are every other path in the cell
+worktree or its task worktree. Each Bash string is heredoc-stripped first.
 
-| Stage | Tool calls |
+Call predicates:
+
+| Predicate | Calls |
 |---|---|
-| Orient | Read/Grep/Glob of `CLAUDE.md`, `AGENTS.md`, `.claude/skills/**`, `.agents/skills/**`; engine preflight scripts |
-| Explore | Read/Grep/Glob of task paths before the first mutation |
-| Edit | Edit/Write/NotebookEdit; Bash whose argv writes task files (`tee`, redirection, `sed -i`, `patch`, `git apply`) |
-| Verify | Bash test commands (`pytest`, `python -m pytest`, `python3 -B -m pytest`, task check scripts); Read/Grep of task paths after the first mutation |
-| Deliver | Bash `task-complete.py` (allocate, accept, complete), `git add/commit/push/worktree`, `gh` before the successful `complete` result |
-| After delivery | any call after the first `complete` result whose status is `COMPLETE`, `CLEANUP_PENDING`, `PR` or `PENDING` |
-| Report | the last terminal row with no tool call |
-| Other | any other tool or command, and any non-final row with no tool call |
+| orient | Read/Grep/Glob of instruction paths |
+| write | Edit, Write, NotebookEdit; Bash containing redirection `>`/`>>` to a file, `tee`, `sed -i`, `patch`, `git apply`, `cp`, `mv`, or an in-process file write (`write_text`, `open(..., 'w'/'a')`) |
+| check | Bash containing `pytest` (any prefix, e.g. `python3 -B -m pytest -q`) or a task check script named in `tasks.json` |
+| look | Read/Grep/Glob of task paths; Bash `git status`, `git diff`, `git log`, `git show`, `ls`, `cat`, `sed -n`, `rg`, `grep` |
+| deliver | Bash containing `task-complete.py`, `git add`, `git commit`, `git push`, `git fetch`, `git merge`, `git worktree`, `git branch`, `gh` |
 
-The first mutation is the first row classified Edit. A row whose calls fall
-in two stages is **Mixed**, listed with its stages and costs and never
-eligible for a candidate. Rules are tested on synthetic JSONL and on the
-retained 0254 test fixtures before the run and are not changed after it.
+A row's stage, applied in this order:
+
+1. **Report:** the last row (index order) with no tool call. Any earlier
+   row with no tool call is **Other**.
+2. **After delivery:** every row after the first `complete` result whose
+   stdout object has `status` `COMPLETE` or `CLEANUP_PENDING` (with
+   `delivery_status` `COMPLETE`). `PR`, `PENDING`, `LOCAL_ONLY`, `FAILED`
+   and `BLOCKED` do not open it. If a `complete` stdout cannot be parsed,
+   the boundary and every later row are **Other**.
+3. If the row's calls (or one Bash string) match two or more of write,
+   check, deliver, orient, look-before-first-write, look-after-first-write,
+   it is **Mixed** (its predicates listed).
+4. Otherwise: orient → **Orient**; write → **Edit**; check → **Verify**;
+   deliver → **Deliver**; look before the first write → **Explore**; look
+   after the first write → **Verify**; anything else → **Other**.
+
+The **first write** is the first row (index order) containing a write call,
+whether its stage is Edit or Mixed. Mixed and Other are reported with their
+costs and are never eligible for nomination. The function is tested on
+synthetic receipts and JSONL (heredocs, compound Bash, PR/PENDING before
+COMPLETE, children, unparseable stdout) before the run and is not changed
+after it.
 
 ## Removal hypothesis rule (frozen)
 
-A concrete repeated operation (not a whole stage) is nominated only if all
-hold, in both tasks at the same effort:
+An **operation key** is the tool name plus its normalized path set, or the
+heredoc-stripped Bash command. An occurrence is a **redundant repeat** when
+the same key already succeeded earlier in the same slot (Bash exit code 0,
+otherwise `is_error` false) and no write call (by the write predicate,
+Edit or Mixed rows included) touched any of its paths in between.
 
-1. its rows are not Other or Mixed;
-2. each counted row repeats a tool call whose paths and exit status the
-   trace shows already succeeded earlier in that slot, with no edit, rebase
-   or copy to those paths in between;
-3. the repeated call is not required by the installed delivery
-   instructions at that point (the write-up quotes the instruction it
-   follows, or shows none applies);
-4. its marginal tokens are at least 15% of the slot's marginal tokens, or
-   its rows are at least 15% of the slot's terminal turns;
-5. if it is claimed to be independent of effort, the `high` slot of each
-   task has it too, at no less than half the `max` slot's rows.
+**Required operations** are never nominated. Frozen from the installed
+4.2.22 `task-completion.md` before the run: `task-complete.py` allocate,
+accept and complete calls; `git fetch`; `git merge --ff-only`; `git restore`
+of copied edits; `git worktree remove` and `git branch -d` after local
+delivery; `git status` and `git diff` at verification and commit points
+(line 29); and re-running checks after a changed base, conflict resolution
+or copy into the worktree (lines 99–102).
 
-If wall and marginal tokens disagree, marginal tokens decide. If several
-qualify, the largest marginal-token share is nominated. Ties go to the
-earlier stage in the table. The nomination is a hypothesis for a later
-registered experiment; this run adopts nothing. If none qualifies, the
-result says so and reports the observed effort deltas. Effort is a user
+A key is nominated only if all hold:
+
+1. it is not a required operation;
+2. in each task's slot at the same effort, its redundant repeats occur in
+   rows whose every call is a redundant repeat of that key (rows with any
+   other call are excluded);
+3. in both tasks those rows' marginal tokens are at least 15% of the slot's
+   marginal tokens;
+4. if claimed independent of effort, the `high` slot of each task also
+   meets 2 and 3.
+
+Keys are ranked by the smaller of the two tasks' shares; ties go to the
+earlier stage in table order, then the lexically smaller key. Families of
+keys are never pooled. The top key is a hypothesis for a later registered
+experiment judged by the ladder rule (total wall, input and output per
+success, failures included). This run adopts nothing. If no key qualifies,
+the result says so and reports the observed effort deltas. Effort is a user
 setting: a large effort delta is reported, and whether future benchmarks
 pin Claude at `high` is a separate owner decision.
 
@@ -156,5 +190,5 @@ image prune guard. Evidence stays until the analysis is reviewed.
 ## Interpretation limits
 
 One slot per task per effort. The split is what these four runs did, not a
-rate. Wall per stage includes model latency, which the harness does not
+rate. Slot wall includes model latency, which the harness does not
 control. A nominated operation is a hypothesis, not a proven saving.
