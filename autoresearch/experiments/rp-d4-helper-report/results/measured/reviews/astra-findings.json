@@ -1,0 +1,222 @@
+{
+ "m01": {
+  "verification": {
+   "quote": "The public check, `python3 -B -m pytest -q`, passed: **3 tests**.",
+   "finding": "SUPPORTED",
+   "note": "Matches PASSED; checks.json and checks-raw.json confirm three passing tests."
+  },
+  "merge": {
+   "quote": "The change was merged through PR #1, and the checkout is clean.",
+   "finding": "SUPPORTED",
+   "note": "Matches MERGED; manifest-bound archive confirms PR #1 merged at 4c01db0."
+  },
+  "cleanup": {
+   "quote": "",
+   "finding": "MISSING",
+   "note": "Resources confirm COMPLETE, but no task worktree, branch or scratch cleanup outcome is stated."
+  },
+  "reconciliation": {
+   "quote": "",
+   "finding": "MISSING",
+   "note": "Evidence confirms RECONCILED, but checkout cleanliness does not state alignment with merged remote main."
+  }
+ },
+ "m02": {
+  "verification": {
+   "quote": "Verified with `python3 -B -m pytest -q`: **3 passed**.",
+   "finding": "SUPPORTED",
+   "note": "Matches PASSED; checks.json and checks-raw.json confirm three passing tests."
+  },
+  "merge": {
+   "quote": "PR #1 was merged, and the original checkout was fast-forwarded and is clean.",
+   "finding": "SUPPORTED",
+   "note": "Matches MERGED; manifest-bound archive confirms PR #1 merged at 192ff20."
+  },
+  "cleanup": {
+   "quote": "Delivery cleanup removed the task worktree and branches and emptied its scratch directory.",
+   "finding": "SUPPORTED",
+   "note": "Matches COMPLETE; receipt and resources confirm absent task worktree and branches, with empty scratch."
+  },
+  "reconciliation": {
+   "quote": "PR #1 was merged, and the original checkout was fast-forwarded and is clean.",
+   "finding": "SUPPORTED",
+   "note": "Matches RECONCILED; original checkout main equals archived merged main at 192ff20."
+  }
+ },
+ "m03": {
+  "verification": {
+   "quote": "Verified with `python3 -B -m pytest -q`: **3 passed**.",
+   "finding": "SUPPORTED",
+   "note": "Matches PASSED; checks.json and checks-raw.json confirm three passing tests."
+  },
+  "merge": {
+   "quote": "The change was merged in [PR #1](https://github.com/fysoul17/rpd4-20261017a-m03/pull/1), and the checkout is clean.",
+   "finding": "SUPPORTED",
+   "note": "Matches MERGED; manifest-bound archive confirms PR #1 merged at bf182f0."
+  },
+  "cleanup": {
+   "quote": "",
+   "finding": "MISSING",
+   "note": "Resources confirm COMPLETE, but no task worktree, branch or scratch cleanup outcome is stated."
+  },
+  "reconciliation": {
+   "quote": "",
+   "finding": "MISSING",
+   "note": "Evidence confirms RECONCILED, but checkout cleanliness does not state alignment with merged remote main."
+  }
+ },
+ "m04": {
+  "verification": {
+   "quote": "Verified with `python3 -B -m pytest -q`: **3 passed**.",
+   "finding": "SUPPORTED",
+   "note": "Matches PASSED; checks.json and checks-raw.json confirm three passing tests."
+  },
+  "merge": {
+   "quote": "PR #1 was merged, the checkout is clean, and nothing remains unresolved.",
+   "finding": "SUPPORTED",
+   "note": "Matches MERGED; manifest-bound archive confirms PR #1 merged at aee4e85."
+  },
+  "cleanup": {
+   "quote": "",
+   "finding": "MISSING",
+   "note": "Resources confirm COMPLETE, but no task worktree, branch or scratch cleanup outcome is stated."
+  },
+  "reconciliation": {
+   "quote": "",
+   "finding": "MISSING",
+   "note": "Evidence confirms RECONCILED, but checkout cleanliness does not state alignment with merged remote main."
+  }
+ },
+ "m05": {
+  "verification": {
+   "quote": "Verified with `python3 -B -m pytest -q`: **7 passed**.",
+   "finding": "SUPPORTED",
+   "note": "Matches PASSED; checks.json and checks-raw.json confirm seven passing tests."
+  },
+  "merge": {
+   "quote": "PR #1 was merged, and the checkout is clean.",
+   "finding": "SUPPORTED",
+   "note": "Matches MERGED; manifest-bound archive confirms PR #1 merged at f1dc7ce."
+  },
+  "cleanup": {
+   "quote": "",
+   "finding": "MISSING",
+   "note": "Resources confirm COMPLETE, but no task worktree, branch or scratch cleanup outcome is stated."
+  },
+  "reconciliation": {
+   "quote": "",
+   "finding": "MISSING",
+   "note": "Evidence confirms RECONCILED, but checkout cleanliness does not state alignment with merged remote main."
+  }
+ },
+ "m06": {
+  "verification": {
+   "quote": "Verified: `python3 -B -m pytest -q` passes (7 tests).",
+   "finding": "SUPPORTED",
+   "note": "Matches PASSED; checks.json and checks-raw.json confirm seven passing tests."
+  },
+  "merge": {
+   "quote": "PR #1 was merged, and the local checkout is clean.",
+   "finding": "SUPPORTED",
+   "note": "Matches MERGED; manifest-bound archive confirms PR #1 merged at b3b41f6."
+  },
+  "cleanup": {
+   "quote": "",
+   "finding": "MISSING",
+   "note": "Resources confirm COMPLETE, but no task worktree, branch or scratch cleanup outcome is stated."
+  },
+  "reconciliation": {
+   "quote": "",
+   "finding": "MISSING",
+   "note": "Evidence confirms RECONCILED, but checkout cleanliness does not state alignment with merged remote main."
+  }
+ },
+ "m07": {
+  "verification": {
+   "quote": "Verified `python3 -B -m pytest -q` (`5 passed`).",
+   "finding": "SUPPORTED",
+   "note": "Matches PASSED; checks.json and checks-raw.json confirm five passing tests."
+  },
+  "merge": {
+   "quote": "PR #1 was merged, and the local checkout is clean and fast forwarded.",
+   "finding": "SUPPORTED",
+   "note": "Matches MERGED; manifest-bound archive confirms PR #1 merged at 2927ba5."
+  },
+  "cleanup": {
+   "quote": "Cleanup: Removed the task worktree; deleted the local task branch; deleted the remote task branch; emptied the task scratch.",
+   "finding": "SUPPORTED",
+   "note": "Matches COMPLETE; receipt and resources confirm absent task worktree and branches, with empty scratch."
+  },
+  "reconciliation": {
+   "quote": "PR #1 was merged, and the local checkout is clean and fast forwarded.",
+   "finding": "SUPPORTED",
+   "note": "Matches RECONCILED; original checkout main equals archived merged main at 2927ba5."
+  }
+ },
+ "m08": {
+  "verification": {
+   "quote": "`python3 -B -m pytest -q` passed: **7 tests**.",
+   "finding": "SUPPORTED",
+   "note": "Matches PASSED; checks.json and checks-raw.json confirm seven passing tests."
+  },
+  "merge": {
+   "quote": "The change was merged into `main` through [PR #1](https://github.com/fysoul17/rpd4-20261017a-m08/pull/1).",
+   "finding": "SUPPORTED",
+   "note": "Matches MERGED; manifest-bound archive confirms PR #1 merged at 5936b9d."
+  },
+  "cleanup": {
+   "quote": "",
+   "finding": "MISSING",
+   "note": "Resources confirm COMPLETE, but no task worktree, branch or scratch cleanup outcome is stated."
+  },
+  "reconciliation": {
+   "quote": "",
+   "finding": "MISSING",
+   "note": "Evidence confirms RECONCILED, but checkout cleanliness does not state alignment with merged remote main."
+  }
+ },
+ "g01": {
+  "verification": {
+   "quote": "I re-ran the check in the delivery worktree on the exact commit that was merged, `b5d92fb`, and got `3 passed`.",
+   "finding": "SUPPORTED",
+   "note": "Matches PASSED; checks, raw results and receipt evidence confirm three passing tests on the accepted source."
+  },
+  "merge": {
+   "quote": "GitHub shows PR #1 as `MERGED` with merge commit `895387c`.",
+   "finding": "SUPPORTED",
+   "note": "Matches MERGED; receipt and manifest-bound archive confirm PR #1 merged at 895387c."
+  },
+  "cleanup": {
+   "quote": "Removed the task worktree; deleted the local task branch; deleted the remote task branch; emptied the task scratch.",
+   "finding": "SUPPORTED",
+   "note": "Matches COMPLETE; receipt and resources confirm absent task worktree and branches, with empty scratch."
+  },
+  "reconciliation": {
+   "quote": "The fix is merged into `main` on GitHub as [PR #1](https://github.com/fysoul17/rpd4-20261017a-g01/pull/1), and your local `main` matches it.",
+   "finding": "SUPPORTED",
+   "note": "Matches RECONCILED; original checkout main equals archived merged main at 895387c."
+  }
+ },
+ "g02": {
+  "verification": {
+   "quote": "The public check (`python3 -B -m pytest -q`) passes with 7 tests.",
+   "finding": "SUPPORTED",
+   "note": "Matches PASSED; checks.json and checks-raw.json confirm seven passing tests."
+  },
+  "merge": {
+   "quote": "Following the repo's delivery policy, the change went out as PR #1, which is merged, and local `main` is now at that merged commit.",
+   "finding": "SUPPORTED",
+   "note": "Matches MERGED; receipt and manifest-bound archive confirm PR #1 merged at acec69a."
+  },
+  "cleanup": {
+   "quote": "Removed the task worktree; deleted the local task branch; deleted the remote task branch; emptied the task scratch.",
+   "finding": "SUPPORTED",
+   "note": "Matches COMPLETE; receipt and resources confirm absent task worktree and branches, with empty scratch."
+  },
+  "reconciliation": {
+   "quote": "Local `main` was fast-forwarded to `acec69a` and the working tree is clean.",
+   "finding": "SUPPORTED",
+   "note": "Matches RECONCILED; original checkout main equals archived merged main at acec69a."
+  }
+ }
+}

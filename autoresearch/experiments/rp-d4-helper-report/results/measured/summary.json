@@ -1,0 +1,881 @@
+{
+  "arms": {
+    "X": {
+      "attempts_dispatched": 4,
+      "cleanup_supported": 0,
+      "completeness": "COMPLETE",
+      "cost_per_success": {
+        "input_tokens": null,
+        "output_tokens": null,
+        "owner_seconds": null
+      },
+      "delivery_pass": 4,
+      "failures": 4,
+      "merge_supported": 4,
+      "not_assessed": 0,
+      "pending": 0,
+      "reconciliation_supported": 0,
+      "successes": 0,
+      "totals": {
+        "input_tokens": 2264753,
+        "output_tokens": 21286,
+        "owner_seconds": 512.6059341259534
+      },
+      "verification_supported": 4,
+      "wall_completeness": "COMPLETE"
+    },
+    "Y": {
+      "attempts_dispatched": 4,
+      "cleanup_supported": 2,
+      "completeness": "COMPLETE",
+      "cost_per_success": {
+        "input_tokens": 790557.5,
+        "output_tokens": 10229.0,
+        "owner_seconds": 212.88160820800113
+      },
+      "delivery_pass": 4,
+      "failures": 2,
+      "merge_supported": 4,
+      "not_assessed": 0,
+      "pending": 0,
+      "reconciliation_supported": 2,
+      "successes": 2,
+      "totals": {
+        "input_tokens": 1581115,
+        "output_tokens": 20458,
+        "owner_seconds": 425.76321641600225
+      },
+      "verification_supported": 4,
+      "wall_completeness": "COMPLETE"
+    }
+  },
+  "decision": {
+    "conditions": {
+      "claude_guard": true,
+      "cleanup": false,
+      "no_y_false": true,
+      "other_categories": true,
+      "successes": true
+    },
+    "cost": {
+      "dominance": true,
+      "passes": true,
+      "reason": "dominance over the zero-success control; no raw-sum comparison",
+      "strict_improvement": true
+    },
+    "decision": "MIXED",
+    "follow_up": [],
+    "reason": "an adoption condition other than cost or strict improvement failed"
+  },
+  "guard": {
+    "attempts_dispatched": 2,
+    "cleanup_supported": 2,
+    "completeness": "COMPLETE",
+    "cost_per_success": {
+      "input_tokens": 1537629.0,
+      "output_tokens": 38250.0,
+      "owner_seconds": 435.3190971874865
+    },
+    "delivery_pass": 2,
+    "failures": 0,
+    "merge_supported": 2,
+    "not_assessed": 0,
+    "passed": true,
+    "pending": 0,
+    "reconciliation_supported": 2,
+    "slots": [
+      "g01",
+      "g02"
+    ],
+    "successes": 2,
+    "totals": {
+      "input_tokens": 3075258,
+      "output_tokens": 76500,
+      "owner_seconds": 870.638194374973
+    },
+    "verification_supported": 2,
+    "wall_completeness": "COMPLETE"
+  },
+  "pairs": [
+    {
+      "arms": {
+        "X": {
+          "attempts_dispatched": 1,
+          "cleanup_supported": 0,
+          "completeness": "COMPLETE",
+          "cost_per_success": {
+            "input_tokens": null,
+            "output_tokens": null,
+            "owner_seconds": null
+          },
+          "delivery_pass": 1,
+          "failures": 1,
+          "merge_supported": 1,
+          "not_assessed": 0,
+          "pending": 0,
+          "reconciliation_supported": 0,
+          "successes": 0,
+          "totals": {
+            "input_tokens": 764671,
+            "output_tokens": 6082,
+            "owner_seconds": 118.23053341696505
+          },
+          "verification_supported": 1,
+          "wall_completeness": "COMPLETE"
+        },
+        "Y": {
+          "attempts_dispatched": 1,
+          "cleanup_supported": 1,
+          "completeness": "COMPLETE",
+          "cost_per_success": {
+            "input_tokens": 377382.0,
+            "output_tokens": 4846.0,
+            "owner_seconds": 92.15317499998491
+          },
+          "delivery_pass": 1,
+          "failures": 0,
+          "merge_supported": 1,
+          "not_assessed": 0,
+          "pending": 0,
+          "reconciliation_supported": 1,
+          "successes": 1,
+          "totals": {
+            "input_tokens": 377382,
+            "output_tokens": 4846,
+            "owner_seconds": 92.15317499998491
+          },
+          "verification_supported": 1,
+          "wall_completeness": "COMPLETE"
+        }
+      },
+      "outcomes": [
+        {
+          "arm": "X",
+          "cell": "m01",
+          "cleanup_supported": false,
+          "delivery_pass": true,
+          "merge_supported": true,
+          "reconciliation_supported": false,
+          "status": "FAILED",
+          "verification_supported": true
+        },
+        {
+          "arm": "Y",
+          "cell": "m02",
+          "cleanup_supported": true,
+          "delivery_pass": true,
+          "merge_supported": true,
+          "reconciliation_supported": true,
+          "status": "SUCCESS",
+          "verification_supported": true
+        }
+      ],
+      "pair": 1,
+      "task": "BV"
+    },
+    {
+      "arms": {
+        "X": {
+          "attempts_dispatched": 1,
+          "cleanup_supported": 0,
+          "completeness": "COMPLETE",
+          "cost_per_success": {
+            "input_tokens": null,
+            "output_tokens": null,
+            "owner_seconds": null
+          },
+          "delivery_pass": 1,
+          "failures": 1,
+          "merge_supported": 1,
+          "not_assessed": 0,
+          "pending": 0,
+          "reconciliation_supported": 0,
+          "successes": 0,
+          "totals": {
+            "input_tokens": 667454,
+            "output_tokens": 5605,
+            "owner_seconds": 118.21625179192051
+          },
+          "verification_supported": 1,
+          "wall_completeness": "COMPLETE"
+        },
+        "Y": {
+          "attempts_dispatched": 1,
+          "cleanup_supported": 0,
+          "completeness": "COMPLETE",
+          "cost_per_success": {
+            "input_tokens": null,
+            "output_tokens": null,
+            "owner_seconds": null
+          },
+          "delivery_pass": 1,
+          "failures": 1,
+          "merge_supported": 1,
+          "not_assessed": 0,
+          "pending": 0,
+          "reconciliation_supported": 0,
+          "successes": 0,
+          "totals": {
+            "input_tokens": 463515,
+            "output_tokens": 5332,
+            "owner_seconds": 115.01261208299547
+          },
+          "verification_supported": 1,
+          "wall_completeness": "COMPLETE"
+        }
+      },
+      "outcomes": [
+        {
+          "arm": "Y",
+          "cell": "m03",
+          "cleanup_supported": false,
+          "delivery_pass": true,
+          "merge_supported": true,
+          "reconciliation_supported": false,
+          "status": "FAILED",
+          "verification_supported": true
+        },
+        {
+          "arm": "X",
+          "cell": "m04",
+          "cleanup_supported": false,
+          "delivery_pass": true,
+          "merge_supported": true,
+          "reconciliation_supported": false,
+          "status": "FAILED",
+          "verification_supported": true
+        }
+      ],
+      "pair": 2,
+      "task": "BV"
+    },
+    {
+      "arms": {
+        "X": {
+          "attempts_dispatched": 1,
+          "cleanup_supported": 0,
+          "completeness": "COMPLETE",
+          "cost_per_success": {
+            "input_tokens": null,
+            "output_tokens": null,
+            "owner_seconds": null
+          },
+          "delivery_pass": 1,
+          "failures": 1,
+          "merge_supported": 1,
+          "not_assessed": 0,
+          "pending": 0,
+          "reconciliation_supported": 0,
+          "successes": 0,
+          "totals": {
+            "input_tokens": 385330,
+            "output_tokens": 4439,
+            "owner_seconds": 91.94911195896566
+          },
+          "verification_supported": 1,
+          "wall_completeness": "COMPLETE"
+        },
+        "Y": {
+          "attempts_dispatched": 1,
+          "cleanup_supported": 0,
+          "completeness": "COMPLETE",
+          "cost_per_success": {
+            "input_tokens": null,
+            "output_tokens": null,
+            "owner_seconds": null
+          },
+          "delivery_pass": 1,
+          "failures": 1,
+          "merge_supported": 1,
+          "not_assessed": 0,
+          "pending": 0,
+          "reconciliation_supported": 0,
+          "successes": 0,
+          "totals": {
+            "input_tokens": 409973,
+            "output_tokens": 5003,
+            "owner_seconds": 91.66163433296606
+          },
+          "verification_supported": 1,
+          "wall_completeness": "COMPLETE"
+        }
+      },
+      "outcomes": [
+        {
+          "arm": "X",
+          "cell": "m05",
+          "cleanup_supported": false,
+          "delivery_pass": true,
+          "merge_supported": true,
+          "reconciliation_supported": false,
+          "status": "FAILED",
+          "verification_supported": true
+        },
+        {
+          "arm": "Y",
+          "cell": "m06",
+          "cleanup_supported": false,
+          "delivery_pass": true,
+          "merge_supported": true,
+          "reconciliation_supported": false,
+          "status": "FAILED",
+          "verification_supported": true
+        }
+      ],
+      "pair": 3,
+      "task": "Z0"
+    },
+    {
+      "arms": {
+        "X": {
+          "attempts_dispatched": 1,
+          "cleanup_supported": 0,
+          "completeness": "COMPLETE",
+          "cost_per_success": {
+            "input_tokens": null,
+            "output_tokens": null,
+            "owner_seconds": null
+          },
+          "delivery_pass": 1,
+          "failures": 1,
+          "merge_supported": 1,
+          "not_assessed": 0,
+          "pending": 0,
+          "reconciliation_supported": 0,
+          "successes": 0,
+          "totals": {
+            "input_tokens": 447298,
+            "output_tokens": 5160,
+            "owner_seconds": 184.21003695810214
+          },
+          "verification_supported": 1,
+          "wall_completeness": "COMPLETE"
+        },
+        "Y": {
+          "attempts_dispatched": 1,
+          "cleanup_supported": 1,
+          "completeness": "COMPLETE",
+          "cost_per_success": {
+            "input_tokens": 330245.0,
+            "output_tokens": 5277.0,
+            "owner_seconds": 126.9357950000558
+          },
+          "delivery_pass": 1,
+          "failures": 0,
+          "merge_supported": 1,
+          "not_assessed": 0,
+          "pending": 0,
+          "reconciliation_supported": 1,
+          "successes": 1,
+          "totals": {
+            "input_tokens": 330245,
+            "output_tokens": 5277,
+            "owner_seconds": 126.9357950000558
+          },
+          "verification_supported": 1,
+          "wall_completeness": "COMPLETE"
+        }
+      },
+      "outcomes": [
+        {
+          "arm": "Y",
+          "cell": "m07",
+          "cleanup_supported": true,
+          "delivery_pass": true,
+          "merge_supported": true,
+          "reconciliation_supported": true,
+          "status": "SUCCESS",
+          "verification_supported": true
+        },
+        {
+          "arm": "X",
+          "cell": "m08",
+          "cleanup_supported": false,
+          "delivery_pass": true,
+          "merge_supported": true,
+          "reconciliation_supported": false,
+          "status": "FAILED",
+          "verification_supported": true
+        }
+      ],
+      "pair": 4,
+      "task": "Z0"
+    }
+  ],
+  "phase": "measured",
+  "schema": "rp-d4-summary-v1",
+  "slots": [
+    {
+      "arm": "X",
+      "cell": "m01",
+      "cleanup_supported": false,
+      "config": "codex",
+      "delivery_pass": true,
+      "dispatched": true,
+      "failure": "report",
+      "input_tokens": 764671,
+      "merge_refused": false,
+      "merge_supported": true,
+      "output_tokens": 6082,
+      "owner_seconds": 118.23053341696505,
+      "reconciliation_supported": false,
+      "reviews": {
+        "astra": {
+          "checklist_sha256": "1d8997f4c3d54ac867bd711a415f90d04f10e114e796dcc160954accf67958b8",
+          "failed": [
+            "cleanup",
+            "reconciliation"
+          ],
+          "findings": {
+            "cleanup": "MISSING",
+            "merge": "SUPPORTED",
+            "reconciliation": "MISSING",
+            "verification": "SUPPORTED"
+          },
+          "status": "FAIL"
+        },
+        "grok": {
+          "checklist_sha256": "1d8997f4c3d54ac867bd711a415f90d04f10e114e796dcc160954accf67958b8",
+          "failed": [
+            "cleanup",
+            "reconciliation"
+          ],
+          "findings": {
+            "cleanup": "MISSING",
+            "merge": "SUPPORTED",
+            "reconciliation": "AMBIGUOUS",
+            "verification": "SUPPORTED"
+          },
+          "status": "FAIL"
+        }
+      },
+      "runner_status": "ADJUDICATE",
+      "status": "FAILED",
+      "task": "BV",
+      "usage": "COMPLETE",
+      "verification_supported": true
+    },
+    {
+      "arm": "Y",
+      "cell": "m02",
+      "cleanup_supported": true,
+      "config": "codex",
+      "delivery_pass": true,
+      "dispatched": true,
+      "input_tokens": 377382,
+      "merge_refused": false,
+      "merge_supported": true,
+      "output_tokens": 4846,
+      "owner_seconds": 92.15317499998491,
+      "reconciliation_supported": true,
+      "reviews": {
+        "astra": {
+          "checklist_sha256": "7abd71c03709330e648428a82024c736277b4b38cb007b2ca20201134aad8569",
+          "failed": [],
+          "findings": {
+            "cleanup": "SUPPORTED",
+            "merge": "SUPPORTED",
+            "reconciliation": "SUPPORTED",
+            "verification": "SUPPORTED"
+          },
+          "status": "PASS"
+        },
+        "grok": {
+          "checklist_sha256": "7abd71c03709330e648428a82024c736277b4b38cb007b2ca20201134aad8569",
+          "failed": [],
+          "findings": {
+            "cleanup": "SUPPORTED",
+            "merge": "SUPPORTED",
+            "reconciliation": "SUPPORTED",
+            "verification": "SUPPORTED"
+          },
+          "status": "PASS"
+        }
+      },
+      "runner_status": "ADJUDICATE",
+      "status": "SUCCESS",
+      "task": "BV",
+      "usage": "COMPLETE",
+      "verification_supported": true
+    },
+    {
+      "arm": "Y",
+      "cell": "m03",
+      "cleanup_supported": false,
+      "config": "codex",
+      "delivery_pass": true,
+      "dispatched": true,
+      "failure": "report",
+      "input_tokens": 463515,
+      "merge_refused": false,
+      "merge_supported": true,
+      "output_tokens": 5332,
+      "owner_seconds": 115.01261208299547,
+      "reconciliation_supported": false,
+      "reviews": {
+        "astra": {
+          "checklist_sha256": "b7286f044321e4af783bffc3af0fe52ceb7cba65b4e04ad8f2c2c38c0225ae44",
+          "failed": [
+            "cleanup",
+            "reconciliation"
+          ],
+          "findings": {
+            "cleanup": "MISSING",
+            "merge": "SUPPORTED",
+            "reconciliation": "MISSING",
+            "verification": "SUPPORTED"
+          },
+          "status": "FAIL"
+        },
+        "grok": {
+          "checklist_sha256": "b7286f044321e4af783bffc3af0fe52ceb7cba65b4e04ad8f2c2c38c0225ae44",
+          "failed": [
+            "cleanup",
+            "reconciliation"
+          ],
+          "findings": {
+            "cleanup": "MISSING",
+            "merge": "SUPPORTED",
+            "reconciliation": "AMBIGUOUS",
+            "verification": "SUPPORTED"
+          },
+          "status": "FAIL"
+        }
+      },
+      "runner_status": "ADJUDICATE",
+      "status": "FAILED",
+      "task": "BV",
+      "usage": "COMPLETE",
+      "verification_supported": true
+    },
+    {
+      "arm": "X",
+      "cell": "m04",
+      "cleanup_supported": false,
+      "config": "codex",
+      "delivery_pass": true,
+      "dispatched": true,
+      "failure": "report",
+      "input_tokens": 667454,
+      "merge_refused": false,
+      "merge_supported": true,
+      "output_tokens": 5605,
+      "owner_seconds": 118.21625179192051,
+      "reconciliation_supported": false,
+      "reviews": {
+        "astra": {
+          "checklist_sha256": "8bf75272db193268c05e7014dddcb0445c79463010fae2ab2d8e25fb4d6e5825",
+          "failed": [
+            "cleanup",
+            "reconciliation"
+          ],
+          "findings": {
+            "cleanup": "MISSING",
+            "merge": "SUPPORTED",
+            "reconciliation": "MISSING",
+            "verification": "SUPPORTED"
+          },
+          "status": "FAIL"
+        },
+        "grok": {
+          "checklist_sha256": "8bf75272db193268c05e7014dddcb0445c79463010fae2ab2d8e25fb4d6e5825",
+          "failed": [
+            "cleanup",
+            "reconciliation"
+          ],
+          "findings": {
+            "cleanup": "MISSING",
+            "merge": "SUPPORTED",
+            "reconciliation": "AMBIGUOUS",
+            "verification": "SUPPORTED"
+          },
+          "status": "FAIL"
+        }
+      },
+      "runner_status": "ADJUDICATE",
+      "status": "FAILED",
+      "task": "BV",
+      "usage": "COMPLETE",
+      "verification_supported": true
+    },
+    {
+      "arm": "X",
+      "cell": "m05",
+      "cleanup_supported": false,
+      "config": "codex",
+      "delivery_pass": true,
+      "dispatched": true,
+      "failure": "report",
+      "input_tokens": 385330,
+      "merge_refused": false,
+      "merge_supported": true,
+      "output_tokens": 4439,
+      "owner_seconds": 91.94911195896566,
+      "reconciliation_supported": false,
+      "reviews": {
+        "astra": {
+          "checklist_sha256": "2ff7d67ab11a5fb3e805730d1478a4a833ad63467af5b3ae58a4b8471818990a",
+          "failed": [
+            "cleanup",
+            "reconciliation"
+          ],
+          "findings": {
+            "cleanup": "MISSING",
+            "merge": "SUPPORTED",
+            "reconciliation": "MISSING",
+            "verification": "SUPPORTED"
+          },
+          "status": "FAIL"
+        },
+        "grok": {
+          "checklist_sha256": "2ff7d67ab11a5fb3e805730d1478a4a833ad63467af5b3ae58a4b8471818990a",
+          "failed": [
+            "cleanup",
+            "reconciliation"
+          ],
+          "findings": {
+            "cleanup": "MISSING",
+            "merge": "SUPPORTED",
+            "reconciliation": "AMBIGUOUS",
+            "verification": "SUPPORTED"
+          },
+          "status": "FAIL"
+        }
+      },
+      "runner_status": "ADJUDICATE",
+      "status": "FAILED",
+      "task": "Z0",
+      "usage": "COMPLETE",
+      "verification_supported": true
+    },
+    {
+      "arm": "Y",
+      "cell": "m06",
+      "cleanup_supported": false,
+      "config": "codex",
+      "delivery_pass": true,
+      "dispatched": true,
+      "failure": "report",
+      "input_tokens": 409973,
+      "merge_refused": false,
+      "merge_supported": true,
+      "output_tokens": 5003,
+      "owner_seconds": 91.66163433296606,
+      "reconciliation_supported": false,
+      "reviews": {
+        "astra": {
+          "checklist_sha256": "05eafc181935c170d9a7ec2c108fb972564879a01d24b92899c6b25440bc566b",
+          "failed": [
+            "cleanup",
+            "reconciliation"
+          ],
+          "findings": {
+            "cleanup": "MISSING",
+            "merge": "SUPPORTED",
+            "reconciliation": "MISSING",
+            "verification": "SUPPORTED"
+          },
+          "status": "FAIL"
+        },
+        "grok": {
+          "checklist_sha256": "05eafc181935c170d9a7ec2c108fb972564879a01d24b92899c6b25440bc566b",
+          "failed": [
+            "cleanup",
+            "reconciliation"
+          ],
+          "findings": {
+            "cleanup": "MISSING",
+            "merge": "SUPPORTED",
+            "reconciliation": "AMBIGUOUS",
+            "verification": "SUPPORTED"
+          },
+          "status": "FAIL"
+        }
+      },
+      "runner_status": "ADJUDICATE",
+      "status": "FAILED",
+      "task": "Z0",
+      "usage": "COMPLETE",
+      "verification_supported": true
+    },
+    {
+      "arm": "Y",
+      "cell": "m07",
+      "cleanup_supported": true,
+      "config": "codex",
+      "delivery_pass": true,
+      "dispatched": true,
+      "input_tokens": 330245,
+      "merge_refused": false,
+      "merge_supported": true,
+      "output_tokens": 5277,
+      "owner_seconds": 126.9357950000558,
+      "reconciliation_supported": true,
+      "reviews": {
+        "astra": {
+          "checklist_sha256": "ef1275349d68642052d08db1ae068d72fbadbf31e0fb4ba2ab46335376589458",
+          "failed": [],
+          "findings": {
+            "cleanup": "SUPPORTED",
+            "merge": "SUPPORTED",
+            "reconciliation": "SUPPORTED",
+            "verification": "SUPPORTED"
+          },
+          "status": "PASS"
+        },
+        "grok": {
+          "checklist_sha256": "ef1275349d68642052d08db1ae068d72fbadbf31e0fb4ba2ab46335376589458",
+          "failed": [],
+          "findings": {
+            "cleanup": "SUPPORTED",
+            "merge": "SUPPORTED",
+            "reconciliation": "SUPPORTED",
+            "verification": "SUPPORTED"
+          },
+          "status": "PASS"
+        }
+      },
+      "runner_status": "ADJUDICATE",
+      "status": "SUCCESS",
+      "task": "Z0",
+      "usage": "COMPLETE",
+      "verification_supported": true
+    },
+    {
+      "arm": "X",
+      "cell": "m08",
+      "cleanup_supported": false,
+      "config": "codex",
+      "delivery_pass": true,
+      "dispatched": true,
+      "failure": "report",
+      "input_tokens": 447298,
+      "merge_refused": false,
+      "merge_supported": true,
+      "output_tokens": 5160,
+      "owner_seconds": 184.21003695810214,
+      "reconciliation_supported": false,
+      "reviews": {
+        "astra": {
+          "checklist_sha256": "99bb944f314961de655f7f9524477624477fcd92ae5b56a50e62f7ccf5aad9b5",
+          "failed": [
+            "cleanup",
+            "reconciliation"
+          ],
+          "findings": {
+            "cleanup": "MISSING",
+            "merge": "SUPPORTED",
+            "reconciliation": "MISSING",
+            "verification": "SUPPORTED"
+          },
+          "status": "FAIL"
+        },
+        "grok": {
+          "checklist_sha256": "99bb944f314961de655f7f9524477624477fcd92ae5b56a50e62f7ccf5aad9b5",
+          "failed": [
+            "cleanup",
+            "reconciliation"
+          ],
+          "findings": {
+            "cleanup": "MISSING",
+            "merge": "SUPPORTED",
+            "reconciliation": "AMBIGUOUS",
+            "verification": "SUPPORTED"
+          },
+          "status": "FAIL"
+        }
+      },
+      "runner_status": "ADJUDICATE",
+      "status": "FAILED",
+      "task": "Z0",
+      "usage": "COMPLETE",
+      "verification_supported": true
+    },
+    {
+      "arm": "Y",
+      "cell": "g01",
+      "cleanup_supported": true,
+      "config": "claude",
+      "delivery_pass": true,
+      "dispatched": true,
+      "input_tokens": 1458953,
+      "merge_refused": false,
+      "merge_supported": true,
+      "output_tokens": 36686,
+      "owner_seconds": 423.17078391707037,
+      "reconciliation_supported": true,
+      "reviews": {
+        "astra": {
+          "checklist_sha256": "61d44850be06b740096d09ad6c9cc4871921d4e18acdce4b502158563414d3c3",
+          "failed": [],
+          "findings": {
+            "cleanup": "SUPPORTED",
+            "merge": "SUPPORTED",
+            "reconciliation": "SUPPORTED",
+            "verification": "SUPPORTED"
+          },
+          "status": "PASS"
+        },
+        "grok": {
+          "checklist_sha256": "61d44850be06b740096d09ad6c9cc4871921d4e18acdce4b502158563414d3c3",
+          "failed": [],
+          "findings": {
+            "cleanup": "SUPPORTED",
+            "merge": "SUPPORTED",
+            "reconciliation": "SUPPORTED",
+            "verification": "SUPPORTED"
+          },
+          "status": "PASS"
+        }
+      },
+      "runner_status": "ADJUDICATE",
+      "status": "SUCCESS",
+      "task": "BV",
+      "usage": "COMPLETE",
+      "verification_supported": true
+    },
+    {
+      "arm": "Y",
+      "cell": "g02",
+      "cleanup_supported": true,
+      "config": "claude",
+      "delivery_pass": true,
+      "dispatched": true,
+      "input_tokens": 1616305,
+      "merge_refused": false,
+      "merge_supported": true,
+      "output_tokens": 39814,
+      "owner_seconds": 447.4674104579026,
+      "reconciliation_supported": true,
+      "reviews": {
+        "astra": {
+          "checklist_sha256": "e2418b25ef15e74359a8de5c5cbf0397a1d41edb61646b66837c89ef4b08a845",
+          "failed": [],
+          "findings": {
+            "cleanup": "SUPPORTED",
+            "merge": "SUPPORTED",
+            "reconciliation": "SUPPORTED",
+            "verification": "SUPPORTED"
+          },
+          "status": "PASS"
+        },
+        "grok": {
+          "checklist_sha256": "e2418b25ef15e74359a8de5c5cbf0397a1d41edb61646b66837c89ef4b08a845",
+          "failed": [],
+          "findings": {
+            "cleanup": "SUPPORTED",
+            "merge": "SUPPORTED",
+            "reconciliation": "SUPPORTED",
+            "verification": "SUPPORTED"
+          },
+          "status": "PASS"
+        }
+      },
+      "runner_status": "ADJUDICATE",
+      "status": "SUCCESS",
+      "task": "Z0",
+      "usage": "COMPLETE",
+      "verification_supported": true
+    }
+  ]
+}

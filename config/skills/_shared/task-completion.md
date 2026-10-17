@@ -125,9 +125,10 @@ identity for interrupted cleanup and later builds, checks live users and reports
 the logical byte count separately from actual free disk space. It does not depend on a product PASS or rewrite that verdict.
 Unknown historical roots, source/recovery data, shared caches and terminal
 history are never adopted or swept. A refused cleanup does not block source
-delivery (`CLEANUP_PENDING` after delivered source). No task is described as
-cleaned while owned disposable files remain. On resumption, finish any pending
-scratch cleanup before allocating more temporary storage; the next allocation also
+delivery; it stays visible in the handoff with its receipt and retry command
+(`CLEANUP_PENDING` after delivered source). No task is described as cleaned
+while owned disposable files remain. On resumption, finish any pending scratch
+cleanup before allocating more temporary storage; the next allocation also
 retries it for completed deliveries with released writers. Rebuild from retained
 inputs when needed; cleanup is not an instruction to restart parked work.
 
@@ -199,9 +200,9 @@ identify the original checkout and outstanding operation; after allocation,
 include the receipt-based resume command. Headless execution neither waives
 permissions nor silently changes delivery policy.
 
-Report verification, delivery, the result's `cleanup` verbatim when present and
-checkout reconciliation separately. A delivery error does not rewrite an accepted
-product result; unperformed verification must never be reported as accepted.
+Report verification, delivery and checkout reconciliation separately. A delivery
+error does not rewrite an accepted product result; unperformed verification
+must never be reported as accepted.
 
 ## Yield and retain recoverability
 

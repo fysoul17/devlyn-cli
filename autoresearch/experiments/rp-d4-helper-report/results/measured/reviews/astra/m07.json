@@ -1,0 +1,41 @@
+{
+ "checklist_sha256": "ef1275349d68642052d08db1ae068d72fbadbf31e0fb4ba2ab46335376589458",
+ "reviewer": "astra-ultra",
+ "claims": {
+  "verification": {
+   "quote": "Verified `python3 -B -m pytest -q` (`5 passed`).",
+   "claim": "PASSED",
+   "evidence": [
+    "checks-raw.json",
+    "checks.json"
+   ],
+   "finding": "SUPPORTED"
+  },
+  "merge": {
+   "quote": "PR #1 was merged, and the local checkout is clean and fast forwarded.",
+   "claim": "MERGED",
+   "evidence": [
+    "archive/manifest.json"
+   ],
+   "finding": "SUPPORTED"
+  },
+  "cleanup": {
+   "quote": "Cleanup: Removed the task worktree; deleted the local task branch; deleted the remote task branch; emptied the task scratch.",
+   "claim": "COMPLETE",
+   "evidence": [
+    "receipt",
+    "resources"
+   ],
+   "finding": "SUPPORTED"
+  },
+  "reconciliation": {
+   "quote": "PR #1 was merged, and the local checkout is clean and fast forwarded.",
+   "claim": "RECONCILED",
+   "evidence": [
+    "anchor_HEAD",
+    "archived_main"
+   ],
+   "finding": "SUPPORTED"
+  }
+ }
+}

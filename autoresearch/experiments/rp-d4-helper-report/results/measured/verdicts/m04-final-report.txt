@@ -1,0 +1,3 @@
+Changed [is_expired](/cell/work/src/expiry/__init__.py) to treat exact equality as expired and added an equality regression in [test_regression.py](/cell/work/tests/test_regression.py). Existing before/after comparisons and `TypeError` behavior remain covered by the passing tests.
+
+Verified with `python3 -B -m pytest -q`: **3 passed**. PR #1 was merged, the checkout is clean, and nothing remains unresolved.

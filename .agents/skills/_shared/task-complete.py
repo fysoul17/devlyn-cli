@@ -577,10 +577,7 @@ def clean_scratch_command(args):
                 "receipt": str(path), "scratch_cleanup": result, "product_verdict_unchanged": True}
 
 
-def cleanup(receipt, path, pr, *, actions=None):
-    # Caller-owned progress survives writer retention; it is never persisted.
-    actions = {} if actions is None else actions
-    actions.update(ran=True, linked=receipt["linked"], worktree_removed=None, local_ref_deleted=None, remote_branch_deleted=None)
+def cleanup(receipt, path, pr):
     require(pr["state"] == "MERGED" and pr.get("mergedAt") and pr.get("mergeCommit", {}).get("oid"), "actual matching merge evidence is required")
     sha = receipt["publish_sha"]
     branch_ref = "refs/heads/" + receipt["branch"]
@@ -614,10 +611,8 @@ def cleanup(receipt, path, pr, *, actions=None):
             removable(receipt, work)
             require(records_manifest(work) == records, ".devlyn changed after it was copied; stop its writer and resume")
             gref(receipt, "worktree", "remove", str(work))
-            actions["worktree_removed"] = True
         else:
             require(str(work) not in registrations(receipt), "missing worktree is still registered; retain")
-            actions["worktree_removed"] = False
     checked_out = [p for p, row in registrations(receipt).items() if row.get("branch") == branch_ref]
     require(not checked_out, "task branch is still checked out at " + ", ".join(checked_out) + "; switch it off the task branch before cleanup")
     # Check ownership/ref identity once more immediately before each deletion.
@@ -629,17 +624,12 @@ def cleanup(receipt, path, pr, *, actions=None):
         # Deletion with an exact lease is the remote compare-and-delete primitive;
         # product publication above never uses force or a lease.
         gref(receipt, "push", f"--force-with-lease={branch_ref}:{sha}", receipt["remote"], ":"+branch_ref)
-    actions["remote_branch_deleted"] = remote == sha
     if ref_sha(receipt, branch_ref) is not None:
         require(all(row.get("branch") != branch_ref for row in registrations(receipt).values()), "task branch became checked out; retain ref")
         gref(receipt, "update-ref", "-d", branch_ref, sha)
-        actions["local_ref_deleted"] = True
-    else:
-        actions["local_ref_deleted"] = False
     receipt.pop("workspace_cleanup", None)
     receipt["status"] = "COMPLETE"
     atomic_json(path, receipt)
-    return actions
 
 
 @contextlib.contextmanager
@@ -730,39 +720,8 @@ def complete(args):
                 outside(Path(receipt["worktree"]))
             receipt["writers_released"] = True
             atomic_json(path, receipt)
-        actions = {"ran": False}
-        def result(status, **fields):
-            value = dict(completion_result(receipt, path, status), **fields)
-            workspace, scratch = value["workspace_cleanup"], value["scratch_cleanup"]
-            clauses = []
-            if status == "COMPLETE":
-                if actions["ran"]:
-                    for key, verb, resource in (("worktree_removed", "removed", "task worktree"),
-                                                ("local_ref_deleted", "deleted", "local task branch"),
-                                                ("remote_branch_deleted", "deleted", "remote task branch")):
-                        if key == "worktree_removed" and not actions["linked"]:
-                            if not workspace:
-                                clauses.append("the in-place checkout is not a cleanup target")
-                        elif actions[key]:
-                            clauses.append(f"{verb} the {resource}")
-                        elif not workspace:
-                            clauses.append(f"the {resource} was absent")
-                if workspace:
-                    clauses.append(f"workspace cleanup deferred: {workspace['reason']}; resume with {workspace['resume']}")
-                elif not actions["ran"]:
-                    clauses.append("the receipt already records workspace cleanup complete")
-            else:
-                clauses.append({"PR": "workspace cleanup deferred: the PR is not merged",
-                                "PENDING": "workspace cleanup deferred: the PR is not merged",
-                                "LOCAL_ONLY": "workspace cleanup skipped: local-only delivery",
-                                "FAILED": "workspace cleanup skipped; publication skipped by this call"}[status])
-            if scratch["status"] == "CLEAN":
-                clauses.append("emptied the task scratch")
-            elif scratch["status"] == "RETAINED":
-                clauses.append(f"scratch cleanup incomplete: {scratch['reason']}; resume with {scratch['resume']}")
-            sentence = "; ".join(clauses)
-            value["cleanup"] = sentence[0].upper() + sentence[1:] + "."
-            return value
+        def result(status):
+            return completion_result(receipt, path, status)
         if (receipt.get("acceptance") or {}).get("verdict") == "FAILED":
             return result("FAILED")
         if args.local_only or receipt.get("local_only"):
@@ -864,11 +823,11 @@ def complete(args):
             validate_pr(receipt, pr)
             if pr["state"] != "MERGED":
                 # Merge only when the repository allows it; a refused request leaves the PR for a person.
-                return result("PR", merge_refused=refused) if refused and not pr.get("autoMergeRequest") else result("PENDING")
+                return dict(result("PR"), merge_refused=refused) if refused and not pr.get("autoMergeRequest") else result("PENDING")
         receipt["merge"] = pr
         atomic_json(path, receipt)
         try:
-            cleanup(receipt, path, pr, actions=actions)
+            cleanup(receipt, path, pr)
         except (WritersUnobservable, WriterActive) as error:
             # Conservative retention: the merge settles delivery; workspace, task refs and custody stay, reported.
             receipt["workspace_cleanup"] = {"status": "RETAINED", "reason": str(error), "resume": shlex.join([
@@ -1215,13 +1174,11 @@ class CompletionTests(unittest.TestCase):
         (self.task / "uncommitted-work").write_text("preserve")
         result, _ = self.cli("complete", "--receipt", self.receipt, "--local-only", "--writers-stopped")
         self.assertEqual(result["status"], "LOCAL_ONLY")
-        self.assertEqual(result["cleanup"], "Workspace cleanup skipped: local-only delivery; emptied the task scratch.")
         self.assertFalse(any(scratch.iterdir()))
         self.assertEqual((self.task / "uncommitted-work").read_text(), "preserve")
         self.assertEqual(result["scratch_cleanup"]["logical_bytes_removed"], 11)
         result, _ = self.cli("clean-scratch", "--receipt", self.receipt, "--writers-stopped")
         self.assertEqual(result["status"], "SCRATCH_CLEAN")
-        self.assertNotIn("cleanup", result)
 
     @unittest.skipUnless(sys.platform == "darwin" or sys.platform.startswith("linux"), "writer observation requires POSIX")
     def test_scratch_rejects_active_writer_and_requires_owner_assertion(self):
@@ -1411,11 +1368,6 @@ ctypes.CDLL(None).pthread_exit(None)
         self.assertIn("replaced", result["reason"])
         self.assertIn("--writers-stopped", result["resume"])
         self.assertEqual((scratch / "foreign").read_text(), "preserve")
-        result, _ = self.cli("complete", "--receipt", self.receipt, "--local-only", "--writers-stopped")
-        self.assertEqual(result["cleanup"], "Workspace cleanup skipped: local-only delivery; "
-                         "scratch cleanup incomplete: scratch directory was replaced; retain; "
-                         f"resume with {result['scratch_cleanup']['resume']}.")
-        self.assertEqual((scratch / "foreign").read_text(), "preserve")
 
     @unittest.skipUnless(sys.platform == "darwin" or sys.platform.startswith("linux"), "writer observation requires POSIX")
     def test_scratch_refusal_does_not_block_local_only_delivery(self):
@@ -1439,14 +1391,9 @@ ctypes.CDLL(None).pthread_exit(None)
         self.assertEqual(result["scratch_cleanup"]["status"], "RETAINED")
         self.assertIn("--writers-stopped", result["scratch_cleanup"]["resume"])
         self.assertIn("--writers-stopped", result["resume"])
-        self.assertEqual(result["cleanup"], "Removed the task worktree; deleted the local task branch; deleted the remote task branch; "
-                         "scratch cleanup incomplete: scratch contains Git recovery data; move it to retained custody before cleanup; "
-                         f"resume with {result['scratch_cleanup']['resume']}.")
-        self.assertIsNone(result["workspace_cleanup"])
         (scratch / ".git").rmdir()
         result, _ = self.cli("complete", "--receipt", self.receipt, "--writers-stopped")
         self.assertEqual(result["status"], "COMPLETE")
-        self.assertEqual(result["cleanup"], "The receipt already records workspace cleanup complete; emptied the task scratch.")
 
     @unittest.skipUnless(sys.platform == "darwin" or sys.platform.startswith("linux"), "writer observation requires POSIX")
     def test_scratch_mount_and_scan_failure_preserve_contents(self):
@@ -1586,16 +1533,11 @@ ctypes.CDLL(None).pthread_exit(None)
         self.allocate(); self.accept()
         result, _ = self.complete("--mode", "pr")
         self.assertEqual(result["status"], "PR")
-        expected = ("Workspace cleanup deferred: the PR is not merged; scratch cleanup incomplete: "
-                    "stop/yield scratch writers, then use --writers-stopped; "
-                    f"resume with {result['scratch_cleanup']['resume']}.")
-        self.assertEqual(result["cleanup"], expected)
         self.assertTrue(self.task.exists())
         self.configure(pending=True)
         for _ in range(2):
             result, _ = self.complete("--mode", "auto")
             self.assertEqual(result["status"], "PENDING")
-            self.assertEqual(result["cleanup"], expected)
         d = json.loads(self.data.read_text(encoding="utf-8"))
         self.assertEqual((d["creates"], d["merges"], d["pushs"]), (1, 1, 1))
 
@@ -1670,11 +1612,6 @@ ctypes.CDLL(None).pthread_exit(None)
         self.allocate(); self.accept()
         result, _ = self.complete("--writers-stopped")
         self.assertEqual(result["status"], "COMPLETE")
-        self.assertEqual(result["cleanup"], "Removed the task worktree; deleted the local task branch; deleted the remote task branch; emptied the task scratch.")
-        self.assertIsNone(result["workspace_cleanup"])
-        saved = json.loads(self.receipt.read_text())
-        self.assertNotIn("workspace_cleanup", saved)
-        self.assertNotIn("cleanup", saved)
         self.assertEqual(json.loads(self.data.read_text(encoding="utf-8")).get("merges"), 1)
         self.assertFalse(self.task.exists())
         self.assertEqual(self.g("branch", "--list", "task/fixture"), "")
@@ -1689,11 +1626,6 @@ ctypes.CDLL(None).pthread_exit(None)
             result = complete(args)
         self.assertEqual((result["status"], result["delivery_status"]), ("CLEANUP_PENDING", "COMPLETE"))
         self.assertIn("writer observation unsupported", result["workspace_cleanup"]["reason"])
-        self.assertEqual(result["cleanup"], "Workspace cleanup deferred: writer observation unsupported on this platform; retain workspace; "
-                         f"resume with {result['workspace_cleanup']['resume']}; "
-                         "scratch cleanup incomplete: mount observation unsupported; retain scratch; "
-                         f"resume with {result['scratch_cleanup']['resume']}.")
-        self.assertNotEqual(result["workspace_cleanup"]["resume"], result["resume"])
         receipt = json.loads(self.receipt.read_text(encoding="utf-8"))
         self.assertEqual((receipt["delivery"], receipt.get("status")), ("COMPLETE", None))
         self.assertTrue(self.task.exists())
@@ -1705,51 +1637,6 @@ ctypes.CDLL(None).pthread_exit(None)
         _, r = self.complete("--mode", "pr", "--writers-stopped", cwd=self.task, success=False)
         self.assertIn("caller cwd is inside", json.loads(r.stdout)["reason"])
         self.assertNotIn("writers_released", json.loads(self.receipt.read_text(encoding="utf-8")))
-
-    def test_cleanup_reports_absent_local_ref(self):
-        self.allocate(); self.accept()
-        self.complete("--mode", "pr", "--writers-stopped")
-        self.merge_pr()
-        self.g("worktree", "remove", str(self.task))
-        self.g("update-ref", "-d", "refs/heads/task/fixture", self.sha)
-        result, _ = self.complete(acceptance=False)
-        self.assertEqual(result["status"], "COMPLETE")
-        self.assertEqual(result["cleanup"], "The task worktree was absent; the local task branch was absent; deleted the remote task branch; emptied the task scratch.")
-
-    def test_cleanup_reports_no_scratch_when_not_owned(self):
-        self.allocate(); self.accept()
-        receipt = json.loads(self.receipt.read_text())
-        del receipt["scratch_identity"]
-        self.receipt.write_text(json.dumps(receipt), encoding="utf-8")
-        result, _ = self.complete("--mode", "pr")
-        self.assertEqual(result["scratch_cleanup"], {"status": "NOT_OWNED"})
-        self.assertEqual(result["cleanup"], "Workspace cleanup deferred: the PR is not merged.")
-
-    def test_cleanup_reports_partial_deletions_before_writer_retention(self):
-        from unittest.mock import patch
-        self.allocate(); self.accept()
-        self.complete("--mode", "pr", "--writers-stopped")
-        self.merge_pr()
-        args = argparse.Namespace(receipt=str(self.receipt), acceptance=None, mode=None, local_only=False, writers_stopped=False)
-        original = gref
-        for error, operation, clause in ((WritersUnobservable, "push", "Removed the task worktree"),
-                                         (WriterActive, "update-ref", "Deleted the remote task branch")):
-            def stopped(receipt, *argv):
-                if argv[0] == operation:
-                    raise error("fixture writer retention")
-                return original(receipt, *argv)
-            with self.subTest(operation=operation), patch.dict(os.environ, self.env), patch.dict(cleanup.__globals__, {"gref": stopped}):
-                result = complete(args)
-            self.assertEqual((result["status"], result["delivery_status"]), ("CLEANUP_PENDING", "COMPLETE"))
-            self.assertEqual(result["cleanup"], f"{clause}; workspace cleanup deferred: fixture writer retention; "
-                             f"resume with {result['workspace_cleanup']['resume']}; emptied the task scratch.")
-            self.assertFalse(self.task.exists())
-            self.assertNotEqual(self.g("branch", "--list", "task/fixture"), "")
-        self.assertEqual(self.g("ls-remote", "origin", "refs/heads/task/fixture"), "")
-        result, _ = self.complete(acceptance=False)
-        self.assertEqual(result["status"], "COMPLETE")
-        self.assertIsNone(result["workspace_cleanup"])
-        self.assertEqual(result["cleanup"], "The task worktree was absent; deleted the local task branch; the remote task branch was absent; emptied the task scratch.")
 
     @unittest.skipUnless(sys.platform == "darwin" or sys.platform.startswith("linux"), "writer observation requires POSIX")
     def test_squash_merge_cleans_and_recovery_ref_keeps_commit(self):
@@ -2154,7 +2041,6 @@ ctypes.CDLL(None).pthread_exit(None)
         self.assertEqual(hashlib.sha256(recovered.read_bytes()).hexdigest(), saved["files"][".devlyn/checks.txt"]["sha256"])
         result, _ = self.complete("--writers-stopped", acceptance=False)
         self.assertEqual(result["status"], "COMPLETE")
-        self.assertEqual(result["cleanup"], "The task worktree was absent; deleted the local task branch; deleted the remote task branch; emptied the task scratch.")
         self.assertEqual(self.g("show", saved["recovery_ref"]+":product"), "accepted")
 
     def test_reject_invalid_policy_before_push(self):
@@ -2270,8 +2156,6 @@ ctypes.CDLL(None).pthread_exit(None)
             result, _ = self.complete("--writers-stopped", "--mode", "auto")
             self.assertEqual((result["status"], result["delivery_status"]), ("CLEANUP_PENDING", "COMPLETE"))
             self.assertIn("active process", result["workspace_cleanup"]["reason"])
-            self.assertEqual(result["cleanup"], f"Workspace cleanup deferred: {result['workspace_cleanup']['reason']}; "
-                             f"resume with {result['workspace_cleanup']['resume']}; emptied the task scratch.")
             self.assertTrue(self.task.exists())
         finally:
             child.terminate(); child.wait(timeout=5)
@@ -2417,9 +2301,6 @@ ctypes.CDLL(None).pthread_exit(None)
         self.configure(merge_allowed=False)
         result, _ = self.complete()
         self.assertEqual((result["status"], result["merge_refused"]), ("PR", "repository disallows merge commits"))
-        self.assertEqual(result["cleanup"], "Workspace cleanup deferred: the PR is not merged; scratch cleanup incomplete: "
-                         "stop/yield scratch writers, then use --writers-stopped; "
-                         f"resume with {result['scratch_cleanup']['resume']}.")
         d = json.loads(self.data.read_text(encoding="utf-8"))
         self.assertEqual((d.get("pushs", 0), d.get("merges", 0)), (1, 0))
         self.complete("--mode", "pr")
@@ -2502,7 +2383,6 @@ ctypes.CDLL(None).pthread_exit(None)
         self.assertEqual(result["status"], "COMPLETE")
         self.assertEqual(self.anchor_state(), before)
         self.assertEqual(user_file.read_text(encoding="utf-8"), "retained user data")
-        self.assertEqual(result["cleanup"], "The in-place checkout is not a cleanup target; deleted the local task branch; the remote task branch was absent; emptied the task scratch.")
         self.assertEqual(self.g("branch", "--list", "task/fixture"), "")
         self.assertEqual(self.g("ls-remote", "origin", "refs/heads/task/fixture"), "")
 
@@ -2521,7 +2401,6 @@ ctypes.CDLL(None).pthread_exit(None)
         _, r = self.complete(success=False)
         self.assertNotEqual(r.returncode, 0)
         self.assertIn("replaced", json.loads(r.stdout)["reason"])
-        self.assertNotIn("cleanup", json.loads(r.stdout))
         self.assertTrue(self.task.exists())
         self.assertEqual(json.loads(self.data.read_text(encoding="utf-8")).get("pushs",0), 0)
 
@@ -2678,9 +2557,6 @@ ctypes.CDLL(None).pthread_exit(None)
         self.assertEqual(self.g("rev-parse", receipt["recovery_ref"]), terminal)
         result, _ = self.complete("--mode", "auto", acceptance=False)
         self.assertEqual(result["status"], "FAILED")
-        self.assertEqual(result["cleanup"], "Workspace cleanup skipped; publication skipped by this call; scratch cleanup incomplete: "
-                         "stop/yield scratch writers, then use --writers-stopped; "
-                         f"resume with {result['scratch_cleanup']['resume']}.")
         d = json.loads(self.data.read_text())
         self.assertEqual((d.get("pushs", 0), d.get("creates", 0)), (0, 0))
 

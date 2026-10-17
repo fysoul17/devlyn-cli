@@ -1,0 +1,5 @@
+Fixed `--limit 0` by defaulting to 10 only when the limit is omitted. Added a regression test in [tests/test_regression.py](/cell/work/tests/test_regression.py); the parser change is in [src/limitcli/__init__.py](/cell/work/src/limitcli/__init__.py).
+
+Verified `python3 -B -m pytest -q` (`5 passed`). Direct checks also confirmed positive limits and argparse exit code 2 for negative, noninteger, missing, and unknown arguments.
+
+PR #1 was merged, and the local checkout is clean and fast forwarded. Cleanup: Removed the task worktree; deleted the local task branch; deleted the remote task branch; emptied the task scratch. Nothing remains unresolved.

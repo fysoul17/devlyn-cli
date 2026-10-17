@@ -1,0 +1,41 @@
+{
+ "checklist_sha256": "e2418b25ef15e74359a8de5c5cbf0397a1d41edb61646b66837c89ef4b08a845",
+ "reviewer": "astra-ultra",
+ "claims": {
+  "verification": {
+   "quote": "The public check (`python3 -B -m pytest -q`) passes with 7 tests.",
+   "claim": "PASSED",
+   "evidence": [
+    "checks-raw.json",
+    "checks.json"
+   ],
+   "finding": "SUPPORTED"
+  },
+  "merge": {
+   "quote": "Following the repo's delivery policy, the change went out as PR #1, which is merged, and local `main` is now at that merged commit.",
+   "claim": "MERGED",
+   "evidence": [
+    "archive/manifest.json"
+   ],
+   "finding": "SUPPORTED"
+  },
+  "cleanup": {
+   "quote": "Removed the task worktree; deleted the local task branch; deleted the remote task branch; emptied the task scratch.",
+   "claim": "COMPLETE",
+   "evidence": [
+    "receipt",
+    "resources"
+   ],
+   "finding": "SUPPORTED"
+  },
+  "reconciliation": {
+   "quote": "Local `main` was fast-forwarded to `acec69a` and the working tree is clean.",
+   "claim": "RECONCILED",
+   "evidence": [
+    "anchor_HEAD",
+    "archived_main"
+   ],
+   "finding": "SUPPORTED"
+  }
+ }
+}
