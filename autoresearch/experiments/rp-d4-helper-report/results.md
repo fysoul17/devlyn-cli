@@ -78,6 +78,8 @@ unchanged on main; 4.2.22 stays the release.
 2. **Stop here.** The helper already performs and records cleanup correctly
    whatever the report says; only the report line is at stake.
 
+**Owner decision (2026-10-17): option 2, stop.**
+
 ## Cleanup
 
 Done after this write-up merges:
