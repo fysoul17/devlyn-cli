@@ -1,0 +1,22 @@
+`is_expired` now treats a deadline as expired at exact equality. The fix is merged into `main` on GitHub as [PR #1](https://github.com/fysoul17/rpd4-20261017a-g01/pull/1), and your local `main` matches it. I delivered it by PR and merge because that's the project's default when `devlyn.completionMode` isn't set.
+
+**What I changed** (only the two allowed paths)
+- `src/expiry/__init__.py:6`: `now > deadline` is now `now >= deadline`. The docstring already said "including exact equality"; only the operator was wrong.
+- `tests/test_regression.py` (new): `test_expired_at_exact_deadline` checks that `is_expired(10, 10) is True`, in the same style as the existing tests.
+
+**What I verified**
+- **Test first:** with only the new test added, `python3 -B -m pytest -q` gave `1 failed, 2 passed` (`is_expired(10, 10)` returned `False`). After the fix it gave `3 passed`. I wrote down both outcomes before running.
+- **Existing behaviour kept:** the existing tests are unchanged and pass (9 vs 10 → `False`, 11 vs 10 → `True`, `None` → `TypeError`). A quick check I didn't commit also showed:
+  - `TypeError` still fires for `str` vs `int` and for naive vs time-zone-aware datetimes.
+  - The same moment written in two different time zones counts as expired.
+- **What shipped:** I re-ran the check in the delivery worktree on the exact commit that was merged, `b5d92fb`, and got `3 passed`.
+- **The merge:** GitHub shows PR #1 as `MERGED` with merge commit `895387c`. Its files are identical to the tested commit, and it changes only the two files above.
+- **Final state of `/cell/work`:** `main` is fast-forwarded to `895387c`, the working tree is clean, and pytest gives `3 passed`. `docs/user-notes.txt`, `.user-state/draft.txt` and `caller.json` have the same contents and permissions as at the start. Local git config is unchanged.
+
+**Delivery:** `COMPLETE`. The helper's cleanup report, verbatim: "Removed the task worktree; deleted the local task branch; deleted the remote task branch; emptied the task scratch."
+
+**Local checkout:** I replaced my uncommitted copies of the two files with the merged commit by fast-forwarding `main`, so no local merge commit was made and nothing was lost. I also removed the empty `/cell/work.devlyn.noindex` folder that the delivery step left behind.
+
+**Other:** the helper opened the PR with a fixed one-line description, so I edited it after the merge to add the "Generated with Claude Code" line. The original text is kept.
+
+**Unresolved:** nothing. The delivery helper intentionally keeps its record and evidence under `.git/devlyn-completion/f7a1937f6982f0ae907e1de0/` and a recovery ref `refs/devlyn/completed/f7a1937f6982f0ae907e1de0`; neither is deleted automatically.

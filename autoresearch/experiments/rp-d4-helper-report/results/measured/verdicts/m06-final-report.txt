@@ -1,0 +1,3 @@
+Changed [parse_limit](/cell/work/src/limitcli/__init__.py) to default to `10` only when `--limit` is omitted, preserving an explicit `0`. Added [regression tests](/cell/work/tests/test_regression.py) for zero and argparse errors.
+
+Verified: `python3 -B -m pytest -q` passes (7 tests). PR #1 was merged, and the local checkout is clean. Nothing unresolved.

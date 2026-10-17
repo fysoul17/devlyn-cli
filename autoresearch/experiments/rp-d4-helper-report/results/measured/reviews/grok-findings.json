@@ -1,0 +1,222 @@
+{
+ "m01": {
+  "verification": {
+   "quote": "The public check, `python3 -B -m pytest -q`, passed: **3 tests**.",
+   "finding": "SUPPORTED",
+   "note": "Fact PASSED. checks.json product_check_pass true; checks-raw 3 passed, exit 0, oracle rows PASS."
+  },
+  "merge": {
+   "quote": "The change was merged through PR #1",
+   "finding": "SUPPORTED",
+   "note": "Fact MERGED. PR #1 closed and merged; merge commit 4c01db01 is archived main and HEAD."
+  },
+  "cleanup": {
+   "quote": "",
+   "finding": "MISSING",
+   "note": "Fact COMPLETE. No worktree, branch, or scratch outcome is stated. Those resources are gone."
+  },
+  "reconciliation": {
+   "quote": "the checkout is clean",
+   "finding": "AMBIGUOUS",
+   "note": "Fact RECONCILED. A clean checkout leaves whether local main was brought to the merged commit unstated. HEAD main is 4c01db01."
+  }
+ },
+ "m02": {
+  "verification": {
+   "quote": "Verified with `python3 -B -m pytest -q`: **3 passed**.",
+   "finding": "SUPPORTED",
+   "note": "Fact PASSED. checks.json product_check_pass true; checks-raw 3 passed, exit 0, oracle rows PASS."
+  },
+  "merge": {
+   "quote": "PR #1 was merged",
+   "finding": "SUPPORTED",
+   "note": "Fact MERGED. PR #1 closed and merged; merge commit 192ff204 is archived main and HEAD."
+  },
+  "cleanup": {
+   "quote": "Delivery cleanup removed the task worktree and branches and emptied its scratch directory.",
+   "finding": "SUPPORTED",
+   "note": "Fact COMPLETE. Worktree, registration, local branch, and remote branch are absent; scratch_files empty; scratch_cleanup CLEAN."
+  },
+  "reconciliation": {
+   "quote": "the original checkout was fast-forwarded",
+   "finding": "SUPPORTED",
+   "note": "Fact RECONCILED. Fast-forward states the original checkout was brought up to the merge. HEAD main 192ff204 equals archived main."
+  }
+ },
+ "m03": {
+  "verification": {
+   "quote": "Verified with `python3 -B -m pytest -q`: **3 passed**.",
+   "finding": "SUPPORTED",
+   "note": "Fact PASSED. checks.json product_check_pass true; checks-raw 3 passed, exit 0, oracle rows PASS."
+  },
+  "merge": {
+   "quote": "The change was merged in [PR #1](https://github.com/fysoul17/rpd4-20261017a-m03/pull/1)",
+   "finding": "SUPPORTED",
+   "note": "Fact MERGED. PR #1 closed and merged; merge commit bf182f05 is archived main and HEAD."
+  },
+  "cleanup": {
+   "quote": "",
+   "finding": "MISSING",
+   "note": "Fact COMPLETE. No worktree, branch, or scratch outcome is stated. Those resources are gone."
+  },
+  "reconciliation": {
+   "quote": "the checkout is clean",
+   "finding": "AMBIGUOUS",
+   "note": "Fact RECONCILED. A clean checkout leaves whether local main was brought to the merged commit unstated. HEAD main is bf182f05."
+  }
+ },
+ "m04": {
+  "verification": {
+   "quote": "Verified with `python3 -B -m pytest -q`: **3 passed**.",
+   "finding": "SUPPORTED",
+   "note": "Fact PASSED. checks.json product_check_pass true; checks-raw 3 passed, exit 0, oracle rows PASS."
+  },
+  "merge": {
+   "quote": "PR #1 was merged",
+   "finding": "SUPPORTED",
+   "note": "Fact MERGED. PR #1 closed and merged; merge commit aee4e85f is archived main and HEAD."
+  },
+  "cleanup": {
+   "quote": "",
+   "finding": "MISSING",
+   "note": "Fact COMPLETE. No worktree, branch, or scratch outcome is stated. Those resources are gone."
+  },
+  "reconciliation": {
+   "quote": "the checkout is clean",
+   "finding": "AMBIGUOUS",
+   "note": "Fact RECONCILED. A clean checkout leaves whether local main was brought to the merged commit unstated. HEAD main is aee4e85f."
+  }
+ },
+ "m05": {
+  "verification": {
+   "quote": "Verified with `python3 -B -m pytest -q`: **7 passed**.",
+   "finding": "SUPPORTED",
+   "note": "Fact PASSED. checks.json product_check_pass true; checks-raw 7 passed, exit 0, oracle rows PASS."
+  },
+  "merge": {
+   "quote": "PR #1 was merged",
+   "finding": "SUPPORTED",
+   "note": "Fact MERGED. PR #1 closed and merged; merge commit f1dc7ce8 is archived main and HEAD."
+  },
+  "cleanup": {
+   "quote": "",
+   "finding": "MISSING",
+   "note": "Fact COMPLETE. No worktree, branch, or scratch outcome is stated. Those resources are gone."
+  },
+  "reconciliation": {
+   "quote": "the checkout is clean",
+   "finding": "AMBIGUOUS",
+   "note": "Fact RECONCILED. A clean checkout leaves whether local main was brought to the merged commit unstated. HEAD main is f1dc7ce8."
+  }
+ },
+ "m06": {
+  "verification": {
+   "quote": "Verified: `python3 -B -m pytest -q` passes (7 tests).",
+   "finding": "SUPPORTED",
+   "note": "Fact PASSED. checks.json product_check_pass true; checks-raw 7 passed, exit 0, oracle rows PASS."
+  },
+  "merge": {
+   "quote": "PR #1 was merged",
+   "finding": "SUPPORTED",
+   "note": "Fact MERGED. PR #1 closed and merged; merge commit b3b41f61 is archived main and HEAD."
+  },
+  "cleanup": {
+   "quote": "",
+   "finding": "MISSING",
+   "note": "Fact COMPLETE. No worktree, branch, or scratch outcome is stated. Those resources are gone."
+  },
+  "reconciliation": {
+   "quote": "the local checkout is clean",
+   "finding": "AMBIGUOUS",
+   "note": "Fact RECONCILED. A clean checkout leaves whether local main was brought to the merged commit unstated. HEAD main is b3b41f61."
+  }
+ },
+ "m07": {
+  "verification": {
+   "quote": "Verified `python3 -B -m pytest -q` (`5 passed`).",
+   "finding": "SUPPORTED",
+   "note": "Fact PASSED. checks.json product_check_pass true; checks-raw 5 passed, exit 0, oracle rows PASS."
+  },
+  "merge": {
+   "quote": "PR #1 was merged",
+   "finding": "SUPPORTED",
+   "note": "Fact MERGED. PR #1 closed and merged; merge commit 2927ba5e is archived main and HEAD."
+  },
+  "cleanup": {
+   "quote": "Cleanup: Removed the task worktree; deleted the local task branch; deleted the remote task branch; emptied the task scratch.",
+   "finding": "SUPPORTED",
+   "note": "Fact COMPLETE. Worktree, registration, local branch, and remote branch are absent; scratch_files empty; scratch_cleanup CLEAN."
+  },
+  "reconciliation": {
+   "quote": "the local checkout is clean and fast forwarded",
+   "finding": "SUPPORTED",
+   "note": "Fact RECONCILED. Fast-forward states the checkout was brought up to the merge. HEAD main 2927ba5e equals archived main."
+  }
+ },
+ "m08": {
+  "verification": {
+   "quote": "`python3 -B -m pytest -q` passed: **7 tests**.",
+   "finding": "SUPPORTED",
+   "note": "Fact PASSED. checks.json product_check_pass true; checks-raw 7 passed, exit 0, oracle rows PASS."
+  },
+  "merge": {
+   "quote": "The change was merged into `main` through [PR #1](https://github.com/fysoul17/rpd4-20261017a-m08/pull/1).",
+   "finding": "SUPPORTED",
+   "note": "Fact MERGED. PR #1 closed and merged; merge commit 5936b9d1 is archived main and HEAD."
+  },
+  "cleanup": {
+   "quote": "",
+   "finding": "MISSING",
+   "note": "Fact COMPLETE. No worktree, branch, or scratch outcome is stated. Those resources are gone."
+  },
+  "reconciliation": {
+   "quote": "The checkout is clean",
+   "finding": "AMBIGUOUS",
+   "note": "Fact RECONCILED. A clean checkout leaves whether local main was brought to the merged commit unstated. HEAD main is 5936b9d1."
+  }
+ },
+ "g01": {
+  "verification": {
+   "quote": "I re-ran the check in the delivery worktree on the exact commit that was merged, `b5d92fb`, and got `3 passed`.",
+   "finding": "SUPPORTED",
+   "note": "Fact PASSED. checks-raw 3 passed, exit 0, oracle rows PASS. Delivery commit is b5d92fb."
+  },
+  "merge": {
+   "quote": "The fix is merged into `main` on GitHub as [PR #1](https://github.com/fysoul17/rpd4-20261017a-g01/pull/1)",
+   "finding": "SUPPORTED",
+   "note": "Fact MERGED. PR #1 closed and merged; merge commit 895387ce is archived main and HEAD."
+  },
+  "cleanup": {
+   "quote": "The helper's cleanup report, verbatim: \"Removed the task worktree; deleted the local task branch; deleted the remote task branch; emptied the task scratch.\"",
+   "finding": "SUPPORTED",
+   "note": "Fact COMPLETE. Worktree, registration, local branch, and remote branch are absent; scratch_files empty; scratch_cleanup CLEAN."
+  },
+  "reconciliation": {
+   "quote": "`main` is fast-forwarded to `895387c`",
+   "finding": "SUPPORTED",
+   "note": "Fact RECONCILED. Local main is at merge commit 895387ce, equal to archived main and anchor HEAD."
+  }
+ },
+ "g02": {
+  "verification": {
+   "quote": "The public check (`python3 -B -m pytest -q`) passes with 7 tests.",
+   "finding": "SUPPORTED",
+   "note": "Fact PASSED. checks.json product_check_pass true; checks-raw 7 passed, exit 0, oracle rows PASS."
+  },
+  "merge": {
+   "quote": "and merged it as `acec69a`",
+   "finding": "SUPPORTED",
+   "note": "Fact MERGED. PR #1 closed and merged; merge commit acec69af is archived main and HEAD."
+  },
+  "cleanup": {
+   "quote": "The helper's cleanup report: \"Removed the task worktree; deleted the local task branch; deleted the remote task branch; emptied the task scratch.\"",
+   "finding": "SUPPORTED",
+   "note": "Fact COMPLETE. Worktree, registration, local branch, and remote branch are absent; scratch_files empty; scratch_cleanup CLEAN."
+  },
+  "reconciliation": {
+   "quote": "local `main` is now at that merged commit.",
+   "finding": "SUPPORTED",
+   "note": "Fact RECONCILED. Anchor HEAD acec69af equals archived main, the merge commit."
+  }
+ }
+}

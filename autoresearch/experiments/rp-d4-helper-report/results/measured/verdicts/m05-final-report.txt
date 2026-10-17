@@ -1,0 +1,3 @@
+Changed [the limit parser](/cell/work/src/limitcli/__init__.py) so an explicit `--limit 0` stays zero while an omitted limit defaults to 10. Added [regression tests](/cell/work/tests/test_regression.py) for zero and argparse exits on missing and unknown arguments.
+
+Verified with `python3 -B -m pytest -q`: **7 passed**. PR #1 was merged, and the checkout is clean. Nothing remains unresolved.

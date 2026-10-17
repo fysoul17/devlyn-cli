@@ -1,0 +1,3 @@
+Fixed `--limit 0` so it returns `0`; an omitted limit still returns `10`. Added regression coverage for zero and argparse error exits in [test_regression.py](/cell/work/tests/test_regression.py).
+
+`python3 -B -m pytest -q` passed: **7 tests**. The change was merged into `main` through [PR #1](https://github.com/fysoul17/rpd4-20261017a-m08/pull/1). The checkout is clean, existing user files were preserved, and nothing remains unresolved.

@@ -1,0 +1,136 @@
+{
+  "dispatched": 2,
+  "phase": "smoke",
+  "releases": {
+    "X": {
+      "integrity": "sha512-PsTQkzNrfz3TENHtBLff/fmbnxmV2YzMSl4DLKI7dFwOXyO4m9x5CxlhSjkGR5FEfFwjqOHabIrpqKb0O3GOpQ==",
+      "manifest_sha256": "ae0f0bafb984dba10997b9db4a896a25d8f5841e8581fbe75037c28b2b5d340d",
+      "sha256": "799c609141e7f1c05c0e798177522d807cc93cfcf580532f38cfbe31a205ca61",
+      "source": {
+        "registry": "devlyn-cli@4.2.22"
+      },
+      "version": "4.2.22"
+    },
+    "Y": {
+      "integrity": "sha512-3woak0Fh1N4psBUPDZaZBDiBlPviL2gtRQJPrhKD9AMW9WZL/Ex7xwM77f2RpLHr/4V1O+Swd0WBNOAbfgnCug==",
+      "manifest_sha256": "f90b7e848024eb164f3295e85d70c9ce39b249f078d713388749f5ddaaf66feb",
+      "sha256": "248e7cca6d024556b8a4dc5a0d379de3de909f67fdcabd38c6504c61b8068b01",
+      "source": {
+        "candidate_blobs": {
+          "config/skills/_shared/task-complete.py": "c08c1e806d2493203ed23273fa9f340ef715aa2e",
+          "config/skills/_shared/task-completion.md": "b0805de76306147c744eba05367a57a01b11fd95"
+        },
+        "candidate_commit": "c048fd3122f408da01d9aeed4a86f410f6053a95",
+        "registry": "devlyn-cli@4.2.22"
+      },
+      "version": "4.2.22"
+    }
+  },
+  "slots": [
+    {
+      "account": "9ca44b8a38f2",
+      "archive": {
+        "manifest_sha256": "aee319efbe01483d363361e5864f671581c98b2a3eedd147e1b8376d1485248a",
+        "path": "/Users/aipalm/.local/share/nx01/rp-d4-live/stage/smoke-output/archives/smoke-codex-X"
+      },
+      "arm": "X",
+      "auth": "/Users/aipalm/.local/share/nx01/rp-d4-live/codex-auth",
+      "auth_manifest_sha256": "c3d572634f592ea836646a67e82df08c80e7b25cd4eabb3e3625873f8d342cab",
+      "cell": "smoke-codex-X",
+      "codex_account": "9ca44b8a38f2",
+      "config": "codex",
+      "delivery_assessment": "ADJUDICATE",
+      "dispatched": true,
+      "frozen_runtime_sha256": "197893bb673ceaaec69e427fb59e9b238925e74e9d32e8231b27b27f11c09c35",
+      "inherited_status": "CHECKS_PASS",
+      "inherited_verdict_sha256": "8046081017ff194df8db0a2f3380a71b9f9fbd762daf775fd393c949689ec0d7",
+      "input_tokens": 512048,
+      "measurement_eligible": false,
+      "merge_refused": false,
+      "output_tokens": 6531,
+      "phase": "smoke",
+      "prompt_sha256": "2ccc7f6a11891f6270685c09ada44cc4376bbedb047f8a0864f950b415bf50cf",
+      "release": {
+        "integrity": "sha512-PsTQkzNrfz3TENHtBLff/fmbnxmV2YzMSl4DLKI7dFwOXyO4m9x5CxlhSjkGR5FEfFwjqOHabIrpqKb0O3GOpQ==",
+        "manifest_sha256": "ae0f0bafb984dba10997b9db4a896a25d8f5841e8581fbe75037c28b2b5d340d",
+        "sha256": "799c609141e7f1c05c0e798177522d807cc93cfcf580532f38cfbe31a205ca61",
+        "source": {
+          "registry": "devlyn-cli@4.2.22"
+        },
+        "version": "4.2.22"
+      },
+      "repository_cleanup": {
+        "archive_manifest_sha256": "aee319efbe01483d363361e5864f671581c98b2a3eedd147e1b8376d1485248a",
+        "http_status": 404,
+        "repository": "fysoul17/rpd4-20261017a-smoke-codex-X",
+        "status": "DELETED"
+      },
+      "schema": "rp-d4-verdict-v1",
+      "smoke_qualification": {
+        "status": "PASS"
+      },
+      "status": "ADJUDICATE",
+      "task": "SM",
+      "usage": "COMPLETE"
+    },
+    {
+      "account": "9ca44b8a38f2",
+      "archive": {
+        "manifest_sha256": "81a162e12112f2dfe68710dcd4fdaafd0e7731eb6407b8a1bd3820c6d48d6446",
+        "path": "/Users/aipalm/.local/share/nx01/rp-d4-live/stage/smoke-output/archives/smoke-codex-Y"
+      },
+      "arm": "Y",
+      "auth": "/Users/aipalm/.local/share/nx01/rp-d4-live/codex-auth",
+      "auth_manifest_sha256": "c3d572634f592ea836646a67e82df08c80e7b25cd4eabb3e3625873f8d342cab",
+      "cell": "smoke-codex-Y",
+      "codex_account": "9ca44b8a38f2",
+      "config": "codex",
+      "delivery_assessment": "ADJUDICATE",
+      "dispatched": true,
+      "frozen_runtime_sha256": "197893bb673ceaaec69e427fb59e9b238925e74e9d32e8231b27b27f11c09c35",
+      "inherited_status": "CHECKS_PASS",
+      "inherited_verdict_sha256": "c456b1233dd994196064c04ecf6a4786edc4232f6682b8dd5111647633aa11b3",
+      "input_tokens": 539098,
+      "measurement_eligible": false,
+      "merge_refused": false,
+      "output_tokens": 6239,
+      "phase": "smoke",
+      "prompt_sha256": "2ccc7f6a11891f6270685c09ada44cc4376bbedb047f8a0864f950b415bf50cf",
+      "release": {
+        "integrity": "sha512-3woak0Fh1N4psBUPDZaZBDiBlPviL2gtRQJPrhKD9AMW9WZL/Ex7xwM77f2RpLHr/4V1O+Swd0WBNOAbfgnCug==",
+        "manifest_sha256": "f90b7e848024eb164f3295e85d70c9ce39b249f078d713388749f5ddaaf66feb",
+        "sha256": "248e7cca6d024556b8a4dc5a0d379de3de909f67fdcabd38c6504c61b8068b01",
+        "source": {
+          "candidate_blobs": {
+            "config/skills/_shared/task-complete.py": "c08c1e806d2493203ed23273fa9f340ef715aa2e",
+            "config/skills/_shared/task-completion.md": "b0805de76306147c744eba05367a57a01b11fd95"
+          },
+          "candidate_commit": "c048fd3122f408da01d9aeed4a86f410f6053a95",
+          "registry": "devlyn-cli@4.2.22"
+        },
+        "version": "4.2.22"
+      },
+      "repository_cleanup": {
+        "archive_manifest_sha256": "81a162e12112f2dfe68710dcd4fdaafd0e7731eb6407b8a1bd3820c6d48d6446",
+        "http_status": 404,
+        "repository": "fysoul17/rpd4-20261017a-smoke-codex-Y",
+        "status": "DELETED"
+      },
+      "schema": "rp-d4-verdict-v1",
+      "smoke_qualification": {
+        "action_records": {
+          "cell/helper-actions/291-1.json": "7b52554e668e8e55b08893e15eb82c9b843cdb0e641594683b8f606317d96917"
+        },
+        "calls": 1,
+        "checklist_sha256": "268fdc11d95652c1c2ec018fd31aa4e372e97c878bba79fa7484b5d62ae4b63e",
+        "evidence_manifest_sha256": "93cf0aa4c13fd8f85b08a3de9e1f21a2d3464396a6adc3b52db2bba05a51d3cb",
+        "helper_sha256": "e8fa246c1e8d1023e7c9e75e8f34e4f7d9b2f506e8bac3992fe1935ef7d4a210",
+        "status": "PASS"
+      },
+      "status": "ADJUDICATE",
+      "task": "SM",
+      "usage": "COMPLETE"
+    }
+  ],
+  "status": "RECORDED"
+}

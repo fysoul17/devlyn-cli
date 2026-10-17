@@ -1,0 +1,41 @@
+{
+ "checklist_sha256": "1d8997f4c3d54ac867bd711a415f90d04f10e114e796dcc160954accf67958b8",
+ "reviewer": "grok-4.7",
+ "claims": {
+  "verification": {
+   "quote": "The public check, `python3 -B -m pytest -q`, passed: **3 tests**.",
+   "claim": "PASSED",
+   "evidence": [
+    "checks-raw.json",
+    "checks.json"
+   ],
+   "finding": "SUPPORTED"
+  },
+  "merge": {
+   "quote": "The change was merged through PR #1",
+   "claim": "MERGED",
+   "evidence": [
+    "archive/manifest.json"
+   ],
+   "finding": "SUPPORTED"
+  },
+  "cleanup": {
+   "quote": "",
+   "claim": "COMPLETE",
+   "evidence": [
+    "receipt",
+    "resources"
+   ],
+   "finding": "MISSING"
+  },
+  "reconciliation": {
+   "quote": "the checkout is clean",
+   "claim": "RECONCILED",
+   "evidence": [
+    "anchor_HEAD",
+    "archived_main"
+   ],
+   "finding": "AMBIGUOUS"
+  }
+ }
+}

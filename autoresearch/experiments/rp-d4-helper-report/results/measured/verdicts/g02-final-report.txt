@@ -1,0 +1,31 @@
+I fixed `--limit 0` so it now returns `0`, and an omitted `--limit` still returns `10`. The public check (`python3 -B -m pytest -q`) passes with 7 tests. Following the repo's delivery policy, the change went out as PR #1, which is merged, and local `main` is now at that merged commit.
+
+**What I changed**
+- **`src/limitcli/__init__.py`:** the default was applied with `return args.limit or 10`, which replaces any falsy value, including an explicit `0`. The parser now supplies the default (`default=10`) and the function returns `args.limit` as is. I removed the `args.limit is not None` check because the value can no longer be `None`.
+- **`tests/test_regression.py` (new):** one test checks that `--limit 0` returns `0`. A second checks that `--limit` with no value and an unknown flag both exit with code 2. Those two error cases weren't covered by the existing tests.
+
+**What I verified**
+- Before the fix, `--limit 0` and `--limit=0` both returned `10`.
+- Against the original code, the zero test fails with `assert 10 == 0` and the two error-exit tests pass. So the test catches the bug, and those exits worked before and still do.
+- The public check passed with 7 tests (4 existing, 3 new) in my working copy, in the delivery copy, and again on the final checkout.
+- Every case in the requirements behaves as expected after the fix:
+
+| Input | Result |
+|---|---|
+| no `--limit` | `10` |
+| `--limit 0` | `0` |
+| `--limit 3` | `3` |
+| `--limit` with no value | exits with code 2 |
+| an unknown flag | exits with code 2 |
+| `--limit -1` | exits with code 2 |
+| `--limit bad` | exits with code 2 |
+| `--limit 1.5` | exits with code 2 |
+
+- Only the two allowed files differ from the base commit. `docs/user-notes.txt` and `.user-state/draft.txt` are unchanged in content and permissions, and so are `caller.json`, the existing tests and the local Git config.
+
+**Delivery**
+- I went through the repo's delivery helper, which committed the change as `88501df`, opened [PR #1](https://github.com/fysoul17/rpd4-20261017a-g02/pull/1), and merged it as `acec69a`. The helper's cleanup report: "Removed the task worktree; deleted the local task branch; deleted the remote task branch; emptied the task scratch."
+- Local `main` was fast-forwarded to `acec69a` and the working tree is clean.
+- The helper writes its own PR description without the Claude Code attribution line, so I added that line to the PR afterwards.
+
+**Unresolved:** nothing. The helper intentionally keeps a delivery record inside `.git/`: a receipt under `.git/devlyn-completion/db5ed5bc02799f5f1de2fe37/` and the ref `refs/devlyn/completed/db5ed5bc02799f5f1de2fe37`.
