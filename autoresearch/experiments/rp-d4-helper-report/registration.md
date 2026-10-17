@@ -21,7 +21,9 @@ its full text applies.
   confirmed the trees differ by exactly those two paths.
 - **Token gate (precondition).** Whole `task-completion.md` against
   `cbc33be9`: Claude `count_tokens` 4867 → 4862, o200k proxy 2979 → 2976,
-  bytes 14309 → 14287.
+  bytes 14309 → 14287. DESIGN.md's Claude figure 4860 was measured before
+  design round 3 added "when present"; the gate on the frozen candidate
+  gives 4862 (o200k and bytes match DESIGN). Both pass.
 - **Prompt.** `common.txt` unchanged in every slot (SHA-256 `2ccc7f6a…50cf`).
 - **Engines.** Codex 0.162.1, `gpt-6-sol`, effort high, one Codex account
   (`9ca44b8a38f2`). Claude guard: Claude Code 2.1.296, `claude-opus-5-5`,
@@ -46,7 +48,9 @@ m08, on identical accounts.
 
 ## Qualification
 
-Smoke attempt 1 qualified both cells (SM). Reports are ungraded and change
+Smoke attempt 1 qualified both cells (SM). `smoke.verdicts` in
+registration.json are the inherited verdict hashes (`inherited_verdict_sha256`),
+not the rp-d4 wrapper `rp-verdict.json` files. Reports are ungraded and change
 nothing above.
 
 | Cell | Owner s | Input | Output | Usage | Delivery | Repository |
