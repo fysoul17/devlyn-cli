@@ -1,0 +1,17 @@
+I implemented `slugify` and added the regression tests. The public check passes (`python3 -B -m pytest -q` → **13 passed**). Nothing is committed and nothing was pushed or merged.
+
+**What I changed** (only the two allowed files)
+- `src/slugtools/__init__.py`:
+  - Non-string input raises `TypeError` with the type name in the message. Subclasses of `str` are accepted.
+  - Each run of characters other than ASCII letters and digits becomes one `-`, leading and trailing hyphens are stripped, and the result is lowercased. Empty or separator-only text gives `""`.
+  - The order matters: it replaces separators before lowercasing. Python's `.lower()` turns some non-ASCII characters into ASCII letters (the Kelvin sign `K` becomes `k`, and `İ` becomes `i` plus a combining mark). Lowercasing first would let them into the slug. The character class is written out explicitly instead of using `\d` or `\w`, because those also match non-ASCII digits and letters such as Arabic-Indic `٣`.
+- `tests/test_regression.py` (new): tests for punctuation, repeated and edge separators, digits, accented text (`"café über"` → `"caf-ber"`), the non-ASCII lowercasing trap (`"\u212a\u0130x"` → `"x"`), a non-ASCII digit, empty input and separator-only input. It also checks that `None`, `int`, `bytes` and `list` raise `TypeError`.
+
+**What I verified**
+- The full suite passes, including the existing `test_existing_slug`.
+- To confirm the regression test would catch the lowercase-first bug, I ran that approach separately: it gives `"ki-x"` where the test expects `"x"`, so it would fail.
+- `git status` shows only the two intended paths changed. `docs/user-notes.txt`, `.user-state/draft.txt` and `caller.json` were not touched.
+
+**Unresolved**
+- **Not delivered:** the project's default policy is to open a PR and merge it into `origin` on GitHub. That publishes to an external repository, and this request didn't ask for it, so I left the changes uncommitted in the checkout. If you want it shipped, tell me "deliver it" (or "commit only" for a local commit) and I'll follow `.claude/skills/_shared/task-completion.md`.
+- **One judgment call:** I read "lowercase ASCII letters" as meaning non-ASCII letters are separators, not transliterated, so `é` is dropped rather than turned into `e`. The spec says nothing about transliteration, and adding it would mean an extra dependency.

@@ -1,0 +1,18 @@
+{
+  "inputs": {
+    "arms_sha256": "299226f2a9aaa8baf89b2c53d55737238fb3192a7d97cde3662681de49ceb77e",
+    "claude_account": [
+      "9f2f3a391923",
+      "ea65f3b4f086"
+    ],
+    "codex_account": "1e97f2de8805",
+    "image": "sha256:f87a4753c697dd3e18bd388c497efb03f6ff335ebce269a04ace3090b70cb120",
+    "models_cache_sha256": "38e0d508e06e0ccb8eb27fab0810628a3b98a8a520f0785250cd1f140be1c42e"
+  },
+  "runtime": "/Users/aipalm/.local/share/nx01/rp-d5-live/stage/runtime-smoke.json",
+  "runtime_sha256": "6c8b2fec6f1c5b34a1be0acc69e087a5bc8529097949a2614e99b98464412b94",
+  "status": "FAILED",
+  "verdicts": {
+    "/Users/aipalm/.local/share/nx01/rp-d5-live/stage/smoke-output/smoke-claude/rp-verdict.json": "1743e9271ee844d04bbfd2e75f98148abe72a7fe8d5e2b3edb7bed3cd5cf91ac"
+  }
+}

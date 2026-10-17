@@ -1,0 +1,78 @@
+{
+  "dispatched": 1,
+  "phase": "smoke",
+  "releases": {
+    "X": {
+      "integrity": "sha512-PsTQkzNrfz3TENHtBLff/fmbnxmV2YzMSl4DLKI7dFwOXyO4m9x5CxlhSjkGR5FEfFwjqOHabIrpqKb0O3GOpQ==",
+      "manifest_sha256": "ae0f0bafb984dba10997b9db4a896a25d8f5841e8581fbe75037c28b2b5d340d",
+      "sha256": "799c609141e7f1c05c0e798177522d807cc93cfcf580532f38cfbe31a205ca61",
+      "source": {
+        "registry": "devlyn-cli@4.2.22"
+      },
+      "version": "4.2.22"
+    }
+  },
+  "slots": [
+    {
+      "account": [
+        "9f2f3a391923",
+        "ea65f3b4f086"
+      ],
+      "archive": {
+        "manifest_sha256": "61a7fcd3a36c999c1032511a563c4d3d07f5d612ec12c0d361b8f94143c921d5",
+        "path": "/Users/aipalm/.local/share/nx01/rp-d5-live/stage/smoke-output/archives/smoke-claude"
+      },
+      "arm": "X",
+      "attribution_status": "MATCH",
+      "auth": "/Users/aipalm/.local/share/nx01/rp-d5-live/claude-auth-1",
+      "auth_manifest_sha256": "031479b02d9a491c4d30ffa49bcee6e2228d1e2bc8798bf5c1c8c731013030d8",
+      "cell": "smoke-claude",
+      "codex_account": "1e97f2de8805",
+      "config": "claude",
+      "delivery_assessment": "PRODUCT_INCOMPLETE",
+      "dispatched": true,
+      "effort": "high",
+      "effort_binding": "MATCH",
+      "evidence_manifest_sha256": "1a14387f145f99e38f15f3bc13a39b356251f9baa4605cd0051bd2878e259cb6",
+      "frozen_runtime_sha256": "79bb14357af7ae783ba41ca6f947d1f2b9f471d85c5fc03267b3d3166fe1e608",
+      "inherited_status": "PRODUCT_INCOMPLETE",
+      "inherited_verdict_sha256": "3ac610dd752f5c24121c4c7052be4ad4fe19f04e6373fcca0dd1f018dffb8e93",
+      "input_tokens": 117311,
+      "measurement_eligible": false,
+      "merge_refused": false,
+      "output_tokens": 3293,
+      "owner_seconds": 48.41594350000014,
+      "phase": "smoke",
+      "prompt_sha256": "2ccc7f6a11891f6270685c09ada44cc4376bbedb047f8a0864f950b415bf50cf",
+      "release": {
+        "integrity": "sha512-PsTQkzNrfz3TENHtBLff/fmbnxmV2YzMSl4DLKI7dFwOXyO4m9x5CxlhSjkGR5FEfFwjqOHabIrpqKb0O3GOpQ==",
+        "manifest_sha256": "ae0f0bafb984dba10997b9db4a896a25d8f5841e8581fbe75037c28b2b5d340d",
+        "sha256": "799c609141e7f1c05c0e798177522d807cc93cfcf580532f38cfbe31a205ca61",
+        "source": {
+          "registry": "devlyn-cli@4.2.22"
+        },
+        "version": "4.2.22"
+      },
+      "repository_cleanup": {
+        "archive_manifest_sha256": "61a7fcd3a36c999c1032511a563c4d3d07f5d612ec12c0d361b8f94143c921d5",
+        "http_status": 404,
+        "repository": "fysoul17/rpd5-20261017b-smoke-claude",
+        "status": "DELETED"
+      },
+      "schema": "rp-d5-verdict-v1",
+      "smoke_qualification": {
+        "checks": {
+          "accounting": true,
+          "delivery": false,
+          "effort": true,
+          "stages": true
+        },
+        "status": "FAIL"
+      },
+      "status": "PRODUCT_INCOMPLETE",
+      "task": "SM",
+      "usage": "COMPLETE"
+    }
+  ],
+  "status": "STOP"
+}
