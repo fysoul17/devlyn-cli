@@ -34,7 +34,7 @@ registered summarizer and both reviewers' report reviews.
   smoke report.
 - **Other categories:** verification and merge 4/4 in both arms;
   reconciliation X 0/4, Y 2/4. The two reports that named cleanup also named
-  reconciliation ("fast-forwarded"). The two reviewers agreed on every
+  reconciliation (m02 "fast-forwarded", m07 "fast forwarded"). The two reviewers agreed on every
   SUPPORTED finding. No category was FALSE.
 - **Success (all four categories):** X 0/4, Y 2/4. These are the first
   graded Codex successes across rp-d1, the rp-d2 rerun, rp-d3 and rp-d4.
@@ -42,8 +42,8 @@ registered summarizer and both reviewers' report reviews.
   Y used 1,581,115 and 20,458 over 425.8 s. Y passed the cost gate by
   dominance over the zero-success control (0232 §6). It also used fewer raw
   tokens and less time, but four slots per arm cannot resolve that.
-- **Claude guard:** both Y reports passed all four categories. g02 quoted
-  the helper's sentence; g01 described the same state in its own words.
+- **Claude guard:** both Y reports passed all four categories, and both
+  quoted the helper's sentence verbatim.
 
 ## Decision
 
@@ -58,25 +58,25 @@ paired 2-of-4 against 0-of-4 is not distinguishable from noise at this size
 
 ## Reading
 
-The helper's sentence is reachable: in half the Y reports Codex carried it,
-and those reports were complete in all four categories for the first time.
-In the other half Codex kept its usual changed/verified/merged shape and
-ignored both the instruction and the sentence in front of it, as it did in
-the Y smoke. The mechanism moves Codex but does not settle its report, and
-this rung does not meet the bar the owner set.
+One Y report (m07) quoted the helper's sentence verbatim and one (m02)
+paraphrased it; those two reports were complete in all four categories, the
+first graded Codex successes in this series. The other two Y reports, and the
+Y smoke, kept Codex's usual changed/verified/merged shape and omitted
+cleanup, although the sentence was in the helper output they read. X never
+named cleanup. This is an observed difference at a size the registered rule
+cannot distinguish from noise (p = 0.25), not an established effect.
 
 `config/skills/_shared/task-complete.py` and `task-completion.md` are
 unchanged on main; 4.2.22 stays the release.
 
 ## Next candidates, for the owner
 
-1. **Confirm this candidate at a larger size.** The same Y against X with
-   more pairs (for example eight per arm) would resolve whether 2/4 is a
-   real lift. This is the cheapest next step, and nothing about the
-   candidate changes.
-2. **Stop here.** Accept that Codex's report omits cleanup at roughly this
-   rate; the helper already performs and records cleanup correctly whatever
-   the report says.
+1. **Test the same candidate again with more pairs.** Nothing about the
+   candidate changes. For scale: the same proportions at eight pairs per arm
+   (X 0/8, Y 4/8) would give a one-sided exact p of about 0.06, so even that
+   size is a routing test, not confirmation.
+2. **Stop here.** The helper already performs and records cleanup correctly
+   whatever the report says; only the report line is at stake.
 
 ## Cleanup
 
