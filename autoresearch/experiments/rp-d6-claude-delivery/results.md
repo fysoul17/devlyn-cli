@@ -8,9 +8,11 @@ change Claude `high` delivery: X 2/4, Y 2/4. Per task, Y was lower on BV
 The run used the frozen [registration](registration.md) (both reviewers
 SHIP) and [DESIGN.md](DESIGN.md). All 14 slots ran with no STOP, no
 `merge_refused`, COMPLETE usage and effort binding MATCH on every Claude
-slot. The change-only route watcher logged nothing after 23:32:24Z on
-2026-10-17 (interface `en0`); its process was confirmed running before the
-measured dispatch and again after the write-up
+slot. The change-only route watcher logged no default-route change from
+23:32:24Z on 2026-10-17 (interface `en0`) to 05:49:03Z on 2026-10-18, a
+window that covers the smoke, all measured slots and guards, and the
+repository deletions (last at 04:25:42Z). Its later entries
+(05:49:03Z–05:52:39Z, after the run) show it was still running
 ([route-watch.log](results/measured/route-watch.log)). Both reviewers adjudicated every slot
 independently and agreed on every item: no false completion, no severe
 regression, and for g04/g05 no push, no PR. Evidence:
