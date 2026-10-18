@@ -24,7 +24,7 @@ schedule, grading, decision rules and raw data are never edited.
 - **Prompt.** rp-d7 P1 (`2387ddde…cf2e`) in every slot; guards append the
   registered suffixes, bound by hash.
 - **Engines.** Claude Code 2.1.296, `claude-opus-5-5`, effort `high`; Codex
-  0.162.1, `gpt-6-sol`, `high` (g01, g02, smoke-codex). One image
+  0.162.1, `gpt-6-sol`, `high` (g01, g02, smoke-codex, spare smoke2-codex). One image
   (`sha256:1d0f16e12dea…`), one Claude account, one Codex account.
 - **Schedule.** m01–m16 as DESIGN's pair table (Z0 pairs 1, 2, 4, 5, 7, 8;
   BV pairs 3, 6). Guards g01–g08. Repositories
@@ -38,7 +38,7 @@ schedule, grading, decision rules and raw data are never edited.
 ## Apparatus
 
 Implemented by Astra; reviewed by Astra ultra and Grok 4.7 with each
-finding independently checked against the files. Rounds 1–3 REVISE with fixes ([r1 Astra](results/apparatus-r1-astra.md), [r1 Grok](results/apparatus-r1-grok.md), [r1 checks](results/apparatus-r1-verification.json); [r2 Astra](results/apparatus-r2-astra.md), [r2 Grok](results/apparatus-r2-grok.md), [r2 checks](results/apparatus-r2-verification.json); [r3 Astra](results/apparatus-r3-astra.md), [r3 Grok](results/apparatus-r3-grok.md), [r3 checks](results/apparatus-r3-verification.json)); round 4 both SHIP ([Astra](results/apparatus-r4-astra.md), [Grok](results/apparatus-r4-grok.md)). Fixes over the rounds: history-backed commit counts, the accepted-head proof, frozen X hashes and candidate blob, attempts versus effects for push and remote creation (including dry-run and abbreviated-option parsing, failing closed), agreed positive reviewer findings, rp-d7 files in the input census, tag disagreement not blocking adoption, the route-watch line format, and removal of rp-d7 bytecode committed by mistake. Offline suites: rp-d8 460, rp-d7 325, rp-d6 277, rp-d4 268 (+18 subtests), rp-d5 195.
+finding independently checked against the files. Rounds 1–3 REVISE with fixes (round 3: Astra REVISE, Grok SHIP; [r1 Astra](results/apparatus-r1-astra.md), [r1 Grok](results/apparatus-r1-grok.md), [r1 checks](results/apparatus-r1-verification.json); [r2 Astra](results/apparatus-r2-astra.md), [r2 Grok](results/apparatus-r2-grok.md), [r2 checks](results/apparatus-r2-verification.json); [r3 Astra](results/apparatus-r3-astra.md), [r3 Grok](results/apparatus-r3-grok.md), [r3 checks](results/apparatus-r3-verification.json)); round 4 both SHIP ([Astra](results/apparatus-r4-astra.md), [Grok](results/apparatus-r4-grok.md)). Fixes over the rounds: history-backed commit counts, the accepted-head proof, frozen X hashes and candidate blob, attempts versus effects for push and remote creation (including dry-run and abbreviated-option parsing, failing closed), agreed positive reviewer findings, rp-d7 files in the input census, tag disagreement not blocking adoption, the route-watch line format, and removal of rp-d7 bytecode committed by mistake. Offline suites at `apparatus_commit` (README loop; [raw lines](results/offline-suites-registration.txt)): rp-d8 460, rp-d7 325, rp-d6 277, rp-d4 268 (+18 subtests), rp-d5 195. VALIDATION.md's last rp-d8 count (366) predates the r2–r3 fixes, which added rp-d8 cases only.
 
 ## Decision (copied unchanged from DESIGN.md)
 
