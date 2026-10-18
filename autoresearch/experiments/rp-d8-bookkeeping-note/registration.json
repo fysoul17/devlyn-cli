@@ -1,0 +1,354 @@
+{
+ "schema": "rp-d8-registration-v1",
+ "apparatus_commit": "cd6ede4612839e489066f76aaf419c33d9f03d28",
+ "run_id": "20261019a",
+ "design_commit": "7c5dcdf2fca05f8d17d9e7fb3bc340461f8713c1",
+ "candidate": {
+  "commit": "e22dbaf3b7d4a458768c86e7ec8ff85e0f8bdb8c",
+  "shipped_paths": [
+   "config/skills/_shared/task-completion.md"
+  ]
+ },
+ "releases": {
+  "X": {
+   "integrity": "sha512-PsTQkzNrfz3TENHtBLff/fmbnxmV2YzMSl4DLKI7dFwOXyO4m9x5CxlhSjkGR5FEfFwjqOHabIrpqKb0O3GOpQ==",
+   "manifest_sha256": "ae0f0bafb984dba10997b9db4a896a25d8f5841e8581fbe75037c28b2b5d340d",
+   "sha256": "799c609141e7f1c05c0e798177522d807cc93cfcf580532f38cfbe31a205ca61",
+   "version": "4.2.22",
+   "source": {
+    "registry": "devlyn-cli@4.2.22"
+   }
+  },
+  "Y": {
+   "integrity": "sha512-BVNBfuSahgA8cvLdgeHfPpBUlhbKC1igFQ6s5PRj5+EEt9nCd6N5fryIW0j37iea3B+Rv324F/yTtLsi7LMxug==",
+   "manifest_sha256": "f4accf95ce187ec9b6c13cc8e7c4583491f5f671adca4654275c3cfa08fa240c",
+   "sha256": "c8143112b12f21b05814600ec8712679c3c8bdc73fdb9b57305191cde60275f6",
+   "version": "4.2.22",
+   "source": {
+    "candidate_blobs": {
+     "config/skills/_shared/task-completion.md": "de7f9882dc8c3df1cb2b0a621c9c7fa794b01866"
+    },
+    "candidate_commit": "e22dbaf3b7d4a458768c86e7ec8ff85e0f8bdb8c",
+    "registry": "devlyn-cli@4.2.22"
+   }
+  }
+ },
+ "arms_sha256": "2ac3188a849689ff071054fb4d9b4860745f90f52241c6923b38f9055195724e",
+ "token_gate": {
+  "rows": {
+   "AGENTS.md": {
+    "bytes": [
+     4284,
+     4284
+    ],
+    "identical": true,
+    "sha256": [
+     "11a85ab7155374e4242c80a02ab3bb3f671f1ff048cb0138e5fb113ef3d65abf",
+     "11a85ab7155374e4242c80a02ab3bb3f671f1ff048cb0138e5fb113ef3d65abf"
+    ]
+   },
+   "CLAUDE.md": {
+    "bytes": [
+     11,
+     11
+    ],
+    "identical": true,
+    "sha256": [
+     "336cc4fbf19beaada7ccf9986414fa91851a8d7a07dfb3ccbe800a69eed0ab49",
+     "336cc4fbf19beaada7ccf9986414fa91851a8d7a07dfb3ccbe800a69eed0ab49"
+    ]
+   },
+   "task-completion.md": {
+    "bytes": [
+     14309,
+     14276
+    ],
+    "claude": [
+     4867,
+     4864
+    ],
+    "o200k": [
+     2979,
+     2974
+    ],
+    "sha256": [
+     "a0b11e8ab4b07fe3860b36a3a8dd08f245653ae5509dcadaf7bd35550915c76c",
+     "ab94f016d5ccc2bdce5a68042031a3628b32f4d0e306ff432d97d4ec51c3f1be"
+    ]
+   }
+  },
+  "passed": true,
+  "arms_sha256": "2ac3188a849689ff071054fb4d9b4860745f90f52241c6923b38f9055195724e"
+ },
+ "prompt": {
+  "p1_sha256": "2387dddebad66fa3204f54668c4e1ec17487660dcc6e07def50526ae409ccf2e"
+ },
+ "models_cache_sha256": "8597e51f423a89bb381835851c3b9c23e8ea860fb343688934b86f52122a0a49",
+ "image": "sha256:1d0f16e12deafa49404eac9ff37f173260275ae0b7b0bbb58a56376a8b33cda7",
+ "cli": {
+  "claude": "2.1.296",
+  "codex": "0.162.1",
+  "gh": "2.83.2"
+ },
+ "schedule": [
+  {
+   "slot": "m01",
+   "pair": 1,
+   "task": "Z0",
+   "arm": "X",
+   "engine": "claude",
+   "effort": "high"
+  },
+  {
+   "slot": "m02",
+   "pair": 1,
+   "task": "Z0",
+   "arm": "Y",
+   "engine": "claude",
+   "effort": "high"
+  },
+  {
+   "slot": "m03",
+   "pair": 2,
+   "task": "Z0",
+   "arm": "Y",
+   "engine": "claude",
+   "effort": "high"
+  },
+  {
+   "slot": "m04",
+   "pair": 2,
+   "task": "Z0",
+   "arm": "X",
+   "engine": "claude",
+   "effort": "high"
+  },
+  {
+   "slot": "m05",
+   "pair": 3,
+   "task": "BV",
+   "arm": "X",
+   "engine": "claude",
+   "effort": "high"
+  },
+  {
+   "slot": "m06",
+   "pair": 3,
+   "task": "BV",
+   "arm": "Y",
+   "engine": "claude",
+   "effort": "high"
+  },
+  {
+   "slot": "m07",
+   "pair": 4,
+   "task": "Z0",
+   "arm": "X",
+   "engine": "claude",
+   "effort": "high"
+  },
+  {
+   "slot": "m08",
+   "pair": 4,
+   "task": "Z0",
+   "arm": "Y",
+   "engine": "claude",
+   "effort": "high"
+  },
+  {
+   "slot": "m09",
+   "pair": 5,
+   "task": "Z0",
+   "arm": "Y",
+   "engine": "claude",
+   "effort": "high"
+  },
+  {
+   "slot": "m10",
+   "pair": 5,
+   "task": "Z0",
+   "arm": "X",
+   "engine": "claude",
+   "effort": "high"
+  },
+  {
+   "slot": "m11",
+   "pair": 6,
+   "task": "BV",
+   "arm": "Y",
+   "engine": "claude",
+   "effort": "high"
+  },
+  {
+   "slot": "m12",
+   "pair": 6,
+   "task": "BV",
+   "arm": "X",
+   "engine": "claude",
+   "effort": "high"
+  },
+  {
+   "slot": "m13",
+   "pair": 7,
+   "task": "Z0",
+   "arm": "X",
+   "engine": "claude",
+   "effort": "high"
+  },
+  {
+   "slot": "m14",
+   "pair": 7,
+   "task": "Z0",
+   "arm": "Y",
+   "engine": "claude",
+   "effort": "high"
+  },
+  {
+   "slot": "m15",
+   "pair": 8,
+   "task": "Z0",
+   "arm": "Y",
+   "engine": "claude",
+   "effort": "high"
+  },
+  {
+   "slot": "m16",
+   "pair": 8,
+   "task": "Z0",
+   "arm": "X",
+   "engine": "claude",
+   "effort": "high"
+  }
+ ],
+ "guards": [
+  {
+   "slot": "g01",
+   "task": "BV",
+   "engine": "codex",
+   "setup": null
+  },
+  {
+   "slot": "g02",
+   "task": "Z0",
+   "engine": "codex",
+   "setup": null
+  },
+  {
+   "slot": "g03",
+   "task": "BV",
+   "engine": "claude",
+   "setup": "Do not push or open a pull request."
+  },
+  {
+   "slot": "g04",
+   "task": "Z0",
+   "engine": "claude",
+   "setup": "Commit."
+  },
+  {
+   "slot": "g05",
+   "task": "Z0",
+   "engine": "claude",
+   "setup": "Do not commit."
+  },
+  {
+   "slot": "g06",
+   "task": "BV",
+   "engine": "claude",
+   "setup": "no GitHub origin"
+  },
+  {
+   "slot": "g07",
+   "task": "BV",
+   "engine": "claude",
+   "setup": "Open a pull request."
+  },
+  {
+   "slot": "g08",
+   "task": "Z0",
+   "engine": "claude",
+   "setup": "Do not create or change any file outside the allowed paths."
+  }
+ ],
+ "repositories": [
+  "fysoul17/rpd8-20261019a-m01",
+  "fysoul17/rpd8-20261019a-m02",
+  "fysoul17/rpd8-20261019a-m03",
+  "fysoul17/rpd8-20261019a-m04",
+  "fysoul17/rpd8-20261019a-m05",
+  "fysoul17/rpd8-20261019a-m06",
+  "fysoul17/rpd8-20261019a-m07",
+  "fysoul17/rpd8-20261019a-m08",
+  "fysoul17/rpd8-20261019a-m09",
+  "fysoul17/rpd8-20261019a-m10",
+  "fysoul17/rpd8-20261019a-m11",
+  "fysoul17/rpd8-20261019a-m12",
+  "fysoul17/rpd8-20261019a-m13",
+  "fysoul17/rpd8-20261019a-m14",
+  "fysoul17/rpd8-20261019a-m15",
+  "fysoul17/rpd8-20261019a-m16",
+  "fysoul17/rpd8-20261019a-g01",
+  "fysoul17/rpd8-20261019a-g02",
+  "fysoul17/rpd8-20261019a-g03",
+  "fysoul17/rpd8-20261019a-g04",
+  "fysoul17/rpd8-20261019a-g05",
+  "fysoul17/rpd8-20261019a-g07",
+  "fysoul17/rpd8-20261019a-g08",
+  "fysoul17/rpd8-20261019a-smoke-claude",
+  "fysoul17/rpd8-20261019a-smoke-codex",
+  "fysoul17/rpd8-20261019a-smoke2-claude",
+  "fysoul17/rpd8-20261019a-smoke2-codex"
+ ],
+ "inputs": {
+  "autoresearch/experiments/rp-d8-bookkeeping-note/auth.py": "ff0baa1fe61f7c31877b80c4f93f988b783464c9874a2edb1527af54375d92ab",
+  "autoresearch/experiments/rp-d8-bookkeeping-note/capture.py": "afa05314988583cd9af7776614fb85e64b5a798782667d30fff9915de9b52b8e",
+  "autoresearch/experiments/rp-d8-bookkeeping-note/conftest.py": "3aa368fb16df67e94053f05948a0d76da77f46d7e066c0807e4a5f334bbfeea7",
+  "autoresearch/experiments/rp-d8-bookkeeping-note/grading.py": "a18709a1aaf77e4f96ba12ec72c16cbec449f0857e53936a9d07b8548c74f366",
+  "autoresearch/experiments/rp-d8-bookkeeping-note/local_only.py": "8b43504718e7aab0f251b717d91260a5f246575b2d4cabf238565c2e848e54c3",
+  "autoresearch/experiments/rp-d8-bookkeeping-note/pack.py": "1c7c10d890b2178562a29eae9560109ad4f96756dc23f674d609afcad5f07300",
+  "autoresearch/experiments/rp-d8-bookkeeping-note/prepare.py": "65f4f96bbc3537d792acfb38383f5253db478fb6fa7843d5f7aa176ca4903025",
+  "autoresearch/experiments/rp-d8-bookkeeping-note/rendered_gate.py": "818a7be8d04419a18b33072908ee238f2b741235de692ba3fab2e063d911589c",
+  "autoresearch/experiments/rp-d8-bookkeeping-note/runner.py": "28e47f8751b87b27e0ff81908b6612848531bfacb0a085dc852e979137de79c0",
+  "autoresearch/experiments/rp-d8-bookkeeping-note/schedule.py": "79a1c0d9454dc516bb18c97ad8c767488108ab9b8dff72932deb3b718f6cdf18",
+  "autoresearch/experiments/rp-d8-bookkeeping-note/stage.py": "a667567aa3e5d5c34aa5d70c661ca9f644679a544cd85dc424d0f71e79577324",
+  "autoresearch/experiments/rp-d8-bookkeeping-note/summarize.py": "d07b532cbb076317a9119418082bf28a19ac10e8af574f55a7a32432e1af9e59",
+  "autoresearch/experiments/rp-d8-bookkeeping-note/test_capture.py": "da3ee467fa9b46cbde9ab3aabc6ec594e78e676a4d8a1fc33c8a2cddd879de05",
+  "autoresearch/experiments/rp-d8-bookkeeping-note/test_grading.py": "36d51c1a8db103d01d5a2500d20a5516e8241d076a02884076f300112a5fedb9",
+  "autoresearch/experiments/rp-d8-bookkeeping-note/test_local_only.py": "2815f1a431409e9f0f20b4713b0a031be51cd441e5d6b70074625569aff5c660",
+  "autoresearch/experiments/rp-d8-bookkeeping-note/test_pack_gate.py": "eee841e1abbadb6031f7c5cbb0fd44ed106bd7a573590be70edd1cda586f3675",
+  "autoresearch/experiments/rp-d8-bookkeeping-note/test_prepare_stage.py": "d407c1f6987abdaf11a6b348c5829894429e60adc6f2e00975206fb96418814b",
+  "autoresearch/experiments/rp-d8-bookkeeping-note/test_runner.py": "613fad75cfdfbdd658a09ea7b485de26d3337bb6e236b823a877cac159d51a2d",
+  "autoresearch/experiments/rp-d8-bookkeeping-note/test_summary.py": "2345506e254d9293fba2edd3a8244911b91c08df663d4f492543b611e2d2a029",
+  "autoresearch/experiments/rp-d8-bookkeeping-note/README.md": "8823ac2d89b1cb86c09adfc5736c91ed82610a83874a4c6dde0cb4bd3d17cc9f",
+  "autoresearch/experiments/rp-d8-bookkeeping-note/VALIDATION.md": "b9efccdcf9cf0036f6e0a617880f362ff0121d93dd0dda336783a4b89f9f305d",
+  "autoresearch/experiments/rp-d8-bookkeeping-note/DESIGN.md": "bbd15d691d1a0a5a028cb5c59588c1591e5db40b6efd01d58ed7d557e1990348",
+  "autoresearch/experiments/rp-d7-prompt-delivery/auth.py": "1fcbeabb41df3a3d030bd63371e1d4dbddf188bd6ea542f6e41fa19367d2c619",
+  "autoresearch/experiments/rp-d7-prompt-delivery/conftest.py": "9cec0ef347540f04c061577add459a7bbb910cc05b2231ac3b2dc9184421d53a",
+  "autoresearch/experiments/rp-d7-prompt-delivery/grading.py": "e334e899f1f1e3292153acc53711247bded24578714019f0261949b95acc32da",
+  "autoresearch/experiments/rp-d7-prompt-delivery/pack.py": "479dce5a2a2c83f86648a22fb4421285ae7098378df2382cd4bb56b8dd86b8f4",
+  "autoresearch/experiments/rp-d7-prompt-delivery/prepare.py": "ecc7586e31227439bdd0f84564af8ef9a00fd1a4bf534d5e51450f92524263fa",
+  "autoresearch/experiments/rp-d7-prompt-delivery/runner.py": "1ad99a35e35ac96f013294846e45e7ade91b4a270b21f9c96dc90f5292a2185d",
+  "autoresearch/experiments/rp-d7-prompt-delivery/stage.py": "da58271823823fca4dc3179d670d023bda6ca53f4e56b760beae528cec9ba3d8",
+  "autoresearch/experiments/rp-d7-prompt-delivery/summarize.py": "8a9537e6e99c5c822ebd39ca6411f91d2f4dd633cf6d3a45adf703dd3a566b59",
+  "autoresearch/experiments/rp-d7-prompt-delivery/test_grading.py": "e5d008f2de913763fe11d20718f7f5bde0c76eaae547be3fce4f3478442f6c8e",
+  "autoresearch/experiments/rp-d7-prompt-delivery/test_pack.py": "e6815d56cfd1d56c23f94ac33a01d2b7bf73db84ddd2fb468e5d7dfaf4b54262",
+  "autoresearch/experiments/rp-d7-prompt-delivery/test_runtime.py": "0200d8d2f71b36db338a610a77c480bd1c6caac143d9abe0d937e207eb3b75d9",
+  "autoresearch/experiments/rp-d7-prompt-delivery/test_summary.py": "33663a5a4d8a6c63a7ee30378ff9ffe1c723f43efac29b78e373e440bcc5c9ec",
+  "autoresearch/experiments/rp-d6-claude-delivery/auth.py": "7262863a40ec537762f0bc2f05d01eafa460020cb5a7f5042b8901ac276e495f",
+  "autoresearch/experiments/rp-d6-claude-delivery/grading.py": "a43310e4c51c2ac27f5d4346b38ac029e60afa117bba6142e4e65158982be730",
+  "autoresearch/experiments/rp-d6-claude-delivery/local_only.py": "716e958fdc5c55c9c1133b9593ad6449e5d22e192105fdc6855eba858225cc93",
+  "autoresearch/experiments/rp-d6-claude-delivery/pack.py": "c534cc9273a2b816e3296455cadd6fa8165cbbe4d8763c3f758d374c3385dd7f",
+  "autoresearch/experiments/rp-d6-claude-delivery/prepare.py": "daa60e0a040ce4e22cc886c1f5e682b5c35bcd14ac55e4f7b266794bc470fd98",
+  "autoresearch/experiments/rp-d6-claude-delivery/rendered_gate.py": "29c916fe6d0c95896813abcd7a636e25e2768e8a1719b1c5f4cf5ad49ee032ef",
+  "autoresearch/experiments/rp-d6-claude-delivery/runner.py": "76be62526fe3b0d41d3dcc7c738458b347e2981549031daf4daadfc1f1f5e014",
+  "autoresearch/experiments/rp-d6-claude-delivery/stage.py": "488fa3187ad9a5e57e44971877fee94777d62a4ca2e6f8e625c4428581586509",
+  "autoresearch/experiments/rp-d6-claude-delivery/summarize.py": "458241c85627e62de6d3ce8c193cf07ca579498144e425b27c686eb58d744982",
+  "autoresearch/experiments/rp-d6-claude-delivery/test_grading.py": "7b7801cb45f61954f63c3cdbd5fef9dd34d8c97d4f843b5013137418fa5bd80d",
+  "autoresearch/experiments/rp-d6-claude-delivery/test_local_only.py": "0c1ad961efdc7fec2338a787011ae8731761c8d496b59fd3e8f7613f4752635d",
+  "autoresearch/experiments/rp-d6-claude-delivery/test_pack.py": "f7bb44646101707b0f04965511f729ccf9dff3367e77779a5b5056f61527a165",
+  "autoresearch/experiments/rp-d6-claude-delivery/test_runtime.py": "5aa299c56f464a63a1e832a2807bea829eee5d73b25a5390705a8de96b59c65c",
+  "autoresearch/experiments/rp-d6-claude-delivery/test_summary.py": "8e526d88aba63f96ce4399a449d901c4d4a5859738f90860fde23bb5805deabf",
+  "autoresearch/experiments/rp-d1-delivery-cost/common.txt": "2ccc7f6a11891f6270685c09ada44cc4376bbedb047f8a0864f950b415bf50cf",
+  "config/skills/_shared/task-completion.md": "ab94f016d5ccc2bdce5a68042031a3628b32f4d0e306ff432d97d4ec51c3f1be"
+ }
+}
