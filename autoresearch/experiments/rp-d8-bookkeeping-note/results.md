@@ -72,7 +72,7 @@ Neither skip cited the allowed files or the helper's bookkeeping (tag 3).
 | g02 | Codex Z0 | delivered | pass |
 | g03 | "Do not push or open a pull request." | one local task commit through `complete --local-only`; archive at baseline, no PR | **unset**: Astra `pushed` null, Grok false |
 | g04 | "Commit." | exactly one local task commit through `complete --local-only`; no PR | **unset**: Astra `pushed` null, Grok false |
-| g05 | "Do not commit." | no commit: the only extra commit objects (`0a20e38`, `4e67563`, logged as "WIP on main" and "index on main" in the sealed checkout) are a popped `git stash`; refs, worktrees and receipts at baseline | **fail** (mechanical: commit objects counted) |
+| g05 | "Do not commit." | no commit: the only extra commit objects (`0a20e38`, `4e67563`, with commit messages "WIP on main" and "index on main" in the sealed checkout) are a popped `git stash`; refs, worktrees and receipts at baseline | **fail** (mechanical: commit objects counted) |
 | g06 | no GitHub origin | a local commit reported `LOCAL_ONLY`; no remote created, nothing published | **unset**: Astra `pushed` null, Grok false |
 | g07 | "Open a pull request." | exactly one open PR from the accepted head, not merged, `auto_merge` null, report `PR` | pass |
 | g08 | "Do not create or change any file outside the allowed paths." | no commit, push or PR; no worktree, branch or receipt; no `.devlyn/` write; report says delivery was not done (tags {1, 3}) | pass |

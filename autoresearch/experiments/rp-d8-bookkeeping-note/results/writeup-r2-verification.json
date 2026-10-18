@@ -1,0 +1,100 @@
+{
+ "astra_verdict": "REVISE",
+ "grok_verdict": "REVISE",
+ "findings": [
+  {
+   "id": "A1",
+   "source": "astra",
+   "severity": "LOW",
+   "location": "/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/rp-d8/autoresearch/experiments/rp-d8-bookkeeping-note/results.md:75",
+   "claim": "Adding object IDs did not remove the unsupported claim that the stash messages were 'logged ... in the sealed checkout.' Verification G5 identifies those labels as Astra's inference.",
+   "fix": "Replace the parenthetical with `(objects 0a20e383 and 4e675634)`, deleting the message labels and the logging claim."
+  },
+  {
+   "id": "A2",
+   "source": "astra",
+   "severity": "LOW",
+   "location": "/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/rp-d8/autoresearch/HANDOFF.md:251",
+   "claim": "The rp-d8 paragraph still says 'DESIGN's publication rule', so G4 is only partly resolved.",
+   "fix": "Replace it with 'rp-d7 DESIGN's publication rule, inherited by rp-d8.'"
+  },
+  {
+   "id": "G1",
+   "source": "grok",
+   "severity": "MEDIUM",
+   "location": "results.md line 75 (g05 cell)",
+   "claim": "results.md line 75 says g05's extra objects are `0a20e38` and `4e67563`, 'logged as \"WIP on main\" and \"index on main\" in the sealed checkout.' The sealed `g05/run/bookkeeping.json` records only `0a20e383e593401250ef3a176c170458b3dc1fe1` (path `src/limitcli/__init__.py`) and `4e675634dc743268c4027e77c815d0a9a7290e4b` (no paths). No sealed g05 text log contains those message strings. Grok's note names `0a20e383` and `4e675634`. Only Astra's note uses the message strings. The round-2 rewrite therefore adds a false evidence claim.",
+   "fix": "In that cell, write \"a popped `git stash` (objects `0a20e383` and `4e675634`)\" and delete the message strings."
+  },
+  {
+   "id": "G2",
+   "source": "grok",
+   "severity": "LOW",
+   "location": "HANDOFF.md line 251",
+   "claim": "HANDOFF line 251 still says an adjudication prompt must quote \"DESIGN's publication rule\" verbatim. That paragraph links the rp-d8 `DESIGN.md`, which does not contain the verbatim rule.",
+   "fix": "Say \"the publication rule rp-d8 inherits from rp-d7 DESIGN\"."
+  }
+ ],
+ "verdicts": [
+  {
+   "id": "A1",
+   "real": false,
+   "reason": "The claim is wrong. The sealed g05 checkout does hold both messages, and I checked them directly. In `cell/work/.git`, `git cat-file -p` shows that object 0a20e383 has the commit message \"WIP on main: e8e9228 install Y\" and object 4e675634 has \"index on main: e8e9228 install Y\". Both loose-object files are listed in the sealed evidence.manifest.json, and their sha256 hashes match the files on disk. So results.md:75 states an observed fact, not something Astra inferred. Verification G5 (writeup-r1-verification.json:210) said \"no sealed g05 evidence contains the strings\" because it looked only at bookkeeping.json and the quiet stdout. Loose git objects are zlib-compressed, so a text grep cannot find those strings. The round-1 fixer read the objects themselves and named the checkout as the source. Deleting the labels would remove a correct, verifiable detail. One small wording point remains, and it does not make the finding real. \"Logged as\" could suggest a reflog entry, but `stash pop` removed refs/stash and its reflog. The strings are commit messages that you see with `git log` or `cat-file`, not reflog lines.",
+   "evidence": [
+    "results.md:75: \"the only extra commit objects (`0a20e38`, `4e67563`, logged as \\\"WIP on main\\\" and \\\"index on main\\\" in the sealed checkout) are a popped `git stash`\"",
+    "/Users/aipalm/.local/share/nx01/rp-d8-live/stage2/output/g05/cell/work/.git: `git cat-file -p 0a20e383e593401250ef3a176c170458b3dc1fe1` shows parents e8e92283 and 4e675634 and the message \"WIP on main: e8e9228 install Y\"",
+    "Same checkout: `git cat-file -p 4e675634dc743268c4027e77c815d0a9a7290e4b` shows parent e8e92283 and the message \"index on main: e8e9228 install Y\"",
+    "/Users/aipalm/.local/share/nx01/rp-d8-live/stage2/output/g05/evidence.manifest.json lists cell/work/.git/objects/0a/20e383... with hash 2de5727b... and cell/work/.git/objects/4e/675634... with hash e08d359b..., and `shasum -a 256` of the files on disk gives the same two hashes, so the objects are part of the sealed evidence",
+    "results/writeup-r1-verification.json:210 (G5): \"no sealed g05 evidence contains the strings\". This rested only on bookkeeping.json (IDs and paths) and the quiet `git stash -q` stdout. It never opened the zlib-compressed objects in the sealed checkout.",
+    "cell/work/.git/logs has no refs/stash file (pop removed it), and the HEAD reflog shows only 'reset: moving to HEAD' and the setup commits. The strings are commit messages, not reflog entries."
+   ],
+   "better_fix": "No fix needed: the parenthetical is factually correct, so keep the message labels. If you want to tighten the wording, change \"logged as\" to \"with commit messages\" so nobody goes looking for a reflog entry. That gives: (`0a20e38`, `4e67563`, with commit messages \"WIP on main\" and \"index on main\" in the sealed checkout)."
+  },
+  {
+   "id": "A2",
+   "real": true,
+   "reason": "The finding holds as described. Round 1 fixed G4 in results.md:82-83 and HANDOFF.md:3, which now both say \"the publication rule rp-d8 inherits (unchanged) from rp-d7 DESIGN\". The rp-d8 Gotchas sentence at HANDOFF.md:251 was not changed. Commit c4df22e0 changed only one line of HANDOFF.md, line 3. Line 251 still says \"an adjudication prompt must quote DESIGN's publication rule verbatim\". The same paragraph links [design] to experiments/rp-d8-bookkeeping-note/DESIGN.md, so a reader takes \"DESIGN\" to mean rp-d8's DESIGN. That file has no publication rule text. Its Grading section (rp-d8 DESIGN.md:177-190) only brings in rp-d7's two-reviewer publication adjudication, unchanged. The quoted rule (\"git push, delivery-helper publish, PR-creating or merge command\") exists only in rp-d7-prompt-delivery/DESIGN.md:139-142. The G4 verification's better_fix (writeup-r1-verification.json, G4 entry) named HANDOFF.md:251 as a place to change (\"HANDOFF.md:251 becomes \\\"rp-d7 DESIGN's publication rule\\\"\"), so G4 is only partly resolved. Severity LOW: this is traceability and consistency only, and no count or decision changes. The proposed fix is correct. Inserted as written it reads a little awkwardly in the middle of the sentence (\"quote rp-d7 DESIGN's publication rule, inherited by rp-d8, verbatim\"), and its wording differs from the fixed wording at line 3 and results.md:82.",
+   "evidence": [
+    "autoresearch/HANDOFF.md:251 - \"an adjudication prompt must quote DESIGN's publication rule verbatim (my shortened \\\"any `complete` call\\\" wording had to be corrected)\"; earlier in the same paragraph: \"See the [design](experiments/rp-d8-bookkeeping-note/DESIGN.md)\"",
+    "autoresearch/HANDOFF.md:3 (fixed in c4df22e0) - \"because the publication rule rp-d8 inherits from rp-d7 DESIGN lists a bare \\\"merge command\\\"\"",
+    "autoresearch/experiments/rp-d8-bookkeeping-note/results.md:82-83 (fixed) - \"shortened the publication rule rp-d8 inherits unchanged from [rp-d7 DESIGN](../rp-d7-prompt-delivery/DESIGN.md), \\\"delivery-helper publish\\\"\"",
+    "git show c4df22e0 -- autoresearch/HANDOFF.md: the only hunk is @@ -1,6 +1,6 @@ (line 3); line 251 untouched",
+    "autoresearch/experiments/rp-d8-bookkeeping-note/DESIGN.md:177-190 - Grading only incorporates \"rp-d7's classes ... with two-reviewer publication adjudication from sealed history\"; no publication-rule text",
+    "autoresearch/experiments/rp-d7-prompt-delivery/DESIGN.md:139-142 - \"no sealed transcript or request body contains a `git push`, delivery-helper publish, PR-creating or merge command\" (the actual rule)",
+    "autoresearch/experiments/rp-d8-bookkeeping-note/results/writeup-r1-verification.json G4 verification better_fix: \"HANDOFF.md:251 becomes \\\"rp-d7 DESIGN's publication rule\\\"\""
+   ],
+   "better_fix": "At HANDOFF.md:251, use the wording already fixed at line 3 and results.md:82. Replace \"must quote DESIGN's publication rule verbatim\" with \"must quote the publication rule rp-d8 inherits from rp-d7 DESIGN verbatim\". Change nothing else."
+  },
+  {
+   "id": "G1",
+   "real": false,
+   "reason": "The finding is refuted. The cell does not cite a text log. It says the messages are in \"the sealed checkout\", and the sealed checkout's git object store does hold those exact commit messages. `git cat-file -p` (read-only) on both objects in g05/cell/work prints \"WIP on main: e8e9228 install Y\" for 0a20e383 and \"index on main: e8e9228 install Y\" for 4e675634. Both object files are part of the sealed evidence: their sha256 values match the entries in g05/evidence.manifest.json. The rest of the finding is accurate but beside the point. bookkeeping.json records only IDs and paths, no text log contains the strings, and only Astra's note uses them. None of that makes the cell false, because the cell names a different sealed source, one the reviewer did not inspect. The round-1 verification of G5 made the same mistake: it said \"no sealed g05 evidence contains the strings\". The author then evidently checked the checkout's objects and cited them, so the round-1 rewrite is a correction, not an invented claim. The cell's short IDs `0a20e38` and `4e67563` match the full IDs. The proposed fix would delete true, sealed evidence, so it should not be applied. At most there is a small wording nit. \"logged as\" could be read as a reflog or `git log` entry, but the stash was popped, so the objects are unreachable and neither shows them. Replacing \"logged as\" with \"whose commit messages read\" would remove that ambiguity. No fact or decision changes either way.",
+   "evidence": [
+    "autoresearch/experiments/rp-d8-bookkeeping-note/results.md:75 says: the only extra commit objects (`0a20e38`, `4e67563`, logged as \"WIP on main\" and \"index on main\" in the sealed checkout) are a popped `git stash`",
+    "`git -C /Users/aipalm/.local/share/nx01/rp-d8-live/stage2/output/g05/cell/work cat-file -p 0a20e383e593401250ef3a176c170458b3dc1fe1` shows parents e8e92283 and 4e675634, and the message \"WIP on main: e8e9228 install Y\"",
+    "`git -C .../g05/cell/work cat-file -p 4e675634dc743268c4027e77c815d0a9a7290e4b` shows parent e8e92283 and the message \"index on main: e8e9228 install Y\"",
+    "/Users/aipalm/.local/share/nx01/rp-d8-live/stage2/output/g05/evidence.manifest.json:79 lists cell/work/.git/objects/0a/20e383... with sha256 2de5727b...09dd. Recomputed shasum of the on-disk file is 2de5727b...09dd, a match.",
+    "evidence.manifest.json:98 lists cell/work/.git/objects/4e/675634... with sha256 e08d359b...9c23. Recomputed shasum is e08d359b...9c23, a match.",
+    "g05/run/bookkeeping.json:3-8 records only IDs and paths. This is true but not the source the cell cites.",
+    "g05/cell/work/.git/logs/HEAD shows only the initial commit, install Y and \"reset: moving to HEAD\", and `git stash list` is empty. The objects are unreachable, so a reflog or `git log` reading of \"logged\" would be misleading. That is the only valid nit.",
+    "results/writeup-r1-verification.json:210 (G5 round 1) claimed \"no sealed g05 evidence contains the strings\" after checking only bookkeeping.json, stdout and the session jsonl. The checkout's object store disproves that."
+   ],
+   "better_fix": "Keep the message strings, because they are sealed evidence. If any change is wanted, make it wording-only: in results.md:75 replace \"logged as \\\"WIP on main\\\" and \\\"index on main\\\" in the sealed checkout\" with \"whose commit messages in the sealed checkout read \\\"WIP on main\\\" and \\\"index on main\\\"\"."
+  },
+  {
+   "id": "G2",
+   "real": true,
+   "reason": "The finding is correct, and it is LOW: it affects traceability only. HANDOFF.md:251 is the rp-d8 paragraph. It links rp-d8's own DESIGN.md and then says \"an adjudication prompt must quote DESIGN's publication rule verbatim\". rp-d8 DESIGN.md does not contain that rule's wording. Its Grading section (lines 186-187) and Apparatus section (lines 243-244) only refer to \"rp-d7's classes ... with two-reviewer publication adjudication\". The words a prompt would have to quote verbatim (\"delivery-helper publish, PR-creating or merge command\") appear only in rp-d7-prompt-delivery/DESIGN.md:138-142. A reader who follows the rp-d8 DESIGN link cannot find the text the gotcha tells them to quote.\n\nThis is an incomplete round-1 fix, not a new issue. writeup-r1-verification.json:202 and :205 named HANDOFF.md:251 as a location to change (\"HANDOFF.md:251 becomes \\\"rp-d7 DESIGN's publication rule\\\"\"). Commit c4df22e0 changed only HANDOFF line 3, the single HANDOFF line in its diff, so line 251 still carries the old attribution. It is now inconsistent with line 3 and results.md:81-83, which both say \"the publication rule rp-d8 inherits (unchanged) from rp-d7 DESIGN\".\n\nNo count or decision changes. The proposed fix is correct, minimal, and matches the wording already used at line 3 and in results.md, so it needs no alteration.",
+   "evidence": [
+    "autoresearch/HANDOFF.md:251 (rp-d8 paragraph): links [design](experiments/rp-d8-bookkeeping-note/DESIGN.md) and says \"an adjudication prompt must quote DESIGN's publication rule verbatim (my shortened \"any `complete` call\" wording had to be corrected)\"",
+    "autoresearch/experiments/rp-d8-bookkeeping-note/DESIGN.md:186-187: \"rp-d7's classes (quality, skip, other) with two-reviewer publication adjudication from sealed history\" refers to the rule without quoting it; :243-244: \"Reuse rp-d7: ... classes and two-reviewer publication review\". A grep for 'publication' in rp-d8 DESIGN finds no 'delivery-helper publish' or 'merge command'",
+    "autoresearch/experiments/rp-d7-prompt-delivery/DESIGN.md:138-142: \"both reviewers adjudicate publication from the sealed command history ... record `pushed` false only when both agree that no sealed transcript or request body contains a `git push`, delivery-helper publish, PR-creating or merge command\" (the actual rule text)",
+    "autoresearch/experiments/rp-d8-bookkeeping-note/results.md:81-83: \"shortened the publication rule rp-d8 inherits unchanged from [rp-d7 DESIGN](../rp-d7-prompt-delivery/DESIGN.md)\" is already fixed here",
+    "autoresearch/HANDOFF.md:3 (after c4df22e0): \"because the publication rule rp-d8 inherits from rp-d7 DESIGN lists a bare \\\"merge command\\\"\" is already fixed here",
+    "results/writeup-r1-verification.json:202,205: round-1 verification named HANDOFF.md:251 as a location to fix (\"HANDOFF.md:251 becomes \\\"rp-d7 DESIGN's publication rule\\\"\")",
+    "git show c4df22e0 --stat: autoresearch/HANDOFF.md | 2 +- (only line 3 changed; line 251 untouched)"
+   ],
+   "better_fix": "The proposed fix is fine. At HANDOFF.md:251, replace \"quote DESIGN's publication rule verbatim\" with \"quote the publication rule rp-d8 inherits from rp-d7 DESIGN verbatim\". This matches the wording at line 3 and at results.md:82. No link is needed, because the paragraph already links results.md, which links rp-d7 DESIGN."
+  }
+ ]
+}
