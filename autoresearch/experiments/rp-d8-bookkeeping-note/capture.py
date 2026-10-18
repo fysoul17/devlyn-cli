@@ -21,6 +21,8 @@ github = local.github
 read, write, digest, require = github.read, github.write, github.digest, github.require
 attribute = local.base.load('attribute_capture_rpd8', HERE.parent / 'rp-d5-claude-stages/attribute.py')
 OBSERVATION = 'run/bookkeeping.json'
+COMMAND_KINDS = ('allocation', 'devlyn_write', 'remote_creation', 'task_worktree', 'task_branch',
+                 'commit', 'object_prune', 'push')
 
 
 def manifest(root):
@@ -151,15 +153,45 @@ def original_devlyn(path):
 
 def command_effects(command, cwd='/cell/work'):
     """Lexical witnesses only; absence here never certifies a negative fact."""
-    result = dict(allocation_command_observed=False, devlyn_write_command_observed=False,
-                  remote_creation_command_observed=False, task_worktree_command_observed=False,
-                  task_branch_command_observed=False, devlyn_write_effect_certain=False,
-                  devlyn_write_scope_unknown=False)
+    result = dict.fromkeys((kind + '_command_observed' for kind in COMMAND_KINDS), False)
+    result.update(devlyn_write_effect_certain=False, devlyn_write_scope_unknown=False,
+                  publication_command_observed=False)
 
     def target(path):
         return original_devlyn(path) and (path.startswith('/') or cwd in (None, '/cell/work'))
 
-    for invoked, args, raw in attribute.shell_commands(attribute.diagnostics.without_heredocs(command)):
+    def object_storage(path):
+        parts = Path(path).parts
+        return any(parts[index] == '.git' and parts[index + 1] in ('objects', 'logs', 'ORIG_HEAD')
+                   for index in range(len(parts) - 1))
+
+    def flags(args, value_options):
+        """Option values and operands after -- are never command switches."""
+        result, options = set(), iter(args)
+        for option in options:
+            if option == '--':
+                break
+            name, equals, _ = option.partition('=')
+            if name in value_options:
+                if not equals and next(options, None) is None:
+                    raise ValueError('missing command option value')
+            elif option.startswith('-'):
+                result.add(option)
+        return result
+
+    def redirections(raw):
+        lexical = shlex.shlex(raw, posix=False, punctuation_chars='<>|&;')
+        lexical.whitespace_split, lexical.commenters = True, ''
+        tokens = list(lexical)
+        return [shlex.split(tokens[index + 1])[0] for index, token in enumerate(tokens[:-1])
+                if token in ('>', '>>', '>|', '<>', '&>', '&>>')]
+
+    # A redirection can execute without an invoked program; shell_commands
+    # omits those entries, so inspect object-storage targets independently.
+    command = attribute.diagnostics.without_heredocs(command)
+    result['object_prune_command_observed'] = any(object_storage(path) for path in redirections(command))
+
+    for invoked, args, raw in attribute.shell_commands(command):
         if invoked is None:
             continue
         word = Path(invoked).name
@@ -167,26 +199,46 @@ def command_effects(command, cwd='/cell/work'):
         if script == 'task-complete.py' and script_args[:1] == ['allocate'] and not (
                 {'--help', '-h'} & set(script_args)):
             result['allocation_command_observed'] = True
+        if script == 'task-complete.py' and script_args[:1] == ['complete'] and not (
+                {'--local-only', '--no-push', '--help', '-h'} & set(script_args)):
+            result['publication_command_observed'] = True
         if word == 'git':
+            switches = flags(args, ('-C', '-c', '--git-dir', '--work-tree', '--namespace', '--config-env',
+                '--receive-pack', '--exec', '--repo', '-o', '--push-option', '-m', '--message', '-F', '--file'))
             options = list(args)
             while options and options[0].startswith('-'):
-                options = options[2:] if options[0] in ('-C', '-c', '--git-dir', '--work-tree') else options[1:]
-            if not ({'--help', '-h'} & set(options)):
+                options = options[2:] if options[0] in (
+                    '-C', '-c', '--git-dir', '--work-tree', '--namespace', '--config-env') else options[1:]
+            if not ({'--help', '-h'} & switches):
+                result['commit_command_observed'] |= options[:1] in (
+                    ['commit'], ['commit-tree'], ['merge'], ['cherry-pick'], ['revert'], ['rebase'], ['am'], ['stash'])
+                result['object_prune_command_observed'] |= (options[:1] in (['gc'], ['prune'], ['repack']) or
+                    options[:2] in (['reflog', 'expire'], ['reflog', 'delete']) or
+                    options[:1] == ['update-ref'] and '-d' in options)
+                result['push_command_observed'] |= options[:1] == ['push'] and not (
+                    {'--dry-run', '-n'} & switches)
                 result['remote_creation_command_observed'] |= options[:2] == ['remote', 'add']
                 result['task_worktree_command_observed'] |= options[:2] == ['worktree', 'add']
                 result['task_branch_command_observed'] |= (options[:1] == ['switch'] and '-c' in options or
                     options[:1] == ['checkout'] and '-b' in options or
                     options[:1] == ['branch'] and len(options) > 1 and not any(arg.startswith('-') for arg in options[1:]))
+        if word == 'gh':
+            switches = flags(args, ('-R', '--repo', '--hostname', '-d', '--description', '-g', '--gitignore',
+                '-h', '--homepage', '-l', '--license', '-r', '--remote', '-s', '--source', '-t', '--team',
+                '-p', '--template'))
+            options = list(args)
+            while options and options[0].startswith('-'):
+                options = options[2:] if options[0] in ('-R', '--repo', '--hostname') else options[1:]
+            if not ({'--help', '--dry-run', '-n'} & switches):
+                result['remote_creation_command_observed'] |= options[:2] == ['repo', 'create']
+                result['publication_command_observed'] |= options[:2] in (['pr', 'create'], ['pr', 'merge'])
         # The parser retains redirection targets in raw, but removes them from
         # args. Inspect each command separately: `cat .devlyn/a; echo > b` is a read.
-        lexical = shlex.shlex(raw, posix=False, punctuation_chars='<>|&;')
-        lexical.whitespace_split, lexical.commenters = True, ''
-        tokens = list(lexical)
-        targets = [shlex.split(tokens[index + 1])[0] for index, token in enumerate(tokens[:-1])
-                   if token in ('>', '>>', '>|', '<>')]
+        targets = redirections(raw)
         writes = [path for path in targets if target(path)]
         certain = bool(writes)
         paths = [arg for arg in args if not arg.startswith('-')]
+        result['object_prune_command_observed'] |= word in ('rm', 'mv') and any(object_storage(path) for path in paths)
         if word in ('mkdir', 'touch', 'rm', 'rmdir', 'chmod', 'chown', 'tee'):
             matched = [path for path in paths if target(path)]
             writes += matched
@@ -209,16 +261,14 @@ def command_effects(command, cwd='/cell/work'):
 
 
 def history_facts(out, files):
-    result = dict(bookkeeping_history=[], allocation_command_observed=False,
-                  devlyn_write_command_observed=False, devlyn_write_observed=None,
-                  remote_creation_command_observed=False, task_worktree_command_observed=False,
-                  task_branch_command_observed=False, devlyn_write_effect_certain=False,
-                  devlyn_write_scope_unknown=False)
+    result = dict(command_effects(''), bookkeeping_history=[], devlyn_write_observed=None)
     calls, successful, failed, outputs = [], set(), set(), {}
-    for kind in ('allocation', 'devlyn_write', 'remote_creation', 'task_worktree', 'task_branch'):
+    outcome_files, attempts = {}, {'push': [], 'remote_creation': []}
+    for kind in COMMAND_KINDS:
         result[kind + '_command_unresolved'] = False
 
     def outcome(identity, value):
+        outcome_files.setdefault(identity, set()).add(name)
         content = value.get('content', '')
         raw = content if isinstance(content, str) else '\n'.join(
             block.get('text', '') for block in content if isinstance(block, dict)) if isinstance(content, list) else ''
@@ -242,6 +292,8 @@ def history_facts(out, files):
             if value.get('type') in ('item.started', 'item.completed'):
                 item = value.get('item') or {}
                 if isinstance(item, dict):
+                    if value['type'] == 'item.completed':
+                        outcome_files.setdefault(item.get('id'), set()).add(name)
                     calls.append((item.get('id'), item.get('type'), item))
                     if value['type'] == 'item.completed' and (item.get('exit_code') == 0 or
                             item.get('type') == 'file_change' and item.get('status') == 'completed'):
@@ -306,13 +358,17 @@ def history_facts(out, files):
                                           bool(value.get('receipt')) and bool(value.get('worktree')))
                     if success or allocated:
                         result.update(task_worktree_created=True, task_branch_created=True, receipt_created=True)
-                for kind, fact in (('remote_creation', 'remote_created'),
+                for kind, fact in (('push', 'pushed'), ('remote_creation', 'remote_created'),
                         ('task_worktree', 'task_worktree_created'), ('task_branch', 'task_branch_created')):
                     if success and effects[kind + '_command_observed']:
                         result[fact] = True
-                for kind in ('allocation', 'devlyn_write', 'remote_creation', 'task_worktree', 'task_branch'):
-                    if effects[kind + '_command_observed'] and not (success or failure or kind == 'allocation' and allocated):
+                for kind in COMMAND_KINDS:
+                    if effects[kind + '_command_observed'] and not (success or
+                            failure and kind not in attempts or kind == 'allocation' and allocated):
                         result[kind + '_command_unresolved'] = True
+                for kind in attempts:
+                    if effects[kind + '_command_observed']:
+                        attempts[kind].append((identity, failure))
             except (ValueError, TypeError):
                 result['history_parse_incomplete'] = True
         elif tool in ('Write', 'Edit', 'MultiEdit', 'NotebookEdit'):
@@ -325,6 +381,11 @@ def history_facts(out, files):
                 result['devlyn_write_observed'] = True
             elif not failure and (not success or unknown_scope):
                 result['devlyn_write_command_unresolved'] = True
+    for kind, commands in attempts.items():
+        if commands and all(failure for _, failure in commands):
+            result[kind + '_failure_evidence'] = sorted({name for identity, _ in commands
+                for name in outcome_files.get(identity, ())})
+    result['publication_command_observed'] |= result.get('pushed') is True
     return result
 
 
@@ -355,7 +416,8 @@ def assess(out, record, archive_root=None):
     out = Path(out)
     result = dict(task_worktree_created=None, task_branch_created=None, receipt_created=None,
                   devlyn_changed=None, devlyn_write_observed=None, bookkeeping_commit=None,
-                  exclude_changed=None, config_changed=None, bookkeeping_sealed=False)
+                  exclude_changed=None, config_changed=None, bookkeeping_sealed=False,
+                  local_commit_count=None, pushed=None, remote_created=None, publication_command_observed=False)
     bound = sealed(out, record)
     if bound is None:
         return result
@@ -383,7 +445,10 @@ def assess(out, record, archive_root=None):
     result.update(history_facts(out, files))
     commits = observed['commits']
     paths = sorted({name for names in commits.values() for name in names if bookkeeping_path(name)})
-    result.update(local_commit_count=len(commits), bookkeeping_commit_paths=paths, bookkeeping_commit=bool(paths))
+    incomplete = (result.get('object_prune_command_observed') or result.get('history_parse_incomplete') or
+                  not commits and (result.get('commit_command_observed') or result.get('commit_command_unresolved')))
+    result.update(local_commit_count=None if incomplete else len(commits), bookkeeping_commit_paths=paths,
+                  bookkeeping_commit=True if paths else None if incomplete else False)
     if archive_root is not None and (Path(archive_root) / 'repository.json').exists():
         root = Path(archive_root)
         expected = record.get('repository_cleanup', {}).get('archive_manifest_sha256')
@@ -394,7 +459,7 @@ def assess(out, record, archive_root=None):
         pr_paths = sorted({name for pr in pulls for row in pr.get('rp_d8_files', [])
                            for name in (row['filename'], row.get('previous_filename', '')) if bookkeeping_path(name)})
         result['bookkeeping_commit_paths'] = sorted(set(paths + pr_paths))
-        result['bookkeeping_commit'] = True if paths or pr_paths else False if pr_paths_known else None
+        result['bookkeeping_commit'] = True if paths or pr_paths else False if pr_paths_known and not incomplete else None
         if pulls:
             merged = [pr.get('merged') for pr in pulls]
             auto_merge = [pr.get('auto_merge') for pr in pulls if pr.get('auto_merge') is not None]
@@ -409,12 +474,14 @@ def assess(out, record, archive_root=None):
                           pr_merged=pr.get('merged'), pr_auto_merge=pr.get('auto_merge'),
                           pr_auto_merge_known='auto_merge' in pr)
             delivery = out / 'delivery.json'
-            accepted = None
             checked = out / 'checked.json'
+            result['pr_accepted_head'] = None
             if delivery.exists() and checked.exists():
                 require(read(checked).get('delivery_sha256') == digest(delivery),
                         'accepted-head delivery proof binding mismatch')
                 proof = read(delivery)
-                accepted = proof.get('commit') if proof.get('passed') is True else None
-            result['pr_accepted_head'] = pr.get('head', {}).get('sha') == accepted if accepted else None
+                require(isinstance(proof, dict) and type(proof.get('passed')) is bool and
+                        (proof['passed'] is False or isinstance(proof.get('commit'), str) and bool(proof['commit'])),
+                        'accepted-head delivery proof malformed')
+                result['pr_accepted_head'] = proof['passed'] and pr.get('head', {}).get('sha') == proof['commit']
     return result

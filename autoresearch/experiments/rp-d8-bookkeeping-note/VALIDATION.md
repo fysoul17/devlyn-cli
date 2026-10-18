@@ -81,3 +81,36 @@ candidate commit.
 These checks qualify code paths, not a live apparatus run. The installed
 token gate, image, credentials, network route and real smoke remain operator
 preconditions.
+
+## Round-1 apparatus review follow-up — 2026-10-19
+
+The initial build record above predates this follow-up. All eight real findings
+in `results/apparatus-r1-verification.json` are fixed in the rp-d8 layer:
+history-backed commit absence (A1), bound accepted-head proofs (G1), independent
+registry and candidate-blob pins (A2), sealed publication outcomes and failed
+attempt adjudication (A3), agreed positive history findings (A4), the rp-d7
+executable input census (A5), final adoption despite unset descriptive tags
+(B1), and exact-format route-watch tails (A6). G2 required no change.
+
+The pre-fix prediction was that the new regressions would expose false zero
+commit counts, invocation-only publication facts and rejected-proof unknowns.
+The initial targeted run recorded `19 failed, 2 passed, 79 deselected`.
+Cross-model review identified one MEDIUM option-value parsing error; after its
+fix and regression coverage, the second round returned **SHIP**, with no
+remaining HIGH/CRITICAL findings. Local registration and Git-object checks
+independently confirmed the frozen registry hashes and candidate blob.
+
+The README's separate-suite offline loop then exited 0:
+
+```text
+rp-d8: 366 passed in 43.48s
+rp-d7: 325 passed in 35.81s
+rp-d6: 277 passed in 36.81s
+rp-d4: 268 passed, 18 subtests passed in 36.17s
+rp-d5: 195 passed in 24.69s
+```
+
+Total: **1,431 passed, plus 18 subtests**; rp-d8 gained 80 cases. No network,
+live cell or worktree commit was used. Task edits stay under rp-d8; DESIGN.md,
+the supplied review artifacts and the pre-existing rp-d7 bytecode modification
+remain untouched. Bytecode/plugin/cache writes were disabled for the checks.

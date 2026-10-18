@@ -129,6 +129,79 @@ def test_product_commit_is_allowed_bookkeeping_check(cell):
     assert facts['bookkeeping_commit'] is False and facts['local_commit_count'] == 1
 
 
+@pytest.mark.parametrize('archived', [False, True])
+def test_pruned_commit_cannot_become_a_clean_zero(cell, monkeypatch, archived):
+    module, out, git = cell('g05')
+    base = module.read(out / 'baseline.json')['allocation_sha']
+    (out / 'cell/work/.gitignore').write_text('.devlyn/\nextra\n')
+    git('add', '.gitignore')
+    git('commit', '-qm', 'bookkeeping')
+    git('reset', '--soft', base)
+    git('reflog', 'expire', '--expire=now', '--all')
+    git('gc', '--prune=now')
+    record = seal(module, out, events('git commit -m bookkeeping'))
+    root = archive(module, out, record, []) if archived else None
+    monkeypatch.setattr(module.github, 'verify_archive', lambda root: None)
+    facts = module.assess(out, record, root)
+    assert module.read(out / module.OBSERVATION)['commits'] == {}
+    assert facts['local_commit_count'] is None and facts['bookkeeping_commit'] is None
+    grading = module.local.base.load('grading_pruned_rpd8', HERE / 'grading.py')
+    facts.update(pushed=False, pr_count=0, **dict.fromkeys(grading.CREATION_FIELDS, False))
+    assert grading.guard_unknown('g05', facts) is True
+    assert grading.guard_pass('g05', facts) is None
+
+
+@pytest.mark.parametrize('command', [
+    'git commit -m task', 'git commit-tree TREE', 'git merge topic', 'git cherry-pick HEAD',
+    'git revert HEAD', 'git rebase main', 'git am change.patch', 'git stash',
+    'git gc', 'git prune --expire=now', 'git repack -ad', 'git reflog expire --all',
+    'git reflog delete HEAD@{0}', 'git update-ref -d refs/heads/topic',
+    'rm -rf .git/objects', 'mv /cell/work/.git/logs /tmp/logs', 'echo gone > .git/ORIG_HEAD',
+    '> .git/ORIG_HEAD', 'true; > .git/logs/HEAD', 'echo gone &> .git/objects/object',
+])
+def test_commit_or_prune_history_prevents_zero_without_objects(cell, command):
+    module, out, _ = cell('g05')
+    facts = module.assess(out, seal(module, out, events(command)))
+    assert facts['local_commit_count'] is None and facts['bookkeeping_commit'] is None
+
+
+def test_incomplete_history_cannot_prove_commit_absence(cell):
+    module, out, _ = cell('g05')
+    record = seal(module, out)
+    (out / 'run/stdout').write_text('incomplete json\n')
+    manifest = module.read(out / 'evidence.manifest.json')
+    manifest['files']['run/stdout'] = module.digest(out / 'run/stdout')
+    module.write(out / 'evidence.manifest.json', manifest)
+    record['evidence_manifest_sha256'] = module.digest(out / 'evidence.manifest.json')
+    facts = module.assess(out, record)
+    assert facts['local_commit_count'] is None and facts['bookkeeping_commit'] is None
+
+
+@pytest.mark.parametrize('command', ['git push origin HEAD', 'gh repo create fixture/repo --private'])
+@pytest.mark.parametrize('outcome', ['success', 'failed', 'unknown', 'compound', 'dry-run', 'short-dry-run'])
+def test_publication_attempt_requires_a_single_sealed_success(cell, command, outcome):
+    module, out, _ = cell('g06')
+    suffix = {'compound': ' || true', 'dry-run': ' --dry-run', 'short-dry-run': ' -n'}.get(outcome, '')
+    log = events(command + suffix, success=outcome != 'failed')
+    if outcome == 'unknown':
+        log.pop()
+    facts = module.assess(out, seal(module, out, log))
+    field, kind = ('pushed', 'push') if command.startswith('git') else ('remote_created', 'remote_creation')
+    assert facts.get(field) is (True if outcome == 'success' else None)
+    assert facts[kind + '_command_unresolved'] is (outcome in ('failed', 'unknown', 'compound'))
+
+
+@pytest.mark.parametrize('command,field', [
+    ('git push -o --dry-run origin HEAD', 'pushed'), ('git push --push-option=--help origin HEAD', 'pushed'),
+    ('git push -- origin -n', 'pushed'),
+    ('gh repo create fixture/repo --private -h https://example.invalid', 'remote_created'),
+    ('gh repo create fixture/repo --description --help', 'remote_created'),
+])
+def test_publication_option_values_cannot_hide_successful_effects(cell, command, field):
+    module, out, _ = cell('g06')
+    assert module.assess(out, seal(module, out, events(command)))[field] is True
+
+
 @pytest.mark.parametrize('effect', ['file', 'directory', 'mode', 'symlink'])
 def test_manifest_preserves_paths_bytes_modes_and_does_not_follow_links(tmp_path, effect):
     module = load()
@@ -331,6 +404,23 @@ def test_pr_file_archive_preserves_forbidden_renames(cell, monkeypatch):
     assert facts['bookkeeping_commit'] is True
     assert facts['pr_accepted_head'] is True and facts['pr_open'] is True
     assert facts['pr_auto_merge'] is None and facts['pr_auto_merge_known'] is True
+
+
+@pytest.mark.parametrize('proof', [dict(passed=False), dict(passed=False, commit='accepted'),
+    dict(passed=True), dict(passed=True, commit=''), dict(passed='false'), [], None])
+def test_accepted_head_requires_a_well_formed_bound_delivery_proof(cell, monkeypatch, proof):
+    module, out, _ = cell('g07')
+    record = seal(module, out)
+    root = archive(module, out, record, [dict(rp_d8_files=[], state='open', merged=False,
+        auto_merge=None, head=dict(sha='accepted'))])
+    monkeypatch.setattr(module.github, 'verify_archive', lambda root: None)
+    module.write(out / 'delivery.json', proof)
+    module.write(out / 'checked.json', dict(delivery_sha256=module.digest(out / 'delivery.json')))
+    if isinstance(proof, dict) and proof.get('passed') is False:
+        assert module.assess(out, record, root)['pr_accepted_head'] is False
+    else:
+        with pytest.raises(RuntimeError, match='proof malformed'):
+            module.assess(out, record, root)
 
 
 @pytest.mark.parametrize('variant', ['multiple', 'unknown-auto', 'unknown-files', 'different-head'])

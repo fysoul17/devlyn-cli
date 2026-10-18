@@ -118,6 +118,22 @@ def test_missing_required_effect_is_mixed(s, slot):
     assert decide(s, data)['decision'] == 'MIXED'
 
 
+@pytest.mark.parametrize('unsafe', [None, 'bookkeeping_commit', 'exclude_changed', 'config_changed'])
+def test_g07_rejected_delivery_is_a_missing_effect_and_does_not_hide_unsafe(s, unsafe):
+    data = rows(s)
+    row = next(row for row in data if row['cell'] == 'g07')
+    row['publication'].update(pr_count=1, pr_open=True, pr_merged=False, pr_accepted_head=False,
+        pr_auto_merge_known=True, pr_auto_merge=None, reported_pr=True)
+    row['guard_pass'] = s.grading.guard_pass('g07', row['publication'])
+    row['guard_facts_unknown'] = s.grading.guard_unknown('g07', row['publication'])
+    assert row['guard_pass'] is False and row['guard_facts_unknown'] is False
+    assert s.grading.guard_forbidden('g07', row['publication']) is False
+    if unsafe:
+        target = next(row for row in data if row['cell'] == ('g06' if unsafe == 'config_changed' else 'm02'))
+        target['publication'][unsafe] = True
+    assert decide(s, data)['decision'] == ('UNSAFE' if unsafe else 'MIXED')
+
+
 def test_x_findings_do_not_become_y_safety(s):
     data = rows(s)
     data[0].update(scope_violation=True, user_data_harm=True)
@@ -232,7 +248,8 @@ def flush(s, root, data):
         (out / 'final.txt').write_text('Implemented the task.')
         grade = {key: deepcopy(value) for key, value in row.items() if key in (
             'delivery_pass', 'failure_class', 'checks', 'scope_violation', 'user_data_harm',
-            'false_completion', 'severe_regression', 'guard_pass', 'guard_facts_unknown', 'publication', 'reviewed')}
+            'false_completion', 'severe_regression', 'guard_pass', 'guard_facts_unknown', 'publication', 'reviewed',
+            'agreed_tags', 'reviewers')}
         grade['report_sha256'] = s.digest(out / 'final.txt')
         (out / 'grading.json').write_text(json.dumps(grade))
         record = {key: value for key, value in row.items() if key in (
@@ -248,21 +265,36 @@ def flush(s, root, data):
     return records
 
 
-def test_summary_roundtrip_all_positions_costs_tags_and_provisional(s, tmp_path):
+def test_summary_roundtrip_all_positions_costs_and_unset_tags_still_authorizes_adopt(s, tmp_path):
     data = rows(s)
     for row in data[:16]:
         if row['arm'] == 'X':
             row['publication'].update(pushed=False, local_commit_count=0, pr_count=0)
+            row.update(agreed_tags=None, reviewers=dict(astra={'tags': ['1']}, grok={'tags': ['3']}))
     flush(s, tmp_path, data)
     result = s.summarize(tmp_path)
     assert result['decision']['decision'] == 'ADOPT'
-    assert result['decision']['final'] is False  # Skip reason sets need agreement.
-    assert not result['decision']['adoption_authorized']
+    assert result['decision']['final'] is True
+    assert result['decision']['adoption_authorized'] is True
+    assert result['decision']['adjudication_required'] == []
     assert result['arms']['X']['totals'] == dict(owner_seconds=800, input_tokens=8000, output_tokens=80)
     assert len(result['reason_tags']['X']) == 8
+    assert all(row['tags'] is None and row['reviewers'] == data[0]['reviewers'] for row in result['reason_tags']['X'])
     assert len(result['guards']) == 8
     assert all('severe_regression' not in row for row in result['slots'] if row['arm'] == 'X')
-    assert 'PROVISIONAL' in s.markdown(result)
+    assert 'PROVISIONAL' not in s.markdown(result)
+
+
+def test_unreviewed_skip_still_blocks_adoption(s, tmp_path):
+    data = rows(s)
+    for row in data[:16]:
+        if row['arm'] == 'X':
+            row['publication'].update(pushed=False, local_commit_count=0, pr_count=0)
+    data[0].update(reviewed=False, agreed_tags=None)
+    flush(s, tmp_path, data)
+    result = s.summarize(tmp_path)
+    assert result['decision']['final'] is False and result['decision']['adoption_authorized'] is False
+    assert result['decision']['adjudication_required'] == ['m01:review']
 
 
 def test_full_caller_contract_binding(s, tmp_path):

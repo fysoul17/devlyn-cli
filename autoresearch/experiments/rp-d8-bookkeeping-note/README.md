@@ -199,7 +199,8 @@ paths or `.gitignore` changes on Y and guards.
 Non-delivery classes apply to both measured arms in order: quality, skip,
 other. Skip candidates are identified before review; no-push requires agreed
 sealed-history adjudication. Each skip's rp-d7 reason tags require quoted
-two-reviewer agreement; disagreement leaves tags unset and review pending.
+two-reviewer agreement; disagreement leaves tags unset and published, without
+keeping review pending or blocking adoption.
 Tags are descriptive, not causal.
 
 The ordered decision is INCONCLUSIVE, UNSAFE, REGRESSION, NO FAILURE OBSERVED,

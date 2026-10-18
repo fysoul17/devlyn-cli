@@ -108,6 +108,8 @@ def staged(tmp_path, monkeypatch, stage_module):
     s = stage_module
     fixtures = load('fixtures', HERE / 'test_pack_gate.py')
     arms, paths = fixtures.gate_fixture(s.gate, tmp_path, monkeypatch)
+    monkeypatch.setattr(s.pack, 'REGISTERED', s.gate.pack.REGISTERED)
+    monkeypatch.setattr(s.pack, 'CANDIDATE_BLOB', s.gate.pack.CANDIDATE_BLOB)
     historical = load('auth_fixtures', HERE.parent / 'rp-d4-helper-report/test_runtime.py')
     host = tmp_path / 'host'
     host.mkdir()

@@ -60,6 +60,8 @@ def archive_fixture(pack, root, monkeypatch, changed=None, candidate_files=None)
         assert args == ('rev-parse', '--verify', commit + ':' + pack.FILE)
         return (pack.blob_id(after) + '\n').encode()
     monkeypatch.setattr(pack.legacy, 'git', git)
+    monkeypatch.setattr(pack, 'REGISTERED', pack.identity(source))
+    monkeypatch.setattr(pack, 'CANDIDATE_BLOB', pack.blob_id(after))
     return source, entries, after
 
 
@@ -125,6 +127,30 @@ def test_pack_frozen_inputs_fail_closed(tmp_path, monkeypatch, fault):
         monkeypatch.setattr(p.legacy, 'git', lambda *args: b'a' * 40 if args[0] == 'rev-parse' else original(*args))
     with pytest.raises(ValueError):
         p.build(source, tmp_path / 'arms', p.CANDIDATE_COMMIT, **hashes)
+
+
+@pytest.mark.parametrize('fault', ['sha256', 'integrity', 'candidate_blob'])
+def test_consistent_archives_cannot_supply_their_own_frozen_identity(tmp_path, monkeypatch, fault):
+    p = load('pack')
+    arms, _, _, _ = packed(p, tmp_path, monkeypatch)
+    # The inherited verifier accepts these internally consistent artifacts;
+    # only the independent rp-d8 identity must reject them.
+    assert p.legacy.verify_arms(arms)
+    if fault == 'candidate_blob':
+        monkeypatch.setattr(p, 'CANDIDATE_BLOB', '0' * 40)
+    else:
+        monkeypatch.setattr(p, 'REGISTERED', p.REGISTERED | {fault: 'wrong'})
+    with pytest.raises(ValueError, match='frozen'):
+        p.verify_arms(arms)
+
+
+def test_build_refuses_unregistered_candidate_blob(tmp_path, monkeypatch):
+    p = load('pack')
+    source, _, _ = archive_fixture(p, tmp_path, monkeypatch)
+    monkeypatch.setattr(p, 'CANDIDATE_BLOB', '0' * 40)
+    with pytest.raises(ValueError, match='candidate blob'):
+        p.build(source, tmp_path / 'arms', p.CANDIDATE_COMMIT, **p.identity(source))
+    assert not (tmp_path / 'arms').exists()
 
 
 def test_gate_on_verified_installed_files_and_bound_record(tmp_path, monkeypatch):

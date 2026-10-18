@@ -94,7 +94,11 @@ def route_watch(pid_file=None, log_file=None):
                 stream.seek(end)
                 tail = stream.read(size) + tail
             lines = tail.decode('utf-8').splitlines()
-            result['last_line'] = lines[-1] if lines else ''
+            line = lines[-1] if lines else ''
+            if re.fullmatch(r'\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ default-route interface: [A-Za-z0-9]+', line):
+                result['last_line'] = line
+            else:
+                errors.append('log tail not in watcher format')
     except (OSError, UnicodeError) as exc:
         errors.append('log observation unavailable: ' + type(exc).__name__)
     if errors:
@@ -124,7 +128,8 @@ class Runner(legacy.Runner):
 
     def inputs(self):
         return super().inputs() | {str(path): digest(path) for path in
-            [*HERE.glob('*.py'), HERE / 'DESIGN.md', HERE / 'README.md']}
+            [*HERE.glob('*.py'), HERE / 'DESIGN.md', HERE / 'README.md',
+             *prior.HERE.glob('*.py'), prior.HERE / 'DESIGN.md', prior.HERE / 'README.md']}
 
     def repository(self, name):
         arm_for(name)

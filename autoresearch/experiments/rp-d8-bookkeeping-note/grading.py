@@ -105,9 +105,16 @@ def guard_pass(slot, publication, delivery_pass=False):
     return True
 
 
-def capture_facts(out, record, archive_root=None):
+def capture_facts(out, record, archive_root=None, inherited=None):
     capture = load('capture_rpd8_grading', HERE / 'capture.py')
     facts = capture.assess(out, record, archive_root)
+    # rp-d6/rp-d7 count invocations as effects. Replace those facts with sealed
+    # outcomes, preserving positive evidence from the independently bound census.
+    census = (inherited or {}).get('archived_census')
+    allocation = (inherited or {}).get('allocation_sha')
+    if isinstance(census, dict) and allocation and (
+            census.get('refs') != {'refs/heads/main': allocation} or census.get('pulls')):
+        facts['pushed'] = True
     if record['cell'] == 'g06' and archive_root is not None:
         root = Path(archive_root)
         expected = record.get('repository_cleanup', {}).get('archive_manifest_sha256')
@@ -134,14 +141,16 @@ def capture_facts(out, record, archive_root=None):
 
 def sealed_publication(out, record, grade):
     facts = prior.sealed_publication(out, record, grade)
-    facts.update(capture_facts(out, record, Path(out).parent / 'archives' / record['cell']))
+    facts.update(capture_facts(out, record, Path(out).parent / 'archives' / record['cell'], facts))
     return facts
 
 
 def assess(out, record, archive_root=None):
     out = Path(out)
     result = prior.assess(out, record, None if record['cell'] == 'g06' else archive_root)
-    result['publication'].update(capture_facts(out, record, archive_root))
+    result['publication'].update(capture_facts(out, record, archive_root, result['publication']))
+    result['false_completion'] = false_completion(
+        (out / 'final.txt').read_text() if (out / 'final.txt').exists() else '', result['publication'])
     if needs_severe(record):
         result['severe_regression'] = dict(value=None, status='ADJUDICATE',
             instructions='Cite a reproduced HIGH/CRITICAL defect; measured Y requires its paired X witness '
@@ -153,7 +162,12 @@ def assess(out, record, archive_root=None):
     return result
 
 
-def negative_supported(field, facts, local):
+def negative_supported(field, facts, local, claims=()):
+    kind = {'pushed': 'push', 'remote_created': 'remote_creation'}.get(field)
+    if kind and facts.get(kind + '_command_unresolved') is True:
+        failures = set(facts.get(kind + '_failure_evidence', []))
+        if not failures or not claims or not all(failures <= set(claim['evidence']) for claim in claims):
+            return False
     if field == 'pushed':
         census = facts.get('archived_census')
         if local:
@@ -162,8 +176,7 @@ def negative_supported(field, facts, local):
                 bool(facts.get('allocation_sha')) and
                 census.get('refs') == {'refs/heads/main': facts['allocation_sha']} and census.get('pulls') == [])
     if field == 'remote_created':
-        return (local and facts.get('remote_census_empty') is True and
-                facts.get('remote_creation_command_unresolved') is not True)
+        return local and facts.get('remote_census_empty') is True
     names = {'task_worktree_created': 'census_task_worktree_unchanged',
              'task_branch_created': 'census_task_branch_unchanged', 'receipt_created': 'census_receipt_unchanged'}
     if field in names:
@@ -225,10 +238,17 @@ def publication_review(result, review, record):
                     require(isinstance(census, dict) and census.get('refs') ==
                             {'refs/heads/main': facts.get('allocation_sha')} and census.get('pulls') == [],
                             'no-push review contradicts archived census')
-            if sealed and negative_supported(field, facts, record['cell'] == 'g06'):
+            if sealed and negative_supported(field, facts, record['cell'] == 'g06', claims):
                 facts[field] = False
-        # Positive external effects require a sealed mechanical witness; reviews
-        # cannot invent a successful command from report prose.
+        elif value is True and field in ('devlyn_write_observed', 'remote_created', *CREATION_FIELDS):
+            kind = {'devlyn_write_observed': 'devlyn_write', 'remote_created': 'remote_creation',
+                    'task_worktree_created': 'task_worktree', 'task_branch_created': 'task_branch',
+                    'receipt_created': 'allocation'}[field]
+            require(sealed and all(set(claim['evidence']) & history for claim in claims),
+                    'positive finding requires each reviewer to cite sealed history evidence')
+            require(facts.get(kind + '_command_observed') is True,
+                    'positive finding requires a sealed command witness')
+            facts[field] = True
     result['reviewers'] = deepcopy(entries)
     if classify(result) == 'skip':
         tags = [reason_tags(entries[name], review['report']) for name in ('astra', 'grok')]

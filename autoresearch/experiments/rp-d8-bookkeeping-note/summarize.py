@@ -54,6 +54,7 @@ def review_template(output, slot):
         skip_candidate=grading.skip_candidate(dict(grade, publication=facts)), publication_evidence=facts,
         instructions='Inspect the sealed command history, command results and archived census independently. '
                      'Negative publication and creation findings require both reviewers to cite sealed history. '
+                     'Positive creation/write findings require agreed reviews citing sealed history and a command witness. '
                      'For skip reasons quote report substrings and assign every applicable rp-d7 tag. '
                      'Report status findings require report quotations from both reviewers; unknown stays unset.',
         reviewers={name: dict(publication=dict(pushed=None, evidence=[], quotes=[]), quotes=[], tags=[])
@@ -196,8 +197,6 @@ def summarize(output, reviews=None):
                 pending.append(slot + ':class')
             if slot.startswith('g') and (row.get('guard_pass') is None or row.get('guard_facts_unknown') is not False):
                 pending.append(slot + ':guard')
-            if row['failure_class'] == 'skip' and row['agreed_tags'] is None:
-                pending.append(slot + ':tags')
         slots.append(row)
     measured = slots[:16]
     arms = {arm: aggregate([row for row in measured if row['arm'] == arm]) for arm in ('X', 'Y')}

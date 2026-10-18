@@ -15,6 +15,9 @@ FILES = ('config/skills/_shared/task-completion.md',)
 FILE = FILES[0]
 DESIGN_COMMIT = '7c5dcdf2fca05f8d17d9e7fb3bc340461f8713c1'
 CANDIDATE_COMMIT = 'e22dbaf3b7d4a458768c86e7ec8ff85e0f8bdb8c'
+CANDIDATE_BLOB = 'de7f9882dc8c3df1cb2b0a621c9c7fa794b01866'
+REGISTERED = dict(sha256='799c609141e7f1c05c0e798177522d807cc93cfcf580532f38cfbe31a205ca61',
+    integrity='sha512-PsTQkzNrfz3TENHtBLff/fmbnxmV2YzMSl4DLKI7dFwOXyO4m9x5CxlhSjkGR5FEfFwjqOHabIrpqKb0O3GOpQ==')
 legacy.FILES, legacy.FILE = FILES, FILE
 read, write, require = legacy.read, legacy.write, legacy.require
 identity, tree_manifest = legacy.identity, legacy.tree_manifest
@@ -26,6 +29,7 @@ verify_pair = legacy.verify_pair
 
 
 def build(source, dest, candidate, sha256, integrity):
+    require(dict(sha256=sha256, integrity=integrity) == REGISTERED, 'X differs from the frozen registry release')
     require(isinstance(candidate, str) and re.fullmatch('[a-fA-F0-9]{8,40}', candidate),
             'candidate must be a commit hash')
     commit = legacy.git('rev-parse', '--verify', candidate + '^{commit}').decode().strip()
@@ -46,13 +50,19 @@ def build(source, dest, candidate, sha256, integrity):
         name == 'package.json' or '/' not in name and re.match(r'(?i)^(readme|licen[sc]e)(\.|$)', name)
         or matches(name, included) and not matches(name, excluded))}
     require(shipped == set(FILES), 'candidate must change exactly task-completion.md among shipped paths')
+    require(legacy.git('rev-parse', '--verify', commit + ':' + FILE).decode().strip() == CANDIDATE_BLOB,
+            'candidate blob differs from frozen rp-d8 task-completion.md')
     return legacy.build(source, dest, commit, sha256, integrity)
 
 
 def verify_arms(path):
     arms = legacy.verify_arms(Path(path))
+    require({key: arms['X'][key] for key in REGISTERED} == REGISTERED,
+            'X differs from the frozen registry release')
     require(arms['Y']['source']['candidate_commit'] == CANDIDATE_COMMIT,
             'candidate differs from frozen rp-d8 commit')
+    require(arms['Y']['source']['candidate_blobs'] == {FILE: CANDIDATE_BLOB},
+            'candidate blob differs from frozen rp-d8 task-completion.md')
     return arms
 
 

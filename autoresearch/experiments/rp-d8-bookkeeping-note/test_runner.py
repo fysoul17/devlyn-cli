@@ -66,9 +66,10 @@ def test_route_watch_alive_dead_missing_and_log(tmp_path, monkeypatch):
     pid = tmp_path / 'watch.pid'
     log = tmp_path / 'watch.log'
     pid.write_text(str(os.getpid()) + '\n')
-    log.write_text('start\n' + 'long ' * 10000 + '\nlast route\n')
+    line = '2026-10-19T01:02:03Z default-route interface: utun4'
+    log.write_text('start\n' + 'long ' * 10000 + '\n' + line + '\n')
     result = r.route_watch(pid)
-    assert result['alive'] is True and result['last_line'] == 'last route'
+    assert result['alive'] is True and result['last_line'] == line
     def dead(*_args):
         raise ProcessLookupError
     monkeypatch.setattr(r.os, 'kill', dead)
@@ -79,6 +80,30 @@ def test_route_watch_alive_dead_missing_and_log(tmp_path, monkeypatch):
     log.unlink()
     result = r.route_watch(pid)
     assert result['alive'] is None and result['last_line'] is None and 'unavailable' in result['reason']
+
+
+@pytest.mark.parametrize('line', ['', 'github_pat_fixture', 'Bearer fixture-token',
+    '2026-10-19T01:02:03Z default-route interface: utun4 token=fixture',
+    '2026-10-19 default-route interface: utun4',
+    '2026-10-19T01:02:03Z default-route interface: github_pat_fixture'])
+def test_route_watch_rejects_unexpected_log_tail_without_retaining_text(tmp_path, line):
+    r = load('runner')
+    pid, log = tmp_path / 'watch.pid', tmp_path / 'watch.log'
+    pid.write_text(str(os.getpid()))
+    log.write_text(line + '\n')
+    result = r.route_watch(pid, log)
+    assert result['alive'] is True and result['last_line'] is None
+    assert result['reason'] == 'log tail not in watcher format'
+    assert 'fixture' not in str(result)
+
+
+def test_input_census_includes_executed_rpd7_dependencies(monkeypatch):
+    r = load('runner')
+    monkeypatch.setattr(r.legacy.Runner, 'inputs', lambda self: {})
+    inputs = object.__new__(r.Runner).inputs()
+    for name in ('runner.py', 'prepare.py', 'pack.py', 'grading.py'):
+        path = HERE.parent / 'rp-d7-prompt-delivery' / name
+        assert inputs[str(path)] == r.digest(path)
 
 
 def test_smoke_qualification_checks_prompt_without_requiring_delivery():
