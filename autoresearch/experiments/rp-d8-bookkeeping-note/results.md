@@ -152,6 +152,14 @@ That is one observation.
    a fresh run.
 3. **Stop.** Leave 4.2.22 as is.
 
+## Owner decision (2026-10-19)
+
+The owner chose option 1: adopt the candidate as patch 4.2.23. This is an
+owner decision outside the registered rule, which gives INCONCLUSIVE and no
+adoption; the registered outcome above is unchanged. The release ships the
+measured bytes (`task-completion.md` blob `de7f9882`, cherry-picked from
+`e22dbaf3`).
+
 ## Cleanup
 
 Done: all 27 repositories are deleted and verified 404. That covers the 16
