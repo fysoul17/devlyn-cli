@@ -10,12 +10,14 @@ limit, now drawn from `caller.json`.
 The run used the frozen [registration](registration.md) (both reviewers
 SHIP) and [DESIGN.md](DESIGN.md). Smoke qualified on the first attempt. All
 four measured slots ran with no STOP and no `merge_refused` hit. Every slot
-had COMPLETE usage and effort binding MATCH. The change-only route watcher
-logged no default-route change between 11:05:09Z and the end of the run:
-smoke started at 11:46Z, the measured slots ended at 11:57Z, and the last
-repository check was at 12:07Z. Earlier brief drops (08:32Z–11:05Z, interface
-`en0`) all came before exposure
-([route-watch.log](results/measured/route-watch.log)). Evidence:
+had COMPLETE usage and effort binding MATCH. The change-only route watcher's
+last line is the 11:05:09Z return to `en0`
+([route-watch.log](results/measured/route-watch.log)); its process was still
+running when checked at 12:18:48Z, so no default-route change was logged
+across the recorded run bounds (smoke PR created 11:47:44Z, latest m04
+census timestamp 11:56:06Z, deletion check 12:07:31Z). Four earlier drops to
+`none` (08:32:32Z, 08:36:28Z, 10:25:54Z, 11:04:19Z), each returning to
+`en0`, all came before exposure. Evidence:
 [results/measured](results/measured/).
 
 ## Measured slots (Claude `high`, P1, X = 4.2.22)
@@ -56,19 +58,22 @@ review can resolve that: the rule fixes a disagreement as unset. MIXED
 
 - **Decision: MIXED** (rule 5). Rules 1–4 do not match: no STOP or unset
   class, no harm or false completion, not 4/4, and fewer than two skips.
-- **Prediction** ("at least one skip, and every skip's agreed tag set
-  includes 1"): first clause **true**; second clause **not scored**
-  (m04's tag set is unset). Both adjudicators' own sets did include 1.
+- **Prediction** (DESIGN, verbatim: "At least one of the four P1 slots is
+  a skip, and every skip's agreed tag set includes 1."): first clause
+  **true**; second clause **not scored** (m04's tag set is unset). Both
+  adjudicators' own sets did include 1.
 
 ## Reference and cost (descriptive)
 
 | Run | Delivered | Wall / delivery | Input / delivery | Output / delivery |
 |---|---:|---:|---:|---:|
 | P1 (this run) | 3/4 | 96.5 s | 322,507 | 4,632 |
-| rp-d6 X, full prompt | 2/4 | 115.3 s | 382,612 | 6,527 |
+| rp-d6 X, full prompt | 2/4 | 115.3 s | 382,612 | 6,526.5 |
 
-One-sided Fisher exact p = 0.5 (3/4 against 2/4). rp-d6 X is an earlier
-run, not a contemporaneous control. Sums over m01–m04 include the skip:
+Computed from unrounded values; owner seconds shown to 0.1 s, token
+averages to the nearest integer with exact halves kept. One-sided Fisher
+exact p = 0.5 (3/4 against 2/4). rp-d6 X is an earlier run, not a
+contemporaneous control. Sums over m01–m04 include the skip:
 289.6 s, 967,520 input, 13,895 output.
 
 Smoke (SM, not in the decision): delivered, PR merged, 84.5 s, 272,100
@@ -76,9 +81,9 @@ input, 4,758 output.
 
 ## Reading
 
-- **Removing the two sentences did not remove the skip.** Claude `high`
-  still skipped the default delivery once in four. Across both runs on the
-  unchanged 4.2.22, BV delivered 4/4 and Z0 1/4.
+- **A skip still occurred on P1** (1 of 4). rp-d6 X, earlier and on the
+  full prompt, had 2 of 4. Pooling rp-d6 X and this run on the unchanged
+  4.2.22, BV delivered 4/4 and Z0 1/4.
 - **The skip's reasons are the same two.** It again cited an unrequested
   publication (Claude Code's "Commit or push only when the user asks" is in
   every request). It also cited the allowed-file limit, now taken from
@@ -99,9 +104,10 @@ input, 4,758 output.
    branch, receipt and `.devlyn/` files are delivery bookkeeping, not edits
    outside a task's allowed files. Measure X against Y on Claude `high`
    with P1, weighted to Z0, under the harness ladder's token rule.
-2. **Stop.** At `high`, Claude delivered 3/4 on a prompt without the
-   sentences and 4/4 on BV. Real direct requests rarely carry an allowed-file
-   list. The residual skip needs a task contract like `caller.json`.
+2. **Stop.** Claude `high` delivered 3/4 without the two sentences, and
+   BV was 4/4 across rp-d6 X and this run on 4.2.22. The remaining report
+   cited the task contract's allowed files; a request without that
+   contract was not run.
 3. **Address reason 1 differently.** rp-d6's "the user asks you to"
    sentence did not help; any new wording needs its own design round.
 
