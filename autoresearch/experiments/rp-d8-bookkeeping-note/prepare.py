@@ -57,9 +57,15 @@ verify_release = legacy.verify_release
 
 
 def installed_binding(out, runtime, arm):
-    # Retain rp-d7's strict installed CLAUDE/AGENTS binding (including import).
-    p1.installed_binding(out, runtime, arm)
-    baseline = github.read(Path(out) / 'baseline.json')
+    out = Path(out)
+    baseline = github.read(out / 'baseline.json')
+    require(baseline['config'] in ('claude', 'codex'), 'unregistered installed config')
+    # Verified X/Y installers select only AGENTS for a fresh Codex (-y) install.
+    # Present CLAUDE files retain rp-d7's exact block/11-byte import check.
+    if baseline['config'] == 'codex' and not github.safe_file(out / 'cell/work', 'CLAUDE.md').exists():
+        p1.legacy.installed_binding(out, runtime, arm)
+    else:
+        p1.installed_binding(out, runtime, arm)
     copies = [name for name in baseline['installed_files'] if name.endswith(pack.FILE.removeprefix('config'))]
     original = Path(runtime['control']) / 'packages' / arm / 'package' / pack.FILE
     require(copies and all(github.safe_file(Path(out) / 'cell/work', name).read_bytes() == original.read_bytes()

@@ -4,14 +4,47 @@ import importlib.util
 import os
 from pathlib import Path
 import re
-from types import FunctionType
+from types import FunctionType, ModuleType
 
 HERE = Path(__file__).resolve().parent
 spec = importlib.util.spec_from_file_location('runner_rpd6_rpd8', HERE.parent / 'rp-d6-claude-delivery/runner.py')
 legacy = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(legacy)
-load, PRIOR = legacy.load, legacy.PRIOR
-prepare = load('prepare_rpd8_runner', HERE / 'prepare.py')
+base_load, PRIOR = legacy.load, legacy.PRIOR
+prepare = base_load('prepare_rpd8_runner', HERE / 'prepare.py')
+github = prepare.github
+
+
+def share_evidence_error(module):
+    """Unify trusted exception identity without replacing private GitHub hooks."""
+    pending, seen = [module], set()
+    while pending:
+        current = pending.pop()
+        path = Path(getattr(current, '__file__', ''))
+        if (id(current) in seen or path.parent.parent != HERE.parent or
+                not path.parent.name.startswith('rp-d') or path.name.startswith('test_')):
+            continue
+        seen.add(id(current))
+        namespace = vars(current)
+        if path == PRIOR / 'github.py':
+            namespace['EvidenceError'] = github.EvidenceError
+        for value in tuple(namespace.values()):
+            if isinstance(value, ModuleType):
+                pending.append(value)
+            elif isinstance(value, FunctionType) and value.__globals__.get('__file__') == github.__file__:
+                # Aliased require() can outlive its original module reference.
+                value.__globals__['EvidenceError'] = github.EvidenceError
+        if 'load' in namespace:
+            namespace['load'] = load
+    return module
+
+
+def load(name, path):
+    return share_evidence_error(base_load(name, path))
+
+
+share_evidence_error(legacy)
+share_evidence_error(prepare)
 registered = load('schedule_rpd8_runner', HERE / 'schedule.py')
 SCHEDULE, ARMS = registered.SCHEDULE, registered.ARMS
 smoke_slots, arm_for, effort_for = registered.smoke_slots, registered.arm_for, registered.effort_for

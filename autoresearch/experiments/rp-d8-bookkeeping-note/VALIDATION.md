@@ -114,3 +114,44 @@ Total: **1,431 passed, plus 18 subtests**; rp-d8 gained 80 cases. No network,
 live cell or worktree commit was used. Task edits stay under rp-d8; DESIGN.md,
 the supplied review artifacts and the pre-existing rp-d7 bytecode modification
 remain untouched. Bytecode/plugin/cache writes were disabled for the checks.
+
+## Smoke-attempt-1 binding repair — 2026-10-19
+
+Prediction before the regression run: the valid Codex installation without
+CLAUDE.md would fail, and private inherited EvidenceError classes would lose
+their fixed messages in the rp-d1 slot recorder. The run confirmed both:
+`8 failed, 25 passed, 88 deselected`. After the rp-d8-only fix, targeted checks
+reported `40 passed, 81 deselected`, including rejection of wrong/import-plus-
+extra/CRLF CLAUDE bytes, missing Claude instructions, and arbitrary exception
+payload serialization. AGENTS managed-block validation remains inherited.
+
+Both staged X/Y archives passed verification and their extracted trees matched.
+Their identical installer SHA256 is
+`fc60aa2ccc4435386ced243e88b4062058384090e845a1c23fef4740667e2122`.
+The inherited installer invokes Codex with `-y`, selecting only AGENTS on a
+fresh checkout; Claude also receives `--claude`, producing the exact 11-byte
+`@AGENTS.md\n` import. Present CLAUDE files still use rp-d7's exact check.
+The untouched smoke-codex checkout passed the repaired read-only installed
+binding after X/Y release verification; no cell was dispatched.
+
+No additional Codex blocker was found for g01, g02 or smoke-codex. API-body
+capture and effort binding already branch on Claude. Auth selects by engine;
+Codex's inherited `claude.env` mount is required to be empty. The rp-d7
+credential parser checks GitHub credentials for either engine. Its Claude-only
+Runner is outside rp-d8's inheritance chain, and bookkeeping capture supports
+Codex sessions/events. The exception fix shares only the trusted EvidenceError
+class across private modules, retained function aliases and lazy loads; private
+GitHub hooks and generic exception redaction remain intact.
+
+Astra review returned **SHIP**, with no findings. All three requested suites
+passed with `PYTHONDONTWRITEBYTECODE=1`, plugin autoload and pytest cache disabled:
+
+```text
+rp-d8: 499 passed in 102.96s (0:01:42)
+rp-d7: 325 passed in 50.00s
+rp-d6: 277 passed in 59.37s
+```
+
+Total: **1,101 passed**. All edits stay in rp-d8; rp-d1..rp-d7, DESIGN.md and
+sealed smoke artifacts remain unchanged. No network, live cell or worktree
+commit was used.

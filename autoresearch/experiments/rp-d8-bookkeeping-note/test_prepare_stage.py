@@ -70,11 +70,10 @@ def test_full_caller_contract_prompt_binding(tmp_path, slot, arm):
         p.prompt_binding(out, release, arm)
 
 
-def test_installed_candidate_and_root_instructions_bound(tmp_path):
-    p = load('prepare')
+def installed_checkout(p, tmp_path, arm='Y', config='claude'):
     gate = load('rendered_gate')
     out, control = tmp_path / 'm02', tmp_path / 'control'
-    package = control / 'packages/Y/package'
+    package = control / 'packages' / arm / 'package'
     work = out / 'cell/work'
     installed = {}
     for source in (p.pack.FILE, 'config/skills/_shared/runtime-principles.md'):
@@ -90,12 +89,57 @@ def test_installed_candidate_and_root_instructions_bound(tmp_path):
     for name in ('CLAUDE.md', 'AGENTS.md'):
         (package / name).write_bytes(b'# instructions\n')
         (work / name).write_bytes(b'@AGENTS.md\n' if name == 'CLAUDE.md' else gate.managed_block(b'# instructions\n'))
-    p.github.write(out / 'baseline.json', {'installed_files': installed})
-    p.installed_binding(out, {'control': str(control)}, 'Y')
+    p.github.write(out / 'baseline.json', {'installed_files': installed, 'config': config})
+    return out, {'control': str(control)}
+
+
+def test_installed_candidate_and_root_instructions_bound(tmp_path):
+    p = load('prepare')
+    out, runtime = installed_checkout(p, tmp_path)
+    p.installed_binding(out, runtime, 'Y')
+    work = out / 'cell/work'
     task = work / ('.agents' + p.pack.FILE.removeprefix('config'))
     task.write_bytes(b'wrong candidate')
     with pytest.raises((ValueError, RuntimeError), match='task-completion.md differs'):
-        p.installed_binding(out, {'control': str(control)}, 'Y')
+        p.installed_binding(out, runtime, 'Y')
+
+
+@pytest.mark.parametrize('arm', ['X', 'Y'])
+@pytest.mark.parametrize('config', ['codex', 'claude'])
+@pytest.mark.parametrize('content', ['absent', 'import', 'block', 'wrong', 'extra-import', 'crlf'])
+def test_installed_claude_binding_by_config(tmp_path, arm, config, content):
+    p = load('prepare')
+    out, runtime = installed_checkout(p, tmp_path, arm, config)
+    path = out / 'cell/work/CLAUDE.md'
+    if content == 'absent':
+        path.unlink()
+    else:
+        path.write_bytes({'import': b'@AGENTS.md\n',
+            'block': load('rendered_gate').managed_block(b'# instructions\n'),
+            'wrong': b'arbitrary instructions\n', 'extra-import': b'@AGENTS.md\narbitrary instructions\n',
+            'crlf': b'@AGENTS.md\r\n'}[content])
+    if content in ('import', 'block') or content == 'absent' and config == 'codex':
+        p.installed_binding(out, runtime, arm)
+    else:
+        with pytest.raises(RuntimeError, match='installed (CLAUDE.md|managed instruction)'):
+            p.installed_binding(out, runtime, arm)
+
+
+@pytest.mark.parametrize('config', ['codex', 'claude'])
+@pytest.mark.parametrize('fault', ['agents', 'claude-symlink', 'claude-directory'])
+def test_installed_binding_preserves_root_instruction_checks(tmp_path, config, fault):
+    p = load('prepare')
+    out, runtime = installed_checkout(p, tmp_path, config=config)
+    claude = out / 'cell/work/CLAUDE.md'
+    claude.unlink()
+    if fault == 'agents':
+        (out / 'cell/work/AGENTS.md').write_bytes(b'wrong instructions\n')
+    elif fault == 'claude-symlink':
+        claude.symlink_to('absent')
+    else:
+        claude.mkdir()
+    with pytest.raises((OSError, RuntimeError)):
+        p.installed_binding(out, runtime, 'Y')
 
 
 @pytest.fixture(scope='module')

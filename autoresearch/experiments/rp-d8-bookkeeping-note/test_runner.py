@@ -39,6 +39,53 @@ def test_frozen_schedule_and_routes():
     assert r.legacy.legacy.prepare is r.prepare
 
 
+@pytest.mark.parametrize('source', ['prepare', 'rp-d7', 'rp-d6', 'runner', 'capture', 'grading', 'local_only',
+                                  'runtime-error', 'subprocess-error'])
+def test_prepare_evidence_error_keeps_message_in_slot_record(tmp_path, monkeypatch, source):
+    r = load('runner')
+    ancestor = r.legacy.ancestor
+    app = object.__new__(r.Runner)
+    app.runtime = dict(phase='smoke', output=str(tmp_path))
+    app.smoke = r.smoke_slots()
+    app.tasks = r.slot_tasks('smoke', 'smoke-codex')
+    app.prior_deleted = lambda _name: None
+    app.remaining = lambda _name: []
+    monkeypatch.setattr(ancestor.github, 'precheck', lambda _remaining: None)
+    monkeypatch.setattr(ancestor.cell, 'scan', lambda *_args, **_kwargs: None)
+
+    def prepare_failure(*_args):
+        if source == 'prepare':
+            r.prepare.prompt_body('invalid')
+        elif source == 'rp-d7':
+            r.prepare.p1.derive(b'invalid')
+        elif source == 'rp-d6':
+            r.write(tmp_path / 'baseline.json', {'installed_files': []})
+            r.prepare.p1.legacy.installed_binding(tmp_path, {'control': str(tmp_path)}, 'Y')
+        elif source == 'runner':
+            r.require(False, 'fixed runner refusal')
+        elif source == 'runtime-error':
+            raise RuntimeError('private token-bearing output')
+        elif source == 'subprocess-error':
+            raise ancestor.subprocess.CalledProcessError(
+                1, 'private command', output='private token-bearing output')
+        else:
+            # Runner.__init__ loads these modules after the initial runner graph.
+            module = r.load('rpd8_error_test_' + source, HERE / (source + '.py'))
+            module.require(False, 'fixed ' + source + ' refusal')
+
+    monkeypatch.setattr(ancestor.legacy.Runner, 'run', prepare_failure)
+    assert app.inherited_run('smoke-codex', 'SM', 'codex') == 2
+    record = r.read(tmp_path / 'smoke-codex/rp-verdict.json')
+    expected = {'prepare': 'unregistered rp-d8 arm', 'rp-d7': 'common.txt hash mismatch',
+        'rp-d6': 'installed runtime principles differ from arm',
+        'runtime-error': 'rp-d1 instrumentation failed: RuntimeError',
+        'subprocess-error': 'rp-d1 instrumentation failed: CalledProcessError'}.get(
+            source, 'fixed ' + source + ' refusal')
+    assert record['status'] == 'STOP' and record['dispatched'] is False
+    assert record['reason'] == expected
+    assert 'private' not in str(record)
+
+
 def test_repository_allowlist_and_registry(monkeypatch, tmp_path):
     r = load('runner')
     monkeypatch.setattr(Path, 'home', lambda: tmp_path)
