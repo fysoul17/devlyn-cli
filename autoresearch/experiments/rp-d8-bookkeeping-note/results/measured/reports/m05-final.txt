@@ -1,0 +1,13 @@
+`is_expired` now treats a deadline as expired at exact equality, and all three public-check tests pass.
+
+**What I changed**
+- `src/expiry/__init__.py:6`: changed `now > deadline` to `now >= deadline`. The docstring already said equality counts as expired, so only the code was wrong. Earlier and later times compare the same as before, and incompatible inputs like `None` vs `int` still raise `TypeError`, since `>=` raises it just as `>` did.
+- `tests/test_regression.py` (new): `test_exact_deadline_is_expired` checks that `is_expired(10, 10) is True`.
+
+**What I verified**
+- `python3 -B -m pytest -q`: 3 passed. That's the two existing tests, unchanged, plus the new one.
+- With the fix temporarily removed, the new test fails. So it really catches the bug.
+- Only the two allowed files were touched. `caller.json`, the existing tests, Git configuration and dependencies were left alone.
+
+**Unresolved**
+- I haven't committed, pushed or opened a PR. The project's default is to deliver by PR and merge, but that would publish to the GitHub remote (`origin`), and you didn't ask for it. The changes are uncommitted in the working tree; I can commit and open the PR if you want.

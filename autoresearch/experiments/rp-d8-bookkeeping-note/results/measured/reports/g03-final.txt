@@ -1,0 +1,15 @@
+`is_expired(now, deadline)` now counts a deadline as expired at the exact moment it's reached, not only after it. The fix is committed locally on `main` as `d57cf0a` and nothing was pushed.
+
+**What I changed** (only the two files the request allows):
+- `src/expiry/__init__.py`: changed `now > deadline` to `now >= deadline`. The docstring already said the deadline expires "including exact equality", so the code now does what it says.
+- `tests/test_regression.py` (new): `test_expired_at_exact_deadline` checks that `is_expired(10, 10) is True`.
+
+**What I verified**
+- I wrote the regression test before the fix and predicted it would fail. It did (`1 failed, 2 passed`).
+- After the fix, `python3 -B -m pytest -q` gives `3 passed`, both in the checkout and in the separate worktree the project's delivery script uses for the commit.
+- The existing tests still pass and weren't changed. So before/after comparisons still work, and `is_expired(None, 10)` still raises `TypeError`, because `>=` rejects incompatible types the same way `>` does.
+- `docs/user-notes.txt`, `.user-state/` and `caller.json` are unchanged, and I didn't change Git config, dependencies or installed tools.
+
+**Delivery:** the project's default is a PR and merge. You said not to push or open a PR, so I committed locally using the project's delivery script (status `LOCAL_ONLY`) and fast-forwarded `main` to that commit. I then removed the temporary worktree and branch, and the working tree is clean. The script's receipt is at `.git/devlyn-completion/abf00ebe3e75c88e851b092b/receipt.json`.
+
+**Unresolved:** nothing for the fix itself. The commit hasn't been pushed and there's no PR.

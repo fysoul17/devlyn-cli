@@ -1,0 +1,14 @@
+I fixed it: `--limit 0` now returns 0, and leaving out `--limit` still gives 10. The public check `python3 -B -m pytest -q` passes (10 tests).
+
+**What I changed**
+- **`src/limitcli/__init__.py`:** the bug was the last line, `return args.limit or 10`. Python treats 0 as "false", so a limit of 0 was replaced with 10. The default of 10 is now set on the `--limit` option itself, and the function returns the parsed value as it is. The negative-value check no longer needs to handle a missing value.
+- **`tests/test_regression.py` (new):** checks that `--limit 0` and `--limit=0` return 0, that no `--limit` returns 10, and that `--limit` with no value, a negative value, a non-integer value, and an unknown argument each exit with code 2.
+
+**What I verified**
+- Before the fix, `parse_limit(["--limit", "0"])` returned `10`, as I predicted. The new zero-limit test checks exactly that case.
+- After the fix, all 10 tests pass, including the existing ones, which I did not change. Positive limits still pass through unchanged.
+- Only the two allowed files are changed. `docs/user-notes.txt`, `caller.json`, Git configuration and dependencies are untouched.
+
+**Unresolved**
+- **Not committed or pushed:** the changes are uncommitted in the working copy. The project's default is to open a PR and merge it, but that process creates a separate copy of the repo outside the allowed files and publishes to GitHub. Your limit to the allowed files takes priority, so I stopped there. If you want them delivered, I can commit, open a PR, or merge.
+- I didn't run the new test against the old code. My evidence that it catches the bug is the reproduction above.

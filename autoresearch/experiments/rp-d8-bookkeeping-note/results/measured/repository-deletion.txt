@@ -1,0 +1,29 @@
+# rp-d8 repository deletion (checked 2026-10-18T20:37:58Z)
+fysoul17/rpd8-20261019a-m01 HTTP 404
+fysoul17/rpd8-20261019a-m02 HTTP 404
+fysoul17/rpd8-20261019a-m03 HTTP 404
+fysoul17/rpd8-20261019a-m04 HTTP 404
+fysoul17/rpd8-20261019a-m05 HTTP 404
+fysoul17/rpd8-20261019a-m06 HTTP 404
+fysoul17/rpd8-20261019a-m07 HTTP 404
+fysoul17/rpd8-20261019a-m08 HTTP 404
+fysoul17/rpd8-20261019a-m09 HTTP 404
+fysoul17/rpd8-20261019a-m10 HTTP 404
+fysoul17/rpd8-20261019a-m11 HTTP 404
+fysoul17/rpd8-20261019a-m12 HTTP 404
+fysoul17/rpd8-20261019a-m13 HTTP 404
+fysoul17/rpd8-20261019a-m14 HTTP 404
+fysoul17/rpd8-20261019a-m15 HTTP 404
+fysoul17/rpd8-20261019a-m16 HTTP 404
+fysoul17/rpd8-20261019a-g01 HTTP 404
+fysoul17/rpd8-20261019a-g02 HTTP 404
+fysoul17/rpd8-20261019a-g03 HTTP 404
+fysoul17/rpd8-20261019a-g04 HTTP 404
+fysoul17/rpd8-20261019a-g05 HTTP 404
+fysoul17/rpd8-20261019a-g07 HTTP 404
+fysoul17/rpd8-20261019a-g08 HTTP 404
+fysoul17/rpd8-20261019a-smoke-claude HTTP 404
+fysoul17/rpd8-20261019a-smoke-codex HTTP 404
+fysoul17/rpd8-20261019a-smoke2-claude HTTP 404
+fysoul17/rpd8-20261019a-smoke2-codex HTTP 404
+2026-10-18T18:52:54Z smoke-codex attempt-1 repo (seed only, never dispatched) mirrored to archives/smoke-codex-manual and deleted

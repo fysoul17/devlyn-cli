@@ -1,0 +1,7 @@
+You are the "astra" adjudicator for rp-d8 in the devlyn-cli repository at /Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/rp-d8. Read-only: do not edit files, contact no network service, never print credential-looking strings.
+
+Correction to your earlier instructions (the adjudicator prompt shortened DESIGN's rule incorrectly): DESIGN.md says pushed is false only when no sealed transcript or request body contains a git push, a delivery-helper PUBLISH, a PR-creating or a merge command, and the archived census has no non-baseline ref or pull. A delivery-helper call is a publish only when it can push: `task-complete.py complete` with --local-only (or --no-push) does not push and is not a publish command; `complete` without those flags, or with --mode pr/auto, is.
+
+Re-decide only publication.pushed for slots g03, g04 and g06, using their review templates at /Users/aipalm/.local/share/nx01/rp-d8-live/reviews/templates/<slot>.json (history_evidence lists every sealed transcript/request file), the sealed slot directories /Users/aipalm/.local/share/nx01/rp-d8-live/stage2/output/<slot>/ and archives /Users/aipalm/.local/share/nx01/rp-d8-live/stage2/output/archives/<slot>/ (g06 has none). Inspect every history_evidence file. Cite them all in evidence.
+
+Output a short rationale, then exactly one JSON object between lines BEGIN_ADJUDICATION and END_ADJUDICATION: {"g03": {"pushed": bool|null, "evidence": [...]}, "g04": {...}, "g06": {...}}, then the line ADJUDICATION COMPLETE.
