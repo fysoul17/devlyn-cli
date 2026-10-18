@@ -18,6 +18,25 @@ SCHEDULE = [(f'm{i:02}', 'BV' if i % 2 else 'Z0', 'claude') for i in range(1, 5)
 ARMS = {name: 'X' for name, _, _ in SCHEDULE}
 
 
+def credential(runtime):
+    root = cell.credential_directory(runtime)
+    hosts = cell.auth.read_private(root, 'hosts.yml')
+    config = cell.auth.read_private(root, 'config.yml')
+    matches = re.findall(rb'^\s*oauth_token:\s*["\']?(github_pat_[A-Za-z0-9_]+)["\']?\s*$', hosts, re.M)
+    raw = hosts + b'\n' + config
+    # Dedicated auth files use literal YAML: encoded scalars and aliases can hide credentials.
+    encoded = b'\\' in raw or re.search(rb'(^|[\s:,\[\]{}])[!&*?]', raw)
+    prefixes = re.findall(rb'github_pat_|gh[pousr]_', raw)
+    keys = re.findall(rb'(?<![\w])["\']?(?:oauth_token|token)["\']?\s*:', raw, re.I)
+    if encoded or len(matches) != 1 or b'github.com:' not in hosts or prefixes != [b'github_pat_'] or len(keys) != 1:
+        raise ValueError('GitHub credential must contain exactly one fine-grained PAT and no other credentials')
+    return root, matches[0]
+
+
+# The private inherited launcher validates before mounting and uses the same PAT scan.
+cell.credential = credential
+
+
 def smoke_slots(attempt=1):
     require(type(attempt) is int and attempt in (1, 2), 'smoke_attempt must be 1 or 2')
     return [('smoke-claude' if attempt == 1 else 'smoke2-claude', 'SM', 'claude')]

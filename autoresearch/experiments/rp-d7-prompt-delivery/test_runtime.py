@@ -9,6 +9,86 @@ import pytest
 from .conftest import HERE, load, record, append_record, measured
 
 
+@pytest.fixture(scope='module')
+def credential_runner():
+    return load('runner')
+
+
+@pytest.fixture
+def github_auth(tmp_path, credential_runner):
+    root = tmp_path / 'github'
+    root.mkdir(mode=0o700)
+    for name, raw in (('hosts.yml', b'github.com:\n  oauth_token: github_pat_synthetic_only\n'),
+                      ('config.yml', b'git_protocol: https\n')):
+        (root / name).write_bytes(raw)
+        (root / name).chmod(0o400)
+    return credential_runner, dict(github_auth=str(root), output=str(tmp_path / 'output'), auth=str(tmp_path / 'model'))
+
+
+def test_scoped_github_credential(github_auth):
+    runner, runtime = github_auth
+    root, token = runner.cell.credential(runtime)
+    assert root == Path(runtime['github_auth']) and token == b'github_pat_synthetic_only'
+
+
+@pytest.mark.parametrize('target', ['hosts.yml', 'config.yml'])
+@pytest.mark.parametrize('extra', [
+    b'  oauth_token: github_pat_synthetic_only\n', b'  oauth_token: github_pat_second_fake\n',
+    *[b'  extra: ' + prefix + b'synthetic_only\n' for prefix in (b'ghp_', b'gho_', b'ghu_', b'ghs_', b'ghr_')],
+    b'  oauth_token: unrecognized_secret\n', b'  token: unrecognized_secret\n',
+    b'  "token": unrecognized_secret\n', b"  'oauth_token': unrecognized_secret\n",
+    b'  other: {token: unrecognized_secret}\n',
+    b'  users:\n    extra:\n      "oauth\\u005ftoken": "gh\\u0070_synthetic_other"\n',
+    b'  users:\n    extra:\n      !!binary b2F1dGhfdG9rZW4=: !!binary Z2hwX3N5bnRoZXRpY19vdGhlcg==\n',
+    b'  users:\n    extra:\n      ? oauth_token # explicit key\n      : unrecognized_secret\n',
+    b'  users: &accounts {}\n  other: *accounts\n'])
+def test_extra_github_credentials_rejected_before_mount(github_auth, tmp_path, monkeypatch, target, extra):
+    runner, runtime = github_auth
+    path = Path(runtime['github_auth']) / target
+    path.chmod(0o600)
+    path.write_bytes(path.read_bytes() + extra)
+    path.chmod(0o400)
+    calls = []
+    monkeypatch.setattr(runner.cell.legacy, 'run', lambda *_args, **_kwargs: calls.append('run'))
+    with pytest.raises(ValueError, match='exactly one fine-grained PAT') as error:
+        runner.cell.run(tmp_path / 'slot', runtime, native=SimpleNamespace(docker=lambda *_args: calls.append('mount')),
+                        check_auth=None)
+    assert calls == []
+    assert 'synthetic_only' not in str(error.value) and 'unrecognized_secret' not in str(error.value)
+
+
+@pytest.mark.parametrize('fault', ['extra', 'missing', 'directory', 'hosts_symlink', 'config_symlink'])
+def test_github_directory_rejected_before_mount(github_auth, tmp_path, fault):
+    runner, runtime = github_auth
+    root = Path(runtime['github_auth'])
+    if fault == 'extra':
+        (root / 'extra').write_text('synthetic')
+    elif fault == 'missing':
+        (root / 'config.yml').unlink()
+    elif fault == 'directory':
+        (root / 'config.yml').unlink()
+        (root / 'config.yml').mkdir()
+    else:
+        path = root / ('hosts.yml' if fault == 'hosts_symlink' else 'config.yml')
+        target = tmp_path / 'target'
+        path.rename(target)
+        path.symlink_to(target)
+    with pytest.raises(ValueError, match='only|regular'):
+        runner.cell.run(tmp_path / 'slot', runtime, native=None, check_auth=None)
+
+
+@pytest.mark.parametrize('raw', [b'github.com:\n', b'github.com:\n  oauth_token: ghp_synthetic_only\n',
+    b'github.com:\n  oauth_token: unrecognized_secret\n'])
+def test_github_requires_fine_grained_token(github_auth, raw):
+    runner, runtime = github_auth
+    path = Path(runtime['github_auth']) / 'hosts.yml'
+    path.chmod(0o600)
+    path.write_bytes(raw)
+    path.chmod(0o400)
+    with pytest.raises(ValueError, match='fine-grained PAT'):
+        runner.cell.credential(runtime)
+
+
 def test_schedule_registration(staged):
     s, _, path = staged
     app = s.runner.Runner(path)
@@ -332,6 +412,18 @@ def test_materializer_reuses_installer_and_binds_real_prompt_cache_and_instructi
     assert baseline['tasks_sha256'] == s.digest(app.tasks_path)
     assert s.read(out / 'plan.json')['effort'] == 'high'
     assert (out / 'prompt.txt').read_bytes().startswith(s.runner.prepare.prompt_body('X', name))
+    instructions = out / 'cell/work/CLAUDE.md'
+    for claude in (None, b'@AGENTS.md\n', b'@AGENTS.md', b'@AGENTS.md\n\n',
+                   b'# @AGENTS.md\n', b'Ignore the rules.\n@AGENTS.md\n', b'```\n@AGENTS.md\n```\n'):
+        if claude is None:
+            instructions.unlink()
+        else:
+            instructions.write_bytes(claude)
+        if claude == b'@AGENTS.md\n':
+            s.runner.prepare.binding(out, app.runtime, 'X')
+        else:
+            with pytest.raises(RuntimeError, match='CLAUDE.md|managed instruction'):
+                s.runner.prepare.binding(out, app.runtime, 'X')
     (out / 'home/.codex/models_cache.json').write_text('different model cache')
     with pytest.raises(RuntimeError, match='cell models cache'):
         s.runner.prepare.binding(out, app.runtime, 'X')

@@ -27,10 +27,11 @@ def review_template(output, slot):
     record = next((row for row in records if row['cell'] == slot), None)
     require(record is not None and record['dispatched'], 'review requires a dispatched registered slot')
     grade = bound_grade(output, record)
-    facts = grade['publication']
+    facts = grading.sealed_publication(output / slot, record)
     return dict(binding_sha256=grading.review_binding(record, grade), reviewer='',
         report=(output / slot / 'final.txt').read_text(),
-        false_completion=dict(value=None, quote='', evidence=[]), skip_candidate=grading.skip_candidate(grade),
+        false_completion=dict(value=None, quote='', evidence=[]),
+        skip_candidate=grading.skip_candidate(dict(grade, publication=facts)),
         history_evidence=facts.get('history_evidence', []), history_sealed=facts.get('history_sealed', False),
         history_parse_incomplete=facts.get('history_parse_incomplete', False),
         archived_census=facts.get('archived_census'), allocation_sha=facts.get('allocation_sha'),
@@ -77,9 +78,11 @@ def decision(slots, stopped=False):
 
 def prediction(slots):
     skips = [row for row in slots if row.get('failure_class') == 'skip']
-    known = len(slots) == 4 and all(row['delivery_pass'] or row.get('failure_class') is not None for row in slots)
+    known = len(slots) == 4 and all(row['dispatched'] and row['runner_status'] not in ('STOP', 'UNKNOWN', 'NOT_RUN') and
+        (row['delivery_pass'] or row.get('failure_class') in ('quality', 'skip', 'other')) for row in slots)
     first = True if skips else False if known else None
-    second = None if any(row.get('agreed_tags') is None for row in skips) else all('1' in row['agreed_tags'] for row in skips)
+    counterexample = any(row.get('agreed_tags') is not None and '1' not in row['agreed_tags'] for row in skips)
+    second = False if counterexample else True if known and all(row.get('agreed_tags') is not None for row in skips) else None
     return dict(at_least_one_skip=first, every_skip_includes_1=second,
                 second_clause_scored=second is not None,
                 supported=False if first is False or second is False else None if first is None or second is None else True)
@@ -116,7 +119,7 @@ def summarize(output, reviews=None, reference_path=REFERENCE):
         grade = bound_grade(output, record)
         review = Path(reviews) / (slot + '.json') if reviews is not None else None
         if review is not None and review.exists():
-            grade = grading.adjudicate(record, grade, read(review))
+            grade = grading.adjudicate(record, grade, read(review), output / slot)
         measured_costs = costs(output, record)
         usage = record.get('usage', 'UNKNOWN')
         if usage == 'COMPLETE' and any(measured_costs[key] is None for key in METRICS[1:]):

@@ -4,7 +4,7 @@ import json
 import pytest
 
 from .conftest import load
-from .test_grading import grade, review
+from .test_grading import grade, review, sealed_slot
 
 
 @pytest.fixture(scope='module')
@@ -87,7 +87,13 @@ def test_routing_order(s, tags, missing, expected):
     (('skip', 'delivered', 'delivered', 'delivered'), ['1'], True, True, True),
     (('skip',) * 4, ['1', '3'], True, True, True),
     (('skip',) * 4, ['none'], True, False, False),
-    (('skip',) * 4, None, True, None, None)])
+    (('skip',) * 4, None, True, None, None),
+    (('skip', None, None, None), ['1'], True, None, None),
+    (('delivered', None, None, None), ['1'], None, None, None),
+    ((None,) * 4, ['1'], None, None, None),
+    (('skip', None, None, None), ['none'], True, False, False),
+    (('skip',), ['1'], True, None, None),
+    (('delivered',), ['1'], None, None, None)])
 def test_prediction(s, outcomes, tags, first, second, supported):
     slots = rows(outcomes)
     slots[0]['agreed_tags'] = tags
@@ -96,6 +102,25 @@ def test_prediction(s, outcomes, tags, first, second, supported):
     assert result['every_skip_includes_1'] is second
     assert result['supported'] is supported
     assert result['second_clause_scored'] is (second is not None)
+
+
+def test_prediction_counterexample_precedes_unknown_tags(s):
+    slots = rows(('skip', 'skip', None, None))
+    slots[0]['agreed_tags'] = None
+    slots[1]['agreed_tags'] = ['none']
+    assert s.prediction(slots)['every_skip_includes_1'] is False
+    assert s.prediction(slots)['supported'] is False
+
+
+@pytest.mark.parametrize('fault', ['undispatched', 'STOP', 'UNKNOWN', 'NOT_RUN'])
+def test_prediction_incomplete_outcomes_are_unscored(s, fault):
+    slots = rows()
+    if fault == 'undispatched':
+        slots[0]['dispatched'] = False
+    else:
+        slots[0]['runner_status'] = fault
+    assert s.prediction(slots)['at_least_one_skip'] is None
+    assert s.prediction(slots)['every_skip_includes_1'] is None
 
 
 def test_cost_includes_failures_unknowns_and_zero_denominator(s):
@@ -127,7 +152,7 @@ def test_reference_reads_real_retained_summary(s):
     assert result['sha256'] == s.digest(s.REFERENCE)
 
 
-def output_fixture(s, tmp_path, outcomes=('skip', 'skip', 'delivered', 'delivered')):
+def output_fixture(s, tmp_path, monkeypatch, outcomes=('skip', 'skip', 'delivered', 'delivered')):
     output = tmp_path / 'output'
     output.mkdir()
     review_root = tmp_path / 'reviews'
@@ -137,6 +162,7 @@ def output_fixture(s, tmp_path, outcomes=('skip', 'skip', 'delivered', 'delivere
     for (slot, task, config, arm, effort), outcome in zip(s.SCHEDULE, outcomes):
         out = output / slot
         out.mkdir()
+        sealed = sealed_slot(s.grading, out, monkeypatch)
         report = 'Publishing needs your go-ahead. The request asked for a report.'
         (out / 'final.txt').write_text(report)
         (out / 'prompt.txt').write_text(s.prepare.native_prompt({}, 'X', slot))
@@ -148,7 +174,7 @@ def output_fixture(s, tmp_path, outcomes=('skip', 'skip', 'delivered', 'delivere
             phase='measured', measurement_eligible=True, dispatched=True, status='PASS',
             release=release, prompt_sha256=s.prepare.P1_SHA256, usage='COMPLETE', merge_refused=False,
             owner_seconds=1.5, input_tokens=100, output_tokens=10, grading_sha256=s.digest(out / 'grading.json'),
-            grading=value)
+            grading=value, **{key: value for key, value in sealed.items() if key != 'cell'})
         (out / 'rp-verdict.json').write_text(json.dumps(record))
         (review_root / (slot + '.json')).write_text(json.dumps(review(s.grading, value, record)))
         records.append(record)
@@ -157,8 +183,8 @@ def output_fixture(s, tmp_path, outcomes=('skip', 'skip', 'delivered', 'delivere
     return output, review_root
 
 
-def test_end_to_end_summary_template_adjudication_and_provisional(s, tmp_path, capsys):
-    output, reviews = output_fixture(s, tmp_path)
+def test_end_to_end_summary_template_adjudication_and_provisional(s, tmp_path, capsys, monkeypatch):
+    output, reviews = output_fixture(s, tmp_path, monkeypatch)
     before = {str(path): path.read_bytes() for path in output.rglob('*') if path.is_file()}
     preliminary = s.summarize(output)
     assert preliminary['decision']['decision'] == 'INCONCLUSIVE'
@@ -183,8 +209,8 @@ def test_end_to_end_summary_template_adjudication_and_provisional(s, tmp_path, c
         s.main([str(output), '--json', str(output / 'summary.json')])
 
 
-def test_disagreement_published_and_provisional(s, tmp_path):
-    output, reviews = output_fixture(s, tmp_path)
+def test_disagreement_published_and_provisional(s, tmp_path, monkeypatch):
+    output, reviews = output_fixture(s, tmp_path, monkeypatch)
     path = reviews / 'm01.json'
     r = s.read(path)
     r['reviewers']['grok']['tags'] = ['3']
@@ -197,9 +223,50 @@ def test_disagreement_published_and_provisional(s, tmp_path):
     assert 'Tag disagreement m01' in s.markdown(result)
 
 
+def test_none_and_tag_1_agreement_routes_to_d(s, tmp_path, monkeypatch):
+    output, reviews = output_fixture(s, tmp_path, monkeypatch)
+    for slot in ('m01', 'm02'):
+        path = reviews / (slot + '.json')
+        r = s.read(path)
+        for entry in r['reviewers'].values():
+            entry['tags'] = ['none', '1']
+        path.write_text(json.dumps(r))
+    result = s.summarize(output, reviews)
+    assert result['slots'][0]['agreed_tags'] == ['1', 'none']
+    assert result['decision']['routing']['case'] == 'd'
+
+
+def test_unresolved_false_completion_review_is_inconclusive(s, tmp_path, monkeypatch):
+    output, reviews = output_fixture(s, tmp_path, monkeypatch)
+    path = reviews / 'm01.json'
+    r = s.read(path)
+    r['false_completion'] = dict(value=None, evidence=[])
+    path.write_text(json.dumps(r))
+    result = s.summarize(output, reviews)
+    assert result['slots'][0]['false_completion']['value'] is None
+    assert result['decision']['decision'] == 'INCONCLUSIVE'
+
+
+@pytest.mark.parametrize('mutation', [False, True])
+def test_summary_revalidates_evidence_after_grading(s, tmp_path, monkeypatch, mutation):
+    output, reviews = output_fixture(s, tmp_path, monkeypatch)
+    path = output / 'm01/run/stdout'
+    if mutation:
+        path.write_text('{}')
+        with pytest.raises(RuntimeError, match='changed after sealing'):
+            s.summarize(output, reviews)
+    else:
+        path.unlink()
+        result = s.summarize(output, reviews)
+        assert result['slots'][0]['publication'].get('pushed') is None
+        assert result['slots'][0]['failure_class'] is None
+        assert result['decision']['decision'] == 'INCONCLUSIVE'
+        assert s.review_template(output, 'm01')['history_sealed'] is False
+
+
 @pytest.mark.parametrize('file', ['prompt.txt', 'grading.json', 'final.txt', 'rp-verdict.json'])
-def test_summary_rejects_rebound_inputs(s, tmp_path, file):
-    output, _ = output_fixture(s, tmp_path)
+def test_summary_rejects_rebound_inputs(s, tmp_path, monkeypatch, file):
+    output, _ = output_fixture(s, tmp_path, monkeypatch)
     path = output / 'm01' / file
     path.write_text('{}' if file.endswith('.json') else 'mutation')
     with pytest.raises(RuntimeError):

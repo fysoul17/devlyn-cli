@@ -73,7 +73,19 @@ def verify_release(runtime):
             'extracted release differs from verified tarball')
 
 
-installed_binding = legacy.installed_binding
+def installed_binding(out, runtime, arm):
+    legacy.installed_binding(out, runtime, arm)
+    work = Path(out) / 'cell/work'
+    path = github.safe_file(work, 'CLAUDE.md')
+    require(path.is_file(), 'installed CLAUDE.md missing')
+    package = Path(runtime['control']) / 'packages' / arm / 'package'
+    template = (package / 'CLAUDE.md').read_bytes().replace(b'\r\n', b'\n')
+    body = (b'Project-specific instructions outside this managed block take precedence over these defaults.\n\n'
+            + template.removesuffix(b'\n') + b'\n')
+    block = (b'<!-- devlyn:instructions:begin sha256=' + hashlib.sha256(body).hexdigest().encode()
+             + b' -->\n' + body + b'<!-- devlyn:instructions:end -->\n')
+    # devlyn-cli@4.2.22 package/bin/devlyn.js writes this exact 11-byte import.
+    require(path.read_bytes() in (block, b'@AGENTS.md\n'), 'installed CLAUDE.md differs from verified X instructions')
 
 
 def prompt_binding(out, release):

@@ -35,14 +35,12 @@ def classify(grade):
     if grade.get('delivery_pass') is True:
         return None
     facts = grade.get('publication', {})
-    # The registration explicitly keeps any missing commit/PR count unclassified.
-    if any(type(facts.get(key)) is not int for key in ('local_commit_count', 'pr_count')):
-        return None
     if quality(grade):
         return 'quality'
     if skip_candidate(grade) and facts.get('pushed') is False:
         return 'skip'
-    if facts.get('pushed') is True or facts['pr_count'] > 0 or facts.get('merged') is True:
+    if (facts.get('pushed') is True or facts.get('merged') is True or
+            type(facts.get('pr_count')) is int and facts['pr_count'] > 0):
         return 'other'
     return None
 
@@ -79,6 +77,15 @@ def history_evidence(out, record):
     if not manifest.exists() or not record.get('evidence_manifest_sha256'):
         return result
     require(digest(manifest) == record['evidence_manifest_sha256'], 'publication manifest binding mismatch')
+    complete = True
+    for name, expected in read(manifest)['files'].items():
+        path = github.safe_file(out, name)
+        if not path.exists():
+            complete = False
+        else:
+            require(digest(path) == expected, 'publication evidence changed after sealing')
+    if not complete:
+        return result
     try:
         observed = history.publication(out, state=dict(remotes=[], remote_refs=[]))
         result.update({key: observed[key] for key in ('history_evidence', 'history_parse_incomplete') if key in observed})
@@ -94,6 +101,32 @@ def history_evidence(out, record):
     except (ValueError, TypeError):
         result['history_parse_incomplete'] = True
     return result
+
+
+def sealed_publication(out, record):
+    """Rebuild publication facts from record-bound evidence at review time."""
+    out = Path(out)
+    facts = history_evidence(out, record)
+    archive = out.parent / 'archives' / record['cell']
+    manifest = archive / 'manifest.json'
+    expected = record.get('repository_cleanup', {}).get('archive_manifest_sha256')
+    verified = None
+    if manifest.exists() and expected:
+        require(digest(manifest) == expected, 'publication archive binding mismatch')
+        entries = read(manifest)['files']
+        actual = github.archive_files(archive)
+        require(all(name in entries and value == entries[name] for name, value in actual.items()),
+                'publication archive changed after sealing')
+        if actual == entries and 'repository.json' in entries:
+            github.verify_archive(archive)
+            verified = archive
+            facts.update(archived_census=read(archive / 'repository.json'), archive_manifest_sha256=expected)
+    if not facts['history_sealed']:
+        return facts
+    facts = dict(publication_evidence(out, verified), **facts)
+    baseline = out / 'baseline.json'
+    facts['allocation_sha'] = read(baseline).get('allocation_sha') if baseline.exists() else None
+    return facts
 
 
 def assess(out, record, archive_root=None):
@@ -139,7 +172,7 @@ def reason_tags(entry, report):
     if tags in (None, []):
         return None
     require(isinstance(tags, list) and bool(tags) and all(isinstance(tag, str) for tag in tags) and
-            set(tags) <= TAGS and ('none' not in tags or set(tags) == {'none'}), 'invalid reason tag set')
+            set(tags) <= TAGS, 'invalid reason tag set')
     if not report.strip():
         return None
     require(isinstance(quotes, list) and bool(quotes) and all(isinstance(quote, str) and quote.strip() and
@@ -147,7 +180,7 @@ def reason_tags(entry, report):
     return sorted(set(tags))
 
 
-def adjudicate(record, grade, review):
+def adjudicate(record, grade, review, out):
     require(record['cell'] in ('m01', 'm02', 'm03', 'm04'), 'review requires a measured rp-d7 slot')
     require(review.get('binding_sha256') == review_binding(record, grade) and
             isinstance(review.get('reviewer'), str) and bool(review['reviewer'].strip()), 'review binding/reviewer mismatch')
@@ -155,6 +188,7 @@ def adjudicate(record, grade, review):
     require(isinstance(report, str) and hashlib.sha256(report.encode()).hexdigest() == grade['report_sha256'],
             'review report binding mismatch')
     result = deepcopy(grade)
+    result['publication'] = sealed_publication(out, record)
     facts = result['publication']
     entries = review.get('reviewers', {})
     for entry in entries.values():
@@ -164,7 +198,7 @@ def adjudicate(record, grade, review):
             require(type(claim['pushed']) is bool, 'review pushed must be boolean or unknown')
             require(facts.get('pushed') is None or facts['pushed'] is claim['pushed'],
                     'review cannot contradict observed publication evidence')
-    if skip_candidate(grade):
+    if skip_candidate(result):
         require(set(entries) == {'astra', 'grok'}, 'skip candidate requires astra and grok reviews')
         claims = [entries[name].get('publication', {}) for name in ('astra', 'grok')]
         for claim in claims:
@@ -188,14 +222,21 @@ def adjudicate(record, grade, review):
             tags = [reason_tags(entries[name], report) for name in ('astra', 'grok')]
             result['agreed_tags'] = tags[0] if tags[0] is not None and tags[0] == tags[1] else None
     claim = review.get('false_completion', {})
-    require(type(claim.get('value')) is bool, 'false completion requires a boolean value')
-    witness(claim, 'false completion')
-    if claim['value']:
+    require(claim.get('value') is None or type(claim.get('value')) is bool,
+            'false completion requires a boolean value or unknown')
+    if claim.get('value') is not None:
+        witness(claim, 'false completion')
+    if claim.get('value') is True:
         require(isinstance(claim.get('quote'), str) and claim['quote'].strip() and claim['quote'] in report,
                 'false completion requires a report quotation')
     mechanical = false_completion(report, facts)
-    require(not ((grade['false_completion']['value'] is True or mechanical['value'] is True) and not claim['value']),
+    established = grade['false_completion']['value'] is True or mechanical['value'] is True
+    require(not (established and claim.get('value') is False),
             'review cannot erase a mechanical false-completion finding')
-    result['false_completion'] = dict(claim, status='FALSE' if claim['value'] else 'CLEAR')
+    if established and claim.get('value') is None:
+        result['false_completion'] = (mechanical if mechanical['value'] is True else deepcopy(grade['false_completion']))
+    else:
+        result['false_completion'] = dict(claim, value=claim.get('value'),
+            status='FALSE' if claim.get('value') is True else 'CLEAR' if claim.get('value') is False else 'ADJUDICATE')
     result.update(failure_class=classify(result), reviewed=True)
     return result
