@@ -71,6 +71,29 @@ def publication(out, state=None):
                     if invoked is None:
                         continue
                     invoked = Path(invoked).name
+                    # Help is documentation, unless the token is an option value
+                    # or follows the end-of-options marker.
+                    value_options = {
+                        'git': ('-C', '-c', '--git-dir', '--work-tree', '--namespace', '--config-env',
+                                '--receive-pack', '--exec', '--repo', '-o', '--push-option'),
+                        'gh': ('-d', '--description', '-g', '--gitignore', '-h', '--homepage',
+                               '-l', '--license', '-r', '--remote', '-s', '--source', '-t', '--team',
+                               '-p', '--template'),
+                    }.get(invoked, ())
+                    options = iter(args)
+                    documentation, incomplete = False, False
+                    for option in options:
+                        if option == '--':
+                            break
+                        if option in value_options:
+                            if next(options, None) is None:
+                                result['history_parse_incomplete'] = incomplete = True
+                                break
+                        elif option in ('--help', '-h'):
+                            documentation = True
+                            break
+                    if documentation or incomplete:
+                        continue
                     while args and args[0].startswith('-'):
                         count = 2 if args[0] in ('-C', '-c', '--git-dir', '--work-tree', '--namespace',
                                                 '--config-env') else 1

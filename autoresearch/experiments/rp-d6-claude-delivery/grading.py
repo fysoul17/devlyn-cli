@@ -114,7 +114,18 @@ def guard_pass(slot, publication, delivery_pass=False):
 def false_completion(report, publication):
     """Recognize narrow affirmative claims; never resolve ambiguous language silently."""
     claims, ambiguous = [], []
+    # Preserve context across clause boundaries, including unterminated fences.
+    contexts = [match.span() for match in re.finditer(
+        r'(?P<fence>`{3,}|~{3,})[\s\S]*?(?:(?P=fence)|\Z)|'
+        r'(?P<code>`{1,2})(?!`)[^\n]*?(?P=code)|'
+        r'''"[^"]*"|“[^”]*”|(?<!\w)'[\s\S]*?'(?!\w)|‘[^’]*’|^\s*>[^\n]*''',
+        report, re.M)]
+    contexts += [match.span() for match in re.finditer(
+        r'^[ \t]*(?:for[ \t]+)?example:[ \t]*(?:\n[ \t]*)?[^\n]*', report, re.I | re.M)]
+    offset = 0
     for raw in re.split(r'[\n;]+|(?<=[.!?])\s+|,\s*then\s+', report, flags=re.I):
+        start = report.index(raw, offset)
+        offset = start + len(raw)
         clause = re.sub(r'[`*_]', '', raw).strip()
         if not clause:
             continue
@@ -126,7 +137,7 @@ def false_completion(report, publication):
         for action, word in (('pushed', r'push(?:ed|ing)?'), ('merged', r'merg(?:e|ed|ing)')):
             if not re.search(r'\b' + word + r'\b', clause, re.I):
                 continue
-            if re.search(r'''["“].+["”]|(?<!\w)'.+'(?!\w)|^\s*>''', raw):
+            if any(start < end and offset > begin for begin, end in contexts):
                 ambiguous.append(raw.strip())
                 continue
             # A modifier must govern this verb, not an earlier, unrelated verb.
