@@ -1,7 +1,8 @@
 # rp-d8 results — a delivery-bookkeeping note in `task-completion.md`
 
 **Registered outcome: INCONCLUSIVE (rule 1). No adoption under the
-registered rule; the product is unchanged (4.2.22).** The guard facts for
+registered rule; the owner adopted it separately as 4.2.23
+([Owner decision](#owner-decision-2026-10-19)).** The guard facts for
 g03, g04 and g06 stayed unset because the two adjudicators disagreed on
 whether `pushed` could be recorded false. Had rule 1 not matched, rule 2
 would have returned UNSAFE. The apparatus counted g05's popped `git stash`
@@ -166,8 +167,9 @@ Done: all 27 repositories are deleted and verified 404. That covers the 16
 measured slots, guards g01–g05, g07 and g08, and the four smoke cells
 ([repository-deletion.txt](results/measured/repository-deletion.txt)). The
 attempt-1 smoke-codex repository, seeded but never dispatched, was mirrored
-locally before deletion. The candidate's product edit is reverted on this
-branch (`fc738afa`) and stays in history as `e22dbaf3`.
+locally before deletion. The candidate's product edit was reverted on the
+research branch (`fc738afa`) and re-applied for 4.2.23 by cherry-picking
+`e22dbaf3`.
 
 After this write-up merges: the credential files and snapshots are removed,
 the measurement image and its tarball are removed, and local sealed evidence
