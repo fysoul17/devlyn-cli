@@ -1,0 +1,18 @@
+`--limit 0` now returns 0, and leaving out `--limit` still gives 10. The public check `python3 -B -m pytest -q` passes (12 tests). Nothing is committed, as you asked.
+
+**Cause:** `parse_limit` ended with `return args.limit or 10`. Python treats 0 as false, so an explicit 0 was swapped for the default.
+
+**What I changed:**
+- **`src/limitcli/__init__.py`:** the default of 10 is now set on the argument itself (`default=10`), and the function returns the parsed value directly. Because the value can no longer be `None`, the negative check is now simply `args.limit < 0`.
+- **`tests/test_regression.py` (new):** tests that:
+  - `--limit 0` and `--limit=0` return 0;
+  - leaving it out returns 10;
+  - a positive value (25) is kept;
+  - each of these exits with code 2: a negative value (`-1`), non-integers (`bad`, `1.5`), `--limit` with no value, and an unknown argument.
+
+**What I verified:**
+- The new zero test fails against the original code and passes with the fix, so it really catches this bug. The other new tests pass both before and after.
+- The existing tests are unchanged and still pass.
+- Only the two allowed files changed. `caller.json`, `docs/user-notes.txt`, the Git config and dependencies are untouched.
+
+**Unresolved:** nothing.

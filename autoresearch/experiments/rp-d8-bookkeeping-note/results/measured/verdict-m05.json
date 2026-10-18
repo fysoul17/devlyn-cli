@@ -1,0 +1,269 @@
+{
+  "adjudication_needed": false,
+  "arm": "B",
+  "assessment": "NOT_REQUESTED",
+  "boot_catalogs": {
+    "mcp_servers": [],
+    "plugins": [
+      {
+        "name": "cc-plugin-agents-md",
+        "path": "builtin",
+        "source": "cc-plugin-agents-md@builtin"
+      },
+      {
+        "name": "cc-plugin-plugin-authoring",
+        "path": "builtin",
+        "source": "cc-plugin-plugin-authoring@builtin"
+      },
+      {
+        "name": "cc-plugin-telemetry",
+        "path": "builtin",
+        "source": "cc-plugin-telemetry@builtin"
+      }
+    ],
+    "skills": [
+      "batch",
+      "claude-api",
+      "code-review",
+      "dataviz",
+      "debug",
+      "deep-research",
+      "design",
+      "design-sync",
+      "devlyn-engines",
+      "devlyn-ideate",
+      "doctor",
+      "fewer-permission-prompts",
+      "loop",
+      "plugin-authoring",
+      "run",
+      "run-skill-generator",
+      "schedule",
+      "simplify",
+      "update-config",
+      "verify",
+      "workflow-authoring"
+    ]
+  },
+  "cell": "m05",
+  "changed": [
+    "src/expiry/__init__.py",
+    "tests/test_regression.py"
+  ],
+  "claude_accounting": {
+    "gaps": [],
+    "input_tokens": 76225,
+    "messages": [
+      {
+        "agent_id": null,
+        "message_id": "msg_011CgAGKg76mrWY5Xyz15pny",
+        "message_uuid": "b5fc763f-5c9f-4e54-bdbf-734595916f45",
+        "request_id": "req_011CgAGKfhJQPZZv67rdY3Gs",
+        "source": "native_terminal_body",
+        "stop_reason": "tool_use",
+        "transcript_terminal": true,
+        "usage": {
+          "cache_creation_input_tokens": 6373,
+          "cache_read_input_tokens": 12030,
+          "input_tokens": 2,
+          "output_tokens": 145,
+          "thinking_tokens": 0
+        }
+      },
+      {
+        "agent_id": null,
+        "message_id": "msg_011CgAGKwXoGz9oGdg22JNNK",
+        "message_uuid": "a845e8cc-fc1a-4bd7-84de-51c56df298e1",
+        "request_id": "req_011CgAGKwGfegEEYzwWscWjk",
+        "source": "native_terminal_body",
+        "stop_reason": "tool_use",
+        "transcript_terminal": true,
+        "usage": {
+          "cache_creation_input_tokens": 361,
+          "cache_read_input_tokens": 18403,
+          "input_tokens": 2,
+          "output_tokens": 331,
+          "thinking_tokens": 74
+        }
+      },
+      {
+        "agent_id": null,
+        "message_id": "msg_011CgAGLHtfJ7HTGAYq53qZK",
+        "message_uuid": "984972c2-7b3a-4c08-80da-c0ee6537872c",
+        "request_id": "req_011CgAGLHaYqs9m6fQwtBPYe",
+        "source": "native_terminal_body",
+        "stop_reason": "tool_use",
+        "transcript_terminal": true,
+        "usage": {
+          "cache_creation_input_tokens": 626,
+          "cache_read_input_tokens": 18764,
+          "input_tokens": 2,
+          "output_tokens": 170,
+          "thinking_tokens": 38
+        }
+      },
+      {
+        "agent_id": null,
+        "message_id": "msg_011CgAGLWgMYiCB1wh13ic1R",
+        "message_uuid": "e934bd60-6880-45aa-82c6-e46aa25af9b1",
+        "request_id": "req_011CgAGLWPEjvawUFzee6F3K",
+        "source": "native_terminal_body",
+        "stop_reason": "end_turn",
+        "transcript_terminal": true,
+        "usage": {
+          "cache_creation_input_tokens": 270,
+          "cache_read_input_tokens": 19390,
+          "input_tokens": 2,
+          "output_tokens": 607,
+          "thinking_tokens": 180
+        }
+      }
+    ],
+    "output_tokens": 1253,
+    "reported_aggregate": {
+      "cache_creation_input_tokens": 7630,
+      "cache_read_input_tokens": 68587,
+      "input_tokens": 8,
+      "output_tokens": 1253,
+      "thinking_tokens": 292
+    },
+    "reported_owner_usage": {
+      "cache_creation_input_tokens": 7630,
+      "cache_read_input_tokens": 68587,
+      "input_tokens": 8,
+      "output_tokens": 1253,
+      "thinking_tokens": 292
+    },
+    "schema": "0254-native-receipts-v1",
+    "scope": "One successful native owner and linked foreground children; observations on UNKNOWN are not whole-run totals; not provider billing or product acceptance.",
+    "sources": {
+      "evidence.manifest.json": "2547c20de1cc0ea4f1369fcb5d15dee8f9f2da88b932521c964d5edbbc873f3e",
+      "home/.claude/api-bodies/2af92dd3-7c28-464f-99f1-9fc69f7fe8a1.request.json": "32d337474b57d1641ddc7103bde097a0be2aa7d8fcce0426108e69d5dd0e8997",
+      "home/.claude/api-bodies/2cdd7d0d-e4fc-49ff-ae44-263687aef4b2.request.json": "c75ae72304a66a3d69381b1a078544f3726a5ccc874b2404afd699d7ce8881a0",
+      "home/.claude/api-bodies/c746da74-8337-468a-9931-157dbc54ce39.request.json": "e75fccd0d1f3b2b6eb7b52d00295e7f950df62995c42046ff86641b3662b5fce",
+      "home/.claude/api-bodies/d7256b25-60d6-4be7-a826-ea027ebcc20a.request.json": "f82f3e9531b37c8f01dab97fdce6f8ba8bed7269b0d538cc0bdd45bbe0ac3118",
+      "home/.claude/api-bodies/index.jsonl": "462e3b745360f0d7aa4b325bef49bf326068f404bd6b800e4b0c02c012b44d10",
+      "home/.claude/api-bodies/req_011CgAGKfhJQPZZv67rdY3Gs.response.json": "49f1a4921920fa81236ee788ff6d11798fda8a3459141f55b426519d31de286f",
+      "home/.claude/api-bodies/req_011CgAGKwGfegEEYzwWscWjk.response.json": "7d20c4e3798f43767d1d257c4cb4a66738b15e6504b0e686e764d37a07f2c807",
+      "home/.claude/api-bodies/req_011CgAGLHaYqs9m6fQwtBPYe.response.json": "d313304567c4c71b9db427a5a011a81b96f80a77c6324f98c63b1f20123d9760",
+      "home/.claude/api-bodies/req_011CgAGLWPEjvawUFzee6F3K.response.json": "6958a8436e0dd9c5644356ad9546a0a503bc09d88f613e3295f9576c0fe7503c",
+      "home/.claude/projects/-cell-work/e8ab06b4-739c-4e75-a317-2b9a6ca5dc83.jsonl": "8a81d11f6aa42495beb0fd750817c365fe33fb7b6d6265c83178e585271b9408",
+      "run/stdout": "dadd0873f3a764b26a9191addd4de2f0a625b0eeb4343790c0c2c5dca737619a"
+    },
+    "status": "MATCH",
+    "totals": {
+      "cache_creation_input_tokens": 7630,
+      "cache_read_input_tokens": 68587,
+      "input_tokens": 8,
+      "output_tokens": 1253,
+      "thinking_tokens": 292
+    }
+  },
+  "config": "claude",
+  "delivery": {
+    "baseline": "dbf549fee0112a1a3ee765f02ac11cffe430d19e",
+    "commit": "dbf549fee0112a1a3ee765f02ac11cffe430d19e",
+    "passed": false,
+    "reason": "required edits exist only outside a post-baseline commit"
+  },
+  "delivery_pass": false,
+  "deterministic_seconds": 1.0414032500011672,
+  "evidence_manifest_sha256": "2547c20de1cc0ea4f1369fcb5d15dee8f9f2da88b932521c964d5edbbc873f3e",
+  "identity": {
+    "codex_seats": {},
+    "gaps": [],
+    "owner": "MATCH",
+    "owner_launched_sessions": [],
+    "status": "MATCH",
+    "violations": []
+  },
+  "input_tokens": 76225,
+  "measurement_eligible": true,
+  "oracle": [
+    {
+      "id": "boundary",
+      "status": "PASS"
+    },
+    {
+      "id": "before-after",
+      "status": "PASS"
+    },
+    {
+      "id": "datetime",
+      "status": "PASS"
+    },
+    {
+      "id": "errors",
+      "status": "PASS"
+    },
+    {
+      "id": "regression",
+      "status": "PASS"
+    }
+  ],
+  "output_tokens": 1253,
+  "owner_seconds": 20.89929170799951,
+  "owner_status": "EXITED_0",
+  "peer_policy": {
+    "activated": false,
+    "claude_roles": {
+      "e8ab06b4-739c-4e75-a317-2b9a6ca5dc83": [
+        "owner",
+        "e8ab06b4-739c-4e75-a317-2b9a6ca5dc83"
+      ]
+    },
+    "codex_roles": {},
+    "failed_attempts": [],
+    "gaps": [],
+    "protocol_violations": [],
+    "recovered": false,
+    "status": "MATCH",
+    "turns": [],
+    "validation_completion": "NOT_ACTIVATED",
+    "violations": []
+  },
+  "phase": "measured",
+  "product_check_pass": true,
+  "public": [
+    {
+      "argv": [
+        "sh",
+        "-c",
+        "mkdir /tmp/public-work && cp -a /cell/work/. /tmp/public-work/ && cd /tmp/public-work && python3 -B -m pytest -q"
+      ],
+      "exit_code": 0,
+      "stderr_tail": "",
+      "stdout_tail": "...                                                                      [100%]\n3 passed in 0.00s\n",
+      "timeout": false
+    }
+  ],
+  "public_pass": true,
+  "quota": {
+    "assessment": [],
+    "execution": []
+  },
+  "run_and_checks_seconds": 23.917798208000022,
+  "scope_violations": [],
+  "snapshot": {
+    "candidates": [],
+    "changed": [
+      "cell/work"
+    ],
+    "kind": "anchor",
+    "path": "cell/work",
+    "rule": "changed-product"
+  },
+  "source_check_pass": true,
+  "status": "PRODUCT_INCOMPLETE",
+  "task": "BV",
+  "teardown": "CLEAN",
+  "usage": "COMPLETE",
+  "usage_gaps": [],
+  "venue": {
+    "account": [
+      "cc43a4e02ede",
+      "2905f4abf05b"
+    ],
+    "token_seconds_left": 13926
+  }
+}

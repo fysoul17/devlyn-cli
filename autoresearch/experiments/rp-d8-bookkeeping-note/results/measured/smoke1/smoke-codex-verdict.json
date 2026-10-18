@@ -1,0 +1,59 @@
+{
+  "account": "9ca44b8a38f2",
+  "arm": "Y",
+  "auth": "/Users/aipalm/.local/share/nx01/rp-d8-live/auth/codex-snapshot",
+  "auth_manifest_sha256": "c3d572634f592ea836646a67e82df08c80e7b25cd4eabb3e3625873f8d342cab",
+  "cell": "smoke-codex",
+  "codex_account": "9ca44b8a38f2",
+  "config": "codex",
+  "delivery_assessment": "NOT_ASSESSED",
+  "dispatched": false,
+  "effort": "high",
+  "effort_binding": "NOT_APPLICABLE",
+  "frozen_runtime_sha256": "49727e53c378b7ceac2e30f6a7b262a302e2c82cc6cdf238060a0bf9cbf739c1",
+  "input_tokens": null,
+  "measurement_eligible": false,
+  "output_tokens": null,
+  "phase": "smoke",
+  "prompt_sha256": "2387dddebad66fa3204f54668c4e1ec17487660dcc6e07def50526ae409ccf2e",
+  "reason": "rp-d1 instrumentation failed: EvidenceError",
+  "release": {
+    "integrity": "sha512-BVNBfuSahgA8cvLdgeHfPpBUlhbKC1igFQ6s5PRj5+EEt9nCd6N5fryIW0j37iea3B+Rv324F/yTtLsi7LMxug==",
+    "manifest_sha256": "f4accf95ce187ec9b6c13cc8e7c4583491f5f671adca4654275c3cfa08fa240c",
+    "sha256": "c8143112b12f21b05814600ec8712679c3c8bdc73fdb9b57305191cde60275f6",
+    "source": {
+      "candidate_blobs": {
+        "config/skills/_shared/task-completion.md": "de7f9882dc8c3df1cb2b0a621c9c7fa794b01866"
+      },
+      "candidate_commit": "e22dbaf3b7d4a458768c86e7ec8ff85e0f8bdb8c",
+      "registry": "devlyn-cli@4.2.22"
+    },
+    "version": "4.2.22"
+  },
+  "release_binding": "UNKNOWN",
+  "route_watch": {
+    "alive": true,
+    "last_line": "2026-10-18T18:45:31Z default-route interface: en0",
+    "log_file": "/Users/aipalm/.local/share/nx01/rp-d8-live/notes/route-watch.log",
+    "pid": 81779,
+    "pid_file": "/Users/aipalm/.local/share/nx01/rp-d8-live/notes/route-watch.pid"
+  },
+  "schema": "rp-d8-verdict-v1",
+  "smoke_qualification": {
+    "checks": {
+      "archive": false,
+      "binding": false,
+      "deleted": false,
+      "effort": true,
+      "lifecycle": false,
+      "owner": false,
+      "prompt": false,
+      "usage": false
+    },
+    "delivered": false,
+    "status": "FAIL"
+  },
+  "status": "STOP",
+  "task": "SM",
+  "usage": "UNKNOWN"
+}

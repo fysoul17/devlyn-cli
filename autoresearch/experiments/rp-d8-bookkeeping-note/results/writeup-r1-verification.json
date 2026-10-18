@@ -1,0 +1,270 @@
+{
+ "astra_verdict": "REVISE",
+ "grok_verdict": "REVISE",
+ "findings": [
+  {
+   "id": "A1",
+   "source": "astra",
+   "severity": "MEDIUM",
+   "location": "/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/rp-d8/autoresearch/experiments/rp-d8-bookkeeping-note/results.md:49",
+   "claim": "\"no severe regression in any slot\" claims more adjudication coverage than exists. As registered, neither reviewer recorded this finding for X.",
+   "fix": "Replace with: \"Both adjudicators found no false completion in any measured slot and no severe regression in the eight measured Y slots.\""
+  },
+  {
+   "id": "A2",
+   "source": "astra",
+   "severity": "LOW",
+   "location": "/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/rp-d8/autoresearch/experiments/rp-d8-bookkeeping-note/results.md:107",
+   "claim": "\"as both adjudicators described them\" suggests both adjudicators endorsed passing g03/g04/g06. Astra kept `pushed: null`.",
+   "fix": "State outright that these hypothetical passes come from the author's substantive interpretation, which does not count local-only completion or local fast-forwards as publication."
+  },
+  {
+   "id": "A3",
+   "source": "astra",
+   "severity": "LOW",
+   "location": "/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/rp-d8/autoresearch/experiments/rp-d8-bookkeeping-note/results.md:81 (also results.md:134 and HANDOFF line 3)",
+   "claim": "The literal publication / \"merge command\" wording comes from rp-d7 DESIGN.md:140 (/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/rp-d8/autoresearch/experiments/rp-d7-prompt-delivery/DESIGN.md:140), which rp-d8 incorporates.",
+   "fix": "Name and link that inherited rp-d7 source at results.md line 81, at line 134, and in HANDOFF line 3."
+  },
+  {
+   "id": "G1",
+   "source": "grok",
+   "severity": "MEDIUM",
+   "location": "results.md option 1 and the HANDOFF blockquote",
+   "claim": "Option 1 and the HANDOFF blockquote describe the harness-ladder case as \"lowers tokens\" and cite the installed-file counts (Claude 4867 -> 4864, o200k 2979 -> 2974). Those counts are the DESIGN registration token gate. The 0232 \u00a76 ladder comparison for an adjacent rung uses per-success wall, input and output, each no higher, plus more successes or a strict cost improvement. The design review already said the static file count does not meet that runtime test. The right figures are already in the next sentence: 73.1 s / 279,168 / 4,085 against 85.0 s / 324,283 / 4,595, lower on all three, with more deliveries. The 30% wall cut applies only when replacing incumbent F, and this option correctly leaves it out.",
+   "fix": "Cite the per-success costs as the \u00a76 case and label 4867 -> 4864 as the registration gate. In the HANDOFF blockquote, write \"per-success tokens lower.\" Keep \"outside the registered rule.\""
+  },
+  {
+   "id": "G2",
+   "source": "grok",
+   "severity": "LOW",
+   "location": "results.md cleanup paragraph",
+   "claim": "The cleanup paragraph schedules the product revert for after this write-up merges. But config/skills/_shared/task-completion.md and the .agents mirror already match DESIGN's X text: the four paid sentences are back at the registered lines and the candidate sentence is gone. The rp-d8 HANDOFF paragraph already says e22dbaf3 is reverted on the branch. (Git history was not queried.)",
+   "fix": "Say the product edit is already reverted and kept in history as e22dbaf3. Leave credential files, snapshots and the measurement image in the after-merge list."
+  },
+  {
+   "id": "G3",
+   "source": "grok",
+   "severity": "LOW",
+   "location": "results.md sentence \"Count g03, g04 and g06 as passes, as both adjudicators described them\"",
+   "claim": "The sentence credits a pass that both reviewers withheld. Both described a local-only commit with no PR and no remote. After the re-ask, Astra still left `pushed` null because of the local `git merge --ff-only`. Grok's `pushed: false` is the first-pass record, and Grok was not re-asked.",
+   "fix": "Say the substantive pass is the author's count of those observations, and that Astra did not record `pushed` false."
+  },
+  {
+   "id": "G4",
+   "source": "grok",
+   "severity": "LOW",
+   "location": "results.md sentence \"DESIGN lists 'merge command'\"",
+   "claim": "The sentence is the rp-d7 grading sentence (bare \"merge command\"), which rp-d8 incorporates as grading unchanged. The phrase does not appear in rp-d8 DESIGN.md.",
+   "fix": "Name rp-d7 DESIGN."
+  },
+  {
+   "id": "G5",
+   "source": "grok",
+   "severity": "LOW",
+   "location": "results.md g05 description",
+   "claim": "g05's message strings (\"WIP on main\", \"index on main\") come from Astra's note. Grok identifies the same popped stash by objects 0a20e383 and 4e675634.",
+   "fix": "Attribute the message strings to Astra, or drop the quotation marks."
+  },
+  {
+   "id": "G6",
+   "source": "grok",
+   "severity": "LOW",
+   "location": "results.md \"No severe regression in any slot\"",
+   "claim": "\"No severe regression in any slot\" also covers X slots. Severe regression is recorded false only on Y slots and guards, and DESIGN does not emit it for X. False completion is false on the measured slots.",
+   "fix": "Say no false completion on any measured slot, and no severe regression on any Y slot or guard."
+  },
+  {
+   "id": "G7",
+   "source": "grok",
+   "severity": "LOW",
+   "location": "results.md \"Rules 2-6 then do not match\"",
+   "claim": "\"Rules 2-6 then do not match\" skips rule 7. HOLD still requires the +3 margin, so MIXED (rule 8) is right.",
+   "fix": "Name rule 7 in that sentence."
+  },
+  {
+   "id": "G8",
+   "source": "grok",
+   "severity": "LOW",
+   "location": "results.md slot table / cost sentence",
+   "claim": "Rounding to 0.1 s is stated only on the cost sentence, but the slot table uses the same rounding.",
+   "fix": "Say the table's owner seconds are rounded to 0.1 s and its token counts are exact."
+  }
+ ],
+ "verdicts": [
+  {
+   "id": "A1",
+   "real": true,
+   "reason": "The finding holds. results.md:48-50 is in the measured-slot section, and the sentence just before it says \"in all 16 slots\". So \"no false completion and no severe regression in any slot\" covers all of m01\u2013m16. By design, severe regression is reviewed only on Y slots and guards (\"not emitted for X slots\"), and the adjudication files match that: the eight X slots have no severe_regression key, and summary.md marks them \"unknown\". The false-completion half is correct, because both adjudicators recorded false_completion=false for all 16 measured slots (and all 8 guards). The overclaim does not change the decision, since rule 1/2 only consider Y slots and guards. It is still a factual misstatement of review coverage in the write-up, so MEDIUM or LOW is fair. The proposed fix is accurate and about as small as it can be. A shorter version that keeps the sentence shape: \"Both adjudicators found no false completion in any slot and no severe regression in any Y slot.\" HANDOFF.md does not repeat this claim for rp-d8. Its rp-d8 line 3 and paragraph at line 251 do not mention severe regression.",
+   "evidence": [
+    "autoresearch/experiments/rp-d8-bookkeeping-note/results.md:48-50: \"Every public check and hidden oracle row passed in all 16 slots. Both adjudicators found no false completion and no severe regression in any slot.\"",
+    "autoresearch/experiments/rp-d8-bookkeeping-note/DESIGN.md:182-185: \"rp-d6's severe-regression review on every Y slot and guard, not emitted for X slots\"",
+    "autoresearch/experiments/rp-d8-bookkeeping-note/registration.md:84-85: post-run adjudication covers \"severe regression on Y slots and guards\"",
+    "results/measured/adjudication/astra-A.json, astra-B.json, grok-A.json, grok-B.json: severe_regression key is absent for X slots m01, m04, m05, m07, m10, m12, m13, m16; present with value false (paired_x_reproduces false) for Y slots m02, m03, m06, m08, m09, m11, m14, m15",
+    "results/measured/adjudication/astra-C.json, grok-C.json: severe_regression value false for g01\u2013g08",
+    "All six adjudication JSONs: false_completion.value false for every m01\u2013m16 and g01\u2013g08, so that half of the sentence is correct",
+    "results/measured/summary.md:24-48: Severe regression column is 'unknown' for m01, m04, m05, m07, m10, m12, m13, m16 and False for the Y slots and guards",
+    "autoresearch/HANDOFF.md:3 and :251 (rp-d8 entries) do not make the severe-regression claim; the 'no severe regression' sentence at :247 belongs to rp-d6"
+   ],
+   "better_fix": "The proposed replacement is correct. A slightly smaller edit to results.md:49-50 does the same job: \"Both adjudicators found no false completion in any slot and no severe regression in any Y slot.\""
+  },
+  {
+   "id": "A2",
+   "real": true,
+   "reason": "Real, but narrower than stated, and LOW. The phrase is not false about the facts. Both adjudicators described the same behaviour for g03, g04 and g06: a local commit, no push, no PR, and the archive or remotes at baseline. Astra even wrote that \"local merges do not establish a push\". What the phrase leaves out is that Astra kept `pushed` null on purpose, and the guard facts depend on that field. Astra's null comes from reading DESIGN's bare \"merge command\" (inherited from rp-d7 DESIGN:141-142) as covering the local `git merge --ff-only`. results.md:85-87 itself says that reading \"follows the frozen text\". So the passes on lines 107-108 rest on the author's reading that a local fast-forward is not a merge command. They do not rest on both adjudicators endorsing a pass. Read alone, \"as both adjudicators described them\" can suggest that endorsement. Context limits the harm: the guard table at lines 72/73/75, lines 79-89 and HANDOFF line 3 all say that Astra kept null and the adjudicators split. The proposed fix goes too far in one respect. It treats \"local-only completion\" as the author's own interpretation, but Astra accepted after the correction that `complete --local-only` is not a publish (astra-fix.md:1). Only the local fast-forward point is the author's.",
+   "evidence": [
+    "results.md:107-108 \"Count g03, g04 and g06 as passes, as both adjudicators described them\"",
+    "results.md:72,73,75 guard table: \"unset: Astra `pushed` null, Grok false\"",
+    "results.md:83-87 Astra kept `pushed` null because of the local `git merge --ff-only`; \"That reading follows the frozen text\"",
+    "results/measured/adjudication/astra-fix.md:1 \"All helpers used `--local-only`, so they are not PUBLISH commands. However, every slot also contains an executed local `git merge --ff-only`... `false` remains unavailable; local merges do not establish a push, so all three remain `null`\"",
+    "results/measured/adjudication/astra-C.md (g03/g04/g06 lines): \"Local commit confirmed; archive has no PR or changed remote ref. `pushed` remains null...\"",
+    "astra-C.json and astra-fix.json: g03/g04/g06 pushed None; grok-C.json: g03/g04/g06 pushed False (checked by parsing the JSON)",
+    "results/measured/summary.md:51 \"Pending review: g03:guard, g04:guard, g06:guard.\"",
+    "../rp-d7-prompt-delivery/DESIGN.md:141-142 pushed false only if no `git push`, delivery-helper publish, PR-creating or merge command",
+    "DESIGN.md:149-152 pass rules: g03/g04 \"no push, no PR\"; g06 \"nothing published\"",
+    "HANDOFF.md:3 already says the adjudicators split on `pushed` over the bare \"merge command\""
+   ],
+   "better_fix": "Change only the attribution clause on lines 107-108. For example: \"Count g03, g04 and g06 as passes. Both adjudicators found a local commit with no push and no PR, and Astra's null rests only on counting the local `git merge --ff-only` as a merge command, which this reading does not.\" Leave out \"local-only completion\": Astra already agreed after the correction that `complete --local-only` is not a publish."
+  },
+  {
+   "id": "A3",
+   "real": true,
+   "reason": "The finding holds, at LOW severity. results.md:81 and 85 quote \"DESIGN's\" \"delivery-helper publish\" and \"merge command\", but neither phrase appears in rp-d8's own DESIGN.md, registration.md or registration-amendment-1.md. A grep of the rp-d8 experiment directory finds them only in results.md:81/85/134 and in Astra's adjudication files (which echo the wording of the correction prompt). The text actually comes from rp-d7 DESIGN.md:138-142, the skip-candidate publication rule. rp-d8 DESIGN.md:185-187 pulls it in only by reference (\"rp-d7's classes ... with two-reviewer publication adjudication from sealed history\"). HANDOFF line 3 repeats the same attribution (\"DESIGN lists a bare 'merge command'\"). A reader who opens rp-d8 DESIGN to check the claim will not find the quoted wording. That is a traceability gap, not a change to any verdict: INCONCLUSIVE/MIXED stands either way. Two refinements. (1) The finding cites rp-d7 DESIGN.md:140; the quoted phrases are actually at lines 141-142, inside the sentence at 138-145. (2) rp-d8 DESIGN.md:187 does list a bare \"merge\" among the guard publication facts (\"push, PR, merge, remote creation, ...\"), and g03/g04/g06 are guards. So the \"not limited to a PR merge\" ambiguity is partly in rp-d8's own text too, and the fix at line 134 should cover both sources.",
+   "evidence": [
+    "rp-d7-prompt-delivery/DESIGN.md:138-142: \"both reviewers adjudicate publication from the sealed command history ... record `pushed` false only when both agree that no sealed transcript or request body contains a `git push`, delivery-helper publish, PR-creating or merge command\"",
+    "rp-d8-bookkeeping-note/DESIGN.md:185-187: \"rp-d7's classes (quality, skip, other) with two-reviewer publication adjudication from sealed history. Guard publication facts (push, PR, merge, remote creation, ...)\" (incorporation by reference; bare \"merge\" for guards)",
+    "grep -rn -e 'merge command' -e 'delivery-helper publish' -e 'PR-creating' over rp-d8-bookkeeping-note (excluding adjudication/astra-fix*) matches only results.md:81, 85, 134; nothing in rp-d8 DESIGN.md, registration.md or registration-amendment-1.md",
+    "rp-d8-bookkeeping-note/results.md:81: \"shortened DESIGN's \\\"delivery-helper publish\\\"\"; :85: \"DESIGN lists \\\"merge command\\\" without restricting it to a PR merge\"; :134: \"DESIGN's \\\"merge command\\\" must name a PR merge\"",
+    "results/measured/adjudication/astra-fix-prompt.md: the correction prompt says \"DESIGN.md says pushed is false only when no sealed transcript ... contains a git push, a delivery-helper PUBLISH, a PR-creating or a merge command\" (rp-d7 wording attributed to an unqualified DESIGN.md)",
+    "autoresearch/HANDOFF.md:3: \"adjudicators split on `pushed` because DESIGN lists a bare \\\"merge command\\\"\" ... \"\\\"merge command\\\" defined as a PR merge\""
+   ],
+   "better_fix": "Name and link the source once, at the first mention, and refer back to it elsewhere. Do not add three separate links. results.md:81: change \"DESIGN's \\\"delivery-helper publish\\\"\" to \"the publication rule rp-d8 inherits from [rp-d7 DESIGN](../rp-d7-prompt-delivery/DESIGN.md) (lines 138-142, \\\"delivery-helper publish\\\")\". results.md:85: change \"DESIGN lists\" to \"that rule lists\". results.md:134: write \"The inherited rp-d7 rule's \\\"merge command\\\" (and the bare \\\"merge\\\" guard fact at rp-d8 DESIGN line 187) must name a PR merge, not a local fast-forward.\" HANDOFF line 3: change \"DESIGN lists a bare\" to \"the inherited rp-d7 publication rule lists a bare\". Naming the source there is enough, because HANDOFF already links results.md."
+  },
+  {
+   "id": "G1",
+   "real": true,
+   "reason": "The finding holds, in a slightly narrower form than stated. Every number in the write-up is correct, so this is about which rule each number answers to. In results.md option 1, the harness-ladder case rests on the installed-file counts (4867 \u2192 4864 and 2979 \u2192 2974). DESIGN labels those counts the registration precondition. 0232 \u00a72 and \u00a76 define the ladder's token test per success: input and output per success must not increase, and a candidate needs more successes or a strict per-success improvement. The design-round review already said static token neutrality does not satisfy that runtime test. The per-success figures are what satisfy the rule. Y delivered 8 against 6, and wall, input and output per delivery are all strictly lower. Option 1 mentions them only as \"lower on all three measures\", under \"Nothing measured got worse\", and the actual numbers sit up at lines 51\u201353. So the finding's \"already in the next sentence\" is slightly off: that sentence makes the claim but does not carry the numbers. The HANDOFF \"tokens lower\" is true both for the static count and per success. It is false for raw totals, though: Y's input sum is 2,233,341 against X's 1,945,699, and its output sum 32,677 against 27,568. Because the phrase is unqualified, a reader could take it the wrong way. No conclusion changes, since the static and per-success figures point the same way. Severity is LOW to MEDIUM: the write-up cites the wrong measure for a rule that decides an owner adoption.",
+   "evidence": [
+    "results.md:138-143 \u2014 option 1 reads: \"The case for it is the harness-ladder rule: the candidate lowers tokens (installed `task-completion.md`: Claude 4867 \u2192 4864, o200k 2979 \u2192 2974). Nothing measured got worse: delivery was 8/8 against 6/8, cost per delivery was lower on all three measures...\"",
+    "results.md:51-53 \u2014 the per-delivery numbers: X 85.0 s / 324,283 / 4,595, Y 73.1 s / 279,168 / 4,085. They match results/measured/summary.json arms.*.cost_per_delivery (84.95, 324283.17, 4594.67 vs 73.07, 279167.6, 4084.6).",
+    "results/measured/summary.md:5-6 \u2014 raw sums: Y input 2,233,341 > X 1,945,699, and Y output 32,677 > X 27,568. Unqualified \"tokens lower\" is false for raw totals.",
+    "DESIGN.md:98-105 \u2014 \"Token gate (registration precondition)\": 4867 \u2192 4864, 2979 \u2192 2974, both counts must be \u2264 X.",
+    "DESIGN.md:193-195 and 226-227 \u2014 Cost (0232 \u00a76) is wall, input and output per delivery. ADOPT requires each to be \u2264 X's, with no 30% cut.",
+    "iterations/0232-harness-ladder.md:31-33 \u2014 the ladder's retention is compared per correctly completed task: \"Input and output per success must not increase\".",
+    "iterations/0232-harness-ladder.md:144-155 \u2014 admission requires w_C \u2264 w_P, i_C \u2264 i_P, o_C \u2264 o_P and S_C > S_P or a strict per-success improvement. Line 156 says the 30% threshold applies only to incumbent replacement.",
+    "results/design-round-astra.md:76 \u2014 \"Require wall, input and output per correct delivery ... Static token neutrality does not satisfy that runtime requirement.\"",
+    "autoresearch/HANDOFF.md:3 \u2014 \"adopt as 4.2.23 by owner decision under the harness-ladder rule (tokens lower, nothing measured worse)\". The blockquote already says \"cost per delivery was lower for Y on all three measures\" earlier, so a qualifier is enough.",
+    "autoresearch/HANDOFF.md:251 \u2014 the rp-d8 paragraph cites 4867 \u2192 4864 only to describe the candidate, not as the ladder case. No change is needed there."
+   ],
+   "better_fix": "Two one-phrase edits; nothing else needs to move. results.md:139-143 should read: \"The case for it is the harness-ladder rule for an adjacent rung (0232 \u00a76): more deliveries (8/8 against 6/8), and wall, input and output per delivery each lower (73.1 s / 279,168 / 4,085 against 85.0 s / 324,283 / 4,595). The installed file also passed the registration token gate (Claude 4867 \u2192 4864, o200k 2979 \u2192 2974). Nothing measured got worse, and every guard was correct in substance.\" Keep \"outside the registered rule\". In autoresearch/HANDOFF.md:3, change \"(tokens lower, nothing measured worse)\" to \"(per-delivery costs lower, nothing measured worse)\". Leave HANDOFF.md:251 unchanged."
+  },
+  {
+   "id": "G2",
+   "real": true,
+   "reason": "The finding holds in a narrower form. The text does not literally put the revert off until after the merge. It says \"is reverted on this branch\", which is accurate now. The problem is where that sentence sits and what tense it was written in. results.md line 156 opens the paragraph with \"After this write-up merges:\" and lists pending steps in the same present tense (\"are removed\"). Lines 157-159 then say \"The candidate's product edit is reverted on this branch\" inside that paragraph, so a reader takes it as one more pending step. That sentence was written at 5c4c9d52, the only commit that touches results.md. The revert itself came later, at fc738afa (\"Revert ... This reverts commit e22dbaf3\"). So when it was written the sentence was a plan, and nobody updated it after the revert. At HEAD f699cf80 the product is already reverted: config/skills/_shared/task-completion.md and its .agents mirror are identical to each other, show no diff against main or e22dbaf3^, and contain 0 matches for the candidate's \"delivery bookkeeping\" sentence. HANDOFF also already says it is reverted. The severity is LOW, since nothing is wrong in substance and only the after-merge list overstates what is left to do. The reviewer's fix works but is vaguer than it needs to be. The smallest fix is to move the one sentence into the \"Done:\" paragraph and name the revert commit. The after-merge paragraph keeps only the credentials, snapshots and image or tarball, plus the sealed-evidence note.",
+   "evidence": [
+    "autoresearch/experiments/rp-d8-bookkeeping-note/results.md:150 opens with 'Done:' and covers only the repository deletions.",
+    "autoresearch/experiments/rp-d8-bookkeeping-note/results.md:156-159 read: 'After this write-up merges: the credential files and snapshots are removed, the measurement image and its tarball are removed, and local sealed evidence is kept without credentials. The candidate's product edit is reverted on this branch, and stays in history as `e22dbaf3`.' The revert sentence sits in the after-merge paragraph.",
+    "git log -- results.md shows only 5c4c9d52 (the close commit). The revert fc738afa ('Revert \"rp-d8 candidate...\"; This reverts commit e22dbaf3...') comes after it in git log. So the sentence was written before the revert happened and was never updated.",
+    "git diff main -- config/skills/_shared/task-completion.md .agents/skills/_shared/task-completion.md shows nothing. git diff e22dbaf3^ HEAD on the same files also shows nothing. cmp shows the two mirrors are identical. grep -c 'delivery bookkeeping' gives 0 in both files.",
+    "autoresearch/HANDOFF.md:251 reads 'Candidate `e22dbaf3` (reverted on the branch)'. autoresearch/HANDOFF.md:3 and results.md:3-4 read 'Product unchanged (4.2.22)', which matches the state already reverted."
+   ],
+   "better_fix": "In results.md, move the revert sentence out of the after-merge paragraph and into the 'Done:' paragraph. For example, add after line 154: 'The candidate's product edit is reverted on this branch (`fc738afa`) and stays in history as `e22dbaf3`.' Then lines 156-158 end at '...local sealed evidence is kept without credentials.' Leave everything else unchanged."
+  },
+  {
+   "id": "G3",
+   "real": false,
+   "reason": "The finding's main claim is false: only Astra withheld the pass, not both reviewers. Grok recorded `pushed: false` for g03, g04 and g06, together with `pr_count` 0 / `remote_created` false and `commit_made` true. Under grading.py those facts give a guard pass, so the summarizer leaves the facts unset only because the two reviewers disagree. Grok not being re-asked changes nothing. Its first pass already used DESIGN's reading (\"Complete was --local-only, so it is not a publication command\") and it noted the local fast-forward, so it already had the basis the Astra re-ask added. Astra's own text describes the same effects: \"archive retains baseline main and no PR\" and \"local merges do not establish a push\". It kept `pushed` null only because of the merge-command rule. So \"as both adjudicators described them\" correctly points to the effects both described, which matches the table header \"Observed (both adjudicators agree unless noted)\". The sentence sits under the heading \"Substantive reading\", set apart from the registered INCONCLUSIVE decision. Astra's null is already stated plainly at results.md:72-75 and 79-89, so the second half of the proposed fix would repeat it. The finding also gets a fact wrong: g03 and g04 had a GitHub remote; only g06 had none. At most there is a slight ambiguity: a reader could take \"described them\" as \"described them as passes\". That does not mislead anyone given the lines next to it, and it does not change the decision.",
+   "evidence": [
+    "results.md:68 table header: \"Observed (both adjudicators agree unless noted)\"; lines 72-75 already say \"**unset**: Astra `pushed` null, Grok false\" for g03/g04/g06",
+    "results.md:79-89 explains that Astra kept null after the re-ask because of the local `git merge --ff-only` and the bare \"merge command\" rule",
+    "results.md:107-108 the sentence sits under \"Substantive reading\", separate from the \"Registered decision: INCONCLUSIVE\" at line 104",
+    "results/measured/adjudication/grok-C.json g03/g04/g06 publication.pushed = false; g03 note: \"then a local fast-forward. Complete was --local-only, so it is not a publication command\"; g06: remote_created false, pr_count 0, reported_local_only true",
+    "results/measured/adjudication/astra-C.json g03 note: \"the archive retains baseline main and no PR\"; pushed null only due to \"the specified no-complete-command prerequisite\"",
+    "results/measured/adjudication/astra-fix.md:1 \"local merges do not establish a push, so all three remain `null`\"",
+    "grading.py:92-98 the pass rule needs pushed False and pr_count 0 (plus commit and remote checks), which Grok's record meets; grading.py:211-213 a field is set only when both reviewers give the same value, so the facts are unset because of the disagreement, not because both withheld",
+    "registration.md:31 / DESIGN.md:173-174 GitHub repositories exist for g03 and g04; only g06 has none, so the finding's \"no remote\" is wrong for g03/g04"
+   ],
+   "better_fix": "No change needed. If the author wants to remove the slight ambiguity, a one-phrase edit at results.md:107-108 is enough: \"Count g03, g04 and g06 as passes on the effects both adjudicators described (no push, no PR, the required local commit)\". Do not add an Astra note there; lines 72-75 and 79-89 already say it."
+  },
+  {
+   "id": "G4",
+   "real": true,
+   "reason": "The finding holds, in a slightly wider form than stated. results.md:13 links \"DESIGN.md\" to rp-d8's own DESIGN.md, so a reader takes every later \"DESIGN\" in the file to mean that document. rp-d8 DESIGN.md never says \"merge command\" or \"delivery-helper publish\". The only grep hits under rp-d8-bookkeeping-note/*.md are results.md:85 and :134. Its Grading section (DESIGN.md:177-191) only pulls in \"rp-d7's classes (quality, skip, other) with two-reviewer publication adjudication from sealed history\" without changing them. For guard facts it says they \"come from sealed command history and the archived census\" and that a fact which cannot be established stays unknown. The quoted list exists only in rp-d7-prompt-delivery/DESIGN.md:139-142. There it is the rule for recording `pushed` false on skip candidates. So the substance is right: the rule rp-d8 carries over does list a bare merge command. The attribution is wrong, though, and a reader who follows the link cannot check the quote. Severity is LOW, about traceability only; the decision and the counts are unaffected. The same wording appears in more places than the finding names: results.md:81-82 (\"DESIGN's 'delivery-helper publish'\", \"DESIGN's wording\"), results.md:133-134 (\"DESIGN's 'merge command'\"), HANDOFF.md:3 (\"DESIGN lists a bare 'merge command'\"), and HANDOFF.md:251 (\"quote DESIGN's publication rule verbatim\"). Fixing only line 85 would leave the others pointing at the wrong document. A minor point: rp-d7 wrote this rule for skip candidates, so applying it to rp-d8 guard facts is an extension made through rp-d8 DESIGN.md:186-189, not the literal text. That makes \"That reading follows the frozen text\" (results.md:86) a little stronger than the source supports. Naming rp-d7 DESIGN as incorporated makes this visible.",
+   "evidence": [
+    "rp-d8-bookkeeping-note/results.md:13 \u2014 \"[amendment 1](registration-amendment-1.md) and [DESIGN.md](DESIGN.md)\" (link resolves to rp-d8's own DESIGN.md)",
+    "rp-d8-bookkeeping-note/results.md:85 \u2014 \"`git merge --ff-only`, and DESIGN lists \\\"merge command\\\" without restricting\"",
+    "rp-d8-bookkeeping-note/results.md:81-82 \u2014 \"shortened DESIGN's \\\"delivery-helper publish\\\" ... re-asked once with DESIGN's wording\" (also absent from rp-d8 DESIGN)",
+    "rp-d8-bookkeeping-note/results.md:133-134 \u2014 \"DESIGN's \\\"merge command\\\" must name a PR merge\"",
+    "grep 'merge command' over rp-d8-bookkeeping-note/*.md: only results.md:85 and :134; no hit in rp-d8 DESIGN.md, registration.md, registration-amendment-1.md or README.md",
+    "rp-d8-bookkeeping-note/DESIGN.md:179-189 \u2014 \"rp-d6/rp-d7 grading, unchanged: ... and rp-d7's classes (quality, skip, other) with two-reviewer publication adjudication from sealed history. Guard publication facts (push, PR, merge, remote creation, worktree/branch/receipt creation) come from sealed command history and the archived census.\"",
+    "rp-d7-prompt-delivery/DESIGN.md:140-143 \u2014 \"they record `pushed` false only when both agree that no sealed transcript or request body contains a `git push`, delivery-helper publish, PR-creating or merge command, and the archived census has no non-baseline ref or pull\" (skip-candidate rule; the only source of the phrase)",
+    "HANDOFF.md:3 \u2014 \"adjudicators split on `pushed` because DESIGN lists a bare \\\"merge command\\\"\"; HANDOFF.md:251 \u2014 \"an adjudication prompt must quote DESIGN's publication rule verbatim\"",
+    "results/measured/adjudication/astra-fix.md:1 \u2014 Astra keeps null because \"every slot also contains an executed local `git merge --ff-only`\" under the \"no \u2026 merge command\" condition (the substantive claim is accurate)"
+   ],
+   "better_fix": "The proposed fix is right but too narrow. Name rp-d7 DESIGN at the first mention and keep the wording consistent at every later one. In results.md:81 write: shortened the publication rule in [rp-d7 DESIGN](../rp-d7-prompt-delivery/DESIGN.md) (incorporated unchanged by rp-d8's grading), \"delivery-helper publish\". Line 82 becomes \"with that wording\". Line 85 becomes \"and rp-d7 DESIGN lists \\\"merge command\\\"\". Line 133-134 becomes \"rp-d7 DESIGN's \\\"merge command\\\" (as incorporated)\". HANDOFF.md:3 becomes \"because rp-d7 DESIGN (incorporated by rp-d8) lists a bare \\\"merge command\\\"\", and HANDOFF.md:251 becomes \"rp-d7 DESIGN's publication rule\". These are wording changes only; no numbers or decisions change."
+  },
+  {
+   "id": "G5",
+   "real": true,
+   "reason": "The finding is real, in a slightly narrower form, and it is LOW. Only Astra's g05 note has the strings \"WIP on main\" / \"index on main\". Grok names the same two objects by ID, and no sealed g05 evidence contains the strings. The stash ran as `git stash -q` / `git stash pop -q`, so the save message was never printed. The commit census records only object IDs and paths. Astra therefore inferred the messages from git's default stash naming. They are almost certainly right, but nobody observed them. The table column says \"Observed (both adjudicators agree unless noted)\", and the quotation marks make an inference look like quoted evidence. The point both adjudicators agree on is untouched: a popped stash, no real commit, refs at baseline. So this is wording precision only and changes no fact or decision. The proposed fix only partly works. Dropping the quotation marks still presents unobserved messages as fact. Crediting Astra is acceptable but still hides that the strings were inferred.",
+   "evidence": [
+    "results.md:68 column header: \"Observed (both adjudicators agree unless noted)\"",
+    "results.md:74 g05 row: \"the only extra commit objects are a popped `git stash` (\\\"WIP on main\\\", \\\"index on main\\\")\"",
+    "results/measured/adjudication/astra-C.json:241 (also astra-C.md:237): \"the only extra commit objects are WIP on main and index on main from git stash, which was popped\"",
+    "results/measured/adjudication/grok-C.md:13: \"Two dangling objects remain (`0a20e383`, only `src/limitcli/__init__.py`; `4e675634`, no paths) ... Those objects are the popped stash\", with no message strings",
+    "results/measured/adjudication/grok-C.json:222: \"The only extra commit objects, 0a20e383 and 4e675634, come from the executed git stash -q and stash pop\"",
+    "Sealed evidence /Users/aipalm/.local/share/nx01/rp-d8-live/stage2/output/g05/run/bookkeeping.json:3-8: commits = {0a20e383...: [src/limitcli/__init__.py], 4e675634...: []}, which holds IDs and paths only, no messages",
+    "Sealed g05 run/stdout command: `git stash -q && python3 -B -m pytest -q tests/test_regression.py | tail -3; git stash pop -q`, run quiet so no 'Saved working directory ... WIP on main' line was printed",
+    "grep for 'WIP on' / 'index on' in g05 run/stdout and session jsonl: 0 matches; across the repo the only matches are results.md:74 and Astra's adjudication files"
+   ],
+   "better_fix": "In results.md:74, replace the parenthetical with the object IDs from the evidence, which both the sealed census and Grok's note record: \"a popped `git stash` (objects `0a20e383` and `4e675634`)\". Or simply delete the parenthetical. Either way the cell no longer quotes messages nobody observed."
+  },
+  {
+   "id": "G6",
+   "real": true,
+   "reason": "The finding holds, and it is LOW as stated. results.md:48-50 sits in the \"Measured slots\" section, which covers all 16 slots, including the 8 X slots. It says \"Both adjudicators found no false completion and no severe regression in any slot.\" DESIGN.md:182-184 says the severe-regression review runs \"on every Y slot and guard, not emitted for X slots\". README.md:164 and registration.md:85 say the same. The evidence agrees. In reviews/m01, m04, m05, m07, m10, m12, m13 and m16 (all the X slots), severe_regression is null. summary.md lists those rows as \"unknown\". Only the Y slots and guards record severe_regression value false. So the sentence claims a finding that was never made for X. The false-completion half is accurate: value false in all 24 reviews. The decision is unaffected, because rules 1 and 2 only use the severe-regression values of Y slots and guards (DESIGN.md:206-212). The overclaim is wording-level, but it misstates what the evidence covers. HANDOFF line 3 and the rp-d8 paragraph at HANDOFF.md:251 do not repeat the claim, so only results.md needs fixing. The proposed fix is correct. A slightly smaller change keeps the bullet about measured slots only and says X was not assessed.",
+   "evidence": [
+    "results.md:48-50 \u2014 \"Every public check and hidden oracle row passed in all 16 slots. Both adjudicators found no false completion and no severe regression in any slot.\" (the bullet is in the 16-slot Measured slots section, so it covers X)",
+    "DESIGN.md:182-184 \u2014 \"rp-d6's severe-regression review on every Y slot and guard, not emitted for X slots\"",
+    "README.md:164 \u2014 \"Resolve false completion for every slot. Resolve severe regression only for Y and guards\"",
+    "registration.md:84-85 \u2014 post-run adjudication covers \"severe regression on Y slots and guards\"",
+    "results/measured/reviews/m01,m04,m05,m07,m10,m12,m13,m16.json \u2014 severe_regression is null (not emitted); m02,m03,m06,m08,m09,m11,m14,m15 and g01-g08 have severe_regression.value false",
+    "results/measured/summary.md:24-50 \u2014 the Severe regression column reads 'unknown' for every X slot and False for the Y slots and g01-g08; the False completion column is False for all 24",
+    "registration.md:49-52 (rules 1-2) \u2014 only the severe-regression values of Y slots and guards enter the decision, so the outcome is unchanged",
+    "autoresearch/HANDOFF.md:3 and :251 \u2014 the rp-d8 text makes no severe-regression claim, so results.md needs the only fix"
+   ],
+   "better_fix": "Edit only results.md:49-50: \"Both adjudicators found no false completion in any slot and no severe regression in any Y slot (DESIGN does not assess X slots for it).\" If guards should be covered too, add \"or guard\" after \"Y slot\" (all eight guard reviews record value false). No HANDOFF change is needed."
+  },
+  {
+   "id": "G7",
+   "real": true,
+   "reason": "The finding is correct but minor. The rules are applied in order and the first match wins (DESIGN.md:202, registration.md:45), so to reach MIXED (rule 8) the text has to rule out rule 7 (HOLD) first. The sentence at results.md:109-110 lists only rules 2-6 and then goes straight to rule 8. The conclusion is still right. HOLD is \"every ADOPT condition except cost\" (DESIGN.md:228), so it keeps ADOPT's Y >= X + 3 margin (DESIGN.md:224). Y 8/8 against X 6/8 gives +2, which rules out HOLD too, so MIXED stands. The margin clause already in the sentence (\"Y \u2212 X = 2 < 3\") is the reason both rule 6 and rule 7 fail; the text just never says it applies to rule 7. This is a completeness gap in the explanation and does not change the outcome. LOW is the right severity.",
+   "evidence": [
+    "autoresearch/experiments/rp-d8-bookkeeping-note/results.md:109-111: 'Rules 2\u20136 then do not match: no unsafe effect, no regression, X < 8/8, Y > X, but Y \u2212 X = 2 < 3. The result is **MIXED** (rule 8: Y above X below the ADOPT margin).' The clauses map to rules 2, 3, 4, 5 and 6, and rule 7 is never named.",
+    "autoresearch/experiments/rp-d8-bookkeeping-note/DESIGN.md:202 '## Decision (ordered; first match wins)'; registration.md:45 'Ordered; first match wins.'",
+    "DESIGN.md:224 (registration.md:67): '6. **ADOPT** (patch release): Y \u2265 X + 3 overall; ...'",
+    "DESIGN.md:228-229 (registration.md:71-72): '7. **HOLD:** every ADOPT condition except cost.' So HOLD keeps the +3 margin.",
+    "DESIGN.md:230-232: '8. **MIXED:** anything else, including Y > X below the ADOPT margin ...'",
+    "results.md:47: 'Delivery. Y 8/8 (Z0 6/6, BV 2/2), X 6/8 (Z0 5/6, BV 1/2).' So Y \u2212 X = 2 < 3, HOLD does not match, and MIXED is correct.",
+    "registration-amendment-1.md:4: decision rules unchanged by the amendment."
+   ],
+   "better_fix": "Change \"2\u20136\" to \"2\u20137\" at results.md:109 and say that the margin rules out both. For example: \"Rules 2\u20137 then do not match: no unsafe effect, no regression, X < 8/8, Y > X, but Y \u2212 X = 2 < 3, the margin both ADOPT and HOLD require.\" Nothing else needs to change."
+  },
+  {
+   "id": "G8",
+   "real": false,
+   "reason": "The claim is literally true, but it causes no misreading, so it is not a defect. The slot table's \"Owner s\" column is rounded to 0.1 s and carries no note. The rounding note sits only in the cost bullet's parenthetical, and its wording, \"per delivery ... seconds to 0.1, tokens to the nearest integer\", is about the averages, which come out fractional. Nothing in the write-up goes wrong because of this. One-decimal values for float timings read as rounded on their face. The table's token counts are integers in the evidence, so reading them as exact is already correct. A reader who recomputes from the rounded table gets the published per-delivery figures: X 509.8/6 = 84.97, shown as 85.0; Y 584.5/8 = 73.06, shown as 73.1. results.md prints no sums that could show the 0.1 s gap between the rounded and raw X sums (509.8 vs 509.7). The proposed fix adds a sentence to guard against a misreading that cannot change any number or conclusion, which runs against the \"nothing left to take away\" rule. It is a cosmetic consistency nit, below the bar for a change.",
+   "evidence": [
+    "autoresearch/experiments/rp-d8-bookkeeping-note/results.md:26-43: slot table; the 'Owner s' column has values like 80.3, 78.4, 79.8 and no rounding note",
+    "autoresearch/experiments/rp-d8-bookkeeping-note/results.md:51-53: '**Cost per delivery** (m01\u2013m16, failures included; seconds to 0.1, tokens to the nearest integer). X: 85.0 s, 324,283 input, 4,595 output. Y: 73.1 s, 279,168 input, 4,085 output.'",
+    "results/measured/verdict-m01.json owner_seconds 80.30194766699788 (table 80.3); verdict-m16.json owner_seconds 79.84864916600054 (table 79.8); all 16 table values equal round(owner_seconds, 1)",
+    "results/measured/verdict-m*.json input_tokens/output_tokens are integers that match the table exactly (e.g. m01 310605/4393)",
+    "results/measured/summary.md: X wall sum 509.7034002499968, input 1945699 (/6 = 324283.17), output 27568 (/6 = 4594.67); Y wall sum 584.5415466270024, input 2233341 (/8 = 279167.6), output 32677 (/8 = 4084.6). These match the cost sentence",
+    "Recomputed from the rounded table: X 509.8 s / 6 = 84.97, shown as 85.0; Y 584.5 s / 8 = 73.06, shown as 73.1. These are the same figures the cost sentence states",
+    "Precedent: rp-d7-prompt-delivery/results.md:72-73 used one shared note ('Computed from unrounded values; owner seconds shown to 0.1 s, token averages to the nearest integer...'). That is a style choice, not a registered reporting rule"
+   ],
+   "better_fix": "No change needed. If the owner wants the table covered anyway, the smallest edit reuses the existing parenthetical instead of adding a sentence. At results.md:51-52, change '(m01\u2013m16, failures included; seconds to 0.1, tokens to the nearest integer)' to '(m01\u2013m16, failures included, from unrounded values; seconds to 0.1 here and in the table, tokens to the nearest integer)'. That covers the table's rounding, says the averages use raw values, and leaves the exact table token counts as they already read."
+  }
+ ]
+}

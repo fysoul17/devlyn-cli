@@ -1,0 +1,6 @@
+# Offline suites at apparatus_commit cd6ede46 (README loop, PYTHONDONTWRITEBYTECODE=1), run 2026-10-19
+rp-d8-bookkeeping-note: 460 passed in 65.20s (0:01:05)
+rp-d7-prompt-delivery: 325 passed in 24.03s
+rp-d6-claude-delivery: 277 passed in 31.61s
+rp-d4-helper-report: 268 passed, 18 subtests passed in 30.56s
+rp-d5-claude-stages: 195 passed in 23.17s

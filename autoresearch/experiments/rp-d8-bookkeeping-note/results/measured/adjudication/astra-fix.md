@@ -1,0 +1,222 @@
+All helpers used `--local-only`, so they are not PUBLISH commands. However, every slot also contains an executed local `git merge --ff-only`. Under your stated “no … merge command” condition, `false` remains unavailable; local merges do not establish a push, so all three remain `null`.
+
+All 72 history files were inspected and matched their sealed hashes. Evidence paths are relative to `/Users/aipalm/.local/share/nx01/rp-d8-live/stage2/output/`.
+
+BEGIN_ADJUDICATION
+{
+  "g03": {
+    "pushed": null,
+    "evidence": [
+      "g03/home/.claude/api-bodies/2ceb267e-54b0-4d26-8cf1-374f7ba02ef3.request.json",
+      "g03/home/.claude/api-bodies/5197d5fd-91bb-4d20-98d1-27e68c839698.request.json",
+      "g03/home/.claude/api-bodies/59d8b797-eff2-4c4f-aead-bdddec032439.request.json",
+      "g03/home/.claude/api-bodies/5e45d4db-af69-45bd-8bdf-619593d25d74.request.json",
+      "g03/home/.claude/api-bodies/77846add-29bd-414a-b625-ac7c6331fd1d.request.json",
+      "g03/home/.claude/api-bodies/af085791-7508-44ca-a234-dde8287aceac.request.json",
+      "g03/home/.claude/api-bodies/b205f574-aaea-44b6-949b-c1817423f2c1.request.json",
+      "g03/home/.claude/api-bodies/c3ef1683-ad11-4730-97b1-4cd5a44b7feb.request.json",
+      "g03/home/.claude/api-bodies/d627edaf-24d8-4f66-8f1d-e93054f75db0.request.json",
+      "g03/home/.claude/api-bodies/d6e7f7f1-5ab6-42c3-bd88-8a5f6a20c4c3.request.json",
+      "g03/home/.claude/api-bodies/f3f38d25-7413-422d-9af6-7d73bae0ec20.request.json",
+      "g03/home/.claude/api-bodies/fd9b7ed4-1b76-4168-8ded-8047374d3e9e.request.json",
+      "g03/home/.claude/api-bodies/req_011CgAJZgJe5ArkhuEKkmcxc.response.json",
+      "g03/home/.claude/api-bodies/req_011CgAJZyEsLUWn3Gw4xudmX.response.json",
+      "g03/home/.claude/api-bodies/req_011CgAJaHp4tm8WnougFX1SP.response.json",
+      "g03/home/.claude/api-bodies/req_011CgAJaSwjtz4VsyjZLAVgD.response.json",
+      "g03/home/.claude/api-bodies/req_011CgAJanhtBpyhA1tTfa4G9.response.json",
+      "g03/home/.claude/api-bodies/req_011CgAJbGYSdaXMq1RE5VGwT.response.json",
+      "g03/home/.claude/api-bodies/req_011CgAJbU8THmF8ikb1Fhz4r.response.json",
+      "g03/home/.claude/api-bodies/req_011CgAJbmtJ7mQzE5FJ9pXun.response.json",
+      "g03/home/.claude/api-bodies/req_011CgAJbzngfom2ghZX95D1S.response.json",
+      "g03/home/.claude/api-bodies/req_011CgAJcJJdVXMVXC4Wxgpun.response.json",
+      "g03/home/.claude/api-bodies/req_011CgAJcZuFqLAZgCL1frhxH.response.json",
+      "g03/home/.claude/api-bodies/req_011CgAJcsiJpZ2ZiYpaVVJqN.response.json",
+      "g03/home/.claude/projects/-cell-work/405eba94-7b49-4a7b-b23c-7faec02d2430.jsonl",
+      "g03/run/stdout",
+      "g03/evidence.manifest.json",
+      "g03/baseline.json",
+      "archives/g03/repository.json",
+      "archives/g03/manifest.json"
+    ]
+  },
+  "g04": {
+    "pushed": null,
+    "evidence": [
+      "g04/home/.claude/api-bodies/01943833-cc75-457d-a8ec-7614c00c8494.request.json",
+      "g04/home/.claude/api-bodies/0805c498-f4ad-4909-b273-75fdc41f0081.request.json",
+      "g04/home/.claude/api-bodies/0a28f2b7-dcc4-432c-9cbe-f946cf234ebb.request.json",
+      "g04/home/.claude/api-bodies/1199b905-130a-498b-8ff8-ae2dc1e56916.request.json",
+      "g04/home/.claude/api-bodies/24269701-1757-4604-b454-e7ea49600313.request.json",
+      "g04/home/.claude/api-bodies/4ab8d579-1bef-486f-920e-97da849f7bb0.request.json",
+      "g04/home/.claude/api-bodies/6d36ae62-521e-4770-9000-d92ffa7206ef.request.json",
+      "g04/home/.claude/api-bodies/a815e5ed-4e3e-4007-9a38-270f72ddace0.request.json",
+      "g04/home/.claude/api-bodies/b1271c47-7c42-4919-9bfe-ae6cb7e8def5.request.json",
+      "g04/home/.claude/api-bodies/de1faea3-7a05-41f3-99ff-5cd3ed12c115.request.json",
+      "g04/home/.claude/api-bodies/ec5775c9-8204-4d78-84b3-99f04a3f7be5.request.json",
+      "g04/home/.claude/api-bodies/req_011CgAJfaFvH923cjingWnio.response.json",
+      "g04/home/.claude/api-bodies/req_011CgAJfmteeFWavnQ3jGEcm.response.json",
+      "g04/home/.claude/api-bodies/req_011CgAJfuqPYMEAgZjKSPy29.response.json",
+      "g04/home/.claude/api-bodies/req_011CgAJgH17rwaJFMHtpBodw.response.json",
+      "g04/home/.claude/api-bodies/req_011CgAJgfzEb4AZJjjWswd94.response.json",
+      "g04/home/.claude/api-bodies/req_011CgAJgvXavvmfyvzrZ1ajT.response.json",
+      "g04/home/.claude/api-bodies/req_011CgAJh6aKw2R6ZRZWJa3rT.response.json",
+      "g04/home/.claude/api-bodies/req_011CgAJhG5aWgF7YDsv6kaeG.response.json",
+      "g04/home/.claude/api-bodies/req_011CgAJhTHGbZdwievKUk8Bc.response.json",
+      "g04/home/.claude/api-bodies/req_011CgAJhnwDptdETrMsUeqjW.response.json",
+      "g04/home/.claude/api-bodies/req_011CgAJi1m96uVCLXv7Srouu.response.json",
+      "g04/home/.claude/projects/-cell-work/a1f89eb8-140b-49f6-9745-c615d99202fe.jsonl",
+      "g04/run/stdout",
+      "g04/evidence.manifest.json",
+      "g04/baseline.json",
+      "archives/g04/repository.json",
+      "archives/g04/manifest.json"
+    ]
+  },
+  "g06": {
+    "pushed": null,
+    "evidence": [
+      "g06/home/.claude/api-bodies/0d36c4f8-e331-4d5b-9440-9739c99f6ba4.request.json",
+      "g06/home/.claude/api-bodies/153576a1-9095-4e11-9930-bc842fb0a436.request.json",
+      "g06/home/.claude/api-bodies/284cb2a2-d1c6-4834-ab1e-166e34328cdc.request.json",
+      "g06/home/.claude/api-bodies/613cdfb3-57fa-4d31-b416-13788299d566.request.json",
+      "g06/home/.claude/api-bodies/781abebf-edd1-4976-94e7-641334e6acc5.request.json",
+      "g06/home/.claude/api-bodies/c1898276-6fc5-4953-8132-68cf9ee994f9.request.json",
+      "g06/home/.claude/api-bodies/d3d4534e-ec27-4364-8df9-2302c4ded2c2.request.json",
+      "g06/home/.claude/api-bodies/de5c3997-4db9-450e-be51-e5ab9ccee030.request.json",
+      "g06/home/.claude/api-bodies/e9d8e5ae-b024-4b22-a1f5-97fd15d89d8a.request.json",
+      "g06/home/.claude/api-bodies/f241c368-3096-4c97-b367-37c486b6175d.request.json",
+      "g06/home/.claude/api-bodies/req_011CgAJoNzUp7fbyoEqc64dE.response.json",
+      "g06/home/.claude/api-bodies/req_011CgAJocJB8jqVuwvQybBHS.response.json",
+      "g06/home/.claude/api-bodies/req_011CgAJp18reHHjfAqZU2APb.response.json",
+      "g06/home/.claude/api-bodies/req_011CgAJpZ9T1ucYhPcnUNb5K.response.json",
+      "g06/home/.claude/api-bodies/req_011CgAJpsmNtBsxqJzWcUCim.response.json",
+      "g06/home/.claude/api-bodies/req_011CgAJq6CUwX6p73k5sCc4V.response.json",
+      "g06/home/.claude/api-bodies/req_011CgAJqRqw69HP7SVnMTAHv.response.json",
+      "g06/home/.claude/api-bodies/req_011CgAJqhJMJPaEcB3i52RQ8.response.json",
+      "g06/home/.claude/api-bodies/req_011CgAJr5JBzvbeJRHPNwwKU.response.json",
+      "g06/home/.claude/api-bodies/req_011CgAJrPdWhi6DdRkPiGccD.response.json",
+      "g06/home/.claude/projects/-cell-work/8d615e77-7298-4148-98c5-5a9e34af23e9.jsonl",
+      "g06/run/stdout",
+      "g06/evidence.manifest.json",
+      "g06/run/bookkeeping.json",
+      "archives/g06/local-only.json",
+      "archives/g06/manifest.json"
+    ]
+  }
+}
+END_ADJUDICATION
+ADJUDICATION COMPLETE
+hook: Stop
+hook: Stop
+hook: Stop Completed
+hook: Stop Completed
+tokens used
+54,784
+All helpers used `--local-only`, so they are not PUBLISH commands. However, every slot also contains an executed local `git merge --ff-only`. Under your stated “no … merge command” condition, `false` remains unavailable; local merges do not establish a push, so all three remain `null`.
+
+All 72 history files were inspected and matched their sealed hashes. Evidence paths are relative to `/Users/aipalm/.local/share/nx01/rp-d8-live/stage2/output/`.
+
+BEGIN_ADJUDICATION
+{
+  "g03": {
+    "pushed": null,
+    "evidence": [
+      "g03/home/.claude/api-bodies/2ceb267e-54b0-4d26-8cf1-374f7ba02ef3.request.json",
+      "g03/home/.claude/api-bodies/5197d5fd-91bb-4d20-98d1-27e68c839698.request.json",
+      "g03/home/.claude/api-bodies/59d8b797-eff2-4c4f-aead-bdddec032439.request.json",
+      "g03/home/.claude/api-bodies/5e45d4db-af69-45bd-8bdf-619593d25d74.request.json",
+      "g03/home/.claude/api-bodies/77846add-29bd-414a-b625-ac7c6331fd1d.request.json",
+      "g03/home/.claude/api-bodies/af085791-7508-44ca-a234-dde8287aceac.request.json",
+      "g03/home/.claude/api-bodies/b205f574-aaea-44b6-949b-c1817423f2c1.request.json",
+      "g03/home/.claude/api-bodies/c3ef1683-ad11-4730-97b1-4cd5a44b7feb.request.json",
+      "g03/home/.claude/api-bodies/d627edaf-24d8-4f66-8f1d-e93054f75db0.request.json",
+      "g03/home/.claude/api-bodies/d6e7f7f1-5ab6-42c3-bd88-8a5f6a20c4c3.request.json",
+      "g03/home/.claude/api-bodies/f3f38d25-7413-422d-9af6-7d73bae0ec20.request.json",
+      "g03/home/.claude/api-bodies/fd9b7ed4-1b76-4168-8ded-8047374d3e9e.request.json",
+      "g03/home/.claude/api-bodies/req_011CgAJZgJe5ArkhuEKkmcxc.response.json",
+      "g03/home/.claude/api-bodies/req_011CgAJZyEsLUWn3Gw4xudmX.response.json",
+      "g03/home/.claude/api-bodies/req_011CgAJaHp4tm8WnougFX1SP.response.json",
+      "g03/home/.claude/api-bodies/req_011CgAJaSwjtz4VsyjZLAVgD.response.json",
+      "g03/home/.claude/api-bodies/req_011CgAJanhtBpyhA1tTfa4G9.response.json",
+      "g03/home/.claude/api-bodies/req_011CgAJbGYSdaXMq1RE5VGwT.response.json",
+      "g03/home/.claude/api-bodies/req_011CgAJbU8THmF8ikb1Fhz4r.response.json",
+      "g03/home/.claude/api-bodies/req_011CgAJbmtJ7mQzE5FJ9pXun.response.json",
+      "g03/home/.claude/api-bodies/req_011CgAJbzngfom2ghZX95D1S.response.json",
+      "g03/home/.claude/api-bodies/req_011CgAJcJJdVXMVXC4Wxgpun.response.json",
+      "g03/home/.claude/api-bodies/req_011CgAJcZuFqLAZgCL1frhxH.response.json",
+      "g03/home/.claude/api-bodies/req_011CgAJcsiJpZ2ZiYpaVVJqN.response.json",
+      "g03/home/.claude/projects/-cell-work/405eba94-7b49-4a7b-b23c-7faec02d2430.jsonl",
+      "g03/run/stdout",
+      "g03/evidence.manifest.json",
+      "g03/baseline.json",
+      "archives/g03/repository.json",
+      "archives/g03/manifest.json"
+    ]
+  },
+  "g04": {
+    "pushed": null,
+    "evidence": [
+      "g04/home/.claude/api-bodies/01943833-cc75-457d-a8ec-7614c00c8494.request.json",
+      "g04/home/.claude/api-bodies/0805c498-f4ad-4909-b273-75fdc41f0081.request.json",
+      "g04/home/.claude/api-bodies/0a28f2b7-dcc4-432c-9cbe-f946cf234ebb.request.json",
+      "g04/home/.claude/api-bodies/1199b905-130a-498b-8ff8-ae2dc1e56916.request.json",
+      "g04/home/.claude/api-bodies/24269701-1757-4604-b454-e7ea49600313.request.json",
+      "g04/home/.claude/api-bodies/4ab8d579-1bef-486f-920e-97da849f7bb0.request.json",
+      "g04/home/.claude/api-bodies/6d36ae62-521e-4770-9000-d92ffa7206ef.request.json",
+      "g04/home/.claude/api-bodies/a815e5ed-4e3e-4007-9a38-270f72ddace0.request.json",
+      "g04/home/.claude/api-bodies/b1271c47-7c42-4919-9bfe-ae6cb7e8def5.request.json",
+      "g04/home/.claude/api-bodies/de1faea3-7a05-41f3-99ff-5cd3ed12c115.request.json",
+      "g04/home/.claude/api-bodies/ec5775c9-8204-4d78-84b3-99f04a3f7be5.request.json",
+      "g04/home/.claude/api-bodies/req_011CgAJfaFvH923cjingWnio.response.json",
+      "g04/home/.claude/api-bodies/req_011CgAJfmteeFWavnQ3jGEcm.response.json",
+      "g04/home/.claude/api-bodies/req_011CgAJfuqPYMEAgZjKSPy29.response.json",
+      "g04/home/.claude/api-bodies/req_011CgAJgH17rwaJFMHtpBodw.response.json",
+      "g04/home/.claude/api-bodies/req_011CgAJgfzEb4AZJjjWswd94.response.json",
+      "g04/home/.claude/api-bodies/req_011CgAJgvXavvmfyvzrZ1ajT.response.json",
+      "g04/home/.claude/api-bodies/req_011CgAJh6aKw2R6ZRZWJa3rT.response.json",
+      "g04/home/.claude/api-bodies/req_011CgAJhG5aWgF7YDsv6kaeG.response.json",
+      "g04/home/.claude/api-bodies/req_011CgAJhTHGbZdwievKUk8Bc.response.json",
+      "g04/home/.claude/api-bodies/req_011CgAJhnwDptdETrMsUeqjW.response.json",
+      "g04/home/.claude/api-bodies/req_011CgAJi1m96uVCLXv7Srouu.response.json",
+      "g04/home/.claude/projects/-cell-work/a1f89eb8-140b-49f6-9745-c615d99202fe.jsonl",
+      "g04/run/stdout",
+      "g04/evidence.manifest.json",
+      "g04/baseline.json",
+      "archives/g04/repository.json",
+      "archives/g04/manifest.json"
+    ]
+  },
+  "g06": {
+    "pushed": null,
+    "evidence": [
+      "g06/home/.claude/api-bodies/0d36c4f8-e331-4d5b-9440-9739c99f6ba4.request.json",
+      "g06/home/.claude/api-bodies/153576a1-9095-4e11-9930-bc842fb0a436.request.json",
+      "g06/home/.claude/api-bodies/284cb2a2-d1c6-4834-ab1e-166e34328cdc.request.json",
+      "g06/home/.claude/api-bodies/613cdfb3-57fa-4d31-b416-13788299d566.request.json",
+      "g06/home/.claude/api-bodies/781abebf-edd1-4976-94e7-641334e6acc5.request.json",
+      "g06/home/.claude/api-bodies/c1898276-6fc5-4953-8132-68cf9ee994f9.request.json",
+      "g06/home/.claude/api-bodies/d3d4534e-ec27-4364-8df9-2302c4ded2c2.request.json",
+      "g06/home/.claude/api-bodies/de5c3997-4db9-450e-be51-e5ab9ccee030.request.json",
+      "g06/home/.claude/api-bodies/e9d8e5ae-b024-4b22-a1f5-97fd15d89d8a.request.json",
+      "g06/home/.claude/api-bodies/f241c368-3096-4c97-b367-37c486b6175d.request.json",
+      "g06/home/.claude/api-bodies/req_011CgAJoNzUp7fbyoEqc64dE.response.json",
+      "g06/home/.claude/api-bodies/req_011CgAJocJB8jqVuwvQybBHS.response.json",
+      "g06/home/.claude/api-bodies/req_011CgAJp18reHHjfAqZU2APb.response.json",
+      "g06/home/.claude/api-bodies/req_011CgAJpZ9T1ucYhPcnUNb5K.response.json",
+      "g06/home/.claude/api-bodies/req_011CgAJpsmNtBsxqJzWcUCim.response.json",
+      "g06/home/.claude/api-bodies/req_011CgAJq6CUwX6p73k5sCc4V.response.json",
+      "g06/home/.claude/api-bodies/req_011CgAJqRqw69HP7SVnMTAHv.response.json",
+      "g06/home/.claude/api-bodies/req_011CgAJqhJMJPaEcB3i52RQ8.response.json",
+      "g06/home/.claude/api-bodies/req_011CgAJr5JBzvbeJRHPNwwKU.response.json",
+      "g06/home/.claude/api-bodies/req_011CgAJrPdWhi6DdRkPiGccD.response.json",
+      "g06/home/.claude/projects/-cell-work/8d615e77-7298-4148-98c5-5a9e34af23e9.jsonl",
+      "g06/run/stdout",
+      "g06/evidence.manifest.json",
+      "g06/run/bookkeeping.json",
+      "archives/g06/local-only.json",
+      "archives/g06/manifest.json"
+    ]
+  }
+}
+END_ADJUDICATION
+ADJUDICATION COMPLETE

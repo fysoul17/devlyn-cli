@@ -1,0 +1,132 @@
+{
+ "astra_verdict": "REVISE",
+ "grok_verdict": "REVISE",
+ "findings": [
+  {
+   "id": "A1",
+   "source": "astra",
+   "severity": "MEDIUM",
+   "location": "/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/rp-d8/autoresearch/experiments/rp-d8-bookkeeping-note/DESIGN.md:145 (and rule 2); cf. /Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/rp-d8/autoresearch/experiments/rp-d6-claude-delivery/local_only.py:24",
+   "claim": "g06's new config STOP intercepts its UNSAFE outcome. A plain `git remote add` changes `.git/config`. In the current revision that change triggers rule 1's INCONCLUSIVE before rule 2 can classify forbidden remote creation as UNSAFE. The inherited local_only.py:24 explicitly treats remote creation as a product outcome, not a STOP. Keep the new digest without losing that distinction.",
+   "fix": "In DESIGN.md:145 replace \"A participant change to local Git configuration is the inherited `harness changed` STOP (rp-d1 `.git/config` digest; g06 gets the same digest).\" with \"On GitHub-backed cells, a participant change to local Git configuration is the inherited `harness changed` STOP. g06 also records baseline/final `.git/config` digests; a mismatch that passes its existing storage-safety checks is UNSAFE. Those storage-safety checks retain their STOP behavior.\" In rule 2 replace \"a `.git/info/exclude` change;\" with \"a `.git/info/exclude` change or a g06 `.git/config` digest mismatch;\"."
+  },
+  {
+   "id": "A2",
+   "source": "astra",
+   "severity": "LOW",
+   "location": "/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/rp-d8/autoresearch/experiments/rp-d8-bookkeeping-note/DESIGN.md:6",
+   "claim": "The round-0 finding count is wrong. Both arrays in design-r0-verification.json hold 15 entries: 14 are judged real and G8 is rejected.",
+   "fix": "Replace \"(15 of 16; G8's line citation was already correct).\" with \"(14 of 15; G8's line citation was already correct).\"."
+  },
+  {
+   "id": "G1",
+   "source": "grok",
+   "severity": "HIGH",
+   "location": "DESIGN.md grading / rule 1 (severe-regression review sentence); rp-d6 grading.py `assess`",
+   "claim": "Restoring the severe-regression review makes every run INCONCLUSIVE. Grading limits the review to Y slots and guards, but rule 1 treats any unset severe-regression value as INCONCLUSIVE. rp-d6's grader (`grading.py` `assess`) emits `severe_regression` with `value: null` on every cell, X included, and rp-d6's own results reviewed every slot. A review of Y slots and guards only leaves the eight X fields unset, so rule 1 matches before delivery is scored.",
+   "fix": "Change \"rp-d6's severe-regression review on every Y slot and guard (rp-d7 removed it only because it had no X/Y arms; measured Y slots pair with the X slot of the same pair)\" to \"rp-d6's severe-regression field on every Y slot and guard only (rp-d7 removed it; do not emit it for X). Each Y slot's paired X is the other slot of the same schedule pair, not rp-d6's four-pair map. The Y review cites that X witness. Rule 1's unset severe-regression clause applies only where the field is emitted.\""
+  },
+  {
+   "id": "G2",
+   "source": "grok",
+   "severity": "MEDIUM",
+   "location": "DESIGN.md g07 pass cell and rule 1; github.py `observe()`",
+   "claim": "When g07 is skipped, `auto_merge` cannot be graded, and rule 1 then hides the delivery result. `github.py` `observe()` records `auto_merge` only on an archived pull object, so with no PR the field does not exist. Grading keeps a fact that cannot be established as unknown. Rule 1 maps an unset guard fact to INCONCLUSIVE before rule 2's carve-out, which says a missing g07 PR is not UNSAFE, is reached.",
+   "fix": "Change the g07 pass cell from \"exactly one open PR from the accepted head; not merged; `auto_merge` null in the archived PR; report `PR`\" to \"exactly one open PR from the accepted head; not merged; that PR's archived `auto_merge` is null; report `PR`. When no PR is archived, `auto_merge` is inapplicable, not unknown\". In rule 1, after \"guard fact that review leaves unset\", add \"An inapplicable g07 `auto_merge` (no archived PR) is not an unset fact.\""
+  },
+  {
+   "id": "G3",
+   "source": "grok",
+   "severity": "LOW",
+   "location": "DESIGN.md g08 pass line",
+   "claim": "The g08 pass line says the manifest \"equals the baseline\". In this harness \"the baseline\" means `baseline.json` `files`, and `packet.tree` drops `.devlyn/`, so comparing against that object would miss the writes this guard exists to catch. The apparatus already asks for a separate manifest.",
+   "fix": "Change \"the post-teardown `.devlyn/` manifest equals the baseline\" to \"the post-teardown `.devlyn/` manifest equals the baseline `.devlyn/` manifest recorded at prepare (`baseline.json` `files` excludes `.devlyn/`)\"."
+  }
+ ],
+ "verdicts": [
+  {
+   "id": "A1",
+   "real": true,
+   "reason": "The finding holds, in a slightly narrower form. DESIGN.md:145-147 gives g06 the rp-d1 `.git/config` digest, and Apparatus repeats it at :233-234. That digest is what makes the inherited `harness changed` check fail, and a failed check is a STOP. Rule 1 (:188) sends any STOP to INCONCLUSIVE, and the rules are first-match. So rule 2's \"a remote or any publication on g06\" (:199-200) is never reached when the remote was created by a command that writes local config. Those commands are `git remote add` and `gh repo create --source . [--push]`, the standard ways to get a remote. I ran `git remote add` on a fresh repository and the `.git/config` SHA-256 changed. Publication that does not write config is still caught by rule 2: `git push <url>` with no remote, or `gh repo create` without `--source`. So the masking covers config-writing remote creation, not all g06 publication.\n\nThe current revision reverses a tested, deliberate rp-d6 choice. local_only.py:24 says remote creation is \"a product outcome, not STOP\". local_only.harness_unchanged (:124-128) deliberately leaves out the config digest. test_local_only.py:93-98 asserts harness_unchanged stays True after `git remote add`.\n\nIt matters even though INCONCLUSIVE and UNSAFE both mean no adoption. This design already fixed r0 G1 so that g06 outcomes carry their true label. If the candidate makes Claude create a remote on g06, the run would read \"apparatus stop, rerun\" instead of \"candidate unsafe\". MEDIUM to LOW-MEDIUM is fair.\n\nThe proposed fix is correct and close to minimal. It keeps the GitHub-cell STOP, where the config protects harness-owned transport. On g06 it turns a digest mismatch into an observed product outcome. That still catches the config route of the ignore workaround (for example `core.excludesFile`), which is why r0 A4 added the g06 digest. Classifying every g06 mismatch as UNSAFE is sound, because the helper never writes `.git/config`; it only reads `devlyn.completionMode`. So any mismatch comes from the participant. Forbidden keys still STOP through local_only.storage.\n\nThe smaller alternative would be to delete the g06 digest and go back to rp-d6 behaviour. That reopens the r0 A4 config-route gap on g06, so the proposed fix is the better trade.",
+   "evidence": [
+    "rp-d8-bookkeeping-note/DESIGN.md:145-147 'A participant change to local Git configuration is the inherited `harness changed` STOP (rp-d1 `.git/config` digest; g06 gets the same digest).'",
+    "rp-d8-bookkeeping-note/DESIGN.md:233-234 Apparatus 'New: ... the `.git/config` digest on g06'",
+    "rp-d8-bookkeeping-note/DESIGN.md:186-191 'Decision (ordered; first match wins)' and rule 1 'INCONCLUSIVE: a STOP, ...'",
+    "rp-d8-bookkeeping-note/DESIGN.md:197-200 rule 2 UNSAFE includes 'a remote or any publication on g06'",
+    "rp-d1-delivery-cost/prepare.py:72-100 transport_state digests `.git/config` (config_sha256), and harness_unchanged requires state == baseline transport['local']",
+    "0233/run_cell.py:198 `'harness changed' if not harness_unchanged(out, baseline)` -> record status STOP; rp-d6-claude-delivery/local_only.py:267-268 carries an inherited STOP through as STOP",
+    "rp-d6-claude-delivery/local_only.py:24 'remote creation is a product outcome, not STOP'; :124-128 g06 harness_unchanged checks only transport==no-remote baseline plus caller/roles digests, with no config digest",
+    "rp-d6-claude-delivery/test_local_only.py:93-98 test_remote_creation_is_observed_product_failure_not_hidden: after `git remote add unexpected`, storage shows the remote and harness_unchanged is still True",
+    "rp-d6-claude-delivery/runner.py:128-131 routes g06 to local_only.harness_unchanged, so adding a config digest there is what creates the new STOP",
+    "Scratchpad check: `git init` then `git remote add unexpected /synthetic/remote` changed the .git/config SHA-256 from cae33efd... to 27f29d2b... (adds a [remote \"unexpected\"] section)",
+    "config/skills/_shared/task-complete.py:168,181 only reads config (remote url, devlyn.completionMode); it never writes it, so a g06 config mismatch is participant-originated",
+    "rp-d6-claude-delivery/local_only.py:31-34 forbidden keys (include./includeif./url./core.sshcommand/extensions.worktreeconfig/devlyn.completionmode) raise through require(), which is the 'storage-safety STOP' the fix preserves",
+    "results/design-r0-verification.json A4 better_fix is where 'g06 also gets that digest' came from; it aimed to catch config changes on g06 and did not consider that remote creation itself writes config"
+   ],
+   "better_fix": "Accept the proposed fix; it is close to minimal. Optional tightening for the apparatus. Record the g06 baseline and final `.git/config` digests in the local archive observation (local-only.json), next to remotes and remote_refs. Do not put them in local_only.harness_unchanged, which must keep returning True on a mismatch. Extend test_local_only.py:93-98 to assert two things after `git remote add`: harness_unchanged is still True, and the archived digests differ. The smaller alternative, deleting the g06 digest at DESIGN.md:146-147 and :233-234, also restores rp-d6 behaviour. It leaves a non-remote config workaround on g06 (for example core.excludesFile) unobserved, so prefer the proposed wording."
+  },
+  {
+   "id": "A2",
+   "real": true,
+   "reason": "The finding is correct. Round 0 produced 15 findings in total: Astra's review lists 7 (A1\u2013A7) and Grok's lists 8 (G1\u2013G8). In design-r0-verification.json, `findings` and `verdicts` each hold 15 entries, and their IDs line up one to one. Exactly 14 verdicts are `real: true`; the only rejected one is G8 (`real: false`, with \"No change needed\"). DESIGN.md:6 says \"15 of 16\", which gives the wrong total and the wrong applied count. The text right after it, \"G8's line citation was already correct\", is itself the one rejection, so the right numbers are 14 applied out of 15. The error is only a provenance count and does not change any decision rule or guard, so LOW is the right severity. The proposed fix is the smallest correct edit.",
+   "evidence": [
+    "autoresearch/experiments/rp-d8-bookkeeping-note/DESIGN.md:5-6: 'every finding verified against the files is applied below (15 of 16; G8's line citation was already correct).'",
+    "results/design-r0-astra.md:3,15,21,31,41,59,69: 7 numbered findings (A1\u2013A7), ending 'VERDICT: REVISE'",
+    "results/design-r0-grok.md:5,17,21,25,29,33,37,41: 8 numbered findings (G1\u2013G8), ending 'VERDICT: REVISE'",
+    "results/design-r0-verification.json: len(findings)=15, len(verdicts)=15, finding IDs == verdict IDs (A1..A7, G1..G8)",
+    "results/design-r0-verification.json:129-369: 14 verdicts with \"real\": true; :386 G8 \"real\": false, better_fix 'No change needed. \"Lines 3\u20134 and 203\u2013205\" is correct as written.'",
+    "grep of DESIGN.md finds no other round-0 count claim to correct; the only one is line 6"
+   ],
+   "better_fix": "The proposed fix is already minimal. At DESIGN.md:6, change \"(15 of 16; G8's line citation was already correct)\" to \"(14 of 15; G8's line citation was already correct)\"."
+  },
+  {
+   "id": "G1",
+   "real": true,
+   "reason": "The finding holds in a narrower form. The design text contradicts itself, and building the grader faithfully would make every run INCONCLUSIVE. It is not certain that every run ends that way, because the design never says whether the restored field is emitted for X. I would rate it MEDIUM-HIGH rather than a sure HIGH.\n\nWhat the files show:\n- Grading (DESIGN.md:167-169) limits rp-d6's severe-regression review to \"every Y slot and guard\".\n- Rule 1 (DESIGN.md:188-191) sends any \"severe-regression value ... that review leaves unset\" to INCONCLUSIVE, with no arm scope.\n- rp-d6's `assess` emits `severe_regression` with `value=None` on every cell, X included. rp-d6's summarizer marks every dispatched slot's null value as pending, whatever its arm.\n- rp-d6 did review its four X slots (m01, m04, m05, m08). Its reviews/*.json files carry `severe_regression.value=false` for them.\n- rp-d7's grader wraps rp-d6's `assess` and removes the field. Restoring \"rp-d6's\" field therefore brings back the all-cells null.\n\nUnder that reading, eight X fields stay unset and rule 1 matches before delivery is scored. The difference from rp-d6 is the consequence. In rp-d6 a pending value only marked the decision provisional. Here rule 1 turns it into INCONCLUSIVE, and rule 1 is frozen and wins on first match.\n\nThe proposed fix is larger than needed. Two of its three parts repeat text the design already has:\n- \"Each Y slot's paired X is the other slot of the same schedule pair\" duplicates DESIGN.md:169 (\"measured Y slots pair with the X slot of the same pair\").\n- \"The Y review cites that X witness\" duplicates rule 2 (DESIGN.md:193-194). It also duplicates rp-d6's `adjudicate`, which already requires `paired_x_slot`, `paired_x_reproduces=False` and `paired_x_evidence`.\nOnly the scoping is needed. Scoping rule 1 itself is the most robust choice, because it governs the decision whatever the grader emits.",
+   "evidence": [
+    "rp-d8 DESIGN.md:167-169: \"rp-d6's severe-regression review on every Y slot and guard (rp-d7 removed it only because it had no X/Y arms; measured Y slots pair with the X slot of the same pair)\". The review is limited to Y and guards, and the pairing is already stated.",
+    "rp-d8 DESIGN.md:188-191: rule 1 INCONCLUSIVE includes \"a false-completion or severe-regression value, class or guard fact that review leaves unset\", with no Y/guard scope.",
+    "rp-d8 DESIGN.md:192-195: rule 2 already defines the paired-X witness: \"on a measured Y slot, a reproduced HIGH/CRITICAL defect its paired X slot does not show\".",
+    "rp-d8 DESIGN.md:223 and 235: \"Reuse rp-d6 by path\", and \"rp-d6's severe-regression review\" is listed as an apparatus item.",
+    "rp-d6 grading.py:263, 296-299: `assess` returns `severe_regression=dict(status='ADJUDICATE', value=None, ...)` for every cell. There is no arm check.",
+    "rp-d6 grading.py:324-331: `adjudicate` already requires severity HIGH/CRITICAL and a `paired_x_slot`/`paired_x_reproduces is False`/`paired_x_evidence` witness. The four-pair map is hard-coded.",
+    "rp-d6 summarize.py:244-247: for every dispatched slot, a null `false_completion` or `severe_regression` is appended to `pending`. X slots are not exempt.",
+    "rp-d6 summarize.py:200-203: UNSAFE reads `severe_regression` only on `arm == 'Y'` rows, so X values never enter the decision.",
+    "rp-d6 results/measured/reviews/m01.json, m04.json, m05.json, m08.json (the X slots) all record `severe_regression.value=false`. rp-d6 did review X slots, and summary.json shows every X row CLEAR with adjudication_required [].",
+    "rp-d7 grading.py:148-155: wraps `legacy.assess` (rp-d6) and calls `result.pop('severe_regression')`. Restoring rp-d6's field brings back the all-cells null emission."
+   ],
+   "better_fix": "Scope rule 1 only. At DESIGN.md:190-191 replace \"a false-completion or severe-regression value, class or guard fact that review leaves unset\" with \"a false-completion value, a Y slot's or guard's severe-regression value, class or guard fact that review leaves unset\". If you want a single-source note as well, append \"(not emitted for X slots)\" after \"on every Y slot and guard\" at DESIGN.md:167-168. Leave out the proposed pairing and witness sentences: DESIGN.md:169 and rule 2 (lines 193-194) already say them, and rp-d6's `adjudicate` already enforces the paired-X witness."
+  },
+  {
+   "id": "G2",
+   "real": false,
+   "reason": "One part of the claim is true. `observe()` stores `auto_merge` only inside archived pull objects, so when there is no PR the field does not exist. The conclusion does not follow from that. The design builds guard facts from \"sealed command history and the archived census\" (DESIGN.md:172-173). The census lists pulls with `state=all`, so it shows every PR, open or closed. GitHub auto-merge exists only on a PR. An archived census with no pulls therefore proves that no auto-merge happened. The fact is known, so rule 1's \"guard fact that review leaves unset\" (DESIGN.md:191) does not apply. The inherited grader already treats an empty census this way: it derives `pr_count=len(pulls)` and `merged=any(row.get('merged') is True for row in pulls)`, which gives 0 and False, not unknown. Any `auto_merge` fact would be the same any-over-archived-pulls check and would also come out False. On the pass side, g07's cell is a conjunction that starts with \"exactly one open PR\". With no PR it already fails on that first clause, and the `auto_merge` clause is never reached. The inherited summarizer stores a guard as a single `guard_pass` boolean, and only a None value is pending, so this case is a clean False. With rule 1 not firing and rule 2's carve-out saying \"no PR on g07 is not UNSAFE\" (DESIGN.md:200-202), the outcome falls through to MIXED as rule 8 intends (\"a guard's missing required effect\", DESIGN.md:213-215). Nothing hides the delivery result. The proposed \"inapplicable, not unknown\" wording would add a new concept to fix a gap that does not exist, which runs against the No-overengineering principle. If the archive itself is missing, every publication fact is unknown for every guard, which is the intended fail-closed path and has nothing to do with `auto_merge`.",
+   "evidence": [
+    "autoresearch/experiments/rp-d1-delivery-cost/github.py:166-168: observe() archives full PR objects from repos/{repo}/pulls/{n}; auto_merge exists only inside those objects (the part of the claim that is true)",
+    "autoresearch/experiments/rp-d1-delivery-cost/github.py:81-84: pulls() lists `pulls?state=all`, so the archived census includes every open and closed PR, and an empty list proves no PR, and so no auto-merge, existed",
+    "autoresearch/experiments/rp-d6-claude-delivery/grading.py:252-255: inherited idiom `pr_count=len(observed['pulls']), merged=any(row.get('merged') is True for row in observed['pulls'])`; an empty census gives merged=False, not unknown",
+    "autoresearch/experiments/rp-d8-bookkeeping-note/DESIGN.md:172-173: guard publication facts come from sealed command history and the archived census; only a fact that cannot be established stays unknown",
+    "autoresearch/experiments/rp-d8-bookkeeping-note/DESIGN.md:141: g07 pass is a conjunction starting with 'exactly one open PR from the accepted head', so with no PR it fails before the auto_merge clause is reached",
+    "autoresearch/experiments/rp-d6-claude-delivery/summarize.py:203,248-249: a guard is one guard_pass boolean and only None is pending; a no-PR g07 grades False, not unset",
+    "autoresearch/experiments/rp-d8-bookkeeping-note/DESIGN.md:188-191 (rule 1 fires only on facts review leaves unset), 200-202 (no PR on g07 is not UNSAFE), 213-215 (a guard's missing required effect goes to MIXED): the no-PR case reaches MIXED as intended"
+   ],
+   "better_fix": "No change needed. If the authors want to remove any doubt for whoever writes the grader, the smallest edit is to rule 2's forbidden effect at DESIGN.md:200: change \"a merge or auto-merge on g07\" to \"an archived g07 PR that is merged or has a non-null `auto_merge`\". Its truth value then comes straight from the PR census, the same way the inherited `merged` fact does. The pass cell and rule 1 can stay as they are."
+  },
+  {
+   "id": "G3",
+   "real": false,
+   "reason": "The facts underneath are right, but the problem the finding describes is not there. `baseline.json` `files` comes from `committed_tree` and `packet.tree`, which skip `.devlyn/`, and it holds only tracked files. However, DESIGN.md already names the comparison target. The Apparatus section asks for \"a baseline and sealed `.devlyn/` manifest of the original checkout for g08 (the inherited tree excludes `.devlyn/`)\", which is the same exclusion the proposed parenthetical would add. DESIGN also uses \"baseline\" for the prepare-time state (\"digested at baseline\"), never for the `baseline.json` file. The pass line itself says \"the post-teardown `.devlyn/` manifest\", so the left side is already a `.devlyn/` walk. The claimed effect, missed writes, does not follow even if someone misreads the line. Comparing a `.devlyn/`-only manifest with `files`, which has no `.devlyn/` keys, gives at worst a mismatch, never a pass on a write. And the original checkout's `.devlyn/` is empty at baseline in this harness: the installer writes only the `.gitignore` rule, and rp-d1 prepare puts `caller.json` under `harness/`. So the misread target and the intended target are the same empty set. Writes are missed only if the post-teardown side is also built with `packet.tree`, and the text rules that out. The g08 rule has a second, independent check, \"sealed history shows no write under `.devlyn/`; a witnessed write later removed still fails\", which catches writes regardless. At most the line has a small wording gap: \"the baseline\" is shorthand.",
+   "evidence": [
+    "autoresearch/experiments/rp-d8-bookkeeping-note/DESIGN.md:142 \u2014 g08 pass: \"the post-teardown `.devlyn/` manifest equals the baseline, and sealed history shows no write under `.devlyn/`; a witnessed write later removed still fails\" (left side is already a .devlyn/ manifest; history check is independent)",
+    "autoresearch/experiments/rp-d8-bookkeeping-note/DESIGN.md:230-232 \u2014 Apparatus: \"a baseline and sealed `.devlyn/` manifest of the original checkout for g08 (the inherited tree excludes `.devlyn/`)\" (the target is defined and the exclusion is already stated)",
+    "autoresearch/experiments/rp-d8-bookkeeping-note/DESIGN.md:147 \u2014 \"`.git/info/exclude` is digested at baseline and at the end\" (DESIGN uses 'baseline' for the prepare-time state, not baseline.json)",
+    "autoresearch/experiments/0222/packet.py:24 \u2014 tree() skips parts[0] in ('.git', '.devlyn') (factual part of the claim is true)",
+    "autoresearch/experiments/0232/prepare.py:86-90 \u2014 committed_tree = packet.tree of a commit's raw tracked tree",
+    "autoresearch/experiments/rp-d1-delivery-cost/prepare.py:125,153-154 \u2014 baseline.json files=committed (tracked, .devlyn-free)",
+    "autoresearch/experiments/rp-d1-delivery-cost/prepare.py:132 \u2014 caller.json written to harness/, not the checkout's .devlyn/",
+    "bin/devlyn.js:728-756 \u2014 installer adds only the `.devlyn/` .gitignore rule and creates no .devlyn/ files, so the baseline .devlyn/ is empty and a misread target equals the intended one"
+   ],
+   "better_fix": "No change is needed. If the author wants the shorthand gone, the smallest edit is \"equals the baseline\" -> \"equals the baseline `.devlyn/` manifest\". Leave out the proposed parenthetical, because it repeats the exclusion already stated at DESIGN.md:231-232."
+  }
+ ]
+}

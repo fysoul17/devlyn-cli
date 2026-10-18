@@ -1,0 +1,13 @@
+# amend1-r1 — grok
+
+I'll review the last commit read-only against the four checks you named, starting with the changed files and the binding/error-identity path.The apparatus fix holds on all four checks. There are zero HIGH or MEDIUM findings.
+
+**(1) CLAUDE.md / AGENTS.md binding.** `prepare.py:59-68` sends a Claude baseline, and any baseline whose `CLAUDE.md` is present, through rp-d7 `installed_binding` (`rp-d7-prompt-delivery/prepare.py:76-88`). That requires a regular file whose bytes are the managed block built from that arm’s package `CLAUDE.md`, or exactly the 11-byte `b'@AGENTS.md\n'`. A Codex baseline whose `CLAUDE.md` is absent calls rp-d6 `installed_binding` (`rp-d6-claude-delivery/prepare.py:44-68`), which skips a missing `CLAUDE.md` and still requires the `AGENTS.md` managed block. Both branches use that same `AGENTS.md` check. `safe_file` (`rp-d1-delivery-cost/github.py:140-148`) rejects a symlink before the absent branch. `test_prepare_stage.py:107-142` covers absent, import, block, wrong, extra-import, and CRLF for both engines, plus a wrong `AGENTS.md`.
+
+**(2) EvidenceError identity.** `runner.py:18-43` walks the private rp-d module graph and points every `rp-d1-delivery-cost/github.py` class, and every `require` alias whose globals are that file, at `prepare.github.EvidenceError`. The slot recorder (`rp-d1-delivery-cost/runner.py:228-229`) then stores `str(exc)`. Other exceptions (`runner.py:230-234`) keep the type name only, so a `RuntimeError` or `CalledProcessError` payload is not written. `test_runner.py:42-86` covers prepare, rp-d7, rp-d6, runner, capture, grading, local_only, and both redacted payload types.
+
+**(3) g01, g02, smoke-codex.** Those slots are Codex in `schedule.py:6-17`. Pre-dispatch Claude work is engine-conditional: API-body capture (`0253/runner.py:26`), the 0255 Claude runner (`0255/runner.py:84-86`), effort binding (`rp-d6-claude-delivery/runner.py:242` and `:264`), and auth (`rp-d4-helper-report/auth.py:36-47`). The Claude-only `require(record['config'] == 'claude')` (`rp-d7-prompt-delivery/runner.py:140`) and rp-d5 route check (`rp-d5-claude-stages/runner.py:108`) sit outside this runner’s method resolution order. No other inherited check requires `CLAUDE.md` on these slots.
+
+**(4) Scope.** The repair is in rp-d8 `prepare.py`, `runner.py`, `test_prepare_stage.py`, `test_runner.py`, and `VALIDATION.md`. `DESIGN.md` has no smoke-1 binding text. `share_evidence_error` does not appear under rp-d1..rp-d7. HEAD is `1a101b73839659f524896fe390dee22c903c9b55` (`rp-d8: smoke-1 fix (CLAUDE.md binding by engine; shared EvidenceError identity)`). This session has no shell, so the review used the worktree sources and the reflog. No tests or cells were run.
+
+VERDICT: SHIP

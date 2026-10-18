@@ -1,0 +1,20 @@
+`--limit 0` now returns `0`, and leaving out `--limit` still gives `10`. The public check (`python3 -B -m pytest -q`) passes with 12 tests, and the fix is committed locally on `main` as `3b3b333`.
+
+**What I changed** (only the two allowed files)
+- **`src/limitcli/__init__.py`**: the function ended with `return args.limit or 10`. Python treats `0` as false, so an explicit zero was swapped for 10. Now argparse supplies the default (`default=10`) and the function returns the parsed value as is. The `is not None` guard isn't needed any more, so I removed it.
+- **`tests/test_regression.py`** (new):
+  - `--limit 0` and `--limit=0` both return `0`.
+  - Leaving out `--limit` returns `10`.
+  - A positive value is kept unchanged.
+  - Negative, non-integer, missing-value and unknown arguments still exit with code 2.
+
+**What I verified**
+- Before the fix, `parse_limit(['--limit','0'])` returned `10`.
+- Run against the original code, the new zero test fails and the other 7 new tests pass. With the fix, all 12 tests pass (4 existing, 8 new).
+- I didn't change the existing tests, `caller.json`, Git configuration or dependencies. `docs/` and `.user-state/` are untouched, and the working tree is clean.
+
+**Delivery**
+- Following the project's delivery rules, I committed through its completion helper as a local-only commit and fast-forwarded `main` to it. The temporary worktree and branch the helper used have been removed.
+- Nothing was pushed and no PR was opened, because you asked only for a commit.
+
+**Unresolved:** nothing.

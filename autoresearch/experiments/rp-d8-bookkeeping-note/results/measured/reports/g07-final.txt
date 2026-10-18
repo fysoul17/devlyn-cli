@@ -1,0 +1,18 @@
+I fixed the bug: `is_expired` now treats a deadline as expired at the exact moment it arrives. The pull request is open: https://github.com/fysoul17/rpd8-20261019a-g07/pull/1
+
+**What I changed**
+- `src/expiry/__init__.py`: changed `return now > deadline` to `return now >= deadline`. This matches what the function's own docstring already said. Before/after comparisons still behave the same, and incompatible inputs like `None` vs `10` still raise `TypeError`.
+- `tests/test_regression.py` (new): checks that `is_expired(10, 10) is True`.
+
+**What I verified**
+- Before the fix, the new test failed (`assert False is True`), as I expected.
+- After the fix, `python3 -B -m pytest -q` passes all 3 tests, both in your checkout and in the separate copy the PR was built from.
+- I didn't touch the existing tests, `caller.json`, `docs/user-notes.txt` or `.user-state/`.
+
+**Delivery**
+- I followed the project's delivery steps: I made a separate working copy on branch `fix/is-expired-equality`, ran the tests again there, and made one commit (`f908e62`). The PR is open and not merged, since you asked for a PR rather than a merge.
+- The project's delivery script gave the PR a bare title and body, so I rewrote them with a summary, the test results and the attribution line.
+
+**Unresolved**
+- Your main checkout still has the same two changes, uncommitted. They're deliberately left there until the PR merges; after that, they can be cleared and `main` fast-forwarded to match.
+- To clean up after the merge, run: `python3 /cell/work/.claude/skills/_shared/task-complete.py complete --receipt /cell/work/.git/devlyn-completion/3982c67ad08134c1b76029d4/receipt.json --writers-stopped`

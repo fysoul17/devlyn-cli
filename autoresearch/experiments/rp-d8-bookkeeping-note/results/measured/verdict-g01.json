@@ -1,0 +1,144 @@
+{
+  "adjudication_needed": false,
+  "arm": "B",
+  "assessment": "NOT_REQUESTED",
+  "boot_catalogs": null,
+  "cell": "g01",
+  "changed": [
+    "src/expiry/__init__.py",
+    "tests/test_regression.py"
+  ],
+  "claude_accounting": {
+    "api_errors": [],
+    "gaps": [],
+    "schema": "0238-claude-accounting-v1",
+    "scope": "Native emitted accounting, not provider billing. Thinking is already in output; progress estimates are never counted. All reported costs remain in inherited usage.",
+    "sessions": {},
+    "sources": {
+      "run/stdout": "8fa2896e09b8c57d9aaf7c126af828c01ead952d5af1497b42ec1a36027c79b2"
+    },
+    "status": "MATCH",
+    "stream_retries": [],
+    "terminal_message_count": 0,
+    "unknown_residual": null
+  },
+  "config": "codex",
+  "delivery": {
+    "baseline": "6547b02c79b95c5c693320c7ec089f64aa1ef921",
+    "changed": [
+      "src/expiry/__init__.py",
+      "tests/test_regression.py"
+    ],
+    "commit": "d0b7414050a4812cd273f00916a46853674cd79a",
+    "passed": true,
+    "reason": "local commit matches the assessed task source"
+  },
+  "delivery_pass": true,
+  "deterministic_seconds": 0.9889461670027231,
+  "evidence_manifest_sha256": "83cfd9fd3b3786ad96ca2043b6d57c2c9f85d1b1d82a1bb713b75731a2cc9560",
+  "identity": {
+    "codex_seats": {
+      "01a1509a-2ebd-70e2-8d6c-cb93cc1659ec": [
+        "owner",
+        "gpt-6-sol",
+        "high"
+      ]
+    },
+    "gaps": [],
+    "owner": "MATCH",
+    "owner_launched_sessions": [],
+    "status": "MATCH",
+    "violations": []
+  },
+  "input_tokens": 442881,
+  "measurement_eligible": true,
+  "oracle": [
+    {
+      "id": "boundary",
+      "status": "PASS"
+    },
+    {
+      "id": "before-after",
+      "status": "PASS"
+    },
+    {
+      "id": "datetime",
+      "status": "PASS"
+    },
+    {
+      "id": "errors",
+      "status": "PASS"
+    },
+    {
+      "id": "regression",
+      "status": "PASS"
+    }
+  ],
+  "output_tokens": 4615,
+  "owner_seconds": 95.89273883400165,
+  "owner_status": "EXITED_0",
+  "peer_policy": {
+    "activated": false,
+    "claude_roles": {},
+    "codex_roles": {
+      "01a1509a-2ebd-70e2-8d6c-cb93cc1659ec": [
+        "owner",
+        "01a1509a-2ebd-70e2-8d6c-cb93cc1659ec"
+      ]
+    },
+    "failed_attempts": [],
+    "gaps": [],
+    "protocol_violations": [],
+    "recovered": false,
+    "status": "MATCH",
+    "turns": [],
+    "validation_completion": "NOT_ACTIVATED",
+    "violations": []
+  },
+  "phase": "measured",
+  "product_check_pass": true,
+  "public": [
+    {
+      "argv": [
+        "sh",
+        "-c",
+        "mkdir /tmp/public-work && cp -a /cell/work/. /tmp/public-work/ && cd /tmp/public-work && python3 -B -m pytest -q"
+      ],
+      "exit_code": 0,
+      "stderr_tail": "",
+      "stdout_tail": "...                                                                      [100%]\n3 passed in 0.00s\n",
+      "timeout": false
+    }
+  ],
+  "public_pass": true,
+  "quota": {
+    "assessment": [],
+    "execution": []
+  },
+  "run_and_checks_seconds": 98.06519862500136,
+  "scope_violations": [],
+  "snapshot": {
+    "candidates": [
+      {
+        "acceptance": true,
+        "allocation": "owned",
+        "local_only": false,
+        "receipt": "cell/work/.git/devlyn-completion/1bb47712e761f2366bda85b8/receipt.json",
+        "worktree": "/cell/work.devlyn.noindex/expiry-equality-20261018"
+      }
+    ],
+    "kind": "accepted",
+    "receipt": "cell/work/.git/devlyn-completion/1bb47712e761f2366bda85b8/receipt.json",
+    "rule": "receipt",
+    "sha": "d0b7414050a4812cd273f00916a46853674cd79a"
+  },
+  "source_check_pass": true,
+  "status": "CHECKS_PASS",
+  "task": "BV",
+  "teardown": "CLEAN",
+  "usage": "COMPLETE",
+  "usage_gaps": [],
+  "venue": {
+    "codex_account": "9ca44b8a38f2"
+  }
+}

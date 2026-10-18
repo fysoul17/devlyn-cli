@@ -1,0 +1,7 @@
+Round 1 of a read-only design review in the devlyn-cli repository (do not edit files).
+
+Read autoresearch/experiments/rp-d8-bookkeeping-note/DESIGN.md (draft r1) and the round-0 reviews it answers: results/design-r0-astra.md, results/design-r0-grok.md and results/design-r0-verification.json (each finding with an independent check against the files) in that directory. Reference: config/skills/_shared/task-completion.md, autoresearch/experiments/rp-d6-claude-delivery/DESIGN.md, grading.py and local_only.py, autoresearch/experiments/rp-d7-prompt-delivery/DESIGN.md and grading.py.
+
+Check that every round-0 finding judged real is applied correctly (severe-regression review restored; g08 .devlyn manifest; g07 auto_merge; Git config vs .git/info/exclude handling; rules 4/5 Codex conjunct; Y path fixed to one file; interpretation limits; rule 2 split between forbidden effects and missing required effects with rule 6 requiring g03-g08 pass; placement wording), and look for any new HIGH or MEDIUM problem the revisions introduced (contradictions between rules, guards and prediction; ungradeable conditions; overclaims). Keep scope proportionate; do not propose expanding the experiment unless the result would otherwise be uninterpretable.
+
+Report findings as a numbered list with severity HIGH / MEDIUM / LOW, each with the exact text to change and a concrete fix. End with exactly one final line: `VERDICT: SHIP` or `VERDICT: REVISE`.

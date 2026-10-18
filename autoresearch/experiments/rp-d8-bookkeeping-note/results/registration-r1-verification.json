@@ -1,0 +1,78 @@
+{
+ "astra_verdict": "SHIP",
+ "grok_verdict": "REVISE",
+ "findings": [
+  {
+   "id": "G1",
+   "source": "grok",
+   "severity": "MEDIUM",
+   "location": "registration.md (apparatus paragraph)",
+   "claim": "registration.md states an offline result the tree does not record: the apparatus paragraph says `rp-d8 460, rp-d7 325, rp-d6 277, rp-d4 268 (+18 subtests), rp-d5 195`, but the later summary in VALIDATION.md (itself an `inputs` file) is `rp-d8: 366` with the same 325 / 277 / 268+18 / 195 figures. No other file in the experiment records 460.",
+   "fix": "Cite the recorded 366 summary, or add the raw pytest line that shows 460 and point the sentence at it."
+  },
+  {
+   "id": "G2",
+   "source": "grok",
+   "severity": "LOW",
+   "location": "registration.md (review rounds statement)",
+   "claim": "registration.md says rounds 1-3 were REVISE, but results/apparatus-r3-verification.json records Astra REVISE and Grok SHIP for round 3. Round 4 is both SHIP, matching apparatus-r4-astra.md and apparatus-r4-grok.md.",
+   "fix": "Say rounds 1-2 were both REVISE, round 3 was Astra REVISE and Grok SHIP, and round 4 was both SHIP."
+  },
+  {
+   "id": "G3",
+   "source": "grok",
+   "severity": "LOW",
+   "location": "registration.md (engine sentence)",
+   "claim": "The engine sentence lists Codex as `g01`, `g02`, and `smoke-codex`, but DESIGN's spare pair and schedule.py `smoke_slots(2)` also include `smoke2-codex` at effort `high`, and the repository list already has it.",
+   "fix": "Add `smoke2-codex` to that parenthetical."
+  }
+ ],
+ "verdicts": [
+  {
+   "id": "G1",
+   "real": true,
+   "reason": "Real in a narrower form than stated. The 460 figure is true. On the frozen tree (HEAD d0693f8d, which adds only the two registration files on top of cd6ede46), I ran the README's offline loop with bytecode and cache writes disabled. The rp-d8 suite collected 460 tests and gave \"460 passed in 63.18s\", and git status stayed clean. So the registration does not misstate the apparatus.\n\nThe defect is about where the number comes from. No file in the tree records 460: grep finds it only at registration.md:41. The last raw summary recorded, in VALIDATION.md:106 (a hashed `inputs` file), says 366. That summary is from the r1 follow-up (b05d7731), and the r2 and r3 fixes (c855a7ec, c636fb87) later added 94 rp-d8 cases. The project's \"record raw results\" rule is not met for the one number that changed.\n\nImpact is LOW, not MEDIUM. The decision rules, prediction, input hashes and schedule are untouched, and the stated count is reproducible.\n\nThe proposed fix is half wrong. Citing the recorded 366 would put a stale, wrong count into the registration, because the frozen apparatus has 460 tests. Editing VALIDATION.md to add the 460 line would also change a hashed input (registration.json:323) after apparatus_commit. The other four figures stay valid as cited. r2 through r4 changed only rp-d8 files, so the rp-d7, rp-d6, rp-d4 and rp-d5 suites are byte-identical to the ones VALIDATION.md:107-110 recorded.",
+   "evidence": [
+    "registration.md:41 ends with 'Offline suites: rp-d8 460, rp-d7 325, rp-d6 277, rp-d4 268 (+18 subtests), rp-d5 195.'",
+    "grep for '460' across autoresearch/experiments/rp-d8-bookkeeping-note finds it only at registration.md:41 (all other hits are SHA substrings); grep of results/*.md, *.json and the commit messages of c855a7ec, c636fb87, cd6ede46 and d0693f8d finds no pytest count",
+    "VALIDATION.md:106 reads 'rp-d8: 366 passed in 43.48s' (r1 follow-up section, lines 85-116); VALIDATION.md:69 has the earlier '286 passed'; git log shows VALIDATION.md last changed in b05d7731 (r1 fixes)",
+    "registration.json:323 hashes VALIDATION.md as an input, so editing it after apparatus_commit cd6ede46 would break the frozen input identity",
+    "git diff --stat b05d7731 cd6ede46 -- autoresearch/experiments shows that r2-r4 touched only rp-d8 capture.py, test_capture.py, test_grading.py and results/*; no rp-d7/d6/d4/d5 file changed, so VALIDATION.md:107-110 (325/277/268+18/195) still covers those suites",
+    "Reproduced (read-only, with PYTHONDONTWRITEBYTECODE=1, -p no:cacheprovider, and the README.md:229-235 PYTHONPATH): 'pytest --collect-only' gives '460 tests collected'; a full run gives '460 passed in 63.18s (0:01:03)'; git status --short is empty afterwards"
+   ],
+   "better_fix": "Keep 460 and do not cite 366. registration.md is not a hashed input, so edit only that file. Put the raw line there, for example: \"Offline suites at apparatus_commit cd6ede46 (README loop): `rp-d8: 460 passed in <t>s`. VALIDATION.md:106's 366 predates the r2\u2013r3 fixes, which added 94 rp-d8 cases and changed no other suite. rp-d7 325, rp-d6 277, rp-d4 268 (+18 subtests) and rp-d5 195 are as recorded at VALIDATION.md:107-110.\" Another option is a raw-output file under results/ that is not in the inputs, linked from that sentence. Do not edit VALIDATION.md, because it is hashed in registration.json `inputs`."
+  },
+  {
+   "id": "G2",
+   "real": true,
+   "reason": "The claim is true in a narrower form. registration.md:41 says \"Rounds 1\u20133 REVISE with fixes \u2026 round 4 both SHIP\". In round 3, Astra said REVISE and Grok said SHIP. If \"REVISE\" means the outcome of the round, the sentence holds: Astra's REVISE plus the A1 fix kept review going. The trouble is the contrast with \"round 4 both SHIP\", which makes readers take \"REVISE\" as both reviewers' verdict, and for round 3 that is wrong. The r3 checks file linked in the same sentence shows the real verdicts, so nothing is hidden and no decision, gate or frozen hash depends on this sentence. registration.json has no round statement, so only the .md needs a change. Severity LOW is right: this is a precision fix to a provenance line, not a defect on the shippable path.",
+   "evidence": [
+    "registration.md:41: \"Rounds 1\u20133 REVISE with fixes ([r1 Astra]\u2026[r3 checks](results/apparatus-r3-verification.json)); round 4 both SHIP ([Astra](results/apparatus-r4-astra.md), [Grok](results/apparatus-r4-grok.md))\"",
+    "results/apparatus-r3-verification.json:2-3: \"astra_verdict\": \"REVISE\", \"grok_verdict\": \"SHIP\" (one finding, A1, from Astra; MEDIUM, verified as LOW)",
+    "results/apparatus-r3-grok.md:11: \"VERDICT: SHIP\" (line 9: \"No new HIGH or MEDIUM finding.\")",
+    "results/apparatus-r3-astra.md:9: \"VERDICT: REVISE\"",
+    "results/apparatus-r1-verification.json and apparatus-r2-verification.json: astra_verdict REVISE, grok_verdict REVISE (rounds 1-2 are REVISE from both reviewers, as claimed)",
+    "results/apparatus-r4-astra.md:7 and apparatus-r4-grok.md:15: \"VERDICT: SHIP\" (round 4 both SHIP, as claimed)",
+    "registration.json: grep finds no review-round or verdict statement, so only registration.md is affected",
+    "Precedent: rp-d7-prompt-delivery/registration.md:46 says \"Round 3: both SHIP\" and gives no per-round REVISE claim; rp-d4 had mixed rounds (Grok SHIP in r2/r3) and its registration states no per-round verdicts, so this sentence is the only place the inaccuracy appears"
+   ],
+   "better_fix": "The proposed fix is correct. A smaller one is a single parenthetical at registration.md:41: change \"Rounds 1\u20133 REVISE with fixes (\" to \"Rounds 1\u20133 REVISE with fixes (round 3: Astra REVISE, Grok SHIP; \" and leave the rest of the sentence and the links unchanged."
+  },
+  {
+   "id": "G3",
+   "real": true,
+   "reason": "Confirmed, as a LOW completeness nit. The Codex parenthetical in registration.md lists the slots Codex runs on, and it leaves out the spare Codex cell. schedule.py smoke_slots(2) returns ('smoke2-codex', 'SM', 'codex'). effort_for gives 'high' for every registered smoke name, attempt 2 included. DESIGN says a smoke miss \"consumes the single spare pair\" and counts \"the two spare cells\" in the 27 repositories. registration.json line 300 already lists fysoul17/rpd8-20261019a-smoke2-codex. So smoke2-codex is a registered Codex `high` cell that the sentence does not name. The Claude half of the sentence gives no slot list, so only the Codex list is incomplete. The impact is small. The binding facts (engine, effort, repository) are frozen in schedule.py, whose hash is in registration.json inputs, and in the repositories list. registration.md is not a hashed input, and the smoke spare only runs after a smoke miss. Still, the sentence reads as the full list of Codex slots, so an auditor checking a spare-cell run against it would see an unregistered-looking Codex slot. Editing registration.md now is allowed because it is still under pre-exposure review, and line 5-6 freezes only the prediction, schedule, grading, decision rules and raw data. The proposed fix is correct and minimal.",
+   "evidence": [
+    "autoresearch/experiments/rp-d8-bookkeeping-note/registration.md:26-27: \"Codex 0.162.1, `gpt-6-sol`, `high` (g01, g02, smoke-codex).\" smoke2-codex is missing.",
+    "autoresearch/experiments/rp-d8-bookkeeping-note/schedule.py:13-17: smoke_slots(attempt) uses prefix 'smoke2' when attempt == 2 and returns cells for both 'claude' and 'codex', which gives smoke2-codex.",
+    "autoresearch/experiments/rp-d8-bookkeeping-note/schedule.py:23,28-30: arm_for accepts smoke names from attempts 1 and 2; effort_for returns 'high' for every registered name.",
+    "autoresearch/experiments/rp-d8-bookkeeping-note/DESIGN.md:166-170: smoke is one Claude `high` Y cell and one Codex Y cell; \"A miss consumes the single spare pair\".",
+    "autoresearch/experiments/rp-d8-bookkeeping-note/DESIGN.md:173-175: the 27 repositories include \"the two smoke cells and the two spare cells\".",
+    "autoresearch/experiments/rp-d8-bookkeeping-note/registration.json:297-300: the repositories list includes smoke-claude, smoke-codex, smoke2-claude, smoke2-codex.",
+    "autoresearch/experiments/rp-d8-bookkeeping-note/stage.py:24,39,45,60: --smoke-attempt 2 is a real staged path that calls runner.smoke_slots(2).",
+    "registration.json inputs bind schedule.py by hash (line 312) but do not include registration.md, so the omission does not change any frozen binding."
+   ],
+   "better_fix": "The proposed fix is right. Change the parenthetical at registration.md:27 to \"(g01, g02, smoke-codex, spare smoke2-codex)\". Plain \"smoke2-codex\" also works. Nothing else needs to change."
+  }
+ ]
+}

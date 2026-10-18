@@ -1,0 +1,387 @@
+{
+  "adjudication_needed": false,
+  "arm": "B",
+  "assessment": "NOT_REQUESTED",
+  "boot_catalogs": {
+    "mcp_servers": [],
+    "plugins": [
+      {
+        "name": "cc-plugin-agents-md",
+        "path": "builtin",
+        "source": "cc-plugin-agents-md@builtin"
+      },
+      {
+        "name": "cc-plugin-plugin-authoring",
+        "path": "builtin",
+        "source": "cc-plugin-plugin-authoring@builtin"
+      },
+      {
+        "name": "cc-plugin-telemetry",
+        "path": "builtin",
+        "source": "cc-plugin-telemetry@builtin"
+      }
+    ],
+    "skills": [
+      "batch",
+      "claude-api",
+      "code-review",
+      "dataviz",
+      "debug",
+      "deep-research",
+      "design",
+      "design-sync",
+      "devlyn-engines",
+      "devlyn-ideate",
+      "doctor",
+      "fewer-permission-prompts",
+      "loop",
+      "plugin-authoring",
+      "run",
+      "run-skill-generator",
+      "schedule",
+      "simplify",
+      "update-config",
+      "verify",
+      "workflow-authoring"
+    ]
+  },
+  "cell": "m02",
+  "changed": [
+    "src/limitcli/__init__.py",
+    "tests/test_regression.py"
+  ],
+  "claude_accounting": {
+    "gaps": [],
+    "input_tokens": 257775,
+    "messages": [
+      {
+        "agent_id": null,
+        "message_id": "msg_011CgAFhkH8QmxELf658bN1s",
+        "message_uuid": "36e8d27d-fe23-428f-bfee-b4c23bd1067e",
+        "request_id": "req_011CgAFhk1FMmNziZTDJGLsi",
+        "source": "native_terminal_body",
+        "stop_reason": "tool_use",
+        "transcript_terminal": true,
+        "usage": {
+          "cache_creation_input_tokens": 6382,
+          "cache_read_input_tokens": 12030,
+          "input_tokens": 2,
+          "output_tokens": 129,
+          "thinking_tokens": 0
+        }
+      },
+      {
+        "agent_id": null,
+        "message_id": "msg_011CgAFhyHDFaJG4CXGzjx3f",
+        "message_uuid": "82abf4af-0b87-4f0f-8930-6a4fabe9196f",
+        "request_id": "req_011CgAFhy35wan48Zx3zNiwj",
+        "source": "native_terminal_body",
+        "stop_reason": "tool_use",
+        "transcript_terminal": true,
+        "usage": {
+          "cache_creation_input_tokens": 1484,
+          "cache_read_input_tokens": 18412,
+          "input_tokens": 2,
+          "output_tokens": 188,
+          "thinking_tokens": 83
+        }
+      },
+      {
+        "agent_id": null,
+        "message_id": "msg_011CgAFiAvD8TpJeuZ5iBZDz",
+        "message_uuid": "ba254472-af7d-4843-9947-44be841b8466",
+        "request_id": "req_011CgAFiAdqamf7D4pikhShW",
+        "source": "native_terminal_body",
+        "stop_reason": "tool_use",
+        "transcript_terminal": true,
+        "usage": {
+          "cache_creation_input_tokens": 5299,
+          "cache_read_input_tokens": 19896,
+          "input_tokens": 2,
+          "output_tokens": 723,
+          "thinking_tokens": 131
+        }
+      },
+      {
+        "agent_id": null,
+        "message_id": "msg_011CgAFiph4vXiA36448uBNQ",
+        "message_uuid": "6de0f9b8-8608-4a43-8aad-6e85e1c7f79a",
+        "request_id": "req_011CgAFipQgvw8RDor5ZwnBj",
+        "source": "native_terminal_body",
+        "stop_reason": "tool_use",
+        "transcript_terminal": true,
+        "usage": {
+          "cache_creation_input_tokens": 1131,
+          "cache_read_input_tokens": 25195,
+          "input_tokens": 2,
+          "output_tokens": 346,
+          "thinking_tokens": 178
+        }
+      },
+      {
+        "agent_id": null,
+        "message_id": "msg_011CgAFjENb95oYmPveW9GaS",
+        "message_uuid": "b5e9f29d-5420-4b3a-ad2d-9bcd2f73568b",
+        "request_id": "req_011CgAFjE6ijoLYPBondoXea",
+        "source": "native_terminal_body",
+        "stop_reason": "tool_use",
+        "transcript_terminal": true,
+        "usage": {
+          "cache_creation_input_tokens": 547,
+          "cache_read_input_tokens": 26326,
+          "input_tokens": 2,
+          "output_tokens": 279,
+          "thinking_tokens": 62
+        }
+      },
+      {
+        "agent_id": null,
+        "message_id": "msg_011CgAFjgEMAikevvuFKwDyr",
+        "message_uuid": "2e0fad4c-b285-4e48-a00d-de7cd428d813",
+        "request_id": "req_011CgAFjfxyeUwpPuaaqe6wr",
+        "source": "native_terminal_body",
+        "stop_reason": "tool_use",
+        "transcript_terminal": true,
+        "usage": {
+          "cache_creation_input_tokens": 454,
+          "cache_read_input_tokens": 26873,
+          "input_tokens": 2,
+          "output_tokens": 239,
+          "thinking_tokens": 0
+        }
+      },
+      {
+        "agent_id": null,
+        "message_id": "msg_011CgAFk3X1h2xFs9VPYo5Rp",
+        "message_uuid": "e9761db4-d9aa-43c9-9c84-a700583e16dc",
+        "request_id": "req_011CgAFk3F9azts8ZdygdiGv",
+        "source": "native_terminal_body",
+        "stop_reason": "tool_use",
+        "transcript_terminal": true,
+        "usage": {
+          "cache_creation_input_tokens": 444,
+          "cache_read_input_tokens": 27327,
+          "input_tokens": 2,
+          "output_tokens": 310,
+          "thinking_tokens": 0
+        }
+      },
+      {
+        "agent_id": null,
+        "message_id": "msg_011CgAFkLYCNPuAqtmB18a1F",
+        "message_uuid": "e8ade815-7d64-4d6e-9e02-e61c1d416570",
+        "request_id": "req_011CgAFkLGaGbD3rNuycxWtv",
+        "source": "native_terminal_body",
+        "stop_reason": "tool_use",
+        "transcript_terminal": true,
+        "usage": {
+          "cache_creation_input_tokens": 379,
+          "cache_read_input_tokens": 27771,
+          "input_tokens": 2,
+          "output_tokens": 198,
+          "thinking_tokens": 0
+        }
+      },
+      {
+        "agent_id": null,
+        "message_id": "msg_011CgAFmiWZopMbcWr6JiSqx",
+        "message_uuid": "03e47331-0471-48b1-a7de-d0395dd5edb7",
+        "request_id": "req_011CgAFmiFSxWBH675iVWKbx",
+        "source": "native_terminal_body",
+        "stop_reason": "tool_use",
+        "transcript_terminal": true,
+        "usage": {
+          "cache_creation_input_tokens": 553,
+          "cache_read_input_tokens": 28150,
+          "input_tokens": 2,
+          "output_tokens": 242,
+          "thinking_tokens": 0
+        }
+      },
+      {
+        "agent_id": null,
+        "message_id": "msg_011CgAFnhy77hXeJKqTL9U6A",
+        "message_uuid": "7159ddcb-0c18-44fe-b3ba-99e029c89609",
+        "request_id": "req_011CgAFnhfkSrcZzVhVysr9v",
+        "source": "native_terminal_body",
+        "stop_reason": "end_turn",
+        "transcript_terminal": true,
+        "usage": {
+          "cache_creation_input_tokens": 399,
+          "cache_read_input_tokens": 28703,
+          "input_tokens": 2,
+          "output_tokens": 835,
+          "thinking_tokens": 283
+        }
+      }
+    ],
+    "output_tokens": 3489,
+    "reported_aggregate": {
+      "cache_creation_input_tokens": 17072,
+      "cache_read_input_tokens": 240683,
+      "input_tokens": 20,
+      "output_tokens": 3489,
+      "thinking_tokens": 737
+    },
+    "reported_owner_usage": {
+      "cache_creation_input_tokens": 17072,
+      "cache_read_input_tokens": 240683,
+      "input_tokens": 20,
+      "output_tokens": 3489,
+      "thinking_tokens": 737
+    },
+    "schema": "0254-native-receipts-v1",
+    "scope": "One successful native owner and linked foreground children; observations on UNKNOWN are not whole-run totals; not provider billing or product acceptance.",
+    "sources": {
+      "evidence.manifest.json": "7e84238bf3d3437fb316cebe6e81fde4e8333d7fe662831f0dad676d751b850b",
+      "home/.claude/api-bodies/022a4ea4-564a-49e3-800c-afa65c4438b9.request.json": "3ff542634ae1721b6d5551351185788f9c03764409cc00a88df6fb23be7ccbd8",
+      "home/.claude/api-bodies/07036fea-31dc-48a3-82f5-914535f80f7a.request.json": "b5002e9167efea0fbd5a88324a3246cd01305353ac40861af7c79b6340629dce",
+      "home/.claude/api-bodies/40926e44-ac9c-4c90-adbf-2be7f1be11a8.request.json": "4cbb4112a4af50fa5bbfdd03aa8b61c80df428941a09b441a0e98eca1957626d",
+      "home/.claude/api-bodies/5afe30ee-3c62-45de-85bb-5225550deb5a.request.json": "460629746c5a01fbdf0bc7c77551d712adecabb3f7b05881428251338aa1e697",
+      "home/.claude/api-bodies/8ed71692-59ff-4ee0-b0fb-32e159e6c968.request.json": "908a895010c8d30946503f998ffae2b4ec3fd1c5257ee6eec0bfe3e0fcdc75fa",
+      "home/.claude/api-bodies/91d1bf90-3b6d-4eab-a049-76451263783b.request.json": "f0128858ec04b448358792badc2fe47bee126583cfe4e9b94f092f2a59569aeb",
+      "home/.claude/api-bodies/a6a672fd-508b-4013-b023-033b15313da0.request.json": "c6a0f74c0d42a8866d00b7516a105cf43d7cf67e5ca1fd7c1c03ee506a6a80c4",
+      "home/.claude/api-bodies/eb61a8cd-5db3-4cc6-9032-dd9a4b78624a.request.json": "f2cfe077b1ff5a6efd6982882d5784db793d48a466203792e59fb445b271b8d7",
+      "home/.claude/api-bodies/ef7ae270-88dd-4f54-870b-d04cdec1ed8f.request.json": "24648bc2ceb236d49191f86ad08a93d0d47458723b8e2ef0656c7dab1eea13f4",
+      "home/.claude/api-bodies/fef3e3cb-f68c-41c4-b42f-48749a893668.request.json": "792b018bddeee12e408e07b9224786a86296d6357d46bbfca8f32f67c064888d",
+      "home/.claude/api-bodies/index.jsonl": "c1e761930a7c54bcfd91da8f6a7164d88a3f92a498c134d75e1546fcc7b8cd4a",
+      "home/.claude/api-bodies/req_011CgAFhk1FMmNziZTDJGLsi.response.json": "5eca32023d9a723917c148b38a02ed0674ca5172599cefecbf9ab86d83587a34",
+      "home/.claude/api-bodies/req_011CgAFhy35wan48Zx3zNiwj.response.json": "cbf4c483341f8737cb8c33f170fc9a2e618bbc4d96d793003424d92681cbd4ad",
+      "home/.claude/api-bodies/req_011CgAFiAdqamf7D4pikhShW.response.json": "8ebe736bec10cb88c5d61c8acb818da34537863a7b14b6ce7c554e3218522091",
+      "home/.claude/api-bodies/req_011CgAFipQgvw8RDor5ZwnBj.response.json": "336e338f07f6ac1ff3d42b7fe7fb3156579afa3eb6b9e264d427ed900b229810",
+      "home/.claude/api-bodies/req_011CgAFjE6ijoLYPBondoXea.response.json": "e295007e548ba95285906067ea1621504e2712fc9d33b5a6f11c5ada8d1ce0dd",
+      "home/.claude/api-bodies/req_011CgAFjfxyeUwpPuaaqe6wr.response.json": "a06fa92feccf05db389bc4b661a42d0ef5d863b5c142db6af5feee17626b9245",
+      "home/.claude/api-bodies/req_011CgAFk3F9azts8ZdygdiGv.response.json": "6bc87001d4d92e9e83bcb7a1ac40ef4ca13ea4a568065b0088f92b0a4218ab86",
+      "home/.claude/api-bodies/req_011CgAFkLGaGbD3rNuycxWtv.response.json": "cc4ebe88dadc1a2d3c6ceae5332042682411a40d5f5892681614b23bdb719bf8",
+      "home/.claude/api-bodies/req_011CgAFmiFSxWBH675iVWKbx.response.json": "d108c024f2d7cb51387792ecfbe4e9ea923e56e379fc3236895ff44aa3b30a29",
+      "home/.claude/api-bodies/req_011CgAFnhfkSrcZzVhVysr9v.response.json": "617fd9c2bbe540806aaa58a8f6f6828432553a27b9bf269963b78f187863766a",
+      "home/.claude/projects/-cell-work/073640b0-3826-40ad-8326-e97809e44fdb.jsonl": "1707edaf7ad2a29c3761f0cb2a2ab528e0a3833809147c20769e8913f1f23e70",
+      "run/stdout": "1d552fed03487dc764637c32006aec3a8261467dd5904b41a36e7c606b41ff5e"
+    },
+    "status": "MATCH",
+    "totals": {
+      "cache_creation_input_tokens": 17072,
+      "cache_read_input_tokens": 240683,
+      "input_tokens": 20,
+      "output_tokens": 3489,
+      "thinking_tokens": 737
+    }
+  },
+  "config": "claude",
+  "delivery": {
+    "baseline": "e8e92283d82fcf70870b299bb5fe3a8261da25bf",
+    "changed": [
+      "src/limitcli/__init__.py",
+      "tests/test_regression.py"
+    ],
+    "commit": "7a63870b785832f52ca6ec5495c838d14ff55309",
+    "passed": true,
+    "reason": "local commit matches the assessed task source"
+  },
+  "delivery_pass": true,
+  "deterministic_seconds": 1.4172499590022198,
+  "evidence_manifest_sha256": "7e84238bf3d3437fb316cebe6e81fde4e8333d7fe662831f0dad676d751b850b",
+  "identity": {
+    "codex_seats": {},
+    "gaps": [],
+    "owner": "MATCH",
+    "owner_launched_sessions": [],
+    "status": "MATCH",
+    "violations": []
+  },
+  "input_tokens": 257775,
+  "measurement_eligible": true,
+  "oracle": [
+    {
+      "id": "default",
+      "status": "PASS"
+    },
+    {
+      "id": "zero",
+      "status": "PASS"
+    },
+    {
+      "id": "positive",
+      "status": "PASS"
+    },
+    {
+      "id": "errors",
+      "status": "PASS"
+    },
+    {
+      "id": "regression",
+      "status": "PASS"
+    }
+  ],
+  "output_tokens": 3489,
+  "owner_seconds": 78.40943091699955,
+  "owner_status": "EXITED_0",
+  "peer_policy": {
+    "activated": false,
+    "claude_roles": {
+      "073640b0-3826-40ad-8326-e97809e44fdb": [
+        "owner",
+        "073640b0-3826-40ad-8326-e97809e44fdb"
+      ]
+    },
+    "codex_roles": {},
+    "failed_attempts": [],
+    "gaps": [],
+    "protocol_violations": [],
+    "recovered": false,
+    "status": "MATCH",
+    "turns": [],
+    "validation_completion": "NOT_ACTIVATED",
+    "violations": []
+  },
+  "phase": "measured",
+  "product_check_pass": true,
+  "public": [
+    {
+      "argv": [
+        "sh",
+        "-c",
+        "mkdir /tmp/public-work && cp -a /cell/work/. /tmp/public-work/ && cd /tmp/public-work && python3 -B -m pytest -q"
+      ],
+      "exit_code": 0,
+      "stderr_tail": "",
+      "stdout_tail": "...........                                                              [100%]\n11 passed in 0.01s\n",
+      "timeout": false
+    }
+  ],
+  "public_pass": true,
+  "quota": {
+    "assessment": [],
+    "execution": []
+  },
+  "run_and_checks_seconds": 82.40847100000246,
+  "scope_violations": [],
+  "snapshot": {
+    "candidates": [
+      {
+        "acceptance": true,
+        "allocation": "owned",
+        "local_only": false,
+        "receipt": "cell/work/.git/devlyn-completion/db5ed5bc02799f5f1de2fe37/receipt.json",
+        "worktree": "/cell/work.devlyn.noindex/fix-limit-zero"
+      }
+    ],
+    "kind": "accepted",
+    "receipt": "cell/work/.git/devlyn-completion/db5ed5bc02799f5f1de2fe37/receipt.json",
+    "rule": "receipt",
+    "sha": "7a63870b785832f52ca6ec5495c838d14ff55309"
+  },
+  "source_check_pass": true,
+  "status": "CHECKS_PASS",
+  "task": "Z0",
+  "teardown": "CLEAN",
+  "usage": "COMPLETE",
+  "usage_gaps": [],
+  "venue": {
+    "account": [
+      "cc43a4e02ede",
+      "2905f4abf05b"
+    ],
+    "token_seconds_left": 14419
+  }
+}
