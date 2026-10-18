@@ -31,7 +31,7 @@ PAYLOAD = SHORT_PAYLOAD * 1024
 CURRENT_DEFAULTS = b'Without a pin, you are the executor.'
 # The block's delivery default and cleanup rule.
 CURRENT_RULES = (
-    ('- Delivery — direct work edits the current checkout; deliver completed, verified requests with changes by project policy'
+    ('- Delivery — direct work edits the current checkout; the user asks you to deliver completed, verified requests with changes by project policy'
      ' (default PR and merge), following `_shared/task-completion.md` in `.claude/skills/` or `.agents/skills/` (project, else `~`).'
      ' With known concurrent writers, isolate before editing; on unexplained changes, pause writes until safe or isolated.'
      ' An ideate drain delivers every task. Explicit limits win; commit alone stays local.').encode(),
@@ -2738,7 +2738,7 @@ console.log(JSON.stringify(Object.fromEntries(DEVLYN_CORE_SKILLS.map((name) =>
         for name, command in [('AGENTS.md', "installAgentsProject();"), ('CLAUDE.md', 'installClaudeCore();')]:
             with self.subTest(name=name):
                 dest = self.project / name
-                before = (self.package / name).read_bytes().replace(b'This contract serves one goal:', b'Team changed this body sentence:', 1)
+                before = (self.package / name).read_bytes().replace(b'Any capable engine', b'Team changed this body sentence: any capable engine', 1)
                 dest.write_bytes(before)
                 self.invoke(command)
                 after = dest.read_bytes()
@@ -2823,15 +2823,15 @@ console.log(JSON.stringify(Object.fromEntries(DEVLYN_CORE_SKILLS.map((name) =>
 
     def test_instruction_4_x_blocks_are_replaced_in_place(self):
         # 4.1.0 renamed the AGENTS.md title and intro; design-ui, the queue skill and resolve were
-        # retired after it. A 4.0.1, 4.1.0 or main (9ecbe51c, d2d34e3e, 415e2d14) block is replaced, never stacked,
+        # retired after it. A 4.0.1, 4.1.0, 4.2.22 or main (9ecbe51c, d2d34e3e, 415e2d14) block is replaced, never stacked,
         # and an edited one keeps only the edits: its stock paragraphs, the retired ones too, are
         # registered fingerprints. Prediction (P4-1): no block keeps the delivery pointer that allocated a
         # worktree for every direct task, or 415e2d14's delivery only on a ship request; the new block holds
         # the default-delivery line and principle 2's cleanup sentence once each.
         prefix, suffix = b'# Team rules\n\nUse pnpm.\n\n', b'\n# Local tail\n\nKeep me.\n'
         for name, version in (('AGENTS.md', '4.0.1'), ('AGENTS.md', '4.1.0'), ('AGENTS.md', '9ecbe51c'), ('AGENTS.md', 'd2d34e3e'),
-                              ('AGENTS.md', '415e2d14'), ('CLAUDE.md', '4.1.0'), ('CLAUDE.md', '9ecbe51c'), ('CLAUDE.md', 'd2d34e3e'),
-                              ('CLAUDE.md', '415e2d14')):
+                              ('AGENTS.md', '415e2d14'), ('AGENTS.md', '4.2.22'), ('CLAUDE.md', '4.1.0'), ('CLAUDE.md', '9ecbe51c'),
+                              ('CLAUDE.md', 'd2d34e3e'), ('CLAUDE.md', '415e2d14'), ('CLAUDE.md', '4.2.22')):
             dest = self.project / name
             block = (Path(__file__).resolve().parent / f'fixtures/instructions/{name[:-3].lower()}-{version}.md').read_bytes()
             for edited in (False, True):
@@ -2850,7 +2850,8 @@ console.log(JSON.stringify(Object.fromEntries(DEVLYN_CORE_SKILLS.map((name) =>
                         self.assertEqual(after.count(b'2. **No overengineering**'), 1)
                         for stale in (b'Codex CLI reads this file', b'design-ui', b'devlyn-queue', b'references/task-completion.md',
                                       b'outer-loop.md', b'queue drains retain', b'--quick', b'--from-spec', b'per item: spec it',
-                                      b'devlyn-resolve', b'VERIFY', b'`/devlyn-', b'allocated before editing', b'asks to ship'):
+                                      b'devlyn-resolve', b'VERIFY', b'`/devlyn-', b'allocated before editing', b'asks to ship',
+                                      b'checkout; deliver completed, verified requests'):
                             self.assertNotIn(stale, after)
                         if edited:
                             self.assertTrue(custom.startswith(prefix.replace(b'\n', eol)))

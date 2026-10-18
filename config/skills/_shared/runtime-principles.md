@@ -4,7 +4,7 @@ The North Star and core principles of the installed CLAUDE.md/AGENTS.md block, f
 
 ## North Star
 
-This contract serves one goal: any capable engine — Claude, GPT/Codex, or a future adapter-equipped model — takes a user's intent (prompt, spec, or queue entry) end-to-end to shipped, engineer-quality software, hands-free, with consistent quality across engines. When rules below conflict or feel ambiguous in context, resolve toward this goal.
+Any capable engine — Claude, GPT/Codex, or a future adapter-equipped model — takes a user's intent (prompt, spec, or queue entry) end-to-end to shipped, engineer-quality software, hands-free, with consistent quality across engines. When rules below conflict or feel ambiguous in context, resolve toward this goal.
 
 ## Core principles
 

@@ -4,7 +4,7 @@ devlyn-cli installs the `devlyn-ideate` and `devlyn-engines` skills alongside th
 
 ## North Star
 
-This contract serves one goal: any capable engine — Claude, GPT/Codex, or a future adapter-equipped model — takes a user's intent (prompt, spec, or queue entry) end-to-end to shipped, engineer-quality software, hands-free, with consistent quality across engines. When rules below conflict or feel ambiguous in context, resolve toward this goal.
+Any capable engine — Claude, GPT/Codex, or a future adapter-equipped model — takes a user's intent (prompt, spec, or queue entry) end-to-end to shipped, engineer-quality software, hands-free, with consistent quality across engines. When rules below conflict or feel ambiguous in context, resolve toward this goal.
 
 ## Core principles
 
@@ -27,7 +27,7 @@ Three discipline rules govern HOW the principles are applied:
 ## Quick Start
 
 - `devlyn-ideate` — loop designer and intent queue: `plan <intent or document>` writes a validated loop package, `add` queues its tasks, `status` (or no arguments) reports the queue, `drain` executes it serially.
-- Delivery — direct work edits the current checkout; deliver completed, verified requests with changes by project policy (default PR and merge), following `_shared/task-completion.md` in `.claude/skills/` or `.agents/skills/` (project, else `~`). With known concurrent writers, isolate before editing; on unexplained changes, pause writes until safe or isolated. An ideate drain delivers every task. Explicit limits win; commit alone stays local.
+- Delivery — direct work edits the current checkout; the user asks you to deliver completed, verified requests with changes by project policy (default PR and merge), following `_shared/task-completion.md` in `.claude/skills/` or `.agents/skills/` (project, else `~`). With known concurrent writers, isolate before editing; on unexplained changes, pause writes until safe or isolated. An ideate drain delivers every task. Explicit limits win; commit alone stays local.
 - Executor — `devlyn-engines` shows it and pins it in `.devlyn/engines.json`. A pinned executor does the implementation work, direct or drained: when it is not you, delegate to it, and when it is unavailable stop with `BLOCKED:<engine>-unavailable`. Without a pin, you are the executor.
 
 Each skill's `SKILL.md` is the source of truth for its flags and workflow.
