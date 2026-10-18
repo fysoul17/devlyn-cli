@@ -207,6 +207,14 @@ def test_push_dry_run_switches_do_not_establish_publication(cell, switch):
 
 @pytest.mark.parametrize('command,field', [
     ('git push -o --dry-run origin HEAD', 'pushed'), ('git push --push-option=--help origin HEAD', 'pushed'),
+    ('git push --push-opt -un origin HEAD', 'pushed'), ('git push --push-o -n origin HEAD', 'pushed'),
+    ('git push --pu -un origin HEAD', 'pushed'), ('git push --pu -n origin HEAD', 'pushed'),
+    ('git push --pu --dry-run origin HEAD', 'pushed'), ('git push --pu -h origin HEAD', 'pushed'),
+    ('git push --pu --help origin HEAD', 'pushed'), ('git push --pu=--help origin HEAD', 'pushed'),
+    ('git push --rep -n origin HEAD', 'pushed'), ('git push --rece -h origin HEAD', 'pushed'),
+    ('git push --ex --help origin HEAD', 'pushed'), ('git push --e -un origin HEAD', 'pushed'),
+    ('git push -o -h origin HEAD', 'pushed'), ('git push -uoh origin HEAD', 'pushed'),
+    ('git push -uo --help origin HEAD', 'pushed'), ('git -C --help push origin HEAD', 'pushed'),
     ('git push -on origin HEAD', 'pushed'), ('git push -uon origin HEAD', 'pushed'),
     ('git push -o -n origin HEAD', 'pushed'),
     ('git push -uo -un origin HEAD', 'pushed'), ('git push -uo --dr origin HEAD', 'pushed'),
@@ -219,12 +227,30 @@ def test_publication_option_values_cannot_hide_successful_effects(cell, command,
     assert module.assess(out, seal(module, out, events(command)))[field] is True
 
 
-def test_ambiguous_push_option_is_not_a_dry_run(cell):
+@pytest.mark.parametrize('command', ['git --help push', 'git -h push', 'git -C . --help push',
+    'git push --help', 'git push -h', 'git push -vh', 'git push -ho -n',
+    'git push --pu value --help', 'git push -o value -h'])
+def test_push_help_is_scoped_and_not_an_option_value(cell, command):
     module, out, _ = cell('g06')
-    facts = module.assess(out, seal(module, out, events('git push --d origin HEAD', success=False)))
+    facts = module.assess(out, seal(module, out, events(command)))
     assert facts['pushed'] is None
+    assert facts['push_command_observed'] is False
+    assert facts['push_command_unresolved'] is False
+    assert facts['publication_command_observed'] is False
+
+
+@pytest.mark.parametrize('options', ['--d', '--d -n', '--p -n', '--re -n', '--rec -n',
+    '--unknown -n', '-n --unknown', '-zn', '--dry-run=yes', '-n --no-dry-run',
+    '--unknown --help', '-n --pu', '-n -o', '-n --push-option'])
+@pytest.mark.parametrize('success', [False, True])
+def test_unclassified_push_arguments_remain_unresolved(cell, options, success):
+    module, out, _ = cell('g06')
+    facts = module.assess(out, seal(module, out, events(f'git push origin HEAD {options}', success=success)))
+    assert facts['pushed'] is None
+    assert facts['push_command_observed'] is True
     assert facts['push_command_unresolved'] is True
-    assert facts['push_failure_evidence'] == ['run/stdout']
+    assert facts['publication_command_observed'] is False
+    assert facts.get('push_failure_evidence') == (None if success else ['run/stdout'])
 
 
 @pytest.mark.parametrize('effect', ['file', 'directory', 'mode', 'symlink'])

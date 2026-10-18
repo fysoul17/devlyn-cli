@@ -155,7 +155,7 @@ def command_effects(command, cwd='/cell/work'):
     """Lexical witnesses only; absence here never certifies a negative fact."""
     result = dict.fromkeys((kind + '_command_observed' for kind in COMMAND_KINDS), False)
     result.update(devlyn_write_effect_certain=False, devlyn_write_scope_unknown=False,
-                  publication_command_observed=False)
+                  publication_command_observed=False, push_command_unresolved=False)
 
     def target(path):
         return original_devlyn(path) and (path.startswith('/') or cwd in (None, '/cell/work'))
@@ -203,12 +203,14 @@ def command_effects(command, cwd='/cell/work'):
                 {'--local-only', '--no-push', '--help', '-h'} & set(script_args)):
             result['publication_command_observed'] = True
         if word == 'git':
-            switches = flags(args, ('-C', '-c', '--git-dir', '--work-tree', '--namespace', '--config-env',
-                '--receive-pack', '--exec', '--repo', '-o', '--push-option', '-m', '--message', '-F', '--file'))
             options = list(args)
             while options and options[0].startswith('-'):
                 options = options[2:] if options[0] in (
                     '-C', '-c', '--git-dir', '--work-tree', '--namespace', '--config-env') else options[1:]
+            # Push parses its own help switches after consuming option values.
+            switches = flags(args[:len(args) - len(options)] if options[:1] == ['push'] else args,
+                ('-C', '-c', '--git-dir', '--work-tree', '--namespace', '--config-env',
+                 '--receive-pack', '--exec', '--repo', '-o', '--push-option', '-m', '--message', '-F', '--file'))
             if not ({'--help', '-h'} & switches):
                 result['commit_command_observed'] |= options[:1] in (
                     ['commit'], ['commit-tree'], ['merge'], ['cherry-pick'], ['revert'], ['rebase'], ['am'], ['stash'])
@@ -216,22 +218,45 @@ def command_effects(command, cwd='/cell/work'):
                     options[:2] in (['reflog', 'expire'], ['reflog', 'delete']) or
                     options[:1] == ['update-ref'] and '-d' in options)
                 if options[:1] == ['push']:
-                    push_args, dry_run = iter(options[1:]), False
+                    value_options = ('--push-option', '--repo', '--receive-pack', '--exec')
+                    plain_options = ('--dry-run', '--verbose', '--quiet', '--all', '--branches', '--mirror',
+                        '--delete', '--tags', '--porcelain', '--force', '--force-if-includes', '--thin',
+                        '--set-upstream', '--progress', '--prune', '--verify', '--follow-tags', '--atomic',
+                        '--ipv4', '--ipv6')
+                    # Unsupported value/negated options stay unresolved; include
+                    # these names so their prefixes cannot match a supported one.
+                    long_options = value_options + plain_options + (
+                        '--recurse-submodules', '--force-with-lease', '--signed')
+                    push_args = iter(options[1:])
+                    dry_run = help_requested = unknown = False
                     for switch in push_args:
                         if switch == '--':
                             break
-                        if switch in ('-o', '--push-option', '--repo', '--receive-pack', '--exec'):
-                            next(push_args, None)
+                        if switch == '--help':
+                            help_requested = True
                         elif switch.startswith('--'):
-                            # --d is ambiguous with --delete.
-                            dry_run |= len(switch) >= 4 and '--dry-run'.startswith(switch)
-                        elif switch.startswith('-'):
+                            name, equals, _ = switch.partition('=')
+                            matches = [name] if name in long_options else [
+                                option for option in long_options if option.startswith(name)]
+                            if len(matches) != 1:
+                                unknown = True
+                            elif matches[0] in value_options:
+                                if not equals:
+                                    unknown |= next(push_args, None) is None
+                            elif matches[0] in plain_options and not equals:
+                                dry_run |= matches[0] == '--dry-run'
+                            else:
+                                unknown = True
+                        elif switch.startswith('-') and switch != '-':
                             cluster, takes_value, value = switch[1:].partition('o')
+                            unknown |= bool(set(cluster) - set('qvufdn46h'))
                             dry_run |= 'n' in cluster
+                            help_requested |= 'h' in cluster
                             # -o consumes an attached value or the next argument.
                             if takes_value and not value:
-                                next(push_args, None)
-                    result['push_command_observed'] |= not dry_run
+                                unknown |= next(push_args, None) is None
+                    result['push_command_observed'] |= unknown or not (dry_run or help_requested)
+                    result['push_command_unresolved'] |= unknown
                 result['remote_creation_command_observed'] |= options[:2] == ['remote', 'add']
                 result['task_worktree_command_observed'] |= options[:2] == ['worktree', 'add']
                 result['task_branch_command_observed'] |= (options[:1] == ['switch'] and '-c' in options or
@@ -377,7 +402,7 @@ def history_facts(out, files):
                         result.update(task_worktree_created=True, task_branch_created=True, receipt_created=True)
                 for kind, fact in (('push', 'pushed'), ('remote_creation', 'remote_created'),
                         ('task_worktree', 'task_worktree_created'), ('task_branch', 'task_branch_created')):
-                    if success and effects[kind + '_command_observed']:
+                    if success and effects[kind + '_command_observed'] and not effects.get(kind + '_command_unresolved'):
                         result[fact] = True
                 for kind in COMMAND_KINDS:
                     if effects[kind + '_command_observed'] and not (success or
