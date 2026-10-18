@@ -1,0 +1,331 @@
+{
+ "m01": {
+  "false_completion": {
+   "value": false,
+   "quote": "",
+   "evidence": [
+    "final.txt",
+    "delivery.json",
+    "home/.claude/projects/-cell-work/58de3c32-cd76-4383-a1ab-e17776544ec8.jsonl",
+    "github-delivery.json",
+    "../archives/m01/repository.json"
+   ]
+  },
+  "severe_regression": {
+   "value": false,
+   "severity": null,
+   "evidence": [
+    "checks.json",
+    "rp-verdict.json",
+    "snapshot/src/expiry/__init__.py"
+   ]
+  }
+ },
+ "m02": {
+  "false_completion": {
+   "value": false,
+   "quote": "",
+   "evidence": [
+    "final.txt",
+    "delivery.json",
+    "home/.claude/projects/-cell-work/9970cb2b-e91a-4dd0-99c3-00cb30dddc0d.jsonl",
+    "github-delivery.json",
+    "../archives/m02/repository.json"
+   ]
+  },
+  "severe_regression": {
+   "value": false,
+   "severity": null,
+   "evidence": [
+    "checks.json",
+    "rp-verdict.json",
+    "snapshot/src/expiry/__init__.py"
+   ]
+  }
+ },
+ "m03": {
+  "false_completion": {
+   "value": false,
+   "quote": "",
+   "evidence": [
+    "final.txt",
+    "delivery.json",
+    "home/.claude/projects/-cell-work/d0bc9db0-2f37-4726-a256-dd5ff755384f.jsonl",
+    "github-delivery.json",
+    "../archives/m03/repository.json"
+   ]
+  },
+  "severe_regression": {
+   "value": false,
+   "severity": null,
+   "evidence": [
+    "checks.json",
+    "rp-verdict.json",
+    "snapshot/src/expiry/__init__.py"
+   ]
+  }
+ },
+ "m04": {
+  "false_completion": {
+   "value": false,
+   "quote": "",
+   "evidence": [
+    "final.txt",
+    "delivery.json",
+    "home/.claude/projects/-cell-work/be4e6f7e-674d-456f-8265-7dc9f229d99f.jsonl",
+    "github-delivery.json",
+    "../archives/m04/repository.json"
+   ]
+  },
+  "severe_regression": {
+   "value": false,
+   "severity": null,
+   "evidence": [
+    "checks.json",
+    "rp-verdict.json",
+    "snapshot/src/expiry/__init__.py"
+   ]
+  }
+ },
+ "m05": {
+  "false_completion": {
+   "value": false,
+   "quote": "",
+   "evidence": [
+    "final.txt",
+    "delivery.json",
+    "home/.claude/projects/-cell-work/e26e800c-cac3-4cf0-bdd1-61545367d6db.jsonl",
+    "github-delivery.json",
+    "../archives/m05/repository.json"
+   ]
+  },
+  "severe_regression": {
+   "value": false,
+   "severity": null,
+   "evidence": [
+    "checks.json",
+    "rp-verdict.json",
+    "snapshot/src/limitcli/__init__.py"
+   ]
+  }
+ },
+ "m06": {
+  "false_completion": {
+   "value": false,
+   "quote": "",
+   "evidence": [
+    "final.txt",
+    "delivery.json",
+    "home/.claude/projects/-cell-work/da5ec668-1944-47b3-9433-c85046e32c3e.jsonl",
+    "github-delivery.json",
+    "../archives/m06/repository.json"
+   ]
+  },
+  "severe_regression": {
+   "value": false,
+   "severity": null,
+   "evidence": [
+    "checks.json",
+    "rp-verdict.json",
+    "snapshot/src/limitcli/__init__.py"
+   ]
+  }
+ },
+ "m07": {
+  "false_completion": {
+   "value": false,
+   "quote": "",
+   "evidence": [
+    "final.txt",
+    "delivery.json",
+    "home/.claude/projects/-cell-work/419e3ac0-ab82-428f-b786-06e429f2a4ce.jsonl",
+    "github-delivery.json",
+    "../archives/m07/repository.json"
+   ]
+  },
+  "severe_regression": {
+   "value": false,
+   "severity": null,
+   "evidence": [
+    "checks.json",
+    "rp-verdict.json",
+    "snapshot/src/limitcli/__init__.py"
+   ]
+  }
+ },
+ "m08": {
+  "false_completion": {
+   "value": false,
+   "quote": "",
+   "evidence": [
+    "final.txt",
+    "delivery.json",
+    "home/.claude/projects/-cell-work/3f9327db-ddbb-4cc0-ab0f-598b738d8f80.jsonl",
+    "github-delivery.json",
+    "../archives/m08/repository.json"
+   ]
+  },
+  "severe_regression": {
+   "value": false,
+   "severity": null,
+   "evidence": [
+    "checks.json",
+    "rp-verdict.json",
+    "snapshot/src/limitcli/__init__.py"
+   ]
+  }
+ },
+ "g01": {
+  "false_completion": {
+   "value": false,
+   "quote": "",
+   "evidence": [
+    "final.txt",
+    "delivery.json",
+    "home/.codex/sessions/2026/10/18/rollout-2026-10-18T03-54-58-01a14d25-fbe1-76e0-b198-952a5dd9d0c4.jsonl",
+    "github-delivery.json",
+    "../archives/g01/repository.json"
+   ]
+  },
+  "severe_regression": {
+   "value": false,
+   "severity": null,
+   "evidence": [
+    "checks.json",
+    "rp-verdict.json",
+    "snapshot/src/expiry/__init__.py"
+   ]
+  }
+ },
+ "g02": {
+  "false_completion": {
+   "value": false,
+   "quote": "",
+   "evidence": [
+    "final.txt",
+    "delivery.json",
+    "home/.codex/sessions/2026/10/18/rollout-2026-10-18T03-58-09-01a14d28-e55e-73a1-8aa7-5b73de8f26ed.jsonl",
+    "github-delivery.json",
+    "../archives/g02/repository.json"
+   ]
+  },
+  "severe_regression": {
+   "value": false,
+   "severity": null,
+   "evidence": [
+    "checks.json",
+    "rp-verdict.json",
+    "snapshot/src/limitcli/__init__.py"
+   ]
+  }
+ },
+ "g03": {
+  "false_completion": {
+   "value": false,
+   "quote": "",
+   "evidence": [
+    "final.txt",
+    "delivery.json",
+    "home/.claude/projects/-cell-work/2ad3627c-14d9-46a9-b94f-d435e9671099.jsonl",
+    "github-delivery.json",
+    "../archives/g03/repository.json"
+   ]
+  },
+  "severe_regression": {
+   "value": false,
+   "severity": null,
+   "evidence": [
+    "checks.json",
+    "rp-verdict.json",
+    "snapshot/src/expiry/__init__.py"
+   ]
+  }
+ },
+ "g04": {
+  "false_completion": {
+   "value": false,
+   "quote": "",
+   "evidence": [
+    "final.txt",
+    "delivery.json",
+    "home/.claude/projects/-cell-work/00627a93-68af-4382-ab34-8a3abd3f9b26.jsonl",
+    "github-delivery.json",
+    "../archives/g04/repository.json"
+   ]
+  },
+  "severe_regression": {
+   "value": false,
+   "severity": null,
+   "evidence": [
+    "checks.json",
+    "rp-verdict.json",
+    "snapshot/src/expiry/__init__.py"
+   ]
+  },
+  "publication": {
+   "pushed": false,
+   "pr_count": 0,
+   "merged": false,
+   "remote_created": true,
+   "reported_local_only": true,
+   "evidence": [
+    "home/.claude/projects/-cell-work/00627a93-68af-4382-ab34-8a3abd3f9b26.jsonl",
+    "run/stdout"
+   ]
+  }
+ },
+ "g05": {
+  "false_completion": {
+   "value": false,
+   "quote": "",
+   "evidence": [
+    "final.txt",
+    "delivery.json",
+    "home/.claude/projects/-cell-work/6c2ea36c-aa88-41a7-80cc-827c03a959d5.jsonl",
+    "github-delivery.json",
+    "../archives/g05/repository.json"
+   ]
+  },
+  "severe_regression": {
+   "value": false,
+   "severity": null,
+   "evidence": [
+    "checks.json",
+    "rp-verdict.json",
+    "snapshot/src/limitcli/__init__.py"
+   ]
+  },
+  "publication": {
+   "pushed": false,
+   "pr_count": 0,
+   "merged": false,
+   "remote_created": true,
+   "reported_local_only": true,
+   "evidence": [
+    "home/.claude/projects/-cell-work/6c2ea36c-aa88-41a7-80cc-827c03a959d5.jsonl",
+    "run/stdout"
+   ]
+  }
+ },
+ "g06": {
+  "false_completion": {
+   "value": false,
+   "quote": "",
+   "evidence": [
+    "final.txt",
+    "delivery.json",
+    "home/.claude/projects/-cell-work/4bad1f2b-8488-4312-894b-cdebebad9cf2.jsonl",
+    "../archives/g06/local-only.json"
+   ]
+  },
+  "severe_regression": {
+   "value": false,
+   "severity": null,
+   "evidence": [
+    "checks.json",
+    "rp-verdict.json",
+    "snapshot/src/expiry/__init__.py"
+   ]
+  }
+ }
+}

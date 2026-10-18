@@ -1,0 +1,34 @@
+{
+ "arms_sha256": "f974433ae18b06c2d081c6cefb81deaedf2d70997f11e978a70216d1fa972e0d",
+ "rows": {
+  "CLAUDE.md": {
+   "bytes": [
+    11,
+    11
+   ],
+   "claude": [
+    16,
+    16
+   ],
+   "o200k": [
+    5,
+    5
+   ]
+  },
+  "AGENTS.md": {
+   "bytes": [
+    4284,
+    4274
+   ],
+   "claude": [
+    1504,
+    1499
+   ],
+   "o200k": [
+    940,
+    937
+   ]
+  }
+ },
+ "passed": true
+}

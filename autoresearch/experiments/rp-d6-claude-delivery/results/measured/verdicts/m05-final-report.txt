@@ -1,0 +1,18 @@
+`--limit 0` now returns 0, and leaving `--limit` out still returns 10. The public check `python3 -B -m pytest -q` passes: 9 tests.
+
+**Cause:** `return args.limit or 10` treated 0 as "no value", because 0 counts as false in Python, so it was replaced with 10.
+
+**What I changed**
+- **`src/limitcli/__init__.py`:** the default of 10 now comes from argparse itself (`default=10` on `--limit`), and the function returns `args.limit` unchanged. Since the value can no longer be `None`, the negative check is just `args.limit < 0`. Bad values are still rejected by argparse with exit code 2.
+- **`tests/test_regression.py`** (new):
+  - 0 stays 0, in both the `--limit 0` and `--limit=0` forms.
+  - An omitted limit gives 10.
+  - A missing value (`--limit` alone), an unknown argument and a negative number each exit with code 2.
+
+The existing tests already cover positive values, `-1`, `bad` and `1.5`. I didn't touch them or `caller.json`.
+
+**What I verified**
+- All 9 tests pass with the fix.
+- I ran the new test file against the original code: the zero test fails there (it returned 10), so it does catch this bug. The other new tests passed on the original code too, which confirms the existing behaviour is unchanged.
+
+**Unresolved:** the changes are not committed, pushed or opened as a PR. The project's default is to open a PR and merge it, but this request limited my edits and asked for a report, and publishing to the GitHub remote is an outside action I didn't want to take without your go-ahead. Say if you want me to commit and open a PR.
