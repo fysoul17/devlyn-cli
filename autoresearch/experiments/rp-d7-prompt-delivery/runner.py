@@ -20,17 +20,33 @@ ARMS = {name: 'X' for name, _, _ in SCHEDULE}
 
 def credential(runtime):
     root = cell.credential_directory(runtime)
-    hosts = cell.auth.read_private(root, 'hosts.yml')
-    config = cell.auth.read_private(root, 'config.yml')
-    matches = re.findall(rb'^\s*oauth_token:\s*["\']?(github_pat_[A-Za-z0-9_]+)["\']?\s*$', hosts, re.M)
-    raw = hosts + b'\n' + config
-    # Dedicated auth files use literal YAML: encoded scalars and aliases can hide credentials.
-    encoded = b'\\' in raw or re.search(rb'(^|[\s:,\[\]{}])[!&*?]', raw)
-    prefixes = re.findall(rb'github_pat_|gh[pousr]_', raw)
-    keys = re.findall(rb'(?<![\w])["\']?(?:oauth_token|token)["\']?\s*:', raw, re.I)
-    if encoded or len(matches) != 1 or b'github.com:' not in hosts or prefixes != [b'github_pat_'] or len(keys) != 1:
-        raise ValueError('GitHub credential must contain exactly one fine-grained PAT and no other credentials')
-    return root, matches[0]
+    schemas = {
+        'hosts.yml': {b'    oauth_token': rb'github_pat_[A-Za-z0-9_]+',
+                      b'    user': rb'[A-Za-z0-9-]+', b'    git_protocol': rb'https'},
+        'config.yml': {b'version': rb'(?:"1"|1)', b'git_protocol': rb'https', b'prompt': rb'(?:enabled|disabled)'},
+    }
+    error = 'GitHub credential requires canonical ASCII/LF allowlisted files and exactly one fine-grained PAT'
+    token = None
+    for name, schema in schemas.items():
+        raw = cell.auth.read_private(root, name)
+        if not raw.endswith(b'\n') or any(byte != 10 and not 32 <= byte < 127 for byte in raw):
+            raise ValueError(error)
+        lines = raw.split(b'\n')[:-1]
+        if name == 'hosts.yml':
+            if lines[:1] != [b'github.com:']:
+                raise ValueError(error)
+            lines = lines[1:]
+        seen = set()
+        for line in lines:
+            key, separator, value = line.partition(b': ')
+            if not separator or key not in schema or key in seen or re.fullmatch(schema[key], value) is None:
+                raise ValueError(error)
+            seen.add(key)
+            if key == b'    oauth_token':
+                token = value
+    if token is None:
+        raise ValueError(error)
+    return root, token
 
 
 # The private inherited launcher validates before mounting and uses the same PAT scan.

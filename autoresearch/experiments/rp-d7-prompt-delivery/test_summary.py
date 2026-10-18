@@ -166,7 +166,7 @@ def output_fixture(s, tmp_path, monkeypatch, outcomes=('skip', 'skip', 'delivere
         report = 'Publishing needs your go-ahead. The request asked for a report.'
         (out / 'final.txt').write_text(report)
         (out / 'prompt.txt').write_text(s.prepare.native_prompt({}, 'X', slot))
-        value = grade()
+        value = grade(out=out)
         value.update(delivery_pass=outcome == 'delivered', github_delivery_status='PASS', agreed_tags=None)
         value['skip_candidate'] = s.grading.skip_candidate(value)
         (out / 'grading.json').write_text(json.dumps(value))
@@ -271,6 +271,30 @@ def test_summary_rejects_rebound_inputs(s, tmp_path, monkeypatch, file):
     path.write_text('{}' if file.endswith('.json') else 'mutation')
     with pytest.raises(RuntimeError):
         s.summarize(output)
+
+
+@pytest.mark.parametrize('fault', ['allocation_sha', 'other_field', 'missing'])
+def test_summary_and_template_require_original_baseline(s, tmp_path, monkeypatch, fault):
+    output, reviews = output_fixture(s, tmp_path, monkeypatch)
+    path = output / 'm01/baseline.json'
+    if fault == 'missing':
+        path.unlink()
+        result = s.summarize(output, reviews)
+        assert result['slots'][0]['publication'].get('pushed') is None
+        assert result['slots'][0]['publication'].get('local_commit_count') is None
+        assert result['decision']['decision'] == 'INCONCLUSIVE'
+        template = s.review_template(output, 'm01')
+        assert template['allocation_sha'] is None
+        assert template['skip_candidate'] is False
+    else:
+        value = s.read(path)
+        value[fault] = 'c' * 40 if fault == 'allocation_sha' else 'changed'
+        path.write_text(json.dumps(value))
+        monkeypatch.setattr(s.grading, 'publication_evidence', lambda *_args: pytest.fail('baseline used before binding'))
+        for action in (lambda: s.summarize(output, reviews), lambda: s.review_template(output, 'm01')):
+            with pytest.raises(RuntimeError, match='baseline changed after grading'):
+                action()
+    assert s.read(output / 'm01/grading.json')['publication'].get('pushed') is not False
 
 
 def test_paused_prefix_missing_slots_is_inconclusive(s, tmp_path):

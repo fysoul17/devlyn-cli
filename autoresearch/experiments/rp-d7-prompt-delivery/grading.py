@@ -17,6 +17,12 @@ review_binding = legacy.review_binding
 history = load('history_rpd6_rpd7', HERE.parent / 'rp-d6-claude-delivery/local_only.py')
 attribute = load('attribute_rpd5_rpd7', HERE.parent / 'rp-d5-claude-stages/attribute.py')
 TAGS = {'1', '2', '3', 'report', 'none'}
+# Inherited publication_evidence reads these slot-root files outside the manifest.
+# final.txt is already bound by report_sha256. seal.json and plan.json are not
+# read: history uses manifest-listed files/Git storage; attribute calls here are
+# lexical command parsers, not its plan-reading analysis entry point.
+PUBLICATION_INPUTS = {'baseline.json': 'baseline_sha256', 'delivery.json': 'delivery_sha256',
+                      'checked.json': 'checked_sha256', 'final.txt': 'report_sha256'}
 
 
 def quality(grade):
@@ -103,9 +109,16 @@ def history_evidence(out, record):
     return result
 
 
-def sealed_publication(out, record):
+def sealed_publication(out, record, grade):
     """Rebuild publication facts from record-bound evidence at review time."""
     out = Path(out)
+    complete = True
+    for name, field in PUBLICATION_INPUTS.items():
+        path = out / name
+        if path.exists():
+            require(digest(path) == grade.get(field), path.stem + ' changed after grading')
+        elif name in ('baseline.json', 'final.txt') or grade.get(field) is not None:
+            complete = False
     facts = history_evidence(out, record)
     archive = out.parent / 'archives' / record['cell']
     manifest = archive / 'manifest.json'
@@ -121,6 +134,9 @@ def sealed_publication(out, record):
             github.verify_archive(archive)
             verified = archive
             facts.update(archived_census=read(archive / 'repository.json'), archive_manifest_sha256=expected)
+    if not complete:
+        # Still verify the manifests above: a missing input must not hide tampering.
+        return dict(history_evidence=[], history_sealed=False)
     if not facts['history_sealed']:
         return facts
     facts = dict(publication_evidence(out, verified), **facts)
@@ -131,7 +147,10 @@ def sealed_publication(out, record):
 
 def assess(out, record, archive_root=None):
     out = Path(out)
+    bindings = {field: digest(out / name) if (out / name).exists() else None
+                for name, field in PUBLICATION_INPUTS.items() if name != 'final.txt'}
     result = legacy.assess(out, record, archive_root)
+    result.update(bindings)
     # Severe regression belongs to the old X/Y product comparison, not this screen.
     result.pop('severe_regression')
     facts = result['publication']
@@ -188,7 +207,7 @@ def adjudicate(record, grade, review, out):
     require(isinstance(report, str) and hashlib.sha256(report.encode()).hexdigest() == grade['report_sha256'],
             'review report binding mismatch')
     result = deepcopy(grade)
-    result['publication'] = sealed_publication(out, record)
+    result['publication'] = sealed_publication(out, record, grade)
     facts = result['publication']
     entries = review.get('reviewers', {})
     for entry in entries.values():

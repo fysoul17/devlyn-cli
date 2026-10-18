@@ -18,7 +18,7 @@ def credential_runner():
 def github_auth(tmp_path, credential_runner):
     root = tmp_path / 'github'
     root.mkdir(mode=0o700)
-    for name, raw in (('hosts.yml', b'github.com:\n  oauth_token: github_pat_synthetic_only\n'),
+    for name, raw in (('hosts.yml', b'github.com:\n    oauth_token: github_pat_synthetic_only\n'),
                       ('config.yml', b'git_protocol: https\n')):
         (root / name).write_bytes(raw)
         (root / name).chmod(0o400)
@@ -31,8 +31,80 @@ def test_scoped_github_credential(github_auth):
     assert root == Path(runtime['github_auth']) and token == b'github_pat_synthetic_only'
 
 
+@pytest.mark.parametrize('version', [b'1', b'"1"'])
+@pytest.mark.parametrize('prompt', [b'enabled', b'disabled'])
+def test_canonical_github_schema(github_auth, version, prompt):
+    runner, runtime = github_auth
+    root = Path(runtime['github_auth'])
+    for name, raw in (
+            ('hosts.yml', b'github.com:\n    user: fixture-user1\n    git_protocol: https\n'
+                          b'    oauth_token: github_pat_synthetic_only\n'),
+            ('config.yml', b'version: ' + version + b'\nprompt: ' + prompt + b'\ngit_protocol: https\n')):
+        (root / name).chmod(0o600)
+        (root / name).write_bytes(raw)
+        (root / name).chmod(0o400)
+    assert runner.cell.credential(runtime) == (root, b'github_pat_synthetic_only')
+
+
+@pytest.mark.parametrize('encoding', ['utf-16le', 'utf-16be', 'utf-32le', 'utf-32be'])
+def test_encoded_extra_credential_rejected_before_mount(github_auth, tmp_path, monkeypatch, capsys, encoding):
+    runner, runtime = github_auth
+    path = Path(runtime['github_auth']) / 'config.yml'
+    path.chmod(0o600)
+    path.write_bytes('git_protocol: https\noauth_token: ghp_synthetic_other\n'.encode(encoding))
+    path.chmod(0o400)
+    calls = []
+    monkeypatch.setattr(runner.cell.legacy, 'run', lambda *_args, **_kwargs: calls.append('run'))
+    with pytest.raises(ValueError, match='canonical ASCII/LF') as error:
+        runner.cell.run(tmp_path / 'slot', runtime, native=SimpleNamespace(docker=lambda *_args: calls.append('mount')),
+                        check_auth=None)
+    assert calls == []
+    assert 'synthetic' not in str(error.value)
+    assert capsys.readouterr() == ('', '')
+
+
+@pytest.mark.parametrize('target', ['hosts.yml', 'config.yml'])
+@pytest.mark.parametrize('fault', ['nul', 'tab', 'control', 'delete_byte', 'non_ascii', 'crlf', 'no_lf', 'blank_line'])
+def test_noncanonical_bytes_rejected_before_mount(github_auth, tmp_path, target, fault):
+    runner, runtime = github_auth
+    path = Path(runtime['github_auth']) / target
+    raw = path.read_bytes()
+    changes = dict(nul=raw + b'\0\n', tab=raw + b'\t\n', control=raw + b'\x1f\n',
+                   delete_byte=raw + b'\x7f\n', non_ascii=raw + b'\x80\n', crlf=raw.replace(b'\n', b'\r\n'),
+                   no_lf=raw[:-1], blank_line=raw + b'\n')
+    path.chmod(0o600)
+    path.write_bytes(changes[fault])
+    path.chmod(0o400)
+    with pytest.raises(ValueError, match='canonical ASCII/LF'):
+        runner.cell.run(tmp_path / 'slot', runtime, native=None, check_auth=None)
+
+
+@pytest.mark.parametrize('target,raw', [
+    ('hosts.yml', b'github.com:\n    oauth_token: ghp_synthetic_only\n'),
+    ('hosts.yml', b'github.com:\n    oauth_token: "github_pat_synthetic_only"\n'),
+    ('hosts.yml', b'github.com:\n  oauth_token: github_pat_synthetic_only\n'),
+    ('hosts.yml', b'github.com:\n    oauth_token: github_pat_\n'),
+    ('hosts.yml', b'other.com:\n    oauth_token: github_pat_synthetic_only\n'),
+    ('config.yml', b'version: 2\n'), ('config.yml', b'version: \'1\'\n'),
+    ('config.yml', b'version: 1\nversion: "1"\n'), ('config.yml', b'prompt: yes\n'),
+    ('config.yml', b'git_protocol: ssh\n'), ('config.yml', b'git_protocol: https \n'),
+    ('config.yml', b'    git_protocol: https\n'), ('config.yml', b'# comment\n'),
+    ('config.yml', b'extra: harmless\n'), ('config.yml', b'')])
+def test_disallowed_github_schema_rejected_before_mount(github_auth, tmp_path, target, raw):
+    runner, runtime = github_auth
+    path = Path(runtime['github_auth']) / target
+    path.chmod(0o600)
+    path.write_bytes(raw)
+    path.chmod(0o400)
+    with pytest.raises(ValueError, match='allowlisted'):
+        runner.cell.run(tmp_path / 'slot', runtime, native=None, check_auth=None)
+
+
 @pytest.mark.parametrize('target', ['hosts.yml', 'config.yml'])
 @pytest.mark.parametrize('extra', [
+    b'    oauth_token: github_pat_synthetic_only\n', b'other.com:\n    user: second-host\n',
+    b'    user: invalid_login\n', b'    git_protocol: ssh\n', b'    extra: harmless\n',
+    b'    user: fixture\n    user: fixture\n', b'    git_protocol: https\n    git_protocol: https\n',
     b'  oauth_token: github_pat_synthetic_only\n', b'  oauth_token: github_pat_second_fake\n',
     *[b'  extra: ' + prefix + b'synthetic_only\n' for prefix in (b'ghp_', b'gho_', b'ghu_', b'ghs_', b'ghr_')],
     b'  oauth_token: unrecognized_secret\n', b'  token: unrecognized_secret\n',

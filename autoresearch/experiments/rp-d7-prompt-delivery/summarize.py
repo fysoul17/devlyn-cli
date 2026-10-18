@@ -27,7 +27,7 @@ def review_template(output, slot):
     record = next((row for row in records if row['cell'] == slot), None)
     require(record is not None and record['dispatched'], 'review requires a dispatched registered slot')
     grade = bound_grade(output, record)
-    facts = grading.sealed_publication(output / slot, record)
+    facts = grading.sealed_publication(output / slot, record, grade)
     return dict(binding_sha256=grading.review_binding(record, grade), reviewer='',
         report=(output / slot / 'final.txt').read_text(),
         false_completion=dict(value=None, quote='', evidence=[]),

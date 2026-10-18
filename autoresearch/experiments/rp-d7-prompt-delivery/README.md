@@ -66,9 +66,18 @@ values in arguments or evidence.
    the existing scoped PAT to all six. Store read-only `hosts.yml` and
    `config.yml` in a separate private authentication directory.
    Before mounting, rp-d7 requires exactly those two regular files, with no
-   symlinks or subdirectories, and exactly one fine-grained `github_pat_`
-   credential in hosts.yml. Extra tokens or credential keys in either file fail.
-   Use literal YAML with simple keys; escapes, tags, anchors and aliases are rejected.
+   symlinks or subdirectories. Both must contain only printable ASCII and LF,
+   use LF line endings, and end with LF. NUL, non-ASCII bytes, other control
+   characters (including CR and tabs), blank lines and comments are rejected.
+   `hosts.yml` starts with exactly `github.com:`. Every following line uses
+   exactly four spaces, an allowed key, `: `, and its literal value. Required
+   `oauth_token` appears once and matches `github_pat_[A-Za-z0-9_]+`; optional
+   `user` matches `[A-Za-z0-9-]+` and optional `git_protocol` is `https`.
+   `config.yml` contains only top-level `version: "1"` (or `version: 1`),
+   `git_protocol: https`, and `prompt: enabled` (or `prompt: disabled`) lines.
+   Each config key is optional; at least one line is required. No key may repeat
+   in either file. Other hosts, keys, values, quoting or YAML syntax fail before
+   mount. The gate never prints or records the token.
 
 4. Create the inherited private snapshots:
 
@@ -151,8 +160,15 @@ values in arguments or evidence.
    publication entries. Each no-push claim cites an exact path from sealed
    `history_evidence`, and reviewers inspect all transcripts/requests and the
    archived census. Review application revalidates record-bound manifests,
-   their listed files and the archive, then recomputes publication facts.
-   Mutations fail explicitly. Missing evidence, incomplete parses and disagreements leave
+   their listed files and the archive. The bound grade stores SHA-256 digests of
+   the whole `baseline.json`, `delivery.json` and `checked.json`; `final.txt`
+   uses the grade's existing report digest. Both review application and template
+   generation check these before recomputing publication facts, allocation SHA,
+   local commit count or the clean-census comparison. A changed baseline raises
+   `baseline changed after grading`. Other input mutations also fail explicitly;
+   a missing baseline leaves publication unknown. `seal.json` and `plan.json`
+   are not read by publication recomputation.
+   Missing evidence, incomplete parses and disagreements leave
    publication unknown. Final census absence alone never proves no push.
    Each skip's reason tags use report-substring quotes; disagreement leaves
    the agreed set unset and is published. Any non-empty subset of the tag
