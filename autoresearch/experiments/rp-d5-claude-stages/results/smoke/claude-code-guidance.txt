@@ -1,0 +1,6 @@
+Extract from the sealed smoke request bodies (Claude Code 2.1.296):
+request bodies containing the phrase: 1 of 5 (the only body that carries the system prompt and tool definitions; the other four carry no tools)
+example: home/.claude/api-bodies/683f90b9-b2f3-4d30-b5c8-2577d42ae5dc.request.json sha256 13a1c8ba09e5534daf1783e6d461c005444b5edc7df9b67ef9a74c3de7b5f51e
+phrase: Commit or push only when the user asks
+devlyn block sentence ('default PR and merge') present in the same body: True
+cell started_at: 1792280454.065899  ended_at: 1792280502.723584
