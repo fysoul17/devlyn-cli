@@ -1,6 +1,6 @@
 {
  "schema": "rp-d7-registration-v1",
- "apparatus_commit": "519aa0d308a57257f53d5a592d71e008acab0345",
+ "apparatus_commit": "d49ebb63f28a82bbfe06cd6b308250ffcb53ad5c",
  "run_id": "20261018a",
  "phase": "measured",
  "release": {
@@ -101,11 +101,11 @@
   "autoresearch/experiments/rp-d7-prompt-delivery/prepare.py": "ecc7586e31227439bdd0f84564af8ef9a00fd1a4bf534d5e51450f92524263fa",
   "autoresearch/experiments/rp-d7-prompt-delivery/runner.py": "1ad99a35e35ac96f013294846e45e7ade91b4a270b21f9c96dc90f5292a2185d",
   "autoresearch/experiments/rp-d7-prompt-delivery/stage.py": "da58271823823fca4dc3179d670d023bda6ca53f4e56b760beae528cec9ba3d8",
-  "autoresearch/experiments/rp-d7-prompt-delivery/summarize.py": "af248045d02b092f3a441ebec1f5da170118fb9a6e01552e083a3f0968eee036",
+  "autoresearch/experiments/rp-d7-prompt-delivery/summarize.py": "8a9537e6e99c5c822ebd39ca6411f91d2f4dd633cf6d3a45adf703dd3a566b59",
   "autoresearch/experiments/rp-d7-prompt-delivery/test_grading.py": "e5d008f2de913763fe11d20718f7f5bde0c76eaae547be3fce4f3478442f6c8e",
   "autoresearch/experiments/rp-d7-prompt-delivery/test_pack.py": "e6815d56cfd1d56c23f94ac33a01d2b7bf73db84ddd2fb468e5d7dfaf4b54262",
   "autoresearch/experiments/rp-d7-prompt-delivery/test_runtime.py": "0200d8d2f71b36db338a610a77c480bd1c6caac143d9abe0d937e207eb3b75d9",
-  "autoresearch/experiments/rp-d7-prompt-delivery/test_summary.py": "1345762bd95519c004d7b30119ed7fdce82d098f7aa743003b7051ec4b88cbb6",
+  "autoresearch/experiments/rp-d7-prompt-delivery/test_summary.py": "33663a5a4d8a6c63a7ee30378ff9ffe1c723f43efac29b78e373e440bcc5c9ec",
   "autoresearch/experiments/rp-d7-prompt-delivery/README.md": "0ef45072c3aaa84c510d892a5134928602e71c29626dab8a773bcbd4f0b98bd9",
   "autoresearch/experiments/rp-d7-prompt-delivery/VALIDATION.md": "b7b52f1471ae8bfbbf92fb7008a862e778ae44f1179d4805b6175ad3da020a4a",
   "autoresearch/experiments/rp-d7-prompt-delivery/DESIGN.md": "b63b4dd92e04eb2fcb3b65c32d19027f92072676a7b1ec92b289d49905ec7142",
