@@ -22,10 +22,11 @@ schedule, grading, decision rules and raw data are never edited.
   serves one goal: ".
 - **Y paths note.** DESIGN's Y-path paragraph also names
   `bin/instruction-templates.json` (regenerated) and a `.agents` mirror "if
-  shipped". The candidate leaves the JSON unchanged (regeneration produced
-  no diff; it indexes earlier paragraphs, and installs render from the
-  templates) and the `.agents` mirror is not in the npm `files` set, so Y
-  ships exactly the three files above.
+  shipped". The candidate leaves the JSON unchanged: it already recognises
+  X's paragraphs (regeneration at the pre-candidate HEAD produced no diff),
+  and installs render from the candidate Markdown templates. The `.agents`
+  mirror is not in the npm `files` set. So Y ships exactly the three files
+  above.
 - **Token gate (precondition).** Rendered installed blocks from the
   verified X and Y archives: AGENTS.md Claude `count_tokens` 1504 → 1499,
   o200k 940 → 937; CLAUDE.md (the `@AGENTS.md` import) 16 → 16 and 5 → 5.
