@@ -215,8 +215,23 @@ def command_effects(command, cwd='/cell/work'):
                 result['object_prune_command_observed'] |= (options[:1] in (['gc'], ['prune'], ['repack']) or
                     options[:2] in (['reflog', 'expire'], ['reflog', 'delete']) or
                     options[:1] == ['update-ref'] and '-d' in options)
-                result['push_command_observed'] |= options[:1] == ['push'] and not (
-                    {'--dry-run', '-n'} & switches)
+                if options[:1] == ['push']:
+                    push_args, dry_run = iter(options[1:]), False
+                    for switch in push_args:
+                        if switch == '--':
+                            break
+                        if switch in ('-o', '--push-option', '--repo', '--receive-pack', '--exec'):
+                            next(push_args, None)
+                        elif switch.startswith('--'):
+                            # --d is ambiguous with --delete.
+                            dry_run |= len(switch) >= 4 and '--dry-run'.startswith(switch)
+                        elif switch.startswith('-'):
+                            cluster, takes_value, value = switch[1:].partition('o')
+                            dry_run |= 'n' in cluster
+                            # -o consumes an attached value or the next argument.
+                            if takes_value and not value:
+                                next(push_args, None)
+                    result['push_command_observed'] |= not dry_run
                 result['remote_creation_command_observed'] |= options[:2] == ['remote', 'add']
                 result['task_worktree_command_observed'] |= options[:2] == ['worktree', 'add']
                 result['task_branch_command_observed'] |= (options[:1] == ['switch'] and '-c' in options or
@@ -342,7 +357,9 @@ def history_facts(out, files):
                 certain_write, unknown_scope = effects['devlyn_write_effect_certain'], effects['devlyn_write_scope_unknown']
                 # An aggregate shell exit code cannot identify which command in
                 # a list succeeded. Keep those effects for the sealed-history review.
+                # Attempts retain the tool failure as evidence reviewers can cite.
                 single = len(attribute.shell_commands(attribute.diagnostics.without_heredocs(command))) == 1
+                failed_result = failure
                 success, failure = success and single, failure and single
                 allocated = False
                 if effects['allocation_command_observed']:
@@ -368,7 +385,7 @@ def history_facts(out, files):
                         result[kind + '_command_unresolved'] = True
                 for kind in attempts:
                     if effects[kind + '_command_observed']:
-                        attempts[kind].append((identity, failure))
+                        attempts[kind].append((identity, failed_result))
             except (ValueError, TypeError):
                 result['history_parse_incomplete'] = True
         elif tool in ('Write', 'Edit', 'MultiEdit', 'NotebookEdit'):

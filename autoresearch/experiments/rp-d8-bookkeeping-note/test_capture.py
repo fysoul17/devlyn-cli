@@ -178,21 +178,38 @@ def test_incomplete_history_cannot_prove_commit_absence(cell):
 
 
 @pytest.mark.parametrize('command', ['git push origin HEAD', 'gh repo create fixture/repo --private'])
-@pytest.mark.parametrize('outcome', ['success', 'failed', 'unknown', 'compound', 'dry-run', 'short-dry-run'])
+@pytest.mark.parametrize('outcome', ['success', 'failed', 'failed-compound', 'unknown', 'compound',
+                                   'dry-run', 'short-dry-run'])
 def test_publication_attempt_requires_a_single_sealed_success(cell, command, outcome):
     module, out, _ = cell('g06')
-    suffix = {'compound': ' || true', 'dry-run': ' --dry-run', 'short-dry-run': ' -n'}.get(outcome, '')
-    log = events(command + suffix, success=outcome != 'failed')
+    suffix = {'compound': ' || true', 'failed-compound': ' && false',
+              'dry-run': ' --dry-run', 'short-dry-run': ' -n'}.get(outcome, '')
+    failed = outcome in ('failed', 'failed-compound')
+    log = events(command + suffix, success=not failed)
     if outcome == 'unknown':
         log.pop()
     facts = module.assess(out, seal(module, out, log))
     field, kind = ('pushed', 'push') if command.startswith('git') else ('remote_created', 'remote_creation')
     assert facts.get(field) is (True if outcome == 'success' else None)
-    assert facts[kind + '_command_unresolved'] is (outcome in ('failed', 'unknown', 'compound'))
+    assert facts[kind + '_command_unresolved'] is (failed or outcome in ('unknown', 'compound'))
+    assert facts.get(kind + '_failure_evidence') == (['run/stdout'] if failed else None)
+
+
+@pytest.mark.parametrize('switch', ['-nq', '-qn', '-vn', '-un', '-nu', '-fn',
+                                   '--dr', '--dry', '--dry-', '--dry-r', '--dry-ru'])
+def test_push_dry_run_switches_do_not_establish_publication(cell, switch):
+    module, out, _ = cell('g06')
+    facts = module.assess(out, seal(module, out, events(f'git push {switch} origin HEAD')))
+    assert facts['pushed'] is None
+    assert facts['push_command_unresolved'] is False
+    assert facts['publication_command_observed'] is False
 
 
 @pytest.mark.parametrize('command,field', [
     ('git push -o --dry-run origin HEAD', 'pushed'), ('git push --push-option=--help origin HEAD', 'pushed'),
+    ('git push -on origin HEAD', 'pushed'), ('git push -uon origin HEAD', 'pushed'),
+    ('git push -o -n origin HEAD', 'pushed'),
+    ('git push -uo -un origin HEAD', 'pushed'), ('git push -uo --dr origin HEAD', 'pushed'),
     ('git push -- origin -n', 'pushed'),
     ('gh repo create fixture/repo --private -h https://example.invalid', 'remote_created'),
     ('gh repo create fixture/repo --description --help', 'remote_created'),
@@ -200,6 +217,14 @@ def test_publication_attempt_requires_a_single_sealed_success(cell, command, out
 def test_publication_option_values_cannot_hide_successful_effects(cell, command, field):
     module, out, _ = cell('g06')
     assert module.assess(out, seal(module, out, events(command)))[field] is True
+
+
+def test_ambiguous_push_option_is_not_a_dry_run(cell):
+    module, out, _ = cell('g06')
+    facts = module.assess(out, seal(module, out, events('git push --d origin HEAD', success=False)))
+    assert facts['pushed'] is None
+    assert facts['push_command_unresolved'] is True
+    assert facts['push_failure_evidence'] == ['run/stdout']
 
 
 @pytest.mark.parametrize('effect', ['file', 'directory', 'mode', 'symlink'])

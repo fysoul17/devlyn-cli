@@ -283,9 +283,15 @@ def test_g06_assess_and_review_use_real_local_archive_without_repository_json(g,
 @pytest.mark.parametrize('command,success,effect,unresolved', [
     ('git push origin HEAD', True, True, False), ('git push origin HEAD', False, None, True),
     ('git push --dry-run origin HEAD', True, None, False), ('git push -n origin HEAD', True, None, False),
+    ('git push -nq origin HEAD', True, None, False), ('git push -qn origin HEAD', True, None, False),
+    ('git push -vn origin HEAD', True, None, False), ('git push -un origin HEAD', True, None, False),
+    ('git push -nu origin HEAD', True, None, False), ('git push --dr origin HEAD', True, None, False),
+    ('git push --dry origin HEAD', True, None, False),
+    ('git push origin HEAD && false', False, None, True),
     ('git push origin HEAD || true', True, None, True),
     ('gh repo create fixture/repo --private', True, True, False),
     ('gh repo create fixture/repo --private', False, None, True),
+    ('gh repo create fixture/repo --private && false', False, None, True),
 ])
 def test_inherited_invocations_are_replaced_by_sealed_effects(g, tmp_path, monkeypatch,
                                                             command, success, effect, unresolved):
