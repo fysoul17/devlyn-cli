@@ -13,10 +13,7 @@ commit request uses `--local-only`, a PR request `--mode pr`, and a merge reques
 `--mode auto`. Local-only/no-push restrictions prevent publication; no-commit or
 just-edit instructions skip delivery. Existing session-wide restrictions remain
 in force until changed. Read-only work, unchanged work and incidental generated
-files do not trigger delivery.
-
-Product file limits cover task edits, not delivery bookkeeping (worktree,
-branch, receipt, uncommitted `.devlyn/` files); delivery restrictions still apply.
+files do not trigger delivery. An ideate drain delivers every task.
 
 When delivery is implicit and no GitHub origin is configured, use the existing
 local-only route and report `LOCAL_ONLY`, the commit and why no PR/merge occurred.
@@ -35,7 +32,8 @@ checkout and ask whether to continue there or isolate. With no one to ask, move
 only your own edits, and only when the task's context can be rebuilt in the
 worktree; otherwise leave the checkout as it is and report the task blocked.
 Isolation changes the work location, not delivery scope. Allocate for the
-resolved delivery policy and reuse that worktree when suitable. A local receipt remains local; later
+resolved delivery policy and reuse that worktree when suitable. Isolation
+without delivery uses `--local-base`. A local receipt remains local; later
 publication requires a fresh publication allocation, candidate and acceptance.
 
 ## Allocate for delivery or isolation
@@ -49,7 +47,7 @@ BLOCKED:shared-dir-unresolved. Never select another installation.
 For direct delivery, run the bound task-complete.py after completing the request's
 edits and checks, before committing the delivery candidate. Allocate before
 editing when concurrency requires isolation; if isolation is unavailable, do
-not write to the shared checkout.
+not write to the shared checkout. Queue drains retain their allocation order.
 
 ```sh
 python3 "$DEVLYN_SHARED_DIR/task-complete.py" allocate --repo . \
@@ -124,7 +122,7 @@ python3 "$DEVLYN_SHARED_DIR/task-complete.py" clean-scratch \
 
 This empties only the prospectively owned scratch, preserves its directory
 identity for interrupted cleanup and later builds, checks live users and reports
-the logical byte count separately from actual free disk space.
+the logical byte count separately from actual free disk space. It does not depend on a product PASS or rewrite that verdict.
 Unknown historical roots, source/recovery data, shared caches and terminal
 history are never adopted or swept. A refused cleanup does not block source
 delivery; it stays visible in the handoff with its receipt and retry command
