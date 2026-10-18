@@ -1,0 +1,3 @@
+Implemented `slugify` in [src/slugtools/__init__.py](/cell/work/src/slugtools/__init__.py) and added regression cases in [tests/test_regression.py](/cell/work/tests/test_regression.py).
+
+Verified with `python3 -B -m pytest -q`: **9 passed**. PR #1 merged, and the checkout is clean. Nothing remains unresolved.

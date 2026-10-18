@@ -1,0 +1,17 @@
+`is_expired` now returns True when `now` equals `deadline`. The fix is merged to `main` in PR #1, and all 3 tests pass.
+
+**What I changed**
+- `src/expiry/__init__.py:6`: changed `now > deadline` to `now >= deadline`. The docstring already said exact equality counts as expired; the code just didn't match it.
+- `tests/test_regression.py` (new): `test_expired_at_exact_deadline` checks that `is_expired(10, 10) is True`.
+
+Nothing else was touched: no other files, no Git config, no dependencies. `docs/user-notes.txt` and `.user-state/draft.txt` are unchanged (the draft's mode is still 644).
+
+**What I verified**
+- **Before the fix:** I predicted the new test would fail on the old code, and it did (1 failed, 2 passed). The other two tests still passed.
+- **After the fix:** `python3 -B -m pytest -q` gives 3 passed. That includes the existing tests for before/after comparisons and for `TypeError` on incompatible inputs (`None >= 10` still raises `TypeError`).
+- **After merge:** I brought the local checkout up to the merged `main` (fast-forward, no extra commits) and confirmed the merged files are byte-identical to my edits. The checks pass again there: 3 passed.
+
+**Delivery**
+AGENTS.md sets PR-and-merge as the default, so I used the project's completion helper to open PR #1 (https://github.com/fysoul17/rpd6-20261018a-m03/pull/1). The first try failed partway with a network error from GitHub's API. Retrying the same receipt resumed it, and it reported `COMPLETE`. GitHub shows the PR as `MERGED` (merge commit `b520242`). The temporary worktree and task branch were cleaned up, and I deleted the local check log I'd created.
+
+**Unresolved:** nothing.

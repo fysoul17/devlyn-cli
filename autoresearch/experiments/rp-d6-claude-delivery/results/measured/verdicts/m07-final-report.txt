@@ -1,0 +1,15 @@
+`--limit 0` now returns 0, and leaving `--limit` out still gives 10. The change is merged to `main` as PR #1 (https://github.com/fysoul17/rpd6-20261018a-m07/pull/1).
+
+**What I changed**
+- `src/limitcli/__init__.py`: the cause was `return args.limit or 10`. In Python 0 counts as false, so an explicit 0 was swapped for the default. The default of 10 is now set on the argument itself (`default=10`) and the function returns the parsed value unchanged. The `is not None` check was only needed for the old approach, so I removed it. The nonnegative check is still there.
+- `tests/test_regression.py` (new): checks that `--limit 0` and `--limit=0` return 0, that an omitted limit returns 10, and that a missing value, an unknown argument and `-5` all exit with code 2.
+
+**What I verified**
+- `python3 -B -m pytest -q`: 9 passed. That covers the existing tests (default, positive, and `-1`, `bad`, `1.5` errors) plus the new ones. I ran it in the working checkout, in the separate worktree used for the PR, and again on `main` after the merge.
+- I ran the new test against the original code and it failed on the zero case, so it does catch the bug.
+- I only edited the two allowed files. `caller.json`, `docs/user-notes.txt`, Git config, dependencies and tools are unchanged.
+
+**Delivery**
+I followed the project's default delivery policy: a separate worktree, a commit, then a PR that merged. Afterwards I updated the local checkout to the merged `main`. The temporary worktree and branch were removed, and the working tree is clean at `b88dfd6`.
+
+**Unresolved:** nothing.

@@ -1,0 +1,18 @@
+`--limit 0` now returns `0`, and leaving out `--limit` still gives `10`. It's committed on `main` as `7561e0d` and not pushed, since you asked only for a commit.
+
+**What changed**
+- `src/limitcli/__init__.py`: `args.limit or 10` treated an explicit `0` the same as no value. I gave `--limit` a default of 10 in its argparse definition (`default=10`) and now return `args.limit` directly. The check that rejects negative numbers is unchanged.
+- `tests/test_regression.py` (new) checks that:
+  - `--limit 0` and `--limit=0` return `0`;
+  - no `--limit` returns `10`;
+  - positive values come back unchanged;
+  - argparse exits with code 2 for `-1`, `bad`, `1.5`, `--limit` with no value, and `--unknown`.
+
+**What I verified**
+- Before the fix, `parse_limit(["--limit","0"])` returned `10`, as expected.
+- I ran the new zero test against the old code and it failed; with the fix it passes, so it really catches this bug.
+- `python3 -B -m pytest -q` passes (13 tests), both in the separate worktree used for the commit and on `main` afterwards.
+
+**Delivery:** I committed through the project's local-only helper (`task-complete.py`), which reported `LOCAL_ONLY`. I then fast-forwarded `main` to the commit and removed the temporary worktree and branch. The working tree is clean, and your files in `.user-state/` and `docs/` are untouched.
+
+**Unresolved:** Nothing.

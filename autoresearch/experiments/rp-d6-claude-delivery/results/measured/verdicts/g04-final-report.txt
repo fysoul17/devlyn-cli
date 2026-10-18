@@ -1,0 +1,14 @@
+`is_expired(now, deadline)` now counts a deadline as expired when `now` equals it exactly. The fix is committed locally on `main` as `c7a045c`; nothing was pushed and no PR was opened.
+
+**What I changed** (only in the two allowed files):
+- `src/expiry/__init__.py`: `now > deadline` → `now >= deadline`. The docstring already said "including exact equality", so the code now matches it. Before and after comparisons work as before, and incompatible inputs like `None` vs `10` still raise `TypeError`, because Python's `>=` raises it the same way `>` does.
+- `tests/test_regression.py` (new): `test_expired_at_exact_deadline` checks that `is_expired(10, 10) is True`.
+
+**What I verified:**
+- `python3 -B -m pytest -q` passes: 3 tests, both in the working copy and in the delivery worktree before committing.
+- The new test fails when run against the original `>` code, so it does catch the bug.
+- `tests/test_existing.py`, `caller.json`, `docs/user-notes.txt` and the git config are unchanged, and the working tree is clean.
+
+**Delivery:** I followed the project's local-only route, since you said not to push. The commit was made in a temporary worktree, the project's completion helper reported `LOCAL_ONLY`, and `main` was fast-forwarded to it. The temporary worktree and branch have been removed. A completion receipt remains at `.git/devlyn-completion/abf00ebe3e75c88e851b092b/`.
+
+**Unresolved:** nothing.

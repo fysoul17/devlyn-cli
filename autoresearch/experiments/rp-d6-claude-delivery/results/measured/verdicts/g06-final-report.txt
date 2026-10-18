@@ -1,0 +1,14 @@
+I fixed `is_expired` so a deadline now counts as expired at the exact deadline time, and added a regression test. The public check passes.
+
+**What I changed**
+- `src/expiry/__init__.py:6`: changed `now > deadline` to `now >= deadline`. The docstring already said equality should count as expired; the code didn't match it.
+- `tests/test_regression.py` (new file): `test_expired_at_exact_deadline` checks that `is_expired(10, 10) is True`.
+
+**What I verified**
+- Before the fix, I predicted the new test would fail with `>` and pass with `>=`. Against the original code it failed (`1 failed, 2 passed`). After the fix, `python3 -B -m pytest -q` gave `3 passed`.
+- Before/after comparisons (`9, 10` → False; `11, 10` → True) still pass.
+- `None` against a number still raises `TypeError`; the existing test confirms this.
+- `git status` shows only the two allowed paths. `caller.json`, the existing tests, `docs/` and `.user-state/` are untouched.
+
+**Unresolved**
+- **Not committed or delivered.** The project's default is to deliver through a commit and PR, and with no `origin` remote it would fall back to a local-only commit. But the helper that does this writes files outside the allowed paths, including a separate linked worktree and an acceptance file, so I left both changes uncommitted on `main`. If you want the local-only commit, ask and I'll make it.

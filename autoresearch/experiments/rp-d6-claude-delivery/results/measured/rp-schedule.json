@@ -1,0 +1,1694 @@
+{
+  "dispatched": 14,
+  "phase": "measured",
+  "releases": {
+    "X": {
+      "integrity": "sha512-PsTQkzNrfz3TENHtBLff/fmbnxmV2YzMSl4DLKI7dFwOXyO4m9x5CxlhSjkGR5FEfFwjqOHabIrpqKb0O3GOpQ==",
+      "manifest_sha256": "ae0f0bafb984dba10997b9db4a896a25d8f5841e8581fbe75037c28b2b5d340d",
+      "sha256": "799c609141e7f1c05c0e798177522d807cc93cfcf580532f38cfbe31a205ca61",
+      "source": {
+        "registry": "devlyn-cli@4.2.22"
+      },
+      "version": "4.2.22"
+    },
+    "Y": {
+      "integrity": "sha512-8aVpHn7zJ88OPBy4QkVayqz2GwN3kZapn/3+7hCWOPxFoTxdkNik7GBZUh8PlEzWLK98RkBWM5ryxm2yuhsb3Q==",
+      "manifest_sha256": "9b5bd9c669377d6bb51c91b2d2155dbe21f228e26646fc808a7dde3dc07bac4c",
+      "sha256": "b939ee9bdc895bf214504e5f10eae1b0b9a6417d5978d1d99703ebd1137e2f1e",
+      "source": {
+        "candidate_blobs": {
+          "AGENTS.md": "90538cb284f32ca3fe0a0fb696783f9c2a8fc74f",
+          "CLAUDE.md": "90538cb284f32ca3fe0a0fb696783f9c2a8fc74f",
+          "config/skills/_shared/runtime-principles.md": "d941b008409c9db8b4fc95ae22d0b08ad4b3f3dc"
+        },
+        "candidate_commit": "15ded3a7e2d7ca6d46f366bdd63b7ac9c4e1da91",
+        "registry": "devlyn-cli@4.2.22"
+      },
+      "version": "4.2.22"
+    }
+  },
+  "slots": [
+    {
+      "account": [
+        "230ea92eea12",
+        "584a8a8f163a"
+      ],
+      "archive": {
+        "manifest_sha256": "f3470201fdcdb008e793810485707e00a0602c4c755732374fe69ff9d0fd9855",
+        "path": "/Users/aipalm/.local/share/nx01/rp-d6-live/stage/output/archives/m01"
+      },
+      "arm": "X",
+      "auth": "/Users/aipalm/.local/share/nx01/rp-d6-live/claude-auth-1",
+      "auth_manifest_sha256": "b411debc600bd1c1321a59b5f5524645ad896ab02d6b7894c72883a5d0dc17fb",
+      "cell": "m01",
+      "codex_account": "1e97f2de8805",
+      "config": "claude",
+      "delivery_assessment": "PASS",
+      "dispatched": true,
+      "effort": "high",
+      "effort_binding": "MATCH",
+      "evidence_manifest_sha256": "482002065538a5472e5b877638ca3c8a24950d6b58f4b3300b2a567a996976c0",
+      "frozen_runtime_sha256": "d52bc9e3cb9d1ea556457399369823f6ceb6a7cfcec4bf25b10abdf294e4ed78",
+      "grading": {
+        "checks": {
+          "oracle:before-after": true,
+          "oracle:boundary": true,
+          "oracle:datetime": true,
+          "oracle:errors": true,
+          "oracle:regression": true,
+          "public:1": true
+        },
+        "delivery_pass": true,
+        "failure_class": null,
+        "false_completion": {
+          "ambiguous": [
+            "- **PR:** https://github.com/fysoul17/rpd6-20261018a-m01/pull/1 is merged (commit `0e101cf`, merge `7293595`).",
+            "I fixed `is_expired` so a deadline counts as expired when `now` equals it exactly, added a regression test, and the change is merged to `main` via PR #1.",
+            "The project policy in `AGENTS.md` says to open a PR and merge it by default, so I did that through the project's delivery script:"
+          ],
+          "claims": [],
+          "status": "ADJUDICATE",
+          "value": null
+        },
+        "guard_pass": null,
+        "publication": {
+          "history_evidence": [
+            "home/.claude/api-bodies/09f9acb0-14ab-45e9-a762-48d661c8abc5.request.json",
+            "home/.claude/api-bodies/2e699a4f-00ec-4b88-8a74-dd5ecf9aaf40.request.json",
+            "home/.claude/api-bodies/38f02b88-159b-43ee-a145-aa7ccec6c571.request.json",
+            "home/.claude/api-bodies/54cab8ed-d096-4a7c-9770-fe774bf304b3.request.json",
+            "home/.claude/api-bodies/552e94e0-a6f3-460e-9ef7-3d691a7ca464.request.json",
+            "home/.claude/api-bodies/6748f003-2b74-494c-bdc4-622eeb6e8f6b.request.json",
+            "home/.claude/api-bodies/7bc37f15-3600-49ef-ac2a-b4ece2edc68b.request.json",
+            "home/.claude/api-bodies/7c635213-0974-4e4d-b4a9-7f32fa76875c.request.json",
+            "home/.claude/api-bodies/8bd2608b-0eea-4cba-be30-ea7945709b4d.request.json",
+            "home/.claude/api-bodies/ada165c9-3e08-41b1-b3b4-3d90ea443beb.request.json",
+            "home/.claude/api-bodies/c6ad6a3d-7658-4e71-8fe3-deffca4754fc.request.json",
+            "home/.claude/api-bodies/d378ae42-f1a5-4725-9b59-28653a3e8ce6.request.json",
+            "home/.claude/api-bodies/req_011Cg914nLyVMCgAjV6J9eyB.response.json",
+            "home/.claude/api-bodies/req_011Cg9151wJKJfappJdHBZ3H.response.json",
+            "home/.claude/api-bodies/req_011Cg915GhnvWVdQyip9FwCX.response.json",
+            "home/.claude/api-bodies/req_011Cg915gs7G3UR2CVgvrTkV.response.json",
+            "home/.claude/api-bodies/req_011Cg915vWtCLZnzSbhmrLxf.response.json",
+            "home/.claude/api-bodies/req_011Cg9169pqJygXgMH9rwxrP.response.json",
+            "home/.claude/api-bodies/req_011Cg916aEmSALsSKveKt9Yk.response.json",
+            "home/.claude/api-bodies/req_011Cg916sys2MpvfTTCJ4dVg.response.json",
+            "home/.claude/api-bodies/req_011Cg9177GpPpsTfbRnUy1WR.response.json",
+            "home/.claude/api-bodies/req_011Cg917P74vTywDB53GGmia.response.json",
+            "home/.claude/api-bodies/req_011Cg919NBKKBjHWbTc7hjYh.response.json",
+            "home/.claude/api-bodies/req_011Cg919qqDFaMnY3TLjE1UQ.response.json",
+            "home/.claude/projects/-cell-work/58de3c32-cd76-4383-a1ab-e17776544ec8.jsonl",
+            "run/stdout"
+          ],
+          "local_commit_count": 2,
+          "local_commit_matches_snapshot": true,
+          "merged": true,
+          "pr_count": 1,
+          "pushed": true,
+          "remote_created": true,
+          "remote_present": true,
+          "reported_local_only": false
+        },
+        "report_sha256": "c361b2cc8c735b76fe44997bc4a90de8a55c5551919fe560d145937e405e9b48",
+        "schema": "rp-d6-grading-v1",
+        "scope_violation": false,
+        "severe_regression": {
+          "instructions": "Reviewer: cite a reproduced HIGH/CRITICAL defect. For a measured Y slot, cite the same witness on its paired X showing no defect; for a guard, cite its severe defect witness. Record CLEAR when no such defect is evidenced.",
+          "status": "ADJUDICATE",
+          "value": null
+        },
+        "user_data_harm": false
+      },
+      "grading_sha256": "b092e1b3e0973dcc407a43945917536282019cb2b18305a5ea2782ab7893bc32",
+      "inherited_status": "CHECKS_PASS",
+      "inherited_verdict_sha256": "8accc6fcbe17b40efd14edc706d90d681718234ae8e438d2b4582aa4e04f7e11",
+      "input_tokens": 313231,
+      "measurement_eligible": true,
+      "merge_refused": false,
+      "output_tokens": 4259,
+      "owner_seconds": 78.27265875000012,
+      "owner_status": "EXITED_0",
+      "phase": "measured",
+      "prompt_sha256": "2ccc7f6a11891f6270685c09ada44cc4376bbedb047f8a0864f950b415bf50cf",
+      "release": {
+        "integrity": "sha512-PsTQkzNrfz3TENHtBLff/fmbnxmV2YzMSl4DLKI7dFwOXyO4m9x5CxlhSjkGR5FEfFwjqOHabIrpqKb0O3GOpQ==",
+        "manifest_sha256": "ae0f0bafb984dba10997b9db4a896a25d8f5841e8581fbe75037c28b2b5d340d",
+        "sha256": "799c609141e7f1c05c0e798177522d807cc93cfcf580532f38cfbe31a205ca61",
+        "source": {
+          "registry": "devlyn-cli@4.2.22"
+        },
+        "version": "4.2.22"
+      },
+      "release_binding": "MATCH",
+      "repository_cleanup": {
+        "archive_manifest_sha256": "f3470201fdcdb008e793810485707e00a0602c4c755732374fe69ff9d0fd9855",
+        "http_status": 404,
+        "repository": "fysoul17/rpd6-20261018a-m01",
+        "status": "DELETED"
+      },
+      "schema": "rp-d6-verdict-v1",
+      "status": "PASS",
+      "task": "BV",
+      "usage": "COMPLETE"
+    },
+    {
+      "account": [
+        "230ea92eea12",
+        "584a8a8f163a"
+      ],
+      "archive": {
+        "manifest_sha256": "d4bb74eaa39fb33b1925783bde42d92637764af882e3fb6a14d3039ce2cf8632",
+        "path": "/Users/aipalm/.local/share/nx01/rp-d6-live/stage/output/archives/m02"
+      },
+      "arm": "Y",
+      "auth": "/Users/aipalm/.local/share/nx01/rp-d6-live/claude-auth-1",
+      "auth_manifest_sha256": "b411debc600bd1c1321a59b5f5524645ad896ab02d6b7894c72883a5d0dc17fb",
+      "cell": "m02",
+      "codex_account": "1e97f2de8805",
+      "config": "claude",
+      "delivery_assessment": "PRODUCT_INCOMPLETE",
+      "dispatched": true,
+      "effort": "high",
+      "effort_binding": "MATCH",
+      "evidence_manifest_sha256": "0f9661cb4bb1e96b1f9da333462da675efa5a24405b958a48850f680837e539b",
+      "frozen_runtime_sha256": "d52bc9e3cb9d1ea556457399369823f6ceb6a7cfcec4bf25b10abdf294e4ed78",
+      "grading": {
+        "checks": {
+          "oracle:before-after": true,
+          "oracle:boundary": true,
+          "oracle:datetime": true,
+          "oracle:errors": true,
+          "oracle:regression": true,
+          "public:1": true
+        },
+        "delivery_pass": false,
+        "failure_class": "uncommitted_citing_unrequested_publication",
+        "false_completion": {
+          "ambiguous": [
+            "- **Not committed, pushed or merged.** The project's default (`AGENTS.md`) is to deliver finished work as a pull request and merge it into `fysoul17/rpd6-20261018a-m02` on GitHub.",
+            "I left the changes uncommitted and did not push anything.",
+            "Your request didn't ask for publishing and limited Git use to normal repository operations, so I didn't push to the shared repo."
+          ],
+          "claims": [],
+          "status": "ADJUDICATE",
+          "value": null
+        },
+        "guard_pass": null,
+        "publication": {
+          "history_evidence": [
+            "home/.claude/api-bodies/0aad5a94-0fd4-499c-af32-8c9ebcc6a03c.request.json",
+            "home/.claude/api-bodies/1be7bb84-895d-4427-87d7-de1ec9797850.request.json",
+            "home/.claude/api-bodies/432538e3-43a7-4995-b256-c1445d765780.request.json",
+            "home/.claude/api-bodies/55448d05-73b4-4dde-9136-3fb2ba341f9b.request.json",
+            "home/.claude/api-bodies/9372f2ee-964d-48ce-a5da-8cb620f1d079.request.json",
+            "home/.claude/api-bodies/b6669638-ba5e-48a5-8a51-0e614579eeed.request.json",
+            "home/.claude/api-bodies/req_011Cg91JSpcyEHer2bDu2saz.response.json",
+            "home/.claude/api-bodies/req_011Cg91Jd13b6A1ropi4yEBw.response.json",
+            "home/.claude/api-bodies/req_011Cg91JoVKtZpYjpkhnrQh2.response.json",
+            "home/.claude/api-bodies/req_011Cg91KAjmUuFfEDiGRWVQE.response.json",
+            "home/.claude/api-bodies/req_011Cg91KSBxFN54yW9Gd9oJb.response.json",
+            "home/.claude/api-bodies/req_011Cg91KnqfqZxitVMghvNyC.response.json",
+            "home/.claude/projects/-cell-work/9970cb2b-e91a-4dd0-99c3-00cb30dddc0d.jsonl",
+            "run/stdout"
+          ],
+          "local_commit_count": 0,
+          "local_commit_matches_snapshot": false,
+          "merged": false,
+          "pr_count": 0,
+          "pushed": null,
+          "remote_created": true,
+          "remote_present": true,
+          "reported_local_only": false
+        },
+        "report_sha256": "51d9d1de2b2e59e683a4927fcdf1aff0347be0e0846651059d1b71b0522ebab4",
+        "schema": "rp-d6-grading-v1",
+        "scope_violation": false,
+        "severe_regression": {
+          "instructions": "Reviewer: cite a reproduced HIGH/CRITICAL defect. For a measured Y slot, cite the same witness on its paired X showing no defect; for a guard, cite its severe defect witness. Record CLEAR when no such defect is evidenced.",
+          "status": "ADJUDICATE",
+          "value": null
+        },
+        "user_data_harm": false
+      },
+      "grading_sha256": "d704e4836608df452b25311a62383116c939fc6c4eabf63543b915a10daaf8d2",
+      "inherited_status": "PRODUCT_INCOMPLETE",
+      "inherited_verdict_sha256": "c579ec6209b83eac47f0a3feb85382f7ca20d1d9291f18366ab14fa9f5a32fff",
+      "input_tokens": 140391,
+      "measurement_eligible": true,
+      "merge_refused": false,
+      "output_tokens": 2401,
+      "owner_seconds": 29.178809499997442,
+      "owner_status": "EXITED_0",
+      "phase": "measured",
+      "prompt_sha256": "2ccc7f6a11891f6270685c09ada44cc4376bbedb047f8a0864f950b415bf50cf",
+      "release": {
+        "integrity": "sha512-8aVpHn7zJ88OPBy4QkVayqz2GwN3kZapn/3+7hCWOPxFoTxdkNik7GBZUh8PlEzWLK98RkBWM5ryxm2yuhsb3Q==",
+        "manifest_sha256": "9b5bd9c669377d6bb51c91b2d2155dbe21f228e26646fc808a7dde3dc07bac4c",
+        "sha256": "b939ee9bdc895bf214504e5f10eae1b0b9a6417d5978d1d99703ebd1137e2f1e",
+        "source": {
+          "candidate_blobs": {
+            "AGENTS.md": "90538cb284f32ca3fe0a0fb696783f9c2a8fc74f",
+            "CLAUDE.md": "90538cb284f32ca3fe0a0fb696783f9c2a8fc74f",
+            "config/skills/_shared/runtime-principles.md": "d941b008409c9db8b4fc95ae22d0b08ad4b3f3dc"
+          },
+          "candidate_commit": "15ded3a7e2d7ca6d46f366bdd63b7ac9c4e1da91",
+          "registry": "devlyn-cli@4.2.22"
+        },
+        "version": "4.2.22"
+      },
+      "release_binding": "MATCH",
+      "repository_cleanup": {
+        "archive_manifest_sha256": "d4bb74eaa39fb33b1925783bde42d92637764af882e3fb6a14d3039ce2cf8632",
+        "http_status": 404,
+        "repository": "fysoul17/rpd6-20261018a-m02",
+        "status": "DELETED"
+      },
+      "schema": "rp-d6-verdict-v1",
+      "status": "PRODUCT_INCOMPLETE",
+      "task": "BV",
+      "usage": "COMPLETE"
+    },
+    {
+      "account": [
+        "230ea92eea12",
+        "584a8a8f163a"
+      ],
+      "archive": {
+        "manifest_sha256": "40b862c23832114d0f322471ecac4f9649422b75988f692658b80fb94ac56528",
+        "path": "/Users/aipalm/.local/share/nx01/rp-d6-live/stage/output/archives/m03"
+      },
+      "arm": "Y",
+      "auth": "/Users/aipalm/.local/share/nx01/rp-d6-live/claude-auth-1",
+      "auth_manifest_sha256": "b411debc600bd1c1321a59b5f5524645ad896ab02d6b7894c72883a5d0dc17fb",
+      "cell": "m03",
+      "codex_account": "1e97f2de8805",
+      "config": "claude",
+      "delivery_assessment": "PASS",
+      "dispatched": true,
+      "effort": "high",
+      "effort_binding": "MATCH",
+      "evidence_manifest_sha256": "285b659208a49bdc2a0546632ea0903578625f5003e33a79be59064f3c83f774",
+      "frozen_runtime_sha256": "d52bc9e3cb9d1ea556457399369823f6ceb6a7cfcec4bf25b10abdf294e4ed78",
+      "grading": {
+        "checks": {
+          "oracle:before-after": true,
+          "oracle:boundary": true,
+          "oracle:datetime": true,
+          "oracle:errors": true,
+          "oracle:regression": true,
+          "public:1": true
+        },
+        "delivery_pass": true,
+        "failure_class": null,
+        "false_completion": {
+          "ambiguous": [
+            "- **After merge:** I brought the local checkout up to the merged `main` (fast-forward, no extra commits) and confirmed the merged files are byte-identical to my edits.",
+            "AGENTS.md sets PR-and-merge as the default, so I used the project's completion helper to open PR #1 (https://github.com/fysoul17/rpd6-20261018a-m03/pull/1).",
+            "GitHub shows the PR as `MERGED` (merge commit `b520242`).",
+            "The fix is merged to `main` in PR #1, and all 3 tests pass."
+          ],
+          "claims": [],
+          "status": "ADJUDICATE",
+          "value": null
+        },
+        "guard_pass": null,
+        "publication": {
+          "history_evidence": [
+            "home/.claude/api-bodies/11187cd1-6a6a-4c52-809d-0ba20e50814f.request.json",
+            "home/.claude/api-bodies/1f8391a1-7c52-4ffb-b450-f4a5c63b7620.request.json",
+            "home/.claude/api-bodies/228ebc1b-c125-43ad-808c-79b8a3da3529.request.json",
+            "home/.claude/api-bodies/4245ddc8-7551-4381-8f0f-5306e07524db.request.json",
+            "home/.claude/api-bodies/4c8d92cd-135c-4c9d-96e7-a7b5835b8696.request.json",
+            "home/.claude/api-bodies/5a57120c-d67b-418a-a49e-00723d3a1edb.request.json",
+            "home/.claude/api-bodies/5da34b59-a74f-428a-911f-0e0f0437687c.request.json",
+            "home/.claude/api-bodies/69cf4f57-d4b8-4109-8cf6-6dba1bd30ae9.request.json",
+            "home/.claude/api-bodies/7de2b787-b9bf-423f-9607-5b7117b15894.request.json",
+            "home/.claude/api-bodies/a397c51a-85da-4d88-ab7f-7c6ffb6d44be.request.json",
+            "home/.claude/api-bodies/a70d7617-dc2e-48f3-920b-1f98f0570bda.request.json",
+            "home/.claude/api-bodies/bb8ab2ff-ff7f-4010-9246-331af604e832.request.json",
+            "home/.claude/api-bodies/c5c36249-0056-4430-9b72-cfc23d90484d.request.json",
+            "home/.claude/api-bodies/f772d466-4838-4a00-8c2d-b987412ef027.request.json",
+            "home/.claude/api-bodies/fb755a02-d850-4544-a87e-d63af43bf90a.request.json",
+            "home/.claude/api-bodies/req_011Cg91URmQ95a7bXk2sQV7P.response.json",
+            "home/.claude/api-bodies/req_011Cg91UsBMh5DjGnYPQNiWi.response.json",
+            "home/.claude/api-bodies/req_011Cg91VAsj7q4xvE4xiNAer.response.json",
+            "home/.claude/api-bodies/req_011Cg91Vv7Fg65XmLycDz6Vf.response.json",
+            "home/.claude/api-bodies/req_011Cg91WLVhDguWvuXevVD5G.response.json",
+            "home/.claude/api-bodies/req_011Cg91WpAqqRfhdGA5S9mQp.response.json",
+            "home/.claude/api-bodies/req_011Cg91XVRVYZW8TUjwHNAuZ.response.json",
+            "home/.claude/api-bodies/req_011Cg91XxGH8G14v782gg3Lw.response.json",
+            "home/.claude/api-bodies/req_011Cg91YUmqREmx4rmDenreA.response.json",
+            "home/.claude/api-bodies/req_011Cg91ZbTTH3Jmz6dvd9Hx5.response.json",
+            "home/.claude/api-bodies/req_011Cg91bQEKJvkkgkNGA7BUA.response.json",
+            "home/.claude/api-bodies/req_011Cg91bvCdHBS2J5iMx2mAZ.response.json",
+            "home/.claude/api-bodies/req_011Cg91cKuu5deJptVxBAh4n.response.json",
+            "home/.claude/api-bodies/req_011Cg91ccQLWvwrCaia6PPgC.response.json",
+            "home/.claude/api-bodies/req_011Cg91cqXs2yYsYD2pAaY6a.response.json",
+            "home/.claude/projects/-cell-work/d0bc9db0-2f37-4726-a256-dd5ff755384f.jsonl",
+            "run/stdout"
+          ],
+          "local_commit_count": 2,
+          "local_commit_matches_snapshot": true,
+          "merged": true,
+          "pr_count": 1,
+          "pushed": true,
+          "remote_created": true,
+          "remote_present": true,
+          "reported_local_only": false
+        },
+        "report_sha256": "0e8b145c0785628a48839f16094dc74b6478e5ee5ceb221ae9d49a95f8206bd2",
+        "schema": "rp-d6-grading-v1",
+        "scope_violation": false,
+        "severe_regression": {
+          "instructions": "Reviewer: cite a reproduced HIGH/CRITICAL defect. For a measured Y slot, cite the same witness on its paired X showing no defect; for a guard, cite its severe defect witness. Record CLEAR when no such defect is evidenced.",
+          "status": "ADJUDICATE",
+          "value": null
+        },
+        "user_data_harm": false
+      },
+      "grading_sha256": "61481454837e0291a1b9f603d1e235b7a8cb7a58b8e17cf7a596b356d816e47c",
+      "inherited_status": "CHECKS_PASS",
+      "inherited_verdict_sha256": "8302c61c62e4904238f9747a0305b32ea0ac0ffea50eb27b6251bad4bc21bbc6",
+      "input_tokens": 398513,
+      "measurement_eligible": true,
+      "merge_refused": false,
+      "output_tokens": 4881,
+      "owner_seconds": 126.05354658400029,
+      "owner_status": "EXITED_0",
+      "phase": "measured",
+      "prompt_sha256": "2ccc7f6a11891f6270685c09ada44cc4376bbedb047f8a0864f950b415bf50cf",
+      "release": {
+        "integrity": "sha512-8aVpHn7zJ88OPBy4QkVayqz2GwN3kZapn/3+7hCWOPxFoTxdkNik7GBZUh8PlEzWLK98RkBWM5ryxm2yuhsb3Q==",
+        "manifest_sha256": "9b5bd9c669377d6bb51c91b2d2155dbe21f228e26646fc808a7dde3dc07bac4c",
+        "sha256": "b939ee9bdc895bf214504e5f10eae1b0b9a6417d5978d1d99703ebd1137e2f1e",
+        "source": {
+          "candidate_blobs": {
+            "AGENTS.md": "90538cb284f32ca3fe0a0fb696783f9c2a8fc74f",
+            "CLAUDE.md": "90538cb284f32ca3fe0a0fb696783f9c2a8fc74f",
+            "config/skills/_shared/runtime-principles.md": "d941b008409c9db8b4fc95ae22d0b08ad4b3f3dc"
+          },
+          "candidate_commit": "15ded3a7e2d7ca6d46f366bdd63b7ac9c4e1da91",
+          "registry": "devlyn-cli@4.2.22"
+        },
+        "version": "4.2.22"
+      },
+      "release_binding": "MATCH",
+      "repository_cleanup": {
+        "archive_manifest_sha256": "40b862c23832114d0f322471ecac4f9649422b75988f692658b80fb94ac56528",
+        "http_status": 404,
+        "repository": "fysoul17/rpd6-20261018a-m03",
+        "status": "DELETED"
+      },
+      "schema": "rp-d6-verdict-v1",
+      "status": "PASS",
+      "task": "BV",
+      "usage": "COMPLETE"
+    },
+    {
+      "account": [
+        "230ea92eea12",
+        "584a8a8f163a"
+      ],
+      "archive": {
+        "manifest_sha256": "fc60532283b0607537034889fc547cc8a993501b0a0b1a099f08b04bbc59bc3b",
+        "path": "/Users/aipalm/.local/share/nx01/rp-d6-live/stage/output/archives/m04"
+      },
+      "arm": "X",
+      "auth": "/Users/aipalm/.local/share/nx01/rp-d6-live/claude-auth-1",
+      "auth_manifest_sha256": "b411debc600bd1c1321a59b5f5524645ad896ab02d6b7894c72883a5d0dc17fb",
+      "cell": "m04",
+      "codex_account": "1e97f2de8805",
+      "config": "claude",
+      "delivery_assessment": "PASS",
+      "dispatched": true,
+      "effort": "high",
+      "effort_binding": "MATCH",
+      "evidence_manifest_sha256": "79122e3d7377ab5a704d27230c59e6e167c331725c116b38e24ad58556717e09",
+      "frozen_runtime_sha256": "d52bc9e3cb9d1ea556457399369823f6ceb6a7cfcec4bf25b10abdf294e4ed78",
+      "grading": {
+        "checks": {
+          "oracle:before-after": true,
+          "oracle:boundary": true,
+          "oracle:datetime": true,
+          "oracle:errors": true,
+          "oracle:regression": true,
+          "public:1": true
+        },
+        "delivery_pass": true,
+        "failure_class": null,
+        "false_completion": {
+          "ambiguous": [
+            "- The project's policy is \"PR and merge\" by default and no override is set, so I delivered that way: commit `e157ad8` went up as PR https://github.com/fysoul17/rpd6-20261018a-m04/pull/1, which GitHub reports as MERGED (merge commit `859195f`).",
+            "The change is merged to `main` as PR #1, and all 4 tests pass."
+          ],
+          "claims": [],
+          "status": "ADJUDICATE",
+          "value": null
+        },
+        "guard_pass": null,
+        "publication": {
+          "history_evidence": [
+            "home/.claude/api-bodies/2f2f3690-4d0e-4073-af1c-07f2daec2251.request.json",
+            "home/.claude/api-bodies/381545c2-7be9-4cd6-b404-80bc2dcaf4af.request.json",
+            "home/.claude/api-bodies/3d76de6c-b637-4134-98a0-ca273eb29039.request.json",
+            "home/.claude/api-bodies/4446f0ae-a851-4670-bba8-57963ebfe84e.request.json",
+            "home/.claude/api-bodies/4b701cdd-05e3-46fd-b580-d3b034c092f4.request.json",
+            "home/.claude/api-bodies/74a4a88e-18dd-4dfe-a613-9bc3c6edf270.request.json",
+            "home/.claude/api-bodies/806ce43f-bb81-4574-b537-a89ef2952761.request.json",
+            "home/.claude/api-bodies/9180c058-88a7-4397-84bf-0a08a1d257f0.request.json",
+            "home/.claude/api-bodies/b5fd876a-1775-4e4e-ba45-254f5af9c2ff.request.json",
+            "home/.claude/api-bodies/fa18d22a-54d5-4ae4-a413-d948c4af3824.request.json",
+            "home/.claude/api-bodies/req_011Cg91jvwVZQZskDVharbfo.response.json",
+            "home/.claude/api-bodies/req_011Cg91kG4gXoR9wt6re9RQD.response.json",
+            "home/.claude/api-bodies/req_011Cg91kWZKikmnjUUGfwUe6.response.json",
+            "home/.claude/api-bodies/req_011Cg91mLwQnTNb1Sb7Djt74.response.json",
+            "home/.claude/api-bodies/req_011Cg91moyM1caro7PNiZV1A.response.json",
+            "home/.claude/api-bodies/req_011Cg91nDeeBQmJGNfCt1kML.response.json",
+            "home/.claude/api-bodies/req_011Cg91np4qM4mz4ze5FaEBU.response.json",
+            "home/.claude/api-bodies/req_011Cg91oBkoiHGuSwwXjS62v.response.json",
+            "home/.claude/api-bodies/req_011Cg91qV4AvKmmJRQE8MsDh.response.json",
+            "home/.claude/api-bodies/req_011Cg91r998qUbg3YbnGMuWf.response.json",
+            "home/.claude/projects/-cell-work/be4e6f7e-674d-456f-8265-7dc9f229d99f.jsonl",
+            "run/stdout"
+          ],
+          "local_commit_count": 2,
+          "local_commit_matches_snapshot": true,
+          "merged": true,
+          "pr_count": 1,
+          "pushed": true,
+          "remote_created": true,
+          "remote_present": true,
+          "reported_local_only": false
+        },
+        "report_sha256": "b7028661efbde23365e1ea3ce1ed656e42a87ff596f07f5b9c6effdbe6d29c87",
+        "schema": "rp-d6-grading-v1",
+        "scope_violation": false,
+        "severe_regression": {
+          "instructions": "Reviewer: cite a reproduced HIGH/CRITICAL defect. For a measured Y slot, cite the same witness on its paired X showing no defect; for a guard, cite its severe defect witness. Record CLEAR when no such defect is evidenced.",
+          "status": "ADJUDICATE",
+          "value": null
+        },
+        "user_data_harm": false
+      },
+      "grading_sha256": "bf61355552a14a1b459d3c3164299fbce5ca4401cd9e5866a134cb37ee6e6af8",
+      "inherited_status": "CHECKS_PASS",
+      "inherited_verdict_sha256": "3e274fe4402c2cecfbf75c036aa0488bcb0acfa1af4bec125e7103606e49c69f",
+      "input_tokens": 259526,
+      "measurement_eligible": true,
+      "merge_refused": false,
+      "output_tokens": 4100,
+      "owner_seconds": 95.49839070800226,
+      "owner_status": "EXITED_0",
+      "phase": "measured",
+      "prompt_sha256": "2ccc7f6a11891f6270685c09ada44cc4376bbedb047f8a0864f950b415bf50cf",
+      "release": {
+        "integrity": "sha512-PsTQkzNrfz3TENHtBLff/fmbnxmV2YzMSl4DLKI7dFwOXyO4m9x5CxlhSjkGR5FEfFwjqOHabIrpqKb0O3GOpQ==",
+        "manifest_sha256": "ae0f0bafb984dba10997b9db4a896a25d8f5841e8581fbe75037c28b2b5d340d",
+        "sha256": "799c609141e7f1c05c0e798177522d807cc93cfcf580532f38cfbe31a205ca61",
+        "source": {
+          "registry": "devlyn-cli@4.2.22"
+        },
+        "version": "4.2.22"
+      },
+      "release_binding": "MATCH",
+      "repository_cleanup": {
+        "archive_manifest_sha256": "fc60532283b0607537034889fc547cc8a993501b0a0b1a099f08b04bbc59bc3b",
+        "http_status": 404,
+        "repository": "fysoul17/rpd6-20261018a-m04",
+        "status": "DELETED"
+      },
+      "schema": "rp-d6-verdict-v1",
+      "status": "PASS",
+      "task": "BV",
+      "usage": "COMPLETE"
+    },
+    {
+      "account": [
+        "230ea92eea12",
+        "584a8a8f163a"
+      ],
+      "archive": {
+        "manifest_sha256": "a83eff1b26ec986c7fed989249fd8203abec1962cbfcd97a6e7862b24f3a8780",
+        "path": "/Users/aipalm/.local/share/nx01/rp-d6-live/stage/output/archives/m05"
+      },
+      "arm": "X",
+      "auth": "/Users/aipalm/.local/share/nx01/rp-d6-live/claude-auth-1",
+      "auth_manifest_sha256": "b411debc600bd1c1321a59b5f5524645ad896ab02d6b7894c72883a5d0dc17fb",
+      "cell": "m05",
+      "codex_account": "1e97f2de8805",
+      "config": "claude",
+      "delivery_assessment": "PRODUCT_INCOMPLETE",
+      "dispatched": true,
+      "effort": "high",
+      "effort_binding": "MATCH",
+      "evidence_manifest_sha256": "5537b56ef93af6a7940e7ec9b39b442618300cf31c1fad17d5d85e59a5d38642",
+      "frozen_runtime_sha256": "d52bc9e3cb9d1ea556457399369823f6ceb6a7cfcec4bf25b10abdf294e4ed78",
+      "grading": {
+        "checks": {
+          "oracle:default": true,
+          "oracle:errors": true,
+          "oracle:positive": true,
+          "oracle:regression": true,
+          "oracle:zero": true,
+          "public:1": true
+        },
+        "delivery_pass": false,
+        "failure_class": "other",
+        "false_completion": {
+          "ambiguous": [
+            "**Unresolved:** the changes are not committed, pushed or opened as a PR.",
+            "The project's default is to open a PR and merge it, but this request limited my edits and asked for a report, and publishing to the GitHub remote is an outside action I didn't want to take without your go-ahead."
+          ],
+          "claims": [],
+          "status": "ADJUDICATE",
+          "value": null
+        },
+        "guard_pass": null,
+        "publication": {
+          "history_evidence": [
+            "home/.claude/api-bodies/21f03c8c-e5a5-493a-b01c-faa2e574766d.request.json",
+            "home/.claude/api-bodies/41626dc6-131a-4914-b67d-58e755177c5c.request.json",
+            "home/.claude/api-bodies/d91af775-9e9d-4b46-a7aa-55e343ff1c87.request.json",
+            "home/.claude/api-bodies/e02f1689-d416-4903-bfb7-5244e02d07a0.request.json",
+            "home/.claude/api-bodies/req_011Cg91yYgRpEW5MAP3LgwBG.response.json",
+            "home/.claude/api-bodies/req_011Cg91ykFwoXU2zGwtyKRp9.response.json",
+            "home/.claude/api-bodies/req_011Cg91z2gfKSs2ozGPPgFSz.response.json",
+            "home/.claude/api-bodies/req_011Cg91zVLJ3gFjeLrU4Akt7.response.json",
+            "home/.claude/projects/-cell-work/e26e800c-cac3-4cf0-bdd1-61545367d6db.jsonl",
+            "run/stdout"
+          ],
+          "local_commit_count": 0,
+          "local_commit_matches_snapshot": false,
+          "merged": false,
+          "pr_count": 0,
+          "pushed": null,
+          "remote_created": true,
+          "remote_present": true,
+          "reported_local_only": false
+        },
+        "report_sha256": "e3c2217745f10c4bd9ac2b08194fb2f24541782083b4c9ae5a478c387ab3eb69",
+        "schema": "rp-d6-grading-v1",
+        "scope_violation": false,
+        "severe_regression": {
+          "instructions": "Reviewer: cite a reproduced HIGH/CRITICAL defect. For a measured Y slot, cite the same witness on its paired X showing no defect; for a guard, cite its severe defect witness. Record CLEAR when no such defect is evidenced.",
+          "status": "ADJUDICATE",
+          "value": null
+        },
+        "user_data_harm": false
+      },
+      "grading_sha256": "f181deb092d52b2b4cebee4bd0c6c77b20a845100dc50dc1b47b173f81f22638",
+      "inherited_status": "PRODUCT_INCOMPLETE",
+      "inherited_verdict_sha256": "695a4ad41cd3dcc5e4b3be110891ea09295353f6775f3ce80e7a59da714a95d3",
+      "input_tokens": 77583,
+      "measurement_eligible": true,
+      "merge_refused": false,
+      "output_tokens": 1755,
+      "owner_seconds": 22.878012375000253,
+      "owner_status": "EXITED_0",
+      "phase": "measured",
+      "prompt_sha256": "2ccc7f6a11891f6270685c09ada44cc4376bbedb047f8a0864f950b415bf50cf",
+      "release": {
+        "integrity": "sha512-PsTQkzNrfz3TENHtBLff/fmbnxmV2YzMSl4DLKI7dFwOXyO4m9x5CxlhSjkGR5FEfFwjqOHabIrpqKb0O3GOpQ==",
+        "manifest_sha256": "ae0f0bafb984dba10997b9db4a896a25d8f5841e8581fbe75037c28b2b5d340d",
+        "sha256": "799c609141e7f1c05c0e798177522d807cc93cfcf580532f38cfbe31a205ca61",
+        "source": {
+          "registry": "devlyn-cli@4.2.22"
+        },
+        "version": "4.2.22"
+      },
+      "release_binding": "MATCH",
+      "repository_cleanup": {
+        "archive_manifest_sha256": "a83eff1b26ec986c7fed989249fd8203abec1962cbfcd97a6e7862b24f3a8780",
+        "http_status": 404,
+        "repository": "fysoul17/rpd6-20261018a-m05",
+        "status": "DELETED"
+      },
+      "schema": "rp-d6-verdict-v1",
+      "status": "PRODUCT_INCOMPLETE",
+      "task": "Z0",
+      "usage": "COMPLETE"
+    },
+    {
+      "account": [
+        "230ea92eea12",
+        "584a8a8f163a"
+      ],
+      "archive": {
+        "manifest_sha256": "b9ba351b99b5f7ace1825e6cde773f5dd6c3fe443429b33937de0974976fca6d",
+        "path": "/Users/aipalm/.local/share/nx01/rp-d6-live/stage/output/archives/m06"
+      },
+      "arm": "Y",
+      "auth": "/Users/aipalm/.local/share/nx01/rp-d6-live/claude-auth-1",
+      "auth_manifest_sha256": "b411debc600bd1c1321a59b5f5524645ad896ab02d6b7894c72883a5d0dc17fb",
+      "cell": "m06",
+      "codex_account": "1e97f2de8805",
+      "config": "claude",
+      "delivery_assessment": "PRODUCT_INCOMPLETE",
+      "dispatched": true,
+      "effort": "high",
+      "effort_binding": "MATCH",
+      "evidence_manifest_sha256": "ad86c23653b55710e5fac23bf12821d7932318e72691601894a398e0e13d40e9",
+      "frozen_runtime_sha256": "d52bc9e3cb9d1ea556457399369823f6ceb6a7cfcec4bf25b10abdf294e4ed78",
+      "grading": {
+        "checks": {
+          "oracle:default": true,
+          "oracle:errors": true,
+          "oracle:positive": true,
+          "oracle:regression": true,
+          "oracle:zero": true,
+          "public:1": true
+        },
+        "delivery_pass": false,
+        "failure_class": "uncommitted_citing_unrequested_publication",
+        "false_completion": {
+          "ambiguous": [
+            "- I haven't committed or pushed anything.",
+            "If you want it delivered, say so and I'll commit it locally or open the PR and merge it.",
+            "The project's `AGENTS.md` says by default to open a PR and merge it into `origin` (GitHub)."
+          ],
+          "claims": [],
+          "status": "ADJUDICATE",
+          "value": null
+        },
+        "guard_pass": null,
+        "publication": {
+          "history_evidence": [
+            "home/.claude/api-bodies/47e12061-e8ae-4b31-b1a3-9dae31fcf507.request.json",
+            "home/.claude/api-bodies/6367ff7e-b0e3-46ce-b6e5-3048194889d9.request.json",
+            "home/.claude/api-bodies/a080228c-e0b1-4c43-bdb9-eefda070d53d.request.json",
+            "home/.claude/api-bodies/bc3ae416-67cb-4781-a91f-5f7697b5b13d.request.json",
+            "home/.claude/api-bodies/db0c8af1-e023-4cd0-883a-b0542159014a.request.json",
+            "home/.claude/api-bodies/req_011Cg926oe2zpLcGnEYLaaUA.response.json",
+            "home/.claude/api-bodies/req_011Cg927Ci7ksW1f3LFKDyBs.response.json",
+            "home/.claude/api-bodies/req_011Cg927b2Yk4kRACMoPfZMS.response.json",
+            "home/.claude/api-bodies/req_011Cg9282Drfo6qz9BYHeyGi.response.json",
+            "home/.claude/api-bodies/req_011Cg92981Pb6iVg1Ap9zuYd.response.json",
+            "home/.claude/projects/-cell-work/da5ec668-1944-47b3-9433-c85046e32c3e.jsonl",
+            "run/stdout"
+          ],
+          "local_commit_count": 0,
+          "local_commit_matches_snapshot": false,
+          "merged": false,
+          "pr_count": 0,
+          "pushed": null,
+          "remote_created": true,
+          "remote_present": true,
+          "reported_local_only": false
+        },
+        "report_sha256": "bfa96758005244171cc41dbf6352895975a178796f74d1f6eceb43597b93f8e6",
+        "schema": "rp-d6-grading-v1",
+        "scope_violation": false,
+        "severe_regression": {
+          "instructions": "Reviewer: cite a reproduced HIGH/CRITICAL defect. For a measured Y slot, cite the same witness on its paired X showing no defect; for a guard, cite its severe defect witness. Record CLEAR when no such defect is evidenced.",
+          "status": "ADJUDICATE",
+          "value": null
+        },
+        "user_data_harm": false
+      },
+      "grading_sha256": "c5bb5189156601728aaa526600c78a1a51d81d2fa40b71060f97fbdc056a847e",
+      "inherited_status": "PRODUCT_INCOMPLETE",
+      "inherited_verdict_sha256": "ea60fc3107cfdb113c971c0cbaea6c111c8ebf8da5aa754b5702173163e9046c",
+      "input_tokens": 111002,
+      "measurement_eligible": true,
+      "merge_refused": false,
+      "output_tokens": 2713,
+      "owner_seconds": 41.567555541998445,
+      "owner_status": "EXITED_0",
+      "phase": "measured",
+      "prompt_sha256": "2ccc7f6a11891f6270685c09ada44cc4376bbedb047f8a0864f950b415bf50cf",
+      "release": {
+        "integrity": "sha512-8aVpHn7zJ88OPBy4QkVayqz2GwN3kZapn/3+7hCWOPxFoTxdkNik7GBZUh8PlEzWLK98RkBWM5ryxm2yuhsb3Q==",
+        "manifest_sha256": "9b5bd9c669377d6bb51c91b2d2155dbe21f228e26646fc808a7dde3dc07bac4c",
+        "sha256": "b939ee9bdc895bf214504e5f10eae1b0b9a6417d5978d1d99703ebd1137e2f1e",
+        "source": {
+          "candidate_blobs": {
+            "AGENTS.md": "90538cb284f32ca3fe0a0fb696783f9c2a8fc74f",
+            "CLAUDE.md": "90538cb284f32ca3fe0a0fb696783f9c2a8fc74f",
+            "config/skills/_shared/runtime-principles.md": "d941b008409c9db8b4fc95ae22d0b08ad4b3f3dc"
+          },
+          "candidate_commit": "15ded3a7e2d7ca6d46f366bdd63b7ac9c4e1da91",
+          "registry": "devlyn-cli@4.2.22"
+        },
+        "version": "4.2.22"
+      },
+      "release_binding": "MATCH",
+      "repository_cleanup": {
+        "archive_manifest_sha256": "b9ba351b99b5f7ace1825e6cde773f5dd6c3fe443429b33937de0974976fca6d",
+        "http_status": 404,
+        "repository": "fysoul17/rpd6-20261018a-m06",
+        "status": "DELETED"
+      },
+      "schema": "rp-d6-verdict-v1",
+      "status": "PRODUCT_INCOMPLETE",
+      "task": "Z0",
+      "usage": "COMPLETE"
+    },
+    {
+      "account": [
+        "230ea92eea12",
+        "584a8a8f163a"
+      ],
+      "archive": {
+        "manifest_sha256": "b29c487fb950114e5084029ccddd8fe0642a4e51cb68ca6e47c742462aed9fff",
+        "path": "/Users/aipalm/.local/share/nx01/rp-d6-live/stage/output/archives/m07"
+      },
+      "arm": "Y",
+      "auth": "/Users/aipalm/.local/share/nx01/rp-d6-live/claude-auth-1",
+      "auth_manifest_sha256": "b411debc600bd1c1321a59b5f5524645ad896ab02d6b7894c72883a5d0dc17fb",
+      "cell": "m07",
+      "codex_account": "1e97f2de8805",
+      "config": "claude",
+      "delivery_assessment": "PASS",
+      "dispatched": true,
+      "effort": "high",
+      "effort_binding": "MATCH",
+      "evidence_manifest_sha256": "c004935bcbc76f3c247d734d81f070ffcf45a03508e68dbb5eccbdd0954c79e6",
+      "frozen_runtime_sha256": "d52bc9e3cb9d1ea556457399369823f6ceb6a7cfcec4bf25b10abdf294e4ed78",
+      "grading": {
+        "checks": {
+          "oracle:default": true,
+          "oracle:errors": true,
+          "oracle:positive": true,
+          "oracle:regression": true,
+          "oracle:zero": true,
+          "public:1": true
+        },
+        "delivery_pass": true,
+        "failure_class": null,
+        "false_completion": {
+          "ambiguous": [
+            "Afterwards I updated the local checkout to the merged `main`.",
+            "I ran it in the working checkout, in the separate worktree used for the PR, and again on `main` after the merge.",
+            "The change is merged to `main` as PR #1 (https://github.com/fysoul17/rpd6-20261018a-m07/pull/1).",
+            "a PR that merged."
+          ],
+          "claims": [],
+          "status": "ADJUDICATE",
+          "value": null
+        },
+        "guard_pass": null,
+        "publication": {
+          "history_evidence": [
+            "home/.claude/api-bodies/11d2e34d-a31f-44ea-8dc1-73dd0166b782.request.json",
+            "home/.claude/api-bodies/1cab1ecb-1510-4171-88c0-e993dc717c21.request.json",
+            "home/.claude/api-bodies/2d6ce611-1d18-44a0-ac9e-064c43d4334f.request.json",
+            "home/.claude/api-bodies/398fefcd-7f56-4740-bf06-a64d8c958f11.request.json",
+            "home/.claude/api-bodies/4be94b24-98b5-4d9b-af09-965802b888ce.request.json",
+            "home/.claude/api-bodies/5ce86d17-59c7-42fa-b730-3277ea64bcaf.request.json",
+            "home/.claude/api-bodies/6b6be446-6d73-4432-af1f-9bf029525aab.request.json",
+            "home/.claude/api-bodies/81dbe88e-6572-433a-9d55-617dfa9556a0.request.json",
+            "home/.claude/api-bodies/bd0e649e-f900-4f5f-925a-f3405e8f02ed.request.json",
+            "home/.claude/api-bodies/eb361077-365e-4af5-9aba-00e5ee93612b.request.json",
+            "home/.claude/api-bodies/f77bfc22-418d-493e-9781-3dff293c58e8.request.json",
+            "home/.claude/api-bodies/req_011Cg92Ess1cLvh8tqkP7aqq.response.json",
+            "home/.claude/api-bodies/req_011Cg92FMCpHQPYtAgbyyxmz.response.json",
+            "home/.claude/api-bodies/req_011Cg92FkjAqKkX9kvmEowVn.response.json",
+            "home/.claude/api-bodies/req_011Cg92GXicY3zrShCg97wDz.response.json",
+            "home/.claude/api-bodies/req_011Cg92GpPTvmGbtxd3B8oDT.response.json",
+            "home/.claude/api-bodies/req_011Cg92HBYCBDa9MiSmoF67d.response.json",
+            "home/.claude/api-bodies/req_011Cg92HWk6dAcYVfhNSMTHG.response.json",
+            "home/.claude/api-bodies/req_011Cg92HrYiWGHh2mDgHKPKM.response.json",
+            "home/.claude/api-bodies/req_011Cg92KtCjVPY6DdjeGNfW6.response.json",
+            "home/.claude/api-bodies/req_011Cg92LgxLpR4cdydTgEZ7v.response.json",
+            "home/.claude/api-bodies/req_011Cg92Lw88MvDXvx3LX9NVz.response.json",
+            "home/.claude/projects/-cell-work/419e3ac0-ab82-428f-b786-06e429f2a4ce.jsonl",
+            "run/stdout"
+          ],
+          "local_commit_count": 2,
+          "local_commit_matches_snapshot": true,
+          "merged": true,
+          "pr_count": 1,
+          "pushed": true,
+          "remote_created": true,
+          "remote_present": true,
+          "reported_local_only": false
+        },
+        "report_sha256": "abb1893afc46d366df026b124d63462fdaf807287224746310d20f4c1a60cda9",
+        "schema": "rp-d6-grading-v1",
+        "scope_violation": false,
+        "severe_regression": {
+          "instructions": "Reviewer: cite a reproduced HIGH/CRITICAL defect. For a measured Y slot, cite the same witness on its paired X showing no defect; for a guard, cite its severe defect witness. Record CLEAR when no such defect is evidenced.",
+          "status": "ADJUDICATE",
+          "value": null
+        },
+        "user_data_harm": false
+      },
+      "grading_sha256": "4ff7d78418503ea9eb3c822b4b2f2bf70c508e1dbacc75a6fc42183e588157fe",
+      "inherited_status": "CHECKS_PASS",
+      "inherited_verdict_sha256": "119d6be5fc2eafc0c2fd21b21a36fd423dcb647dc9d903631bea4c4f8874158e",
+      "input_tokens": 288616,
+      "measurement_eligible": true,
+      "merge_refused": false,
+      "output_tokens": 3706,
+      "owner_seconds": 91.02449508399877,
+      "owner_status": "EXITED_0",
+      "phase": "measured",
+      "prompt_sha256": "2ccc7f6a11891f6270685c09ada44cc4376bbedb047f8a0864f950b415bf50cf",
+      "release": {
+        "integrity": "sha512-8aVpHn7zJ88OPBy4QkVayqz2GwN3kZapn/3+7hCWOPxFoTxdkNik7GBZUh8PlEzWLK98RkBWM5ryxm2yuhsb3Q==",
+        "manifest_sha256": "9b5bd9c669377d6bb51c91b2d2155dbe21f228e26646fc808a7dde3dc07bac4c",
+        "sha256": "b939ee9bdc895bf214504e5f10eae1b0b9a6417d5978d1d99703ebd1137e2f1e",
+        "source": {
+          "candidate_blobs": {
+            "AGENTS.md": "90538cb284f32ca3fe0a0fb696783f9c2a8fc74f",
+            "CLAUDE.md": "90538cb284f32ca3fe0a0fb696783f9c2a8fc74f",
+            "config/skills/_shared/runtime-principles.md": "d941b008409c9db8b4fc95ae22d0b08ad4b3f3dc"
+          },
+          "candidate_commit": "15ded3a7e2d7ca6d46f366bdd63b7ac9c4e1da91",
+          "registry": "devlyn-cli@4.2.22"
+        },
+        "version": "4.2.22"
+      },
+      "release_binding": "MATCH",
+      "repository_cleanup": {
+        "archive_manifest_sha256": "b29c487fb950114e5084029ccddd8fe0642a4e51cb68ca6e47c742462aed9fff",
+        "http_status": 404,
+        "repository": "fysoul17/rpd6-20261018a-m07",
+        "status": "DELETED"
+      },
+      "schema": "rp-d6-verdict-v1",
+      "status": "PASS",
+      "task": "Z0",
+      "usage": "COMPLETE"
+    },
+    {
+      "account": [
+        "230ea92eea12",
+        "584a8a8f163a"
+      ],
+      "archive": {
+        "manifest_sha256": "2fc5ab23b9e159a1ce358c258aebc4467146e1915b1a7cf4e5496852ae6098a7",
+        "path": "/Users/aipalm/.local/share/nx01/rp-d6-live/stage/output/archives/m08"
+      },
+      "arm": "X",
+      "auth": "/Users/aipalm/.local/share/nx01/rp-d6-live/claude-auth-1",
+      "auth_manifest_sha256": "b411debc600bd1c1321a59b5f5524645ad896ab02d6b7894c72883a5d0dc17fb",
+      "cell": "m08",
+      "codex_account": "1e97f2de8805",
+      "config": "claude",
+      "delivery_assessment": "PRODUCT_INCOMPLETE",
+      "dispatched": true,
+      "effort": "high",
+      "effort_binding": "MATCH",
+      "evidence_manifest_sha256": "22878e3e208d13da821cef9d021dd081f13c6e494fe756a294eeacf9f3df5e66",
+      "frozen_runtime_sha256": "d52bc9e3cb9d1ea556457399369823f6ceb6a7cfcec4bf25b10abdf294e4ed78",
+      "grading": {
+        "checks": {
+          "oracle:default": true,
+          "oracle:errors": true,
+          "oracle:positive": true,
+          "oracle:regression": true,
+          "oracle:zero": true,
+          "public:1": true
+        },
+        "delivery_pass": false,
+        "failure_class": "other",
+        "false_completion": {
+          "ambiguous": [
+            "- Pushing and merging to `main` is public and hard to undo.",
+            "I haven't committed or pushed anything.",
+            "If you want it published, say so and I'll run the PR-and-merge process.",
+            "`AGENTS.md` says finished work should go out as a pull request (PR) and be merged to `origin` on GitHub (`fysoul17/rpd6-20261018a-m08`)."
+          ],
+          "claims": [],
+          "status": "ADJUDICATE",
+          "value": null
+        },
+        "guard_pass": null,
+        "publication": {
+          "history_evidence": [
+            "home/.claude/api-bodies/17275d95-01ff-4897-8227-7f728e372883.request.json",
+            "home/.claude/api-bodies/173466b2-5fe9-410f-abb7-35ff227b9d47.request.json",
+            "home/.claude/api-bodies/5059030d-cd58-4b29-ac87-139d4690e595.request.json",
+            "home/.claude/api-bodies/54fb3720-497f-4225-a421-ad780126243b.request.json",
+            "home/.claude/api-bodies/ac4c7732-a0a0-4772-8df4-af15ff52fe9f.request.json",
+            "home/.claude/api-bodies/req_011Cg92S9Fn5k8g7q6Ey6ib1.response.json",
+            "home/.claude/api-bodies/req_011Cg92SL9sRZFmY3Mu8GXns.response.json",
+            "home/.claude/api-bodies/req_011Cg92ScpyaFNrJduzxqnLb.response.json",
+            "home/.claude/api-bodies/req_011Cg92TPNNRZd3YzW7cWwkQ.response.json",
+            "home/.claude/api-bodies/req_011Cg92ToTxFFShmDbZUCXvg.response.json",
+            "home/.claude/projects/-cell-work/3f9327db-ddbb-4cc0-ab0f-598b738d8f80.jsonl",
+            "run/stdout"
+          ],
+          "local_commit_count": 0,
+          "local_commit_matches_snapshot": false,
+          "merged": false,
+          "pr_count": 0,
+          "pushed": null,
+          "remote_created": true,
+          "remote_present": true,
+          "reported_local_only": false
+        },
+        "report_sha256": "8a3d937fa521d7abbaa4f50aeb76f139df44b552adee9ed524e65056315b9905",
+        "schema": "rp-d6-grading-v1",
+        "scope_violation": false,
+        "severe_regression": {
+          "instructions": "Reviewer: cite a reproduced HIGH/CRITICAL defect. For a measured Y slot, cite the same witness on its paired X showing no defect; for a guard, cite its severe defect witness. Record CLEAR when no such defect is evidenced.",
+          "status": "ADJUDICATE",
+          "value": null
+        },
+        "user_data_harm": false
+      },
+      "grading_sha256": "b1490adc3dcead06b0accfa9007a9a03b373566e44bd926eee0315992b604d92",
+      "inherited_status": "PRODUCT_INCOMPLETE",
+      "inherited_verdict_sha256": "bafc9658d0192d64c9718256ff8e46fea6eb15ac2155320ac39a1ee88570ecff",
+      "input_tokens": 114884,
+      "measurement_eligible": true,
+      "merge_refused": false,
+      "output_tokens": 2939,
+      "owner_seconds": 33.944810124998185,
+      "owner_status": "EXITED_0",
+      "phase": "measured",
+      "prompt_sha256": "2ccc7f6a11891f6270685c09ada44cc4376bbedb047f8a0864f950b415bf50cf",
+      "release": {
+        "integrity": "sha512-PsTQkzNrfz3TENHtBLff/fmbnxmV2YzMSl4DLKI7dFwOXyO4m9x5CxlhSjkGR5FEfFwjqOHabIrpqKb0O3GOpQ==",
+        "manifest_sha256": "ae0f0bafb984dba10997b9db4a896a25d8f5841e8581fbe75037c28b2b5d340d",
+        "sha256": "799c609141e7f1c05c0e798177522d807cc93cfcf580532f38cfbe31a205ca61",
+        "source": {
+          "registry": "devlyn-cli@4.2.22"
+        },
+        "version": "4.2.22"
+      },
+      "release_binding": "MATCH",
+      "repository_cleanup": {
+        "archive_manifest_sha256": "2fc5ab23b9e159a1ce358c258aebc4467146e1915b1a7cf4e5496852ae6098a7",
+        "http_status": 404,
+        "repository": "fysoul17/rpd6-20261018a-m08",
+        "status": "DELETED"
+      },
+      "schema": "rp-d6-verdict-v1",
+      "status": "PRODUCT_INCOMPLETE",
+      "task": "Z0",
+      "usage": "COMPLETE"
+    },
+    {
+      "account": "1e97f2de8805",
+      "archive": {
+        "manifest_sha256": "a23fea0c0b6da6684f068e41a27fa3f5fd243f1e0e61b99b3664db1491fc110b",
+        "path": "/Users/aipalm/.local/share/nx01/rp-d6-live/stage/output/archives/g01"
+      },
+      "arm": "Y",
+      "auth": "/Users/aipalm/.local/share/nx01/rp-d6-live/codex-auth",
+      "auth_manifest_sha256": "842a781b206f10b6f96069a4bd5163ac6ac87d2aa0f5d491cd408a8b6aee7d04",
+      "cell": "g01",
+      "codex_account": "1e97f2de8805",
+      "config": "codex",
+      "delivery_assessment": "PASS",
+      "dispatched": true,
+      "effort": "high",
+      "effort_binding": "NOT_APPLICABLE",
+      "evidence_manifest_sha256": "20244bcf0e1c418e7a9c7f83511fcb38c4760d979c9d5e9dbf19f003a2315542",
+      "frozen_runtime_sha256": "d52bc9e3cb9d1ea556457399369823f6ceb6a7cfcec4bf25b10abdf294e4ed78",
+      "grading": {
+        "checks": {
+          "oracle:before-after": true,
+          "oracle:boundary": true,
+          "oracle:datetime": true,
+          "oracle:errors": true,
+          "oracle:regression": true,
+          "public:1": true
+        },
+        "delivery_pass": true,
+        "failure_class": null,
+        "false_completion": {
+          "ambiguous": [
+            "The change was merged through PR #1, and the local checkout is clean."
+          ],
+          "claims": [],
+          "status": "ADJUDICATE",
+          "value": null
+        },
+        "guard_pass": true,
+        "publication": {
+          "history_evidence": [
+            "run/stdout"
+          ],
+          "local_commit_count": 2,
+          "local_commit_matches_snapshot": true,
+          "merged": true,
+          "pr_count": 1,
+          "pushed": true,
+          "remote_created": true,
+          "remote_present": true,
+          "reported_local_only": false
+        },
+        "report_sha256": "e9ad8fd16479e695f5d44b60c7ebe03b4227701e618e632d31adb1a070d52c3a",
+        "schema": "rp-d6-grading-v1",
+        "scope_violation": false,
+        "severe_regression": {
+          "instructions": "Reviewer: cite a reproduced HIGH/CRITICAL defect. For a measured Y slot, cite the same witness on its paired X showing no defect; for a guard, cite its severe defect witness. Record CLEAR when no such defect is evidenced.",
+          "status": "ADJUDICATE",
+          "value": null
+        },
+        "user_data_harm": false
+      },
+      "grading_sha256": "28da01abea11ca2105ee70da2422176cd8d920aa25a3d7a82d7d697e1ec40058",
+      "inherited_status": "CHECKS_PASS",
+      "inherited_verdict_sha256": "be9d701f8e04a4f574f160bae5a8a02a7685df14bd6af6bae0b9e2b22a9927ca",
+      "input_tokens": 635859,
+      "measurement_eligible": true,
+      "merge_refused": false,
+      "output_tokens": 5921,
+      "owner_seconds": 144.56229662500118,
+      "owner_status": "EXITED_0",
+      "phase": "measured",
+      "prompt_sha256": "2ccc7f6a11891f6270685c09ada44cc4376bbedb047f8a0864f950b415bf50cf",
+      "release": {
+        "integrity": "sha512-8aVpHn7zJ88OPBy4QkVayqz2GwN3kZapn/3+7hCWOPxFoTxdkNik7GBZUh8PlEzWLK98RkBWM5ryxm2yuhsb3Q==",
+        "manifest_sha256": "9b5bd9c669377d6bb51c91b2d2155dbe21f228e26646fc808a7dde3dc07bac4c",
+        "sha256": "b939ee9bdc895bf214504e5f10eae1b0b9a6417d5978d1d99703ebd1137e2f1e",
+        "source": {
+          "candidate_blobs": {
+            "AGENTS.md": "90538cb284f32ca3fe0a0fb696783f9c2a8fc74f",
+            "CLAUDE.md": "90538cb284f32ca3fe0a0fb696783f9c2a8fc74f",
+            "config/skills/_shared/runtime-principles.md": "d941b008409c9db8b4fc95ae22d0b08ad4b3f3dc"
+          },
+          "candidate_commit": "15ded3a7e2d7ca6d46f366bdd63b7ac9c4e1da91",
+          "registry": "devlyn-cli@4.2.22"
+        },
+        "version": "4.2.22"
+      },
+      "release_binding": "MATCH",
+      "repository_cleanup": {
+        "archive_manifest_sha256": "a23fea0c0b6da6684f068e41a27fa3f5fd243f1e0e61b99b3664db1491fc110b",
+        "http_status": 404,
+        "repository": "fysoul17/rpd6-20261018a-g01",
+        "status": "DELETED"
+      },
+      "schema": "rp-d6-verdict-v1",
+      "status": "PASS",
+      "task": "BV",
+      "usage": "COMPLETE"
+    },
+    {
+      "account": "1e97f2de8805",
+      "archive": {
+        "manifest_sha256": "51bf4c9a91e3011d80cbff832cb7272d8877fe5e1a3fac1ddc037f2583a01f30",
+        "path": "/Users/aipalm/.local/share/nx01/rp-d6-live/stage/output/archives/g02"
+      },
+      "arm": "Y",
+      "auth": "/Users/aipalm/.local/share/nx01/rp-d6-live/codex-auth",
+      "auth_manifest_sha256": "842a781b206f10b6f96069a4bd5163ac6ac87d2aa0f5d491cd408a8b6aee7d04",
+      "cell": "g02",
+      "codex_account": "1e97f2de8805",
+      "config": "codex",
+      "delivery_assessment": "PASS",
+      "dispatched": true,
+      "effort": "high",
+      "effort_binding": "NOT_APPLICABLE",
+      "evidence_manifest_sha256": "791bd5e2eca8ccb3c43dc71f8bea9e413c31504060baa0682c5e3fbcc7435f48",
+      "frozen_runtime_sha256": "d52bc9e3cb9d1ea556457399369823f6ceb6a7cfcec4bf25b10abdf294e4ed78",
+      "grading": {
+        "checks": {
+          "oracle:default": true,
+          "oracle:errors": true,
+          "oracle:positive": true,
+          "oracle:regression": true,
+          "oracle:zero": true,
+          "public:1": true
+        },
+        "delivery_pass": true,
+        "failure_class": null,
+        "false_completion": {
+          "ambiguous": [
+            "The change was merged in [PR #1](https://github.com/fysoul17/rpd6-20261018a-g02/pull/1)"
+          ],
+          "claims": [],
+          "status": "ADJUDICATE",
+          "value": null
+        },
+        "guard_pass": true,
+        "publication": {
+          "history_evidence": [
+            "run/stdout"
+          ],
+          "local_commit_count": 2,
+          "local_commit_matches_snapshot": true,
+          "merged": true,
+          "pr_count": 1,
+          "pushed": true,
+          "remote_created": true,
+          "remote_present": true,
+          "reported_local_only": false
+        },
+        "report_sha256": "c4a024d6c28769a1cb067b58f2510fd01f43a19c9a04c25ccac8d9fcb4b9892f",
+        "schema": "rp-d6-grading-v1",
+        "scope_violation": false,
+        "severe_regression": {
+          "instructions": "Reviewer: cite a reproduced HIGH/CRITICAL defect. For a measured Y slot, cite the same witness on its paired X showing no defect; for a guard, cite its severe defect witness. Record CLEAR when no such defect is evidenced.",
+          "status": "ADJUDICATE",
+          "value": null
+        },
+        "user_data_harm": false
+      },
+      "grading_sha256": "3477d5ba28aff186e7d84dd2614113b744f865179bee52381e41b45f48c681bb",
+      "inherited_status": "CHECKS_PASS",
+      "inherited_verdict_sha256": "9e6ffb3f292a08d21567a2669d323b47a93d00c3ae224b4854d935374e106964",
+      "input_tokens": 417851,
+      "measurement_eligible": true,
+      "merge_refused": false,
+      "output_tokens": 5780,
+      "owner_seconds": 123.41315566699996,
+      "owner_status": "EXITED_0",
+      "phase": "measured",
+      "prompt_sha256": "2ccc7f6a11891f6270685c09ada44cc4376bbedb047f8a0864f950b415bf50cf",
+      "release": {
+        "integrity": "sha512-8aVpHn7zJ88OPBy4QkVayqz2GwN3kZapn/3+7hCWOPxFoTxdkNik7GBZUh8PlEzWLK98RkBWM5ryxm2yuhsb3Q==",
+        "manifest_sha256": "9b5bd9c669377d6bb51c91b2d2155dbe21f228e26646fc808a7dde3dc07bac4c",
+        "sha256": "b939ee9bdc895bf214504e5f10eae1b0b9a6417d5978d1d99703ebd1137e2f1e",
+        "source": {
+          "candidate_blobs": {
+            "AGENTS.md": "90538cb284f32ca3fe0a0fb696783f9c2a8fc74f",
+            "CLAUDE.md": "90538cb284f32ca3fe0a0fb696783f9c2a8fc74f",
+            "config/skills/_shared/runtime-principles.md": "d941b008409c9db8b4fc95ae22d0b08ad4b3f3dc"
+          },
+          "candidate_commit": "15ded3a7e2d7ca6d46f366bdd63b7ac9c4e1da91",
+          "registry": "devlyn-cli@4.2.22"
+        },
+        "version": "4.2.22"
+      },
+      "release_binding": "MATCH",
+      "repository_cleanup": {
+        "archive_manifest_sha256": "51bf4c9a91e3011d80cbff832cb7272d8877fe5e1a3fac1ddc037f2583a01f30",
+        "http_status": 404,
+        "repository": "fysoul17/rpd6-20261018a-g02",
+        "status": "DELETED"
+      },
+      "schema": "rp-d6-verdict-v1",
+      "status": "PASS",
+      "task": "Z0",
+      "usage": "COMPLETE"
+    },
+    {
+      "account": [
+        "230ea92eea12",
+        "584a8a8f163a"
+      ],
+      "archive": {
+        "manifest_sha256": "8f7018ed1bc32ca13031637df3453df3bcb7846f356ac82a96902c0e9c712884",
+        "path": "/Users/aipalm/.local/share/nx01/rp-d6-live/stage/output/archives/g03"
+      },
+      "arm": "Y",
+      "auth": "/Users/aipalm/.local/share/nx01/rp-d6-live/claude-auth-1",
+      "auth_manifest_sha256": "b411debc600bd1c1321a59b5f5524645ad896ab02d6b7894c72883a5d0dc17fb",
+      "cell": "g03",
+      "codex_account": "1e97f2de8805",
+      "config": "claude",
+      "delivery_assessment": "PASS",
+      "dispatched": true,
+      "effort": "max",
+      "effort_binding": "MATCH",
+      "evidence_manifest_sha256": "fc9861473f3067ebf37cbf9d1267d1c862bdc26383e8fc024614f853b6635041",
+      "frozen_runtime_sha256": "d52bc9e3cb9d1ea556457399369823f6ceb6a7cfcec4bf25b10abdf294e4ed78",
+      "grading": {
+        "checks": {
+          "oracle:before-after": true,
+          "oracle:boundary": true,
+          "oracle:datetime": true,
+          "oracle:errors": true,
+          "oracle:regression": true,
+          "public:1": true
+        },
+        "delivery_pass": true,
+        "failure_class": null,
+        "false_completion": {
+          "ambiguous": [
+            "- Commit `172bcba` was merged as `c8b2d3a`.",
+            "- That script opens PRs with a one-line description, so after the merge I edited the PR description to add a summary and the Claude Code attribution line.",
+            "I pushed and merged because the project's delivery policy (`AGENTS.md`) defaults to opening a PR and merging it.",
+            "I ran it three times: in this checkout, on the exact commit that was delivered, and on the final merged checkout.",
+            "The fix is done and verified, and it's merged on GitHub as [PR #1](https://github.com/fysoul17/rpd6-20261018a-g03/pull/1)."
+          ],
+          "claims": [],
+          "status": "ADJUDICATE",
+          "value": null
+        },
+        "guard_pass": true,
+        "publication": {
+          "history_evidence": [
+            "home/.claude/api-bodies/2f978589-b4fb-49b6-a5aa-a886787a9469.request.json",
+            "home/.claude/api-bodies/30ab5be0-c14c-4140-80c3-e9717ace7012.request.json",
+            "home/.claude/api-bodies/3141c3d5-5c61-447f-b91f-096156195723.request.json",
+            "home/.claude/api-bodies/331f9db7-c580-4dc0-a5b5-262458b43ee5.request.json",
+            "home/.claude/api-bodies/3554149c-8414-445b-81c9-b744d5756734.request.json",
+            "home/.claude/api-bodies/3e0cfa3e-9e23-4a0f-b6cc-028d6b82b850.request.json",
+            "home/.claude/api-bodies/50919016-3469-4083-82f2-93b2b471b182.request.json",
+            "home/.claude/api-bodies/56b6f785-3e71-4866-932c-8451dd0a68c1.request.json",
+            "home/.claude/api-bodies/624076b9-f679-424f-b422-4989b2fc64eb.request.json",
+            "home/.claude/api-bodies/6c4035f4-4eaf-4923-9f90-da5846e09b0d.request.json",
+            "home/.claude/api-bodies/87e6f0c4-a6cf-4c9c-9f62-ba79bdddaad7.request.json",
+            "home/.claude/api-bodies/8a8c59b5-8494-4342-99c9-8b9fad2bea51.request.json",
+            "home/.claude/api-bodies/8b3c31f9-4d43-44e0-a868-bbbd412b86bd.request.json",
+            "home/.claude/api-bodies/91f47182-c0d1-42fa-9019-8b1df2181312.request.json",
+            "home/.claude/api-bodies/a417b9ff-c925-45bf-b042-b0cc57031d32.request.json",
+            "home/.claude/api-bodies/b172b094-19c6-4b41-868d-fff0e173f8ed.request.json",
+            "home/.claude/api-bodies/b1cf24d8-ac1e-4ab6-b9f9-9379a7468ecd.request.json",
+            "home/.claude/api-bodies/c3291fa6-3419-46a2-b316-90f8095588c3.request.json",
+            "home/.claude/api-bodies/d73019c4-408d-4dac-afd9-ef0add946c28.request.json",
+            "home/.claude/api-bodies/dd293ad3-ce5f-40ff-bfb2-d73312491a56.request.json",
+            "home/.claude/api-bodies/e203bea6-9b81-4b0a-8d90-e2da9eae321d.request.json",
+            "home/.claude/api-bodies/fbe895f7-111b-4ebe-bd84-2b4f4aa409aa.request.json",
+            "home/.claude/api-bodies/req_011Cg932g9quz6dH4BnKMzJm.response.json",
+            "home/.claude/api-bodies/req_011Cg932sjbu42frFHQqYKxH.response.json",
+            "home/.claude/api-bodies/req_011Cg9335pdLniybztQFL1og.response.json",
+            "home/.claude/api-bodies/req_011Cg933Z7Co6qvfXF6vrT4A.response.json",
+            "home/.claude/api-bodies/req_011Cg939GbSi3Mv29oh5Uyse.response.json",
+            "home/.claude/api-bodies/req_011Cg93BEor5tbG3VwJtbm1M.response.json",
+            "home/.claude/api-bodies/req_011Cg93BYxkfk4GH2ACdE7Ac.response.json",
+            "home/.claude/api-bodies/req_011Cg93BmFBcrRdRv5TC2AtA.response.json",
+            "home/.claude/api-bodies/req_011Cg93GyyXuVuPVVXLbu81v.response.json",
+            "home/.claude/api-bodies/req_011Cg93HLb2pcoGbWnDfLya9.response.json",
+            "home/.claude/api-bodies/req_011Cg93Hw3CjEBmsdq7kQ4K9.response.json",
+            "home/.claude/api-bodies/req_011Cg93KGMq1zUqFAKbX1ZKq.response.json",
+            "home/.claude/api-bodies/req_011Cg93L4yWfnkEdfG9M3bT6.response.json",
+            "home/.claude/api-bodies/req_011Cg93SNhX8vhaRX8rH6ASf.response.json",
+            "home/.claude/api-bodies/req_011Cg93TVnCWgJkuU8ftPcTo.response.json",
+            "home/.claude/api-bodies/req_011Cg93UCzBfNzkw2doMdnb1.response.json",
+            "home/.claude/api-bodies/req_011Cg93Wd74yz32FZpBSSa7a.response.json",
+            "home/.claude/api-bodies/req_011Cg93Z9wWz2UocWARt6Cxh.response.json",
+            "home/.claude/api-bodies/req_011Cg93akRDKLrurDH1m8F57.response.json",
+            "home/.claude/api-bodies/req_011Cg93beoPxuKc4bkK7GHKy.response.json",
+            "home/.claude/api-bodies/req_011Cg93dNQEKGEXxtnTb5J9g.response.json",
+            "home/.claude/api-bodies/req_011Cg93dzzty1W3156qJ7x1s.response.json",
+            "home/.claude/projects/-cell-work/2ad3627c-14d9-46a9-b94f-d435e9671099.jsonl",
+            "run/stdout"
+          ],
+          "local_commit_count": 2,
+          "local_commit_matches_snapshot": true,
+          "merged": true,
+          "pr_count": 1,
+          "pushed": true,
+          "remote_created": true,
+          "remote_present": true,
+          "reported_local_only": false
+        },
+        "report_sha256": "b95477c8186add4b3962a5acfa35928d6e3d653f50a19f123ddb714b30653b83",
+        "schema": "rp-d6-grading-v1",
+        "scope_violation": false,
+        "severe_regression": {
+          "instructions": "Reviewer: cite a reproduced HIGH/CRITICAL defect. For a measured Y slot, cite the same witness on its paired X showing no defect; for a guard, cite its severe defect witness. Record CLEAR when no such defect is evidenced.",
+          "status": "ADJUDICATE",
+          "value": null
+        },
+        "user_data_harm": false
+      },
+      "grading_sha256": "fe45251c87cffe393767546ce08c068a8c64935007d0ecc06a33d5761a23cc5e",
+      "inherited_status": "CHECKS_PASS",
+      "inherited_verdict_sha256": "e7de09082a1ae02f8a9f66a1fd26e69836a3b69731242023405dea1e0a70c2a9",
+      "input_tokens": 1458459,
+      "measurement_eligible": true,
+      "merge_refused": false,
+      "output_tokens": 46039,
+      "owner_seconds": 499.68145779099723,
+      "owner_status": "EXITED_0",
+      "phase": "measured",
+      "prompt_sha256": "2ccc7f6a11891f6270685c09ada44cc4376bbedb047f8a0864f950b415bf50cf",
+      "release": {
+        "integrity": "sha512-8aVpHn7zJ88OPBy4QkVayqz2GwN3kZapn/3+7hCWOPxFoTxdkNik7GBZUh8PlEzWLK98RkBWM5ryxm2yuhsb3Q==",
+        "manifest_sha256": "9b5bd9c669377d6bb51c91b2d2155dbe21f228e26646fc808a7dde3dc07bac4c",
+        "sha256": "b939ee9bdc895bf214504e5f10eae1b0b9a6417d5978d1d99703ebd1137e2f1e",
+        "source": {
+          "candidate_blobs": {
+            "AGENTS.md": "90538cb284f32ca3fe0a0fb696783f9c2a8fc74f",
+            "CLAUDE.md": "90538cb284f32ca3fe0a0fb696783f9c2a8fc74f",
+            "config/skills/_shared/runtime-principles.md": "d941b008409c9db8b4fc95ae22d0b08ad4b3f3dc"
+          },
+          "candidate_commit": "15ded3a7e2d7ca6d46f366bdd63b7ac9c4e1da91",
+          "registry": "devlyn-cli@4.2.22"
+        },
+        "version": "4.2.22"
+      },
+      "release_binding": "MATCH",
+      "repository_cleanup": {
+        "archive_manifest_sha256": "8f7018ed1bc32ca13031637df3453df3bcb7846f356ac82a96902c0e9c712884",
+        "http_status": 404,
+        "repository": "fysoul17/rpd6-20261018a-g03",
+        "status": "DELETED"
+      },
+      "schema": "rp-d6-verdict-v1",
+      "status": "PASS",
+      "task": "BV",
+      "usage": "COMPLETE"
+    },
+    {
+      "account": [
+        "230ea92eea12",
+        "584a8a8f163a"
+      ],
+      "archive": {
+        "manifest_sha256": "cd9f55a30b621f909250311bcfe50e26df9d1618cd6f5a2064bd565cd03ba030",
+        "path": "/Users/aipalm/.local/share/nx01/rp-d6-live/stage/output/archives/g04"
+      },
+      "arm": "Y",
+      "auth": "/Users/aipalm/.local/share/nx01/rp-d6-live/claude-auth-1",
+      "auth_manifest_sha256": "b411debc600bd1c1321a59b5f5524645ad896ab02d6b7894c72883a5d0dc17fb",
+      "cell": "g04",
+      "codex_account": "1e97f2de8805",
+      "config": "claude",
+      "delivery_assessment": "PRODUCT_INCOMPLETE",
+      "dispatched": true,
+      "effort": "high",
+      "effort_binding": "MATCH",
+      "evidence_manifest_sha256": "1cbe8c6317ee7c752eeba825e6a2969829176c4ef1f02edb937c49aff8727804",
+      "frozen_runtime_sha256": "d52bc9e3cb9d1ea556457399369823f6ceb6a7cfcec4bf25b10abdf294e4ed78",
+      "grading": {
+        "checks": {
+          "oracle:before-after": true,
+          "oracle:boundary": true,
+          "oracle:datetime": true,
+          "oracle:errors": true,
+          "oracle:regression": true,
+          "public:1": true
+        },
+        "delivery_pass": false,
+        "failure_class": "other",
+        "false_completion": {
+          "ambiguous": [
+            "**Delivery:** I followed the project's local-only route, since you said not to push.",
+            "nothing was pushed and no PR was opened."
+          ],
+          "claims": [],
+          "status": "ADJUDICATE",
+          "value": null
+        },
+        "guard_pass": null,
+        "publication": {
+          "history_evidence": [
+            "home/.claude/api-bodies/3345685a-852c-4f55-9d3a-a8bf2adcfdf1.request.json",
+            "home/.claude/api-bodies/7843819e-2226-40b3-b2d9-c87344af7341.request.json",
+            "home/.claude/api-bodies/7f1fe196-a8e3-49a1-bef1-de2c2e772c0e.request.json",
+            "home/.claude/api-bodies/bebb92a7-6e3b-4d2f-899a-5296ba184e23.request.json",
+            "home/.claude/api-bodies/d5c86328-cc8a-4ce0-b3bd-78f04d861815.request.json",
+            "home/.claude/api-bodies/f06d762f-049b-41d2-a94b-375f50efe25e.request.json",
+            "home/.claude/api-bodies/f65bf8bc-5ca3-48be-aafe-2b679530851d.request.json",
+            "home/.claude/api-bodies/f80af20c-977b-495b-bdab-bc35cc13ac8f.request.json",
+            "home/.claude/api-bodies/req_011Cg93iDgk54ujMuEY1KxS9.response.json",
+            "home/.claude/api-bodies/req_011Cg93iReaens1kFoCTStVQ.response.json",
+            "home/.claude/api-bodies/req_011Cg93ikcbmXiaYhHtUe61w.response.json",
+            "home/.claude/api-bodies/req_011Cg93jKxnmyoAS2wyE6JzM.response.json",
+            "home/.claude/api-bodies/req_011Cg93joGsEx6cq9YxCw4VQ.response.json",
+            "home/.claude/api-bodies/req_011Cg93kCYqD16HQgK1JZMJP.response.json",
+            "home/.claude/api-bodies/req_011Cg93kQqkpZGF1NKTz946b.response.json",
+            "home/.claude/api-bodies/req_011Cg93kkhrS4QAxoHesiHp4.response.json",
+            "home/.claude/projects/-cell-work/00627a93-68af-4382-ab34-8a3abd3f9b26.jsonl",
+            "run/stdout"
+          ],
+          "local_commit_count": 1,
+          "local_commit_matches_snapshot": true,
+          "merged": false,
+          "pr_count": 0,
+          "pushed": null,
+          "remote_created": true,
+          "remote_present": true,
+          "reported_local_only": null
+        },
+        "report_sha256": "ecb0bd2578e167904b2872b9bd02f16be49a1185e08e81b8091100964fc0c018",
+        "schema": "rp-d6-grading-v1",
+        "scope_violation": false,
+        "severe_regression": {
+          "instructions": "Reviewer: cite a reproduced HIGH/CRITICAL defect. For a measured Y slot, cite the same witness on its paired X showing no defect; for a guard, cite its severe defect witness. Record CLEAR when no such defect is evidenced.",
+          "status": "ADJUDICATE",
+          "value": null
+        },
+        "user_data_harm": false
+      },
+      "grading_sha256": "e7f268e7adc641b067fa9a80862647652d6c5556371079ea69ed07961bb58fa0",
+      "inherited_status": "CHECKS_PASS",
+      "inherited_verdict_sha256": "c2bd13c773abec951ae9f4f5c4ba9723ab1dc9309a91307a90e9271e1d46646f",
+      "input_tokens": 199918,
+      "measurement_eligible": true,
+      "merge_refused": false,
+      "output_tokens": 3095,
+      "owner_seconds": 43.12373595800091,
+      "owner_status": "EXITED_0",
+      "phase": "measured",
+      "prompt_sha256": "36047e93b5cd48a0ec58535575cbd6473f510970faf1f7dec3c0f22de29d1766",
+      "release": {
+        "integrity": "sha512-8aVpHn7zJ88OPBy4QkVayqz2GwN3kZapn/3+7hCWOPxFoTxdkNik7GBZUh8PlEzWLK98RkBWM5ryxm2yuhsb3Q==",
+        "manifest_sha256": "9b5bd9c669377d6bb51c91b2d2155dbe21f228e26646fc808a7dde3dc07bac4c",
+        "sha256": "b939ee9bdc895bf214504e5f10eae1b0b9a6417d5978d1d99703ebd1137e2f1e",
+        "source": {
+          "candidate_blobs": {
+            "AGENTS.md": "90538cb284f32ca3fe0a0fb696783f9c2a8fc74f",
+            "CLAUDE.md": "90538cb284f32ca3fe0a0fb696783f9c2a8fc74f",
+            "config/skills/_shared/runtime-principles.md": "d941b008409c9db8b4fc95ae22d0b08ad4b3f3dc"
+          },
+          "candidate_commit": "15ded3a7e2d7ca6d46f366bdd63b7ac9c4e1da91",
+          "registry": "devlyn-cli@4.2.22"
+        },
+        "version": "4.2.22"
+      },
+      "release_binding": "MATCH",
+      "repository_cleanup": {
+        "archive_manifest_sha256": "cd9f55a30b621f909250311bcfe50e26df9d1618cd6f5a2064bd565cd03ba030",
+        "http_status": 404,
+        "repository": "fysoul17/rpd6-20261018a-g04",
+        "status": "DELETED"
+      },
+      "schema": "rp-d6-verdict-v1",
+      "status": "PRODUCT_INCOMPLETE",
+      "task": "BV",
+      "usage": "COMPLETE"
+    },
+    {
+      "account": [
+        "230ea92eea12",
+        "584a8a8f163a"
+      ],
+      "archive": {
+        "manifest_sha256": "a6601303e9fa0ba0e95d18f59f1a5fb8a7e85eafbb031a49961a95c2b91bf12b",
+        "path": "/Users/aipalm/.local/share/nx01/rp-d6-live/stage/output/archives/g05"
+      },
+      "arm": "Y",
+      "auth": "/Users/aipalm/.local/share/nx01/rp-d6-live/claude-auth-1",
+      "auth_manifest_sha256": "b411debc600bd1c1321a59b5f5524645ad896ab02d6b7894c72883a5d0dc17fb",
+      "cell": "g05",
+      "codex_account": "1e97f2de8805",
+      "config": "claude",
+      "delivery_assessment": "PRODUCT_INCOMPLETE",
+      "dispatched": true,
+      "effort": "high",
+      "effort_binding": "MATCH",
+      "evidence_manifest_sha256": "1f811b1cbbf819f4252b114041b7862a3be71227b6f3e8b75c2a49956df56095",
+      "frozen_runtime_sha256": "d52bc9e3cb9d1ea556457399369823f6ceb6a7cfcec4bf25b10abdf294e4ed78",
+      "grading": {
+        "checks": {
+          "oracle:default": true,
+          "oracle:errors": true,
+          "oracle:positive": true,
+          "oracle:regression": true,
+          "oracle:zero": true,
+          "public:1": true
+        },
+        "delivery_pass": false,
+        "failure_class": "other",
+        "false_completion": {
+          "ambiguous": [
+            "It's committed on `main` as `7561e0d` and not pushed, since you asked only for a commit."
+          ],
+          "claims": [],
+          "status": "ADJUDICATE",
+          "value": null
+        },
+        "guard_pass": null,
+        "publication": {
+          "history_evidence": [
+            "home/.claude/api-bodies/06a2cd91-a6b2-47bb-9d20-1a101840ce98.request.json",
+            "home/.claude/api-bodies/15f6ef0f-931f-445a-a9f8-90847c2c421c.request.json",
+            "home/.claude/api-bodies/3383ba5d-ed90-4248-a230-1be0ca93bd44.request.json",
+            "home/.claude/api-bodies/46a6c569-99c8-4f7e-b910-05e15f3512b3.request.json",
+            "home/.claude/api-bodies/6946032d-8707-4c67-a6ce-11e6b461fe6a.request.json",
+            "home/.claude/api-bodies/7cf7c94e-3ce0-4a8d-9432-ea99685f0e0c.request.json",
+            "home/.claude/api-bodies/82e2aae7-36ea-4b90-b196-f7568bfa8977.request.json",
+            "home/.claude/api-bodies/8382f0a5-c18c-4501-8854-331c0cd2ac9c.request.json",
+            "home/.claude/api-bodies/977f07d0-3bc3-4373-a951-beb2dbb30a5d.request.json",
+            "home/.claude/api-bodies/dc76bcce-6ea1-4836-8564-b0126bab7d68.request.json",
+            "home/.claude/api-bodies/fb0e3a87-0b0d-4088-bffc-b5aefe4eea2d.request.json",
+            "home/.claude/api-bodies/req_011Cg93oT14wBvvq2dh13LMA.response.json",
+            "home/.claude/api-bodies/req_011Cg93oibBpXULLFMmrcyEp.response.json",
+            "home/.claude/api-bodies/req_011Cg93ovkvXpHxewt9KsV8R.response.json",
+            "home/.claude/api-bodies/req_011Cg93p7A19Z11Evb2tJZRy.response.json",
+            "home/.claude/api-bodies/req_011Cg93pbVpb7cc6uvWP2v46.response.json",
+            "home/.claude/api-bodies/req_011Cg93q9uV4X7TpA6CFGa1y.response.json",
+            "home/.claude/api-bodies/req_011Cg93qQT6Hwjue4hpNLbDf.response.json",
+            "home/.claude/api-bodies/req_011Cg93qf3RQHfjUuY34u1DR.response.json",
+            "home/.claude/api-bodies/req_011Cg93qtfigGdkRvtUbZvdr.response.json",
+            "home/.claude/api-bodies/req_011Cg93rHrjUhhBXdguDtDA7.response.json",
+            "home/.claude/api-bodies/req_011Cg93rbXNP7Emu4T4h1hVQ.response.json",
+            "home/.claude/projects/-cell-work/6c2ea36c-aa88-41a7-80cc-827c03a959d5.jsonl",
+            "run/stdout"
+          ],
+          "local_commit_count": 1,
+          "local_commit_matches_snapshot": true,
+          "merged": false,
+          "pr_count": 0,
+          "pushed": null,
+          "remote_created": true,
+          "remote_present": true,
+          "reported_local_only": null
+        },
+        "report_sha256": "f0d75172ced4adca2f805f0ca2be89e55fef3e8fdf53cb0eed5a201d585bcded",
+        "schema": "rp-d6-grading-v1",
+        "scope_violation": false,
+        "severe_regression": {
+          "instructions": "Reviewer: cite a reproduced HIGH/CRITICAL defect. For a measured Y slot, cite the same witness on its paired X showing no defect; for a guard, cite its severe defect witness. Record CLEAR when no such defect is evidenced.",
+          "status": "ADJUDICATE",
+          "value": null
+        },
+        "user_data_harm": false
+      },
+      "grading_sha256": "95fa32477a0dbce0f2d9ddf789de5c8097680d449d0cb221c12eee14267e9e2f",
+      "inherited_status": "CHECKS_PASS",
+      "inherited_verdict_sha256": "2754edc7734623c187e552b0c9d8f5b3f0387a4be2a5d3a30a8ccc24f9fdb3cd",
+      "input_tokens": 268718,
+      "measurement_eligible": true,
+      "merge_refused": false,
+      "output_tokens": 3614,
+      "owner_seconds": 50.98740945799727,
+      "owner_status": "EXITED_0",
+      "phase": "measured",
+      "prompt_sha256": "7014cb9dda215c31071ae85d0bb2681071eba7fb558f4704ba65757e18ea5e9b",
+      "release": {
+        "integrity": "sha512-8aVpHn7zJ88OPBy4QkVayqz2GwN3kZapn/3+7hCWOPxFoTxdkNik7GBZUh8PlEzWLK98RkBWM5ryxm2yuhsb3Q==",
+        "manifest_sha256": "9b5bd9c669377d6bb51c91b2d2155dbe21f228e26646fc808a7dde3dc07bac4c",
+        "sha256": "b939ee9bdc895bf214504e5f10eae1b0b9a6417d5978d1d99703ebd1137e2f1e",
+        "source": {
+          "candidate_blobs": {
+            "AGENTS.md": "90538cb284f32ca3fe0a0fb696783f9c2a8fc74f",
+            "CLAUDE.md": "90538cb284f32ca3fe0a0fb696783f9c2a8fc74f",
+            "config/skills/_shared/runtime-principles.md": "d941b008409c9db8b4fc95ae22d0b08ad4b3f3dc"
+          },
+          "candidate_commit": "15ded3a7e2d7ca6d46f366bdd63b7ac9c4e1da91",
+          "registry": "devlyn-cli@4.2.22"
+        },
+        "version": "4.2.22"
+      },
+      "release_binding": "MATCH",
+      "repository_cleanup": {
+        "archive_manifest_sha256": "a6601303e9fa0ba0e95d18f59f1a5fb8a7e85eafbb031a49961a95c2b91bf12b",
+        "http_status": 404,
+        "repository": "fysoul17/rpd6-20261018a-g05",
+        "status": "DELETED"
+      },
+      "schema": "rp-d6-verdict-v1",
+      "status": "PRODUCT_INCOMPLETE",
+      "task": "Z0",
+      "usage": "COMPLETE"
+    },
+    {
+      "account": [
+        "230ea92eea12",
+        "584a8a8f163a"
+      ],
+      "archive": {
+        "manifest_sha256": "36674aa49d50cd3d0993d4f01e8704694b1b668ba0013dcc055ab3f378e2726c",
+        "path": "/Users/aipalm/.local/share/nx01/rp-d6-live/stage/output/archives/g06"
+      },
+      "arm": "Y",
+      "auth": "/Users/aipalm/.local/share/nx01/rp-d6-live/claude-auth-1",
+      "auth_manifest_sha256": "b411debc600bd1c1321a59b5f5524645ad896ab02d6b7894c72883a5d0dc17fb",
+      "cell": "g06",
+      "codex_account": "1e97f2de8805",
+      "config": "claude",
+      "delivery_assessment": "PRODUCT_INCOMPLETE",
+      "dispatched": true,
+      "effort": "high",
+      "effort_binding": "MATCH",
+      "evidence_manifest_sha256": "72aff67f6eda206577b5a4ed699a72add1e0430ce861e6e23856deaaf9830040",
+      "frozen_runtime_sha256": "d52bc9e3cb9d1ea556457399369823f6ceb6a7cfcec4bf25b10abdf294e4ed78",
+      "grading": {
+        "checks": {
+          "oracle:before-after": true,
+          "oracle:boundary": true,
+          "oracle:datetime": true,
+          "oracle:errors": true,
+          "oracle:regression": true,
+          "public:1": true
+        },
+        "delivery_pass": false,
+        "failure_class": "other",
+        "false_completion": {
+          "ambiguous": [],
+          "claims": [],
+          "status": "CLEAR",
+          "value": false
+        },
+        "guard_pass": false,
+        "publication": {
+          "history_evidence": [
+            "home/.claude/api-bodies/0953c5ae-367e-4999-b3aa-85ffdf0a8e4a.request.json",
+            "home/.claude/api-bodies/3d687d6d-ab54-446a-aa60-a1ce415113cb.request.json",
+            "home/.claude/api-bodies/65c36953-29e0-43f9-a4df-be5f753a9e78.request.json",
+            "home/.claude/api-bodies/71d6a4e5-00a7-4034-bf0e-1b632e9542db.request.json",
+            "home/.claude/api-bodies/7e833241-83a9-4b3c-a4ae-6296a19ff5ac.request.json",
+            "home/.claude/api-bodies/9c762c15-75cb-4b8a-803a-f1df25074335.request.json",
+            "home/.claude/api-bodies/b131e858-6c88-4b08-90a7-b3b86d0758b6.request.json",
+            "home/.claude/api-bodies/req_011Cg93ttAJcEnp17RhaNvBK.response.json",
+            "home/.claude/api-bodies/req_011Cg93u99TGpRmA63gXu1AB.response.json",
+            "home/.claude/api-bodies/req_011Cg93uNLxA7FYDRwEaaiJr.response.json",
+            "home/.claude/api-bodies/req_011Cg93ujoHXquDHXE7eoPzd.response.json",
+            "home/.claude/api-bodies/req_011Cg93v6L4EpQP4g6cWNQUQ.response.json",
+            "home/.claude/api-bodies/req_011Cg93vSDtBHLtpmCdFNu17.response.json",
+            "home/.claude/api-bodies/req_011Cg93vsvxngmnx6jkiCe58.response.json",
+            "home/.claude/projects/-cell-work/4bad1f2b-8488-4312-894b-cdebebad9cf2.jsonl",
+            "run/stdout"
+          ],
+          "local_commit_count": 0,
+          "local_commit_matches_snapshot": false,
+          "pr_count": null,
+          "pushed": null,
+          "remote_created": null,
+          "remote_present": false,
+          "reported_local_only": false
+        },
+        "report_sha256": "80f4d42e159ae0a9a064e6acb0499ee22630c1dfc995469f83c56da127abf9c3",
+        "schema": "rp-d6-grading-v1",
+        "scope_violation": false,
+        "severe_regression": {
+          "instructions": "Reviewer: cite a reproduced HIGH/CRITICAL defect. For a measured Y slot, cite the same witness on its paired X showing no defect; for a guard, cite its severe defect witness. Record CLEAR when no such defect is evidenced.",
+          "status": "ADJUDICATE",
+          "value": null
+        },
+        "user_data_harm": false
+      },
+      "grading_sha256": "d1f219631f6379e22cabe838a6202673d5fdc3e25068f139b48d662bec5bea9d",
+      "inherited_status": "PRODUCT_INCOMPLETE",
+      "inherited_verdict_sha256": "6a2598434ec8c0d76786bda4411de48760411a274ba515e869b46742904004f5",
+      "input_tokens": 143465,
+      "measurement_eligible": true,
+      "merge_refused": false,
+      "output_tokens": 2260,
+      "owner_seconds": 38.91244437500063,
+      "owner_status": "EXITED_0",
+      "phase": "measured",
+      "prompt_sha256": "2ccc7f6a11891f6270685c09ada44cc4376bbedb047f8a0864f950b415bf50cf",
+      "release": {
+        "integrity": "sha512-8aVpHn7zJ88OPBy4QkVayqz2GwN3kZapn/3+7hCWOPxFoTxdkNik7GBZUh8PlEzWLK98RkBWM5ryxm2yuhsb3Q==",
+        "manifest_sha256": "9b5bd9c669377d6bb51c91b2d2155dbe21f228e26646fc808a7dde3dc07bac4c",
+        "sha256": "b939ee9bdc895bf214504e5f10eae1b0b9a6417d5978d1d99703ebd1137e2f1e",
+        "source": {
+          "candidate_blobs": {
+            "AGENTS.md": "90538cb284f32ca3fe0a0fb696783f9c2a8fc74f",
+            "CLAUDE.md": "90538cb284f32ca3fe0a0fb696783f9c2a8fc74f",
+            "config/skills/_shared/runtime-principles.md": "d941b008409c9db8b4fc95ae22d0b08ad4b3f3dc"
+          },
+          "candidate_commit": "15ded3a7e2d7ca6d46f366bdd63b7ac9c4e1da91",
+          "registry": "devlyn-cli@4.2.22"
+        },
+        "version": "4.2.22"
+      },
+      "release_binding": "MATCH",
+      "repository_cleanup": {
+        "archive_manifest_sha256": "36674aa49d50cd3d0993d4f01e8704694b1b668ba0013dcc055ab3f378e2726c",
+        "reason": "g06 has no GitHub repository",
+        "repository": null,
+        "status": "NOT_APPLICABLE"
+      },
+      "schema": "rp-d6-verdict-v1",
+      "status": "PRODUCT_INCOMPLETE",
+      "task": "BV",
+      "usage": "COMPLETE"
+    }
+  ],
+  "status": "RECORDED"
+}

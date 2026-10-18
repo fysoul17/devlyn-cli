@@ -1,0 +1,3 @@
+Updated [is_expired](/cell/work/src/expiry/__init__.py) so a deadline is expired at exact equality, and added an equality regression in [test_regression.py](/cell/work/tests/test_regression.py). The existing before/after and incompatible-input tests still pass.
+
+Verified with `python3 -B -m pytest -q`: **3 passed**. The change was merged through PR #1, and the local checkout is clean. Nothing remains unresolved.

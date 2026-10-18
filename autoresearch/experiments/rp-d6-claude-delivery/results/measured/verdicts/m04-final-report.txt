@@ -1,0 +1,17 @@
+`is_expired` now counts a deadline as expired when `now` equals it exactly. The change is merged to `main` as PR #1, and all 4 tests pass.
+
+**What I changed**
+- `src/expiry/__init__.py:6`: changed `now > deadline` to `now >= deadline`. The docstring already said "including exact equality"; the code didn't do it. Earlier and later times give the same results as before. Incompatible inputs still raise `TypeError`, because Python's `>=` raises it just like `>` did.
+- `tests/test_regression.py` (new): two tests that a deadline is expired at exact equality, one with integers (`is_expired(10, 10)`) and one with timezone-aware datetimes.
+
+**What I verified**
+- Before the fix, both new tests failed (`2 failed, 2 passed`), so they do catch the bug.
+- After the fix, `python3 -B -m pytest -q` gave `4 passed`, both in this checkout and in the separate copy that was submitted. The existing tests in `tests/test_existing.py` (earlier/later times and `TypeError`) were not edited and still pass.
+- I edited only the two allowed files. `docs/user-notes.txt` and `caller.json` are untouched, and Git configuration is unchanged.
+
+**Delivery**
+- The project's policy is "PR and merge" by default and no override is set, so I delivered that way: commit `e157ad8` went up as PR https://github.com/fysoul17/rpd6-20261018a-m04/pull/1, which GitHub reports as MERGED (merge commit `859195f`).
+- Your checkout at `/cell/work` is fast-forwarded to `859195f`, its working tree is clean, and the temporary working copy used for delivery has been removed.
+
+**Unresolved**
+- Nothing.

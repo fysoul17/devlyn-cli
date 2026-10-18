@@ -1,0 +1,144 @@
+{
+  "adjudication_needed": false,
+  "arm": "B",
+  "assessment": "NOT_REQUESTED",
+  "boot_catalogs": null,
+  "cell": "smoke-codex",
+  "changed": [
+    "src/slugtools/__init__.py",
+    "tests/test_regression.py"
+  ],
+  "claude_accounting": {
+    "api_errors": [],
+    "gaps": [],
+    "schema": "0238-claude-accounting-v1",
+    "scope": "Native emitted accounting, not provider billing. Thinking is already in output; progress estimates are never counted. All reported costs remain in inherited usage.",
+    "sessions": {},
+    "sources": {
+      "run/stdout": "f889fad4369c85e36342e22f770fd3645026ae0728cb037b706f889fc6bc092b"
+    },
+    "status": "MATCH",
+    "stream_retries": [],
+    "terminal_message_count": 0,
+    "unknown_residual": null
+  },
+  "config": "codex",
+  "delivery": {
+    "baseline": "47a86450b4e21d1ed8fb9e34969e28c3084c6b96",
+    "changed": [
+      "src/slugtools/__init__.py",
+      "tests/test_regression.py"
+    ],
+    "commit": "86f0d907fa77083f8de0b53b84779896ed342d2a",
+    "passed": true,
+    "reason": "local commit matches the assessed task source"
+  },
+  "delivery_pass": true,
+  "deterministic_seconds": 2.2994289999987814,
+  "evidence_manifest_sha256": "286afa2b470b97a92340f1e78b30425e5a398393904431e2953d1e3fb3fb9cf3",
+  "identity": {
+    "codex_seats": {
+      "01a14d02-02cd-7691-b5c4-d4c5ecbf6935": [
+        "owner",
+        "gpt-6-sol",
+        "high"
+      ]
+    },
+    "gaps": [],
+    "owner": "MATCH",
+    "owner_launched_sessions": [],
+    "status": "MATCH",
+    "violations": []
+  },
+  "input_tokens": 555721,
+  "measurement_eligible": false,
+  "oracle": [
+    {
+      "id": "words",
+      "status": "PASS"
+    },
+    {
+      "id": "separators",
+      "status": "PASS"
+    },
+    {
+      "id": "empty",
+      "status": "PASS"
+    },
+    {
+      "id": "errors",
+      "status": "PASS"
+    },
+    {
+      "id": "regression",
+      "status": "PASS"
+    }
+  ],
+  "output_tokens": 6344,
+  "owner_seconds": 130.55875862500034,
+  "owner_status": "EXITED_0",
+  "peer_policy": {
+    "activated": false,
+    "claude_roles": {},
+    "codex_roles": {
+      "01a14d02-02cd-7691-b5c4-d4c5ecbf6935": [
+        "owner",
+        "01a14d02-02cd-7691-b5c4-d4c5ecbf6935"
+      ]
+    },
+    "failed_attempts": [],
+    "gaps": [],
+    "protocol_violations": [],
+    "recovered": false,
+    "status": "MATCH",
+    "turns": [],
+    "validation_completion": "NOT_ACTIVATED",
+    "violations": []
+  },
+  "phase": "smoke",
+  "product_check_pass": true,
+  "public": [
+    {
+      "argv": [
+        "sh",
+        "-c",
+        "mkdir /tmp/public-work && cp -a /cell/work/. /tmp/public-work/ && cd /tmp/public-work && python3 -B -m pytest -q"
+      ],
+      "exit_code": 0,
+      "stderr_tail": "",
+      "stdout_tail": ".........                                                                [100%]\n9 passed in 0.01s\n",
+      "timeout": false
+    }
+  ],
+  "public_pass": true,
+  "quota": {
+    "assessment": [],
+    "execution": []
+  },
+  "run_and_checks_seconds": 135.4565724589993,
+  "scope_violations": [],
+  "snapshot": {
+    "candidates": [
+      {
+        "acceptance": true,
+        "allocation": "owned",
+        "local_only": false,
+        "receipt": "cell/work/.git/devlyn-completion/bba890baed10685f202f47c6/receipt.json",
+        "worktree": "/cell/work.devlyn.noindex/slugify-regression-20261018"
+      }
+    ],
+    "kind": "accepted",
+    "receipt": "cell/work/.git/devlyn-completion/bba890baed10685f202f47c6/receipt.json",
+    "rule": "receipt",
+    "sha": "86f0d907fa77083f8de0b53b84779896ed342d2a"
+  },
+  "source_check_pass": true,
+  "status": "CHECKS_PASS",
+  "task": "SM",
+  "teardown": "CLEAN",
+  "usage": "COMPLETE",
+  "usage_gaps": [],
+  "venue": {
+    "codex_account": "1e97f2de8805"
+  }
+}
