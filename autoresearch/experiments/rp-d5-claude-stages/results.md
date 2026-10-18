@@ -35,12 +35,12 @@ block says to deliver completed, verified requests by project policy,
 default PR and merge.
 
 The spare smoke was refused at staging with "spare changed registered
-release, accounts, image or models cache"
-([spare-refusal.txt](results/smoke/spare-refusal.txt), re-run to record
-the message). The inherited binding hashes the host's
-`~/.codex/models_cache.json`; its hash no longer matched the one registered
-for attempt 1, and the file was rewritten again during this write-up
-(mtime 09:09 KST). Its writer is not recorded. With no qualified smoke, no
+release, accounts, image or models cache". The original staging output was
+not retained; a re-run at 00:09:52Z reproduced the refusal and recorded the
+hashes ([spare-refusal.txt](results/smoke/spare-refusal.txt)). The inherited
+binding hashes the host's `~/.codex/models_cache.json`: attempt 1
+registered `38e0d508…`, and at the re-run the host file was `5a0d377d…`
+(mtime 09:09:43 KST). Its writer is not recorded. With no qualified smoke, no
 measured slot ran.
 
 Network: the owner chose to keep Cloudflare WARP connected, a disclosed
@@ -81,5 +81,5 @@ All six `rpd5-20261017b-*` repositories are deleted and verified 404
 ([repository-deletion.txt](results/smoke/repository-deletion.txt)). The
 credential files (Claude snapshot, GitHub credential) are removed after
 this write-up merges. The sealed smoke stage is kept locally, without
-credentials, as DESIGN requires, until rp-d6's write-up merges; the
-measurement image is kept for rp-d6.
+credentials, and is not pruned (README). The measurement image is kept for
+rp-d6.
