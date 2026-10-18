@@ -15,40 +15,59 @@ Design: [DESIGN.md](DESIGN.md) (rounds r0–r4). Apparatus reviews r1–r3
 |---|---|---|---:|---:|---:|---:|---|
 | smoke-claude (SM, high) | MATCH | MATCH | 48.4 | 5 | 3,293 | 1,243 | **not delivered** |
 
-Claude implemented the request, and the public check and every hidden
-oracle row passed. It then left the change uncommitted and wrote:
+Claude implemented the request; the public check (`13 passed`) and all
+five hidden oracle rows passed. It then left the change uncommitted and
+wrote:
 
 > Not delivered: the project's default policy is to open a PR and merge it
 > into `origin` on GitHub. That publishes to an external repository, and
 > this request didn't ask for it, so I left the changes uncommitted in the
 > checkout.
 
-The verdict is `PRODUCT_INCOMPLETE` ("required edits exist only outside a
-post-baseline commit"). The prompt (`common.txt`) contains no publishing
-limit. The installed managed block says to deliver completed, verified
-requests by project policy, default PR and merge.
+The verdict is `PRODUCT_INCOMPLETE` (`delivery.reason`: "required edits
+exist only outside a post-baseline commit"), with `product_check_pass` and
+`source_check_pass` false and three scope findings for uncommitted install
+files (`.agents/skills/.devlyn-install.json`, `.claude/settings.json`,
+`.claude/skills/.devlyn-install.json`). Smoke qualification therefore
+failed on delivery (effort binding and accounting MATCH). The prompt
+(`common.txt`) contains no explicit publishing limit; the installed managed
+block says to deliver completed, verified requests by project policy,
+default PR and merge.
 
-The spare smoke was refused at staging: the host's Codex
-`~/.codex/models_cache.json` was rewritten by another session overnight
-(08:42 KST), and the inherited spare binding requires identical inputs. The
-run therefore stopped as registered.
+The spare smoke was refused at staging with "spare changed registered
+release, accounts, image or models cache"
+([spare-refusal.txt](results/smoke/spare-refusal.txt), re-run to record
+the message). The inherited binding hashes the host's
+`~/.codex/models_cache.json`; its hash no longer matched the one registered
+for attempt 1, and the file was rewritten again during this write-up
+(mtime 09:09 KST). Its writer is not recorded. With no qualified smoke, no
+measured slot ran.
 
-Network: Cloudflare WARP stayed connected through the smoke (owner's
-choice); the route watcher logged no change during the cell.
+Network: the owner chose to keep Cloudflare WARP connected, a disclosed
+deviation from the registered VPN-off condition
+([network.txt](results/smoke/network.txt)). The route watcher's last change
+was at 23:32:24Z; the cell ran from 23:40:54Z to 23:41:42Z
+([claude-code-guidance.txt](results/smoke/claude-code-guidance.txt) records
+the cell times) with no logged change. WARP was not re-checked at the end
+of the cell.
 
 ## Reading
 
-- **Speed.** At `high` the smoke took 5 turns, 48 s and 3.3k output tokens.
-  The rp-d4 Claude guards at `max` took 23–28 turns, 423–448 s and
-  37–40k output on BV/Z0. These are different tasks and one observation;
-  they suggest, without measuring, that effort explains much of Claude's
-  cost.
+- **Speed (untested).** At `high` the smoke took 5 turns, 48.4 s and 3,293
+  output tokens on SM. The rp-d4 Claude guards (arm Y, effort `max`) took
+  23 and 28 turns, 423.2 s and 447.5 s, and 36,686 and 39,814 output on BV
+  and Z0. Task, product arm and delivery outcome all differ, so this only
+  motivates the hypothesis that effort explains much of Claude's cost; it
+  does not test it.
 - **Delivery.** At `high`, Claude declined the default delivery as an
-  unrequested publication. Claude Code's own default guidance is to commit
-  or push only when the user asks; devlyn's block makes PR and merge the
-  default when no delivery instruction is given. At `max`, Claude delivered
-  in rp-d1 (3 of 4; o08 stopped at a local commit) and in both rp-d4 guards.
-  One `high` observation does not give a rate.
+  unrequested publication. The sealed request that carries Claude Code's
+  system prompt contains both "Commit or push only when the user asks" and
+  devlyn's "default PR and merge" sentence
+  ([claude-code-guidance.txt](results/smoke/claude-code-guidance.txt)), so
+  the two instructions reach the model together; the report itself cites
+  only the missing request. At `max`, Claude delivered in rp-d1 (3 of 4; o08
+  stopped at a local commit, also treating publication as not allowed) and
+  in both rp-d4 guards. One `high` observation does not give a rate.
 
 ## Next, chosen by the owner
 
@@ -58,6 +77,9 @@ the ladder rule. That is a new registered experiment (rp-d6).
 
 ## Cleanup
 
-All six `rpd5-20261017b-*` repositories are deleted and verified 404. The
-local stage, auth snapshot and GitHub credential files are removed after
-this write-up merges; the measurement image is kept for rp-d6.
+All six `rpd5-20261017b-*` repositories are deleted and verified 404
+([repository-deletion.txt](results/smoke/repository-deletion.txt)). The
+credential files (Claude snapshot, GitHub credential) are removed after
+this write-up merges. The sealed smoke stage is kept locally, without
+credentials, as DESIGN requires, until rp-d6's write-up merges; the
+measurement image is kept for rp-d6.

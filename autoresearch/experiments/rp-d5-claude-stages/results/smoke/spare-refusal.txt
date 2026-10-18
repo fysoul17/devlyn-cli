@@ -1,0 +1,7 @@
+# Spare staging attempt (re-run 2026-10-18T00:09:52Z to capture the refusal)
+    raise EvidenceError(message)
+github_rpd1_prepare.EvidenceError: spare changed registered release, accounts, image or models cache
+exit=0
+registered models_cache_sha256 (attempt-1): 38e0d508e06e0ccb8eb27fab0810628a3b98a8a520f0785250cd1f140be1c42e
+host ~/.codex/models_cache.json sha256 now: 5a0d377d0379966be9a9325ac10020bec4fa65caa933378183aac84ce3f3d4c8
+host file mtime: 2026-10-18T09:09:43+0900
