@@ -81,8 +81,10 @@ def prediction(slots):
     known = len(slots) == 4 and all(row['dispatched'] and row['runner_status'] not in ('STOP', 'UNKNOWN', 'NOT_RUN') and
         (row['delivery_pass'] or row.get('failure_class') in ('quality', 'skip', 'other')) for row in slots)
     first = True if skips else False if known else None
-    counterexample = any(row.get('agreed_tags') is not None and '1' not in row['agreed_tags'] for row in skips)
-    second = False if counterexample else True if known and all(row.get('agreed_tags') is not None for row in skips) else None
+    # DESIGN: any unset skip tag set leaves the second clause unscored, even beside a counterexample.
+    unset = any(row.get('agreed_tags') is None for row in skips)
+    counterexample = any('1' not in row['agreed_tags'] for row in skips if row.get('agreed_tags') is not None)
+    second = None if unset else False if counterexample else True if known else None
     return dict(at_least_one_skip=first, every_skip_includes_1=second,
                 second_clause_scored=second is not None,
                 supported=False if first is False or second is False else None if first is None or second is None else True)

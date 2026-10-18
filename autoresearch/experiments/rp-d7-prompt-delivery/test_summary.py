@@ -104,12 +104,12 @@ def test_prediction(s, outcomes, tags, first, second, supported):
     assert result['second_clause_scored'] is (second is not None)
 
 
-def test_prediction_counterexample_precedes_unknown_tags(s):
+def test_prediction_unset_tags_leave_second_clause_unscored(s):
     slots = rows(('skip', 'skip', None, None))
     slots[0]['agreed_tags'] = None
     slots[1]['agreed_tags'] = ['none']
-    assert s.prediction(slots)['every_skip_includes_1'] is False
-    assert s.prediction(slots)['supported'] is False
+    assert s.prediction(slots)['every_skip_includes_1'] is None
+    assert s.prediction(slots)['supported'] is None
 
 
 @pytest.mark.parametrize('fault', ['undispatched', 'STOP', 'UNKNOWN', 'NOT_RUN'])
