@@ -11,13 +11,12 @@ The run used the frozen [registration](registration.md) (both reviewers
 SHIP) and [DESIGN.md](DESIGN.md). Smoke qualified on the first attempt. All
 four measured slots ran with no STOP and no `merge_refused` hit. Every slot
 had COMPLETE usage and effort binding MATCH. The change-only route watcher's
-last line is the 11:05:09Z return to `en0`
-([route-watch.log](results/measured/route-watch.log)); its process was still
-running when checked at 12:18:48Z, so no default-route change was logged
-across the recorded run bounds (smoke PR created 11:47:44Z, latest m04
-census timestamp 11:56:06Z, deletion check 12:07:31Z). Four earlier drops to
+log ([route-watch.log](results/measured/route-watch.log)) ends with the
+11:05:09Z return to `en0`; the retained evidence does not establish watcher
+coverage during the recorded run bounds (smoke PR created 11:47:44Z, latest
+m04 census timestamp 11:56:06Z, deletion check 12:07:31Z). Four drops to
 `none` (08:32:32Z, 08:36:28Z, 10:25:54Z, 11:04:19Z), each returning to
-`en0`, all came before exposure. Evidence:
+`en0`, are logged before the smoke PR. Evidence:
 [results/measured](results/measured/).
 
 ## Measured slots (Claude `high`, P1, X = 4.2.22)
@@ -88,8 +87,9 @@ input, 4,758 output.
   publication (Claude Code's "Commit or push only when the user asks" is in
   every request). It also cited the allowed-file limit, now taken from
   `caller.json`'s `allowed` list and `base_sha`, with the delivery helper's
-  worktree, branch and receipt files seen as outside those files. Reason 3
-  has now appeared in four skip reports (rp-d6 m05, m08, g06; rp-d7 m04).
+  worktree, branch and receipt files seen as outside those files. Tag 3
+  also covers rp-d6 m05 ("limited my edits"), m08 and the failed g06 guard;
+  rp-d7 m04 is the fourth such report.
   The Git-metadata sentence (reason 2) was not cited. These are stated
   rationales, not measured causes.
 - **When it delivers, it delivers well.** All three P1 deliveries merged
