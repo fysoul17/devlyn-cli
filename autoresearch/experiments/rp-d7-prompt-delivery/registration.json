@@ -1,0 +1,114 @@
+{
+ "schema": "rp-d7-registration-v1",
+ "apparatus_commit": "d49ebb63f28a82bbfe06cd6b308250ffcb53ad5c",
+ "run_id": "20261018a",
+ "phase": "measured",
+ "release": {
+  "X": {
+   "integrity": "sha512-PsTQkzNrfz3TENHtBLff/fmbnxmV2YzMSl4DLKI7dFwOXyO4m9x5CxlhSjkGR5FEfFwjqOHabIrpqKb0O3GOpQ==",
+   "manifest_sha256": "ae0f0bafb984dba10997b9db4a896a25d8f5841e8581fbe75037c28b2b5d340d",
+   "sha256": "799c609141e7f1c05c0e798177522d807cc93cfcf580532f38cfbe31a205ca61",
+   "source": {
+    "registry": "devlyn-cli@4.2.22"
+   },
+   "version": "4.2.22"
+  }
+ },
+ "prompt": {
+  "common_sha256": "2ccc7f6a11891f6270685c09ada44cc4376bbedb047f8a0864f950b415bf50cf",
+  "p1_sha256": "2387dddebad66fa3204f54668c4e1ec17487660dcc6e07def50526ae409ccf2e",
+  "p1_bytes": 353
+ },
+ "models_cache_sha256": "8597e51f423a89bb381835851c3b9c23e8ea860fb343688934b86f52122a0a49",
+ "image": "sha256:7740986172bd5703a6cffa50b5e1a4445bb48b221138f907c5527ae111f7b1ef",
+ "cli": {
+  "claude": "2.1.296",
+  "codex": "0.162.1",
+  "gh": "2.83.2"
+ },
+ "model": "claude-opus-5-5",
+ "effort": "high",
+ "schedule": [
+  {
+   "slot": "m01",
+   "task": "BV",
+   "engine": "claude",
+   "effort": "high",
+   "arm": "X",
+   "prompt": "P1"
+  },
+  {
+   "slot": "m02",
+   "task": "Z0",
+   "engine": "claude",
+   "effort": "high",
+   "arm": "X",
+   "prompt": "P1"
+  },
+  {
+   "slot": "m03",
+   "task": "BV",
+   "engine": "claude",
+   "effort": "high",
+   "arm": "X",
+   "prompt": "P1"
+  },
+  {
+   "slot": "m04",
+   "task": "Z0",
+   "engine": "claude",
+   "effort": "high",
+   "arm": "X",
+   "prompt": "P1"
+  }
+ ],
+ "smoke": [
+  {
+   "slot": "smoke-claude",
+   "attempt": 1,
+   "task": "SM"
+  },
+  {
+   "slot": "smoke2-claude",
+   "attempt": 2,
+   "task": "SM"
+  }
+ ],
+ "repositories": [
+  "fysoul17/rpd7-20261018a-m01",
+  "fysoul17/rpd7-20261018a-m02",
+  "fysoul17/rpd7-20261018a-m03",
+  "fysoul17/rpd7-20261018a-m04",
+  "fysoul17/rpd7-20261018a-smoke-claude",
+  "fysoul17/rpd7-20261018a-smoke2-claude"
+ ],
+ "reference": {
+  "experiment": "rp-d6",
+  "arm": "X",
+  "slots": [
+   "m01",
+   "m04",
+   "m05",
+   "m08"
+  ],
+  "delivered": 2
+ },
+ "inputs": {
+  "autoresearch/experiments/rp-d7-prompt-delivery/auth.py": "1fcbeabb41df3a3d030bd63371e1d4dbddf188bd6ea542f6e41fa19367d2c619",
+  "autoresearch/experiments/rp-d7-prompt-delivery/conftest.py": "9cec0ef347540f04c061577add459a7bbb910cc05b2231ac3b2dc9184421d53a",
+  "autoresearch/experiments/rp-d7-prompt-delivery/grading.py": "e334e899f1f1e3292153acc53711247bded24578714019f0261949b95acc32da",
+  "autoresearch/experiments/rp-d7-prompt-delivery/pack.py": "479dce5a2a2c83f86648a22fb4421285ae7098378df2382cd4bb56b8dd86b8f4",
+  "autoresearch/experiments/rp-d7-prompt-delivery/prepare.py": "ecc7586e31227439bdd0f84564af8ef9a00fd1a4bf534d5e51450f92524263fa",
+  "autoresearch/experiments/rp-d7-prompt-delivery/runner.py": "1ad99a35e35ac96f013294846e45e7ade91b4a270b21f9c96dc90f5292a2185d",
+  "autoresearch/experiments/rp-d7-prompt-delivery/stage.py": "da58271823823fca4dc3179d670d023bda6ca53f4e56b760beae528cec9ba3d8",
+  "autoresearch/experiments/rp-d7-prompt-delivery/summarize.py": "8a9537e6e99c5c822ebd39ca6411f91d2f4dd633cf6d3a45adf703dd3a566b59",
+  "autoresearch/experiments/rp-d7-prompt-delivery/test_grading.py": "e5d008f2de913763fe11d20718f7f5bde0c76eaae547be3fce4f3478442f6c8e",
+  "autoresearch/experiments/rp-d7-prompt-delivery/test_pack.py": "e6815d56cfd1d56c23f94ac33a01d2b7bf73db84ddd2fb468e5d7dfaf4b54262",
+  "autoresearch/experiments/rp-d7-prompt-delivery/test_runtime.py": "0200d8d2f71b36db338a610a77c480bd1c6caac143d9abe0d937e207eb3b75d9",
+  "autoresearch/experiments/rp-d7-prompt-delivery/test_summary.py": "33663a5a4d8a6c63a7ee30378ff9ffe1c723f43efac29b78e373e440bcc5c9ec",
+  "autoresearch/experiments/rp-d7-prompt-delivery/README.md": "0ef45072c3aaa84c510d892a5134928602e71c29626dab8a773bcbd4f0b98bd9",
+  "autoresearch/experiments/rp-d7-prompt-delivery/VALIDATION.md": "b7b52f1471ae8bfbbf92fb7008a862e778ae44f1179d4805b6175ad3da020a4a",
+  "autoresearch/experiments/rp-d7-prompt-delivery/DESIGN.md": "b63b4dd92e04eb2fcb3b65c32d19027f92072676a7b1ec92b289d49905ec7142",
+  "autoresearch/experiments/rp-d1-delivery-cost/common.txt": "2ccc7f6a11891f6270685c09ada44cc4376bbedb047f8a0864f950b415bf50cf"
+ }
+}
