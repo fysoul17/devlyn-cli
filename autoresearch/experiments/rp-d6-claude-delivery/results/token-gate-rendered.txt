@@ -1,0 +1,35 @@
+# Rendered-block token gate (2026-10-18T01:42:59Z)
+X = registry devlyn-cli@4.2.22 (799c609141e7f1c05c0e798177522d807cc93cfcf580532f38cfbe31a205ca61); Y = npm pack of candidate 15ded3a7e2d7ca6d46f366bdd63b7ac9c4e1da91 (6db81e467b5f712db53f65386150c230d4a2cd28aab531de91c03598885733b7)
+Installed with: npm exec --package=<tarball> -- devlyn -y [--claude] into an empty git project
+{
+ "CLAUDE.md": {
+  "bytes": [
+   11,
+   11
+  ],
+  "claude": [
+   16,
+   16
+  ],
+  "o200k": [
+   5,
+   5
+  ]
+ },
+ "AGENTS.md": {
+  "bytes": [
+   4284,
+   4274
+  ],
+  "claude": [
+   1504,
+   1499
+  ],
+  "o200k": [
+   940,
+   937
+  ]
+ },
+ "passed": true
+}
+CLAUDE.md with --claude is the 11-byte import of AGENTS.md; the block is in AGENTS.md.
