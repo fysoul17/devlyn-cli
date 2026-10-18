@@ -24,6 +24,22 @@ SCHEDULE = [(f'm{i:02}', 'BV' if i <= 4 else 'Z0', 'claude') for i in range(1, 9
 ARMS = dict(zip((row[0] for row in SCHEDULE), ('X', 'Y', 'Y', 'X', 'X', 'Y', 'Y', 'X', *('Y',) * 6)))
 
 
+inherited_cell_run = cell.run
+
+
+def run_cell(out, runtime, *, native, check_auth):
+    if out.name != 'g06':
+        return inherited_cell_run(out, runtime, native=native, check_auth=check_auth)
+    plan = read(out / 'plan.json')
+    require(not (set(plan['env']) & (set(cell.prepare.GITHUB_ENV) | {'GH_TOKEN', 'GITHUB_TOKEN'})),
+            'g06 must not configure GitHub credentials')
+    scan(out, runtime)
+    return cell.legacy.run(out, runtime, native=native, check_auth=check_auth)
+
+
+cell.run = run_cell
+
+
 def smoke_slots(attempt=1):
     require(type(attempt) is int and attempt in (1, 2), 'smoke_attempt must be 1 or 2')
     prefix = 'smoke' if attempt == 1 else 'smoke2'

@@ -8,6 +8,7 @@ safety adjudications is explicitly provisional and never authorizes adoption.
 import argparse
 from collections import Counter
 from fractions import Fraction
+import hashlib
 import json
 import math
 from pathlib import Path
@@ -53,6 +54,11 @@ def measured_records(output):
         if row['dispatched']:
             require(row.get('arm') == arm and row.get('effort') == effort and
                     row.get('prompt_sha256') == prepare.prompt_sha256(slot), 'arm/effort/prompt binding mismatch')
+            prompt = output / slot / 'prompt.txt'
+            require(prompt.is_file(), 'sealed prompt missing')
+            body, marker, _ = prompt.read_bytes().partition(b'\nCALLER CONTRACT\n')
+            require(marker and hashlib.sha256(body).hexdigest() == prepare.prompt_sha256(slot),
+                    'sealed prompt body binding mismatch')
             require(row['status'] != 'NOT_RUN', 'NOT_RUN slot was dispatched')
             release = row.get('release')
             require(isinstance(release, dict) and release.get('version') == '4.2.22' and

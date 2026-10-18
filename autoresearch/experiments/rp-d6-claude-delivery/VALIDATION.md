@@ -71,3 +71,27 @@ explicit adjudications; they cannot silently authorize adoption.
   eligible candidate to HOLD; incomplete usage routes to INCONCLUSIVE first.
 
 These are offline apparatus checks, not an rp-d6 measurement result.
+
+## R1 review corrections — 2026-10-18
+
+Addressed both `results/apparatus-r1-*.md` reviews: scoped report parsing and
+nearby publication-limit citations; frozen candidate shipped-path validation;
+g06 GitHub credential isolation and explicit command/ref publication evidence;
+and independent sealed prompt-body hashing. Counterexamples cover parsing,
+bound adjudication and the final decision. Unknown history remains unknown;
+an empty remote census alone cannot justify a negative review finding.
+
+The prediction before the README suite loop was that all three suites would
+pass. Final raw results, superseding the initial apparatus counts above:
+
+```text
+rp-d6: 240 passed in 92.05s (0:01:32)
+rp-d4: 268 passed, 18 subtests passed in 111.89s (0:01:51)
+rp-d5: 195 passed in 233.12s (0:03:53)
+```
+
+Targeted checks preceded the full suites. One Astra review round concluded
+SHIP with no remaining actionable findings. All 14 Python files passed syntax
+checks; whitespace and changed-path scope checks passed. DESIGN and the
+rendered gate retain the hashes above. Changes remain local and uncommitted;
+no live experiment operations or real credentials were used.

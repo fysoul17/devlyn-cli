@@ -2,6 +2,7 @@
 from copy import deepcopy
 import importlib.util
 import io
+import json
 from pathlib import Path
 import socket
 import subprocess
@@ -29,7 +30,7 @@ def offline(monkeypatch):
         monkeypatch.setattr(target, name, forbidden)
 
 
-def fixture(pack, root, monkeypatch, version='4.2.22'):
+def fixture(pack, root, monkeypatch, version='4.2.22', changed=None, candidate_files=None):
     source = root / 'registry.tgz'
     before = {name: ('# original ' + name + '\n').encode() for name in pack.FILES}
     after = {name: raw + b'# candidate\n' for name, raw in before.items()}
@@ -48,7 +49,18 @@ def fixture(pack, root, monkeypatch, version='4.2.22'):
         archive.addfile(link)
     commit = 'a' * 40
 
+    files = ['bin', 'config', 'optional-skills', 'CLAUDE.md', 'AGENTS.md',
+             '!config/skills/preflight-workspace', '!config/skills/preflight-workspace/**',
+             '!**/__pycache__', '!**/__pycache__/**', '!**/*.pyc']
+
     def git(*args):
+        if args == ('show', pack.DESIGN_COMMIT + ':package.json'):
+            return json.dumps(dict(files=files)).encode()
+        if args == ('show', commit + ':package.json'):
+            return json.dumps(dict(files=files if candidate_files is None else candidate_files)).encode()
+        if args == ('diff-tree', '--no-commit-id', '-r', '--name-only', '-z', '--no-renames',
+                    pack.DESIGN_COMMIT, commit, '--'):
+            return ('\0'.join(pack.FILES if changed is None else changed) + '\0').encode()
         if args == ('rev-parse', '--verify', commit + '^{commit}'):
             return (commit + '\n').encode()
         name = args[-1].removeprefix(commit + ':')
@@ -89,6 +101,43 @@ def test_exact_three_candidate_paths_and_registry_identity(tmp_path, monkeypatch
         assert p.tree_manifest(tmp_path / arm / 'package') == manifests[arm]
     prior = load(HERE.parent / 'rp-d4-helper-report/pack.py')
     assert prior.FILES == ('config/skills/_shared/task-complete.py', 'config/skills/_shared/task-completion.md')
+
+
+def test_candidate_may_change_non_shipped_paths(tmp_path, monkeypatch):
+    p = load()
+    changed = [*p.FILES, '.agents/skills/_shared/runtime-principles.md',
+               'scripts/test-windows-portability.py', 'autoresearch/results.md',
+               'config/skills/preflight-workspace/SKILL.md',
+               'config/skills/_shared/__pycache__/ignored.pyc']
+    source, _, _, commit = fixture(p, tmp_path, monkeypatch, changed=changed)
+    assert build(p, source, tmp_path / 'arms', commit).is_file()
+
+
+@pytest.mark.parametrize('extra', ['bin/instruction-templates.json', 'config/other.md',
+                                  'optional-skills/example/SKILL.md'])
+def test_candidate_extra_shipped_change_rejected_before_output(tmp_path, monkeypatch, extra):
+    p = load()
+    source, _, _, commit = fixture(p, tmp_path, monkeypatch, changed=[*p.FILES, extra])
+    with pytest.raises(ValueError, match='exactly the three shipped paths'):
+        build(p, source, tmp_path / 'arms', commit)
+    assert not (tmp_path / 'arms').exists()
+
+
+def test_candidate_missing_shipped_change_rejected_before_output(tmp_path, monkeypatch):
+    p = load()
+    source, _, _, commit = fixture(p, tmp_path, monkeypatch, changed=p.FILES[:-1])
+    with pytest.raises(ValueError, match='exactly the three shipped paths'):
+        build(p, source, tmp_path / 'arms', commit)
+    assert not (tmp_path / 'arms').exists()
+
+
+def test_candidate_package_files_drift_rejected_before_output(tmp_path, monkeypatch):
+    p = load()
+    source, _, _, commit = fixture(p, tmp_path, monkeypatch,
+                                  candidate_files=['bin', 'config', 'CLAUDE.md', 'AGENTS.md', '.agents'])
+    with pytest.raises(ValueError, match='package files declaration changed'):
+        build(p, source, tmp_path / 'arms', commit)
+    assert not (tmp_path / 'arms').exists()
 
 
 @pytest.mark.parametrize('fault', ['sha256', 'integrity', 'version', 'commit', 'unchanged', 'git-blob'])
