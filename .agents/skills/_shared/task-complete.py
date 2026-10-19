@@ -186,6 +186,37 @@ def policy(receipt, override):
     return override or value or "auto"
 
 
+def ignore_task_records(work):
+    """Keep task records ignored without changing existing files or shared Git configuration."""
+    ignorecase = command(["git", "-C", str(work), "config", "--type=bool", "--get", "core.ignorecase"], ok=(0, 1)) == "true"
+    pathspec = ":(icase)" if ignorecase else ""
+
+    def ignored():
+        all_ignored = True
+        for probe in (".devlyn/acceptance.json", ".devlyn/loop/evidence"):
+            result = subprocess.run(["git", "-C", str(work), "--no-literal-pathspecs", "check-ignore", "-q", "--", probe], capture_output=True, text=True, encoding="utf-8")
+            require(result.returncode in (0, 1), f"git check-ignore {probe}: {result.stderr.strip()}")
+            if result.returncode == 1:
+                all_ignored = False
+        return all_ignored
+
+    directory = work / ".devlyn"
+    require(not directory.is_symlink() and (not directory.exists() or directory.is_dir())
+            and all((path.casefold() if ignorecase else path) != ".devlyn"
+                    for path in git(work, "--no-literal-pathspecs", "ls-files", "--", pathspec + ".devlyn").splitlines()),
+            f"{directory} is not a real directory; move it out of .devlyn in the starting commit before allocating")
+    if ignored():
+        return
+    rule = directory / ".gitignore"
+    require(not os.path.lexists(rule) and not git(work, "--no-literal-pathspecs", "ls-files", "--", pathspec + ".devlyn/.gitignore"),
+            f"{rule} already exists or is tracked; make it ignore acceptance.json and loop/evidence in the starting commit before allocating")
+    directory.mkdir(exist_ok=True)
+    with rule.open("x", encoding="utf-8") as stream:
+        stream.write("*\n")
+    require(ignored() and not git(work, "--no-literal-pathspecs", "status", "--porcelain", "--untracked-files=all", "--", ".devlyn"),
+            f"{directory} records are not ignored or .devlyn is dirty; repair the starting commit's .devlyn paths and ignore rules before allocating")
+
+
 def allocate(args, *, exclude_receipts=()):
     """Reconcile older tasks, except receipts the queue has identified as invalid."""
     work = Path(git(Path(args.repo).resolve(), "rev-parse", "--show-toplevel")).resolve()
@@ -225,6 +256,10 @@ def allocate(args, *, exclude_receipts=()):
     # stays visibly incomplete; a later call may not adopt whatever now exists.
     atomic_json(path, receipt)
     gref(receipt, "worktree", "add", "-b", args.branch, str(target), receipt["baseline"])
+    try:
+        ignore_task_records(target)
+    except CompletionError as exc:
+        raise CompletionError(f"{exc}; remove worktree {target} and branch {args.branch}, delete receipt directory {directory}, then allocate again") from exc
     receipt["worktree_gitdir"] = git(target, "rev-parse", "--absolute-git-dir")
     receipt["worktree_identity"] = workspace_identity(target, Path(receipt["worktree_gitdir"]))
     receipt["allocation"] = "owned"
@@ -1105,6 +1140,201 @@ class CompletionTests(unittest.TestCase):
         return (self.g("symbolic-ref", "HEAD", work=work), self.g("rev-parse", "HEAD", work=work),
                 self.g("status", "--porcelain", "--untracked-files=all", work=work), (work / "product").read_bytes(),
                 (Path(self.g("rev-parse", "--absolute-git-dir", work=work)) / "index").read_bytes())
+
+    def test_unignored_base_delivers_only_product_and_preserves_records(self):
+        # Prediction: with the ignore rule only in the anchor's dirty .gitignore, remote, --start, --local-base
+        # and --from-receipt allocations complete in their requested modes; only product is delivered, evidence
+        # survives custody/cleanup, and the anchor's .gitignore, info/exclude and HEAD remain byte-identical.
+        ignore = self.work / ".gitignore"
+        ignore.write_text("ignored/\nnode_modules/\n.env\n", encoding="utf-8")
+        self.g("commit", "-am", "base without .devlyn ignore")
+        self.g("push", "origin", "main")
+        base = self.g("rev-parse", "HEAD")
+        ignore.write_text(ignore.read_text(encoding="utf-8") + ".devlyn/\n", encoding="utf-8")
+        exclude = self.work / ".git/info/exclude"
+        anchor = (ignore.read_bytes(), exclude.read_bytes(), self.anchor_state())
+        predecessor = None
+        for route, status in (("remote", "COMPLETE"), ("start", "PR"), ("local_base", "LOCAL_ONLY"),
+                              ("from_receipt", "LOCAL_ONLY")):
+            with self.subTest(route=route):
+                source = {} if route == "remote" else {route: predecessor if route == "from_receipt" else base}
+                self.allocate_local(route, **source)
+                baseline = json.loads(self.receipt.read_text(encoding="utf-8"))["baseline"]
+                (self.task / "product").write_text(route + "\n", encoding="utf-8")
+                self.g("add", "product", work=self.task)
+                self.g("commit", "-m", "scoped product", work=self.task)
+                self.sha = self.g("rev-parse", "HEAD", work=self.task)
+                evidence = self.task / ".devlyn/loop/evidence/check.txt"
+                evidence.parent.mkdir(parents=True, exist_ok=True)
+                evidence.write_text("actual fixture check: " + route + "\n", encoding="utf-8")
+                self.assertEqual((self.task / "product").read_text(encoding="utf-8"), route + "\n")
+                self.acceptance = self.task / ".devlyn/acceptance.json"
+                self.acceptance.write_text(json.dumps({"kind": "direct", "task": route, "source_sha": self.sha,
+                    "checks": [{"command": "fixture byte assertion", "evidence": ".devlyn/loop/evidence/check.txt"}]}), encoding="utf-8")
+                records = snapshot_files(self.task, [".devlyn"])
+                flags = ["--mode", "auto" if route == "remote" else "pr"] if route in {"remote", "start"} else ["--local-only"]
+                result, _ = self.complete("--writers-stopped", *flags)
+                self.assertEqual(result["status"], status)
+                self.assertEqual(self.g("diff", "--name-only", baseline, self.sha), "product")
+                self.assertEqual(self.g("ls-tree", "-r", "--name-only", self.sha, "--", ".devlyn"), "")
+                verify_files(self.receipt.parent / "custody", {p: v for p, v in records.items() if Path(p) != Path(".devlyn/.gitignore")})
+                if route == "remote":
+                    self.assertFalse(self.task.exists())
+                    verify_files(self.receipt.parent / "records", records)
+                    self.assertEqual(self.run_cmd(["git", "--git-dir", str(self.bare), "diff", "--name-only", base, "main"]).stdout.strip(), "product")
+                elif route == "start":
+                    self.assertEqual(self.run_cmd(["git", "--git-dir", str(self.bare), "rev-parse", "refs/heads/task/start"]).stdout.strip(), self.sha)
+                self.assertEqual((ignore.read_bytes(), exclude.read_bytes(), self.anchor_state()), anchor)
+                predecessor = self.receipt
+
+    def test_ignored_base_needs_no_task_ignore_file(self):
+        # Prediction: a base that already ignores both record paths creates no .devlyn directory or ignore file.
+        self.allocate()
+        self.assertFalse((self.task / ".devlyn").exists())
+        self.assertEqual(self.g("status", "--porcelain", "--untracked-files=all", work=self.task), "")
+
+    @unittest.skipIf(os.name == "nt", "the dirty checkout uses a POSIX shell hook")
+    def test_ignored_base_with_unrelated_checkout_dirt_is_owned(self):
+        # Prediction: an already-ignoring base reaches owned despite unrelated checkout-hook dirt,
+        # without creating .devlyn/.gitignore; round 0 refuses it because it checks the whole tree.
+        hook = self.work / ".git/hooks/post-checkout"
+        hook.write_text("#!/bin/sh\nprintf 'checkout dirt\\n' > unrelated\n", encoding="utf-8")
+        hook.chmod(0o755)
+        result = self.allocate()
+        self.assertEqual(result["status"], "ALLOCATED")
+        self.assertEqual(json.loads(self.receipt.read_text(encoding="utf-8"))["allocation"], "owned")
+        self.assertFalse((self.task / ".devlyn/.gitignore").exists())
+        self.assertEqual(self.g("status", "--porcelain", "--untracked-files=all", work=self.task), "?? unrelated")
+
+    def test_allocation_refuses_existing_devlyn_paths(self):
+        # Prediction: a tracked .devlyn file, symlink, submodule or non-covering .gitignore is refused with a named
+        # repair, remains untouched, and never becomes an owned allocation.
+        base = self.g("rev-parse", "HEAD")
+        for kind in ("file", "symlink", "ignore", "submodule"):
+            with self.subTest(kind=kind):
+                self.g("reset", "--hard", base)
+                (self.work / ".gitignore").write_text("ignored/\n", encoding="utf-8")
+                path = self.work / ".devlyn"
+                if kind == "submodule":
+                    self.g("update-index", "--add", "--cacheinfo", f"160000,{base},.devlyn")
+                    path.mkdir()
+                else:
+                    if kind == "file":
+                        path.write_text("owned file\n", encoding="utf-8")
+                    elif kind == "symlink":
+                        path.symlink_to("product")
+                    else:
+                        path.mkdir()
+                        (path / ".gitignore").write_text("unrelated\n", encoding="utf-8")
+                    self.g("add", ".devlyn")
+                self.g("commit", "-am", "existing .devlyn " + kind)
+                start = self.g("rev-parse", "HEAD")
+                tree = self.root / kind
+                result, run = self.cli("allocate", "--repo", self.work, "--task", kind, "--branch", "task/" + kind,
+                                       "--worktree", tree, "--local-base", start, success=False)
+                self.assertNotEqual(run.returncode, 0)
+                self.assertEqual(result["status"], "BLOCKED")
+                self.assertIn(str(tree / ".devlyn"), result["reason"])
+                self.assertIn("starting commit", result["reason"])
+                self.assertEqual(self.g("status", "--porcelain", "--untracked-files=all", work=tree), "")
+                if kind == "ignore":
+                    self.assertEqual((tree / ".devlyn/.gitignore").read_text(encoding="utf-8"), "unrelated\n")
+                receipt = self.work / ".git/devlyn-completion" / hashlib.sha256(("task/" + kind).encode()).hexdigest()[:24] / "receipt.json"
+                self.assertEqual(json.loads(receipt.read_text(encoding="utf-8"))["allocation"], "allocating")
+                self.assertIn(f"remove worktree {tree} and branch task/{kind}, delete receipt directory {receipt.parent}, then allocate again", result["reason"])
+
+    def test_sparse_allocation_refuses_hidden_tracked_devlyn_paths(self):
+        # Prediction: sparse checkout hiding a tracked .devlyn file/symlink or .devlyn/.gitignore (including a case
+        # alias with core.ignorecase=true) refuses allocation before creating either path; contents/index stay unchanged.
+        base = self.g("rev-parse", "HEAD")
+        ignorecase = self.run_cmd(["git", "-C", str(self.work), "config", "--local", "--get", "core.ignorecase"], success=False)
+        self.assertIn(ignorecase.returncode, (0, 1))
+        for kind in ("file", "symlink", "ignore", "ignore_alias"):
+            with self.subTest(kind=kind):
+                self.g("reset", "--hard", base)
+                (self.work / ".gitignore").write_text("ignored/\n", encoding="utf-8")
+                path = self.work / ".devlyn"
+                if kind == "file":
+                    path.write_text("owned file\n", encoding="utf-8")
+                elif kind == "symlink":
+                    path.symlink_to("product")
+                else:
+                    path.mkdir()
+                    (path / (".GITIGNORE" if kind == "ignore_alias" else ".gitignore")).write_text("unrelated\n", encoding="utf-8")
+                self.g("add", "-f", ".devlyn")
+                self.g("commit", "-am", "tracked .devlyn " + kind)
+                start = self.g("rev-parse", "HEAD")
+                self.g("sparse-checkout", "init", "--no-cone")
+                try:
+                    if kind == "ignore_alias":
+                        self.g("config", "core.ignorecase", "true")
+                    self.g("sparse-checkout", "set", "/product")
+                    self.assertFalse(os.path.lexists(path))
+                    tree = self.root / kind
+                    result, run = self.cli("allocate", "--repo", self.work, "--task", kind, "--branch", "task/" + kind,
+                                           "--worktree", tree, "--local-base", start, success=False)
+                    self.assertNotEqual(run.returncode, 0)
+                    self.assertEqual(result["status"], "BLOCKED")
+                    self.assertIn(str(tree / ".devlyn"), result["reason"])
+                    receipt_dir = self.work / ".git/devlyn-completion" / hashlib.sha256(("task/" + kind).encode()).hexdigest()[:24]
+                    self.assertIn(f"remove worktree {tree} and branch task/{kind}, delete receipt directory {receipt_dir}, then allocate again", result["reason"])
+                    self.assertFalse(os.path.lexists(tree / ".devlyn"))
+                    self.assertEqual(self.g("status", "--porcelain", "--untracked-files=all", work=tree), "")
+                    self.assertEqual(self.g("write-tree", work=tree), self.g("rev-parse", start + "^{tree}"))
+                finally:
+                    self.g("sparse-checkout", "disable")
+                    if kind == "ignore_alias":
+                        if ignorecase.returncode == 0:
+                            self.g("config", "core.ignorecase", ignorecase.stdout.strip())
+                        else:
+                            self.g("config", "--unset", "core.ignorecase")
+
+    def test_case_sensitive_allocation_allows_distinct_devlyn_paths(self):
+        # Prediction: with core.ignorecase=false, tracked .DEVLYN and .devlyn/.GITIGNORE are distinct from the
+        # record paths: both allocate as owned, preserve the tracked file, and gain an ignored .devlyn/.gitignore.
+        # Round 1 refuses both because its index guards always ignore case.
+        with tempfile.TemporaryDirectory(dir=self.root) as scratch:
+            probe = Path(scratch)
+            (probe / ".DEVLYN").write_text("probe\n", encoding="utf-8")
+            if (probe / ".devlyn").exists():
+                self.skipTest("distinct .DEVLYN/.devlyn paths require a case-sensitive filesystem")
+            (probe / ".GITIGNORE").write_text("probe\n", encoding="utf-8")
+            if (probe / ".gitignore").exists():
+                self.skipTest("distinct .GITIGNORE/.gitignore paths require a case-sensitive filesystem")
+        self.g("config", "core.ignorecase", "false")
+        base = self.g("rev-parse", "HEAD")
+        for kind, relative in (("file_alias", ".DEVLYN"), ("ignore_alias", ".devlyn/.GITIGNORE")):
+            with self.subTest(kind=kind):
+                self.g("reset", "--hard", base)
+                (self.work / ".gitignore").write_text("ignored/\n", encoding="utf-8")
+                path = self.work / relative
+                path.parent.mkdir(exist_ok=True)
+                path.write_text("tracked alias\n", encoding="utf-8")
+                self.g("add", "-f", relative)
+                self.g("commit", "-am", "distinct .devlyn " + kind)
+                result = self.allocate_local(kind, local_base=self.g("rev-parse", "HEAD"))
+                self.assertEqual(result["status"], "ALLOCATED")
+                self.assertEqual(json.loads(self.receipt.read_text(encoding="utf-8"))["allocation"], "owned")
+                self.assertEqual((self.task / relative).read_text(encoding="utf-8"), "tracked alias\n")
+                self.assertEqual((self.task / ".devlyn/.gitignore").read_text(encoding="utf-8"), "*\n")
+                for record in (".devlyn/acceptance.json", ".devlyn/loop/evidence"):
+                    self.g("check-ignore", "-q", "--", record, work=self.task)
+                self.assertEqual(self.g("status", "--porcelain", "--untracked-files=all", work=self.task), "")
+
+    def test_allocation_with_literal_pathspecs_ignores_records(self):
+        # Prediction: GIT_LITERAL_PATHSPECS=1 still allows an unignored base to allocate as owned and ignore records,
+        # including with core.ignorecase=true; round 1 fails at check-ignore with exit 128.
+        (self.work / ".gitignore").write_text("ignored/\n", encoding="utf-8")
+        self.g("commit", "-am", "base without .devlyn ignore")
+        self.g("config", "core.ignorecase", "true")
+        self.env["GIT_LITERAL_PATHSPECS"] = "1"
+        result = self.allocate_local("literal", local_base=self.g("rev-parse", "HEAD"))
+        self.assertEqual(result["status"], "ALLOCATED")
+        self.assertEqual(json.loads(self.receipt.read_text(encoding="utf-8"))["allocation"], "owned")
+        self.assertEqual((self.task / ".devlyn/.gitignore").read_text(encoding="utf-8"), "*\n")
+        for record in (".devlyn/acceptance.json", ".devlyn/loop/evidence"):
+            self.g("--no-literal-pathspecs", "check-ignore", "-q", "--", record, work=self.task)
+        self.assertEqual(self.g("status", "--porcelain", "--untracked-files=all", work=self.task), "")
 
     def test_allocate_base_with_same_named_tag(self):
         self.g("tag", "main")

@@ -1210,8 +1210,8 @@ class LoopFixture(unittest.TestCase):
         self.assertEqual(self.drain()["tasks"], [])
         self.assertFalse(root.exists())
         self.plan("nx", [CHAIN[0]], {"nx.t1": {"product": "greeting"}})
-        result = self.fault_drain("g['evidence_ignored'] = lambda *args: False\n")
-        self.assertIn(".devlyn/ is not ignored", self.tasks(result)["nx.t1"]["reason"])
+        result = self.fault_drain("g['instruction_drift'] = lambda *args: 'AGENTS.md'\n")
+        self.assertIn("installed instructions (AGENTS.md)", self.tasks(result)["nx.t1"]["reason"])
         self.assertEqual(self.calls("nx.t1"), 0)
         self.assertFalse(root.exists())
         self.behaviors["nx.t1"] = {"exit_now": 1}
@@ -2163,26 +2163,24 @@ class LoopFixture(unittest.TestCase):
         self.assertEqual(packet["contract"]["sha256"], hashlib.sha256(captured).hexdigest())
         self.assertIn(f"{self.anchor / 'docs/specs/a/t1/spec.md'}: kept, it differs from the captured package refs/devlyn/captures/a", result["cleanup"])
 
-    def test_devlyn_ignore_is_checked_before_allocation(self):
-        # Prediction (4): an unignored start waits unallocated while a loop on an ignored base completes; repair runs once.
+    def test_unignored_start_is_accepted_in_one_drain(self):
+        # Prediction: an unignored start and an independent loop both complete in one drain without changing the
+        # anchor's .gitignore or info/exclude, or adding .gitignore/.devlyn changes to either accepted source.
         self.g("branch", "ignored-base")
         (self.anchor / ".gitignore").write_text("__pycache__/\n", encoding="utf-8")
         self.g("commit", "-qam", "base without the .devlyn/ rule")
         self.plan("ig", [("t1", [], "Notes", [NOTES_CHECK])], {"ig.t1": {"product": "notes"}}, base=self.g("rev-parse", "HEAD"))
         self.g("checkout", "-q", "ignored-base")
         self.independent()
-        blocked = self.drain()
-        self.assert_independent(blocked)
-        reason = self.tasks(blocked)["ig.t1"]["reason"]
-        self.assertIn(".devlyn/ is not ignored", reason)
-        self.assertIn(".gitignore", reason)
-        self.assertIn("info", reason)
-        self.assertIn("exclude", reason)
-        self.assertFalse(self.receipt_path("ig.t1").exists())
-        (self.common / "info").mkdir(exist_ok=True)
-        with (self.common / "info" / "exclude").open("a", encoding="utf-8") as exclude:
-            exclude.write(".devlyn/\n")
-        self.assertEqual(self.tasks(self.drain())["ig.t1"]["result"], "accepted")
+        ignore, exclude = self.anchor / ".gitignore", self.common / "info/exclude"
+        before = (ignore.read_bytes(), exclude.read_bytes())
+        result = self.drain()
+        self.assert_independent(result)
+        for identity in ("ig.t1", "bb.t1"):
+            self.assertEqual(self.tasks(result)[identity]["result"], "accepted")
+            receipt = self.receipt(identity)
+            self.assertEqual(self.g("diff", "--name-only", receipt["baseline"], receipt["source_sha"], "--", ".gitignore", ".devlyn"), "")
+        self.assertEqual((ignore.read_bytes(), exclude.read_bytes()), before)
         self.assertEqual((self.calls("ig.t1"), self.calls("bb.t1")), (1, 1))
 
     @unittest.skipIf(os.name == "nt", "the failing allocation uses a POSIX shell hook")
