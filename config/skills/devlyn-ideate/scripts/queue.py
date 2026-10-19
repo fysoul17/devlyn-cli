@@ -1002,17 +1002,6 @@ def instruction_drift(anchor, rev):
     return ", ".join(name for name in names if name in differ)
 
 
-def evidence_ignored(anchor, common, start):
-    """Whether a checkout of `start` ignores .devlyn/: its .gitignore files on that path, info/exclude, core.excludesFile."""
-    with tempfile.TemporaryDirectory(prefix="devlyn-loop-ignore-") as temp:
-        for rel in (".gitignore", ".devlyn/.gitignore", ".devlyn/loop/.gitignore"):
-            if (rules := show(anchor, start, rel)) is not None:
-                (Path(temp) / rel).parent.mkdir(parents=True, exist_ok=True)
-                (Path(temp) / rel).write_bytes(rules)
-        return git_run(temp, "--git-dir", str(common), "--work-tree", temp, "check-ignore", "-q", "--no-index",
-                       ".devlyn/loop/evidence", ok=(0, 1)).returncode == 0
-
-
 def allocate(v, row, opts):
     """Allocate the task's owned worktree, or return why it waits: origin names no GitHub repository, its base is not the
     default, or its refreshed remote base holds another version of the loop's package or lacks the checkout's instructions
@@ -1055,10 +1044,6 @@ def allocate(v, row, opts):
         require_merged(v, row, start)
         if drift := package_drift(v, loop, start, f"origin/{manifest['base_ref']}"):
             return drift
-    require(evidence_ignored(anchor, common, start),
-            f"{identity}: .devlyn/ is not ignored in its start commit {start}, so loop evidence would dirty task source; commit a "
-            f"`.devlyn/` entry to .gitignore in the base the task starts from (push it for remote delivery), or add `.devlyn/` to "
-            f"{common / 'info' / 'exclude'}; then drain again")
     if values["start"] and (drift := instruction_drift(anchor, start)):
         return (f"the installed instructions ({drift}) in this checkout differ from those in its start commit {start}, so it would run "
                 f"without them; commit them and push them to origin/{manifest['base_ref']}")

@@ -139,7 +139,7 @@ inputs when needed; cleanup is not an instruction to restart parked work.
 In the allocated worktree, finish the candidate's decisive checks and diff
 review, then stage and commit only accepted task changes. The helper never
 stages product files. Write a
-root acceptance file in the checkout (usually ignored `.devlyn/acceptance.json`):
+root acceptance file in the task worktree (`.devlyn/acceptance.json`):
 
 ```json
 {"kind":"direct","task":"<task identity>","source_sha":"<full commit>","checks":[{"command":"<actual check>","evidence":".devlyn/checks.log"}]}
