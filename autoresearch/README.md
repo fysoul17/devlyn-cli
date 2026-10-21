@@ -24,22 +24,17 @@ One iteration = one **falsifiable hypothesis** that may span multiple commits an
 
 ```
    ┌──────────────────────────────────────────────────────────────┐
-   │ 1. PROPOSE   — pick the next hypothesis from "Next" below.   │
-   │              Write iterations/NNNN-<slug>.md with the         │
-   │              schema in playbooks/iteration-loop.md.           │
+   │ 1. DESIGN    — one candidate, the cited base evidence, and a │
+   │              frozen prediction and decision rule             │
+   │              (playbooks/iteration-loop.md).                  │
    │                                                              │
-   │ 2. RUN       — apply the change as one or more commits on a   │
-   │              branch. Re-run the benchmark (subset first if    │
-   │              the change is narrow; full suite for ship).      │
+   │ 2. RUN       — review the design, qualify the apparatus per  │
+   │              engine × arm, register, then run the cells.     │
    │                                                              │
-   │ 3. ANALYZE   — fill in the iteration's "Actual" + "Lessons"   │
-   │              sections with real data. Oracle findings,        │
-   │              axis deltas, fixture-level wins/regressions.     │
+   │ 3. ANALYZE   — raw numbers, the frozen rule's decision and a │
+   │              verdict per changed component.                  │
    │                                                              │
-   │ 4. SHIP/REVERT — decide. Append a one-line entry to           │
-   │              DECISIONS.md. If shipped, freeze the new         │
-   │              baseline in baselines/. If reverted, leave       │
-   │              the iteration file with the verdict.             │
+   │ 4. RECORD    — one line in DECISIONS.md; update HANDOFF.md.  │
    └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -93,11 +88,11 @@ autoresearch/
 ├── DECISIONS.md        — append-only one-line log: NNNN | ACCEPT/REVERT | desc | iter file
 ├── HANDOFF.md          — what the next session needs to know to continue
 ├── iterations/
-│   └── NNNN-<slug>.md  — one file per hypothesis (schema in playbooks/)
+│   └── NNNN-<slug>.md  — one file per hypothesis (see playbooks/)
 ├── baselines/
 │   └── <label>.json    — frozen `summary.json` from each shipped run
 └── playbooks/
-    ├── iteration-loop.md   — propose / run / analyze / ship-or-revert
+    ├── iteration-loop.md   — design / run / analyze / record
     └── model-checkup.md    — standing model-checkup loop: new model ID → one-page verdict + re-pin recommendation
 ```
 
