@@ -1,0 +1,12 @@
+{
+  "D3": {
+    "issue_snapshot_sha256": "ef3d6e9e3f54f1a98293ea51a9dbf65267c5320d2d443739e9caeabc1e38d809",
+    "fetched_at": "2026-10-21T05:30:15.024805+00:00",
+    "url": "https://api.github.com/repos/tj/commander.js/issues/2530"
+  },
+  "D4": {
+    "issue_snapshot_sha256": "6648c13dc7034526180da0d996fa9e51e132d4956d8889a105c3a6a6573f7b0c",
+    "fetched_at": "2026-10-21T05:30:15.491284+00:00",
+    "url": "https://api.github.com/repos/pallets/click/issues/2645"
+  }
+}
