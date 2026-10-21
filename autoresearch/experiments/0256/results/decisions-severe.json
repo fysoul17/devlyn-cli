@@ -1,0 +1,270 @@
+{
+ "severe": {
+  "d09-I0185-claude-A-r1": {
+   "claude:0": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-release-stuck"
+   },
+   "codex:0": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-release-stuck"
+   },
+   "codex:1": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-release-stuck"
+   },
+   "codex:2": {
+    "disposition": "reproduced",
+    "witness": "i0185-temp-marker-preserve"
+   }
+  },
+  "d10-I0185-claude-B-r1": {
+   "claude:0": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-release-stuck"
+   },
+   "claude:1": {
+    "disposition": "reproduced",
+    "witness": "i0185-cross-device-stage"
+   },
+   "codex:0": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-release-stuck"
+   },
+   "codex:1": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-alias"
+   }
+  },
+  "d11-I0185-codex-B-r1": {
+   "claude:0": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-release-restore"
+   },
+   "codex:0": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-release-restore"
+   }
+  },
+  "d12-I0185-codex-A-r1": {
+   "claude:0": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-alias"
+   },
+   "claude:1": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-tmpdir"
+   },
+   "codex:0": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-alias"
+   }
+  },
+  "d21-I0185-codex-A-r2": {
+   "claude:0": {
+    "disposition": "reproduced",
+    "witness": "i0185-deprecated-terminal-link"
+   },
+   "codex:0": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-release-restore"
+   },
+   "codex:1": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-alias"
+   }
+  },
+  "d22-I0185-codex-B-r2": {
+   "codex:0": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-release-restore"
+   },
+   "codex:1": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-tmpdir"
+   }
+  },
+  "d23-I0185-claude-B-r2": {
+   "claude:0": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-release-restore"
+   },
+   "claude:1": {
+    "disposition": "reproduced",
+    "witness": "i0185-mkdir-before-lock"
+   },
+   "codex:0": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-release-stuck"
+   },
+   "codex:1": {
+    "disposition": "reproduced",
+    "witness": "i0185-mkdir-before-lock"
+   }
+  },
+  "d24-I0185-claude-A-r2": {
+   "claude:0": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-close-absence"
+   },
+   "codex:0": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-close-absence"
+   },
+   "codex:1": {
+    "disposition": "reproduced",
+    "witness": "i0185-lock-release-stuck"
+   }
+  },
+  "d28-D4-claude-B-r2": {
+   "codex:0": {
+    "disposition": "reproduced",
+    "witness": "d4-writer-death"
+   },
+   "codex:1": {
+    "disposition": "reproduced",
+    "witness": "d4-writer-stall"
+   }
+  }
+ },
+ "witnesses": {
+  "i0185-lock-alias": {
+   "d09-I0185-claude-A-r1": false,
+   "d10-I0185-claude-B-r1": true,
+   "d11-I0185-codex-B-r1": false,
+   "d12-I0185-codex-A-r1": true,
+   "d21-I0185-codex-A-r2": true,
+   "d22-I0185-codex-B-r2": false,
+   "d23-I0185-claude-B-r2": false,
+   "d24-I0185-claude-A-r2": false
+  },
+  "i0185-lock-release-restore": {
+   "d09-I0185-claude-A-r1": true,
+   "d10-I0185-claude-B-r1": true,
+   "d11-I0185-codex-B-r1": true,
+   "d12-I0185-codex-A-r1": true,
+   "d21-I0185-codex-A-r2": true,
+   "d22-I0185-codex-B-r2": true,
+   "d23-I0185-claude-B-r2": true,
+   "d24-I0185-claude-A-r2": true
+  },
+  "i0185-lock-release-stuck": {
+   "d09-I0185-claude-A-r1": true,
+   "d10-I0185-claude-B-r1": true,
+   "d11-I0185-codex-B-r1": false,
+   "d12-I0185-codex-A-r1": false,
+   "d21-I0185-codex-A-r2": false,
+   "d22-I0185-codex-B-r2": false,
+   "d23-I0185-claude-B-r2": true,
+   "d24-I0185-claude-A-r2": true
+  },
+  "i0185-mkdir-before-lock": {
+   "d09-I0185-claude-A-r1": false,
+   "d10-I0185-claude-B-r1": false,
+   "d11-I0185-codex-B-r1": false,
+   "d12-I0185-codex-A-r1": false,
+   "d21-I0185-codex-A-r2": false,
+   "d22-I0185-codex-B-r2": false,
+   "d23-I0185-claude-B-r2": true,
+   "d24-I0185-claude-A-r2": true
+  },
+  "i0185-lock-tmpdir": {
+   "d09-I0185-claude-A-r1": false,
+   "d10-I0185-claude-B-r1": false,
+   "d11-I0185-codex-B-r1": false,
+   "d12-I0185-codex-A-r1": true,
+   "d21-I0185-codex-A-r2": false,
+   "d22-I0185-codex-B-r2": true,
+   "d23-I0185-claude-B-r2": false,
+   "d24-I0185-claude-A-r2": false
+  },
+  "i0185-lock-close-absence": {
+   "d09-I0185-claude-A-r1": true,
+   "d10-I0185-claude-B-r1": true,
+   "d11-I0185-codex-B-r1": false,
+   "d12-I0185-codex-A-r1": false,
+   "d21-I0185-codex-A-r2": false,
+   "d22-I0185-codex-B-r2": false,
+   "d23-I0185-claude-B-r2": true,
+   "d24-I0185-claude-A-r2": true
+  },
+  "i0185-recovery-reentry": {
+   "d09-I0185-claude-A-r1": false,
+   "d10-I0185-claude-B-r1": false,
+   "d11-I0185-codex-B-r1": false,
+   "d12-I0185-codex-A-r1": false,
+   "d21-I0185-codex-A-r2": false,
+   "d22-I0185-codex-B-r2": false,
+   "d23-I0185-claude-B-r2": true,
+   "d24-I0185-claude-A-r2": true
+  },
+  "i0185-temp-marker-preserve": {
+   "d09-I0185-claude-A-r1": true,
+   "d10-I0185-claude-B-r1": true,
+   "d11-I0185-codex-B-r1": false,
+   "d12-I0185-codex-A-r1": false,
+   "d21-I0185-codex-A-r2": false,
+   "d22-I0185-codex-B-r2": false,
+   "d23-I0185-claude-B-r2": false,
+   "d24-I0185-claude-A-r2": true
+  },
+  "i0185-physical-alias": {
+   "d09-I0185-claude-A-r1": false,
+   "d10-I0185-claude-B-r1": false,
+   "d11-I0185-codex-B-r1": false,
+   "d12-I0185-codex-A-r1": false,
+   "d21-I0185-codex-A-r2": false,
+   "d22-I0185-codex-B-r2": false,
+   "d23-I0185-claude-B-r2": false,
+   "d24-I0185-claude-A-r2": false
+  },
+  "i0185-cross-device-stage": {
+   "d09-I0185-claude-A-r1": false,
+   "d10-I0185-claude-B-r1": true,
+   "d11-I0185-codex-B-r1": true,
+   "d12-I0185-codex-A-r1": true,
+   "d21-I0185-codex-A-r2": true,
+   "d22-I0185-codex-B-r2": true,
+   "d23-I0185-claude-B-r2": false,
+   "d24-I0185-claude-A-r2": false
+  },
+  "i0185-deprecated-terminal-link": {
+   "d09-I0185-claude-A-r1": false,
+   "d10-I0185-claude-B-r1": false,
+   "d11-I0185-codex-B-r1": false,
+   "d12-I0185-codex-A-r1": false,
+   "d21-I0185-codex-A-r2": true,
+   "d22-I0185-codex-B-r2": false,
+   "d23-I0185-claude-B-r2": false,
+   "d24-I0185-claude-A-r2": false
+  },
+  "d4-writer-death": {
+   "d05-D4-claude-B-r1": false,
+   "d06-D4-claude-A-r1": false,
+   "d07-D4-codex-A-r1": false,
+   "d08-D4-codex-B-r1": false,
+   "d25-D4-codex-B-r2": false,
+   "d26-D4-codex-A-r2": false,
+   "d27-D4-claude-A-r2": false,
+   "d28-D4-claude-B-r2": true
+  },
+  "d4-writer-stall": {
+   "d05-D4-claude-B-r1": false,
+   "d06-D4-claude-A-r1": false,
+   "d07-D4-codex-A-r1": false,
+   "d08-D4-codex-B-r1": false,
+   "d25-D4-codex-B-r2": false,
+   "d26-D4-codex-A-r2": false,
+   "d27-D4-claude-A-r2": false,
+   "d28-D4-claude-B-r2": true
+  }
+ },
+ "adjudicated": {
+  "d12-I0185-codex-A-r1": {
+   "release": "FAIL"
+  },
+  "d22-I0185-codex-B-r2": {
+   "release": "FAIL"
+  }
+ }
+}

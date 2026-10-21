@@ -1,0 +1,390 @@
+{
+  "token": "0256:claude=dev:PACKAGE_LOWERS_QUALITY[D3.completion,D4.completion,D4.severe,D4.safe,I0185.rows,I0185.severe,I0185.safe,cost.wall,cost.input,cost.output,strict_gain],conf:PACKAGE_LOWERS_QUALITY[F10.completion,F11.completion,cost.wall,cost.input,cost.output,strict_gain];codex=dev:PACKAGE_LOWERS_QUALITY[I0185.severe],conf:PACKAGE_LOWERS_QUALITY[F11.completion,cost.wall,cost.input,cost.output,strict_gain]",
+  "configs": {
+    "claude": {
+      "development": {
+        "reading": "PACKAGE_LOWERS_QUALITY",
+        "conditions": [
+          "D3.completion",
+          "D4.completion",
+          "D4.severe",
+          "D4.safe",
+          "I0185.rows",
+          "I0185.severe",
+          "I0185.safe",
+          "cost.wall",
+          "cost.input",
+          "cost.output",
+          "strict_gain"
+        ],
+        "comparison": {
+          "candidate": "B",
+          "reference": "A",
+          "quality": {
+            "B5": {
+              "safe": true,
+              "completion": true,
+              "rows": true,
+              "severe": true
+            },
+            "D3": {
+              "safe": true,
+              "completion": false,
+              "rows": true,
+              "severe": true
+            },
+            "D4": {
+              "safe": false,
+              "completion": false,
+              "rows": true,
+              "severe": false
+            },
+            "I0185": {
+              "safe": false,
+              "completion": true,
+              "rows": false,
+              "severe": false
+            }
+          },
+          "tests": {
+            "wall": false,
+            "input": false,
+            "output": false
+          },
+          "strictly_better": false,
+          "outcome": "FAIL"
+        },
+        "sums": {
+          "A": {
+            "S": 5,
+            "wall": 2500.4284867919923,
+            "input": 4453078,
+            "output": 138523,
+            "per_success": {
+              "wall": 500.0856973583985,
+              "input": 890615.6,
+              "output": 27704.6
+            }
+          },
+          "B": {
+            "S": 3,
+            "wall": 1964.1706000819977,
+            "input": 4944783,
+            "output": 150936,
+            "per_success": {
+              "wall": 654.7235333606659,
+              "input": 1648261.0,
+              "output": 50312.0
+            }
+          }
+        }
+      },
+      "easy": {
+        "reading": "PACKAGE_COSTS_MORE",
+        "conditions": [
+          "cost.wall",
+          "cost.input",
+          "cost.output",
+          "strict_gain"
+        ],
+        "comparison": {
+          "candidate": "B",
+          "reference": "A",
+          "quality": {
+            "E1": {
+              "safe": true,
+              "completion": true,
+              "rows": true,
+              "severe": true
+            },
+            "E2": {
+              "safe": true,
+              "completion": true,
+              "rows": true,
+              "severe": true
+            }
+          },
+          "tests": {
+            "wall": false,
+            "input": false,
+            "output": false
+          },
+          "strictly_better": false,
+          "outcome": "FAIL"
+        },
+        "sums": {
+          "A": {
+            "S": 2,
+            "wall": 48.34878829101217,
+            "input": 125692,
+            "output": 3818,
+            "per_success": {
+              "wall": 24.174394145506085,
+              "input": 62846.0,
+              "output": 1909.0
+            }
+          },
+          "B": {
+            "S": 2,
+            "wall": 90.27775070798816,
+            "input": 415277,
+            "output": 8024,
+            "per_success": {
+              "wall": 45.13887535399408,
+              "input": 207638.5,
+              "output": 4012.0
+            }
+          }
+        }
+      },
+      "confirmation": {
+        "reading": "PACKAGE_LOWERS_QUALITY",
+        "conditions": [
+          "F10.completion",
+          "F11.completion",
+          "cost.wall",
+          "cost.input",
+          "cost.output",
+          "strict_gain"
+        ],
+        "comparison": {
+          "candidate": "B",
+          "reference": "A",
+          "quality": {
+            "F10": {
+              "safe": true,
+              "completion": false,
+              "rows": true,
+              "severe": true
+            },
+            "F11": {
+              "safe": true,
+              "completion": false,
+              "rows": true,
+              "severe": true
+            }
+          },
+          "tests": {
+            "wall": false,
+            "input": null,
+            "output": null
+          },
+          "strictly_better": null,
+          "outcome": "FAIL"
+        },
+        "sums": {
+          "A": {
+            "S": 4,
+            "wall": 250.0898231670144,
+            "input": 584759,
+            "output": 23522,
+            "per_success": {
+              "wall": 62.5224557917536,
+              "input": 146189.75,
+              "output": 5880.5
+            }
+          },
+          "B": {
+            "S": 1,
+            "wall": 740.2108417920244,
+            "input": null,
+            "output": null,
+            "input_lower_bound": 1346313,
+            "output_lower_bound": 34912,
+            "per_success": {
+              "wall": 740.2108417920244,
+              "input": null,
+              "output": null
+            }
+          }
+        }
+      }
+    },
+    "codex": {
+      "development": {
+        "reading": "PACKAGE_LOWERS_QUALITY",
+        "conditions": [
+          "I0185.severe"
+        ],
+        "comparison": {
+          "candidate": "B",
+          "reference": "A",
+          "quality": {
+            "B5": {
+              "safe": true,
+              "completion": true,
+              "rows": true,
+              "severe": true
+            },
+            "D3": {
+              "safe": true,
+              "completion": true,
+              "rows": true,
+              "severe": true
+            },
+            "D4": {
+              "safe": true,
+              "completion": true,
+              "rows": true,
+              "severe": true
+            },
+            "I0185": {
+              "safe": true,
+              "completion": true,
+              "rows": true,
+              "severe": false
+            }
+          },
+          "tests": {
+            "wall": true,
+            "input": true,
+            "output": true
+          },
+          "strictly_better": true,
+          "outcome": "FAIL"
+        },
+        "sums": {
+          "A": {
+            "S": 4,
+            "wall": 1482.6236095420318,
+            "input": 1971447,
+            "output": 45547,
+            "per_success": {
+              "wall": 370.65590238550794,
+              "input": 492861.75,
+              "output": 11386.75
+            }
+          },
+          "B": {
+            "S": 6,
+            "wall": 1425.4272429169796,
+            "input": 2492548,
+            "output": 43574,
+            "per_success": {
+              "wall": 237.57120715282994,
+              "input": 415424.6666666667,
+              "output": 7262.333333333333
+            }
+          }
+        }
+      },
+      "easy": {
+        "reading": "PACKAGE_COSTS_MORE",
+        "conditions": [
+          "cost.wall",
+          "cost.input",
+          "cost.output",
+          "strict_gain"
+        ],
+        "comparison": {
+          "candidate": "B",
+          "reference": "A",
+          "quality": {
+            "E1": {
+              "safe": true,
+              "completion": true,
+              "rows": true,
+              "severe": true
+            },
+            "E2": {
+              "safe": true,
+              "completion": true,
+              "rows": true,
+              "severe": true
+            }
+          },
+          "tests": {
+            "wall": false,
+            "input": false,
+            "output": false
+          },
+          "strictly_better": false,
+          "outcome": "FAIL"
+        },
+        "sums": {
+          "A": {
+            "S": 2,
+            "wall": 78.54074787601712,
+            "input": 116296,
+            "output": 2652,
+            "per_success": {
+              "wall": 39.27037393800856,
+              "input": 58148.0,
+              "output": 1326.0
+            }
+          },
+          "B": {
+            "S": 2,
+            "wall": 93.5954697910056,
+            "input": 193099,
+            "output": 3002,
+            "per_success": {
+              "wall": 46.7977348955028,
+              "input": 96549.5,
+              "output": 1501.0
+            }
+          }
+        }
+      },
+      "confirmation": {
+        "reading": "PACKAGE_LOWERS_QUALITY",
+        "conditions": [
+          "F11.completion",
+          "cost.wall",
+          "cost.input",
+          "cost.output",
+          "strict_gain"
+        ],
+        "comparison": {
+          "candidate": "B",
+          "reference": "A",
+          "quality": {
+            "F10": {
+              "safe": true,
+              "completion": true,
+              "rows": true,
+              "severe": true
+            },
+            "F11": {
+              "safe": true,
+              "completion": false,
+              "rows": true,
+              "severe": true
+            }
+          },
+          "tests": {
+            "wall": false,
+            "input": false,
+            "output": false
+          },
+          "strictly_better": false,
+          "outcome": "FAIL"
+        },
+        "sums": {
+          "A": {
+            "S": 3,
+            "wall": 286.20076029203483,
+            "input": 285166,
+            "output": 11663,
+            "per_success": {
+              "wall": 95.40025343067828,
+              "input": 95055.33333333333,
+              "output": 3887.6666666666665
+            }
+          },
+          "B": {
+            "S": 2,
+            "wall": 357.9913862500107,
+            "input": 517734,
+            "output": 14776,
+            "per_success": {
+              "wall": 178.99569312500535,
+              "input": 258867.0,
+              "output": 7388.0
+            }
+          }
+        }
+      }
+    }
+  }
+}
