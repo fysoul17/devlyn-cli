@@ -436,7 +436,7 @@ an instance; cite the section. `⟨fill⟩` marks what each instance supplies.
 
 **Identity is mechanical, not a judgment call.** `NNNN` = the next unused
 integer after the last entry in `autoresearch/iterations/`
-(`playbooks/iteration-loop.md:11`) — then a **reservation tie-break**: also scan
+(`playbooks/iteration-loop.md`, Identity) — then a **reservation tie-break**: also scan
 `HANDOFF.md` START-HERE and the `DECISIONS.md` tail for next-iteration numbers
 reserved in prose, and take the lowest integer that is neither used by a file
 nor reserved.
