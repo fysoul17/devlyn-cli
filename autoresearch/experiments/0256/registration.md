@@ -28,8 +28,25 @@ is frozen (r4) and authoritative; this file adds the frozen identities.
 | Venue | Claude account `cc43a4e02ede`, organization `2905f4abf05b` |
 | Apparatus | `autoresearch/experiments/0256/` at the registration commit |
 
-## Operational amendments (owner, 2026-10-21, before any cell ran)
+## Operational amendments (2026-10-21)
 
+The window-cap and renewal notes predate every cell; the rest came after the
+measured run began.
+
+- **Caps 100% / 100% and a direct run (owner, 19:15 KST, before any measured
+  cell).** At seven-day 83%, the registered floors (2×10 points) held the
+  first block even under a 100% cap. The owner asked for the run to proceed
+  anyway and to pause only when the window is actually short. Cells therefore
+  run in `cells.tsv` order through `run_cell.py` via
+  [`direct_run.py`](direct_run.py), without the floor reserve. That script pauses at
+  seven-day 97%, at a token under 6,300 s, or on a STOP verdict, and
+  retries "not dispatched" after 120 s. `driver.py` resumes from the
+  verdicts.
+- **Empty install commit (fix round 4).** Measured cell d11-I0185-codex-B-r1
+  stopped in preparation because I0185's `.gitignore` ignores `.agents/`, so
+  Codex's install left no tracked change and the install commit failed. The
+  install commit is now recorded even when empty. Cells d01–d10 had non-empty
+  install commits or no install and are unaffected; d11 had not been dispatched.
 - **Window caps 95% / 95%.** DESIGN's 85% / 70% held SMOKE (seven-day 71%,
   five-hour 39% at 17:00 KST, with the floors needing 2×10 and 2×25 points).
   The owner raised both caps to 95% and chose to pause when a block does not
