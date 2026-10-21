@@ -60,6 +60,34 @@ class Registration(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'committed tree'):
                 prepare.match_committed_tree(work, committed)
 
+    def test_install_records_empty_commit_when_output_is_ignored(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            work, _, _ = self.committed_modes_fixture(root)
+            (work / '.gitignore').write_text('.agents/\n')
+            prepare.git(work, 'add', '.gitignore')
+            prepare.git(work, 'commit', '-qm', 'ignore install target')
+            parent = prepare.git(work, 'rev-parse', 'HEAD')
+            tree = prepare.git(work, 'rev-parse', 'HEAD^{tree}')
+            installed = work / '.agents/skills/devlyn-ideate/SKILL.md'
+            run = subprocess.run
+
+            def fake_docker(argv, **kwargs):
+                if argv[0] == 'docker':
+                    installed.parent.mkdir(parents=True)
+                    installed.write_text('installed')
+                    return subprocess.CompletedProcess(argv, 0)
+                return run(argv, **kwargs)
+
+            with mock.patch.object(prepare.subprocess, 'run', side_effect=fake_docker):
+                prepare.install(dict(control=str(root), image='frozen'), work, root / 'home', 'codex', 'B')
+
+            self.assertTrue(installed.is_file())
+            self.assertEqual(prepare.git(work, 'rev-parse', 'HEAD^'), parent)
+            self.assertEqual(prepare.git(work, 'log', '-1', '--format=%s'), 'install B')
+            self.assertEqual(prepare.git(work, 'rev-parse', 'HEAD^{tree}'), tree)
+            self.assertEqual(prepare.git(work, 'status', '--porcelain', '--untracked-files=all'), '')
+
     def test_cells_and_orders(self):
         generated = generate.generate()
         self.assertEqual(set(generated), {'cells.tsv', 'smoke.tsv'})

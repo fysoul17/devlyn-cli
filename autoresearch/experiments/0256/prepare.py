@@ -92,7 +92,7 @@ def install(runtime, work, home, config, arm):
                     runtime['image'], 'node', '/install/package/bin/devlyn.js', *INSTALL[config]],
                    check=True, capture_output=True, timeout=300)
     git(work, 'add', '-A')
-    git(work, 'commit', '-qm', 'install ' + arm)
+    git(work, 'commit', '--allow-empty', '-qm', 'install ' + arm)
 
 def mirror(work, harness):
     """A sealed local bare origin at the allocation commit, without a GitHub transport."""
