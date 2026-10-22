@@ -16,12 +16,16 @@ Linux reflink; never a copy), removes what must not carry over, and moves the re
   them: on reuse Cargo rewrites a script's own OUT_DIR in its directives, not paths elsewhere
   (aws-lc-rs's `cargo:include` into aws-lc-sys) nor inside the text it wrote (tauri's permission
   lists);
-- every unit of a package whose sources or generated Rust plainly compile OUT_DIR in (rather
-  than through include!/include_str!/include_bytes!): Cargo never recompiles that path
-  (fingerprint/dep_info.rs). This is a best-effort reading of the source, not a proof;
-- incremental caches.
+- every unit of a package whose crates read OUT_DIR while compiling, by rustc's dep-info record
+  of each env!/option_env! read in any spelling, and whose sources or generated Rust compile it
+  in other than through include!/include_str!/include_bytes!: Cargo never recompiles that path
+  (fingerprint/dep_info.rs). Telling an include from a compiled-in path is a best-effort
+  reading of the source, not a proof;
+- incremental caches, final artifacts beside the unit directories, and outputs no fingerprint
+  claims.
 
-Cargo rebuilds what it then finds missing, and everything that depends on it. A path that
+Removal goes by unit hash across the layouts, so no Cargo command touches the clone. Cargo
+rebuilds what it then finds missing, and everything that depends on it. A path that
 survives inside compiled output (a proc-macro's install name, debug maps, a native library or
 a crate that compiled a path in where the reading above does not see it) still names the
 donor's files: when the donor rebuilds or removes them, the recipient can change behavior
@@ -63,12 +67,15 @@ SNIFF_BYTES = 8192  # a NUL among the first bytes marks a binary file
 # a compiled-in path, and only the plain include!(concat!(env!("OUT_DIR"), ...)) forms, which
 # embed contents, offset one each; an env!/option_env! whose argument is not a literal counts too.
 _SPACE = r"(?:\s|//[^\n]*|/\*[\s\S]*?\*/)*"
-# Every quote may start a literal (a lookahead, so candidates overlap); its escapes are decoded.
-STRING_CANDIDATE = re.compile(r'(?="((?:[^"\\]|\\[\s\S])*?)")')
+# A literal that can decode to OUT_DIR holds only its letters, \x and \u{} escapes and string
+# continuations; every quote may start one (a lookahead, so candidates overlap).
+STRING_CANDIDATE = re.compile(r'"(?=((?:[OUTDIR_]|\\x[0-9a-fA-F]{2}|\\u\{[0-9a-fA-F_]+\}|\\\r?\n\s*)+)")')
 ESCAPE = re.compile(r'\\(?:x([0-9a-fA-F]{2})|u\{([0-9a-fA-F_]+)\}|\n\s*|(.))')
-NONLITERAL_ENV = re.compile(rf'(?<![A-Za-z0-9_])(?:option_)?env{_SPACE}!{_SPACE}[(\[{{]{_SPACE}(?!r?#*")')
+NONLITERAL_ENV = re.compile(rf'env{_SPACE}!{_SPACE}[(\[{{]{_SPACE}(?!r?#*")')
+# Both start with a literal word, which re scans for quickly; the word's left boundary is checked
+# on each match (a lookbehind first would make re try every position).
 INCLUDED_OUT_DIR = re.compile(
-    r'(?<![A-Za-z0-9_])include(?:_str|_bytes)?\s*!\s*\(\s*concat\s*!\s*\(\s*env\s*!\s*\(\s*"OUT_DIR"\s*\)')
+    r'include(?:_str|_bytes)?\s*!\s*\(\s*concat\s*!\s*\(\s*env\s*!\s*\(\s*"OUT_DIR"\s*\)')
 REDIRECTS = ("CARGO_TARGET_DIR", "CARGO_BUILD_TARGET_DIR", "CARGO_BUILD_BUILD_DIR")
 RUSTC_ENV = re.compile(r"^cargo::?rustc-env=[^=]+=")
 # Runs in a child so the time limit can stop a long clone; argv: source, target.
@@ -284,18 +291,20 @@ def publish(staging_parent, staging_name, target_parent, target_name):
 
 def check_clone(staging, deadline):
     """No Git data, no special file, and no link that leads out of the clone."""
-    for directory, dirs, files in os.walk(staging):
+    pending = [staging]
+    while pending:
         deadline.left()
-        for name in dirs + files:
-            path = Path(directory, name)
-            mode = path.lstat().st_mode
-            if name.casefold() == ".git":
-                raise Unsafe(f"{path} is Git data")
-            if stat.S_ISLNK(mode):
-                if not Path(os.path.realpath(path)).is_relative_to(staging):
-                    raise Unsafe(f"{path} links out of the clone")
-            elif not (stat.S_ISREG(mode) or stat.S_ISDIR(mode)):
-                raise Unsafe(f"{path} is not a regular file or directory")
+        with os.scandir(pending.pop()) as entries:
+            for item in entries:
+                if item.name.casefold() == ".git":
+                    raise Unsafe(f"{item.path} is Git data")
+                if item.is_symlink():
+                    if not Path(os.path.realpath(item.path)).is_relative_to(staging):
+                        raise Unsafe(f"{item.path} links out of the clone")
+                elif item.is_dir(follow_symlinks=False):
+                    pending.append(item.path)
+                elif not item.is_file(follow_symlinks=False):
+                    raise Unsafe(f"{item.path} is not a regular file or directory")
 
 
 def mentions(data, roots):
@@ -311,7 +320,7 @@ def is_text(path):
         return b"\0" not in stream.read(SNIFF_BYTES)
 
 
-def foreign_runs(staging, layout, roots, deadline):
+def foreign_runs(staging, layout, roots, readers, deadline):
     """Hashes of build-script runs whose kept results name a donor root Cargo does not rewrite."""
     found = set()
     for run_dir in (staging / layout / "build").iterdir():
@@ -338,7 +347,10 @@ def foreign_runs(staging, layout, roots, deadline):
                 deadline.left()
                 if is_text(path):
                     data = path.read_bytes()
-                    foreign = mentions(data, needles) or (name.endswith(".rs") and compiles_path(data.decode(errors="replace")))
+                    # Generated Rust is compiled only through an include, which reads OUT_DIR.
+                    foreign = mentions(data, needles) or (
+                        name.endswith(".rs") and UNIT.match(run_dir.name)["name"] in readers
+                        and compiles_path(data.decode(errors="replace")))
                 if foreign:
                     break
             if foreign:
@@ -357,10 +369,20 @@ def decoded(literal):
     return ESCAPE.sub(one, literal)
 
 
+def at_word(text, start, prefix=""):
+    """Whether text[start:] begins a word (or one led by `prefix`, as option_ leads env)."""
+    if prefix and text.endswith(prefix, 0, start):
+        start -= len(prefix)
+    return start == 0 or not (text[start - 1].isalnum() or text[start - 1] == "_")
+
+
 def compiles_path(text):
     """Whether Rust source may compile its OUT_DIR in other than through an include macro."""
-    literals = sum(decoded(match) == "OUT_DIR" for match in STRING_CANDIDATE.findall(text))
-    return literals > len(INCLUDED_OUT_DIR.findall(text)) or NONLITERAL_ENV.search(text) is not None
+    # Without OUT_DIR spelled out or a backslash, no literal can decode to it.
+    literals = (sum(decoded(match) == "OUT_DIR" for match in STRING_CANDIDATE.findall(text))
+                if "OUT_DIR" in text or "\\" in text else 0)
+    included = sum(at_word(text, m.start()) for m in INCLUDED_OUT_DIR.finditer(text)) if "OUT_DIR" in text else 0
+    return literals > included or any(at_word(text, m.start(), "option_") for m in NONLITERAL_ENV.finditer(text))
 
 
 def compiles_out_dir(package, deadline):
@@ -415,36 +437,57 @@ def remove_unclassified(staging, layout, deadline):
                 remove(item, deadline)
 
 
+LIB_OUTPUT = re.compile(r"^lib(?P<name>.+)-(?P<hash>[0-9a-f]{16})\.(?:rlib|rmeta|dylib|so|dll|a)$")
+
+
+def crates_reading_out_dir(staging, found, crates, deadline):
+    """The crates among these that may have read OUT_DIR while compiling, by rustc's dep-info.
+
+    rustc writes `# env-dep:OUT_DIR=...` into a unit's deps/<crate>-<hash>.d for every
+    env!/option_env! read of it, whatever the spelling or macro that made it. A crate counts as
+    not reading it only when every kept library output of it has that file and none says so.
+    """
+    reading, recorded, outputs = set(), {}, {}
+    for layout in found:
+        for item in (staging / layout / "deps").iterdir():
+            deadline.left()
+            if (match := LIB_OUTPUT.match(item.name)) and match["name"] in crates:
+                outputs.setdefault(match["name"], set()).add(match["hash"])
+            elif item.name.endswith(".d") and (match := UNIT.match(item.name)) and match["name"] in crates:
+                recorded.setdefault(match["name"], set()).add(match["hash"])
+                if b"\n# env-dep:OUT_DIR=" in b"\n" + item.read_bytes():
+                    reading.add(match["name"])
+    return reading | {crate for crate, hashes in outputs.items() if hashes - recorded.get(crate, set())}
+
+
 def sanitize(work, staging, found, roots, deadline):
     for layout in found:
         remove_unclassified(staging, layout, deadline)
-    env = {**without_redirects(), "CARGO_TARGET_DIR": str(staging)}
-    resolved = metadata(work, deadline, env=env, deps=True)
-    if not (Path(resolved["target_directory"]).resolve() == Path(resolved["build_directory"]).resolve() == staging.resolve()):
-        raise Unsafe("Cargo does not resolve the staging directory as both target and build directory")
+    resolved = metadata(work, deadline, env=without_redirects(), deps=True)
     names = {package["name"] for package in resolved["packages"]}
-    path_packages = sorted({package["name"] for package in resolved["packages"] if package["source"] is None})
-    out_dir_packages = sorted({package["name"] for package in resolved["packages"] if package["source"] is not None
-                               and any("custom-build" in t["kind"] for t in package["targets"])
-                               and compiles_out_dir(package, deadline)})
+    path_packages = {package["name"] for package in resolved["packages"] if package["source"] is None}
+    # Every version of a package counts on its own; a name is removed if any version must be.
+    scripted = [package for package in resolved["packages"]
+                if package["source"] is not None and any("custom-build" in t["kind"] for t in package["targets"])]
+    crates = [{t["name"].replace("-", "_") for t in package["targets"] if "custom-build" not in t["kind"]}
+              for package in scripted]
+    reading = crates_reading_out_dir(staging, found, set().union(*crates), deadline)
+    reader_packages = [package for package, own in zip(scripted, crates) if own & reading]
+    readers = {package["name"] for package in reader_packages}
+    out_dir_packages = {package["name"] for package in reader_packages if compiles_out_dir(package, deadline)}
     removed = set()
     for layout in found:
-        orphans = {m["hash"] for item in (staging / layout / ".fingerprint").iterdir()
-                   if (m := UNIT.match(item.name)) and m["name"] not in names}
-        foreign = foreign_runs(staging, layout, roots, deadline)
-        removed |= {m["name"] for item in (staging / layout / ".fingerprint").iterdir()
-                    if (m := UNIT.match(item.name)) and m["hash"] in orphans | foreign}
-        remove_units(staging, layout, orphans | foreign, deadline)
-    clean = path_packages + out_dir_packages
-    if clean:
-        base = ["cargo", "clean", "--frozen", "--target-dir", str(staging), "--profile", "dev"]
-        for name in clean:
-            base += ["-p", name]
-        run(base, cwd=work, deadline=deadline, env=env)  # Without --target only the host layout's outputs go.
-        triples = [arg for layout in found[1:] for arg in ("--target", layout.parts[0])]
-        if triples:
-            run([*base, *triples], cwd=work, deadline=deadline, env=env)
-    return sorted(removed | set(clean))
+        units = {m["hash"]: m["name"] for item in (staging / layout / ".fingerprint").iterdir()
+                 if (m := UNIT.match(item.name))}
+        drop = {digest for digest, name in units.items()
+                if name not in names or name in path_packages or name in out_dir_packages}
+        drop |= foreign_runs(staging, layout, roots, readers, deadline)
+        removed |= {units[digest] for digest in drop if digest in units}
+        # Outputs without a fingerprint belong to no unit Cargo would reuse.
+        drop |= {m["hash"] for sub in ("build", "deps", "examples") if (staging / layout / sub).is_dir()
+                 for item in (staging / layout / sub).iterdir() if (m := UNIT.match(item.name)) and m["hash"] not in units}
+        remove_units(staging, layout, drop, deadline)
+    return sorted(removed)
 
 
 def warm_cargo(work, anchor, staging_root, deadline):
@@ -575,34 +618,24 @@ def self_test():
     return 0 if result.wasSuccessful() else 1
 
 
-# Fixtures use real Git and a fake `cargo` on PATH that answers `metadata` from a JSON file
-# and performs `clean -p` on the layout as Cargo names it; a filesystem without cloning
-# copies instead, in tests only, so every rule still runs there.
+# Fixtures use real Git and a fake `cargo` on PATH that answers `metadata` from a JSON file;
+# a filesystem without cloning copies instead, in tests only, so every rule still runs there.
 FAKE_CARGO = r"""#!/usr/bin/env python3
-import json, os, pathlib, shutil, sys, time
+import json, os, pathlib, sys, time
 argv = sys.argv[1:]
 fixture = json.loads(pathlib.Path(os.environ["FAKE_CARGO"]).read_text())
 with open(os.environ["FAKE_CARGO_LOG"], "a") as log:
     log.write(json.dumps(argv) + "\n")
 time.sleep(fixture.get("sleep", 0))
 target = pathlib.Path(os.environ.get("CARGO_TARGET_DIR") or os.getcwd() + "/" + fixture.get("target", "target"))
-if argv[0] == "metadata":
-    found = {"target_directory": str(target), "packages": fixture["packages"] if "--no-deps" not in argv else [],
-             "metadata": fixture.get("workspace_metadata", {"devlyn": {"warm-build-dirs": True}})}
-    if not fixture.get("old_cargo"):
-        found["build_directory"] = fixture.get("build_directory", str(target))
-    print(json.dumps(found))
-elif argv[0] == "clean":
-    directory = pathlib.Path(argv[argv.index("--target-dir") + 1])
-    names = [argv[i + 1] for i, a in enumerate(argv) if a == "-p"]
-    triples = [argv[i + 1] for i, a in enumerate(argv) if a == "--target"]
-    for layout in [directory / t / "debug" for t in triples] or [directory / "debug"]:
-        for name in names:
-            for sub in (".fingerprint", "build", "deps"):
-                for item in (layout / sub).glob("*"):
-                    stem = item.name.split(".")[0].removeprefix("lib")
-                    if stem.rsplit("-", 1)[0].replace("_", "-") == name:
-                        shutil.rmtree(item) if item.is_dir() else item.unlink()
+assert argv[0] == "metadata", argv  # warming never runs another cargo command
+found = {"target_directory": str(target), "packages": fixture["packages"] if "--no-deps" not in argv else [],
+         "metadata": fixture.get("workspace_metadata", {"devlyn": {"warm-build-dirs": True}})}
+if not fixture.get("old_cargo"):
+    found["build_directory"] = fixture.get("build_directory", str(target))
+print(json.dumps(found))
+# The full resolve runs while warming, after the clone: the moment to race the destination.
+if "--no-deps" not in argv:
     if fixture.get("swap") and not os.path.islink("build"):
         os.rename("build", "build-moved")
         os.symlink(fixture["swap"], "build")
@@ -669,20 +702,28 @@ class WarmTests(unittest.TestCase):
 
     def write_fixture(self, **extra):
         packages = [
-            {"name": "app", "source": None, "manifest_path": str(self.work / "Cargo.toml"), "targets": [{"kind": ["lib"]}]},
-            {"name": "serde", "source": "registry", "manifest_path": str(self.root / "registry/serde/Cargo.toml"), "targets": [{"kind": ["lib"]}]},
-            {"name": "ring", "source": "registry", "manifest_path": str(self.root / "registry/ring/Cargo.toml"), "targets": [{"kind": ["lib"]}, {"kind": ["custom-build"]}]},
-            {"name": "tauri", "source": "registry", "manifest_path": str(self.root / "registry/tauri/Cargo.toml"), "targets": [{"kind": ["lib"]}, {"kind": ["custom-build"]}]},
-            {"name": "aws-lc-rs", "source": "registry", "manifest_path": str(self.root / "registry/aws-lc-rs/Cargo.toml"), "targets": [{"kind": ["lib"]}, {"kind": ["custom-build"]}]},
-            {"name": "baked", "source": "registry", "manifest_path": str(self.root / "registry/baked/Cargo.toml"), "targets": [{"kind": ["lib"]}, {"kind": ["custom-build"]}]},
-            {"name": "exporter", "source": "registry", "manifest_path": str(self.root / "registry/exporter/Cargo.toml"), "targets": [{"kind": ["lib"]}, {"kind": ["custom-build"]}]},
-            {"name": "generator", "source": "registry", "manifest_path": str(self.root / "registry/generator/Cargo.toml"), "targets": [{"kind": ["lib"]}, {"kind": ["custom-build"]}]},
+            {"name": "app", "source": None, "manifest_path": str(self.work / "Cargo.toml"), "targets": [{"kind": ["lib"], "name": "LIB"}]},
+            {"name": "serde", "source": "registry", "manifest_path": str(self.root / "registry/serde/Cargo.toml"), "targets": [{"kind": ["lib"], "name": "LIB"}]},
+            {"name": "ring", "source": "registry", "manifest_path": str(self.root / "registry/ring/Cargo.toml"), "targets": [{"kind": ["lib"], "name": "LIB"}, {"kind": ["custom-build"], "name": "build-script-build"}]},
+            {"name": "tauri", "source": "registry", "manifest_path": str(self.root / "registry/tauri/Cargo.toml"), "targets": [{"kind": ["lib"], "name": "LIB"}, {"kind": ["custom-build"], "name": "build-script-build"}]},
+            {"name": "aws-lc-rs", "source": "registry", "manifest_path": str(self.root / "registry/aws-lc-rs/Cargo.toml"), "targets": [{"kind": ["lib"], "name": "LIB"}, {"kind": ["custom-build"], "name": "build-script-build"}]},
+            {"name": "baked", "source": "registry", "manifest_path": str(self.root / "registry/baked/Cargo.toml"), "targets": [{"kind": ["lib"], "name": "LIB"}, {"kind": ["custom-build"], "name": "build-script-build"}]},
+            {"name": "exporter", "source": "registry", "manifest_path": str(self.root / "registry/exporter/Cargo.toml"), "targets": [{"kind": ["lib"], "name": "LIB"}, {"kind": ["custom-build"], "name": "build-script-build"}]},
+            {"name": "generator", "source": "registry", "manifest_path": str(self.root / "registry/generator/Cargo.toml"), "targets": [{"kind": ["lib"], "name": "LIB"}, {"kind": ["custom-build"], "name": "build-script-build"}]},
+            # rustc left no dep-info for its library, so nothing proves it never read OUT_DIR.
+            {"name": "undocumented", "source": "registry", "manifest_path": str(self.root / "registry/undocumented/Cargo.toml"), "targets": [{"kind": ["lib"], "name": "LIB"}, {"kind": ["custom-build"], "name": "build-script-build"}]},
+            # Two versions of one package: only 1.0 compiles OUT_DIR in.
+            {"name": "dual", "source": "registry", "manifest_path": str(self.root / "registry/dual-1/Cargo.toml"), "targets": [{"kind": ["lib"], "name": "LIB"}, {"kind": ["custom-build"], "name": "build-script-build"}]},
+            {"name": "dual", "source": "registry", "manifest_path": str(self.root / "registry/dual-2/Cargo.toml"), "targets": [{"kind": ["lib"], "name": "LIB"}, {"kind": ["custom-build"], "name": "build-script-build"}]},
         ]
+        for package in packages:
+            package["targets"] = [{**t, "name": package["name"] if t["name"] == "LIB" else t["name"]} for t in package["targets"]]
         for package in packages[1:]:
             source = Path(package["manifest_path"]).parent / "src"
             source.mkdir(parents=True, exist_ok=True)
-            (source / "lib.rs").write_text('include!(concat!(\n  env!("OUT_DIR"), "/gen.rs"));\n' if package["name"] != "baked"
-                                           else 'pub const DIR: &str = env!(/* why */ "OUT_DIR");\n')
+            compiled = Path(package["manifest_path"]).parent.name in {"baked", "undocumented", "dual-1"}
+            (source / "lib.rs").write_text('pub const DIR: &str = env!(/* why */ "OUT_DIR");\n' if compiled
+                                           else 'include!(concat!(\n  env!("OUT_DIR"), "/gen.rs"));\n')
         self.fixture.write_text(json.dumps({"packages": packages, **extra}))
 
     def unit(self, layout, sub, name, digest, files=None):
@@ -706,6 +747,21 @@ class WarmTests(unittest.TestCase):
                 self.unit(layout, ".fingerprint", name, digest)
                 (deps / f"lib{name}-{digest}.rlib").write_bytes(b"rlib")
             (self.donor / layout / ".cargo-lock").write_bytes(b"")
+            # rustc's dep-info: which crates read OUT_DIR while compiling.
+            for crate, digest, reads in (("serde", "1" * 16, False), ("baked", "8" * 16, True), ("generator", "b" * 16, True),
+                                         ("ring", "c" * 16, False), ("dual", "1a" * 8, True), ("dual", "2b" * 8, True)):
+                record = f"# env-dep:OUT_DIR={self.donor}/{layout}/build/{crate}-x/out\n" if reads else ""
+                (deps / f"{crate}-{digest}.d").write_text(f"/src/{crate}/lib.rs:\n\n# env-dep:CARGO_PKG_NAME={crate}\n{record}")
+                self.unit(layout, ".fingerprint", crate, digest)
+            (deps / "libstray-dddddddddddddddd.rlib").write_bytes(b"rlib")
+            self.unit(layout, ".fingerprint", "undocumented", "e" * 16)
+            (deps / f"libundocumented-{'e' * 16}.rlib").write_bytes(b"rlib")
+            for digest in ("1a" * 8, "2b" * 8):
+                (deps / f"libdual-{digest}.rlib").write_bytes(b"rlib")
+            # A run that points into the donor and has no fingerprint left.
+            self.unit(layout, "build", "orphanrun", "f" * 16, {
+                "root-output": f"{self.donor}/{layout}/build/orphanrun-{'f' * 16}/out".encode(),
+                "output": f"cargo:include={self.donor}/{layout}/build/aws-lc-sys-{'6' * 16}/out\n".encode()})
             (self.donor / layout / "incremental" / "app-x").mkdir(parents=True)
             # Final artifacts Cargo puts beside the unit directories, here of the unused `gone`.
             (self.donor / layout / "old-tool").write_bytes(b"bin")
@@ -743,11 +799,17 @@ class WarmTests(unittest.TestCase):
         target = self.work / "target"
         for layout in ("debug", "x86_64-pc-windows-msvc/debug"):
             kept = {p.name for p in (target / layout / ".fingerprint").iterdir()}
-            self.assertEqual({f"serde-{'1' * 16}", f"ring-{'4' * 16}"}, kept, layout)
+            # generator keeps its library unit: Cargo rebuilds it after rerunning the removed run.
+            self.assertEqual({f"serde-{'1' * 16}", f"ring-{'4' * 16}", f"ring-{'c' * 16}", f"generator-{'b' * 16}"}, kept, layout)
+            self.assertFalse((target / layout / "deps" / "libstray-dddddddddddddddd.rlib").exists())
             self.assertEqual({".fingerprint", "build", "deps", "examples", ".cargo-lock"}, {p.name for p in (target / layout).iterdir()})
             self.assertEqual([], list((target / layout / "examples").iterdir()))
             self.assertTrue((target / layout / "build" / f"ring-{'4' * 16}" / "out" / "libring.a").exists())
-        self.assertEqual(["app", "aws-lc-rs", "baked", "exporter", "generator", "gone", "tauri"], result["removed"])
+        self.assertEqual(["app", "aws-lc-rs", "baked", "dual", "exporter", "generator", "gone", "tauri", "undocumented"],
+                         result["removed"])
+        for layout in ("debug", "x86_64-pc-windows-msvc/debug"):
+            self.assertFalse((target / layout / "build" / f"orphanrun-{'f' * 16}").exists())
+            self.assertFalse(any((target / layout / "deps").glob("libdual-*")))
         self.assertEqual(str(self.donor), result["donor"])
         self.assertEqual(before, self.snapshot(self.donor))
         self.assert_nothing_left()
@@ -876,7 +938,7 @@ class WarmTests(unittest.TestCase):
                     'option_env!("OUT_DIR")', 'myinclude!(concat!(env!("OUT_DIR"), "/a.rs"))', 'env![ "OUT_DIR" ]',
                     'env/**/!("OUT_DIR")', 'env!(/* why */ "OUT_DIR")', 'env!("OUT\\x5fDIR")', 'env!("\\u{4f}UT_DIR")',
                     'use std::env as e; e!("OUT_DIR")', 'env!(concat!("OUT", "_DIR"))', 'env!(// note\n"OUT_DIR")',
-                    'env!("\\u{4_f}UT_DIR")', 'env!("OUT_\\\n      DIR")', 'let a = \'"\'; env!("OUT_DIR")',
+                    'env!("\\u{4_f}UT_DIR")', 'env!("\\u{0_0_0_0_4_f}UT_DIR")', 'env!("OUT_\\\n      DIR")', 'let a = \'"\'; env!("OUT_DIR")',
                     'include!(concat!(env!(/* c */ "OUT_DIR"), "/a.rs"))']
         for text in compiled:
             self.assertTrue(compiles_path(text), text)
