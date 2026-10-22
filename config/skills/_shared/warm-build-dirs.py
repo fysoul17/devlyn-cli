@@ -31,6 +31,9 @@ a crate that compiled a path in where the reading above does not see it) still n
 donor's files: when the donor rebuilds or removes them, the recipient can change behavior
 without a warning. That is why a workspace opts in, with `[workspace.metadata.devlyn]
 warm-build-dirs = true` in its Cargo.toml, once its dependencies do not use such paths.
+The repository's shared local Git config `devlyn.warmBuildDirs` overrides that opt-in on
+this machine: true enables, false disables, unset uses Cargo.toml, and invalid values skip.
+Global, system, include and per-worktree config values are not consulted.
 
 The donor is only read: its dev build lock is taken from an existing lock file opened read-only,
 without waiting, while the layouts are cloned. The whole operation has a time limit. Every skip
@@ -89,6 +92,14 @@ class Skip(Exception):
     """An expected reason not to warm; the build starts cold."""
 
 
+class CommandFailed(Skip):
+    """A command failed; retain its exit code and diagnostics for callers."""
+
+    def __init__(self, argv, result):
+        self.result = result
+        super().__init__(f"{' '.join(map(str, argv[:3]))} failed: {(result.stderr or result.stdout).strip()[-400:]}")
+
+
 class Unsafe(Exception):
     """A safety check failed; nothing was published and the donor was not written."""
 
@@ -120,7 +131,7 @@ def run(argv, *, cwd, deadline, env=None):
     except subprocess.TimeoutExpired as exc:
         raise TimeUp(f"{' '.join(map(str, argv[:3]))} timed out") from exc
     if result.returncode != 0:
-        raise Skip(f"{' '.join(map(str, argv[:3]))} failed: {(result.stderr or result.stdout).strip()[-400:]}")
+        raise CommandFailed(argv, result)
     return result.stdout
 
 
@@ -166,7 +177,19 @@ def no_symlink_between(root, path):
 def destination(work, deadline, stack):
     """The worktree's own Cargo target directory and a descriptor for its parent, when it can be warmed."""
     found = metadata(work, deadline)
-    if ((found.get("metadata") or {}).get("devlyn") or {}).get("warm-build-dirs") is not True:
+    setting = "git config --local devlyn.warmBuildDirs"
+    try:
+        enabled = git(work, "config", "--local", "--type=bool", "--get", "devlyn.warmBuildDirs", deadline=deadline)
+    except CommandFailed as exc:
+        if exc.result.returncode != 1:
+            error = (exc.result.stderr or exc.result.stdout or str(exc)).splitlines()[0]
+            raise Skip(f"cannot read {setting}: {error}") from exc
+        enabled = None
+    except (Skip, OSError) as exc:
+        raise Skip(f"cannot read {setting}: {exc}") from exc
+    if enabled == "false":
+        raise Skip(f"turned off: {setting} is false")
+    if enabled != "true" and ((found.get("metadata") or {}).get("devlyn") or {}).get("warm-build-dirs") is not True:
         raise Skip("not enabled: the workspace's Cargo.toml has no [workspace.metadata.devlyn] warm-build-dirs = true")
     if any(key in os.environ for key in REDIRECTS) and metadata(work, deadline, env=without_redirects()) != found:
         raise Skip("the target directory comes from this environment, which later commands may not share")
@@ -798,6 +821,78 @@ class WarmTests(unittest.TestCase):
     def assert_nothing_left(self):
         self.assertEqual([], list(self.staging.iterdir()))
         self.assertEqual("", self.git(self.work, "status", "--porcelain", "--untracked-files=all"))
+
+    @unittest.skipIf(os.name == "nt", "warming is POSIX-only")
+    def test_local_git_true_seeds_without_cargo_opt_in(self):
+        self.write_fixture(workspace_metadata=None)
+        self.git(self.anchor, "config", "--local", "devlyn.warmBuildDirs", "true")
+        [result] = self.warm()
+        self.assertEqual("seeded", result["status"], result)
+        self.assertTrue((self.work / "target" / "debug" / "deps" / f"libserde-{'1' * 16}.rlib").is_file())
+        self.assert_nothing_left()
+
+    @unittest.skipIf(os.name == "nt", "warming is POSIX-only")
+    def test_local_git_false_overrides_cargo_opt_in(self):
+        self.git(self.anchor, "config", "--local", "devlyn.warmBuildDirs", "false")
+        [result] = self.warm()
+        self.assertEqual("skipped", result["status"], result)
+        self.assertEqual("turned off: git config --local devlyn.warmBuildDirs is false", result["reason"])
+        self.assertFalse((self.work / "target").exists())
+        self.assert_nothing_left()
+
+    @unittest.skipIf(os.name == "nt", "warming is POSIX-only")
+    def test_invalid_local_git_value_skips_with_git_error(self):
+        self.git(self.anchor, "config", "--local", "devlyn.warmBuildDirs", "invalid")
+        [result] = self.warm()
+        self.assertEqual("skipped", result["status"], result)
+        self.assertIn("git config --local devlyn.warmBuildDirs", result["reason"])
+        self.assertIn("fatal: bad boolean config value 'invalid' for 'devlyn.warmbuilddirs'", result["reason"])
+        self.assertFalse((self.work / "target").exists())
+        self.assert_nothing_left()
+
+    @unittest.skipIf(os.name == "nt", "warming is POSIX-only")
+    def test_unset_local_git_value_uses_cargo_opt_in(self):
+        for opted_in in (False, True):
+            with self.subTest(opted_in=opted_in):
+                self.write_fixture(workspace_metadata={"devlyn": {"warm-build-dirs": opted_in}})
+                [result] = self.warm()
+                self.assertEqual("seeded" if opted_in else "skipped", result["status"], result)
+                if not opted_in:
+                    self.assertIn("not enabled", result["reason"])
+                self.assert_nothing_left()
+
+    @unittest.skipIf(os.name == "nt", "warming is POSIX-only")
+    def test_other_git_config_failures_skip_with_first_error_line(self):
+        config = self.anchor / ".git" / "config"
+        config.write_text(config.read_text() + "\n[broken\nsecond bad line\n")
+        error = subprocess.run(["git", "-C", str(self.work), "config", "--local", "--type=bool",
+                                "--get", "devlyn.warmBuildDirs"], capture_output=True, text=True)
+        self.assertNotIn(error.returncode, (0, 1))
+        [result] = self.warm()
+        self.assertEqual("skipped", result["status"], result)
+        self.assertEqual(f"cannot read git config --local devlyn.warmBuildDirs: {error.stderr.splitlines()[0]}",
+                         result["reason"])
+        self.assertFalse((self.work / "target").exists())
+        self.assertEqual([], list(self.staging.iterdir()))
+
+    @unittest.skipIf(os.name == "nt", "warming is POSIX-only")
+    def test_global_include_and_per_worktree_config_do_not_override_cargo(self):
+        global_config, included = self.root / "global-config", self.root / "included-config"
+        os.environ["GIT_CONFIG_GLOBAL"] = str(global_config)
+        self.git(self.anchor, "config", "--local", "include.path", str(included))
+        self.git(self.anchor, "config", "--local", "extensions.worktreeConfig", "true")
+        for opted_in in (False, True):
+            with self.subTest(opted_in=opted_in):
+                value = "false" if opted_in else "true"
+                for config in (global_config, included):
+                    config.write_text(f"[devlyn]\n\twarmBuildDirs = {value}\n")
+                self.git(self.work, "config", "--worktree", "devlyn.warmBuildDirs", value)
+                self.write_fixture(workspace_metadata={"devlyn": {"warm-build-dirs": opted_in}})
+                [result] = self.warm()
+                self.assertEqual("seeded" if opted_in else "skipped", result["status"], result)
+                if not opted_in:
+                    self.assertIn("not enabled", result["reason"])
+                self.assert_nothing_left()
 
     @unittest.skipIf(os.name == "nt", "warming is POSIX-only")
     def test_seeds_only_what_carries_over_and_never_writes_the_donor(self):
