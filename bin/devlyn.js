@@ -1350,6 +1350,12 @@ async function main() {
 const command = args[0];
 
 switch (command) {
+  case 'release':
+    require('./release').runJson(() => require('./release').releaseCommand(args.slice(1)));
+    break;
+  case 'status':
+    require('./release').runJson(() => require('./harness-status').statusCommand(args.slice(1)));
+    break;
   case '--help':
   case '-h':
     showHelp();
