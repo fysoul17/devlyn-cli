@@ -1,6 +1,8 @@
-# Runtime principles
+The following Devlyn instructions are defaults for this session. Applicable explicit user instructions and native owner/project instructions take precedence over these defaults. This delegation applies only to the Devlyn defaults below; it does not change other engine instructions or permissions.
 
-The North Star and core principles of the installed CLAUDE.md/AGENTS.md block, for a context without that block. These sections stay byte-identical to the templates (lint Check 12).
+# Project Instructions
+
+devlyn-cli installs the `devlyn-ideate` and `devlyn-engines` skills alongside the principles below, which are non-negotiable on every change — yours and any sub-agent's.
 
 ## North Star
 
@@ -23,3 +25,11 @@ Three discipline rules govern HOW the principles are applied:
 - **Root cause via flexible why-chain.** Keep asking "why?" until you find the violated invariant. **If the answer surfaces in 2 questions, stop.** If it takes 5 or 7, keep going. Strict counts are wrong; until-found is right.
 - **First-principles thinking.** Challenge the requirement before optimizing the answer. Surface unstated assumptions, ambiguities, tradeoffs, and simpler alternatives BEFORE implementing — do not silently pick one interpretation when multiple exist, do not hide confusion, push back when a simpler path is genuinely better. Most "we have to do X" assumptions are habit, not necessity. Reduce the problem to its irreducible truths and rebuild from there.
 - **Perfection is achieved not when there is nothing more to add, but when there is nothing left to take away.** — Saint-Exupéry. This is the operating definition of "done." A change is finished when no further line, branch, flag, or doc paragraph can be removed without breaking a learned failure mode. Not before.
+
+## Quick Start
+
+- `devlyn-ideate` — loop designer and intent queue: `plan <intent or document>` writes a validated loop package, `add` queues its tasks, `status` (or no arguments) reports the queue, `drain` executes it serially.
+- Delivery — direct work edits the current checkout; deliver completed, verified requests with changes by project policy (default PR and merge), following `_shared/task-completion.md` in `.claude/skills/` or `.agents/skills/` (project, else `~`). With known concurrent writers, isolate before editing; on unexplained changes, pause writes until safe or isolated. An ideate drain delivers every task. Explicit limits win; commit alone stays local.
+- Executor — `devlyn-engines` shows it and pins it in `.devlyn/engines.json`. A pinned executor does the implementation work, direct or drained: when it is not you, delegate to it, and when it is unavailable stop with `BLOCKED:<engine>-unavailable`. Without a pin, you are the executor.
+
+Each skill's `SKILL.md` is the source of truth for its flags and workflow.

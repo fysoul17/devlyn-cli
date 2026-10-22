@@ -6,9 +6,15 @@
   "bin": {
     "devlyn": "bin/devlyn.js"
   },
+  "scripts": {
+    "prepack": "node -e \"require('./bin/release').buildRelease()\""
+  },
   "files": [
     "bin",
     "config",
+    "harness",
+    "native",
+    "release.json",
     "!config/skills/preflight-workspace",
     "!config/skills/preflight-workspace/**",
     "!config/skills/devlyn:ideate-workspace",

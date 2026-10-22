@@ -13,10 +13,19 @@ const digest = (text) => crypto.createHash('sha256').update(text).digest('hex');
 
 class InstructionError extends Error {}
 
-function managedBlock(template, eol) {
-  const body = 'Project-specific instructions outside this managed block take precedence over these defaults.\n\n'
+function managedBody(template) {
+  return 'Project-specific instructions outside this managed block take precedence over these defaults.\n\n'
     + normalize(template).replace(/\n?$/, '\n');
+}
+
+function managedBlock(template, eol = '\n') {
+  const body = managedBody(template);
   return `${BEGIN} sha256=${digest(body)} -->\n${body}${END}\n`.replace(/\n/g, eol);
+}
+
+function sessionDefaults(template) {
+  return 'The following Devlyn instructions are defaults for this session. Applicable explicit user instructions and native owner/project instructions take precedence over these defaults. This delegation applies only to the Devlyn defaults below; it does not change other engine instructions or permissions.\n\n'
+    + normalize(template);
 }
 
 function matchedEnd(text, start, template) {
@@ -335,4 +344,5 @@ function updateInstructions(name, initial = '', withBlock = true, write = true, 
   return true;
 }
 
-module.exports = { updateInstructions, InstructionError, instructionParagraphs, holdsDevlynDefaults, importsAgentsMd };
+module.exports = { updateInstructions, InstructionError, instructionParagraphs, holdsDevlynDefaults, importsAgentsMd,
+  managedBody, managedBlock, sessionDefaults };

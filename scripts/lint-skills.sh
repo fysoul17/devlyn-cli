@@ -621,10 +621,9 @@ fi
 
 
 # ---------------------------------------------------------------------------
-# 12. The canonical block — North Star, the seven principles and the three
-#     discipline rules — is identical in CLAUDE.md, AGENTS.md and
-#     _shared/runtime-principles.md (the copy for a context without an
-#     installed instruction block).
+# 12. Keep the named principles and prove complete byte derivation of committed
+#     defaults. test-harness-release.py verifies generated memory/native artifacts
+#     through npm pack → extract → release --verify; lint needs no build outputs.
 # ---------------------------------------------------------------------------
 section "Check 12: Canonical principles block parity"
 canonical_block() { awk '/^## North Star$/{f=1} /^## Quick Start$/{f=0} f' "$1"; }
@@ -646,6 +645,19 @@ for f in AGENTS.md config/skills/_shared/runtime-principles.md; do
 done
 if [ $principles_missing -eq 0 ]; then
   ok "North Star, seven principles and three discipline rules are identical in CLAUDE.md, AGENTS.md and runtime-principles.md"
+fi
+if node - <<'NODE'
+const fs = require('fs');
+const assert = require('assert/strict');
+const { sessionDefaults } = require('./bin/instructions');
+const template = fs.readFileSync('CLAUDE.md', 'utf8').replace(/\r\n/g, '\n');
+assert.equal(template, fs.readFileSync('AGENTS.md', 'utf8').replace(/\r\n/g, '\n'));
+assert.deepEqual(fs.readFileSync('config/skills/_shared/runtime-principles.md'), Buffer.from(sessionDefaults(template)));
+NODE
+then
+  ok "Complete session defaults are byte-derived from the raw templates"
+else
+  bad "Committed runtime-principles.md differs from sessionDefaults(CLAUDE.md)"
 fi
 
 # ---------------------------------------------------------------------------
