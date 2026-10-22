@@ -208,6 +208,15 @@ def unfinished(v):
     return any(ref.removeprefix(CAPTURES) not in v["records"] for ref in refs)
 
 
+def bindable(anchor, common):
+    """Whether a first add may bind its release: the queue reads and holds no unfinished work. A queue that cannot be read
+    is not proven settled, so the add captures unbound, as its skill source adds, and status and drain report why."""
+    try:
+        return not unfinished(view(anchor, common, pure=True))
+    except (LoopError, OSError):
+        return False
+
+
 def release_settled_binding(anchor, common, *, interrupted_add=False):
     """Remove the binding once nothing needs it. The bound release keeps one from an interrupted first add (no record
     yet) so its retry rebinds the same identity; another release (`interrupted_add`) drops that too, since a binding
@@ -1674,7 +1683,7 @@ def add(args):
         # The lock covers both first binding and first capture; an interrupted binding is authoritative on retry.
         if harness_call("read_binding", common) is None:
             invoking = harness_call("resolve", SKILLS)
-            if invoking is not None and not unfinished(view(anchor, common, pure=True)):
+            if invoking is not None and bindable(anchor, common):
                 write_json(common / "devlyn-loops/harness.json", invoking)
         tree = build_tree(anchor, None, files)
         if captured:
