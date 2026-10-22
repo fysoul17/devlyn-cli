@@ -89,6 +89,11 @@ def load_packet(path):
     packet = read_json(path)
     if not isinstance(packet, dict) or PACKET_KEYS - set(packet):
         raise AcceptanceError(f"{path}: task packet lacks {sorted(PACKET_KEYS - set(packet if isinstance(packet, dict) else {}))}")
+    helper = shared("harness-store")
+    try:
+        helper["verify_packet"](packet, path, SKILLS)
+    except (helper["HarnessError"], OSError) as exc:
+        raise AcceptanceError(str(exc)) from exc
     return packet
 
 

@@ -94,9 +94,13 @@ A removed flag stops with its instruction and selects no other behavior.
 
 An absolute path to a package's `meta.md` is added as it is; anything else is planned first. Add with `python3 "$DEVLYN_SKILL_DIR/scripts/queue.py" add '<absolute meta.md>'`, the only writer of a loop's queue file `docs/specs/<loop-id>/queue.md`; never edit one by hand. In every delivery mode add makes no commit on the checked-out branch and leaves the branch, the index and tracked files as they are: it holds the package and its rows at `refs/devlyn/captures/<loop-id>`, records the add and removes the package copies equal to that capture. Report the capture ref and its `git show` command, any `cleanup` entry, and that a revision needs a new loop id. A retry of the same add reports it as added, also once the copies are gone. Tasks start from committed state, a local loop from the branch it was added on and `auto`/`pr` from the remote base, so commit, and for `auto`/`pr` push, whatever the plan depends on. A pending legacy raw-intent row of `docs/specs/queue.md` is replaced in place by a package whose `## Intent` reproduces the row verbatim, added with `--materialize <line>`.
 
+Release-backed queues retain their verified release in `<git-common-dir>/devlyn-loops/harness.json` until all tasks, recovery and delivery settle. A different release refuses with the exact recovery argv; use it. Existing unfinished unbound queues and standalone installations remain legacy.
+
 ## status
 
 Run `python3 "$DEVLYN_SKILL_DIR/scripts/queue.py" status --repo .` and report its counts, `next`, `blockers`, `warnings`, pending deliveries with their resume commands and any `cleanup` entry.
+
+For read-only consumers, `python3 "$DEVLYN_SKILL_DIR/scripts/queue.py" inspect --repo . --json` returns the status summary plus `binding` and `compatibility`, without cleanup, locks or writes.
 
 ## drain
 
@@ -112,7 +116,7 @@ Follow [loop.md](references/loop.md). The executor is the configured route, the 
 Another engine needs an argv that starts one fresh non-interactive session able, without prompts, to edit, run commands and commit in its task worktree and to write the packet's submission file. `<prompt>` carries the absolute binding values, while `{packet}` stays literal for the drain to fill:
 
 ```text
-Execute the devlyn loop task packet {packet}: work only in its owned worktree under the installed instructions; meet its obligations, then write its submission and any review records as "Executor exchange" and "Review records" in <DEVLYN_SKILL_DIR>/references/loop.md specify. Set DEVLYN_SKILL_DIR=<DEVLYN_SKILL_DIR> and DEVLYN_SHARED_DIR=<DEVLYN_SHARED_DIR> from these literal values, never from your inherited environment. Never push, open a pull request or merge: the drain delivers.
+Execute the devlyn loop task packet {packet}: read its workerPrompt when present; read methodology.defaults.path when named and apply those verified defaults, with explicit user and native owner/project instructions taking precedence; work only in its owned worktree under the installed instructions; meet its obligations, then write its submission and any review records as "Executor exchange" and "Review records" in <DEVLYN_SKILL_DIR>/references/loop.md specify. Use the literal DEVLYN_SKILL_DIR and DEVLYN_SHARED_DIR bindings in workerPrompt when present; otherwise set DEVLYN_SKILL_DIR=<DEVLYN_SKILL_DIR> and DEVLYN_SHARED_DIR=<DEVLYN_SHARED_DIR> from these literal values. Never use inherited environment values. Never push, open a pull request or merge: the drain delivers.
 ```
 
 ```sh

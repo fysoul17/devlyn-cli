@@ -24,6 +24,7 @@ import tempfile
 import threading
 import time
 import unittest
+from unittest import mock
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 HOLD = ("import pathlib, runpy, sys, time\n"
@@ -1210,7 +1211,7 @@ class LoopFixture(unittest.TestCase):
         self.assertEqual(self.drain()["tasks"], [])
         self.assertFalse(root.exists())
         self.plan("nx", [CHAIN[0]], {"nx.t1": {"product": "greeting"}})
-        result = self.fault_drain("g['instruction_drift'] = lambda *args: 'AGENTS.md'\n")
+        result = self.fault_drain("g['instruction_drift'] = lambda *args, **kwargs: 'AGENTS.md'\n")
         self.assertIn("installed instructions (AGENTS.md)", self.tasks(result)["nx.t1"]["reason"])
         self.assertEqual(self.calls("nx.t1"), 0)
         self.assertFalse(root.exists())
@@ -1576,7 +1577,7 @@ class LoopFixture(unittest.TestCase):
             self.assertEqual((rev, checked.returncode, data.endswith(b")\n")), (rev, 0, True), checked.stderr)
 
     def methodology(self, identity):
-        return [Path(entry["path"]).name for entry in json.loads(self.receipt_path(identity).with_name("packet.json").read_text(encoding="utf-8"))["methodology"]]
+        return [Path(entry["path"]).name for entry in json.loads(self.receipt_path(identity).with_name("packet.json").read_text(encoding="utf-8"))["methodology"]["projectInstructions"]]
 
     def test_add_refuses_a_head_without_the_checkouts_instructions(self):
         # Prediction (E3): a checkout with neither CLAUDE.md nor AGENTS.md drains normally, its packet listing no
@@ -2276,7 +2277,7 @@ class LoopFixture(unittest.TestCase):
         reason = (f"the installed instructions (CLAUDE.md) in this checkout differ from those in its start commit {start}, so it would run "
                   "without them; restore them to their bytes at that commit, or plan the remaining work as a new loop")
         self.assertEqual((tasks["aa.t1"]["result"], tasks["aa.t2"].get("reason"), self.calls("aa.t2"), tasks["bb.t1"]["result"]), ("accepted", reason, 0, "accepted"))
-        methodology = json.loads(self.receipt_path("aa.t1").with_name("packet.json").read_text(encoding="utf-8"))["methodology"]
+        methodology = json.loads(self.receipt_path("aa.t1").with_name("packet.json").read_text(encoding="utf-8"))["methodology"]["projectInstructions"]
         self.assertEqual([entry["sha256"] for entry in methodology], [hashlib.sha256(b"# Installed v2\n").hexdigest()])
         status = self.cli("status", "--repo", self.anchor)
         self.assertEqual((status["next"], f"aa.t2: {reason}" in status["blockers"]), (None, True))
@@ -2972,6 +2973,384 @@ class LoopFixture(unittest.TestCase):
         self.assertEqual(self.tasks(self.drain(local=False))["inv.t1"]["delivery"], "PR")
         server = json.loads(data.read_text(encoding="utf-8"))
         self.assertEqual((server["merges"], server["prs"][0]["autoMergeRequest"], self.receipt("inv.t1")["mode_override"]), (1, None, "pr"))
+
+
+    def harness_release(self, fresh=True):
+        """Build once, copy only the release inventory; no source-checkout manifest or model calls."""
+        cls = type(self)
+        if not hasattr(cls, "release_fixture"):
+            temp = tempfile.TemporaryDirectory(prefix="devlyn-cli2-release-")
+            cls.addClassCleanup(temp.cleanup)
+            build = Path(temp.name) / "build"
+            build.mkdir()
+            source = self.skills.parents[1]
+            for name in ("bin", "config", "optional-skills", "node_modules"):
+                shutil.copytree(source / name, build / name, ignore=shutil.ignore_patterns("__pycache__", "*.pyc", ".bin"))
+            for name in ("package.json", "CLAUDE.md", "AGENTS.md"):
+                shutil.copy2(source / name, build / name)
+            self.run_ok(["node", "-e", "require(process.argv[1]).buildRelease()", str(build / "bin/release.js")])
+            cls.release_fixture = Path(temp.name) / "release"
+            manifest = json.loads((build / "release.json").read_bytes())
+            for name in ["release.json", *(entry["path"] for entry in manifest["files"])]:
+                target = cls.release_fixture / name
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(build / name, target)
+        release = self.root / "release"
+        if not release.exists():
+            shutil.copytree(cls.release_fixture, release)
+        if fresh:
+            (self.anchor / "docs/specs/queue.md").write_text("# Intent Queue\n", encoding="utf-8")
+            self.g("add", "docs/specs/queue.md")
+            self.g("commit", "-qm", "empty legacy queue")
+            self.base = self.g("rev-parse", "HEAD")
+        self.queue_py = release / "config/skills/devlyn-ideate/scripts/queue.py"
+        self.queue = runpy.run_path(str(self.queue_py))
+        return release
+
+    def tree_snapshot(self, root):
+        return {str(p.relative_to(root)): (p.lstat().st_mode, p.lstat().st_mtime_ns,
+                os.readlink(p) if p.is_symlink() else hashlib.sha256(p.read_bytes()).hexdigest() if p.is_file() else None)
+                for p in root.rglob("*")}
+
+    def test_harness_binding_packet_and_settlement(self):
+        # Prediction: capture through a linked checkout binds its common Gitdir; dispatch sends unchanged argv and v2
+        # release defaults; successful local delivery releases the binding without changing release files.
+        release = self.harness_release()
+        before = self.tree_snapshot(release)
+        if os.name != "nt":
+            link = self.root / "invoked-skill"
+            link.symlink_to(release / "config/skills/devlyn-ideate", target_is_directory=True)
+            self.queue_py = link / "scripts/queue.py"
+        linked = self.root / "linked"
+        self.g("worktree", "add", "-qb", "linked", str(linked))
+        meta = self.queue["write_package"](linked, "bound", CHAIN[:1], base=self.base)
+        self.cli("add", meta)
+        binding_path = self.common / "devlyn-loops/harness.json"
+        binding = json.loads(binding_path.read_bytes())
+        self.assertEqual(binding["release"]["root"], str(release))
+        self.assertFalse((linked / "harness.json").exists())
+        self.behaviors = {"bound.t1": {"product": "greeting"}}
+        self.assertEqual(self.tasks(self.drain(repo=linked))["bound.t1"]["delivery"], "LOCAL_ONLY")
+        packet = json.loads(self.receipt_path("bound.t1").with_name("packet.json").read_bytes())
+        self.assertEqual((packet["schema_version"], packet["harness"]), (2, binding["release"]))
+        self.assertEqual(packet["methodology"], {"defaults": {"source": "release", **binding["defaults"]}, "projectInstructions": []})
+        for resource in (binding["defaults"], packet["workerPrompt"]):
+            self.assertTrue(Path(resource["path"]).is_absolute())
+            self.assertEqual(hashlib.sha256(Path(resource["path"]).read_bytes()).hexdigest(), resource["sha256"])
+        self.assertFalse(binding_path.exists())
+        self.assertEqual(before, self.tree_snapshot(release))
+
+    def test_harness_concurrent_first_capture(self):
+        # Prediction: two first adds serialize the binding and capture; both records retain the same release.
+        self.harness_release()
+        metas = [self.queue["write_package"](self.anchor, loop, CHAIN[:1], base=self.base) for loop in ("one", "two")]
+        processes = [subprocess.Popen([sys.executable, str(self.queue_py), "add", str(meta)], env=self.env,
+                                     stdout=subprocess.PIPE, stderr=subprocess.PIPE) for meta in metas]
+        for proc in processes:
+            out, err = proc.communicate(timeout=60)
+            self.assertEqual(proc.returncode, 0, (out, err))
+        binding = json.loads((self.common / "devlyn-loops/harness.json").read_bytes())
+        self.assertEqual(binding["release"]["root"], str(self.root / "release"))
+        self.assertEqual(self.cli("inspect", "--repo", self.anchor, "--json")["counts"]["pending"], 2)
+
+    def test_harness_interrupted_binding(self):
+        # Prediction: crashes before/after atomic binding publish no capture; retry retains exactly the published identity.
+        self.harness_release()
+        meta = self.queue["write_package"](self.anchor, "crash", CHAIN[:1], base=self.base)
+        binding_path = self.common / "devlyn-loops/harness.json"
+        for step in ("replace", "replace-after"):
+            with self.subTest(step=step):
+                result = subprocess.run([sys.executable, "-c", CRASH, step, "harness.json", str(self.queue_py), "add", str(meta)],
+                                        env=self.env, capture_output=True)
+                self.assertEqual(result.returncode, 9, result.stderr)
+                self.assertEqual(binding_path.exists(), step.endswith("after"))
+                self.assertEqual(self.g("for-each-ref", "--format=%(refname)", "refs/devlyn/captures"), "")
+        binding = binding_path.read_bytes()
+        self.cli("status", "--repo", self.anchor)
+        self.assertEqual(binding_path.read_bytes(), binding)
+        self.cli("add", meta)
+        self.assertEqual(binding_path.read_bytes(), binding)
+
+    def test_harness_mismatch_exact_recovery(self):
+        # Prediction: another verified release cannot even clean the queue; its refusal carries an exact original argv.
+        release = self.harness_release()
+        self.plan("bound", CHAIN[:1], {})
+        other = self.root / "other release"
+        shutil.copytree(release, other)
+        package = json.loads((other / "package.json").read_bytes())
+        package["version"] = "0.0.0-cli2-mismatch"
+        (other / "package.json").write_text(json.dumps(package), encoding="utf-8")
+        self.run_ok(["node", "-e", "require(process.argv[1]).buildRelease()", str(other / "bin/release.js")])
+        self.queue_py = other / "config/skills/devlyn-ideate/scripts/queue.py"
+        args = ["drain", "--repo", str(self.anchor), "--local-only", "--", sys.executable, "-c", "pass", "{packet}"]
+        before = self.tree_snapshot(self.anchor)
+        result = self.cli(*args, code=1)
+        recovery = json.loads(result["reason"].split("recovery argv: ", 1)[1])
+        self.assertEqual(recovery, [sys.executable, str(release / "config/skills/devlyn-ideate/scripts/queue.py"), *args])
+        self.assertEqual(before, self.tree_snapshot(self.anchor))
+        inspected = self.cli("inspect", "--repo", self.anchor, "--json")
+        self.assertFalse(inspected["compatibility"]["compatible"])
+        self.assertEqual(inspected["compatibility"]["recoveryArgv"][1], recovery[1])
+
+    def test_harness_legacy_unbound_and_v1(self):
+        # Prediction: an existing unfinished unbound queue is not rebound, even from a release; v1 resumes byte-for-byte.
+        self.plan("legacy", CHAIN[:1], {"legacy.t1": {"product": "greeting"}})
+        self.cli("drain", "--repo", self.anchor, "--local-only", "--", str(self.root / "absent"), "{packet}")
+        path = self.receipt_path("legacy.t1").with_name("packet.json")
+        packet = json.loads(path.read_bytes())
+        packet["schema_version"] = 1
+        packet["methodology"] = packet["methodology"]["projectInstructions"]
+        packet.pop("harness")
+        packet.pop("workerPrompt")
+        path.write_text(json.dumps(packet), encoding="utf-8")
+        original = path.read_bytes()
+        self.harness_release(fresh=False)
+        inspected = self.cli("inspect", "--repo", self.anchor, "--json")
+        self.assertIsNone(inspected["binding"])
+        self.assertTrue(inspected["compatibility"]["legacy"])
+        self.assertEqual(self.tasks(self.drain())["legacy.t1"]["result"], "accepted")
+        self.assertEqual(path.read_bytes(), original)
+        self.assertFalse((self.common / "devlyn-loops/harness.json").exists())
+
+    def test_harness_unbound_packet_names_its_own_defaults(self):
+        # Prediction: an unbound queue's packet names the running installation's own runtime-principles.md (source
+        # "skill"), so a global-only install no longer drains its tasks without principles. Before: defaults were null
+        # and a checkout without CLAUDE.md/AGENTS.md ran its executor with no principles at all.
+        self.plan("own", CHAIN[:1], {"own.t1": {"product": "greeting"}})
+        self.cli("drain", "--repo", self.anchor, "--local-only", "--", str(self.root / "absent"), "{packet}")
+        packet = json.loads(self.receipt_path("own.t1").with_name("packet.json").read_bytes())
+        own = self.skills / "_shared/runtime-principles.md"
+        self.assertIsNone(packet["harness"])
+        self.assertEqual(packet["methodology"]["defaults"],
+                         {"source": "skill", "path": str(own), "sha256": hashlib.sha256(own.read_bytes()).hexdigest()})
+        self.assertEqual(self.tasks(self.drain())["own.t1"]["result"], "accepted")
+
+    def test_harness_task_without_any_principles_waits(self):
+        # Prediction: with no committed CLAUDE.md/AGENTS.md and an installation that lost runtime-principles.md, the task
+        # waits naming the gap before its executor starts, and drains once the file is back.
+        copy = Path(self.skill_copy(self.root / "skills-copy", "4.3.0")["root"])
+        own = copy / "_shared/runtime-principles.md"
+        original = own.read_bytes()
+        own.unlink()
+        self.plan("bare", CHAIN[:1], {"bare.t1": {"product": "greeting"}})
+        result = self.drain()
+        self.assertIn("no principles reach its executor", self.tasks(result)["bare.t1"]["reason"])
+        self.assertEqual(self.calls("bare.t1"), 0)
+        own.write_bytes(original)
+        self.assertEqual(self.tasks(self.drain())["bare.t1"]["result"], "accepted")
+
+    def other_release(self, release, version):
+        other = self.root / f"release {version}"
+        shutil.copytree(release, other)
+        package = json.loads((other / "package.json").read_bytes())
+        package["version"] = version
+        (other / "package.json").write_text(json.dumps(package), encoding="utf-8")
+        self.run_ok(["node", "-e", "require(process.argv[1]).buildRelease()", str(other / "bin/release.js")])
+        return other
+
+    def test_harness_blocked_dependent_releases_binding(self):
+        # Prediction: t1 fails and t2 is blocked behind it for good; the drain ends DRAINED and settles the binding.
+        # Before: a blocked task counted as unfinished, so every later release refused this repository.
+        self.harness_release()
+        self.plan("cf", CHAIN, {"cf.t1": {"product": "bad-greeting"}, "cf.t2": {"product": "app"}})
+        result = self.drain()
+        self.assertEqual((result["status"], self.tasks(result)["cf.t1"]["result"], self.tasks(result)["cf.t2"]["result"]),
+                         ("DRAINED", "failed", "blocked"))
+        self.assertFalse((self.common / "devlyn-loops/harness.json").exists())
+
+    def test_harness_settled_queue_yields_to_another_release(self):
+        # Prediction: a binding left on a settled queue (its last delivery finished outside queue.py) or by a first add
+        # interrupted before its capture is dropped by another release, which then binds its own; an unfinished queue
+        # still refuses (test_harness_mismatch_exact_recovery).
+        release = self.harness_release()
+        binding_path = self.common / "devlyn-loops/harness.json"
+        self.plan("done", CHAIN[:1], {"done.t1": {"product": "greeting"}})
+        self.drain()
+        self.assertFalse(binding_path.exists())
+        for leftover in ("settled", "interrupted"):
+            with self.subTest(leftover=leftover):
+                self.queue_py = release / "config/skills/devlyn-ideate/scripts/queue.py"
+                binding_path.write_text(json.dumps({"schemaVersion": 1, "release": json.loads(
+                    self.run_ok(["node", str(release / "bin/devlyn.js"), "release", "--verify", "--root", str(release), "--json"]))["data"]["release"],
+                    "defaults": {"path": str(release / "config/skills/_shared/runtime-principles.md"),
+                                 "sha256": hashlib.sha256((release / "config/skills/_shared/runtime-principles.md").read_bytes()).hexdigest()}}),
+                    encoding="utf-8")
+                other = self.other_release(release, f"0.0.0-cli2-{leftover}")
+                self.queue_py = other / "config/skills/devlyn-ideate/scripts/queue.py"
+                self.cli("status", "--repo", self.anchor)
+                self.assertFalse(binding_path.exists())
+
+    def test_harness_unbound_defaults_change_does_not_strand_a_task(self):
+        # Prediction: a normal update rewrites an unbound installation's runtime-principles.md while its task's packet
+        # names the old bytes; the task still runs and is accepted. Only a missing file makes it wait, before a spawn.
+        copy = Path(self.skill_copy(self.root / "skills-copy", "4.3.0")["root"])
+        own = copy / "_shared/runtime-principles.md"
+        self.plan("upd", CHAIN[:1], {"upd.t1": {"product": "greeting"}})
+        self.cli("drain", "--repo", self.anchor, "--local-only", "--", str(self.root / "absent"), "{packet}")
+        original = own.read_bytes()
+        own.unlink()
+        result = self.drain()
+        self.assertIn("principles file", self.tasks(result)["upd.t1"]["reason"])
+        self.assertEqual(self.calls("upd.t1"), 0)
+        own.write_bytes(original + b"\nA later release's wording.\n")
+        self.assertEqual(self.tasks(self.drain())["upd.t1"]["result"], "accepted")
+
+    def test_harness_defaults_missing_or_changed_refuse_recovery(self):
+        # Prediction: missing/modified defaults refuse before spawn and preserve the packet, binding and invocation count.
+        release = self.harness_release()
+        self.plan("recover", CHAIN[:1], {"recover.t1": {"product": "greeting"}})
+        self.cli("drain", "--repo", self.anchor, "--local-only", "--", str(self.root / "absent"), "{packet}")
+        path = self.receipt_path("recover.t1").with_name("packet.json")
+        packet = path.read_bytes()
+        defaults = release / "config/skills/_shared/runtime-principles.md"
+        original = defaults.read_bytes()
+        for changed in (None, b"changed defaults\n"):
+            with self.subTest(changed=changed):
+                if changed is None:
+                    defaults.unlink()
+                else:
+                    defaults.write_bytes(changed)
+                result = self.drain(code=1)
+                self.assertIn("release verification failed", result["reason"])
+                self.assertEqual(path.read_bytes(), packet)
+                self.assertEqual(self.calls("recover.t1"), 0)
+                defaults.write_bytes(original)
+        # A packet cannot drop its defaults or masquerade as legacy while its queue is bound.
+        for legacy in (False, True):
+            damaged = json.loads(packet)
+            damaged["methodology"]["defaults"] = None
+            if legacy:
+                damaged.update(harness=None, workerPrompt=None)
+            path.write_text(json.dumps(damaged), encoding="utf-8")
+            result = self.drain()
+            self.assertEqual(self.calls("recover.t1"), 0)
+            self.assertIn("defaults source", self.tasks(result)["recover.t1"]["reason"])
+        path.write_bytes(packet)
+        self.assertEqual(self.tasks(self.drain())["recover.t1"]["result"], "accepted")
+
+    def test_harness_no_defaults_source_refuses_capture(self):
+        # Prediction: a release missing its defaults cannot turn itself into a silent legacy install or capture work.
+        release = self.harness_release()
+        (release / "config/skills/_shared/runtime-principles.md").unlink()
+        meta = self.queue["write_package"](self.anchor, "invalid", CHAIN[:1], base=self.base)
+        result = self.cli("add", meta, code=1)
+        self.assertIn("release verification failed", result["reason"])
+        self.assertFalse((self.common / "devlyn-loops").exists())
+
+    def test_harness_inspect_purity_and_incompatible_packet(self):
+        # Prediction: inspect creates no lock/state, leaves captured originals intact and exposes incompatible packet versions.
+        self.harness_release()
+        before = self.tree_snapshot(self.root)
+        self.cli("inspect", "--repo", self.anchor, "--json")
+        self.assertEqual(before, self.tree_snapshot(self.root))
+        instructions = self.anchor / "CLAUDE.md"
+        instructions.write_text("Project instructions\n", encoding="utf-8")
+        self.g("add", "CLAUDE.md")
+        self.g("commit", "-qm", "project instructions")
+        self.base = self.g("rev-parse", "HEAD")
+        meta = self.queue["write_package"](self.anchor, "pure", CHAIN[:1], base=self.base)
+        original = meta.read_bytes()
+        self.cli("add", meta)
+        meta.parent.mkdir(parents=True, exist_ok=True)
+        meta.write_bytes(original)
+        # git diff's automatic index refresh must also be disabled by the pure CLI reader.
+        os.utime(instructions, ns=(instructions.stat().st_atime_ns, instructions.stat().st_mtime_ns + 10_000_000_000))
+        before = self.tree_snapshot(self.root)
+        self.cli("inspect", "--repo", self.anchor, "--json")
+        self.assertEqual(before, self.tree_snapshot(self.root))
+        self.cli("drain", "--repo", self.anchor, "--local-only", "--", str(self.root / "absent"), "{packet}")
+        meta.parent.mkdir(parents=True, exist_ok=True)
+        meta.write_bytes(original)
+        packet = self.receipt_path("pure.t1").with_name("packet.json")
+        data = json.loads(packet.read_bytes())
+        data["schema_version"] = 99
+        packet.write_text(json.dumps(data), encoding="utf-8")
+        before = self.tree_snapshot(self.root)
+        result = self.cli("inspect", "--repo", self.anchor, "--json")
+        self.assertEqual(before, self.tree_snapshot(self.root))
+        self.assertFalse(result["compatibility"]["compatible"])
+        self.assertIn("incompatible task packet", result["compatibility"]["reasons"][0])
+
+    def test_harness_projection_and_changed_worker_prompt(self):
+        # Prediction: an exact marked Codex projection resolves to its release; altered prompt bytes refuse redispatch.
+        release = self.harness_release()
+        projection = self.root / "codex-cache"
+        shutil.copytree(release / "native/codex/plugins/devlyn", projection)
+        manifest = json.loads((release / "release.json").read_bytes())
+        ref = {"package": "devlyn-cli", "version": manifest["version"], "digest": manifest["digest"]["value"], "root": str(release)}
+        (projection / ".devlyn-harness-projection.json").write_text(json.dumps(
+            {"schemaVersion": 1, "release": ref, "source": "native/codex/plugins/devlyn"}), encoding="utf-8")
+        self.queue_py = projection / "skills/devlyn-ideate/scripts/queue.py"
+        # An unreadable unexpected directory must not disappear from the projection inventory.
+        hidden = projection / "unreadable"
+        hidden.mkdir()
+        (hidden / "unlisted").write_text("unverified", encoding="utf-8")
+        original_scandir = os.scandir
+
+        def scandir(path):
+            if Path(path) == hidden:
+                raise PermissionError("fixture unreadable projection directory")
+            return original_scandir(path)
+
+        with mock.patch("os.scandir", scandir):
+            with self.assertRaisesRegex(OSError, "unreadable projection"):
+                self.queue["shared"]("harness-store")["resolve"](projection / "skills")
+        shutil.rmtree(hidden)
+        self.plan("projected", CHAIN[:1], {"projected.t1": {"product": "greeting"}})
+        self.cli("drain", "--repo", self.anchor, "--local-only", "--", str(self.root / "absent"), "{packet}")
+        prompt = self.receipt_path("projected.t1").with_name("worker-prompt.md")
+        original = prompt.read_bytes()
+        prompt.write_text("changed", encoding="utf-8")
+        result = self.drain()
+        self.assertIn("worker prompt changed", self.tasks(result)["projected.t1"]["reason"])
+        self.assertEqual(self.calls("projected.t1"), 0)
+        prompt.write_bytes(original)
+        (projection / "skills/devlyn-ideate/SKILL.md").write_text("changed", encoding="utf-8")
+        self.assertIn("projection resource changed", self.drain(code=1)["reason"])
+
+
+    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
+    def test_harness_binding_retained_for_pending_delivery(self):
+        # Prediction: accepted work with a pending PR retains the binding; merging and resuming settles without replay.
+        self.harness_release()
+        _, data = self.remote(pending=True)
+        self.plan("deliver", CHAIN[:1], {"deliver.t1": {"product": "greeting"}}, delivery="auto")
+        path = self.common / "devlyn-loops/harness.json"
+        binding = path.read_bytes()
+        self.assertEqual(self.tasks(self.drain(local=False))["deliver.t1"]["delivery"], "PENDING")
+        self.cli("status", "--repo", self.anchor)
+        self.assertEqual(path.read_bytes(), binding)
+        self.assertEqual(self.merge_pr(data, 1).returncode, 0)
+        self.assertEqual(self.tasks(self.drain(local=False))["deliver.t1"]["delivery"], "COMPLETE")
+        self.assertEqual(self.calls("deliver.t1"), 1)
+        self.assertFalse(path.exists())
+
+    def test_harness_incompatible_binding_stays_inspectable(self):
+        # Prediction: unknown binding versions stay visible, inspect remains pure and mutation refuses without dispatch.
+        self.harness_release()
+        self.plan("unknown", CHAIN[:1], {})
+        path = self.common / "devlyn-loops/harness.json"
+        binding = json.loads(path.read_bytes())
+        binding["schemaVersion"] = 9
+        path.write_text(json.dumps(binding), encoding="utf-8")
+        before = self.tree_snapshot(self.root)
+        result = self.cli("inspect", "--repo", self.anchor, "--json")
+        self.assertEqual(result["binding"], binding)
+        self.assertFalse(result["compatibility"]["compatible"])
+        self.assertEqual(before, self.tree_snapshot(self.root))
+        self.assertIn("incompatible queue binding", self.drain(code=1)["reason"])
+
+
+    def test_harness_standalone_ignores_unrelated_release_manifest(self):
+        # Prediction: a generic ancestor release.json does not turn a vendored skill into a release entry point.
+        self.skill_copy(self.root / "standalone-skills", "fixture")
+        (self.root / "release.json").write_text('{"package":"another-tool"}', encoding="utf-8")
+        self.plan("standalone", CHAIN[:1], {})
+        result = self.cli("inspect", "--repo", self.anchor, "--json")
+        self.assertIsNone(result["binding"])
+        self.assertTrue(result["compatibility"]["compatible"])
+        self.assertTrue(result["compatibility"]["legacy"])
+        self.assertEqual(result["counts"]["pending"], 1)
 
 
 def main():

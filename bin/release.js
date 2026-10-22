@@ -174,8 +174,8 @@ function metadata(root) {
       claudePlugin: 'native/claude', codexMarketplace: 'native/codex' },
     stateCompat: {
       loopManifest: { read: [1, 1], write: 1 }, addRecord: { read: [1, 1], write: 1 },
-      // CLI-2 introduces packet v2 and queueBinding together with their implementations.
-      taskPacket: { inspect: [1, 1], execute: [1, 1], write: 1 },
+      taskPacket: { inspect: [1, 2], execute: [1, 2], write: 2 },
+      queueBinding: { read: [1, 1], write: 1 },
       submission: { read: [1, 1], write: 1 }, review: { read: [1, 1], write: 1 },
       acceptanceResult: { read: [1, 1], write: 1 }, invocationReceipt: { read: [1, 1], write: 1 },
       legacyFormats: ['completion-receipt-unversioned', 'direct-acceptance-unversioned',
@@ -233,6 +233,19 @@ function buildRelease(root = PACKAGE_ROOT) {
   writeArtifact(root, 'release.json', jsonBytes(manifest), false);
   return { manifestPath: path.join(root, 'release.json'), version: manifest.version,
     digest: manifest.digest.value, fileCount: manifest.files.length };
+}
+
+// npm runs prepack in the source checkout and leaves its outputs there; postpack removes them, so a
+// checkout never carries a release.json that would make its own skills read as a release.
+function cleanGenerated(root = PACKAGE_ROOT) {
+  root = physicalRoot(root);
+  for (const name of ['harness', 'native', 'release.json']) {
+    const file = path.join(root, name);
+    const stat = fs.lstatSync(file, { throwIfNoEntry: false });
+    if (!stat) continue;
+    if (stat.isSymbolicLink() || !(stat.isDirectory() || stat.isFile())) fail('release-unsafe-entry', { path: file });
+    fs.rmSync(file, { recursive: true });
+  }
 }
 
 function checkNpmShims(root, files) {
@@ -363,6 +376,6 @@ function runJson(action) {
   }
 }
 
-module.exports = { buildRelease, verifyRelease, materializeRelease, checkGenerated,
+module.exports = { buildRelease, cleanGenerated, verifyRelease, materializeRelease, checkGenerated,
   sha256, manifestDigest, physicalRoot, HarnessError, fail,
   options, releaseCommand, runJson };
