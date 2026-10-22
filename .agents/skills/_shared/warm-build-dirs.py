@@ -657,8 +657,10 @@ class WarmTests(unittest.TestCase):
             self.native_clone = False
         if not self.native_clone:
             # A plain copy that keeps links and special files, as a clone would; tests only.
-            patch = mock.patch(f"{__name__}.clone", lambda source, target, deadline: subprocess.run(
-                ["cp", "-a", "--", str(source), str(target)], check=True))
+            def copy(source, target, deadline):
+                target.parent.mkdir(parents=True, exist_ok=True)
+                subprocess.run(["cp", "-a", "--", str(source), str(target)], check=True)
+            patch = mock.patch(f"{__name__}.clone", copy)
             patch.start()
             self.addCleanup(patch.stop)
 
