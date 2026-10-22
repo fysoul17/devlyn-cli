@@ -52,7 +52,8 @@ def release_ref(value):
 
 def verify_release(root):
     root = Path(root)
-    script = "const r=require(process.argv[1]);r.runJson(()=>r.verifyRelease(process.argv[2]));"
+    # As harness-status verifies it: an npm-installed package keeps npm's own .bin shims, which are checked.
+    script = "const r=require(process.argv[1]);r.runJson(()=>r.verifyRelease(process.argv[2],{npmInstall:true}));"
     result = subprocess.run(["node", "-e", script, str(root / "bin/release.js"), str(root)], capture_output=True, text=True, encoding="utf-8")
     require(result.returncode == 0, f"release verification failed: {root}: {result.stderr.strip()}")
     try:
