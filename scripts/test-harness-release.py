@@ -74,6 +74,9 @@ class ReleaseTests(unittest.TestCase):
             packed = run([*command, 'pack', ROOT, '--json', '--pack-destination', cls.work,
                           '--cache', os.environ.get('npm_config_cache', str(cls.work / 'npm-cache'))])
             tarball = cls.work / json.loads(packed.stdout)[0]['filename']
+            # postpack leaves the source checkout as it was: no release.json makes its skills read as a release.
+            for generated in ('release.json', 'harness', 'native'):
+                assert not (Path(ROOT) / generated).exists(), generated
             with tarfile.open(tarball) as archive:
                 for member in archive.getmembers():
                     assert member.name.startswith('package/') and '..' not in Path(member.name).parts

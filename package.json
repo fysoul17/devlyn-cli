@@ -7,7 +7,8 @@
     "devlyn": "bin/devlyn.js"
   },
   "scripts": {
-    "prepack": "node -e \"require('./bin/release').buildRelease()\""
+    "prepack": "node -e \"require('./bin/release').buildRelease()\"",
+    "postpack": "node -e \"require('./bin/release').cleanGenerated()\""
   },
   "files": [
     "bin",

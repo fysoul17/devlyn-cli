@@ -170,6 +170,58 @@ def lock(common, name, *, blocking):
         yield
 
 
+def harness_call(name, *args):
+    helper = shared("harness-store")
+    try:
+        return helper[name](*args)
+    except helper["HarnessError"] as exc:
+        raise LoopError(str(exc)) from exc
+
+
+def enforce_binding(common, anchor=None):
+    binding = harness_call("read_binding", common)
+    try:
+        harness_call("check_binding", binding, harness_call("resolve", SKILLS))
+    except (LoopError, OSError) as exc:
+        # A queue that settled outside queue.py (its last delivery finished through task-complete.py) keeps a binding no
+        # work needs: another release drops it instead of refusing. Callers outside the queue lock pass `anchor`.
+        if binding and anchor is not None and release_settled_binding(anchor, common, interrupted_add=True):
+            return enforce_binding(common)
+        if binding:
+            argv = harness_call("recovery_argv", binding, sys.argv[1:])
+            raise LoopError(f"{exc}; recovery argv: {json.dumps(argv, ensure_ascii=False)}") from exc
+        raise
+    return binding
+
+
+def unfinished(v):
+    if v["unreadable"] or counts(v)["legacy_pending"]:
+        return True
+    for state in v["states"].values():
+        receipt = state["receipt"]
+        # A blocked task waits on a failed prerequisite for good, as drain counts it: it holds no binding.
+        if state.get("invalid") or state["kind"] in {"pending", "active"} or receipt and (
+                not receipt.get("queue") or receipt.get("delivery") not in SETTLED):
+            return True
+    # An interrupted capture with no add record is still resumable work.
+    refs = git(v["anchor"], "for-each-ref", "--format=%(refname)", CAPTURES).splitlines()
+    return any(ref.removeprefix(CAPTURES) not in v["records"] for ref in refs)
+
+
+def release_settled_binding(anchor, common, *, interrupted_add=False):
+    """Remove the binding once nothing needs it. The bound release keeps one from an interrupted first add (no record
+    yet) so its retry rebinds the same identity; another release (`interrupted_add`) drops that too, since a binding
+    published before its capture captured nothing. Returns whether it was removed."""
+    with lock(common, "queue.lock", blocking=True):
+        if not harness_call("read_binding", common):
+            return False
+        v = view(anchor, common, pure=True)
+        if unfinished(v) or not (v["records"] or interrupted_add):
+            return False
+        (common / "devlyn-loops/harness.json").unlink()
+        return True
+
+
 def sections(text, path):
     found, current, fence = {}, None, False
     for line in text.split("\n"):
@@ -686,6 +738,7 @@ def derive_state(anchor, common, row, claims, rev):
     if packet.exists():
         bound = read_json(packet)
         require(isinstance(bound, dict) and not acceptance()["PACKET_KEYS"] - bound.keys(), f"{packet}: malformed task packet")
+        harness_call("packet_schema", bound)
         require(bound["worktree"] == receipt["worktree"] and bound["task"] == identity and bound["branch"] == receipt["branch"]
                 and bound["allocation_base"] == receipt["baseline"],
                 f"{packet}: conflicting packet ownership")
@@ -713,11 +766,13 @@ def derive_state(anchor, common, row, claims, rev):
     return state
 
 
-def view(anchor, common, local_only=False):
+def view(anchor, common, local_only=False, *, pure=False):
     """Reconcile the queue with every receipt and recovery ref before anything is selected."""
-    with lock(common, "queue.lock", blocking=True):
+    with contextlib.nullcontext() if pure else lock(common, "queue.lock", blocking=True):
+        if not pure:
+            enforce_binding(common)
         recorded = records(common)
-        cleanup = clean(common, recorded)
+        cleanup = [] if pure else clean(common, recorded)
         rows = queue_view(anchor, recorded)
     claims, unreadable, damaged = {}, [], {}
     canonical = {receipt_path(common, row["identity"]): row["identity"] for row in rows if row["identity"]}
@@ -737,7 +792,7 @@ def view(anchor, common, local_only=False):
             if identity := canonical.get(path):
                 damaged[identity] = str(exc)
     v = {"anchor": anchor, "common": common, "rows": rows, "records": recorded, "packages": {}, "manifests": {}, "states": {},
-         "unreadable": unreadable, "cleanup": cleanup, "local_only": local_only}
+         "unreadable": unreadable, "cleanup": cleanup, "local_only": local_only, "pure": pure}
     errors = {}
     for row in v["rows"]:
         if row["identity"]:
@@ -902,7 +957,7 @@ def local_start(v, loop):
             return None, f"{branch}, the branch {loop} was added on, {where}; bring {base} into {branch}, or plan the work as a new loop"
         if drift := package_drift(v, loop, start, branch):
             return start, drift
-    if drift := instruction_drift(v["anchor"], start):
+    if drift := instruction_drift(v["anchor"], start, pure=v.get("pure", False)):
         return start, f"the installed instructions ({drift}) in this checkout differ from those in its start commit {start}, so it would run without them; {remedy}"
     return start, None
 
@@ -992,12 +1047,14 @@ def package_drift(v, loop, start, where):
             "bytes") if files else None
 
 
-def instruction_drift(anchor, rev):
+def instruction_drift(anchor, rev, *, pure=False):
     """The installed instruction files whose content at `rev` differs from the anchor checkout's (both absent is equal): a
     task starting at `rev` would run without them. Git compares them as `git status` does: a link by its target, line endings
     under the checkout's conversion rules, and an untracked or ignored file as one still to commit."""
     names = ("CLAUDE.md", "AGENTS.md")
-    differ = git(anchor, "diff", "--name-only", "--no-renames", rev, "--", *names).split("\n")
+    # Git's porcelain diff refreshes the index independently of GIT_OPTIONAL_LOCKS.
+    options = ("-c", "diff.autoRefreshIndex=false") if pure else ()
+    differ = git(anchor, *options, "diff", "--name-only", "--no-renames", rev, "--", *names).split("\n")
     differ += git(anchor, "ls-files", "--others", "--", *names).split("\n")
     return ", ".join(name for name in names if name in differ)
 
@@ -1088,7 +1145,7 @@ def ensure_packet(v, row, path, receipt):
         return {"path": str(worktree / rel), "sha256": hashlib.sha256(show(worktree, inputs, rel)).hexdigest()}
 
     packet = {
-        "schema_version": 1, "task": identity, "title": spec["title"], "kind": spec["kind"],
+        "schema_version": 2, "task": identity, "title": spec["title"], "kind": spec["kind"],
         "worktree": str(worktree), "branch": branch, "receipt": str(path), "scratch": str(path.parent / "scratch"),
         "allocation_base": baseline, "inputs_sha": inputs,
         "contract": identity_of(f"docs/specs/{loop}/{task}/spec.md"),
@@ -1105,6 +1162,31 @@ def ensure_packet(v, row, path, receipt):
         "runner": [sys.executable, str(Path(__file__).with_name("acceptance.py")), "run", "--packet", str(packet_path)],
         "obligations": OBLIGATIONS,
     }
+    instructions = packet["methodology"]
+    binding = harness_call("read_binding", v["common"])
+    if binding:
+        defaults = {"source": "release", **binding["defaults"]}
+    else:
+        # An unbound queue's executor still gets the principles: the invoking skill's own copy.
+        own = SKILLS / "_shared/runtime-principles.md"
+        defaults = {"source": "skill", **harness_call("file_identity", own)} if own.is_file() else None
+    if defaults is None and not instructions:
+        raise Waiting(f"{identity}: no principles reach its executor — neither CLAUDE.md/AGENTS.md at the inputs commit nor "
+                      f"{SKILLS / '_shared/runtime-principles.md'}; reinstall devlyn-cli to restore that file, then drain again")
+    packet.update(harness=binding["release"] if binding else None,
+                  methodology={"defaults": defaults, "projectInstructions": instructions}, workerPrompt=None)
+    if binding:
+        harness_call("check_binding", binding, harness_call("resolve", SKILLS))
+        bound_skills = Path(binding["release"]["root"]) / "config/skills"
+        packet["runner"][1] = str(bound_skills / "devlyn-ideate/scripts/acceptance.py")
+        prompt = path.parent / "worker-prompt.md"
+        body = (f"Execute task packet {packet_path}. Work only in {worktree} on its owned branch.\n"
+                f"Read {binding['defaults']['path']} and apply it as defaults; explicit user and native owner/project instructions win.\n"
+                f"Set DEVLYN_SKILL_DIR={bound_skills / 'devlyn-ideate'} and DEVLYN_SHARED_DIR={bound_skills / '_shared'}.\n"
+                f"Follow Executor exchange and Review records in {bound_skills / 'devlyn-ideate/references/loop.md'}.\n"
+                f"Meet the packet obligations, run its runner and write {packet['submission']}. Never push, open a pull request or merge.\n")
+        acceptance()["atomic_write"](prompt, body.encode("utf-8"))
+        packet["workerPrompt"] = harness_call("file_identity", prompt)
     write_json(packet_path, packet)
     return packet_path, packet
 
@@ -1125,6 +1207,7 @@ def ensure_submission(identity, packet_path, packet, executor):
     An attempt's start is recorded before the spawn and its exit after the wait, so a start without an exit may have
     left a live executor: drain observes once and waits if it is active. Only established cessation permits adoption
     or another execution. Where writers cannot be observed the task fails as interrupted-unobservable."""
+    harness_call("verify_packet", packet, packet_path, SKILLS)
     submission = Path(packet["submission"])
     worktree = Path(packet["worktree"])
     log = submission.with_name("executions.log")
@@ -1144,6 +1227,10 @@ def ensure_submission(identity, packet_path, packet, executor):
             raise LoopError(f"cannot establish that an interrupted execution stopped: {exc}; repair writer observation, then drain again") from exc
     if submission.exists():
         return None
+    defaults = packet["methodology"].get("defaults") if packet.get("schema_version") == 2 else None
+    if packet.get("harness") is None and defaults and not Path(defaults["path"]).is_file():
+        # An installation's own copy moves with its updates; only its absence matters, and only before a spawn.
+        raise Waiting(f"{identity}: its principles file {defaults['path']} is gone; reinstall devlyn-cli to restore it, then drain again")
     argv = [part.replace("{packet}", str(packet_path)) for part in executor]
     if any("{worktree_git_dir}" in part for part in argv):  # Optional: a Codex executor lists it as a writable root.
         git_dir = git(worktree, "rev-parse", "--path-format=absolute", "--git-dir")
@@ -1217,6 +1304,8 @@ def advance(v, row, opts):
     if not path.exists() and (refused := allocate(v, row, opts)):
         return refused
     receipt = read_json(path)
+    if receipt.get("acceptance") and (path.parent / "packet.json").exists():
+        harness_call("verify_packet", read_json(path.parent / "packet.json"), path.parent / "packet.json", SKILLS)
     if not receipt.get("acceptance"):
         state["phase"] = "inputs"
         failure = v["states"][identity].get("inputs_changed")
@@ -1269,7 +1358,9 @@ def summary(v, row):
                 branch = receipt["branch"]
             if receipt.get("acceptance") and receipt.get("delivery") not in SETTLED:
                 if receipt.get("queue"):
-                    argv = [sys.executable, str(SKILLS / "_shared/task-complete.py"), "complete", "--receipt", str(state["path"])]
+                    binding = harness_call("read_binding", v["common"])
+                    skills = Path(binding["release"]["root"]) / "config/skills" if binding else SKILLS
+                    argv = [sys.executable, str(skills / "_shared/task-complete.py"), "complete", "--receipt", str(state["path"])]
                     if receipt.get("writers_released"):
                         argv.append("--writers-stopped")
                     if not receipt.get("local_only") and not receipt.get("mode_override"):
@@ -1420,6 +1511,7 @@ def prune_parents(v, root):
 def drain(args):
     anchor, common = repository(args.repo)
     args.repo = anchor  # Preserve the repository root for failures reported by main.
+    enforce_binding(common, anchor)
     diagnostics = skill_diagnostics(anchor)
     require(any("{packet}" in part for part in args.executor), "executor argv must contain {packet}, replaced by the task packet path")
     args.default_worktree_root = args.worktree_root is None
@@ -1456,15 +1548,17 @@ def drain(args):
         last["cleanup"].extend(args.root_diagnostics)
         annotate(last, refused)
         prune_parents(last, args.worktree_root)
+        try:
+            release_settled_binding(anchor, common)
+        except (LoopError, OSError) as exc:
+            last["cleanup"].append(f"queue binding not released: {exc}; the next status or drain retries")
         return {"status": status, "reason": reason, **diagnostics,
                 "reports": write_reports(last, status, reason, diagnostics["warnings"]), "counts": counts(last),
                 "tasks": [summary(last, row) for row in last["rows"] if row["identity"]], "cleanup": last["cleanup"]}
 
 
-def status(args):
-    anchor, common = repository(args.repo)
-    args.repo = anchor  # Preserve the repository root for failures reported by main.
-    v = view(anchor, common, args.local_only)
+def status_summary(v):
+    anchor = v["anchor"]
     row = next_task(v, set())
     annotate(v, {})
     tasks = [summary(v, r) for r in v["rows"] if r["identity"]]
@@ -1473,6 +1567,41 @@ def status(args):
             + [f"legacy row {r['index'] + 1} needs planning: {r['text']}" for r in v["rows"] if not r["identity"] and r["mark"] == " "]
             + [f"unreadable receipt {item}" for item in v["unreadable"]],
             "delivery": [t for t in tasks if t.get("resume")], "cleanup": v["cleanup"]}
+
+
+def status(args):
+    anchor, common = repository(args.repo)
+    args.repo = anchor
+    enforce_binding(common, anchor)
+    result = status_summary(view(anchor, common, args.local_only))
+    release_settled_binding(anchor, common)
+    return result
+
+
+def inspect(args):
+    anchor, common = repository(args.repo)
+    try:
+        result = status_summary(view(anchor, common, pure=True))
+    except (LoopError, OSError) as exc:
+        result = {"status": "BLOCKED", "reason": str(exc), **skill_diagnostics(anchor)}
+    binding_path = common / "devlyn-loops/harness.json"
+    binding = None
+    compatibility = {"compatible": True, "legacy": not (binding_path.exists() or binding_path.is_symlink()), "reasons": [], "recoveryArgv": None,
+                     "taskPacket": {"inspect": [1, 2], "execute": [1, 2], "write": 2}, "queueBinding": {"read": [1, 1], "write": 1}}
+    try:
+        binding = read_json(binding_path) if not compatibility["legacy"] else None
+        enforce_binding(common)
+        for packet in (common / "devlyn-completion").glob("*/packet.json"):
+            harness_call("packet_schema", read_json(packet))
+    except (LoopError, OSError) as exc:
+        compatibility.update(compatible=False, reasons=[str(exc)])
+        try:
+            valid = harness_call("read_binding", common)
+            if valid:
+                compatibility["recoveryArgv"] = harness_call("recovery_argv", valid, ["inspect", "--repo", str(anchor), "--json"])
+        except (LoopError, OSError):
+            pass  # The diagnostic above describes the malformed binding; no safe argv can be inferred.
+    return {**result, "binding": binding, "compatibility": compatibility}
 
 
 def legacy_target(anchor, number):
@@ -1501,7 +1630,9 @@ def add(args):
     ref, package_dir = CAPTURES + loop, f"docs/specs/{loop}"
     require(meta.name == "meta.md" and meta.parent.parent == anchor / "docs/specs" and re.fullmatch(ID, loop),
             f"package must be <repo>/docs/specs/<loop-id>/meta.md: {meta}")
+    enforce_binding(common, anchor)
     with lock(common, "queue.lock", blocking=True):
+        enforce_binding(common)
         recorded = records(common)
         notes = clean(common, recorded)
         target = legacy_target(anchor, args.materialize) if args.materialize else None
@@ -1540,6 +1671,11 @@ def add(args):
             require(" ".join(target["line"][6:].split()) in intent, "meta.md '## Intent' must reproduce the legacy row's intent verbatim")
         paths = [f"{package_dir}/meta.md", *(f"{package_dir}/{task}/{name}" for task in package["tasks"] for name in ("spec.md", "spec.expected.json"))]
         files = {rel: package_bytes(anchor, None, rel) for rel in paths} | {loop_queue(loop): loop_rows(loop, package, target)}
+        # The lock covers both first binding and first capture; an interrupted binding is authoritative on retry.
+        if harness_call("read_binding", common) is None:
+            invoking = harness_call("resolve", SKILLS)
+            if invoking is not None and not unfinished(view(anchor, common, pure=True)):
+                write_json(common / "devlyn-loops/harness.json", invoking)
         tree = build_tree(anchor, None, files)
         if captured:
             require(tree == git(anchor, "rev-parse", captured + "^{tree}"), interrupted)
@@ -2016,6 +2152,9 @@ def main():
         action = actions.add_parser(name)
         action.add_argument("--repo", default=".")
         action.add_argument("--local-only", "--no-push", action="store_true")
+    inspector = actions.add_parser("inspect")
+    inspector.add_argument("--repo", default=".")
+    inspector.add_argument("--json", action="store_true")
     actions.choices["drain"].add_argument("--worktree-root")
     actions.choices["drain"].add_argument("executor", nargs="+", help="host executor argv after --; {packet} becomes the packet path")
     args = parser.parse_args()
@@ -2025,9 +2164,11 @@ def main():
             print(f"queue self-test: PASS ({result.testsRun} tests)")
         return 0 if result.wasSuccessful() else 1
     if args.action is None:
-        parser.error("check, add, status or drain is required")
+        parser.error("check, add, status, inspect or drain is required")
+    if args.action == "inspect":
+        os.environ["GIT_OPTIONAL_LOCKS"] = "0"  # git diff may otherwise refresh the index even with unchanged bytes.
     try:
-        result = {"check": check, "add": add, "status": status, "drain": drain}[args.action](args)
+        result = {"check": check, "add": add, "status": status, "drain": drain, "inspect": inspect}[args.action](args)
     except (LoopError, OSError) as exc:
         result = {"status": "BLOCKED", "reason": str(exc)}
         if args.action in {"status", "drain"}:
