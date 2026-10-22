@@ -107,8 +107,11 @@ Keep the original edits through pending or failed delivery; only reconciliation
 removes them. Preserve all other work and report anything left behind.
 
 Allocation also returns a receipt-owned `scratch` directory. Put disposable
-build intermediates there (for example, set
-`CARGO_TARGET_DIR` to `<scratch>/target`). Keep source checkouts, Git data,
+build intermediates there, such as a Cargo target directory, unless project
+instructions place them elsewhere; start them the way those instructions say,
+since an empty one rebuilds every dependency. Never point two checkouts at
+one build directory, even one build at a time: tools such as Cargo take one
+checkout's outputs as fresh for the other. Keep source checkouts, Git data,
 lockfiles, reports and restart evidence outside scratch. Do not create unowned
 temporary build trees or preserve them by copying them into evidence custody.
 Prefer `TemporaryDirectory`/`finally` for short-lived test fixtures.
