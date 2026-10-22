@@ -105,3 +105,64 @@ DESIGN's limits apply: two replicates on exposed tasks, CLIs pinned at three wee
 (and, from d14, a second account), adapted D3/D4 caller context, and local-origin delivery. A result is attributable
 to the package as a whole. No product change follows from this experiment alone; the next candidate is the owner's
 decision.
+
+## Addendum 2026-10-22 (post hoc; changes no reading)
+
+Written after the result, at the owner's request to review the K7 reading. The token, decisions and predictions above
+stand as recorded.
+
+**K7 stays binding.** Astra ultra and Grok 4.7 reviewed it read-only ([prompt](results/k7-r1-prompt.md),
+[Astra](results/k7-r1-astra.md), [Grok](results/k7-r1-grok.md)). Both find it a correct reading of I0185
+requirement 3, which excludes another installation to the same destination with no condition on its environment.
+Both hold that 0256's frozen reading cannot be changed after measurement. The shipped installer keys its lock to the
+destination (`bin/devlyn.js` `DEVLYN_INSTALL_LOCK`), so it would pass this witness.
+
+**Sensitivity.** K7 reproduces once in each codex arm, in opposite replicates: on A's d12 (r1) and on B's d22 (r2).
+The registered rule compares each B replicate with the same A replicate, so only r2 fails. Pooled over both
+replicates, B's reproducing witnesses on codex I0185 ({K3, K7, X1}) are a subset of A's ({K2, K3, K7, X1, X2}), and
+the same decisions would read `DEVELOPMENT_PASS`. This is a limit of the per-replicate pairing, not evidence that
+the package adds the K7 defect.
+
+**For the next registration** (to be frozen before it measures; nothing changes here): keep K7 binding, and
+replace the per-replicate subset condition with a per-task, per-configuration comparison. Astra proposes comparing
+reproduction counts per witness; Grok proposes `union(B) ⊆ union(A)` with per-replicate deltas reported, not gating.
+Both accept a swap like this one, where each arm shows the witness once; equal counts hide which replicate failed.
+Both reject a witness that B shows and A never does. The union rule also accepts a higher B count whenever A shows
+the witness at least once; counts reject that.
+
+**I0185 carried no principles in B.** On a checkout whose `package.json` is named `devlyn-cli` and that has
+`bin/devlyn.js`, the 4.2.24 installer writes no instructions: `-y --claude` writes skills and settings but no `CLAUDE.md`
+("Skipping CLAUDE.md; shipped instruction template in devlyn-cli source checkout"), and `-y` writes skills but no
+`AGENTS.md`; root reproduced this on the I0185 base. The
+I0185 B cells are therefore bare Claude Code or Codex plus skills, and their B-vs-A witness gaps cannot be attributed to
+the principles text. Neither can d23's false completion; d24 (A) makes the same claim. A future registration that attributes results to the
+principles must check that the instructions were loaded and keep such fixtures out of that attribution.
+
+**Claude: no principles change now.** The owner asked for a fix to the Claude-side result. A read-only diagnosis of
+the transcripts ([results/claude-diagnosis.md](results/claude-diagnosis.md)) found no single mechanism:
+
+- The principles are never cited as the reason for a failure.
+- Narrow evidence generalized into a general claim produces false completions in both arms: d28 in B, and d24 in A,
+  which repeats d23's I0185 claim. On D4 itself, A's d27 diagnosed the hang that d28 explained away.
+- d23 had no principles text (above).
+- Delivery and executor bookkeeping contributed to B's extra wall time on F tasks; mutation-test stalls of about
+  two minutes dominated three of those gaps, and no quality effect of those lines was established.
+- The only arm-specific pattern also seen in 0233: on F10/F11, c02 and c12 leave malformed JSON to Express's default
+  HTML 400; c02 reports that the request did not cover it, c12 that it did not list it. All four A cells
+  handle it, as does c05 (B). c15 was cut off by its own `kill` and gave no report.
+
+Astra ultra and Grok 4.7 reviewed it in two read-only rounds
+([r1 prompt](results/claude-fix-r1-prompt.md), [Astra](results/claude-fix-r1-astra.md),
+[Grok](results/claude-fix-r1-grok.md); [r2 prompt](results/claude-fix-r2-prompt.md),
+[Astra](results/claude-fix-r2-astra.md), [Grok](results/claude-fix-r2-grok.md)). In round 1, Astra proposed
+deleting one principles clause for an eight-cell screen; Grok found the evidence too thin to target. In round 2, both
+recommended leaving the canonical text unchanged:
+
+- Two reported B omissions against none of four A cells, with c15 censored (one-sided Fisher p ≈ 0.14; counting
+  c15's missing handler, 3 against 0, p ≈ 0.07), cannot pick out one sentence.
+- A parser witness chosen after seeing B fail it would be outcome-shaped on these cells.
+
+The observation goes to the powered study as a secondary endpoint on fresh F10/F11 cells: malformed JSON handled or
+left as HTML 400, in both arms. It must be frozen before that study measures. Astra proposes a directional prediction
+(lower parser pass rate in principles-exposed Claude B than in A); Grok proposes a descriptive, non-gating tally. Any
+later ablation needs the owner's approval of the exact deletion.
