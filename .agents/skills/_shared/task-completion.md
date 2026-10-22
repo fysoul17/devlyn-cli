@@ -106,13 +106,21 @@ require the affected checks again.
 Keep the original edits through pending or failed delivery; only reconciliation
 removes them. Preserve all other work and report anything left behind.
 
-Allocation also returns a receipt-owned `scratch` directory. Put disposable
-build intermediates there, such as a Cargo target directory, unless project
-instructions place them elsewhere; start them the way those instructions say,
-since an empty one rebuilds every dependency. Never point two checkouts at
-one build directory, even one build at a time: tools such as Cargo take one
-checkout's outputs as fresh for the other. Keep source checkouts, Git data,
-lockfiles, reports and restart evidence outside scratch. Do not create unowned
+Build in the task worktree's own default build directory, never in one
+another checkout builds in, even one build at a time: tools such as Cargo take
+one checkout's outputs as fresh for the other. When a Cargo workspace's
+Cargo.toml sets `[workspace.metadata.devlyn] warm-build-dirs = true`,
+allocation seeds that directory from a built checkout of the repository, so
+the first build does not rebuild every dependency; `build_dirs` in its result
+and receipt says what it did, and a skip means an ordinary cold build. The
+opt-in is the workspace's: seeding keeps dependency outputs that may hold the
+other checkout's paths, and those follow that checkout's later rebuilds. `warm-build-dirs.py <worktree>` does the same for a
+worktree made without allocation. A warmed directory leaves with the worktree
+after merge, so a pending, failed or local-only task keeps it.
+
+Allocation also returns a receipt-owned `scratch` directory for other
+disposable build files, such as writable tool caches. Keep source checkouts,
+Git data, lockfiles, reports and restart evidence outside scratch. Do not create unowned
 temporary build trees or preserve them by copying them into evidence custody.
 Prefer `TemporaryDirectory`/`finally` for short-lived test fixtures.
 
