@@ -1,0 +1,6 @@
+- MEDIUM — [registration.md:74](/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/0257-powered-replay/autoresearch/experiments/0257/registration.md:74): Qualification lacks evidence of DESIGN’s required installer checks on the actual I0185 base and F10 tree—the available test mocks installation, so those prerequisites need verification before launch.
+- MEDIUM — [registration.md:45](/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/0257-powered-replay/autoresearch/experiments/0257/registration.md:45): “The owner chose to continue” leaves round 2’s registration status unresolved under DESIGN’s requirement that another account means a new registration; document that boundary before launch.
+- MEDIUM — [registration.md:43](/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/0257-powered-replay/autoresearch/experiments/0257/registration.md:43): The account-switch narrative misleadingly implies Codex B never ran, whereas its archived verdict records `EXITED_0` followed by `STOP` because the mismatch blocked assessment.
+- MEDIUM — [registration.md:72](/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/0257-powered-replay/autoresearch/experiments/0257/registration.md:72): Codex cells do use Claude assessors, with usage recorded in both verdicts, so their window increases do not establish other host activity.
+
+VERDICT: FIX

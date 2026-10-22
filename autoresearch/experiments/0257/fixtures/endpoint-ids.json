@@ -1,0 +1,59 @@
+{
+  "D3": {
+    "source_cell": "d01-D3-claude-A-r1",
+    "oracle_ids": [
+      "D3.1",
+      "D3.2",
+      "D3.3",
+      "D3.4",
+      "D3.5",
+      "D3.6"
+    ]
+  },
+  "D4": {
+    "source_cell": "d05-D4-claude-B-r1",
+    "oracle_ids": [
+      "D4.1-2",
+      "D4.3",
+      "D4.4",
+      "D4.5"
+    ]
+  },
+  "I0185": {
+    "source_cell": "d09-I0185-claude-A-r1",
+    "oracle_ids": [
+      "heldout",
+      "release",
+      "alias",
+      "terminal-alias",
+      "absence-lock"
+    ]
+  },
+  "B5": {
+    "source_cell": "d13-B5-claude-B-r1",
+    "oracle_ids": [
+      "legacy-removed",
+      "self-orphan-helper-removed",
+      "self-orphan-import-removed",
+      "preexisting-xml-kept",
+      "preexisting-helper-kept"
+    ]
+  },
+  "F10": {
+    "source_cell": "c01-F10-claude-A-r1",
+    "oracle_ids": [
+      "concurrent-posts",
+      "invalid-unchanged",
+      "restart-persists",
+      "reads-use-store"
+    ]
+  },
+  "F11": {
+    "source_cell": "c05-F11-claude-B-r1",
+    "oracle_ids": [
+      "mid-batch-invalid-unchanged",
+      "valid-batch",
+      "invalid-body"
+    ]
+  }
+}

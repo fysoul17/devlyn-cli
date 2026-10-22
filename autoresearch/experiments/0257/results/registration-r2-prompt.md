@@ -1,0 +1,5 @@
+Read-only review, round 2, of autoresearch/experiments/0257/registration.md against autoresearch/experiments/0257/DESIGN.md (frozen r5, authoritative).
+
+Round 1 findings (results/registration-r1-astra.md, results/registration-r1-grok.md) were: codex windows include Claude assessors; codex-B round 1 actually ran and STOPped at assessment; rounds 1-2 boundary vs "another account is a new registration"; installer checks on the real I0185 base and F10 tree were only mocked; disk range arithmetic. The file now has a boundary sentence, a corrected round-1 narrative, a new section "Installer checks on the real trees" (real B installer run for both engines on every task tree; I0185 inputs restored with 0256/restore_i0185.py, now also a launch step), and corrected arithmetic.
+
+Check that each round-1 finding is resolved, that nothing contradicts DESIGN, and that nothing blocks launching the measured run. Reply with findings ranked HIGH / MEDIUM / LOW (file:line, one sentence each), then a final line exactly `VERDICT: SHIP` or `VERDICT: FIX`.
