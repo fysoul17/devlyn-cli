@@ -1,5 +1,6 @@
 """Offline contract tests for 0257; unchanged 0256 apparatus has its own regression suite."""
 import importlib.util
+import io
 import json
 import math
 import os
@@ -543,14 +544,17 @@ class DriverControls(unittest.TestCase):
             path = d.output / f'verdict-{name}.json'
             path.write_text(json.dumps({'status': 'STOP', 'reason': 'assessment failed: timeout',
                                         'identity': {'status': 'MATCH'}, 'owner_status': 'EXITED_0'}))
-            def regrade(*_):
+            d.approved_account = ['approved', 'org']
+            def regrade(*_args, **_kwargs):
                 path.write_text(json.dumps({'status': 'COMPLETE', 'scope_violations': ['outside'],
                                             'teardown': 'CLEAN', 'identity': {'status': 'MATCH'}}))
                 return 0
-            with mock.patch.object(driver.cell, 'regrade', side_effect=regrade), mock.patch.object(driver.cell, 'run') as run:
+            with mock.patch.object(driver.cell, 'regrade', side_effect=regrade) as regrade_call, \
+                    mock.patch.object(driver.cell, 'run') as run:
                 with self.assertRaisesRegex(RuntimeError, 'harm latch'):
                     d.dispatch(d.slots[0])
                 run.assert_not_called()
+            regrade_call.assert_called_once_with(d.runtime_path, name, expected_account=d.approved_account)
             self.assertIn('harm_latch', driver.Driver(d.runtime_path, []).state)
 
     def test_clear_latch_acknowledges_only_unchanged_verdict(self):
@@ -595,7 +599,7 @@ class DriverControls(unittest.TestCase):
     def test_smoke_launch_persists_before_cell_run(self):
         with tempfile.TemporaryDirectory() as temp:
             d = self.instance(Path(temp))
-            def interrupted(*_):
+            def interrupted(*_args, **_kwargs):
                 self.assertIn('first_smoke_dispatch', json.loads(d.status_path.read_text()))
                 started = d.output / 'smoke-claude-A/run/started.json'
                 started.parent.mkdir(parents=True)
@@ -617,7 +621,7 @@ class DriverControls(unittest.TestCase):
                 self.assertNotIn('registered_caps', state)
 
             started = driver.time.time()
-            def dispatched(*_):
+            def dispatched(*_args, **_kwargs):
                 marker = d.output / 'smoke-claude-A/run/started.json'
                 marker.parent.mkdir(parents=True)
                 marker.write_text(json.dumps({'started_at': started}))
@@ -658,7 +662,7 @@ class DriverControls(unittest.TestCase):
             cell_dir = d.output / row[0]
             calls = 0
 
-            def fake_run(*_):
+            def fake_run(*_args, **_kwargs):
                 nonlocal calls
                 calls += 1
                 cell_dir.mkdir(exist_ok=True)
@@ -681,7 +685,7 @@ class DriverControls(unittest.TestCase):
             costs = decide.slot_cost(d.output, row[0], json.loads(verdict_path.read_text()))
             self.assertEqual(decide.sums([{'complete': True, 'attempts': costs}])['input'], 25)
 
-    def test_deadline_account_and_smoke_timestamp(self):
+    def test_deadline_and_smoke_timestamp(self):
         with tempfile.TemporaryDirectory() as temp:
             d = self.instance(Path(temp))
             d.state['first_smoke_dispatch'] = '2020-01-01T00:00:00+00:00'
@@ -690,10 +694,6 @@ class DriverControls(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, 'deadline'): driver.Driver(d.runtime_path, []).assert_active()
             d.state.pop('first_smoke_dispatch')
             d.event('fixture')
-            with mock.patch.object(driver, 'credential', return_value={'expires': driver.time.time() + 10000,
-                         'account': ['other', 'org'], 'access_token': 'fake'}):
-                with self.assertRaisesRegex(RuntimeError, 'account/organization mismatch'):
-                    d.ready('claude', 'smoke', 2)
             with mock.patch.object(driver.cell, 'run', return_value=3):
                 self.assertFalse(d.dispatch(d.slots[0]))
             self.assertNotIn('first_smoke_dispatch', driver.Driver(d.runtime_path, []).state)
@@ -702,7 +702,7 @@ class DriverControls(unittest.TestCase):
             started = driver.datetime.datetime(2026, 10, 22, tzinfo=driver.datetime.timezone.utc).timestamp()
             (smoke / 'run/started.json').write_text(json.dumps({'started_at': started}))
 
-            def dispatched(*_args):
+            def dispatched(*_args, **_kwargs):
                 (d.output / 'verdict-smoke-claude-A.json').write_text(json.dumps({
                     'status': 'COMPLETE', 'owner_status': 'EXITED_0', 'scope_violations': [],
                     'teardown': 'CLEAN', 'identity': {'status': 'MATCH'}}))
@@ -712,6 +712,158 @@ class DriverControls(unittest.TestCase):
                 self.assertTrue(d.dispatch(d.slots[0]))
             self.assertEqual(driver.Driver(d.runtime_path, []).state['first_smoke_dispatch'],
                              '2026-10-22T00:00:00+00:00')
+
+    def test_ready_accepts_other_account(self):
+        with tempfile.TemporaryDirectory() as temp:
+            d = self.instance(Path(temp))
+            windows = {name: {'used': 0, 'resets': '2026-10-23T00:00:00+00:00'} for name in driver.WINDOWS}
+            snapshot = {'expires': driver.time.time() + 10000, 'account': ['other', 'org'], 'access_token': 'fake'}
+            with mock.patch.object(driver, 'credential', return_value=snapshot), \
+                    mock.patch.object(driver.cell, 'claude_limits', return_value=windows), \
+                    mock.patch.object(d, 'image', return_value=True) as image:
+                self.assertTrue(d.ready('claude', 'smoke', 2))
+            image.assert_called_once()
+
+    def test_account_switch_after_ready_refuses_dispatch_and_rechecks_new_reserve(self):
+        with tempfile.TemporaryDirectory() as temp:
+            d = self.instance(Path(temp))
+            (d.output.parent / 'instructions.seal.json').write_text('{}')
+            first = {'expires': driver.time.time() + 10000, 'account': ['first', 'org'], 'access_token': 'first-token'}
+            second = {'expires': driver.time.time() + 10000, 'account': ['second', 'org'], 'access_token': 'second-token'}
+            reset = '2026-10-23T00:00:00+00:00'
+            def windows(_runtime, token):
+                used = 90 if token == 'second-token' else 0
+                return {name: {'used': used, 'resets': reset} for name in driver.WINDOWS}
+
+            with mock.patch.object(driver, 'credential', side_effect=[first, second]), \
+                    mock.patch.object(driver.cell, 'claude_limits', side_effect=windows) as limits, \
+                    mock.patch.object(d, 'image', return_value=True), \
+                    mock.patch.object(driver.cell, 'image_identity', return_value=True), \
+                    mock.patch.object(driver.cell.shutil, 'disk_usage',
+                                      return_value=mock.Mock(free=driver.cell.HEADROOM_BYTES + 1)), \
+                    mock.patch.object(driver.cell, 'snapshot_auth', return_value=({'account': second['account']}, None)), \
+                    mock.patch.object(driver.cell, 'codex_limits') as codex, \
+                    mock.patch.object(driver.cell.prepare, 'prepare') as prepare:
+                self.assertTrue(d.ready('claude', 'smoke', 2))
+                self.assertEqual(d.approved_account, first['account'])
+                self.assertFalse(d.dispatch(d.slots[0]))
+                self.assertFalse(d.ready('claude', 'smoke', 2))
+            self.assertIsNone(d.approved_account)
+            self.assertEqual([call.args[1] for call in limits.call_args_list], ['first-token', 'second-token'])
+            self.assertEqual(json.loads((d.output / 'not-dispatched-smoke-claude-A.json').read_text()),
+                             {'reason': 'account changed after reserve check'})
+            self.assertFalse((d.output / 'verdict-smoke-claude-A.json').exists())
+            self.assertNotIn('first_smoke_dispatch', d.state)
+            codex.assert_not_called()
+            prepare.assert_not_called()
+            self.assertEqual(json.loads((d.output / 'driver.log').read_text().splitlines()[-1])['reason'],
+                             'Claude window reserve')
+
+    def test_split_wait_tracks_account_and_releases_on_switch(self):
+        with tempfile.TemporaryDirectory() as temp:
+            d = self.instance(Path(temp))
+            reset = '2026-10-23T00:00:00+00:00'
+            windows = {name: {'used': 80 if name == 'seven_day' else 40, 'resets': reset}
+                       for name in driver.WINDOWS}
+            account = ['first', 'org']
+            snapshot = lambda _: {'expires': driver.time.time() + 10000,
+                                  'account': account, 'access_token': 'fake'}
+            with mock.patch.object(driver, 'credential', side_effect=snapshot), \
+                    mock.patch.object(driver.cell, 'claude_limits', return_value=windows), \
+                    mock.patch.object(driver, 'estimates', return_value={'seven_day': 10, 'five_hour': 25}), \
+                    mock.patch.object(driver.Driver, 'image', return_value=True):
+                self.assertFalse(d.ready('claude', 'development', 1, slot='second', previous='first'))
+                self.assertEqual(d.state['split_wait']['second']['account'], account)
+                d = driver.Driver(d.runtime_path, d.slots)
+                windows['seven_day']['used'] = 0
+                self.assertFalse(d.ready('claude', 'development', 1, slot='second', previous='first'))
+                account = ['second', 'org']
+                self.assertTrue(d.ready('claude', 'development', 1, slot='second', previous='first'))
+            self.assertNotIn('second', d.state['split_wait'])
+            events = [json.loads(line) for line in (d.output / 'driver.log').read_text().splitlines()]
+            self.assertEqual([e['event'] for e in events].count('split_wait_account_changed'), 1)
+
+    def test_legacy_split_wait_keeps_reset_behavior(self):
+        with tempfile.TemporaryDirectory() as temp:
+            d = self.instance(Path(temp))
+            reset = '2026-10-23T00:00:00+00:00'
+            d.state['split_wait']['second'] = {'seven_day': reset}
+            windows = {name: {'used': 0, 'resets': reset} for name in driver.WINDOWS}
+            snapshot = {'expires': driver.time.time() + 10000,
+                        'account': ['other', 'org'], 'access_token': 'fake'}
+            with mock.patch.object(driver, 'credential', return_value=snapshot), \
+                    mock.patch.object(driver.cell, 'claude_limits', return_value=windows), \
+                    mock.patch.object(d, 'image', return_value=True):
+                self.assertFalse(d.ready('claude', 'development', 1, slot='second'))
+            self.assertEqual(d.state['split_wait']['second'], {'seven_day': reset})
+
+    def test_credential_skips_profile_near_expiry(self):
+        raw = json.dumps({'claudeAiOauth': {'expiresAt': (driver.time.time() + 100) * 1000,
+                                            'accessToken': 'near-expiry'}})
+        with mock.patch.object(driver.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0, stdout=raw)), \
+                mock.patch.object(driver.cell.urllib.request, 'urlopen') as profile_call:
+            snapshot = driver.credential({})
+        self.assertIsNone(snapshot['account'])
+        profile_call.assert_not_called()
+
+    def test_renewal_accepts_account_change_only_with_advanced_expiry(self):
+        for advances in (True, False):
+            with self.subTest(advances=advances), tempfile.TemporaryDirectory() as temp:
+                d = self.instance(Path(temp))
+                expiry = driver.time.time() + 100
+                before = {'expires': expiry, 'account': ['before', 'org'], 'access_token': 'old'}
+                after = {'expires': expiry + (10000 if advances else 0),
+                         'account': ['after', 'org'], 'access_token': 'new'}
+                windows = {name: {'used': 0, 'resets': '2026-10-23T00:00:00+00:00'} for name in driver.WINDOWS}
+                with mock.patch.object(driver, 'credential', side_effect=[before, after]), \
+                        mock.patch.object(driver, 'renewal_command', return_value=['claude', '-p']), \
+                        mock.patch.object(driver.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0, stdout='help')), \
+                        mock.patch.object(driver.cell, 'claude_limits', return_value=windows), \
+                        mock.patch.object(d, 'image', return_value=True):
+                    self.assertEqual(d.ready('claude', 'smoke', 2), advances)
+                events = [json.loads(line) for line in (d.output / 'driver.log').read_text().splitlines()]
+                if advances:
+                    self.assertIn('renewed', [e['event'] for e in events])
+                else:
+                    self.assertEqual(events[-1]['reason'], 'renewal did not advance expiry')
+                self.assertNotIn('account_changed', [e['event'] for e in events])
+
+    def test_estimates_use_only_same_account_windows(self):
+        with tempfile.TemporaryDirectory() as temp:
+            out = Path(temp)
+            windows = lambda used: {name: {'used': used, 'resets': '2026-10-23T00:00:00+00:00'}
+                                    for name in driver.WINDOWS}
+            for name, change, accounts in [('changed', 90, (['a'], ['b'])),
+                                           ('same', 8, (['a'], ['a'])), ('legacy', 7, None)]:
+                verdict = dict(status='COMPLETE', config='claude', task='D3',
+                               claude_limits_before=windows(0), claude_limits_after=windows(change))
+                if accounts:
+                    verdict.update(claude_account_before=accounts[0], claude_account_after=accounts[1])
+                (out / f'verdict-{name}.json').write_text(json.dumps(verdict))
+            self.assertEqual(driver.estimates(out, 'claude', 'development'),
+                             {'seven_day': 8, 'five_hour': 8})
+            malformed = dict(status='COMPLETE', config='claude', task='D3',
+                             claude_limits_before=windows(0), claude_limits_after=windows(1),
+                             claude_account_before=['a'])
+            (out / 'verdict-malformed.json').write_text(json.dumps(malformed))
+            with self.assertRaisesRegex(ValueError, 'incomplete Claude account pair'):
+                driver.estimates(out, 'claude', 'development')
+            malformed.pop('claude_account_before')
+            malformed['claude_account_after'] = ['a']
+            (out / 'verdict-malformed.json').write_text(json.dumps(malformed))
+            with self.assertRaisesRegex(ValueError, 'incomplete Claude account pair'):
+                driver.estimates(out, 'claude', 'development')
+
+    def test_estimates_skip_failed_after_window_read(self):
+        with tempfile.TemporaryDirectory() as temp:
+            out = Path(temp)
+            windows = {name: {'used': 80, 'resets': '2026-10-23T00:00:00+00:00'}
+                       for name in driver.WINDOWS}
+            verdict = dict(status='COMPLETE', config='claude', task='SMOKE',
+                           claude_limits_before=windows, claude_account_before=['a'],
+                           claude_limits_after_error='HTTP Error 429: Too Many Requests')
+            (out / 'verdict-failed-read.json').write_text(json.dumps(verdict))
+            self.assertEqual(driver.estimates(out, 'claude', 'development'), driver.FLOORS)
 
     def test_cap_change_stops_until_amendment(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -759,6 +911,179 @@ class DriverControls(unittest.TestCase):
             with mock.patch.object(d, 'ready', side_effect=hold_then_deadline), mock.patch.object(driver.time, 'sleep'):
                 with self.assertRaisesRegex(RuntimeError, 'deadline'):
                     d.run()
+
+
+class CellAccounts(unittest.TestCase):
+    def test_regrade_legacy_assessor_stop_restores_dispatch_account_for_estimates(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            out = root / 'output'
+            cell = out / 'legacy'
+            cell.mkdir(parents=True)
+            runtime_path = root / 'runtime.json'
+            runtime_path.write_text(json.dumps({'output': str(out)}))
+            venue = {'account': ['dispatch', 'org']}
+            (cell / 'seal.json').write_text(json.dumps({'venue': venue}))
+            checks = {'product_check_pass': True, 'oracle': {}, 'scope_violations': []}
+            (cell / 'checks.json').write_text(json.dumps(checks))
+            windows = lambda used: {name: {'used': used, 'resets': '2026-10-23T00:00:00+00:00'}
+                                    for name in driver.WINDOWS}
+            verdict_path = out / 'verdict-legacy.json'
+            verdict_path.write_text(json.dumps({
+                'cell': 'legacy', 'task': 'D3', 'config': 'claude', 'status': 'STOP',
+                'reason': 'assessment failed: timeout', 'claude_limits_before': windows(0)}))
+            with mock.patch.object(run_cell, 'assessment_snapshot', return_value=({'account': venue['account']}, None)) as snapshot, \
+                    mock.patch.object(run_cell.assess, 'assess', return_value=[]), \
+                    mock.patch.object(run_cell.base, 'unassessed', return_value=[]), \
+                    mock.patch.object(run_cell.base, 'verdict', return_value='COMPLETE'), \
+                    mock.patch.object(run_cell, 'claude_limits_with_account',
+                                      return_value=(windows(40), venue['account'])):
+                self.assertEqual(run_cell.regrade(runtime_path, 'legacy', expected_account=venue['account']), 0)
+            snapshot.assert_called_once()
+            verdict = json.loads(verdict_path.read_text())
+            self.assertEqual(verdict['claude_account_before'], venue['account'])
+            self.assertEqual(driver.estimates(out, 'claude', 'development'),
+                             {'seven_day': 40, 'five_hour': 40})
+
+    def test_regrade_refuses_changed_account_without_replacing_stop(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            out = root / 'output'
+            cell = out / 'slot'
+            cell.mkdir(parents=True)
+            runtime_path = root / 'runtime.json'
+            runtime_path.write_text(json.dumps({'output': str(out)}))
+            (cell / 'seal.json').write_text(json.dumps({'venue': {'account': ['original', 'org']}}))
+            verdict_path = out / 'verdict-slot.json'
+            original = {'status': 'STOP', 'reason': 'assessment failed: timeout'}
+            verdict_path.write_text(json.dumps(original))
+            with mock.patch.object(run_cell, 'assessment_snapshot',
+                                   return_value=({'account': ['switched', 'org']}, None)), \
+                    mock.patch.object(run_cell.assess, 'assess') as assess, \
+                    mock.patch.object(run_cell, 'grade') as grade:
+                self.assertEqual(run_cell.regrade(runtime_path, 'slot', expected_account=['approved', 'org']), 3)
+            self.assertEqual(json.loads(verdict_path.read_text()), original)
+            self.assertFalse(list(out.glob('verdict-slot.stop-*.json')))
+            self.assertEqual(json.loads((out / 'not-dispatched-slot.json').read_text()),
+                             {'reason': 'account changed after reserve check'})
+            assess.assert_not_called()
+            grade.assert_not_called()
+
+    def test_preflight_accepts_current_host_account(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            auth = root / 'auth'
+            auth.mkdir()
+            home = root / 'home'
+            (home / '.codex').mkdir(parents=True)
+            (home / '.codex/auth.json').write_text('{}')
+            runtime = {'output': str(root), 'auth': str(auth), 'account': ['registered', 'org']}
+            raw = json.dumps({'claudeAiOauth': {'expiresAt': (run_cell.time.time() + 10000) * 1000,
+                                                'accessToken': 'current-token'}})
+            profile = {'account': {'uuid': 'current'}, 'organization': {'uuid': 'organization'}}
+            windows = {'seven_day': {'used': 10, 'resets': 'tomorrow'}}
+            with mock.patch.object(run_cell.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0, stdout=raw)), \
+                    mock.patch.object(run_cell.Path, 'home', return_value=home), \
+                    mock.patch.object(run_cell.shutil, 'disk_usage', return_value=mock.Mock(free=run_cell.HEADROOM_BYTES + 1)), \
+                    mock.patch.object(run_cell.urllib.request, 'urlopen',
+                                      side_effect=lambda *_args, **_kwargs: io.StringIO(json.dumps(profile))), \
+                    mock.patch.object(run_cell, 'claude_limits', return_value=windows) as limits, \
+                    mock.patch.object(run_cell, 'codex_limits', return_value=windows):
+                venue, blocked = run_cell.preflight(runtime)
+                matching, matching_blocked = run_cell.preflight(runtime, expected_account=venue['account'])
+                changed, changed_blocked = run_cell.preflight(runtime, expected_account=['other', 'org'])
+            self.assertIsNone(blocked)
+            self.assertIsNone(matching_blocked)
+            self.assertEqual(matching['account'], venue['account'])
+            self.assertIsNone(changed)
+            self.assertEqual(changed_blocked, 'account changed after reserve check')
+            self.assertEqual(limits.call_count, 2)
+            self.assertEqual(venue['account'], [run_cell.base.fingerprint('current'),
+                                                 run_cell.base.fingerprint('organization')])
+            self.assertNotEqual(venue['account'], runtime['account'])
+            self.assertEqual((auth / 'claude.json').read_text(), raw)
+
+    def test_assessment_snapshot_accepts_another_account(self):
+        with tempfile.TemporaryDirectory() as temp:
+            auth = Path(temp)
+            runtime = {'auth': str(auth), 'account': ['registered', 'org']}
+            raw = json.dumps({'claudeAiOauth': {'expiresAt': (run_cell.time.time() + 2000) * 1000,
+                                                'accessToken': 'assessor-token'}})
+            profile = {'account': {'uuid': 'assessor'}, 'organization': {'uuid': 'organization'}}
+            with mock.patch.object(run_cell.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0, stdout=raw)), \
+                    mock.patch.object(run_cell.urllib.request, 'urlopen', return_value=io.StringIO(json.dumps(profile))):
+                fresh, blocked = run_cell.assessment_snapshot(runtime, {'account': ['dispatch', 'org']})
+            self.assertIsNone(blocked)
+            self.assertEqual(fresh['account'], [run_cell.base.fingerprint('assessor'),
+                                                 run_cell.base.fingerprint('organization')])
+            self.assertEqual((auth / 'claude.json').read_text(), raw)
+
+    def test_after_windows_and_account_use_one_keychain_token(self):
+        raw = json.dumps({'claudeAiOauth': {'accessToken': 'after-token'}})
+        profile = {'account': {'uuid': 'after'}, 'organization': {'uuid': 'organization'}}
+        with mock.patch.object(run_cell.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0, stdout=raw)) as keychain, \
+                mock.patch.object(run_cell.urllib.request, 'urlopen', return_value=io.StringIO(json.dumps(profile))) as profile_call, \
+                mock.patch.object(run_cell, 'claude_limits', return_value={'seven_day': {'used': 5}}) as usage:
+            limits, account = run_cell.claude_limits_with_account({})
+        keychain.assert_called_once()
+        self.assertEqual(profile_call.call_args.args[0].get_header('Authorization'), 'Bearer after-token')
+        usage.assert_called_once_with({}, 'after-token')
+        self.assertEqual(limits['seven_day']['used'], 5)
+        self.assertEqual(account, [run_cell.base.fingerprint('after'), run_cell.base.fingerprint('organization')])
+
+    def test_run_records_dispatch_after_and_assessor_accounts(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            out = root / 'output'
+            out.mkdir()
+            runtime = dict(output=str(out), auth=str(root / 'auth'), account=['registered', 'org'],
+                           control=str(root / 'control'), models_cache=str(root / 'models'), image='image')
+            (root / 'auth').mkdir()
+            (root / 'models').write_text('model cache')
+            (root / 'control.manifest.json').write_text(json.dumps({'packages': {'B': {'sha256': 'package'}}}))
+            (root / 'instructions.seal.json').write_text('{}')
+            runtime_path = root / 'runtime.json'
+            runtime_path.write_text(json.dumps(runtime))
+            venue = dict(account=['dispatch', 'org'], claude_limits={'seven_day': {'used': 1}})
+            assessor = dict(account=['assessor', 'org'], token_seconds_left=2000)
+            checks = dict(product_check_pass=True, oracle={}, scope_violations=[], adjudication_needed=False)
+
+            def prepared(*_):
+                cell = out / 'cell-1'
+                (cell / 'home/.claude').mkdir(parents=True)
+                for name in ('plan.json', 'prompt.txt', 'baseline.json', 'home/.claude/settings.json',
+                             'instructions.pre.json'):
+                    path = cell / name
+                    path.write_text('{}')
+                return cell
+
+            owner = dict(owner_status='EXITED_0', seconds=1, teardown='CLEAN', identity={'status': 'MATCH'})
+            usage = dict(completeness='COMPLETE', input_tokens=1, output_tokens=1)
+            with mock.patch.object(run_cell, 'image_identity', return_value=True), \
+                    mock.patch.object(run_cell, 'preflight', return_value=(venue, None)) as preflight, \
+                    mock.patch.object(run_cell, 'control_unchanged', return_value=True), \
+                    mock.patch.object(run_cell.prepare, 'prepare', side_effect=prepared), \
+                    mock.patch.object(run_cell.subprocess, 'check_output', return_value='commit'), \
+                    mock.patch.object(run_cell.cell_run, 'run', return_value=owner), \
+                    mock.patch.object(run_cell, 'seal_after_teardown', return_value=('seal', [])), \
+                    mock.patch.object(run_cell.usage, 'record', return_value=usage), \
+                    mock.patch.object(run_cell.quota, 'classify', return_value={'execution': []}), \
+                    mock.patch.object(run_cell.diagnostics, 'record', return_value={}), \
+                    mock.patch.object(run_cell, 'harness_unchanged', return_value=True), \
+                    mock.patch.object(run_cell.instructions, 'check', return_value=[]), \
+                    mock.patch.object(run_cell.locate, 'locate', return_value={}), \
+                    mock.patch.object(run_cell.check, 'check', return_value=checks), \
+                    mock.patch.object(run_cell, 'assessment_snapshot', return_value=(assessor, None)), \
+                    mock.patch.object(run_cell.assess, 'assess', return_value=[]), \
+                    mock.patch.object(run_cell, 'claude_limits_with_account', return_value=({'seven_day': {'used': 3}}, ['after', 'org'])):
+                self.assertEqual(run_cell.run(runtime_path, 'cell-1', 'SMOKE', 'A', 'claude',
+                                              expected_account=venue['account']), 0)
+            preflight.assert_called_once_with(runtime, expected_account=venue['account'])
+            record = json.loads((out / 'verdict-cell-1.json').read_text())
+            self.assertEqual(record['claude_account_before'], venue['account'])
+            self.assertEqual(record['claude_account_after'], ['after', 'org'])
+            self.assertEqual(record['assessor_account'], assessor['account'])
+            self.assertEqual(record['claude_limits_after']['seven_day']['used'], 3)
 
 
 class Probe(unittest.TestCase):
