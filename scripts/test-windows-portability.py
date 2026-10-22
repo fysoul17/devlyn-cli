@@ -1133,8 +1133,11 @@ cp.spawnSync = (file, args, options) => {{
     def test_update_refuses_newer_versions_in_every_scope(self):
         self.cli('-y', '--claude'); self.cli('-y', '--global', '--claude')
         malformed = (None, 'malformed', '4.2.15-rc..1', '4.2.15-01', '04.2.15')
+        # The next minor's pre-release and build are newer than any release of this one.
+        major, minor = map(int, json.loads((self.package / 'package.json').read_bytes())['version'].split('.')[:2])
+        newer = f'{major}.{minor + 1}.0'
         for root in self.roots():
-            for version in ('4.3.0-beta.1', '4.3.0+build', '99.0.0', *malformed):
+            for version in (newer + '-beta.1', newer + '+build', '99.0.0', *malformed):
                 with self.subTest(root=root, version=version):
                     marker = root / '.devlyn-install.json'
                     original = marker.read_bytes()
