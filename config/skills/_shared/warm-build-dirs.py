@@ -437,26 +437,30 @@ def remove_unclassified(staging, layout, deadline):
                 remove(item, deadline)
 
 
-LIB_OUTPUT = re.compile(r"^lib(?P<name>.+)-(?P<hash>[0-9a-f]{16})\.(?:rlib|rmeta|dylib|so|dll|a)$")
-
-
 def crates_reading_out_dir(staging, found, crates, deadline):
     """The crates among these that may have read OUT_DIR while compiling, by rustc's dep-info.
 
     rustc writes `# env-dep:OUT_DIR=...` into a unit's deps/<crate>-<hash>.d for every
     env!/option_env! read of it, whatever the spelling or macro that made it. A crate counts as
-    not reading it only when every kept library output of it has that file and none says so.
+    not reading it only when every kept output of it has that file and none says so. Any
+    hashed output counts, with or without the `lib` prefix: rlibs, rmeta, dylibs, Windows DLLs
+    and static libraries, test executables.
     """
     reading, recorded, outputs = set(), {}, {}
     for layout in found:
         for item in (staging / layout / "deps").iterdir():
             deadline.left()
-            if (match := LIB_OUTPUT.match(item.name)) and match["name"] in crates:
-                outputs.setdefault(match["name"], set()).add(match["hash"])
-            elif item.name.endswith(".d") and (match := UNIT.match(item.name)) and match["name"] in crates:
-                recorded.setdefault(match["name"], set()).add(match["hash"])
-                if b"\n# env-dep:OUT_DIR=" in b"\n" + item.read_bytes():
-                    reading.add(match["name"])
+            if not (match := UNIT.match(item.name)):
+                continue
+            if item.name.endswith(".d"):
+                if match["name"] in crates:
+                    recorded.setdefault(match["name"], set()).add(match["hash"])
+                    if b"\n# env-dep:OUT_DIR=" in b"\n" + item.read_bytes():
+                        reading.add(match["name"])
+                continue
+            stem = match["name"]
+            for crate in {stem, stem.removeprefix("lib")} & crates:
+                outputs.setdefault(crate, set()).add(match["hash"])
     return reading | {crate for crate, hashes in outputs.items() if hashes - recorded.get(crate, set())}
 
 
@@ -710,6 +714,7 @@ class WarmTests(unittest.TestCase):
             {"name": "baked", "source": "registry", "manifest_path": str(self.root / "registry/baked/Cargo.toml"), "targets": [{"kind": ["lib"], "name": "LIB"}, {"kind": ["custom-build"], "name": "build-script-build"}]},
             {"name": "exporter", "source": "registry", "manifest_path": str(self.root / "registry/exporter/Cargo.toml"), "targets": [{"kind": ["lib"], "name": "LIB"}, {"kind": ["custom-build"], "name": "build-script-build"}]},
             {"name": "generator", "source": "registry", "manifest_path": str(self.root / "registry/generator/Cargo.toml"), "targets": [{"kind": ["lib"], "name": "LIB"}, {"kind": ["custom-build"], "name": "build-script-build"}]},
+            {"name": "windowsdll", "source": "registry", "manifest_path": str(self.root / "registry/windowsdll/Cargo.toml"), "targets": [{"kind": ["dylib"], "name": "LIB"}, {"kind": ["custom-build"], "name": "build-script-build"}]},
             # rustc left no dep-info for its library, so nothing proves it never read OUT_DIR.
             {"name": "undocumented", "source": "registry", "manifest_path": str(self.root / "registry/undocumented/Cargo.toml"), "targets": [{"kind": ["lib"], "name": "LIB"}, {"kind": ["custom-build"], "name": "build-script-build"}]},
             # Two versions of one package: only 1.0 compiles OUT_DIR in.
@@ -721,7 +726,7 @@ class WarmTests(unittest.TestCase):
         for package in packages[1:]:
             source = Path(package["manifest_path"]).parent / "src"
             source.mkdir(parents=True, exist_ok=True)
-            compiled = Path(package["manifest_path"]).parent.name in {"baked", "undocumented", "dual-1"}
+            compiled = Path(package["manifest_path"]).parent.name in {"baked", "undocumented", "dual-1", "windowsdll"}
             (source / "lib.rs").write_text('pub const DIR: &str = env!(/* why */ "OUT_DIR");\n' if compiled
                                            else 'include!(concat!(\n  env!("OUT_DIR"), "/gen.rs"));\n')
         self.fixture.write_text(json.dumps({"packages": packages, **extra}))
@@ -756,6 +761,9 @@ class WarmTests(unittest.TestCase):
             (deps / "libstray-dddddddddddddddd.rlib").write_bytes(b"rlib")
             self.unit(layout, ".fingerprint", "undocumented", "e" * 16)
             (deps / f"libundocumented-{'e' * 16}.rlib").write_bytes(b"rlib")
+            # A Windows-style DLL (no `lib` prefix) without dep-info, of a crate that compiles OUT_DIR in.
+            self.unit(layout, ".fingerprint", "windowsdll", "9a" * 8)
+            (deps / f"windowsdll-{'9a' * 8}.dll").write_bytes(b"dll")
             for digest in ("1a" * 8, "2b" * 8):
                 (deps / f"libdual-{digest}.rlib").write_bytes(b"rlib")
             # A run that points into the donor and has no fingerprint left.
@@ -805,7 +813,8 @@ class WarmTests(unittest.TestCase):
             self.assertEqual({".fingerprint", "build", "deps", "examples", ".cargo-lock"}, {p.name for p in (target / layout).iterdir()})
             self.assertEqual([], list((target / layout / "examples").iterdir()))
             self.assertTrue((target / layout / "build" / f"ring-{'4' * 16}" / "out" / "libring.a").exists())
-        self.assertEqual(["app", "aws-lc-rs", "baked", "dual", "exporter", "generator", "gone", "tauri", "undocumented"],
+        self.assertEqual(["app", "aws-lc-rs", "baked", "dual", "exporter", "generator", "gone", "tauri", "undocumented",
+                          "windowsdll"],
                          result["removed"])
         for layout in ("debug", "x86_64-pc-windows-msvc/debug"):
             self.assertFalse((target / layout / "build" / f"orphanrun-{'f' * 16}").exists())
