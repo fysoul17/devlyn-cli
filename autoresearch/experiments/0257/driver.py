@@ -20,9 +20,7 @@ def load(name):
 
 
 cell = load('run_cell')
-PANELS = load('decide').PANELS
 WINDOWS = ('seven_day', 'five_hour')
-FLOORS = {'seven_day': 10, 'five_hour': 25}
 
 
 def digest(path):
@@ -45,10 +43,6 @@ def rows(args):
     return result
 
 
-def panel(task):
-    return next((name for name, tasks in PANELS.items() if task in tasks), 'smoke' if task == 'SMOKE' else None)
-
-
 def same_window(first, second):
     if not first or not second:
         return False
@@ -60,42 +54,8 @@ def same_window(first, second):
         return False
 
 
-def delta(before, after, window):
-    a, b = before.get(window), after.get(window)
-    if not a or not b or not same_window(a.get('resets'), b.get('resets')):
-        return None
-    return max(0, b['used'] - a['used'])
-
-
-def estimates(output, config, group):
-    values = {window: [] for window in WINDOWS}
-    smoke = {window: [] for window in WINDOWS}
-    for path in output.glob('verdict-*.json'):
-        verdict = json.loads(path.read_text())
-        if verdict.get('status') == 'STOP' or verdict.get('config') != config:
-            continue
-        target = smoke if panel(verdict.get('task')) == 'smoke' else values if panel(verdict.get('task')) == group else None
-        if target is None:
-            continue
-        has_before = 'claude_account_before' in verdict
-        has_after = 'claude_account_after' in verdict
-        if has_after and not has_before or (has_before and not has_after and 'claude_limits_after' in verdict):
-            raise ValueError(f'{path}: incomplete Claude account pair')
-        if has_before and not has_after:
-            continue
-        if has_before and verdict['claude_account_before'] != verdict['claude_account_after']:
-            continue
-        before, after = verdict.get('claude_limits_before') or {}, verdict.get('claude_limits_after') or {}
-        for window in WINDOWS:
-            change = delta(before, after, window)
-            if change is not None:
-                target[window].append(change)
-    return {window: max(values[window]) if values[window] else max([FLOORS[window], *smoke[window]])
-            for window in WINDOWS}
-
-
-def fits(windows, caps, estimate, count):
-    return all(windows[window]['used'] + count * estimate[window] <= caps[window] for window in WINDOWS)
+def fits(windows, caps):
+    return all(windows[window]['used'] < caps[window] for window in WINDOWS)
 
 
 def credential(runtime):
@@ -201,9 +161,12 @@ class Driver:
         if not self.state.get('first_smoke_dispatch'):
             raise ValueError('caps cannot be amended before SMOKE')
         previous = self.state['registered_caps']
+        cleared_split_wait = self.state['split_wait'].copy()
+        self.state['split_wait'].clear()
         self.state['registered_caps'] = self.caps.copy()
         self.event('caps_amended', previous=previous, caps=self.caps,
-                   amendment=str(Path(amendment).resolve()))
+                   amendment=str(Path(amendment).resolve()),
+                   cleared_split_wait=cleared_split_wait)
 
     def latch_for(self, name, verdict):
         if not verdict or self.state.get('harm_latch'):
@@ -249,7 +212,7 @@ class Driver:
         self.event('image_loaded')
         return True
 
-    def ready(self, config, group, count, min_token_seconds=6300, slot=None, previous=None):
+    def ready(self, min_token_seconds=6300, slot=None, previous=None):
         self.approved_account = None
         try:
             snapshot = credential(self.runtime)
@@ -305,18 +268,17 @@ class Driver:
             return False
         if waiting:
             del self.state['split_wait'][slot]
-        estimate = estimates(self.output, config, group)
-        if not fits(windows, self.caps, estimate, count):
-            if slot and count == 1:
+        if not fits(windows, self.caps):
+            if slot:
                 exceeded = {window: windows[window]['resets'] for window in WINDOWS
-                            if windows[window]['used'] + estimate[window] > self.caps[window]}
+                            if windows[window]['used'] >= self.caps[window]}
                 self.state['split_wait'][slot] = {'account': snapshot['account'], 'resets': exceeded}
                 if exceeded:
                     split = f'{previous}:{slot}'
                     if split not in self.state['split_blocks']:
                         self.state['split_blocks'].append(split)
                         self.event('split_block', block=split, waits=exceeded)
-            self.event('hold', reason='Claude window reserve', windows=windows, estimate=estimate, count=count)
+            self.event('hold', reason='Claude window near exhaustion', windows=windows, caps=self.caps)
             return False
         if not self.image():
             return False
@@ -397,12 +359,10 @@ class Driver:
                 self.event('skip_finished', cell=name)
                 i += 1
                 continue
-            group = panel(task)
             second = i > 0 and self.slots[i - 1][1] == task and self.slots[i - 1][3] == config and self.slots[i - 1][-1] == row[-1]
-            count = 1 if second else 2
             assessment = bool(verdict and str(verdict.get('reason', '')).startswith(
                 ('assessment failed', 'assessor produced', 'assessment held:')))
-            if not self.ready(config, group, count, 1500 if assessment else 6300,
+            if not self.ready(1500 if assessment else 6300,
                               name if second else None, self.slots[i - 1][0] if second else None):
                 time.sleep(60)
                 continue

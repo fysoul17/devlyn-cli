@@ -503,6 +503,19 @@ class DriverControls(unittest.TestCase):
                                        'account': ['account', 'org']}))
         return driver.Driver(runtime, [['smoke-claude-A', 'SMOKE', 'A', 'claude']])
 
+    def amended_instance(self, root):
+        d = self.instance(root)
+        d.state['first_smoke_dispatch'] = driver.datetime.datetime.now(driver.datetime.timezone.utc).isoformat()
+        d.state['registered_caps'] = d.caps.copy()
+        d.event('fixture')
+        runtime = json.loads(d.runtime_path.read_text())
+        runtime['caps'] = {'seven_day': 95, 'five_hour': 95}
+        d.runtime_path.write_text(json.dumps(runtime))
+        amendment = root / 'amendment-2.md'
+        amendment.write_text('dated amendment')
+        driver.Driver(d.runtime_path, d.slots, allow_cap_amendment=True).amend_caps(amendment)
+        return driver.Driver(d.runtime_path, d.slots)
+
     def test_each_harm_field_persists_and_clear_requires_file(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
@@ -721,18 +734,18 @@ class DriverControls(unittest.TestCase):
             with mock.patch.object(driver, 'credential', return_value=snapshot), \
                     mock.patch.object(driver.cell, 'claude_limits', return_value=windows), \
                     mock.patch.object(d, 'image', return_value=True) as image:
-                self.assertTrue(d.ready('claude', 'smoke', 2))
+                self.assertTrue(d.ready())
             image.assert_called_once()
 
     def test_account_switch_after_ready_refuses_dispatch_and_rechecks_new_reserve(self):
         with tempfile.TemporaryDirectory() as temp:
-            d = self.instance(Path(temp))
+            d = self.amended_instance(Path(temp))
             (d.output.parent / 'instructions.seal.json').write_text('{}')
             first = {'expires': driver.time.time() + 10000, 'account': ['first', 'org'], 'access_token': 'first-token'}
             second = {'expires': driver.time.time() + 10000, 'account': ['second', 'org'], 'access_token': 'second-token'}
             reset = '2026-10-23T00:00:00+00:00'
             def windows(_runtime, token):
-                used = 90 if token == 'second-token' else 0
+                used = 95 if token == 'second-token' else 0
                 return {name: {'used': used, 'resets': reset} for name in driver.WINDOWS}
 
             with mock.patch.object(driver, 'credential', side_effect=[first, second]), \
@@ -744,10 +757,10 @@ class DriverControls(unittest.TestCase):
                     mock.patch.object(driver.cell, 'snapshot_auth', return_value=({'account': second['account']}, None)), \
                     mock.patch.object(driver.cell, 'codex_limits') as codex, \
                     mock.patch.object(driver.cell.prepare, 'prepare') as prepare:
-                self.assertTrue(d.ready('claude', 'smoke', 2))
+                self.assertTrue(d.ready())
                 self.assertEqual(d.approved_account, first['account'])
                 self.assertFalse(d.dispatch(d.slots[0]))
-                self.assertFalse(d.ready('claude', 'smoke', 2))
+                self.assertFalse(d.ready())
             self.assertIsNone(d.approved_account)
             self.assertEqual([call.args[1] for call in limits.call_args_list], ['first-token', 'second-token'])
             self.assertEqual(json.loads((d.output / 'not-dispatched-smoke-claude-A.json').read_text()),
@@ -757,28 +770,27 @@ class DriverControls(unittest.TestCase):
             codex.assert_not_called()
             prepare.assert_not_called()
             self.assertEqual(json.loads((d.output / 'driver.log').read_text().splitlines()[-1])['reason'],
-                             'Claude window reserve')
+                             'Claude window near exhaustion')
 
     def test_split_wait_tracks_account_and_releases_on_switch(self):
         with tempfile.TemporaryDirectory() as temp:
-            d = self.instance(Path(temp))
+            d = self.amended_instance(Path(temp))
             reset = '2026-10-23T00:00:00+00:00'
-            windows = {name: {'used': 80 if name == 'seven_day' else 40, 'resets': reset}
+            windows = {name: {'used': 95 if name == 'seven_day' else 40, 'resets': reset}
                        for name in driver.WINDOWS}
             account = ['first', 'org']
             snapshot = lambda _: {'expires': driver.time.time() + 10000,
                                   'account': account, 'access_token': 'fake'}
             with mock.patch.object(driver, 'credential', side_effect=snapshot), \
                     mock.patch.object(driver.cell, 'claude_limits', return_value=windows), \
-                    mock.patch.object(driver, 'estimates', return_value={'seven_day': 10, 'five_hour': 25}), \
                     mock.patch.object(driver.Driver, 'image', return_value=True):
-                self.assertFalse(d.ready('claude', 'development', 1, slot='second', previous='first'))
+                self.assertFalse(d.ready(slot='second', previous='first'))
                 self.assertEqual(d.state['split_wait']['second']['account'], account)
                 d = driver.Driver(d.runtime_path, d.slots)
                 windows['seven_day']['used'] = 0
-                self.assertFalse(d.ready('claude', 'development', 1, slot='second', previous='first'))
+                self.assertFalse(d.ready(slot='second', previous='first'))
                 account = ['second', 'org']
-                self.assertTrue(d.ready('claude', 'development', 1, slot='second', previous='first'))
+                self.assertTrue(d.ready(slot='second', previous='first'))
             self.assertNotIn('second', d.state['split_wait'])
             events = [json.loads(line) for line in (d.output / 'driver.log').read_text().splitlines()]
             self.assertEqual([e['event'] for e in events].count('split_wait_account_changed'), 1)
@@ -794,7 +806,7 @@ class DriverControls(unittest.TestCase):
             with mock.patch.object(driver, 'credential', return_value=snapshot), \
                     mock.patch.object(driver.cell, 'claude_limits', return_value=windows), \
                     mock.patch.object(d, 'image', return_value=True):
-                self.assertFalse(d.ready('claude', 'development', 1, slot='second'))
+                self.assertFalse(d.ready(slot='second'))
             self.assertEqual(d.state['split_wait']['second'], {'seven_day': reset})
 
     def test_credential_skips_profile_near_expiry(self):
@@ -820,7 +832,7 @@ class DriverControls(unittest.TestCase):
                         mock.patch.object(driver.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0, stdout='help')), \
                         mock.patch.object(driver.cell, 'claude_limits', return_value=windows), \
                         mock.patch.object(d, 'image', return_value=True):
-                    self.assertEqual(d.ready('claude', 'smoke', 2), advances)
+                    self.assertEqual(d.ready(), advances)
                 events = [json.loads(line) for line in (d.output / 'driver.log').read_text().splitlines()]
                 if advances:
                     self.assertIn('renewed', [e['event'] for e in events])
@@ -828,42 +840,64 @@ class DriverControls(unittest.TestCase):
                     self.assertEqual(events[-1]['reason'], 'renewal did not advance expiry')
                 self.assertNotIn('account_changed', [e['event'] for e in events])
 
-    def test_estimates_use_only_same_account_windows(self):
+    def test_94_percent_dispatches_despite_prior_large_window_delta(self):
         with tempfile.TemporaryDirectory() as temp:
-            out = Path(temp)
-            windows = lambda used: {name: {'used': used, 'resets': '2026-10-23T00:00:00+00:00'}
-                                    for name in driver.WINDOWS}
-            for name, change, accounts in [('changed', 90, (['a'], ['b'])),
-                                           ('same', 8, (['a'], ['a'])), ('legacy', 7, None)]:
-                verdict = dict(status='COMPLETE', config='claude', task='D3',
-                               claude_limits_before=windows(0), claude_limits_after=windows(change))
-                if accounts:
-                    verdict.update(claude_account_before=accounts[0], claude_account_after=accounts[1])
-                (out / f'verdict-{name}.json').write_text(json.dumps(verdict))
-            self.assertEqual(driver.estimates(out, 'claude', 'development'),
-                             {'seven_day': 8, 'five_hour': 8})
-            malformed = dict(status='COMPLETE', config='claude', task='D3',
-                             claude_limits_before=windows(0), claude_limits_after=windows(1),
-                             claude_account_before=['a'])
-            (out / 'verdict-malformed.json').write_text(json.dumps(malformed))
-            with self.assertRaisesRegex(ValueError, 'incomplete Claude account pair'):
-                driver.estimates(out, 'claude', 'development')
-            malformed.pop('claude_account_before')
-            malformed['claude_account_after'] = ['a']
-            (out / 'verdict-malformed.json').write_text(json.dumps(malformed))
-            with self.assertRaisesRegex(ValueError, 'incomplete Claude account pair'):
-                driver.estimates(out, 'claude', 'development')
+            d = self.amended_instance(Path(temp))
+            resets = '2026-10-23T00:00:00+00:00'
+            windows = lambda used: {name: {'used': used, 'resets': resets} for name in driver.WINDOWS}
+            (d.output / 'verdict-prior.json').write_text(json.dumps({
+                'status': 'COMPLETE', 'config': 'claude', 'task': 'D3',
+                'claude_limits_before': windows(0), 'claude_limits_after': windows(25),
+                'claude_account_before': ['account', 'org'],
+                'claude_account_after': ['account', 'org']}))
+            snapshot = {'expires': driver.time.time() + 10000,
+                        'account': ['account', 'org'], 'access_token': 'fake'}
+            with mock.patch.object(driver, 'credential', return_value=snapshot), \
+                    mock.patch.object(driver.cell, 'claude_limits', return_value=windows(94)), \
+                    mock.patch.object(d, 'image', return_value=True), \
+                    mock.patch.object(driver.cell, 'run', return_value=3) as run:
+                self.assertTrue(d.ready())
+                self.assertFalse(d.dispatch(d.slots[0]))
+            run.assert_called_once()
 
-    def test_estimates_skip_failed_after_window_read(self):
-        with tempfile.TemporaryDirectory() as temp:
-            out = Path(temp)
-            windows = {name: {'used': 80, 'resets': '2026-10-23T00:00:00+00:00'}
-                       for name in driver.WINDOWS}
-            verdict = dict(status='COMPLETE', config='claude', task='SMOKE',
-                           claude_limits_before=windows, claude_account_before=['a'],
-                           claude_limits_after_error='HTTP Error 429: Too Many Requests')
-            (out / 'verdict-failed-read.json').write_text(json.dumps(verdict))
-            self.assertEqual(driver.estimates(out, 'claude', 'development'), driver.FLOORS)
+    def test_95_percent_holds_in_either_window(self):
+        for exhausted in driver.WINDOWS:
+            with self.subTest(exhausted=exhausted), tempfile.TemporaryDirectory() as temp:
+                d = self.amended_instance(Path(temp))
+                windows = {name: {'used': 95 if name == exhausted else 94,
+                                  'resets': '2026-10-23T00:00:00+00:00'} for name in driver.WINDOWS}
+                snapshot = {'expires': driver.time.time() + 10000,
+                            'account': ['account', 'org'], 'access_token': 'fake'}
+                with mock.patch.object(driver, 'credential', return_value=snapshot), \
+                        mock.patch.object(driver.cell, 'claude_limits', return_value=windows), \
+                        mock.patch.object(d, 'image', return_value=True) as image:
+                    self.assertFalse(d.ready())
+                image.assert_not_called()
+                hold = json.loads((d.output / 'driver.log').read_text().splitlines()[-1])
+                self.assertEqual(hold['reason'], 'Claude window near exhaustion')
+                self.assertEqual(hold['windows'], windows)
+                self.assertEqual(hold['caps'], {'seven_day': 95, 'five_hour': 95})
+                self.assertNotIn('estimate', hold)
+
+    def test_split_wait_tracks_only_windows_at_cap(self):
+        for exhausted in driver.WINDOWS:
+            with self.subTest(exhausted=exhausted), tempfile.TemporaryDirectory() as temp:
+                d = self.amended_instance(Path(temp))
+                resets = {name: f'2026-10-{23 + i}T00:00:00+00:00'
+                          for i, name in enumerate(driver.WINDOWS)}
+                windows = {name: {'used': 95 if name == exhausted else 94, 'resets': resets[name]}
+                           for name in driver.WINDOWS}
+                snapshot = {'expires': driver.time.time() + 10000,
+                            'account': ['account', 'org'], 'access_token': 'fake'}
+                with mock.patch.object(driver, 'credential', return_value=snapshot), \
+                        mock.patch.object(driver.cell, 'claude_limits', return_value=windows), \
+                        mock.patch.object(d, 'image', return_value=True):
+                    self.assertFalse(d.ready(slot='second', previous='first'))
+                    self.assertEqual(d.state['split_wait']['second']['resets'], {exhausted: resets[exhausted]})
+                    windows[exhausted]['used'] = 94
+                    self.assertFalse(d.ready(slot='second', previous='first'))
+                    windows[exhausted]['resets'] = '2026-10-25T00:00:00+00:00'
+                    self.assertTrue(d.ready(slot='second', previous='first'))
 
     def test_cap_change_stops_until_amendment(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -873,14 +907,58 @@ class DriverControls(unittest.TestCase):
             d.state['registered_caps'] = d.caps.copy()
             d.event('fixture')
             runtime = json.loads(d.runtime_path.read_text())
-            runtime['caps']['seven_day'] = 90
+            runtime['caps'] = {'seven_day': 95, 'five_hour': 95}
             d.runtime_path.write_text(json.dumps(runtime))
             with self.assertRaisesRegex(RuntimeError, 'caps changed'):
                 driver.Driver(d.runtime_path, [])
             amendment = root / '2026-10-22-caps.md'
             amendment.write_text('owner cap amendment')
             driver.Driver(d.runtime_path, [], allow_cap_amendment=True).amend_caps(amendment)
-            self.assertEqual(driver.Driver(d.runtime_path, []).caps['seven_day'], 90)
+            self.assertEqual(driver.Driver(d.runtime_path, []).caps, {'seven_day': 95, 'five_hour': 95})
+
+    def test_amend_caps_clears_old_split_wait_and_dispatches_second_cell(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            d = self.instance(root)
+            second = ['smoke-claude-B', 'SMOKE', 'B', 'claude']
+            d.slots.append(second)
+            d.state['first_smoke_dispatch'] = driver.datetime.datetime.now(driver.datetime.timezone.utc).isoformat()
+            d.state['registered_caps'] = d.caps.copy()
+            d.event('fixture')
+            reset = '2026-10-23T00:00:00+00:00'
+            windows = {name: {'used': cap, 'resets': reset} for name, cap in d.caps.items()}
+            snapshot = {'expires': driver.time.time() + 10000,
+                        'account': ['account', 'org'], 'access_token': 'fake'}
+            with mock.patch.object(driver, 'credential', return_value=snapshot), \
+                    mock.patch.object(driver.cell, 'claude_limits', return_value=windows), \
+                    mock.patch.object(d, 'image', return_value=True):
+                self.assertFalse(d.ready(slot=second[0], previous=d.slots[0][0]))
+            waiting = d.state['split_wait'].copy()
+            blocks = d.state['split_blocks'].copy()
+            self.assertEqual(waiting[second[0]]['resets'], {'seven_day': reset, 'five_hour': reset})
+
+            runtime = json.loads(d.runtime_path.read_text())
+            runtime['caps'] = {'seven_day': 95, 'five_hour': 95}
+            d.runtime_path.write_text(json.dumps(runtime))
+            amendment = root / 'amendment-2.md'
+            amendment.write_text('dated amendment')
+            driver.Driver(d.runtime_path, d.slots, allow_cap_amendment=True).amend_caps(amendment)
+            d = driver.Driver(d.runtime_path, d.slots)
+            self.assertEqual(d.state['split_wait'], {})
+            self.assertEqual(d.state['split_blocks'], blocks)
+            events = [json.loads(line) for line in (d.output / 'driver.log').read_text().splitlines()]
+            self.assertEqual(events[-1]['event'], 'caps_amended')
+            self.assertEqual(events[-1]['cleared_split_wait'], waiting)
+
+            for window in windows.values():
+                window['used'] = 60
+            with mock.patch.object(driver, 'credential', return_value=snapshot), \
+                    mock.patch.object(driver.cell, 'claude_limits', return_value=windows), \
+                    mock.patch.object(d, 'image', return_value=True), \
+                    mock.patch.object(driver.cell, 'run', return_value=0) as run:
+                self.assertTrue(d.ready(slot=second[0], previous=d.slots[0][0]))
+                self.assertTrue(d.dispatch(second))
+            run.assert_called_once()
 
     def test_latch_and_deadline_checked_after_hold(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -914,7 +992,7 @@ class DriverControls(unittest.TestCase):
 
 
 class CellAccounts(unittest.TestCase):
-    def test_regrade_legacy_assessor_stop_restores_dispatch_account_for_estimates(self):
+    def test_regrade_legacy_assessor_stop_restores_dispatch_account(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             out = root / 'output'
@@ -942,8 +1020,7 @@ class CellAccounts(unittest.TestCase):
             snapshot.assert_called_once()
             verdict = json.loads(verdict_path.read_text())
             self.assertEqual(verdict['claude_account_before'], venue['account'])
-            self.assertEqual(driver.estimates(out, 'claude', 'development'),
-                             {'seven_day': 40, 'five_hour': 40})
+            self.assertEqual(verdict['claude_account_after'], venue['account'])
 
     def test_regrade_refuses_changed_account_without_replacing_stop(self):
         with tempfile.TemporaryDirectory() as temp:
