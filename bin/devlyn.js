@@ -1350,6 +1350,12 @@ async function main() {
 const command = args[0];
 
 switch (command) {
+  case 'activation':
+    require('./release').runJson(() => require('./harness-activation').activationCommand(args.slice(1)));
+    break;
+  case 'machine':
+    require('./release').runJson(() => require('./codex-projection').machineCommand(args.slice(1)));
+    break;
   case 'release':
     require('./release').runJson(() => require('./release').releaseCommand(args.slice(1)));
     break;

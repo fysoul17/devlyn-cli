@@ -364,5 +364,5 @@ function runJson(action) {
 }
 
 module.exports = { buildRelease, verifyRelease, materializeRelease, checkGenerated,
-  sha256, physicalRoot, HarnessError, fail,
+  sha256, manifestDigest, physicalRoot, HarnessError, fail,
   options, releaseCommand, runJson };
