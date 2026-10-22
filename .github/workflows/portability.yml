@@ -77,7 +77,8 @@ jobs:
           driver = root / 'driver'
           package.mkdir(parents=True)
           driver.mkdir()
-          result = subprocess.check_output(['npm', 'pack', '--ignore-scripts', '--json', '--pack-destination', str(package)])
+          # Its own prepack writes the release manifest and generated payload the package carries.
+          result = subprocess.check_output(['npm', 'pack', '--json', '--pack-destination', str(package)])
           tarball = package / json.loads(result)[0]['filename']
           test = driver / 'test-windows-portability.py'
           shutil.copyfile('scripts/test-windows-portability.py', test)

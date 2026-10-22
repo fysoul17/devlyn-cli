@@ -116,7 +116,9 @@ class PackageTests(unittest.TestCase):
         if PACKAGE_ROOT:
             cls.package = PACKAGE_ROOT
         else:
-            packed = npm(['pack', str(ROOT), '--ignore-scripts', '--json', '--pack-destination', str(cls.root)], cls.root)
+            # Packed with its own prepack and postpack, as the publish workflow packs it: they write and then remove the
+            # release manifest and the generated payload the package carries.
+            packed = npm(['pack', str(ROOT), '--json', '--pack-destination', str(cls.root)], cls.root)
             tarball = cls.root / json.loads(packed.stdout)[0]['filename']
             print('packed artifact sha256=' + hashlib.sha256(tarball.read_bytes()).hexdigest(), flush=True)
             npm(['install', '--prefix', str(cls.root / 'installed'), '--offline', '--ignore-scripts',
@@ -168,6 +170,19 @@ init({options});
 
     def markers(self, base):
         return {p.parent.parent.name for p in base.glob('.*/skills/.devlyn-install.json')}
+
+    def test_the_installed_package_is_a_release_an_app_installs(self):
+        # Prediction (4.2.26 and 4.3.0 were packed without their prepack, so without release.json): the package npm
+        # installs carries its release, which materializes into a store and verifies there, as Devlyn's built-in
+        # harness installs it.
+        last = lambda result: json.loads(result.stdout.decode('utf-8').strip().splitlines()[-1])
+        made = last(self.cli('release', '--materialize', '--source', str(self.package), '--store', str(self.case / 'store'),
+                             '--json'))
+        self.assertTrue(made['ok'], made)
+        release = made['data']['release']
+        self.assertEqual(release['version'], json.loads((self.package / 'package.json').read_bytes())['version'])
+        verified = last(self.cli('release', '--verify', '--root', release['root'], '--json'))
+        self.assertEqual(verified['data']['release']['digest'], release['digest'])
 
     def test_claude_target_leaves_user_claude_files_alone(self):
         # 4.1.0 sets prompt caching in the project settings; ~/.claude/settings.json is the user's.
