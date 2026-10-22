@@ -1,0 +1,13 @@
+1. **Decision/Grading: the Holm family is outcome-selected.** Including only witnesses with `n_B > n_A` changes multiplicity after observing results. Adding new witnesses before pooling still selects endpoints after inspecting outcomes. **Fix:** freeze every inferential endpoint before SMOKE; include all binding witnesses regardless of direction. Newly discovered mechanisms remain separately reported and safety-adjudicated, with fresh confirmation required for comparative inference.
+
+2. **Power/Qualification: the example contradicts the full family.** Existing endpoints yield **43 hypotheses per engine**: four completions, eight public checks, twenty oracle rows, eleven witnesses. A=16/B=8 gives Fisher p=0.00122358; with other p-values equal to 1, Holm p=0.052614, hence **INCONCLUSIVE**. **Fix:** qualify that result and use A=16/B=7 as a rejection control. Under **No guesswork**, report conservative first-step powers at .05/43: **40.2%, 29.1%, 2.1%** for the three alternatives. Full Holm power requires declared joint-endpoint assumptions; .0125 does not represent this family.
+
+3. **Decision: confirmation’s correction is undefined.** Confirmation uses “the same rule,” but the only defined Holm family contains development endpoints. **Fix:** freeze a separate confirmation family per engine and retain its non-gating status.
+
+4. **Accounting: quota retries discard incurred costs.** Inherited `driver.py` archives execution-fault attempts; `decide.py` reads only the final verdict’s wall/input/output. Retry-heavy arms can therefore appear cheaper. **Fix:** aggregate every dispatched attempt’s costs by slot, count one final completion, and propagate unknown usage. Qualify quota-fault→success with both attempts charged.
+
+5. **Operations/Qualification: inherited stopping controls are insufficient.** The named driver change covers caps, but 0256’s loop has no deadline or harm check and waits indefinitely through holds. **Fix:** explicitly add a persistent SMOKE-start deadline and harm latch; check them across dispatch, holds and restarts, and audit harm before releasing the next cell. Define deadline handling for an active cell. Qualify these controls under **Production ready**.
+
+6. **Prediction 6 can score an unfinished comparison.** An interrupted AB block with A returning JSON-400 and B never dispatched satisfies the prediction because missing B counts as failure. **Fix:** score only after all 32 scheduled Claude confirmation cells have valid verdicts and recorded probe outcomes; otherwise mark the prediction **NOT_FINISHED**. Report unassessable outcomes separately.
+
+VERDICT: REVISE

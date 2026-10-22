@@ -1,0 +1,5 @@
+{
+  "provenance": "0256 d02-D3-claude-B-r1 attachment.files and d03-D3-codex-B-r1 first inference request; instruction text replaced with a minimal non-secret excerpt",
+  "claude": {"type": "attachment", "attachment": {"type": "instructions", "files": [{"path": "/cell/work/CLAUDE.md", "type": "Project", "content": "@AGENTS.md"}, {"path": "/cell/work/AGENTS.md", "type": "Project", "content": "Project-specific instructions outside this managed block"}]}},
+  "codex": {"input": [{"role": "user", "content": [{"type": "input_text", "text": "# AGENTS.md instructions for /cell/work\n\n<INSTRUCTIONS>\nProject-specific instructions outside this managed block\n</INSTRUCTIONS>\n"}]}]}
+}

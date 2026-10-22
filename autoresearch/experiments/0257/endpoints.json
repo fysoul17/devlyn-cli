@@ -1,0 +1,104 @@
+{
+  "development": {
+    "D3": {
+      "completion": [
+        "complete"
+      ],
+      "rows": [
+        "public:0",
+        "public:1",
+        "public:2",
+        "D3.1",
+        "D3.2",
+        "D3.3",
+        "D3.4",
+        "D3.5",
+        "D3.6"
+      ],
+      "witnesses": []
+    },
+    "D4": {
+      "completion": [
+        "complete"
+      ],
+      "rows": [
+        "public:0",
+        "public:1",
+        "public:2",
+        "D4.1-2",
+        "D4.3",
+        "D4.4",
+        "D4.5"
+      ],
+      "witnesses": [
+        "d4-writer-death",
+        "d4-writer-stall"
+      ]
+    },
+    "I0185": {
+      "completion": [
+        "complete"
+      ],
+      "rows": [
+        "public:0",
+        "heldout",
+        "release",
+        "alias",
+        "terminal-alias",
+        "absence-lock"
+      ],
+      "witnesses": [
+        "i0185-lock-alias",
+        "i0185-lock-release-restore",
+        "i0185-lock-release-stuck",
+        "i0185-mkdir-before-lock",
+        "i0185-lock-tmpdir",
+        "i0185-lock-close-absence",
+        "i0185-temp-marker-preserve",
+        "i0185-cross-device-stage",
+        "i0185-deprecated-terminal-link"
+      ]
+    },
+    "B5": {
+      "completion": [
+        "complete"
+      ],
+      "rows": [
+        "public:0",
+        "legacy-removed",
+        "self-orphan-helper-removed",
+        "self-orphan-import-removed",
+        "preexisting-xml-kept",
+        "preexisting-helper-kept"
+      ],
+      "witnesses": []
+    }
+  },
+  "confirmation": {
+    "F10": {
+      "completion": [
+        "complete"
+      ],
+      "rows": [
+        "public:0",
+        "concurrent-posts",
+        "invalid-unchanged",
+        "restart-persists",
+        "reads-use-store"
+      ],
+      "witnesses": []
+    },
+    "F11": {
+      "completion": [
+        "complete"
+      ],
+      "rows": [
+        "public:0",
+        "mid-batch-invalid-unchanged",
+        "valid-batch",
+        "invalid-body"
+      ],
+      "witnesses": []
+    }
+  }
+}
