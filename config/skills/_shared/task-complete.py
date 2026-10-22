@@ -264,7 +264,12 @@ def allocate(args, *, exclude_receipts=()):
     receipt["worktree_identity"] = workspace_identity(target, Path(receipt["worktree_gitdir"]))
     receipt["allocation"] = "owned"
     atomic_json(path, receipt)
+    # Owned first: an interrupted warm-up leaves a usable allocation whose build starts cold.
+    with locked_receipt(path) as owned:
+        owned["build_dirs"] = shared("warm-build-dirs")["warm"](target, work, scratch)
+        atomic_json(path, owned)
     return {"status": "ALLOCATED", "receipt": str(path), "worktree": str(target), "scratch": str(scratch),
+            "build_dirs": owned["build_dirs"],
             "reconciled": [] if local else reconcile(common, path, work, exclude_receipts=exclude_receipts)}
 
 

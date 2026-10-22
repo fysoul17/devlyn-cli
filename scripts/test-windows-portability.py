@@ -3424,6 +3424,7 @@ p = work / '한국어.json'
 completion['atomic_json'](p, {'message':payload})
 assert completion['read_json'](p)['message'] == payload
 contract = runpy.run_path(shared / 'expected-contract.py')
+assert runpy.run_path(shared / 'warm-build-dirs.py')['warm'](work, work, work) == []
 assert contract['loads_strict_json'](p.read_text(encoding='utf-8'))['message'] == payload
 # Explicit cp949 streams are distinct from the observed native ANSI default.
 sys.stdout.reconfigure(encoding='cp949', errors='strict')
