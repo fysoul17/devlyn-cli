@@ -108,13 +108,16 @@ removes them. Preserve all other work and report anything left behind.
 
 Build in the task worktree's own default build directory, never in one
 another checkout builds in, even one build at a time: tools such as Cargo take
-one checkout's outputs as fresh for the other. When a Cargo workspace's
+one checkout's outputs as fresh for the other. When the shared repository-local
+Git config `devlyn.warmBuildDirs` is true, or it is unset and the Cargo workspace's
 Cargo.toml sets `[workspace.metadata.devlyn] warm-build-dirs = true`,
 allocation seeds that directory from a built checkout of the repository, so
 the first build does not rebuild every dependency; `build_dirs` in its result
 and receipt says what it did, and a skip means an ordinary cold build. The
-opt-in is the workspace's: seeding keeps dependency outputs that may hold the
-other checkout's paths, and those follow that checkout's later rebuilds. `warm-build-dirs.py <worktree>` does the same for a
+Git setting takes precedence on this machine: false disables and invalid values
+skip; global, system, include and per-worktree values are not consulted. Seeding
+keeps dependency outputs that may hold the other checkout's paths, and those
+follow that checkout's later rebuilds. `warm-build-dirs.py <worktree>` does the same for a
 worktree made without allocation. A warmed directory leaves with the worktree
 after merge, so a pending, failed or local-only task keeps it.
 
