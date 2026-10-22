@@ -156,9 +156,16 @@ function statusCommand(args) {
   if (opts.engine && !ENGINE_IDS.includes(opts.engine)) {
     fail('invalid-arguments', { argument: '--engine' }, 2);
   }
-  // No context schema is defined until activation lands. Refuse to silently ignore it.
-  if (opts['context-file']) fail('unsupported-context', { owner: 'CLI-3' }, 3);
-  return harnessStatus(opts.project);
+  const status = harnessStatus(opts.project);
+  if (opts['context-file']) {
+    const { readContext, planActivation } = require('./harness-activation');
+    const context = readContext(opts['context-file']);
+    if ((opts.engine && opts.engine !== context.engine) || physicalRoot(context.cwd) !== physicalRoot(opts.project)) {
+      fail('invalid-arguments', { argument: 'status context must match project and engine' }, 2);
+    }
+    status.engines = [planActivation(status.release.root, context).channels];
+  }
+  return status;
 }
 
 module.exports = { harnessStatus, statusCommand, repositoryIdentity, inspectInstruction };
