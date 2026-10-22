@@ -125,7 +125,8 @@ jobs:
     needs: posix
     if: ${{ !cancelled() }}
     runs-on: windows-2025
-    timeout-minutes: 55
+    # Setup, the 480 s package suite and the 2700 s loop suite, with room for the rest.
+    timeout-minutes: 75
     steps:
       # The checkout is the test: Git for Windows refuses any tracked path Windows cannot
       # hold. The workspace root keeps the longest tracked path under MAX_PATH; the steps
@@ -230,7 +231,9 @@ jobs:
 
           failed = []
           for label, command, timeout in (
-              ('portability', [sys.executable, '-X', 'utf8=0', str(driver), '--package-root', str(package)], 240),
+              # The package suite took 172-229 s of 240 and outlasted it once the package carried its release (4.3.2,
+              # run 39813295135 attempt 2), so it gets 480 s.
+              ('portability', [sys.executable, '-X', 'utf8=0', str(driver), '--package-root', str(package)], 480),
               ('engines-self-test', [sys.executable, '-X', 'utf8=0',
                   str(package / 'config/skills/_shared/role-config.py'), '--self-test'], 240),
               # Windows has no clone primitive here: allocation must skip warming before any lock or Cargo call.
@@ -238,9 +241,10 @@ jobs:
                   str(package / 'config/skills/_shared/warm-build-dirs.py'), '--self-test'], 240),
               # The loop fixture creates real git worktrees per test; on native Windows it outlasted 240 s (run 37450856991),
               # and 71 tests took 594 s of 600 (run 38073614251); 108 tests took 1030-1104 s of 1200 (runs 38139167154,
-              # 38146231685) and 109 outlasted it (run 38160732076), so the suite gets 1800 s.
+              # 38146231685) and 109 outlasted it (run 38160732076), so the suite got 1800 s; 143 tests took 1293-1792 s of
+              # it and outlasted it once (4.3.2, run 39813295135 attempt 1), so it gets 2700 s.
               ('ideate-loop', [sys.executable, '-X', 'utf8=0', str(driver.parent / 'test-ideate-loop.py'),
-                  '--package-root', str(package)], 1800),
+                  '--package-root', str(package)], 2700),
           ):
               try:
                   checked(label, command, timeout)
