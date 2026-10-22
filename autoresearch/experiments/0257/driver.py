@@ -77,6 +77,14 @@ def estimates(output, config, group):
         target = smoke if panel(verdict.get('task')) == 'smoke' else values if panel(verdict.get('task')) == group else None
         if target is None:
             continue
+        has_before = 'claude_account_before' in verdict
+        has_after = 'claude_account_after' in verdict
+        if has_after and not has_before or (has_before and not has_after and 'claude_limits_after' in verdict):
+            raise ValueError(f'{path}: incomplete Claude account pair')
+        if has_before and not has_after:
+            continue
+        if has_before and verdict['claude_account_before'] != verdict['claude_account_after']:
+            continue
         before, after = verdict.get('claude_limits_before') or {}, verdict.get('claude_limits_after') or {}
         for window in WINDOWS:
             change = delta(before, after, window)
@@ -126,6 +134,7 @@ class Driver:
         self.output.mkdir(parents=True, exist_ok=True)
         self.slots = slots
         self.caps = self.runtime['caps']
+        self.approved_account = None
         if set(self.caps) != set(WINDOWS) or any(type(self.caps[w]) not in (int, float) or not 0 < self.caps[w] <= 100 for w in WINDOWS):
             raise ValueError('caps must contain seven_day and five_hour percentages')
         self.status_path = self.output / 'driver-status.json'
@@ -241,13 +250,12 @@ class Driver:
         return True
 
     def ready(self, config, group, count, min_token_seconds=6300, slot=None, previous=None):
+        self.approved_account = None
         try:
             snapshot = credential(self.runtime)
         except (OSError, ValueError, KeyError, subprocess.CalledProcessError) as exc:
             self.event('hold', reason=f'credential snapshot failed: {exc}')
             return False
-        if snapshot['account'] is not None and snapshot['account'] != self.runtime['account']:
-            self.stop('account/organization mismatch')
         remaining = snapshot['expires'] - time.time()
         if remaining < min_token_seconds:
             expiry = snapshot['expires']
@@ -270,10 +278,7 @@ class Driver:
             except (OSError, ValueError, KeyError, subprocess.CalledProcessError) as exc:
                 self.event('hold', reason=f'credential renewal check failed: {exc}')
                 return False
-            if (renewed['expires'] <= expiry or renewed['account'] != self.runtime['account']
-                    or (snapshot['account'] is not None and renewed['account'] != snapshot['account'])):
-                if renewed['account'] != self.runtime['account']:
-                    self.stop('account/organization mismatch after renewal')
+            if renewed['expires'] <= expiry:
                 self.event('hold', reason='renewal did not advance expiry', expiry=expiry)
                 return False
             self.event('renewed', expiry=renewed['expires'])
@@ -289,8 +294,14 @@ class Driver:
             self.event('hold', reason='Claude window evidence unavailable')
             return False
         waiting = self.state['split_wait'].get(slot, {}) if slot else {}
-        if waiting and any(same_window(windows[window]['resets'], reset) for window, reset in waiting.items()):
-            self.event('hold', reason='awaiting split window reset', cell=slot, waits=waiting)
+        if waiting and 'account' in waiting and waiting['account'] != snapshot['account']:
+            del self.state['split_wait'][slot]
+            self.event('split_wait_account_changed', cell=slot, before=waiting['account'],
+                       after=snapshot['account'])
+            waiting = {}
+        waits = waiting.get('resets', waiting)
+        if waiting and any(same_window(windows[window]['resets'], reset) for window, reset in waits.items()):
+            self.event('hold', reason='awaiting split window reset', cell=slot, waits=waits)
             return False
         if waiting:
             del self.state['split_wait'][slot]
@@ -299,7 +310,7 @@ class Driver:
             if slot and count == 1:
                 exceeded = {window: windows[window]['resets'] for window in WINDOWS
                             if windows[window]['used'] + estimate[window] > self.caps[window]}
-                self.state['split_wait'][slot] = exceeded
+                self.state['split_wait'][slot] = {'account': snapshot['account'], 'resets': exceeded}
                 if exceeded:
                     split = f'{previous}:{slot}'
                     if split not in self.state['split_blocks']:
@@ -307,7 +318,10 @@ class Driver:
                         self.event('split_block', block=split, waits=exceeded)
             self.event('hold', reason='Claude window reserve', windows=windows, estimate=estimate, count=count)
             return False
-        return self.image()
+        if not self.image():
+            return False
+        self.approved_account = snapshot['account'].copy()
+        return True
 
     def verdict(self, name):
         path = self.output / f'verdict-{name}.json'
@@ -333,7 +347,7 @@ class Driver:
                 return True
             reason = verdict.get('reason', '')
             if reason.startswith(('assessment failed', 'assessor produced', 'assessment held:')):
-                rc = cell.regrade(self.runtime_path, name)
+                rc = cell.regrade(self.runtime_path, name, expected_account=self.approved_account)
                 self.event('regrade', cell=name, rc=rc)
                 self.latch_for(name, self.verdict(name))
                 self.assert_active()
@@ -351,7 +365,7 @@ class Driver:
             self.state['first_smoke_dispatch'] = first
             self.state['registered_caps'] = self.caps.copy()
             self.event('first_smoke_dispatch', cell=name, started_at=first)
-        rc = cell.run(self.runtime_path, name, task, arm, config)
+        rc = cell.run(self.runtime_path, name, task, arm, config, expected_account=self.approved_account)
         self.event('run', cell=name, rc=rc)
         finished = self.verdict(name)
         if task == 'SMOKE':

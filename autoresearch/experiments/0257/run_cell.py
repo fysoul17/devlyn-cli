@@ -9,6 +9,7 @@ import datetime
 import hashlib
 import importlib.util
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -16,6 +17,7 @@ import sys
 import tempfile
 import time
 import uuid
+import urllib.error
 import urllib.request
 
 HERE = Path(__file__).resolve().parent
@@ -43,6 +45,32 @@ def digest(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
+def snapshot_auth(runtime):
+    """Fresh host logins before each cell, so no copied token needs refreshing mid-cell."""
+    raw = subprocess.run(['security', 'find-generic-password', '-s', 'Claude Code-credentials', '-w'],
+                         capture_output=True, text=True, check=True).stdout
+    oauth = json.loads(raw)['claudeAiOauth']
+    remaining = oauth['expiresAt'] / 1000 - time.time()
+    if remaining < base.MIN_TOKEN_SECONDS:
+        return None, f'Claude login token expires in {int(remaining)}s; refresh the host login first'
+    auth = Path(runtime['auth'])
+    old = os.umask(0o077)
+    try:
+        (auth / 'claude.json').write_text(raw)
+        (auth / 'codex.json').write_bytes((Path.home() / '.codex/auth.json').read_bytes())
+    finally:
+        os.umask(old)
+    request = urllib.request.Request('https://api.anthropic.com/api/oauth/profile', headers={
+        'Authorization': 'Bearer ' + oauth['accessToken'], 'anthropic-beta': 'oauth-2025-04-20'})
+    try:
+        with urllib.request.urlopen(request, timeout=20) as response:
+            profile = json.load(response)
+    except urllib.error.URLError as exc:
+        return None, f'account check failed: {exc}'
+    identity = [base.fingerprint(profile['account']['uuid']), base.fingerprint(profile['organization']['uuid'])]
+    return dict(account=identity, token_seconds_left=int(remaining)), None
+
+
 def claude_limits(runtime, access_token=None):
     """The dispatching Claude account's own windows (utilization percent and reset), from its usage endpoint."""
     if access_token is None:
@@ -53,6 +81,19 @@ def claude_limits(runtime, access_token=None):
         windows = json.load(response)
     return {name: dict(used=value.get('utilization'), resets=value.get('resets_at'))
             for name, value in windows.items() if isinstance(value, dict) and isinstance(value.get('utilization'), (int, float))}
+
+
+def claude_limits_with_account(runtime):
+    """Read after-window usage and its account with one host credential."""
+    raw = subprocess.run(['security', 'find-generic-password', '-s', 'Claude Code-credentials', '-w'],
+                         capture_output=True, text=True, check=True).stdout
+    oauth = json.loads(raw)['claudeAiOauth']
+    request = urllib.request.Request('https://api.anthropic.com/api/oauth/profile', headers={
+        'Authorization': 'Bearer ' + oauth['accessToken'], 'anthropic-beta': 'oauth-2025-04-20'})
+    with urllib.request.urlopen(request, timeout=20) as response:
+        profile = json.load(response)
+    account = [base.fingerprint(profile['account']['uuid']), base.fingerprint(profile['organization']['uuid'])]
+    return claude_limits(runtime, oauth['accessToken']), account
 
 
 def codex_limits(runtime):
@@ -85,16 +126,18 @@ def codex_limits(runtime):
     return {}
 
 
-def preflight(runtime):
+def preflight(runtime, expected_account=None):
     free = shutil.disk_usage(runtime['output']).free
     if free < HEADROOM_BYTES:
         return None, f'output volume has {free} bytes free, below {HEADROOM_BYTES}'
     try:
-        identity, blocked = base.snapshot_auth(runtime)
+        identity, blocked = snapshot_auth(runtime)
     except OSError as exc:
         return None, f'Claude account check failed: {exc}'
     if blocked:
         return None, blocked
+    if expected_account is not None and identity['account'] != expected_account:
+        return None, 'account changed after reserve check'
     try:
         claude = claude_limits(runtime)
     except (OSError, KeyError, ValueError) as exc:
@@ -122,7 +165,7 @@ def image_identity(runtime):
 
 
 def assessment_snapshot(runtime, venue):
-    """Fresh 1,500-second assessor credential, bound to the owner's account and organization."""
+    """Fresh 1,500-second assessor credential from the current host login."""
     raw = subprocess.run(['security', 'find-generic-password', '-s', 'Claude Code-credentials', '-w'],
                          capture_output=True, text=True, check=True).stdout
     oauth = json.loads(raw)['claudeAiOauth']
@@ -134,8 +177,6 @@ def assessment_snapshot(runtime, venue):
     with urllib.request.urlopen(request, timeout=20) as response:
         profile = json.load(response)
     account = [base.fingerprint(profile['account']['uuid']), base.fingerprint(profile['organization']['uuid'])]
-    if account != venue['account'] or account != runtime['account']:
-        return None, 'account/organization mismatch'
     Path(runtime['auth'], 'claude.json').write_text(raw)
     return dict(account=account, token_seconds_left=int(remaining)), None
 
@@ -183,7 +224,7 @@ def harness_unchanged(out, baseline):
             and digest(out / 'harness/caller.json') == baseline['caller_sha256'])
 
 
-def run(runtime_path, name, task, arm, config):
+def run(runtime_path, name, task, arm, config, *, expected_account=None):
     runtime = json.loads(Path(runtime_path).read_text())
     verdict_path = Path(runtime['output']) / f'verdict-{name}.json'
     if verdict_path.is_file():
@@ -205,7 +246,7 @@ def run(runtime_path, name, task, arm, config):
         (Path(runtime['output']) / f'not-dispatched-{name}.json').write_text(json.dumps(
             dict(reason='image identity mismatch'), indent=2))
         return 3
-    venue, blocked = preflight(runtime)
+    venue, blocked = preflight(runtime, expected_account=expected_account)
     if blocked:  # not a verdict: the cell never ran and a resumed comparison must run it
         (Path(runtime['output']) / f'not-dispatched-{name}.json').write_text(json.dumps(dict(reason=blocked), indent=2))
         return 3
@@ -229,7 +270,8 @@ def run(runtime_path, name, task, arm, config):
                                           'home/.claude/settings.json') +
               (('home/.codex/config.toml',) if config == 'codex' else ())},
         control_manifest_sha256=digest(runtime['control'] + '.manifest.json')), indent=2))
-    record = dict(cell=name, task=task, arm=arm, config=config, claude_limits_before=venue['claude_limits'])
+    record = dict(cell=name, task=task, arm=arm, config=config, claude_limits_before=venue['claude_limits'],
+                  claude_account_before=venue['account'])
     owner = cell_run.run(out, runtime)
     sealed, collection_failures = seal_after_teardown(out)
     if collection_failures:  # stop before any other reader touches evidence that could not be sealed
@@ -282,15 +324,19 @@ def run(runtime_path, name, task, arm, config):
     return write_verdict(verdict_path, grade(out, runtime, record, checks, venue))
 
 
-def grade(out, runtime, record, checks, venue):
+def grade(out, runtime, record, checks, venue, assessment_venue=None):
     """The assessors on the checked snapshot, then the arm's methodology record: the verdict record."""
     record.pop('claude_limits_after', None)
     record.pop('claude_limits_after_error', None)
+    record.pop('claude_account_after', None)
+    record.pop('assessor_account', None)
     try:
-        fresh, blocked = assessment_snapshot(runtime, venue)
+        fresh, blocked = (assessment_snapshot(runtime, venue) if assessment_venue is None
+                          else (assessment_venue, None))
         if blocked:
             return dict(record, status='STOP', reason='assessment held: ' + blocked)
         record['assessment_venue'] = fresh
+        record['assessor_account'] = fresh['account']
         assessments = assess.assess(out, runtime)
     except (RuntimeError, OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError) as exc:
         record.update(status='STOP', reason=f'assessment failed: {exc}')
@@ -304,13 +350,13 @@ def grade(out, runtime, record, checks, venue):
             record.update(status='STOP', reason='assessor produced no verdict: ' + ', '.join(base.unassessed(assessments))
                           + ('; account limit: regrade from preserved evidence' if regrade else ''))
     try:
-        record['claude_limits_after'] = claude_limits(runtime)
+        record['claude_limits_after'], record['claude_account_after'] = claude_limits_with_account(runtime)
     except Exception as exc:  # telemetry must not discard an assessed verdict
         record['claude_limits_after_error'] = str(exc)
     return record
 
 
-def regrade(runtime_path, name):
+def regrade(runtime_path, name, *, expected_account=None):
     """Assess a cell again from its preserved evidence after an assessor fault (0231 Faults: regrade, never re-dispatch).
     Its execution record, snapshot and checks stay; the STOP verdict and any partial assessment are kept as .stop-N."""
     runtime = json.loads(Path(runtime_path).read_text())
@@ -324,13 +370,19 @@ def regrade(runtime_path, name):
     if blocked:
         print(f'{name}: not regraded: {blocked}', file=sys.stderr)
         return 3
+    if expected_account is not None and fresh['account'] != expected_account:
+        (output / f'not-dispatched-{name}.json').write_text(json.dumps(
+            dict(reason='account changed after reserve check'), indent=2))
+        return 3
     stop = next(n for n in range(1, 100) if not (output / f'verdict-{name}.stop-{n}.json').exists())
     verdict_path.rename(output / f'verdict-{name}.stop-{stop}.json')
     if (out / 'assessment').exists():
         (out / 'assessment').rename(out / f'assessment.stop-{stop}')
     record = {k: v for k, v in record.items() if k not in ('status', 'reason')} | dict(
         regraded=dict(after=f'stop-{stop}', venue=venue, at=datetime.datetime.now(datetime.timezone.utc).isoformat()))
-    return write_verdict(verdict_path, grade(out, runtime, record, json.loads((out / 'checks.json').read_text()), venue))
+    record.setdefault('claude_account_before', venue['account'])
+    return write_verdict(verdict_path, grade(out, runtime, record, json.loads((out / 'checks.json').read_text()),
+                                             venue, assessment_venue=fresh))
 
 
 def write_verdict(path, record):
