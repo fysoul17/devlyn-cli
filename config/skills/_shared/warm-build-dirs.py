@@ -185,7 +185,7 @@ def destination(work, deadline, stack):
             error = (exc.result.stderr or exc.result.stdout or str(exc)).splitlines()[0]
             raise Skip(f"cannot read {setting}: {error}") from exc
         enabled = None
-    except (Skip, OSError) as exc:
+    except OSError as exc:
         raise Skip(f"cannot read {setting}: {exc}") from exc
     if enabled == "false":
         raise Skip(f"turned off: {setting} is false")
