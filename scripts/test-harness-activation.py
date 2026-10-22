@@ -151,6 +151,16 @@ class ActivationTests(unittest.TestCase):
                     self.assertEqual(plan['engineArgs'], [])
                     self.assertEqual(plan['channels']['skills']['reasons'][0]['params']['minimum'], VERSIONS[engine])
 
+    def test_newer_releases_of_the_examined_major_are_taken(self):
+        # Prediction: a newer minor or patch (and a newer Cursor build) plans like the examined one; a new major does not.
+        newer = dict(claude='2.3.0', codex='0.171.2', grok='1.4.0', omp='16.9.1', antigravity='1.6.0',
+                     cursor='2026.01.05-abcdef1', opencode='1.25.0', kimi='2.9.0', copilot='1.2.0', qwen='0.31.0')
+        for engine, version in newer.items():
+            with self.subTest(engine=engine):
+                ctx = self.context(engine)
+                ctx['version'] = version
+                self.assertNotEqual(self.plan(ctx)['channels']['overall'], 'unavailable')
+
     def test_per_engine_committed_block_omits_defaults(self):
         for engine in VERSIONS:
             with self.subTest(engine=engine):

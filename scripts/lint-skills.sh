@@ -190,7 +190,7 @@ offenders=$(
   {
     git grep -nIE "$old_names" -- . ':!benchmark' ':!autoresearch' ':!docs' ':!scripts/fixtures/instructions' ':!scripts/fixtures/cleanup' \
       ':!bin/instruction-templates.json' ':!bin/devlyn.js' ':!README.md' ':!scripts/lint-skills.sh' \
-      ':!scripts/test-windows-portability.py' || true
+      ':!scripts/test-windows-portability.py' ':!scripts/test-harness-cleanup.py' || true
     sed '/<!-- legacy-surface-map:begin/,/<!-- legacy-surface-map:end/s/.*//' README.md \
       | grep -nE "$old_names" | sed 's#^#README.md:#' || true
     sed 's#//.*##' bin/devlyn.js | grep -nE "$old_names" \

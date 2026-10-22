@@ -268,8 +268,7 @@ function planActivation(releaseRoot, input, env = process.env) {
   if (off) return finish(plan);
   plan.release = release;
   if (!supported) {
-    const reasons = [reason('engine-version-unsupported', { minimum: ENGINE_CAPABILITIES[context.engine].minimum,
-      generation: ENGINE_CAPABILITIES[context.engine].generation })];
+    const reasons = [reason('engine-version-unsupported', { minimum: ENGINE_CAPABILITIES[context.engine].minimum })];
     status.principles = channel('unavailable', null, reasons);
     status.skills = channel('unavailable', null, reasons);
     return finish(plan);
