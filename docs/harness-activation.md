@@ -148,10 +148,10 @@ to the verified release, never to a cache-local queue implementation.
 
 ## Qualification and reasons
 
-Capability floors/generation bounds live beside CLI-1's single engine list in
-`bin/engines.js`. Floors are the examined versions, not historical introduction
-claims. Codex/Qwen are bounded to their examined minor, Cursor to its exact build,
-and other engines to their examined major. Configured means prepared delivery,
+Capability floors live beside CLI-1's single engine list in `bin/engines.js`.
+Floors are the examined versions, not historical introduction claims. A newer
+release of the examined major (a newer Cursor build) is taken as compatible; a
+new major is refused with `engine-version-unsupported`. Configured means prepared delivery,
 not a model obeyed instructions. Only the existing Claude/Codex executor adapters
 are supported. OMP explicitly declares `executor: no`.
 

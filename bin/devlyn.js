@@ -1341,6 +1341,513 @@ function showHelp() {
   log('');
 }
 
+// ---------------------------------------------------------------------------
+// Legacy cleanup for the built-in harness: Devlyn delivers devlyn-cli per session, so every copy an
+// earlier install left in a skill root, and the files those installs added, become legacy. A plan
+// is read-only and lists each item with its proof. Apply plans again from what is on disk now and
+// acts only on items both plans name the same way, so a plan file can narrow a cleanup but never
+// widen it: untracked copies go in place, tracked ones through the project's delivery policy.
+// Nothing is removed by name alone except what the installer itself already removes.
+// ---------------------------------------------------------------------------
+
+const CLEANUP_CORE = ['devlyn-ideate', 'devlyn-engines'];
+
+function cleanupReason(code, params = {}) { return { code, params }; }
+
+// What a path is now, so apply can refuse an item that changed after it was reviewed.
+function cleanupPreimage(file) {
+  const stat = fs.lstatSync(file, { throwIfNoEntry: false });
+  if (!stat) return { type: 'missing', sha256: null };
+  if (stat.isSymbolicLink()) return { type: 'link', sha256: null };
+  if (stat.isDirectory()) {
+    try { return { type: 'directory', sha256: fingerprint(file) }; }
+    catch { return { type: 'directory', sha256: null }; }
+  }
+  if (stat.isFile()) return { type: 'file', sha256: crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex') };
+  return { type: 'special', sha256: null };
+}
+
+// Whether every directory from `base` down to `file`'s parent is a real directory (no link is followed).
+function cleanupRealParents(base, file) {
+  let dir = base;
+  if (!fs.lstatSync(dir, { throwIfNoEntry: false })?.isDirectory()) return false;
+  for (const part of path.relative(base, path.dirname(file)).split(path.sep).filter(Boolean)) {
+    if (part === '..') return false;
+    dir = path.join(dir, part);
+    if (!fs.lstatSync(dir, { throwIfNoEntry: false })?.isDirectory()) return false;
+  }
+  return true;
+}
+
+let cleanupProcesses;
+// Whether a running process names `dir` on its command line (a drain started from a global copy runs
+// its queue.py and acceptance.py by absolute path). Read once per command; unreadable means unknown.
+function cleanupInUse(dir) {
+  if (cleanupProcesses === undefined) {
+    const listing = process.platform === 'win32'
+      ? spawnSync('powershell', ['-NoProfile', '-NonInteractive', '-Command',
+        'Get-CimInstance Win32_Process | ForEach-Object { $_.CommandLine }'], { encoding: 'utf8', timeout: 20000 })
+      : spawnSync('ps', ['-axww', '-o', 'command='], { encoding: 'utf8', timeout: 20000 });
+    cleanupProcesses = listing.status === 0 ? listing.stdout.split(/\r?\n/).filter((line) => line && !line.includes(' cleanup --')) : null;
+  }
+  // A list that cannot be read cannot clear anything: the roots stay until it can.
+  return cleanupProcesses === null || cleanupProcesses.some((line) => line.includes(dir + path.sep));
+}
+
+// The legacy items of one skill root, each with its proof and the base its parents are checked from.
+// `_shared` and the install marker go only when every copy beside them goes too: a kept, edited
+// devlyn-ideate needs both.
+function cleanupSkillRoot(base, root, current) {
+  const items = [];
+  const rootStat = fs.lstatSync(root, { throwIfNoEntry: false });
+  if (!rootStat) return items;
+  if (!cleanupRealParents(base, root) || rootStat.isSymbolicLink() || !rootStat.isDirectory()) {
+    if (rootStat.isSymbolicLink() || rootStat.isDirectory()) {
+      items.push({ kind: 'core-skill', path: root, base, action: 'skip', reasons: [cleanupReason('outside-link')] });
+    }
+    return items;
+  }
+  const renamed = new Map();
+  for (const [old, current] of Object.entries(RENAMED_SKILLS)) {
+    for (const spelling of legacySkillPaths(root, old)) renamed.set(path.basename(spelling).toLowerCase(), current);
+  }
+  const deprecated = new Set([...deprecatedSkillPaths(root)].map((file) => path.basename(file).toLowerCase()));
+  const support = [];
+  let kept = 0;
+  let marker = false;
+  for (const name of fs.readdirSync(root).sort()) {
+    const file = path.join(root, name);
+    const stat = fs.lstatSync(file);
+    const lower = name.toLowerCase();
+    if (name === DEVLYN_INSTALL_MARKER) { marker = true; continue; }
+    if (name === DEVLYN_INSTALL_LOCK) {
+      items.push({ kind: 'install-lock', path: file, base, action: 'skip', reasons: [cleanupReason('occupied-lock')] });
+      kept++;
+      continue;
+    }
+    const core = CLEANUP_CORE.includes(name) || name === '_shared';
+    if (!core && !deprecated.has(lower) && !renamed.has(lower) && !RETIRED_SKILL_MD_SHA256[lower]) continue;
+    if (stat.isSymbolicLink()) {
+      items.push({ kind: 'core-skill', path: file, base, action: 'skip', reasons: [cleanupReason('outside-link')] });
+      kept++;
+      continue;
+    }
+    if (core) {
+      let proven = false;
+      try { proven = fingerprint(file) === current[name] || historicalSkill(file); }
+      catch { /* A link or special file inside is not an unedited copy. */ }
+      if (name === '_shared') { if (proven) support.push({ kind: 'core-skill', path: file, base, action: 'remove', reasons: [] }); continue; }
+      if (proven) items.push({ kind: 'core-skill', path: file, base, action: 'remove', reasons: [] });
+      else { items.push({ kind: 'core-skill', path: file, base, action: 'skip', reasons: [cleanupReason('modified-copy')] }); kept++; }
+      continue;
+    }
+    if (renamed.has(lower)) {
+      // An optional skill under its pre-4.0 name: the installer moves it to its new name; cleanup keeps it.
+      if (CLEANUP_CORE.includes(renamed.get(lower))) items.push({ kind: 'renamed-skill', path: file, base, action: 'remove', reasons: [] });
+      else { items.push({ kind: 'renamed-skill', path: file, base, action: 'skip', reasons: [cleanupReason('optional-skill')] }); kept++; }
+      continue;
+    }
+    if (deprecated.has(lower)) { items.push({ kind: 'retired-skill', path: file, base, action: 'remove', reasons: [] }); continue; }
+    if (isShippedCopy(file, RETIRED_SKILL_MD_SHA256[lower])) items.push({ kind: 'retired-standard', path: file, base, action: 'remove', reasons: [] });
+  }
+  if (kept === 0) {
+    items.push(...support);
+    if (marker && items.some((item) => item.action === 'remove')) {
+      items.push({ kind: 'install-marker', path: path.join(root, DEVLYN_INSTALL_MARKER), base, action: 'remove', reasons: [] });
+    }
+  }
+  if (cleanupInUse(root)) {
+    for (const item of items) if (item.action === 'remove') Object.assign(item, { action: 'skip', reasons: [cleanupReason('in-use')] });
+  }
+  return items;
+}
+
+function cleanupCommands(base) {
+  const commands = path.join(base, '.claude', 'commands');
+  if (!cleanupRealParents(base, path.join(commands, 'x')) || !fs.lstatSync(commands, { throwIfNoEntry: false })?.isDirectory()) return [];
+  const names = new Set(DEPRECATED_FILES.map((file) => path.basename(file).toLowerCase()));
+  return fs.readdirSync(commands).sort().filter((name) => names.has(name.toLowerCase())
+    && fs.lstatSync(path.join(commands, name)).isFile())
+    .map((name) => ({ kind: 'legacy-command', path: path.join(commands, name), base, action: 'remove', reasons: [] }));
+}
+
+function cleanupProjectFiles(base) {
+  const items = [];
+  const hash = (file) => crypto.createHash('sha256')
+    .update(fs.readFileSync(file).toString('latin1').replace(/\r\n/g, '\n'), 'latin1').digest('hex');
+  for (const [name, hashes] of Object.entries(CLEANUP_HISTORY.files)) {
+    const file = path.join(base, name);
+    if (cleanupRealParents(base, file) && fs.lstatSync(file, { throwIfNoEntry: false })?.isFile() && hashes.includes(hash(file))) {
+      items.push({ kind: 'legacy-file', path: file, base, action: 'remove', reasons: [] });
+    }
+  }
+  const settingsFile = path.join(base, '.claude', 'settings.json');
+  if (cleanupRealParents(base, settingsFile) && fs.lstatSync(settingsFile, { throwIfNoEntry: false })?.isFile()) {
+    try {
+      const settings = JSON.parse(fs.readFileSync(settingsFile, 'utf8').replace(/^﻿/, ''));
+      const stop = Array.isArray(settings?.hooks?.Stop) ? settings.hooks.Stop : [];
+      if (stop.some((entry) => Array.isArray(entry?.hooks) && entry.hooks.some((hook) => hook?.type === 'command' && hook.command === RETIRED_STOP_HOOK))) {
+        items.push({ kind: 'settings-entry', path: settingsFile, base, action: 'edit', reasons: [] });
+      }
+    } catch (error) { if (!(error instanceof SyntaxError)) throw error; }
+  }
+  return items;
+}
+
+// An intact managed block from an earlier release is brought up to date; owner text around it stays
+// byte-for-byte (updateInstructions). A current block is the team's principles and stays.
+function cleanupInstructions(base) {
+  const { inspectInstruction } = require('./harness-status');
+  const items = [];
+  for (const name of ['CLAUDE.md', 'AGENTS.md']) {
+    const file = path.join(base, name);
+    const stat = fs.lstatSync(file, { throwIfNoEntry: false });
+    if (!stat?.isFile() || stat.nlink !== 1) continue;
+    let text;
+    try { text = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(fs.readFileSync(file)); }
+    catch { continue; }
+    if (!/<!-- devlyn:instructions:begin sha256=/.test(text)) continue;
+    const template = fs.readFileSync(path.join(CONFIG_SOURCE, '..', name), 'utf8');
+    if (inspectInstruction(text, template, name).ownership === 'outdated') {
+      items.push({ kind: 'instructions', path: file, base, action: 'edit', reasons: [] });
+    }
+  }
+  return items;
+}
+
+function cleanupCurrentFingerprints() {
+  return Object.fromEntries([...CLEANUP_CORE, '_shared'].map((name) => [name, fingerprint(path.join(CONFIG_SOURCE, 'skills', name))]));
+}
+
+function cleanupGit(root, args) {
+  return spawnSync('git', ['-C', root, ...args], { env: { ...gitEnvironment(), GIT_OPTIONAL_LOCKS: '0' }, encoding: 'utf8' });
+}
+
+let cleanupPythonBinary;
+function cleanupPython() {
+  if (cleanupPythonBinary === undefined) {
+    cleanupPythonBinary = ['python3', 'python'].find((name) => {
+      const probe = spawnSync(name, ['--version'], { encoding: 'utf8', timeout: 10000 });
+      return probe.status === 0 && /Python 3\.(1[1-9]|[2-9]\d)/.test(probe.stdout + probe.stderr);
+    }) || null;
+  }
+  return cleanupPythonBinary;
+}
+
+// The GitHub repository and base branch a project's tracked changes are delivered to, or null.
+function cleanupRemote(root) {
+  const url = cleanupGit(root, ['remote', 'get-url', 'origin']);
+  if (url.status !== 0) return null;
+  const match = url.stdout.trim().match(/github\.com[:/]([^/\s]+)\/([^/\s]+?)(?:\.git)?\/?$/i);
+  if (!match) return null;
+  const head = cleanupGit(root, ['symbolic-ref', '--quiet', '--short', 'refs/remotes/origin/HEAD']);
+  // origin/HEAD names the default; without it, the remote-tracking branch that exists. With neither
+  // fetched, `main`: an allocation against a missing base fails visibly, before any commit.
+  const base = head.status === 0 ? head.stdout.trim().replace(/^origin\//, '')
+    : ['main', 'master'].find((name) => cleanupGit(root, ['rev-parse', '--verify', '--quiet', `refs/remotes/origin/${name}`]).status === 0)
+      || 'main';
+  return { repository: `${match[1]}/${match[2]}`, base, named: head.status === 0 };
+}
+
+// Whether a task is in flight on the installed copies: an allocated task's packet runs their exact
+// paths, so those copies stay until it settles. Pending rows and legacy rows run on any release.
+function cleanupQueueBusy(root) {
+  const python = cleanupPython();
+  if (!python) return cleanupReason('requirement-missing', { name: 'Python 3.11' });
+  const queue = path.join(CONFIG_SOURCE, 'skills', 'devlyn-ideate', 'scripts', 'queue.py');
+  const result = spawnSync(python, ['-B', queue, 'inspect', '--repo', root, '--json'],
+    { encoding: 'utf8', env: { ...process.env, PYTHONDONTWRITEBYTECODE: '1' }, timeout: 60000 });
+  let data;
+  try { data = JSON.parse(result.stdout); } catch { return cleanupReason('queue-unreadable'); }
+  if (data.status === 'BLOCKED') return cleanupReason('queue-unreadable');
+  return (data.counts?.active || 0) > 0 ? cleanupReason('legacy-queue') : null;
+}
+
+function cleanupSameFile(a, b) {
+  const x = fs.statSync(a, { throwIfNoEntry: false });
+  const y = fs.statSync(b, { throwIfNoEntry: false });
+  return Boolean(x && y && x.dev === y.dev && x.ino === y.ino);
+}
+
+function cleanupProjectScope(project, current) {
+  const { repositoryIdentity } = require('./harness-status');
+  const { physicalRoot } = require('./release');
+  const root = physicalRoot(project);
+  const identity = repositoryIdentity(root);
+  const base = identity?.root || root;
+  const scope = { kind: 'project', root: base, name: path.basename(base), remote: identity ? cleanupRemote(base) : null, items: [] };
+  const whole = (code) => [{ kind: 'project', path: base, base, relative: '', route: 'local', action: 'skip', reasons: [cleanupReason(code)] }];
+  if (identity?.sourceRepository) return { ...scope, items: whole('source-repository') };
+  // The home folder's roots are this machine's: the machine scope cleans them under the user-root locks.
+  if (cleanupSameFile(base, os.homedir())) return { ...scope, items: whole('home-folder') };
+  const items = [
+    ...['.agents', '.claude'].flatMap((dir) => cleanupSkillRoot(base, path.join(base, dir, 'skills'), current)),
+    ...cleanupCommands(base), ...cleanupProjectFiles(base), ...cleanupInstructions(base),
+  ];
+  const busy = identity && items.some((item) => item.action !== 'skip') ? cleanupQueueBusy(base) : null;
+  for (const item of items) {
+    if (busy && item.action !== 'skip') Object.assign(item, { action: 'skip', reasons: [busy] });
+    const relative = path.relative(base, item.path).split(path.sep).join('/');
+    const tracked = Boolean(identity && relative && cleanupGit(base, ['ls-files', '-z', '--', relative]).stdout.length > 0);
+    scope.items.push({ ...item, relative, route: tracked ? 'delivery' : 'local' });
+  }
+  if (!scope.remote) {
+    for (const item of scope.items) {
+      if (item.route === 'delivery' && item.action !== 'skip') Object.assign(item, { action: 'skip', reasons: [cleanupReason('no-remote')] });
+    }
+  }
+  return scope;
+}
+
+function cleanupMachineScope(home, accountHomes, current) {
+  const roots = [...['.agents', '.codex', '.claude', '.grok'].map((dir) => [home, path.join(home, dir, 'skills')]),
+    ...accountHomes.map((account) => [path.dirname(account), path.join(account, 'skills')])];
+  const seen = new Set();
+  const items = [];
+  for (const [base, root] of roots) {
+    if (seen.has(root)) continue;
+    seen.add(root);
+    items.push(...cleanupSkillRoot(base, root, current));
+  }
+  items.push(...cleanupCommands(home));
+  return { kind: 'machine', root: home, name: null, remote: null, items: items.map((item) => ({ ...item, relative: null, route: 'local' })) };
+}
+
+function cleanupScopes(inputs, current) {
+  const { sha256 } = require('./release');
+  const scopes = [];
+  if (inputs.machine) scopes.push({ id: 'machine', ...cleanupMachineScope(os.homedir(), inputs.accountHomes, current) });
+  for (const project of inputs.projects) {
+    let scope;
+    try { scope = cleanupProjectScope(project, current); }
+    catch (error) {
+      scope = { kind: 'project', root: project, name: path.basename(project), remote: null, items: [{ kind: 'project', path: project, base: project,
+        relative: '', route: 'local', action: 'skip', reasons: [cleanupReason('project-unreadable', { detail: error.message })] }] };
+    }
+    scopes.push({ id: `project:${sha256(Buffer.from(project)).slice(0, 12)}`, ...scope });
+  }
+  for (const scope of scopes) {
+    scope.items = scope.items.map((item, index) => ({ id: `${scope.id}:${index}`, ...item, before: cleanupPreimage(item.path) }));
+  }
+  return scopes;
+}
+
+function cleanupPlan(inputs) {
+  const plan = { schemaVersion: 1, version: PKG.version, inputs, scopes: cleanupScopes(inputs, cleanupCurrentFingerprints()) };
+  return { ...plan, digest: cleanupDigest(plan) };
+}
+
+function cleanupDigest(plan) {
+  const { sha256 } = require('./release');
+  const canonical = (value) => Array.isArray(value) ? `[${value.map(canonical).join(',')}]`
+    : value && typeof value === 'object'
+      ? `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${canonical(value[key])}`).join(',')}}`
+      : JSON.stringify(value);
+  const { digest, ...body } = plan;
+  return sha256(Buffer.from(canonical(body)));
+}
+
+// Apply one item a fresh plan proves right now; returns a reason when it is not what was proven.
+function cleanupApplyItem(item) {
+  const now = cleanupPreimage(item.path);
+  if (now.type !== item.before.type || now.sha256 !== item.before.sha256) return cleanupReason('stale-plan');
+  if (!cleanupRealParents(item.base, item.path)) return cleanupReason('outside-link');
+  if (item.action === 'remove') {
+    fs.rmSync(item.path, { recursive: true }); // lstat/realParents never follow a link; rm removes the entry itself.
+    return null;
+  }
+  if (item.kind === 'settings-entry') {
+    const settings = JSON.parse(fs.readFileSync(item.path, 'utf8').replace(/^﻿/, ''));
+    if (cleanRetiredSettings(settings)) replaceFile(item.path, JSON.stringify(settings, null, 2) + '\n');
+    return null;
+  }
+  if (item.kind === 'instructions') {
+    updateInstructions(path.basename(item.path), '', true, true, path.dirname(item.path));
+    return null;
+  }
+  return cleanupReason('unknown-item');
+}
+
+// A reviewed item's counterpart in the fresh plan, when both name the same action on the same bytes.
+function cleanupProven(reviewed, fresh) {
+  const key = (item) => `${item.kind}\u0000${item.path}`;
+  const now = new Map(fresh.items.map((item) => [key(item), item]));
+  const asked = new Set(reviewed.items.filter((item) => item.action === 'remove' || item.action === 'edit').map(key));
+  // A copy left out of the review stays, so the `_shared` and marker beside it stay too.
+  const narrowed = new Set(fresh.items.filter((item) => item.action === 'remove' && !cleanupSupport(item) && !asked.has(key(item)))
+    .map((item) => path.dirname(item.path)));
+  return reviewed.items.filter((item) => item.action === 'remove' || item.action === 'edit').map((item) => {
+    const match = now.get(key(item));
+    const same = match && match.action === item.action && match.route === item.route
+      && match.before.type === item.before.type && match.before.sha256 === item.before.sha256
+      && !(cleanupSupport(item) && narrowed.has(path.dirname(item.path)));
+    return { reviewed: item, fresh: same ? match : null };
+  });
+}
+
+// Support entries (`_shared`, the marker) go last, and only when nothing beside them was refused.
+function cleanupSupport(item) {
+  return path.basename(item.path) === '_shared' || item.kind === 'install-marker';
+}
+
+function cleanupLocal(scope, items) {
+  const results = new Map();
+  const roots = [...new Set(items.map((item) => path.dirname(item.path)).filter((dir) => path.basename(dir) === 'skills'
+    && fs.lstatSync(dir, { throwIfNoEntry: false })?.isDirectory()))];
+  const act = (item) => {
+    try { results.set(item.id, cleanupApplyItem(item)); }
+    catch (error) { results.set(item.id, cleanupReason('apply-failed', { detail: error.message })); }
+  };
+  const run = () => {
+    for (const item of items.filter((item) => !cleanupSupport(item))) act(item);
+    for (const item of items.filter(cleanupSupport)) {
+      const refused = items.some((other) => !cleanupSupport(other) && path.dirname(other.path) === path.dirname(item.path)
+        && results.get(other.id) !== null);
+      if (refused) results.set(item.id, cleanupReason('stale-plan'));
+      else act(item);
+    }
+  };
+  if (scope.kind === 'machine' && roots.length) withUserSkillLocks(roots, run, { existingOnly: true });
+  else run();
+  // A root that vanished under its lock ran nothing: every item it held is refused, never reported done.
+  for (const item of items) if (!results.has(item.id)) results.set(item.id, cleanupReason('stale-plan'));
+  // After the locks are released, so a root holds nothing but what stayed.
+  for (const root of new Set(items.filter((item) => results.get(item.id) === null && item.kind !== 'instructions')
+    .map((item) => path.dirname(item.path)))) {
+    if (path.basename(root) !== 'skills') continue;
+    try { if (fs.lstatSync(root).isDirectory() && fs.readdirSync(root).length === 0) fs.rmdirSync(root); } catch {}
+  }
+  return results;
+}
+
+// Tracked items go through the project's own delivery: a fresh worktree from the remote base, the
+// same items proven there, one commit, and task-complete's PR and merge by project policy. Anything
+// it allocated is released again when it stops before that.
+function cleanupDeliver(scope, items, current) {
+  const helper = path.join(CONFIG_SOURCE, 'skills', '_shared', 'task-complete.py');
+  const python = cleanupPython();
+  if (!python) return { error: cleanupReason('requirement-missing', { name: 'Python 3.11' }) };
+  const run = (args, cwd) => spawnSync(python, ['-B', helper, ...args], { cwd, encoding: 'utf8', env: { ...process.env, PYTHONDONTWRITEBYTECODE: '1' } });
+  const lastJson = (text) => { try { return JSON.parse(text.trim().split('\n').at(-1)); } catch { return null; } };
+  // Without origin/HEAD the base was a guess: GitHub names the default branch before anything is committed.
+  let base = scope.remote.base;
+  if (!scope.remote.named) {
+    const asked = spawnSync('gh', ['repo', 'view', scope.remote.repository, '--json', 'defaultBranchRef', '-q', '.defaultBranchRef.name'],
+      { encoding: 'utf8', timeout: 30000 });
+    if (asked.status === 0 && asked.stdout.trim()) base = asked.stdout.trim();
+  }
+  const short = crypto.randomBytes(4).toString('hex');
+  const branch = `devlyn/cleanup-${short}`;
+  const worktree = path.join(path.dirname(scope.root), `${path.basename(scope.root)}.devlyn.noindex`, `devlyn-cleanup-${short}`);
+  const allocated = lastJson(run(['allocate', '--repo', scope.root, '--task', `devlyn-cli ${PKG.version} legacy cleanup`,
+    '--branch', branch, '--worktree', worktree, '--repository', scope.remote.repository,
+    '--remote', 'origin', '--base', base], scope.root).stdout);
+  if (allocated?.status !== 'ALLOCATED') return { error: cleanupReason('delivery-failed', { detail: allocated?.reason || 'allocation failed' }) };
+  const release = (error) => {
+    cleanupGit(scope.root, ['worktree', 'remove', '--force', worktree]);
+    cleanupGit(scope.root, ['branch', '-D', branch]);
+    try { fs.rmSync(path.dirname(allocated.receipt), { recursive: true, force: true }); } catch {}
+    return { error };
+  };
+  const fresh = cleanupProjectScope(worktree, current);
+  const wanted = new Map(items.map((item) => [`${item.kind}\u0000${item.relative}`, item]));
+  const applied = [];
+  for (const item of fresh.items) {
+    const key = `${item.kind}\u0000${item.relative}`;
+    if (item.action === 'skip' || item.route !== 'delivery' || !wanted.has(key)) continue;
+    if (cleanupApplyItem({ ...item, before: cleanupPreimage(item.path) }) === null) { applied.push(item.relative); wanted.delete(key); }
+  }
+  // A reviewed item the remote base does not hold as reviewed (not pushed, already gone) is not delivered.
+  if (wanted.size) return release(cleanupReason('stale-plan', { detail: [...wanted.values()].map((item) => item.relative).join(', ') }));
+  for (const dir of ['.agents/skills', '.claude/skills']) {
+    try { const full = path.join(worktree, dir); if (fs.readdirSync(full).length === 0) fs.rmdirSync(full); } catch {}
+  }
+  const add = cleanupGit(worktree, ['add', '-A', '--', ...applied]);
+  const commit = add.status === 0 && cleanupGit(worktree, ['-c', 'user.useConfigOnly=true', 'commit', '-q', '-m',
+    `chore(devlyn): remove legacy devlyn-cli copies\n\nDevlyn now delivers devlyn-cli ${PKG.version} to each session it starts, so the copies earlier\ninstalls committed here are no longer used. The managed principles block stays for teammates.`]);
+  if (!commit || commit.status !== 0) return release(cleanupReason('delivery-failed', { detail: (commit || add).stderr.trim() }));
+  const check = spawnSync(process.execPath, [path.join(__dirname, 'devlyn.js'), 'cleanup', '--plan', '--project', worktree, '--json'], { encoding: 'utf8' });
+  const evidence = path.join(worktree, '.devlyn', 'cleanup-check.json');
+  fs.mkdirSync(path.dirname(evidence), { recursive: true });
+  fs.writeFileSync(evidence, check.stdout);
+  let left = [];
+  try { left = JSON.parse(check.stdout.trim().split('\n').at(-1)).data.scopes[0].items.filter((item) => item.action !== 'skip' && applied.includes(item.relative)); }
+  catch { return release(cleanupReason('delivery-failed', { detail: 'the check after cleanup could not run' })); }
+  if (left.length) return release(cleanupReason('delivery-failed', { detail: 'items remain after cleanup' }));
+  const acceptance = path.join(worktree, '.devlyn', 'acceptance.json');
+  fs.writeFileSync(acceptance, JSON.stringify({ kind: 'direct', task: `devlyn-cli ${PKG.version} legacy cleanup`,
+    source_sha: cleanupGit(worktree, ['rev-parse', 'HEAD']).stdout.trim(),
+    checks: [{ command: `devlyn cleanup --plan --project ${worktree} --json`, evidence: '.devlyn/cleanup-check.json' }] }));
+  const completed = lastJson(run(['complete', '--receipt', allocated.receipt, '--acceptance', acceptance, '--writers-stopped'], scope.root).stdout);
+  const status = completed?.delivery_status || completed?.status;
+  if (status === 'COMPLETE' || status === 'MERGED') return { delivery: { state: 'merged', url: completed.pr || null } };
+  if (completed?.pr) return { delivery: { state: 'pr-open', url: completed.pr } };
+  const reason = completed?.reason || 'delivery did not complete';
+  const auth = /\b(authentication|unauthorized|gh auth login|could not read Username|HTTP 40[13])\b/i.test(reason);
+  return { error: cleanupReason(auth ? 'auth-failed' : 'delivery-failed', { detail: reason, ...(completed?.resume ? { resume: completed.resume } : {}) }) };
+}
+
+function cleanupApply(plan, { events = false } = {}) {
+  const current = cleanupCurrentFingerprints();
+  const fresh = new Map(cleanupScopes(plan.inputs, current).map((scope) => [scope.id, scope]));
+  let seq = 0;
+  const emit = (scope) => { if (events) process.stdout.write(JSON.stringify({ schemaVersion: 1, event: 'scope', seq: ++seq, scope }) + '\n'); };
+  const scopes = [];
+  for (const reviewed of plan.scopes) {
+    const pairs = cleanupProven(reviewed, fresh.get(reviewed.id) || { items: [] });
+    const progress = { scopeId: reviewed.id, kind: reviewed.kind, name: reviewed.name, total: pairs.length, state: 'running', delivery: null, error: null };
+    if (!pairs.length) { scopes.push({ ...progress, state: 'skipped' }); emit(scopes.at(-1)); continue; }
+    emit(progress);
+    try {
+      const refused = pairs.find((pair) => !pair.fresh);
+      const proven = pairs.filter((pair) => pair.fresh).map((pair) => pair.fresh);
+      const local = cleanupLocal(fresh.get(reviewed.id), proven.filter((item) => item.route === 'local'));
+      const failedLocal = [...local.values()].find((reason) => reason);
+      const deliverable = proven.filter((item) => item.route === 'delivery');
+      const delivery = deliverable.length ? cleanupDeliver(fresh.get(reviewed.id), deliverable, current) : null;
+      progress.delivery = delivery?.delivery || null;
+      const error = delivery?.error || failedLocal || (refused && cleanupReason('stale-plan'));
+      Object.assign(progress, error ? { state: 'failed', error } : { state: 'done' });
+    } catch (error) {
+      Object.assign(progress, { state: 'failed', error: error instanceof InstructionError
+        ? cleanupReason('occupied-lock', { detail: error.message }) : cleanupReason('apply-failed', { detail: error.message }) });
+    }
+    scopes.push(progress);
+    emit(progress);
+  }
+  const failed = scopes.filter((scope) => scope.state === 'failed').length;
+  const done = scopes.filter((scope) => scope.state === 'done').length;
+  return { state: failed === 0 ? 'succeeded' : done > 0 ? 'partial' : 'failed', scopes };
+}
+
+function cleanupCommand(args) {
+  const { options, fail } = require('./release');
+  const opts = options(args, {
+    plan: { type: 'boolean' }, apply: { type: 'boolean' }, machine: { type: 'boolean' }, events: { type: 'boolean' },
+    project: { type: 'string', multiple: true }, 'account-home': { type: 'string', multiple: true },
+    'plan-file': { type: 'string' }, digest: { type: 'string' },
+  });
+  if (opts.plan === opts.apply) fail('invalid-arguments', { argument: 'exactly one of --plan or --apply' }, 2);
+  for (const dir of [...(opts.project || []), ...(opts['account-home'] || [])]) {
+    if (!path.isAbsolute(dir)) fail('invalid-arguments', { argument: 'absolute paths required' }, 2);
+  }
+  // The installer's progress lines would corrupt this command's JSON on stdout.
+  console.log = (...parts) => process.stderr.write(`${parts.join(' ')}\n`);
+  if (opts.plan) {
+    return cleanupPlan({ machine: Boolean(opts.machine), projects: opts.project || [], accountHomes: opts['account-home'] || [] });
+  }
+  if (!opts['plan-file'] || !opts.digest) fail('invalid-arguments', { argument: '--plan-file and --digest' }, 2);
+  const plan = JSON.parse(fs.readFileSync(opts['plan-file'], 'utf8'));
+  const inputs = plan?.inputs;
+  if (plan?.schemaVersion !== 1 || plan.digest !== opts.digest || cleanupDigest(plan) !== plan.digest
+      || typeof inputs?.machine !== 'boolean' || !Array.isArray(inputs.projects) || !Array.isArray(inputs.accountHomes)
+      || ![...inputs.projects, ...inputs.accountHomes].every((dir) => typeof dir === 'string' && path.isAbsolute(dir))) {
+    fail('stale-plan', {}, 3);
+  }
+  if (plan.version !== PKG.version) fail('stale-plan', { version: plan.version }, 3);
+  return cleanupApply(plan, { events: Boolean(opts.events) });
+}
+
 // Main
 const args = process.argv.slice(2);
 
@@ -1350,6 +1857,9 @@ async function main() {
 const command = args[0];
 
 switch (command) {
+  case 'cleanup':
+    require('./release').runJson(() => cleanupCommand(args.slice(1)));
+    break;
   case 'activation':
     require('./release').runJson(() => require('./harness-activation').activationCommand(args.slice(1)));
     break;
