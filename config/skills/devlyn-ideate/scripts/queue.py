@@ -1542,11 +1542,18 @@ def drain(args):
                 except (LoopError, OSError) as exc:
                     phase = last["states"][row["identity"]].get("phase", "allocation")
                     wait = f"{phase} blocked: {exc}"
-                    if phase in {"allocation", "inputs", "acceptance", "custody binding", "terminal transition"}:
+                    disk_blocked = phase == "allocation" and str(exc).startswith("task-complete allocate: BLOCKED:disk")
+                    if disk_blocked:
+                        status, reason = "BLOCKED", str(exc)
+                    if not disk_blocked and phase in {"allocation", "inputs", "acceptance", "custody binding", "terminal transition"}:
                         wait += f"; inspect and repair {row['identity']}'s {phase} state, then drain again"
                 if wait:
                     refused[row["identity"]] = wait
-            if any(state["kind"] in {"pending", "active"} for state in last["states"].values()) or counts(last)["legacy_pending"] or refused:
+                    if status == "BLOCKED":
+                        break
+            if status == "BLOCKED" and reason and reason.startswith("task-complete allocate: BLOCKED:disk"):
+                last = view(anchor, common, args.local_only)
+            if status != "BLOCKED" and (any(state["kind"] in {"pending", "active"} for state in last["states"].values()) or counts(last)["legacy_pending"] or refused):
                 status = "WAITING"
         except (LoopError, OSError) as exc:
             status, reason = "BLOCKED", str(exc)
@@ -1799,9 +1806,19 @@ class QueueTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory(prefix="devlyn-queue ✓ ")
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name).resolve()
+        (self.root / "sitecustomize.py").write_text(
+            "import importlib.machinery, importlib.util, pathlib, sys\n"
+            "spec = importlib.machinery.PathFinder.find_spec('sitecustomize', [p for p in sys.path if pathlib.Path(p or '.').resolve() != pathlib.Path(__file__).resolve().parent])\n"
+            "if spec is not None and spec.loader is not None:\n"
+            "    spec.loader.exec_module(importlib.util.module_from_spec(spec))\n"
+            "import shutil\nfrom types import SimpleNamespace\n"
+            "shutil.disk_usage = lambda path: SimpleNamespace(total=100 * 1024**3, free=100 * 1024**3)\n",
+            encoding="utf-8")
         self.env = {**os.environ, "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": str(self.root / "gitconfig"),
                     "GIT_AUTHOR_NAME": "Fixture", "GIT_AUTHOR_EMAIL": "fixture@example.invalid",
                     "GIT_COMMITTER_NAME": "Fixture", "GIT_COMMITTER_EMAIL": "fixture@example.invalid"}
+        self.env["PYTHONPATH"] = str(self.root) + os.pathsep + self.env.get("PYTHONPATH", "")
+        self.env["PYTHONDONTWRITEBYTECODE"] = "1"
         self.anchor = self.root / "repo"
         subprocess.run(["git", "init", "-q", "--initial-branch=main", str(self.anchor)], check=True, env=self.env)
         (self.anchor / ".gitignore").write_text(".devlyn/\n", encoding="utf-8")

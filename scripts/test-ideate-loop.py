@@ -169,11 +169,21 @@ class LoopFixture(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory(prefix="devlyn loop ✓ 한글 ")
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name).resolve()
+        (self.root / "sitecustomize.py").write_text(
+            "import importlib.machinery, importlib.util, pathlib, sys\n"
+            "spec = importlib.machinery.PathFinder.find_spec('sitecustomize', [p for p in sys.path if pathlib.Path(p or '.').resolve() != pathlib.Path(__file__).resolve().parent])\n"
+            "if spec is not None and spec.loader is not None:\n"
+            "    spec.loader.exec_module(importlib.util.module_from_spec(spec))\n"
+            "import shutil\nfrom types import SimpleNamespace\n"
+            "shutil.disk_usage = lambda path: SimpleNamespace(total=100 * 1024**3, free=100 * 1024**3)\n",
+            encoding="utf-8")
         self.queue_py = self.skills / "devlyn-ideate/scripts/queue.py"
         self.helper = self.skills / "_shared/task-complete.py"
         self.platform = self.skills / "_shared/platform-support.py"
         self.queue = runpy.run_path(str(self.queue_py))
         self.env = {key: value for key, value in os.environ.items() if key not in {"GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR"}}
+        self.env["PYTHONPATH"] = str(self.root) + os.pathsep + self.env.get("PYTHONPATH", "")
+        self.env["PYTHONDONTWRITEBYTECODE"] = "1"
         self.env.update(GIT_CONFIG_NOSYSTEM="1", GIT_CONFIG_GLOBAL=str(self.root / "gitconfig"), GIT_CONFIG_COUNT="0",
                         GIT_AUTHOR_NAME="Fixture", GIT_AUTHOR_EMAIL="fixture@example.invalid",
                         GIT_COMMITTER_NAME="Fixture", GIT_COMMITTER_EMAIL="fixture@example.invalid")
@@ -1127,6 +1137,50 @@ class LoopFixture(unittest.TestCase):
         self.assertEqual(receipt["allocation"], "owned")
         self.assertEqual(Path(self.g("rev-parse", "--show-toplevel", work=work)), work)
         self.assertEqual((task["result"], task["delivery"], self.calls("nx.t1")), ("accepted", "LOCAL_ONLY", 1))
+
+    def test_disk_refusal_stops_drain_and_retries_pending_task(self):
+        # Prediction: disk refusal stops before an independent task starts, preserves pending rows, reports the reason,
+        # and a later drain without the fault starts both tasks.
+        self.plan("aa", [CHAIN[0]], {"aa.t1": {"product": "greeting"}})
+        self.independent()
+        result = self.fault_drain(
+            "import types\n"
+            "h['shutil'].disk_usage = lambda path: types.SimpleNamespace(total=100 * 1024**3, free=9 * 1024**3)\n",
+            code=1)
+        tasks = self.tasks(result)
+        self.assertEqual(result["status"], "BLOCKED")
+        self.assertIn("BLOCKED:disk", result["reason"])
+        self.assertIn("BLOCKED:disk", tasks["aa.t1"]["reason"])
+        self.assertEqual((tasks["aa.t1"]["result"], tasks["bb.t1"]["result"]), ("pending", "pending"))
+        self.assertEqual((result["counts"]["failed"], self.calls("aa.t1"), self.calls("bb.t1")), (0, 0, 0))
+        self.assertFalse(self.receipt_path("aa.t1").exists())
+        self.assertFalse(self.receipt_path("bb.t1").exists())
+        self.assertEqual(self.g("branch", "--list", "devlyn/aa/t1"), "")
+        self.assertTrue(any("BLOCKED:disk" in Path(path).read_text(encoding="utf-8") for path in result["reports"]))
+        retried = self.tasks(self.drain())
+        self.assertEqual((retried["aa.t1"]["result"], retried["bb.t1"]["result"]), ("accepted", "accepted"))
+        self.assertEqual((self.calls("aa.t1"), self.calls("bb.t1")), (1, 1))
+
+    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
+    def test_disk_refusal_reports_delivery_reconciled_during_allocation(self):
+        # Prediction: allocation may settle an earlier merged PR before refusing for disk; the final view reflects it.
+        _, data = self.remote(pending=True)
+        self.plan("aa", [CHAIN[0]], {"aa.t1": {"product": "greeting"}}, delivery="auto")
+        self.assertEqual(self.tasks(self.drain(local=False))["aa.t1"]["delivery"], "PENDING")
+        self.assertEqual(self.merge_pr(data, 1).returncode, 0)
+        self.plan("bb", [("t1", [], "Notes", [NOTES_CHECK])], {"bb.t1": {"product": "notes"}}, delivery="auto")
+        result = self.fault_drain(
+            "import types\n"
+            "real_next = g['next_task']\n"
+            "g['next_task'] = lambda v, attempted: real_next(v, attempted | {'aa.t1'})\n"
+            "h['shutil'].disk_usage = lambda path: types.SimpleNamespace(total=100 * 1024**3, free=9 * 1024**3)\n",
+            local=False, code=1)
+        self.assertEqual(result["status"], "BLOCKED")
+        self.assertIn("BLOCKED:disk", result["reason"])
+        self.assertEqual(self.tasks(result)["aa.t1"]["delivery"], "COMPLETE")
+        self.assertEqual(self.tasks(result)["bb.t1"]["result"], "pending")
+        self.assertEqual(self.receipt("aa.t1")["status"], "COMPLETE")
+        self.assertFalse(self.receipt_path("bb.t1").exists())
 
     def allow_content_indexing(self, path):
         # Fixture control: a Windows temp ancestor may already have the not-content-indexed bit.

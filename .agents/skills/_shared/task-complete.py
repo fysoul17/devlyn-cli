@@ -239,14 +239,25 @@ def allocate(args, *, exclude_receipts=()):
         policy(receipt, None)
         receipt["remote_url"] = remote_url(receipt)
         require("\n" not in receipt["remote_url"]["push"] and receipt["remote_url"]["push"] == receipt["remote_url"]["fetch"], "split/multiple remote URLs are unsupported")
-    receipt["baseline"] = local or exact_commit(receipt, args.start, "--start") or remote_base(receipt)
     target = Path(args.worktree).resolve()  # A relative, `..` or symlinked (macOS /tmp) path names its real location.
     require(not target.exists() and all(not target.is_relative_to(p) and not p.is_relative_to(target) for p in map(Path, registrations(receipt))), "linked worktree must be an absent path disjoint from every registered worktree")
     receipt["worktree"] = str(target)
     key = hashlib.sha256(args.branch.encode()).hexdigest()[:24]
     directory = common / "devlyn-completion" / key
-    directory.mkdir(parents=True, exist_ok=False)
     path = directory / "receipt.json"
+    reconciled = [] if local else reconcile(common, path, work, exclude_receipts=exclude_receipts)
+    measured = target
+    while not measured.exists():
+        require(measured.parent != measured, f"no existing ancestor of {target} to measure free space")
+        measured = measured.parent
+    usage = shutil.disk_usage(measured)
+    floor = max(10 * 1024**3, (usage.total + 49) // 50)
+    require(usage.free >= floor,
+            f"BLOCKED:disk {usage.free} bytes ({usage.free / 1024**3:.2f} GiB) free is below the "
+            f"{floor} byte ({floor / 1024**3:.2f} GiB) floor on {measured}; free space "
+            "(for example, run Devlyn disk cleanup or remove finished task worktrees' build output), then allocate again")
+    receipt["baseline"] = local or exact_commit(receipt, args.start, "--start") or remote_base(receipt)
+    directory.mkdir(parents=True, exist_ok=False)
     receipt["id"] = key
     receipt["recovery_ref"] = "refs/devlyn/completed/" + key
     scratch = directory / "scratch"
@@ -270,7 +281,7 @@ def allocate(args, *, exclude_receipts=()):
         atomic_json(path, owned)
     return {"status": "ALLOCATED", "receipt": str(path), "worktree": str(target), "scratch": str(scratch),
             "build_dirs": owned["build_dirs"],
-            "reconciled": [] if local else reconcile(common, path, work, exclude_receipts=exclude_receipts)}
+            "reconciled": reconciled}
 
 
 def exact_commit(receipt, value, flag):
@@ -1061,9 +1072,21 @@ sys.exit(r.returncode)
 
 class CompletionTests(unittest.TestCase):
     def setUp(self):
+        from unittest.mock import Mock, patch
         self.temp = tempfile.TemporaryDirectory(prefix="devlyn-completion-")
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name).resolve()
+        (self.root / "sitecustomize.py").write_text(
+            "import importlib.machinery, importlib.util, pathlib, sys\n"
+            "spec = importlib.machinery.PathFinder.find_spec('sitecustomize', [p for p in sys.path if pathlib.Path(p or '.').resolve() != pathlib.Path(__file__).resolve().parent])\n"
+            "if spec is not None and spec.loader is not None:\n"
+            "    spec.loader.exec_module(importlib.util.module_from_spec(spec))\n"
+            "import shutil\nfrom types import SimpleNamespace\n"
+            "shutil.disk_usage = lambda path: SimpleNamespace(total=100 * 1024**3, free=100 * 1024**3)\n",
+            encoding="utf-8")
+        disk_usage = patch.object(shutil, "disk_usage", return_value=Mock(total=100 * 1024**3, free=100 * 1024**3))
+        disk_usage.start()
+        self.addCleanup(disk_usage.stop)
         self.work = self.root / "work"
         self.bare = self.root / "remote.git"
         self.bin = self.root / "bin"
@@ -1075,6 +1098,8 @@ class CompletionTests(unittest.TestCase):
                     "GIT_COMMITTER_NAME": "Fixture", "GIT_COMMITTER_EMAIL": "fixture@example.invalid",
                     "FIXTURE_GH": str(self.data), "REAL_GIT": shutil.which("git"),
                     "GIT_CONFIG_COUNT": "0", "GIT_ALLOW_PROTOCOL": "file"}
+        self.env["PYTHONPATH"] = str(self.root) + os.pathsep + self.env.get("PYTHONPATH", "")
+        self.env["PYTHONDONTWRITEBYTECODE"] = "1"
         for key in list(self.env):
             if key in {"GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR"}:
                 del self.env[key]
@@ -1117,6 +1142,80 @@ class CompletionTests(unittest.TestCase):
         self.receipt = Path(result["receipt"])
         self.task = Path(result["worktree"])
         return result
+
+    def allocation_args(self, name, worktree):
+        return argparse.Namespace(repo=str(self.work), task=name, branch="task/" + name,
+                                  repository="test/project", base="main", remote="origin", worktree=str(worktree),
+                                  local_base=None, from_receipt=None, start=None)
+
+    def test_disk_gate_refuses_without_allocation_artifacts(self):
+        # Prediction: below 10 GiB on a 100 GiB filesystem, no receipt, branch or worktree is created.
+        from unittest.mock import Mock, patch
+        target = self.root / "absent" / "new"
+        before = self.g("worktree", "list", "--porcelain")
+        with patch.dict(os.environ, self.env), patch.object(shutil, "disk_usage", return_value=Mock(total=100 * 1024**3, free=9 * 1024**3)) as usage:
+            with self.assertRaisesRegex(CompletionError, r"^BLOCKED:disk") as raised:
+                allocate(self.allocation_args("new", target))
+        usage.assert_called_once_with(self.root)
+        self.assertIn(str(9 * 1024**3), str(raised.exception))
+        self.assertIn(str(10 * 1024**3), str(raised.exception))
+        self.assertIn(str(self.root), str(raised.exception))
+        self.assertIn("allocate again", str(raised.exception))
+        self.assertFalse((self.work / ".git/devlyn-completion").exists())
+        self.assertFalse(target.exists())
+        self.assertFalse(target.parent.exists())
+        self.assertEqual(self.g("branch", "--list", "task/new"), "")
+        self.assertEqual(self.g("worktree", "list", "--porcelain"), before)
+
+    def test_disk_gate_refuses_when_no_ancestor_exists(self):
+        # Prediction: even if the filesystem root is absent, the walk stops before disk usage or artifact creation.
+        from unittest.mock import patch
+        target = self.root / "absent" / "new"
+        exists = Path.exists
+        with patch.object(Path, "exists", lambda path: False if path == target or path in target.parents else exists(path)), \
+                patch.object(shutil, "disk_usage") as usage:
+            with self.assertRaisesRegex(CompletionError, f"no existing ancestor of {re.escape(str(target))} to measure free space"):
+                allocate(self.allocation_args("new", target))
+        usage.assert_not_called()
+        self.assertFalse(target.parent.exists())
+        self.assertFalse(target.exists())
+        self.assertFalse((self.work / ".git/devlyn-completion").exists())
+        self.assertEqual(self.g("branch", "--list", "task/new"), "")
+
+    def test_disk_gate_uses_larger_floor_and_admits_boundary(self):
+        # Prediction: 100 GiB uses a 10 GiB floor; 2 TiB uses the ceiling of 2%, and exactly-at-floor allocates.
+        from unittest.mock import Mock, patch
+        for name, total in (("small", 100 * 1024**3), ("large", 2 * 1024**4)):
+            floor = max(10 * 1024**3, (total + 49) // 50)
+            with self.subTest(name=name):
+                target = self.root / name
+                with patch.dict(os.environ, self.env), patch.object(shutil, "disk_usage", return_value=Mock(total=total, free=floor - 1)):
+                    with self.assertRaisesRegex(CompletionError, r"^BLOCKED:disk"):
+                        allocate(self.allocation_args(name, target))
+                self.assertFalse(target.exists())
+                with patch.dict(os.environ, self.env), patch.object(shutil, "disk_usage", return_value=Mock(total=total, free=floor)):
+                    result = allocate(self.allocation_args(name, target))
+                self.assertEqual((result["status"], result["reconciled"]), ("ALLOCATED", []))
+                self.assertTrue(Path(result["receipt"]).exists())
+                self.assertEqual(Path(result["worktree"]), target)
+
+    def test_reconcile_precedes_refused_disk_gate(self):
+        # Prediction: an earlier MERGED remote delivery is cleaned before the new allocation fails its disk gate.
+        from unittest.mock import Mock, patch
+        self.allocate(); self.accept()
+        self.complete("--mode", "pr", "--writers-stopped")
+        self.merge_pr()
+        previous_receipt, previous_tree = self.receipt, self.task
+        target = self.root / "next"
+        with patch.dict(os.environ, self.env), patch.object(shutil, "disk_usage", return_value=Mock(total=100 * 1024**3, free=9 * 1024**3)):
+            with self.assertRaisesRegex(CompletionError, r"^BLOCKED:disk"):
+                allocate(self.allocation_args("next", target))
+        self.assertEqual(json.loads(previous_receipt.read_text(encoding="utf-8"))["status"], "COMPLETE")
+        self.assertFalse(previous_tree.exists())
+        self.assertEqual(self.g("branch", "--list", "task/fixture"), "")
+        self.assertFalse(target.exists())
+        self.assertFalse((self.work / ".git/devlyn-completion" / hashlib.sha256(b"task/next").hexdigest()[:24]).exists())
+        self.assertEqual(self.g("branch", "--list", "task/next"), "")
 
     def allocate_legacy(self):
         common = Path(self.g("rev-parse", "--absolute-git-dir"))
