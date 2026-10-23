@@ -206,7 +206,13 @@ class Driver:
         if not tarball.is_file():
             self.event('hold', reason='image tarball missing')
             return False
-        subprocess.run(['docker', 'load', '-i', str(tarball)], check=True, capture_output=True)
+        try:
+            subprocess.run(['docker', 'load', '-i', str(tarball)], check=True,
+                           capture_output=True, text=True)
+        except subprocess.CalledProcessError as exc:
+            stderr = (exc.stderr or '').splitlines()
+            self.event('hold', reason=f'docker load failed: {stderr[0] if stderr else exc}')
+            return False
         if not cell.image_identity(self.runtime):
             raise RuntimeError('image identity mismatch after docker load')
         self.event('image_loaded')

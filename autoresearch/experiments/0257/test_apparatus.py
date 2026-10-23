@@ -772,6 +772,45 @@ class DriverControls(unittest.TestCase):
             self.assertEqual(json.loads((d.output / 'driver.log').read_text().splitlines()[-1])['reason'],
                              'Claude window near exhaustion')
 
+    def test_docker_load_failure_holds_and_driver_retries(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            d = self.instance(root)
+            tarball = root / 'image.tar'
+            tarball.touch()
+            d.runtime['image_tarball'] = str(tarball)
+            snapshot = {'expires': driver.time.time() + 10000,
+                        'account': ['account', 'org'], 'access_token': 'fake'}
+            windows = {name: {'used': 0, 'resets': '2026-10-23T00:00:00+00:00'}
+                       for name in driver.WINDOWS}
+            failed = subprocess.CalledProcessError(1, ['docker', 'load'],
+                                                   stderr='Cannot connect to the Docker daemon\nmore detail')
+            outcomes = []
+            ready = d.ready
+
+            def record_ready(*args, **kwargs):
+                result = ready(*args, **kwargs)
+                outcomes.append(result)
+                return result
+
+            with mock.patch.object(driver, 'credential', return_value=snapshot), \
+                    mock.patch.object(driver.cell, 'claude_limits', return_value=windows), \
+                    mock.patch.object(driver.cell, 'image_identity', side_effect=[False, False, True]), \
+                    mock.patch.object(driver.subprocess, 'run', side_effect=[failed, subprocess.CompletedProcess([], 0)]) as load, \
+                    mock.patch.object(d, 'ready', side_effect=record_ready), \
+                    mock.patch.object(d, 'dispatch', return_value=True) as dispatch, \
+                    mock.patch.object(driver.time, 'sleep') as sleep:
+                d.run()
+
+            self.assertEqual(outcomes, [False, True])
+            sleep.assert_called_once_with(60)
+            self.assertEqual(load.call_count, 2)
+            dispatch.assert_called_once_with(d.slots[0])
+            events = [json.loads(line) for line in (d.output / 'driver.log').read_text().splitlines()]
+            self.assertEqual([event['reason'] for event in events if event['event'] == 'hold'],
+                             ['docker load failed: Cannot connect to the Docker daemon'])
+            self.assertEqual(events[-1]['event'], 'complete')
+
     def test_split_wait_tracks_account_and_releases_on_switch(self):
         with tempfile.TemporaryDirectory() as temp:
             d = self.amended_instance(Path(temp))
