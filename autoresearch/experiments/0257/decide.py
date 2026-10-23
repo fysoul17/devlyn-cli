@@ -137,7 +137,9 @@ def slot_cost(out, name, final):
     attempts = []
     for path in sorted(out.glob(f'verdict-{name}.stop-*.json')):
         old = json.loads(path.read_text())
-        if str(old.get('reason', '')).startswith('shared account fault during execution:'):
+        if (str(old.get('reason', '')).startswith('shared account fault during execution:')
+                or (old.get('teardown') == 'FAILED' and 'Cannot connect to the Docker daemon' in
+                    str(old.get('teardown_error', '')) + str(old.get('reason', '')))):
             attempts.append(attempt_cost(old))
     attempts.append(attempt_cost(final))
     return attempts

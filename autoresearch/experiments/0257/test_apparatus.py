@@ -698,6 +698,143 @@ class DriverControls(unittest.TestCase):
             costs = decide.slot_cost(d.output, row[0], json.loads(verdict_path.read_text()))
             self.assertEqual(decide.sums([{'complete': True, 'attempts': costs}])['input'], 25)
 
+    def docker_failed_attempt(self, root, *, reason=None, started=True):
+        d = self.instance(root)
+        name = d.slots[0][0]
+        cell_dir = d.output / name
+        (cell_dir / 'run').mkdir(parents=True)
+        container = 'devlyn-0231-recorded-owner'
+        volume = 'devlyn-0233-tmp-recorded-owner'
+        if started:
+            (cell_dir / 'run/started.json').write_text(json.dumps({
+                'create_argv': ['create', '--name', container,
+                                f'type=volume,src={volume},dst=/tmp'], 'tmp_volume': volume,
+                'started_at': driver.time.time()}))
+        verdict = dict(status='STOP', teardown='FAILED', identity={'status': 'MATCH'},
+                       owner_status='EXITED_NONZERO', owner_seconds=10, usage='COMPLETE',
+                       input_tokens=20, output_tokens=3,
+                       reason=reason or "teardown failed: Command '['docker', 'inspect', '<container id>']' "
+                                        'returned non-zero exit status 1. Cannot connect to the Docker daemon at '
+                                        'unix:///Users/aipalm/.docker/run/docker.sock. Is the docker daemon running?')
+        (d.output / f'verdict-{name}.json').write_text(json.dumps(verdict))
+        return d, name, container, volume
+
+    def test_docker_loss_exited_container_is_proven_archived_and_redispatched(self):
+        with tempfile.TemporaryDirectory() as temp:
+            d, name, container, volume = self.docker_failed_attempt(Path(temp))
+            cid = 'a' * 64
+            removed = []
+            removed_volumes = []
+            docker_calls = []
+            inspected = dict(Id=cid, Name='/' + container, Config={'Labels': {'devlyn.task': '0233'}},
+                             Mounts=[{'Type': 'volume', 'Name': volume}],
+                             State={'Running': False, 'Pid': 0, 'Status': 'exited'})
+
+            def fake_docker(argv, **_kwargs):
+                self.assertEqual(argv[0], 'docker')
+                docker_calls.append(argv[1:])
+                if argv[1:3] == ['ps', '-aq']:
+                    value = '' if removed or 'name=' in argv[-1] else cid + '\n'
+                elif argv[1] == 'inspect':
+                    self.assertIn(argv[2], (container, cid))
+                    value = json.dumps([inspected])
+                elif argv[1] == 'rm':
+                    self.assertEqual(argv[2], cid)
+                    removed.append(cid)
+                    value = cid
+                elif argv[1:3] == ['volume', 'rm']:
+                    self.assertEqual(argv[3], volume)
+                    removed_volumes.append(volume)
+                    value = volume
+                elif argv[1:4] == ['volume', 'ls', '-q']:
+                    self.assertEqual(argv[4:], ['--filter', f'name=^{volume}$'])
+                    value = '' if removed_volumes else volume
+                else:
+                    self.fail(f'unexpected Docker command: {argv}')
+                return subprocess.CompletedProcess(argv, 0, stdout=value)
+
+            def rerun(*_args, **_kwargs):
+                (d.output / name).mkdir()
+                (d.output / f'verdict-{name}.json').write_text(json.dumps({
+                    'status': 'COMPLETE', 'scope_violations': [], 'teardown': 'CLEAN',
+                    'identity': {'status': 'MATCH'}, 'owner_status': 'EXITED_0',
+                    'owner_seconds': 4, 'input_tokens': 5, 'output_tokens': 2, 'usage': 'COMPLETE'}))
+                return 0
+
+            with mock.patch.object(driver.subprocess, 'run', side_effect=fake_docker), \
+                    mock.patch.object(driver.cell, 'run', side_effect=rerun) as run:
+                self.assertTrue(d.dispatch(d.slots[0]))
+            run.assert_called_once()
+            self.assertEqual(removed, [cid])
+            self.assertEqual(removed_volumes, [volume])
+            self.assertLess(docker_calls.index(['ps', '-aq', '--no-trunc', '--filter', f'name=^/{container}$']),
+                            docker_calls.index(['volume', 'rm', volume]))
+            self.assertEqual(docker_calls[-1], ['volume', 'ls', '-q', '--filter', f'name=^{volume}$'])
+            self.assertNotIn('harm_latch', d.state)
+            self.assertTrue((d.output / f'verdict-{name}.stop-1.json').is_file())
+            self.assertTrue((d.output / f'{name}.stop-1/run/started.json').is_file())
+            events = [json.loads(line) for line in (d.output / 'driver.log').read_text().splitlines()]
+            proof = next(event for event in events if event['event'] == 'docker_teardown_proven')
+            self.assertEqual(proof['found'], [{'id': cid, 'name': '/' + container, 'state': 'exited'}])
+            self.assertEqual(proof['removed'], [cid])
+            self.assertEqual(proof['removed_volume'], volume)
+            final = json.loads((d.output / f'verdict-{name}.json').read_text())
+            self.assertEqual(len(decide.slot_cost(d.output, name, final)), 2)
+            self.assertEqual(decide.sums([{'complete': True, 'attempts': decide.slot_cost(d.output, name, final)}])['input'], 25)
+            self.assertTrue(driver.Driver(d.runtime_path, d.slots).dispatch(d.slots[0]))
+            self.assertNotIn('harm_latch', driver.Driver(d.runtime_path, d.slots).state)
+
+    def test_docker_loss_running_container_stops_without_archive(self):
+        with tempfile.TemporaryDirectory() as temp:
+            d, name, container, volume = self.docker_failed_attempt(Path(temp))
+            cid = 'b' * 64
+            inspected = dict(Id=cid, Name='/' + container, Config={'Labels': {'devlyn.task': '0233'}},
+                             Mounts=[{'Type': 'volume', 'Name': volume}],
+                             State={'Running': True, 'Pid': 42, 'Status': 'running'})
+
+            def fake_docker(argv, **_kwargs):
+                if argv[1] == 'rm':
+                    self.fail('running container must not be removed')
+                value = cid if argv[1] == 'ps' else json.dumps([inspected])
+                return subprocess.CompletedProcess(argv, 0, stdout=value)
+
+            with mock.patch.object(driver.subprocess, 'run', side_effect=fake_docker), \
+                    mock.patch.object(driver.cell, 'run') as run:
+                with self.assertRaisesRegex(RuntimeError, 'still running'):
+                    d.dispatch(d.slots[0])
+                run.assert_not_called()
+            self.assertTrue((d.output / f'verdict-{name}.json').is_file())
+            self.assertFalse((d.output / f'verdict-{name}.stop-1.json').exists())
+
+    def test_docker_loss_unidentifiable_container_stops_without_archive(self):
+        with tempfile.TemporaryDirectory() as temp:
+            d, name, _container, _volume = self.docker_failed_attempt(Path(temp), started=False)
+            with mock.patch.object(driver.subprocess, 'run') as docker, \
+                    mock.patch.object(driver.cell, 'run') as run:
+                with self.assertRaisesRegex(RuntimeError, 'Docker teardown proof failed'):
+                    d.dispatch(d.slots[0])
+                docker.assert_not_called()
+                run.assert_not_called()
+            self.assertTrue((d.output / f'verdict-{name}.json').is_file())
+            self.assertFalse((d.output / f'verdict-{name}.stop-1.json').exists())
+
+    def test_non_docker_teardown_failure_stops_without_archive(self):
+        with tempfile.TemporaryDirectory() as temp:
+            d, name, _container, _volume = self.docker_failed_attempt(
+                Path(temp), reason='teardown failed: container survived kill')
+            path = d.output / f'verdict-{name}.json'
+            verdict = json.loads(path.read_text())
+            verdict['teardown_error'] = 'container survived kill'
+            path.write_text(json.dumps(verdict))
+            with mock.patch.object(driver.subprocess, 'run') as docker, \
+                    mock.patch.object(driver.cell, 'run') as run:
+                with self.assertRaisesRegex(RuntimeError, 'STOP teardown failed: container survived kill'):
+                    d.dispatch(d.slots[0])
+                docker.assert_not_called()
+                run.assert_not_called()
+            self.assertTrue(path.is_file())
+            self.assertFalse((d.output / f'verdict-{name}.stop-1.json').exists())
+
     def test_deadline_and_smoke_timestamp(self):
         with tempfile.TemporaryDirectory() as temp:
             d = self.instance(Path(temp))
