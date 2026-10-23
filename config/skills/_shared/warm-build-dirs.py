@@ -678,6 +678,14 @@ class WarmTests(unittest.TestCase):
         temporary = tempfile.TemporaryDirectory(prefix="warm-build-dirs-")
         self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name).resolve()
+        (self.root / "sitecustomize.py").write_text(
+            "import importlib.machinery, importlib.util, pathlib, sys\n"
+            "spec = importlib.machinery.PathFinder.find_spec('sitecustomize', [p for p in sys.path if pathlib.Path(p or '.').resolve() != pathlib.Path(__file__).resolve().parent])\n"
+            "if spec is not None and spec.loader is not None:\n"
+            "    spec.loader.exec_module(importlib.util.module_from_spec(spec))\n"
+            "import shutil\nfrom types import SimpleNamespace\n"
+            "shutil.disk_usage = lambda path: SimpleNamespace(total=100 * 1024**3, free=100 * 1024**3)\n",
+            encoding="utf-8")
         self.anchor, self.work = self.root / "anchor", self.root / "work"
         self.staging = self.root / "scratch"
         self.staging.mkdir()
@@ -689,6 +697,8 @@ class WarmTests(unittest.TestCase):
         self.environment = mock.patch.dict(os.environ, {
             "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}", "FAKE_CARGO": str(self.fixture),
             "FAKE_CARGO_LOG": str(self.log), "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1",
+            "PYTHONPATH": str(self.root) + os.pathsep + os.environ.get("PYTHONPATH", ""),
+            "PYTHONDONTWRITEBYTECODE": "1",
             "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"})
         self.environment.start()
         self.addCleanup(self.environment.stop)

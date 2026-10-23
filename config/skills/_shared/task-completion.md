@@ -60,6 +60,8 @@ python3 "$DEVLYN_SHARED_DIR/task-complete.py" allocate --repo . \
 
 Every delivery allocation owns a linked worktree; `--worktree` is required and
 must name an absent path.
+Remote allocation first cleans earlier merged deliveries, then allocation refuses with `BLOCKED:disk`
+without creating a receipt, branch or worktree when that filesystem has less than max(10 GiB, 2%) free; free space and allocate again.
 A publication allocation normally starts at the exact fetched remote base,
 independent of the anchor's branch or dirty state, and leaves the anchor's
 HEAD, index and files untouched. For a commit request, local-only work or
@@ -123,8 +125,9 @@ after merge, so a pending, failed or local-only task keeps it.
 
 Allocation also returns a receipt-owned `scratch` directory for other
 disposable build files, such as writable tool caches. Keep source checkouts,
-Git data, lockfiles, reports and restart evidence outside scratch. Do not create unowned
-temporary build trees or preserve them by copying them into evidence custody.
+Git data, lockfiles, reports and restart evidence outside scratch.
+Direct work keeps its temporary files (logs, downloads, review outputs and build trees) outside the checkout: use scratch when allocated, otherwise the system temporary directory, and never create new top-level `.devlyn/<name>` folders for them.
+Do not preserve temporary build trees by copying them into evidence custody.
 Prefer `TemporaryDirectory`/`finally` for short-lived test fixtures.
 
 After waiting for task writers, `complete --writers-stopped` empties this
