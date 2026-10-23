@@ -27,11 +27,18 @@ block is the team's principles and stays. Skipped, with a reason: modified copie
 (`in-use`), a project with active queue tasks (`legacy-queue`) or an unreadable queue
 (`queue-unreadable`), devlyn-cli's own repository (`source-repository`), the home folder as a
 project (`home-folder`), tracked items without a remote (`no-remote`) and unreadable projects
-(`project-unreadable`).
+(`project-unreadable`), unknown Git ownership (`repository-unreadable`), and
+machine copies tracked by a home/dotfiles repository (`tracked-copy`). Local support
+stays while a dependent copy remains on disk (`dependent-copy`), including copies
+awaiting PR delivery.
 
 `--apply` refuses a plan whose digest, inputs or version do not match (`stale-plan`, exit 3).
 It plans again from disk and acts only on reviewed items the fresh plan still proves with
-an unchanged preimage; anything else is reported, never forced. Local items are removed
+an unchanged preimage; anything else is reported, never forced. Each project's
+`remote` records the reviewed GitHub repository and base branch, covered by the
+digest. A changed delivery identity fails the scope as `stale-plan` before local
+changes or allocation. Every item in the delivery worktree must match the reviewed
+action and preimage before any item is changed. Local items are removed
 under the user-root locks. Tracked items are delivered as one change per repository:
 `_shared/task-complete.py` allocates a worktree from the remote base, the same proof runs
 there, the commit `chore(devlyn): remove legacy devlyn-cli copies` is checked by a fresh

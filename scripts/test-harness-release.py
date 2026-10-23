@@ -9,12 +9,16 @@ import argparse
 import hashlib
 import json
 import os
+import runpy
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import tarfile
 import tempfile
 import unittest
+from types import SimpleNamespace
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 PACKAGE_ROOT = None
@@ -128,6 +132,52 @@ class ReleaseTests(unittest.TestCase):
     def commit(self, root):
         run(['git', '-C', root, 'add', '.'])
         run(['git', '-C', root, 'commit', '-qm', 'fixture'])
+
+    def test_managed_node_verifies_release_without_path_node(self):
+        # Prediction: DEVLYN_NODE runs the real verifier with no Node on PATH, including paths with spaces.
+        node = self.case / "managed node" / Path(NODE).name
+        node.parent.mkdir()
+        shutil.copy2(NODE, node)
+        script = "import runpy,sys; print(runpy.run_path(sys.argv[1])['verify_release'](sys.argv[2])['release']['digest'])"
+        env = {**environment(), "PATH": str(self.case), "DEVLYN_NODE": str(node)}
+        result = run([sys.executable, '-c', script, self.package / 'config/skills/_shared/harness-store.py', self.package], env=env)
+        self.assertEqual(result.stdout.decode().strip(), self.release['digest'])
+
+    def test_invalid_managed_node_is_explicit_and_never_falls_back(self):
+        # Prediction: relative, empty, missing, directory and non-executable overrides are visible errors,
+        # even when PATH contains a working Node.
+        file = self.case / 'not-executable'
+        file.write_text('not a program')
+        values = ['', 'node', str(self.case / 'missing'), str(self.case)]
+        if os.name != 'nt':
+            values.append(str(file))
+        script = "import runpy,sys; runpy.run_path(sys.argv[1])['verify_release'](sys.argv[2])"
+        for value in values:
+            with self.subTest(value=value):
+                result = run([sys.executable, '-c', script, self.package / 'config/skills/_shared/harness-store.py', self.package],
+                             env={**environment(), 'DEVLYN_NODE': value}, code=None)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(b'DEVLYN_NODE must be an absolute path to an executable file', result.stderr)
+
+    def test_project_and_engine_commands_keep_the_sessions_node(self):
+        # Prediction: DEVLYN_NODE runs devlyn-cli's own scripts only; a project's node command and an npm .cmd shim
+        # resolve Node as the platform does, so the app's choice never changes what a project check runs on.
+        platform = runpy.run_path(str(self.package / 'config/skills/_shared/platform-support.py'))
+        resolve = platform['native_argv']
+        env = {**environment(), 'DEVLYN_NODE': NODE}
+        with mock.patch.dict(os.environ, env, clear=True):
+            if os.name != 'nt':  # Windows resolves the PATH executable itself.
+                self.assertEqual(resolve(['node', '-v']), ['node', '-v'])
+            shim = self.case / 'npm.cmd'
+            shim.write_text('SET "NODE_EXE=%~dp0\\node.exe"\n'
+                            'SET "NPM_CLI_JS=%~dp0\\npm-cli.js"\n'
+                            '"%NODE_EXE%" "%NPM_CLI_JS%" %*\n')
+            (self.case / 'npm-cli.js').write_text('// npm fixture')
+            (self.case / 'node.exe').write_text('adjacent Node')
+            simulated = SimpleNamespace(name='nt', environ=os.environ)
+            with mock.patch.dict(resolve.__globals__, os=simulated), mock.patch('shutil.which', return_value=str(shim)):
+                self.assertEqual(resolve(['npm', 'test']),
+                                 [str(self.case / 'node.exe'), str(self.case / 'npm-cli.js'), 'test'])
 
     def test_derivation_and_native_manifests(self):
         template = (self.package / 'CLAUDE.md').read_text(encoding='utf-8')

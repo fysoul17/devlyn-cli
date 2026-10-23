@@ -15,6 +15,18 @@ import sys
 import time
 
 
+def managed_node():
+    """The Node that runs devlyn-cli's own scripts: the app's override is authoritative, and an invalid one never
+    falls back to PATH. Project and engine commands keep the session's own Node."""
+    value = os.environ.get("DEVLYN_NODE")
+    if value is None:
+        return None
+    node = Path(value)
+    if not node.is_absolute() or not node.is_file() or not os.access(node, os.X_OK):
+        raise OSError("DEVLYN_NODE must be an absolute path to an executable file")
+    return value
+
+
 def configure_utf8():
     for stream in (sys.stdin, sys.stdout, sys.stderr):
         if hasattr(stream, "reconfigure"):

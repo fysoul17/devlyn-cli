@@ -29,6 +29,16 @@ class CleanupFixture(unittest.TestCase):
                     "GIT_COMMITTER_NAME": "Fixture", "GIT_COMMITTER_EMAIL": "fixture@example.com",
                     "CODEX_HOME": str(self.home / ".codex"), "PYTHONDONTWRITEBYTECODE": "1"}
         self.env.pop("CLAUDE_CONFIG_DIR", None)
+        self.env["GIT_CONFIG_GLOBAL"] = os.devnull
+        # These fixtures own every process using their temporary installs. Use a deterministic process
+        # listing so host privacy/sandbox restrictions cannot turn every fixture into an in-use skip.
+        if os.name != "nt":
+            bins = self.root / "process-bin"
+            bins.mkdir()
+            ps = bins / "ps"
+            ps.write_text(f"#!{sys.executable}\nimport os\nprint(os.environ.get('FIXTURE_PROCESSES', ''))\n")
+            ps.chmod(0o755)
+            self.env["PATH"] = str(bins) + os.pathsep + self.env["PATH"]
 
     def run_ok(self, argv, cwd=None, code=0):
         result = subprocess.run([str(part) for part in argv], cwd=cwd or self.root, env=self.env, capture_output=True,
@@ -56,11 +66,22 @@ class CleanupFixture(unittest.TestCase):
     def plan(self, *args):
         plan = self.cli("cleanup", "--plan", *args)
         path = self.root / f"plan-{plan['digest'][:8]}.json"
-        path.write_text(json.dumps(plan), encoding="utf-8")
+        # As the app stores a reviewed plan: serde_json writes object keys sorted.
+        path.write_text(json.dumps(plan, sort_keys=True), encoding="utf-8")
         return plan, path
 
     def apply(self, plan, path, code=0):
         return self.cli("cleanup", "--apply", "--plan-file", path, "--digest", plan["digest"], code=code)
+
+    def historical_skill(self, dest, tag="v3.0.1", name="devlyn:ideate"):
+        source = f"config/skills/{name}"
+        files = self.run_ok(["git", "ls-tree", "-r", "--name-only", tag, "--", source], cwd=ROOT).stdout.splitlines()
+        self.assertTrue(files)
+        for file in files:
+            target = dest / Path(file).relative_to(source)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            data = subprocess.check_output(["git", "show", f"{tag}:{file}"], cwd=ROOT)
+            target.write_bytes(data)
 
     def fake_github(self, repo):
         """task-complete's own fake gh and transport wrappers over a local bare repository holding main."""
@@ -205,6 +226,7 @@ class CleanupFixture(unittest.TestCase):
         for name in ("devlyn:pencil-pull", "devlyn:ideate"):
             (root / name).mkdir()
             (root / name / "SKILL.md").write_text("old\n", encoding="utf-8")
+        self.historical_skill(root / "devlyn:ideate")
         plan, _ = self.plan("--machine")
         listed = {(Path(item["path"]).name, item["action"], (item["reasons"] or [{}])[0].get("code"))
                   for item in plan["scopes"][0]["items"] if Path(item["path"]).parent == root}
@@ -229,6 +251,17 @@ class CleanupFixture(unittest.TestCase):
         path.write_text(json.dumps(plan), encoding="utf-8")
         self.apply(plan, path)
         self.assertEqual(sorted(entry.name for entry in root.iterdir()), [".devlyn-install.json", "_shared", "devlyn-ideate"])
+
+    def test_support_stays_beside_a_copy_refused_at_apply(self):
+        # Prediction (review round 2 LOW): devlyn-engines replaced by another shipped version after review is refused at
+        # apply and stays, so the _shared and marker beside it stay too; devlyn-ideate, unchanged, goes.
+        self.install(self.root, "--global")
+        plan, path = self.plan("--machine")
+        root = self.home / ".agents/skills"
+        shutil.rmtree(root / "devlyn-engines")
+        self.historical_skill(root / "devlyn-engines", name="devlyn:engines")
+        self.apply(plan, path)
+        self.assertEqual(sorted(entry.name for entry in root.iterdir()), [".devlyn-install.json", "_shared", "devlyn-engines"])
 
     def test_the_home_folder_is_not_cleaned_as_a_project(self):
         # Prediction (review LOW): --project $HOME is skipped whole; the machine scope cleans those roots under its locks.
@@ -273,6 +306,177 @@ class CleanupFixture(unittest.TestCase):
         self.assertEqual((scope["state"], scope["error"]["code"]), ("failed", "stale-plan"))
         self.assertEqual(self.run_ok(["git", "branch", "--list", "devlyn/cleanup-*"], cwd=repo).stdout.strip(), "")
         self.assertFalse(list((self.root / "unpushed.devlyn.noindex").glob("devlyn-cleanup-*")))
+
+    def test_edited_install_marker_is_kept(self):
+        # Prediction: the marker is also a removal category; owner-added fields are not installer bytes.
+        self.install(self.root, "--global")
+        marker = self.home / ".agents/skills/.devlyn-install.json"
+        data = json.loads(marker.read_bytes())
+        data["owner-note"] = "keep this"
+        data["skills"]["constructor"] = "owner fingerprint"
+        marker.write_text(json.dumps(data, indent=2) + "\n")
+        plan, path = self.plan("--machine")
+        item = next(i for i in plan["scopes"][0]["items"] if i["path"] == str(marker))
+        self.assertEqual(item["action"], "skip")
+        self.assertEqual(item["reasons"][0]["code"], "modified-copy")
+        self.apply(plan, path)
+        self.assertEqual(json.loads(marker.read_bytes()), data)
+
+    def test_legacy_names_require_shipped_content(self):
+        # Prediction: edits/additions under renamed or retired names and edited commands are skipped;
+        # tagged originals (including npm's colon alias, CRLF and install stamps) are removable.
+        root = self.home / ".agents/skills"
+        for name, source in [("devlyn:ideate", "devlyn:ideate"), ("devlyn:queue", "devlyn:queue")]:
+            with self.subTest(name=name):
+                dest = root / name
+                self.historical_skill(dest, name=source)
+                plan, _ = self.plan("--machine")
+                self.assertEqual(next(i for i in plan["scopes"][0]["items"] if i["path"] == str(dest))["action"], "remove")
+                (dest / "owner.txt").write_text("mine")
+                plan, _ = self.plan("--machine")
+                item = next(i for i in plan["scopes"][0]["items"] if i["path"] == str(dest))
+                self.assertEqual(item["action"], "skip")
+                self.assertEqual(item["reasons"][0]["code"], "modified-copy")
+        alias = root / "DEVLYN\uf03aENGINES"
+        self.historical_skill(alias, name="devlyn:engines")
+        for file in alias.rglob("*"):
+            if file.is_file():
+                file.write_bytes(file.read_bytes().replace(b"${CLAUDE_SKILL_DIR:-__DEVLYN_SKILL_DIR__}", b"${CLAUDE_SKILL_DIR:-" + str(alias).encode() + b"}").replace(b"\n", b"\r\n"))
+        command = self.home / ".claude/commands/devlyn.review.md"
+        command.parent.mkdir(parents=True)
+        command.write_bytes(subprocess.check_output(["git", "show", "v0.5.0:config/commands/devlyn.review.md"], cwd=ROOT).replace(b"\n", b"\r\n"))
+        plan, _ = self.plan("--machine")
+        for target in [alias, command]:
+            self.assertEqual(next(i for i in plan["scopes"][0]["items"] if i["path"] == str(target))["action"], "remove")
+        command.write_bytes(command.read_bytes() + b"owner note\n")
+        plan, path = self.plan("--machine")
+        item = next(i for i in plan["scopes"][0]["items"] if i["path"] == str(command))
+        self.assertEqual(item["action"], "skip")
+        self.assertEqual(item["reasons"][0]["code"], "modified-copy")
+        self.apply(plan, path)
+        self.assertTrue(command.exists())
+        self.assertTrue((root / "devlyn:ideate/owner.txt").exists())
+
+    def test_old_writers_and_opted_in_addons_are_recognized(self):
+        # Prediction (review MEDIUM): a byte-exact 4.2.0 marker (no skills field), and a command shipped from
+        # .claude/commands before config/ existed, are proven copies; an opted-in current optional add-on under a
+        # retired standard's name is not listed, so it does not hold _shared and the marker back.
+        self.install(self.root, "--global")
+        root = self.home / ".agents/skills"
+        addon = root / "code-health-standards"
+        addon.mkdir()
+        (addon / "SKILL.md").write_bytes((ROOT / "optional-skills/code-health-standards/SKILL.md").read_bytes())
+        marker = root / ".devlyn-install.json"
+        marker.write_text(json.dumps({"schemaVersion": 1, "package": "devlyn-cli", "version": "4.2.0"}, indent=2) + "\n")
+        command = self.home / ".claude/commands/devlyn.handoff.md"
+        command.parent.mkdir(parents=True)
+        command.write_bytes(subprocess.check_output(["git", "show", "7a90bdb4:.claude/commands/devlyn.handoff.md"], cwd=ROOT))
+        plan, path = self.plan("--machine")
+        listed = {Path(item["path"]): item["action"] for item in plan["scopes"][0]["items"]}
+        self.assertNotIn(addon, listed)
+        self.assertEqual((listed[root / "_shared"], listed[marker], listed[command]), ("remove", "remove", "remove"))
+        self.apply(plan, path)
+        self.assertEqual(sorted(entry.name for entry in root.iterdir()), ["code-health-standards"])
+        self.assertFalse(command.exists())
+
+    def test_unreadable_index_never_authorizes_local_cleanup(self):
+        # Prediction: a corrupt index makes ownership unknown, including files not otherwise tracked.
+        repo = self.repo("corrupt")
+        self.install(repo)
+        self.run_ok(["git", "add", "-A"], cwd=repo)
+        (repo / ".git/index").write_bytes(b"corrupt index")
+        plan, path = self.plan("--project", repo)
+        self.assertTrue(plan["scopes"][0]["items"])
+        self.assertTrue(all(i["action"] == "skip" and i["reasons"][0]["code"] == "repository-unreadable"
+                            for i in plan["scopes"][0]["items"]))
+        self.apply(plan, path)
+        self.assertTrue((repo / ".agents/skills/devlyn-ideate/SKILL.md").exists())
+
+    def test_machine_git_ownership_preserves_tracked_copies_and_support(self):
+        # Prediction: home/dotfiles-tracked skills stay with untracked helpers; there is no PR route.
+        self.install(self.root, "--global")
+        self.run_ok(["git", "init", "-q"], cwd=self.home)
+        self.run_ok(["git", "add", ".agents/skills/devlyn-ideate"], cwd=self.home)
+        plan, path = self.plan("--machine")
+        item = next(i for i in plan["scopes"][0]["items"] if i["path"] == str(self.home / ".agents/skills/devlyn-ideate"))
+        self.assertEqual(item["action"], "skip")
+        self.assertEqual(item["reasons"][0]["code"], "tracked-copy")
+        self.apply(plan, path)
+        for name in ["devlyn-ideate", "_shared", ".devlyn-install.json"]:
+            self.assertTrue((self.home / ".agents/skills" / name).exists(), name)
+
+    @unittest.skipIf(os.name == "nt", "fake GitHub uses POSIX wrappers")
+    def test_delivery_identity_changes_refuse_before_allocation(self):
+        # Prediction: changing origin or its default base invalidates review before even local deletion.
+        repo = self.repo("identity")
+        self.install(repo)
+        self.run_ok(["git", "add", "-A"], cwd=repo)
+        self.run_ok(["git", "commit", "-qm", "install"], cwd=repo)
+        self.fake_github(repo)
+        self.run_ok(["git", "symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/main"], cwd=repo)
+        plan, path = self.plan("--project", repo)
+        for change, restore in [
+            (["remote", "set-url", "origin", "https://github.com/other/project.git"], ["remote", "set-url", "origin", "https://github.com/test/project.git"]),
+            (["symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/other"], ["symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/main"]),
+        ]:
+            with self.subTest(change=change):
+                self.run_ok(["git", *change], cwd=repo)
+                result = self.apply(plan, path)
+                self.assertEqual(result["scopes"][0]["error"]["code"], "stale-plan")
+                self.assertFalse((repo / ".git/devlyn-completion").exists())
+                self.run_ok(["git", *restore], cwd=repo)
+
+    @unittest.skipIf(os.name == "nt", "fake GitHub uses POSIX wrappers")
+    def test_delivery_rejects_different_shipped_preimage(self):
+        # Prediction: two proven shipped versions still differ in reviewed bytes; no PR is authorized.
+        repo = self.repo("different")
+        self.install(repo)
+        self.run_ok(["git", "add", "-A"], cwd=repo)
+        self.run_ok(["git", "commit", "-qm", "install"], cwd=repo)
+        bare = self.fake_github(repo)
+        skill = repo / ".agents/skills/devlyn-ideate"
+        shutil.rmtree(skill)
+        self.historical_skill(skill)
+        self.run_ok(["git", "add", "-A"], cwd=repo)
+        self.run_ok(["git", "commit", "-qm", "another shipped copy, not pushed"], cwd=repo)
+        before = self.run_ok(["git", "--git-dir", bare, "rev-parse", "main"]).stdout
+        plan, path = self.plan("--project", repo)
+        result = self.apply(plan, path)["scopes"][0]
+        self.assertEqual(result["state"], "failed")
+        self.assertEqual(result["error"]["code"], "stale-plan")
+        self.assertIn(".agents/skills/devlyn-ideate", result["error"]["params"]["detail"])
+        self.assertEqual(self.run_ok(["git", "--git-dir", bare, "rev-parse", "main"]).stdout, before)
+        self.assertEqual(self.run_ok(["git", "branch", "--list", "devlyn/cleanup-*"], cwd=repo).stdout.strip(), "")
+        self.assertFalse(list((self.root / "different.devlyn.noindex").glob("devlyn-cleanup-*")))
+
+    @unittest.skipIf(os.name == "nt", "fake GitHub uses POSIX wrappers")
+    def test_local_support_stays_when_delivery_fails(self):
+        # Prediction: an unpushed tracked copy fails delivery, but still needs local helpers afterward.
+        repo = self.repo("failed-mixed")
+        self.fake_github(repo)
+        self.install(repo)
+        self.run_ok(["git", "add", ".agents/skills/devlyn-ideate", ".agents/skills/devlyn-engines"], cwd=repo)
+        self.run_ok(["git", "commit", "-qm", "skills not pushed"], cwd=repo)
+        plan, path = self.plan("--project", repo)
+        result = self.apply(plan, path)
+        self.assertEqual(result["scopes"][0]["error"]["code"], "stale-plan")
+        for name in ["devlyn-ideate", "_shared", ".devlyn-install.json"]:
+            self.assertTrue((repo / ".agents/skills" / name).exists(), name)
+
+    @unittest.skipIf(os.name == "nt", "fake GitHub uses POSIX wrappers")
+    def test_local_support_stays_while_tracked_copies_await_delivery(self):
+        # Prediction: PR mode leaves tracked copies on disk; untracked support must survive this apply.
+        repo = self.repo("mixed")
+        self.install(repo)
+        self.run_ok(["git", "add", ".agents/skills/devlyn-ideate", ".agents/skills/devlyn-engines"], cwd=repo)
+        self.run_ok(["git", "commit", "-qm", "skills only"], cwd=repo)
+        self.fake_github(repo)
+        self.run_ok(["git", "config", "devlyn.completionMode", "pr"], cwd=repo)
+        plan, path = self.plan("--project", repo)
+        result = self.apply(plan, path)
+        self.assertEqual(result["scopes"][0]["delivery"]["state"], "pr-open")
+        for name in ["devlyn-ideate", "_shared", ".devlyn-install.json"]:
+            self.assertTrue((repo / ".agents/skills" / name).exists(), name)
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
