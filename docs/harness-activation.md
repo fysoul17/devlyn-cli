@@ -174,3 +174,10 @@ and tests the actual release. Set `TMPDIR` to the supplied scratch directory.
 The optional native probe uses only `codex debug prompt-input` under isolated
 HOME/CODEX_HOME. Windows path/TOML/argv fixtures also run on macOS; those results
 do not establish native Windows runtime qualification.
+
+The app sets `DEVLYN_NODE` to the absolute executable path of the Node runtime it
+selected, both for CLI calls and in every harness session's environment. Python
+release verification runs devlyn-cli on that runtime; project and engine commands
+keep the session's own Node lookup. An unset variable uses the normal Node lookup;
+an empty, relative, missing, non-file or non-executable override fails explicitly
+instead of falling back to PATH.

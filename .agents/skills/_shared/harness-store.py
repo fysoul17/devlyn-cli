@@ -12,6 +12,7 @@ import json
 import os
 from pathlib import Path
 import re
+import runpy
 import subprocess
 import sys
 
@@ -54,7 +55,11 @@ def verify_release(root):
     root = Path(root)
     # As harness-status verifies it: an npm-installed package keeps npm's own .bin shims, which are checked.
     script = "const r=require(process.argv[1]);r.runJson(()=>r.verifyRelease(process.argv[2],{npmInstall:true}));"
-    result = subprocess.run(["node", "-e", script, str(root / "bin/release.js"), str(root)], capture_output=True, text=True, encoding="utf-8")
+    try:
+        node = runpy.run_path(str(Path(__file__).with_name("platform-support.py")))["managed_node"]() or "node"
+        result = subprocess.run([node, "-e", script, str(root / "bin/release.js"), str(root)], capture_output=True, text=True, encoding="utf-8")
+    except (OSError, ValueError) as exc:
+        raise HarnessError(f"release verifier could not start: {exc}") from exc
     require(result.returncode == 0, f"release verification failed: {root}: {result.stderr.strip()}")
     try:
         release = release_ref(json.loads(result.stdout)["data"]["release"])

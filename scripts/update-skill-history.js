@@ -16,8 +16,10 @@ if (git('rev-parse', '--is-shallow-repository').toString().trim() !== 'false') {
 const commits = new Set([
   ...git('log', '--first-parent', '--full-history', '--format=%H', 'HEAD', '--',
     'config/skills', 'optional-skills').toString().trim().split('\n'),
-  ...git('log', '--no-walk', '--tags', '--format=%H').toString().trim().split('\n'),
+  ...git('log', '--no-walk', '--tags=v[0-9]*', '--format=%H').toString().trim().split('\n'),
 ].filter(Boolean));
+const versions = new Set(git('tag', '--list', 'v[0-9]*').toString().trim().split('\n').filter(Boolean)
+  .map((tag) => JSON.parse(git('show', `${tag}:package.json`).toString()).version));
 const skills = new Map();
 const fingerprints = new Map();
 const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'devlyn-skill-history-'));
@@ -47,9 +49,13 @@ try {
   fs.rmSync(scratch, { recursive: true, force: true });
 }
 history.source = 'skills: config/skills/* and optional-skills/* trees from every first-parent HEAD commit '
-  + 'touching those paths and every local tag, derived by scripts/update-skill-history.js using '
+  + 'touching those paths and every release tag, derived by scripts/update-skill-history.js using '
   + 'bin/skill-ownership.js normalization (LF, install-path stamps, OS metadata and Python bytecode)';
+history.versions = [...versions].sort();
 history.skills = Object.fromEntries([...skills.keys()].sort()
   .map((name) => [name, [...skills.get(name)].sort()]));
-fs.writeFileSync(historyPath, JSON.stringify(history, null, 2) + '\n');
+const output = JSON.stringify(history, null, 2) + '\n';
+if (process.argv.includes('--check')) {
+  if (fs.readFileSync(historyPath, 'utf8') !== output) throw new Error('Skill history drift; run node scripts/update-skill-history.js');
+} else fs.writeFileSync(historyPath, output);
 console.log(`Skill history: ${skills.size} names, ${fingerprints.size} distinct Git trees.`);
