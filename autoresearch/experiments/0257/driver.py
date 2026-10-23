@@ -58,6 +58,12 @@ def fits(windows, caps):
     return all(windows[window]['used'] < caps[window] for window in WINDOWS)
 
 
+def docker_fault(verdict):
+    return (bool(verdict) and verdict.get('status') == 'STOP' and verdict.get('teardown') == 'FAILED'
+            and 'Cannot connect to the Docker daemon' in
+            str(verdict.get('teardown_error', '')) + str(verdict.get('reason', '')))
+
+
 def credential(runtime):
     raw = subprocess.run(['security', 'find-generic-password', '-s', 'Claude Code-credentials', '-w'],
                          check=True, capture_output=True, text=True).stdout
@@ -295,6 +301,47 @@ class Driver:
         path = self.output / f'verdict-{name}.json'
         return json.loads(path.read_text()) if path.is_file() else None
 
+    def prove_docker_teardown(self, name):
+        """Remove the stopped containers and /tmp volume recorded for this attempt."""
+        try:
+            started = json.loads((self.output / name / 'run/started.json').read_text())
+            argv = started['create_argv']
+            volume = started['tmp_volume']
+            if (argv[0] != 'create' or argv.count('--name') != 1
+                    or f'type=volume,src={volume},dst=/tmp' not in argv):
+                raise ValueError('owner container identity is missing from started.json')
+            owner_name = argv[argv.index('--name') + 1]
+
+            def docker(*args):
+                return subprocess.run(['docker', *args], check=True, capture_output=True, text=True).stdout.strip()
+
+            ids = docker('ps', '-aq', '--no-trunc', '--filter', f'volume={volume}').splitlines()
+            owner = json.loads(docker('inspect', owner_name))[0]
+            if owner['Id'] not in ids or owner['Name'] != '/' + owner_name:
+                raise ValueError('recorded owner container was not found on its volume')
+            found = []
+            for cid in ids:
+                item = json.loads(docker('inspect', cid))[0]
+                if (item['Id'] != cid or item['Config']['Labels'].get('devlyn.task') != '0233'
+                        or not any(mount['Name'] == volume for mount in item['Mounts'] if mount['Type'] == 'volume')):
+                    raise ValueError(f'container {cid} does not match the attempt volume and label')
+                if item['State']['Running'] or item['State']['Pid'] != 0:
+                    raise ValueError(f'container {cid} is still running')
+                found.append(dict(id=cid, name=item['Name'], state=item['State']['Status']))
+            for item in found:
+                docker('rm', item['id'])
+            if (docker('ps', '-aq', '--no-trunc', '--filter', f'volume={volume}')
+                    or docker('ps', '-aq', '--no-trunc', '--filter', f'name=^/{owner_name}$')):
+                raise ValueError('container removal could not be verified')
+            docker('volume', 'rm', volume)
+            if docker('volume', 'ls', '-q', '--filter', f'name=^{volume}$'):
+                raise ValueError('volume removal could not be verified')
+        except (OSError, ValueError, KeyError, IndexError, TypeError, AttributeError,
+                subprocess.SubprocessError) as exc:
+            self.stop(f'{name}: Docker teardown proof failed: {exc}')
+        self.event('docker_teardown_proven', cell=name, source='run/started.json create_argv and tmp_volume',
+                   found=found, removed=[item['id'] for item in found], removed_volume=volume)
+
     def dispatch(self, row):
         name, task, arm, config = row[:4]
         self.assert_active()
@@ -320,7 +367,10 @@ class Driver:
                 self.latch_for(name, self.verdict(name))
                 self.assert_active()
                 return rc == 0
-            if reason.startswith('shared account fault during execution:'):
+            infrastructure_fault = docker_fault(verdict)
+            if reason.startswith('shared account fault during execution:') or infrastructure_fault:
+                if infrastructure_fault:
+                    self.prove_docker_teardown(name)
                 number = 1
                 while (self.output / f'verdict-{name}.stop-{number}.json').exists():
                     number += 1
@@ -347,8 +397,8 @@ class Driver:
         if rc == 2:
             verdict = self.verdict(name)
             reason = verdict.get('reason', '') if verdict else 'no verdict'
-            if not reason.startswith(('assessment failed', 'assessor produced', 'assessment held:',
-                                      'shared account fault during execution:')):
+            if not (reason.startswith(('assessment failed', 'assessor produced', 'assessment held:',
+                                       'shared account fault during execution:')) or docker_fault(verdict)):
                 raise RuntimeError(f'{name}: STOP {reason}')
         return rc == 0
 

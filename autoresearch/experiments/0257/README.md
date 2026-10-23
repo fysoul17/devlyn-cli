@@ -1,13 +1,13 @@
 # 0257 apparatus
 
-`DESIGN.md` is frozen; [`amendment-1.md`](amendment-1.md) (2026-10-22) replaces its account rule, and [`amendment-2.md`](amendment-2.md) (2026-10-22) replaces its window reserve with a 95% exhaustion guard. All measured cells are fresh; 0256 data only qualifies the apparatus.
+`DESIGN.md` is frozen; [`amendment-1.md`](amendment-1.md) (2026-10-22) replaces its account rule, [`amendment-2.md`](amendment-2.md) (2026-10-22) replaces its window reserve with a 95% exhaustion guard, and [`amendment-3.md`](amendment-3.md) (2026-10-23) handles proven Docker daemon loss as an archived infrastructure fault. All measured cells are fresh; 0256 data only qualifies the apparatus.
 
 | File | Origin and delta |
 |---|---|
 | `generate_cells.py`, `cells.tsv`, `smoke.tsv` | 0256 generator; 328-cell interleaved schedule, four SMOKE cells. |
 | `endpoints.json` | New frozen 43-test development and 11-test confirmation families per engine. |
 | `decide.py` | 0256 decision; pooled counts and witnesses, safety for both arms, exact Fisher/Holm, Wilson-MOVER, attempts, predictions and unscored probes. |
-| `driver.py` | 0256 dispatcher; any host account; 95% Claude window guard, per-cell account fingerprints, restart-safe 21-day deadline, amendment-bound harm latch, SMOKE qualification gate. |
+| `driver.py` | 0256 dispatcher; any host account; 95% Claude window guard, per-cell account fingerprints, restart-safe 21-day deadline, amendment-bound harm latch, SMOKE qualification gate, and Docker teardown proof before fault archive. |
 | `prepare.py` | 0256 preparation; records pre/post instruction hashes, both installed skills and installer output. Uses 0256's task override. |
 | `run_cell.py` | 0256 runner; instruction assertion before grading and two added seal digests. |
 | `instructions.py` | New offline installer and owner-form seals; checks all four SMOKE cells after sealing, then per-cell instructions. |
