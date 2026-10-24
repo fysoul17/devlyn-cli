@@ -1,0 +1,480 @@
+{
+  "severe": {
+    "d009-I0185-claude-A-r1": {
+      "claude:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-mkdir-before-lock"
+      },
+      "claude:1": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-release-stuck"
+      },
+      "codex:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-release-stuck"
+      },
+      "codex:1": {
+        "disposition": "reproduced",
+        "witness": "i0185-mkdir-before-lock"
+      }
+    },
+    "d010-I0185-claude-B-r1": {
+      "claude:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-release-stuck"
+      },
+      "codex:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-release-stuck"
+      },
+      "codex:1": {
+        "disposition": "reproduced",
+        "witness": "i0185-marker-cleanup-restore"
+      }
+    },
+    "d022-D4-claude-A-r2": {
+      "codex:0": {
+        "disposition": "reproduced",
+        "witness": "d4-writer-startup"
+      }
+    },
+    "d025-I0185-claude-B-r2": {
+      "claude:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-close-absence"
+      },
+      "codex:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-release-stuck"
+      },
+      "codex:1": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-close-absence"
+      }
+    },
+    "d026-I0185-claude-A-r2": {
+      "claude:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-release-stuck"
+      },
+      "codex:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-release-stuck"
+      },
+      "codex:1": {
+        "disposition": "reproduced",
+        "witness": "i0185-temp-marker-preserve"
+      }
+    },
+    "d037-D4-claude-A-r3": {
+      "codex:0": {
+        "disposition": "reproduced",
+        "witness": "d4-writer-death"
+      }
+    },
+    "d041-I0185-claude-A-r3": {
+      "claude:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-release-stuck"
+      },
+      "codex:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-release-stuck"
+      },
+      "codex:1": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-close-absence"
+      },
+      "codex:2": {
+        "disposition": "reproduced",
+        "witness": "i0185-temp-marker-preserve"
+      }
+    },
+    "d042-I0185-claude-B-r3": {
+      "claude:0": {
+        "disposition": "not_reproduced",
+        "witness": "i0185-replaced-lock-owner"
+      },
+      "codex:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-release-stuck"
+      }
+    },
+    "d057-I0185-claude-B-r4": {
+      "claude:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-release-restore"
+      },
+      "codex:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-realpath-fault-alias"
+      }
+    },
+    "d058-I0185-claude-A-r4": {
+      "claude:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-mkdir-before-lock"
+      },
+      "codex:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-release-stuck"
+      },
+      "codex:1": {
+        "disposition": "reproduced",
+        "witness": "i0185-temp-marker-preserve"
+      }
+    },
+    "d073-I0185-claude-A-r5": {
+      "claude:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-release-stuck"
+      },
+      "codex:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-release-stuck"
+      }
+    },
+    "d074-I0185-claude-B-r5": {
+      "claude:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-release-stuck"
+      },
+      "codex:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-release-stuck"
+      }
+    },
+    "d089-I0185-claude-B-r6": {
+      "claude:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-alias"
+      },
+      "codex:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-release-stuck"
+      },
+      "codex:1": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-alias"
+      },
+      "codex:2": {
+        "disposition": "reproduced",
+        "witness": "i0185-temp-marker-preserve"
+      }
+    },
+    "d090-I0185-claude-A-r6": {
+      "claude:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-alias"
+      },
+      "codex:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-release-stuck"
+      },
+      "codex:1": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-alias"
+      }
+    },
+    "d105-I0185-claude-A-r7": {
+      "claude:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-mkdir-before-lock"
+      },
+      "codex:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-release-stuck"
+      },
+      "codex:1": {
+        "disposition": "reproduced",
+        "witness": "i0185-mkdir-before-lock"
+      }
+    },
+    "d106-I0185-claude-B-r7": {
+      "claude:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-mkdir-before-lock"
+      },
+      "codex:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-release-stuck"
+      },
+      "codex:1": {
+        "disposition": "reproduced",
+        "witness": "i0185-mkdir-before-lock"
+      }
+    },
+    "d121-I0185-claude-B-r8": {
+      "claude:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-release-stuck"
+      },
+      "codex:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-release-stuck"
+      }
+    },
+    "d122-I0185-claude-A-r8": {
+      "claude:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-release-stuck"
+      },
+      "claude:1": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-close-absence"
+      },
+      "codex:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-release-stuck"
+      },
+      "codex:1": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-close-absence"
+      }
+    },
+    "d137-I0185-claude-A-r9": {
+      "claude:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-release-stuck"
+      },
+      "claude:1": {
+        "disposition": "reproduced",
+        "witness": "i0185-mkdir-before-lock"
+      },
+      "codex:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-release-stuck"
+      },
+      "codex:1": {
+        "disposition": "reproduced",
+        "witness": "i0185-mkdir-before-lock"
+      }
+    },
+    "d138-I0185-claude-B-r9": {
+      "claude:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-release-stuck"
+      },
+      "codex:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-marker-cleanup-restore"
+      },
+      "codex:1": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-release-stuck"
+      },
+      "codex:2": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-alias"
+      }
+    },
+    "d153-I0185-claude-B-r10": {
+      "claude:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-alias"
+      },
+      "codex:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-release-stuck"
+      },
+      "codex:1": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-alias"
+      }
+    },
+    "d154-I0185-claude-A-r10": {
+      "claude:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-release-stuck"
+      },
+      "codex:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-release-stuck"
+      },
+      "codex:1": {
+        "disposition": "reproduced",
+        "witness": "i0185-mkdir-before-lock"
+      }
+    },
+    "d169-I0185-claude-A-r11": {
+      "claude:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-release-stuck"
+      },
+      "codex:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-release-stuck"
+      },
+      "codex:1": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-alias"
+      },
+      "codex:2": {
+        "disposition": "reproduced",
+        "witness": "i0185-temp-marker-preserve"
+      }
+    },
+    "d170-I0185-claude-B-r11": {
+      "claude:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-release-stuck"
+      },
+      "claude:1": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-alias"
+      },
+      "codex:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-release-stuck"
+      },
+      "codex:1": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-alias"
+      }
+    },
+    "d185-I0185-claude-B-r12": {
+      "claude:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-release-stuck"
+      },
+      "codex:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-release-stuck"
+      }
+    },
+    "d186-I0185-claude-A-r12": {
+      "claude:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-release-restore"
+      },
+      "codex:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-release-stuck"
+      }
+    },
+    "d201-I0185-claude-A-r13": {
+      "claude:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-prelock-reentry"
+      },
+      "codex:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-release-stuck"
+      },
+      "codex:1": {
+        "disposition": "reproduced",
+        "witness": "i0185-prelock-reentry"
+      }
+    },
+    "d202-I0185-claude-B-r13": {
+      "claude:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-close-absence"
+      },
+      "codex:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-release-stuck"
+      },
+      "codex:1": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-alias"
+      }
+    },
+    "d217-I0185-claude-B-r14": {
+      "claude:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-alias"
+      },
+      "codex:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-release-stuck"
+      },
+      "codex:1": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-close-absence"
+      },
+      "codex:2": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-alias"
+      }
+    },
+    "d218-I0185-claude-A-r14": {
+      "claude:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-close-absence"
+      },
+      "claude:1": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-release-stuck"
+      },
+      "codex:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-release-stuck"
+      }
+    },
+    "d233-I0185-claude-A-r15": {
+      "claude:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-release-stuck"
+      },
+      "codex:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-release-stuck"
+      }
+    },
+    "d234-I0185-claude-B-r15": {
+      "claude:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-alias"
+      },
+      "claude:1": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-close-absence"
+      },
+      "codex:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-release-stuck"
+      },
+      "codex:1": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-alias"
+      }
+    },
+    "d249-I0185-claude-B-r16": {
+      "claude:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-alias"
+      },
+      "codex:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-release-stuck"
+      },
+      "codex:1": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-alias"
+      }
+    },
+    "d250-I0185-claude-A-r16": {
+      "claude:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-lock-release-restore"
+      },
+      "claude:1": {
+        "disposition": "not_reproduced",
+        "witness": "i0185-replaced-lock-owner"
+      },
+      "codex:0": {
+        "disposition": "reproduced",
+        "witness": "i0185-temp-marker-preserve"
+      }
+    }
+  },
+  "adjudicated": {},
+  "new_witnesses": [
+    "d4-writer-startup",
+    "i0185-marker-cleanup-restore",
+    "i0185-prelock-reentry",
+    "i0185-realpath-fault-alias"
+  ],
+  "root_to_run": []
+}

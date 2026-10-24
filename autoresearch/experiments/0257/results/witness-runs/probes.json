@@ -1,0 +1,162 @@
+{
+  "c001-F10-claude-A-r1": {
+    "class": "json_error_400",
+    "store_preserved": true,
+    "status": 400
+  },
+  "c002-F10-claude-B-r1": {
+    "class": "html_400",
+    "store_preserved": true,
+    "status": 400
+  },
+  "c005-F11-claude-A-r1": {
+    "class": "json_error_400",
+    "store_preserved": true,
+    "status": 400
+  },
+  "c006-F11-claude-B-r1": {
+    "class": "html_400",
+    "store_preserved": true,
+    "status": 400
+  },
+  "c009-F10-claude-B-r2": {
+    "class": "html_400",
+    "store_preserved": true,
+    "status": 400
+  },
+  "c010-F10-claude-A-r2": {
+    "class": "json_error_400",
+    "store_preserved": true,
+    "status": 400
+  },
+  "c013-F11-claude-B-r2": {
+    "class": "json_error_400",
+    "store_preserved": true,
+    "status": 400
+  },
+  "c014-F11-claude-A-r2": {
+    "class": "json_error_400",
+    "store_preserved": true,
+    "status": 400
+  },
+  "c017-F10-claude-A-r3": {
+    "class": "json_error_400",
+    "store_preserved": true,
+    "status": 400
+  },
+  "c018-F10-claude-B-r3": {
+    "class": "html_400",
+    "store_preserved": true,
+    "status": 400
+  },
+  "c021-F11-claude-A-r3": {
+    "class": "json_error_400",
+    "store_preserved": true,
+    "status": 400
+  },
+  "c022-F11-claude-B-r3": {
+    "class": "html_400",
+    "store_preserved": true,
+    "status": 400
+  },
+  "c025-F10-claude-B-r4": {
+    "class": "html_400",
+    "store_preserved": true,
+    "status": 400
+  },
+  "c026-F10-claude-A-r4": {
+    "class": "json_error_400",
+    "store_preserved": true,
+    "status": 400
+  },
+  "c029-F11-claude-B-r4": {
+    "class": "json_error_400",
+    "store_preserved": true,
+    "status": 400
+  },
+  "c030-F11-claude-A-r4": {
+    "class": "json_error_400",
+    "store_preserved": true,
+    "status": 400
+  },
+  "c033-F10-claude-A-r5": {
+    "class": "json_error_400",
+    "store_preserved": true,
+    "status": 400
+  },
+  "c034-F10-claude-B-r5": {
+    "class": "html_400",
+    "store_preserved": true,
+    "status": 400
+  },
+  "c037-F11-claude-A-r5": {
+    "class": "json_error_400",
+    "store_preserved": true,
+    "status": 400
+  },
+  "c038-F11-claude-B-r5": {
+    "class": "json_error_400",
+    "store_preserved": true,
+    "status": 400
+  },
+  "c041-F10-claude-B-r6": {
+    "class": "html_400",
+    "store_preserved": true,
+    "status": 400
+  },
+  "c042-F10-claude-A-r6": {
+    "class": "json_error_400",
+    "store_preserved": true,
+    "status": 400
+  },
+  "c045-F11-claude-B-r6": {
+    "class": "json_error_400",
+    "store_preserved": true,
+    "status": 400
+  },
+  "c046-F11-claude-A-r6": {
+    "class": "json_error_400",
+    "store_preserved": true,
+    "status": 400
+  },
+  "c049-F10-claude-A-r7": {
+    "class": "json_error_400",
+    "store_preserved": true,
+    "status": 400
+  },
+  "c050-F10-claude-B-r7": {
+    "class": "html_400",
+    "store_preserved": true,
+    "status": 400
+  },
+  "c053-F11-claude-A-r7": {
+    "class": "json_error_400",
+    "store_preserved": true,
+    "status": 400
+  },
+  "c054-F11-claude-B-r7": {
+    "class": "json_error_400",
+    "store_preserved": true,
+    "status": 400
+  },
+  "c057-F10-claude-B-r8": {
+    "class": "html_400",
+    "store_preserved": true,
+    "status": 400
+  },
+  "c058-F10-claude-A-r8": {
+    "class": "json_error_400",
+    "store_preserved": true,
+    "status": 400
+  },
+  "c061-F11-claude-B-r8": {
+    "class": "json_error_400",
+    "store_preserved": true,
+    "status": 400
+  },
+  "c062-F11-claude-A-r8": {
+    "class": "json_error_400",
+    "store_preserved": true,
+    "status": 400
+  }
+}
