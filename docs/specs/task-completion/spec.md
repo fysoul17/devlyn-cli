@@ -73,6 +73,10 @@ accuracy or token/speed improvement.
    a file manifest and byte verification before removal. Retain recovery commit
    reachability. Revalidate exact ownership, registration/Gitdir, branch/head,
    clean tracked/untracked contents, ignored-content custody and writer cessation.
+   Worktree/Gitdir and scratch/receipt-directory identity requires unchanged
+   inodes and each pair's same/different-filesystem relation, allowing device
+   renumbering across restarts without rewriting existing receipt identities.
+   During scratch cleanup, device numbers must stay exact and mounts are refused.
    Outer owner must wait its actual children and yield the tree; unknown foreign
    writers or caller cwd inside the target means retain with actionable guidance.
    A receipt/process scan is not a universal guarantee against future writers.

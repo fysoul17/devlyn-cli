@@ -462,7 +462,15 @@ def validate_pr(receipt, pr):
 
 
 def workspace_identity(work, gitdir):
-    return [[p.stat().st_dev, p.stat().st_ino] for p in (work, gitdir)]
+    return [[info.st_dev, info.st_ino] for info in (work.stat(), gitdir.stat())]
+
+
+def same_workspace_identity(current, recorded):
+    # Device numbers change across restarts: compare inodes and whether the pair shares a filesystem.
+    def shape(identity):
+        (first_dev, first_ino), (second_dev, second_ino) = identity
+        return first_ino, second_ino, first_dev == second_dev
+    return shape(current) == shape(recorded)
 
 
 def inspect_workspace(receipt):
@@ -472,7 +480,7 @@ def inspect_workspace(receipt):
     expected = "refs/heads/" + receipt["branch"]
     require(row.get("branch") == expected, "foreign worktree branch; retain workspace")
     require(git(work, "rev-parse", "--absolute-git-dir") == receipt["worktree_gitdir"] and str(Path(git(work, "rev-parse", "--path-format=absolute", "--git-common-dir")).resolve()) == receipt["common_gitdir"], "worktree Gitdir ownership changed")
-    require(workspace_identity(work, Path(receipt["worktree_gitdir"])) == receipt["worktree_identity"], "worktree/registration was replaced; receipt no longer owns it")
+    require(same_workspace_identity(workspace_identity(work, Path(receipt["worktree_gitdir"])), receipt["worktree_identity"]), "worktree/registration was replaced; receipt no longer owns it")
     require(git(work, "rev-parse", "HEAD") == receipt.get("publish_sha", receipt["baseline"]), "task HEAD changed")
     require(not git(work, "status", "--porcelain", "--untracked-files=all"), "dirty/untracked workspace; retain files and commit only accepted scope")
 
@@ -592,8 +600,8 @@ def clean_scratch(receipt, path, writers_stopped):
         return {"status": "NOT_OWNED"}
     require(writers_stopped, "stop/yield scratch writers, then use --writers-stopped")
     require(scratch == scratch.resolve() and scratch.is_dir(), "owned scratch missing or redirected; retain and inspect")
-    identity = receipt["scratch_identity"]
-    require(workspace_identity(scratch, path.parent) == identity, "scratch directory was replaced; retain")
+    identity = workspace_identity(scratch, path.parent)
+    require(same_workspace_identity(identity, receipt["scratch_identity"]), "scratch directory was replaced; retain")
     require(shutil.rmtree.avoids_symlink_attacks, "safe scratch removal unsupported on this platform; retain")
     require(not any(mount.is_relative_to(scratch) for mount in scratch_mounts()), "scratch contains a mounted filesystem; retain")
     stopped_writers(scratch)
@@ -603,6 +611,7 @@ def clean_scratch(receipt, path, writers_stopped):
         for name in dirs + files:
             item = Path(directory) / name
             info = item.lstat()
+            # During this cleanup, device numbers must stay exact, including every child's device.
             require(info.st_dev == identity[0][0], "scratch contains a mounted filesystem; retain")
             size += info.st_size if stat.S_ISREG(info.st_mode) else 0
     stopped_writers(scratch)
@@ -2719,6 +2728,118 @@ ctypes.CDLL(None).pthread_exit(None)
         self.assertEqual(user_file.read_text(encoding="utf-8"), "retained user data")
         self.assertEqual(self.g("branch", "--list", "task/fixture"), "")
         self.assertEqual(self.g("ls-remote", "origin", "refs/heads/task/fixture"), "")
+
+    def renumber_receipt_devices(self):
+        receipt = read_json(self.receipt)
+        for key in ("worktree_identity", "scratch_identity"):
+            for entry in receipt[key]:
+                entry[0] += 10000
+        atomic_json(self.receipt, receipt)
+        return receipt
+
+    def test_device_renumbering_allows_completion(self):
+        # Prediction: old device numbers do not invalidate unchanged inodes or require receipt migration.
+        scratch = Path(self.allocate()["scratch"])
+        self.accept()
+        receipt = self.renumber_receipt_devices()
+        (scratch / "target").mkdir()
+        (scratch / "target/object").write_bytes(b"rebuildable")
+        result, _ = self.complete("--mode", "auto", "--writers-stopped")
+        self.assertEqual(result["status"], "COMPLETE")
+        self.assertEqual(result["scratch_cleanup"], {"status": "CLEAN", "logical_bytes_removed": 11})
+        self.assertFalse(self.task.exists())
+        self.assertFalse(any(scratch.iterdir()))
+        saved = read_json(self.receipt)
+        for key in ("worktree_identity", "scratch_identity"):
+            self.assertEqual(saved[key], receipt[key])
+
+    def test_device_renumbering_allows_reconcile(self):
+        # Prediction: allocation reconciles an earlier merged receipt after the same renumbering.
+        scratch = Path(self.allocate()["scratch"])
+        self.accept()
+        self.complete("--mode", "pr", "--writers-stopped")
+        self.merge_pr()
+        self.renumber_receipt_devices()
+        (scratch / "object").write_bytes(b"rebuildable")
+        receipt, task = self.receipt, self.task
+        result = self.allocate("next")
+        self.assertEqual([(row["receipt"], row["status"]) for row in result["reconciled"]], [(str(receipt), "COMPLETE")])
+        self.assertFalse(task.exists())
+        self.assertFalse(any(scratch.iterdir()))
+
+    def test_device_renumbering_rejects_replaced_directories(self):
+        # Keep each original alive so the replacement cannot accidentally reuse its inode.
+        from unittest.mock import patch
+        scratch = Path(self.allocate()["scratch"])
+        receipt = self.renumber_receipt_devices()
+        for directory in (self.task, Path(receipt["worktree_gitdir"]), scratch, self.receipt.parent):
+            with self.subTest(directory=directory):
+                original = self.root / "original"
+                directory.rename(original)
+                if directory == self.receipt.parent:
+                    directory.mkdir()
+                    (original / "scratch").rename(scratch)
+                else:
+                    shutil.copytree(original, directory)
+                try:
+                    self.assertNotEqual(directory.stat().st_ino, original.stat().st_ino)
+                    if directory == self.receipt.parent:
+                        self.assertEqual(scratch.stat().st_ino, receipt["scratch_identity"][0][1])
+                    with patch.dict(os.environ, self.env), self.assertRaisesRegex(CompletionError, "replaced"):
+                        if directory in (scratch, self.receipt.parent):
+                            clean_scratch(receipt, self.receipt, True)
+                        else:
+                            inspect_workspace(receipt)
+                    self.assertTrue(directory.is_dir())
+                finally:
+                    if directory == self.receipt.parent:
+                        scratch.rename(original / "scratch")
+                    shutil.rmtree(directory)
+                    original.rename(directory)
+
+    def test_device_renumbering_rejects_changed_filesystem_relation(self):
+        # Matching inodes alone must not accept a peer that moved to another filesystem.
+        from unittest.mock import patch
+        scratch = Path(self.allocate()["scratch"])
+        receipt = self.renumber_receipt_devices()
+        original_stat = Path.stat
+        for directory in (self.task, Path(receipt["worktree_gitdir"]), scratch, self.receipt.parent):
+            def moved_stat(path, *args, **kwargs):
+                info = original_stat(path, *args, **kwargs)
+                if path == directory:
+                    fields = list(info)
+                    fields[2] += 1
+                    return os.stat_result(fields)
+                return info
+            with self.subTest(directory=directory), patch.dict(os.environ, self.env), patch.object(Path, "stat", moved_stat):
+                with self.assertRaisesRegex(CompletionError, "replaced"):
+                    if directory in (scratch, self.receipt.parent):
+                        clean_scratch(receipt, self.receipt, True)
+                    else:
+                        inspect_workspace(receipt)
+        # Preserve distinct-device relationships too: they must not collapse into one device.
+        for key in ("worktree_identity", "scratch_identity"):
+            receipt[key][0][0] += 1
+            with self.subTest(identity=key), patch.dict(os.environ, self.env), self.assertRaisesRegex(CompletionError, "replaced"):
+                if key == "scratch_identity":
+                    clean_scratch(receipt, self.receipt, True)
+                else:
+                    inspect_workspace(receipt)
+            receipt[key][0][0] -= 1
+
+    def test_device_renumbering_preserves_different_filesystems(self):
+        self.assertTrue(same_workspace_identity([[10, 101], [20, 202]], [[-1, 101], [-2, 202]]))
+
+    def test_device_renumbering_during_scratch_cleanup_is_refused(self):
+        # Reboot tolerance is only for persisted receipts, never a change during this operation.
+        from unittest.mock import Mock, patch
+        scratch = Path(self.allocate()["scratch"])
+        receipt = self.renumber_receipt_devices()
+        identity = workspace_identity(scratch, self.receipt.parent)
+        changed = [[dev + 1, ino] for dev, ino in identity]
+        with patch.dict(clean_scratch.__globals__, {"workspace_identity": Mock(side_effect=[identity, changed])}):
+            with self.assertRaisesRegex(CompletionError, "changed before removal"):
+                clean_scratch(receipt, self.receipt, True)
 
     def test_replaced_tree_and_unsafe_custody(self):
         self.allocate(); self.accept()
