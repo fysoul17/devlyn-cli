@@ -274,7 +274,8 @@ class CleanupFixture(unittest.TestCase):
     @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
     def test_tracked_copies_are_delivered_by_the_project_policy(self):
         # Prediction: committed copies are removed on a fresh branch from the remote base, committed once and merged by
-        # the default auto policy; the remote main loses the copies and keeps AGENTS.md's block and owner text.
+        # the default auto policy; the remote main loses the copies and keeps AGENTS.md's block and owner text, and the
+        # checkout on main takes the merge, so its copies are gone too.
         repo = self.repo("delivered")
         (repo / "AGENTS.md").write_text("# Team rules\n", encoding="utf-8")
         self.install(repo)
@@ -290,6 +291,128 @@ class CleanupFixture(unittest.TestCase):
         listed = self.run_ok(["git", "--git-dir", bare, "ls-tree", "-r", "--name-only", "main"]).stdout.split()
         self.assertFalse([name for name in listed if name.startswith((".agents/", ".claude/skills/"))])
         self.assertEqual(self.run_ok(["git", "--git-dir", bare, "show", "main:AGENTS.md"]).stdout.encode(), agents)
+        self.assertEqual(self.run_ok(["git", "rev-parse", "HEAD"], cwd=repo).stdout,
+                         self.run_ok(["git", "--git-dir", bare, "rev-parse", "main"]).stdout)
+        self.assertFalse((repo / ".agents/skills/devlyn-ideate").exists())
+        self.assertEqual(self.run_ok(["git", "status", "--porcelain"], cwd=repo).stdout, "")
+
+    def removed_upstream(self, repo, bare, plan, also=None):
+        """What an earlier cleanup merged: the plan's tracked copies removed on the remote main only. `also`
+        changes the upstream clone further before that commit."""
+        upstream = self.root / f"{repo.name}-upstream"
+        self.run_ok(["git", "clone", "-q", bare, upstream])
+        relatives = [item["relative"] for item in plan["scopes"][0]["items"] if item["route"] == "delivery"]
+        self.assertTrue(relatives)
+        self.run_ok(["git", "rm", "-rq", "--", *relatives], cwd=upstream)
+        if also:
+            also(upstream)
+        self.run_ok(["git", "commit", "-qm", "remove legacy copies"], cwd=upstream)
+        self.run_ok(["git", "push", "-q", "origin", "main"], cwd=upstream)
+
+    def installed_and_pushed(self, name):
+        repo = self.repo(name)
+        self.install(repo)
+        self.run_ok(["git", "add", "-A"], cwd=repo)
+        self.run_ok(["git", "commit", "-qm", "install"], cwd=repo)
+        return repo, self.fake_github(repo)
+
+    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
+    def test_the_checkout_update_is_a_fast_forward_whatever_the_branch_merge_options(self):
+        # Prediction (review MEDIUM): a branch configured to squash or merge with `-s ours` still lands exactly on the
+        # base commit, with nothing left staged.
+        for number, options in enumerate(["--squash", "-s ours"]):
+            with self.subTest(options=options):
+                repo, bare = self.installed_and_pushed(f"options{number}")
+                self.run_ok(["git", "config", "branch.main.mergeOptions", options], cwd=repo)
+                plan, path = self.plan("--project", repo)
+                self.removed_upstream(repo, bare, plan)
+                [scope] = self.apply(plan, path)["scopes"]
+                self.assertEqual((scope["state"], scope["error"]), ("done", None), scope)
+                self.assertEqual(self.run_ok(["git", "rev-parse", "HEAD"], cwd=repo).stdout,
+                                 self.run_ok(["git", "--git-dir", bare, "rev-parse", "main"]).stdout)
+                self.assertEqual(self.run_ok(["git", "status", "--porcelain"], cwd=repo).stdout, "")
+
+    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
+    def test_the_checkout_update_never_overwrites_an_ignored_file(self):
+        # Prediction (review HIGH): when the base now tracks a path the checkout ignores, the fast-forward is refused
+        # and the local file keeps its bytes; the scope asks for the update instead of reporting done.
+        repo, bare = self.installed_and_pushed("ignored")
+        (repo / ".git/info/exclude").write_text("notes/\n", encoding="utf-8")
+        (repo / "notes").mkdir()
+        (repo / "notes/kept.txt").write_text("mine\n", encoding="utf-8")
+        plan, path = self.plan("--project", repo)
+
+        def track(upstream):
+            (upstream / "notes").mkdir()
+            (upstream / "notes/kept.txt").write_text("theirs\n", encoding="utf-8")
+            self.run_ok(["git", "add", "notes/kept.txt"], cwd=upstream)
+
+        self.removed_upstream(repo, bare, plan, also=track)
+        before = self.run_ok(["git", "rev-parse", "HEAD"], cwd=repo).stdout
+        [scope] = self.apply(plan, path)["scopes"]
+        self.assertEqual((scope["state"], scope["error"]["code"]), ("failed", "update-checkout"), scope)
+        self.assertEqual((repo / "notes/kept.txt").read_text(encoding="utf-8"), "mine\n")
+        self.assertEqual(self.run_ok(["git", "rev-parse", "HEAD"], cwd=repo).stdout, before)
+        self.assertEqual(self.run_ok(["git", "for-each-ref", "refs/devlyn/cleanup/"], cwd=repo).stdout, "")
+
+    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
+    def test_a_copy_the_base_kept_under_another_spelling_is_not_taken_as_removed(self):
+        # Prediction (review MEDIUM): a reviewed copy the base still holds, renamed only in case, is not one the base
+        # removed; the scope stays stale-plan and the checkout is not moved.
+        repo, bare = self.installed_and_pushed("spelling")
+        plan, path = self.plan("--project", repo)
+
+        def rename(upstream):
+            self.run_ok(["git", "checkout", "-q", "HEAD", "--", ".agents/skills/devlyn-ideate"], cwd=upstream)
+            self.run_ok(["git", "mv", ".agents/skills/devlyn-ideate", ".agents/skills/moved"], cwd=upstream)
+            self.run_ok(["git", "mv", ".agents/skills/moved", ".agents/skills/DEVLYN-IDEATE"], cwd=upstream)
+
+        self.removed_upstream(repo, bare, plan, also=rename)
+        before = self.run_ok(["git", "rev-parse", "HEAD"], cwd=repo).stdout
+        [scope] = self.apply(plan, path)["scopes"]
+        self.assertEqual((scope["state"], scope["error"]["code"]), ("failed", "stale-plan"), scope)
+        self.assertIn(".agents/skills/devlyn-ideate", scope["error"]["params"]["detail"])
+        self.assertEqual(self.run_ok(["git", "rev-parse", "HEAD"], cwd=repo).stdout, before)
+
+    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
+    def test_copies_the_remote_base_already_removed_bring_the_checkout_up_to_date(self):
+        # Prediction: a checkout behind a remote main that already dropped the copies (an earlier cleanup's merged PR)
+        # takes that main by fast-forward and the scope is done, with no new branch, worktree or PR.
+        repo = self.repo("behind")
+        self.install(repo)
+        self.run_ok(["git", "add", "-A"], cwd=repo)
+        self.run_ok(["git", "commit", "-qm", "install"], cwd=repo)
+        bare = self.fake_github(repo)
+        plan, path = self.plan("--project", repo)
+        self.removed_upstream(repo, bare, plan)
+        [scope] = self.apply(plan, path)["scopes"]
+        self.assertEqual((scope["state"], scope["error"], scope["delivery"]), ("done", None, None), scope)
+        self.assertEqual(self.run_ok(["git", "rev-parse", "HEAD"], cwd=repo).stdout,
+                         self.run_ok(["git", "--git-dir", bare, "rev-parse", "main"]).stdout)
+        self.assertFalse((repo / ".agents/skills/devlyn-ideate").exists())
+        self.assertFalse(json.loads((self.root / "gh.json").read_text(encoding="utf-8")).get("prs"))
+        self.assertEqual(self.run_ok(["git", "branch", "--list", "devlyn/cleanup-*"], cwd=repo).stdout.strip(), "")
+        self.assertFalse(list((self.root / "behind.devlyn.noindex").glob("devlyn-cleanup-*")))
+
+    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
+    def test_a_checkout_on_another_branch_is_left_and_asked_to_update(self):
+        # Prediction: with another branch checked out, the copies the remote main dropped stay on disk and the scope
+        # says the checkout needs updating; the branch is not moved and nothing is left allocated.
+        repo = self.repo("feature")
+        self.install(repo)
+        self.run_ok(["git", "add", "-A"], cwd=repo)
+        self.run_ok(["git", "commit", "-qm", "install"], cwd=repo)
+        bare = self.fake_github(repo)
+        self.run_ok(["git", "checkout", "-qb", "work"], cwd=repo)
+        plan, path = self.plan("--project", repo)
+        self.removed_upstream(repo, bare, plan)
+        before = self.run_ok(["git", "rev-parse", "HEAD"], cwd=repo).stdout
+        [scope] = self.apply(plan, path)["scopes"]
+        self.assertEqual((scope["state"], scope["error"]["code"]), ("failed", "update-checkout"), scope)
+        self.assertEqual(self.run_ok(["git", "rev-parse", "HEAD"], cwd=repo).stdout, before)
+        self.assertTrue((repo / ".agents/skills/devlyn-ideate").exists())
+        self.assertEqual(self.run_ok(["git", "branch", "--list", "devlyn/cleanup-*"], cwd=repo).stdout.strip(), "")
+        self.assertFalse(list((self.root / "feature.devlyn.noindex").glob("devlyn-cleanup-*")))
 
 
     @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
