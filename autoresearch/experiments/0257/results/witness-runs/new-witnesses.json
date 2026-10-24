@@ -1,0 +1,2450 @@
+{
+ "d4-writer-startup": {
+  "d005-D4-claude-A-r1": [
+   false,
+   false
+  ],
+  "d006-D4-claude-B-r1": [
+   true,
+   true
+  ],
+  "d007-D4-codex-A-r1": [
+   false,
+   false
+  ],
+  "d008-D4-codex-B-r1": [
+   false,
+   false
+  ],
+  "d021-D4-claude-B-r2": [
+   false,
+   false
+  ],
+  "d022-D4-claude-A-r2": [
+   true,
+   true
+  ],
+  "d023-D4-codex-B-r2": [
+   false,
+   false
+  ],
+  "d024-D4-codex-A-r2": [
+   false,
+   false
+  ],
+  "d037-D4-claude-A-r3": [
+   true,
+   true
+  ],
+  "d038-D4-claude-B-r3": [
+   false,
+   false
+  ],
+  "d039-D4-codex-A-r3": [
+   false,
+   false
+  ],
+  "d040-D4-codex-B-r3": [
+   false,
+   false
+  ],
+  "d053-D4-claude-B-r4": [
+   true,
+   true
+  ],
+  "d054-D4-claude-A-r4": [
+   true,
+   true
+  ],
+  "d055-D4-codex-B-r4": [
+   false,
+   false
+  ],
+  "d056-D4-codex-A-r4": [
+   false,
+   false
+  ],
+  "d069-D4-claude-A-r5": [
+   false,
+   false
+  ],
+  "d070-D4-claude-B-r5": [
+   false,
+   false
+  ],
+  "d071-D4-codex-A-r5": [
+   false,
+   false
+  ],
+  "d072-D4-codex-B-r5": [
+   false,
+   false
+  ],
+  "d085-D4-claude-B-r6": [
+   true,
+   true
+  ],
+  "d086-D4-claude-A-r6": [
+   false,
+   false
+  ],
+  "d087-D4-codex-B-r6": [
+   false,
+   false
+  ],
+  "d088-D4-codex-A-r6": [
+   false,
+   false
+  ],
+  "d101-D4-claude-A-r7": [
+   false,
+   false
+  ],
+  "d102-D4-claude-B-r7": [
+   false,
+   false
+  ],
+  "d103-D4-codex-A-r7": [
+   false,
+   false
+  ],
+  "d104-D4-codex-B-r7": [
+   false,
+   false
+  ],
+  "d117-D4-claude-B-r8": [
+   true,
+   true
+  ],
+  "d118-D4-claude-A-r8": [
+   false,
+   false
+  ],
+  "d119-D4-codex-B-r8": [
+   false,
+   false
+  ],
+  "d120-D4-codex-A-r8": [
+   false,
+   false
+  ],
+  "d133-D4-claude-A-r9": [
+   true,
+   true
+  ],
+  "d134-D4-claude-B-r9": [
+   true,
+   true
+  ],
+  "d135-D4-codex-A-r9": [
+   false,
+   false
+  ],
+  "d136-D4-codex-B-r9": [
+   false,
+   false
+  ],
+  "d149-D4-claude-B-r10": [
+   false,
+   false
+  ],
+  "d150-D4-claude-A-r10": [
+   false,
+   false
+  ],
+  "d151-D4-codex-B-r10": [
+   false,
+   false
+  ],
+  "d152-D4-codex-A-r10": [
+   false,
+   false
+  ],
+  "d165-D4-claude-A-r11": [
+   false,
+   false
+  ],
+  "d166-D4-claude-B-r11": [
+   false,
+   false
+  ],
+  "d167-D4-codex-A-r11": [
+   false,
+   false
+  ],
+  "d168-D4-codex-B-r11": [
+   false,
+   false
+  ],
+  "d181-D4-claude-B-r12": [
+   true,
+   true
+  ],
+  "d182-D4-claude-A-r12": [
+   false,
+   false
+  ],
+  "d183-D4-codex-B-r12": [
+   false,
+   false
+  ],
+  "d184-D4-codex-A-r12": [
+   false,
+   false
+  ],
+  "d197-D4-claude-A-r13": [
+   false,
+   false
+  ],
+  "d198-D4-claude-B-r13": [
+   true,
+   true
+  ],
+  "d199-D4-codex-A-r13": [
+   false,
+   false
+  ],
+  "d200-D4-codex-B-r13": [
+   false,
+   false
+  ],
+  "d213-D4-claude-B-r14": [
+   false,
+   false
+  ],
+  "d214-D4-claude-A-r14": [
+   true,
+   true
+  ],
+  "d215-D4-codex-B-r14": [
+   false,
+   false
+  ],
+  "d216-D4-codex-A-r14": [
+   false,
+   false
+  ],
+  "d229-D4-claude-A-r15": [
+   true,
+   true
+  ],
+  "d230-D4-claude-B-r15": [
+   false,
+   false
+  ],
+  "d231-D4-codex-A-r15": [
+   false,
+   false
+  ],
+  "d232-D4-codex-B-r15": [
+   false,
+   false
+  ],
+  "d245-D4-claude-B-r16": [
+   true,
+   true
+  ],
+  "d246-D4-claude-A-r16": [
+   false,
+   false
+  ],
+  "d247-D4-codex-B-r16": [
+   false,
+   false
+  ],
+  "d248-D4-codex-A-r16": [
+   false,
+   false
+  ]
+ },
+ "d3-executable-delimiter": {
+  "d001-D3-claude-A-r1": [
+   false,
+   false
+  ],
+  "d002-D3-claude-B-r1": [
+   false,
+   false
+  ],
+  "d003-D3-codex-A-r1": [
+   false,
+   false
+  ],
+  "d004-D3-codex-B-r1": [
+   false,
+   false
+  ],
+  "d017-D3-claude-B-r2": [
+   false,
+   false
+  ],
+  "d018-D3-claude-A-r2": [
+   false,
+   false
+  ],
+  "d019-D3-codex-B-r2": [
+   false,
+   false
+  ],
+  "d020-D3-codex-A-r2": [
+   false,
+   false
+  ],
+  "d033-D3-claude-A-r3": [
+   false,
+   false
+  ],
+  "d034-D3-claude-B-r3": [
+   false,
+   false
+  ],
+  "d035-D3-codex-A-r3": [
+   false,
+   false
+  ],
+  "d036-D3-codex-B-r3": [
+   false,
+   false
+  ],
+  "d049-D3-claude-B-r4": [
+   false,
+   false
+  ],
+  "d050-D3-claude-A-r4": [
+   false,
+   false
+  ],
+  "d051-D3-codex-B-r4": [
+   true,
+   true
+  ],
+  "d052-D3-codex-A-r4": [
+   false,
+   false
+  ],
+  "d065-D3-claude-A-r5": [
+   false,
+   false
+  ],
+  "d066-D3-claude-B-r5": [
+   false,
+   false
+  ],
+  "d067-D3-codex-A-r5": [
+   false,
+   false
+  ],
+  "d068-D3-codex-B-r5": [
+   false,
+   false
+  ],
+  "d081-D3-claude-B-r6": [
+   false,
+   false
+  ],
+  "d082-D3-claude-A-r6": [
+   false,
+   false
+  ],
+  "d083-D3-codex-B-r6": [
+   false,
+   false
+  ],
+  "d084-D3-codex-A-r6": [
+   false,
+   false
+  ],
+  "d097-D3-claude-A-r7": [
+   false,
+   false
+  ],
+  "d098-D3-claude-B-r7": [
+   false,
+   false
+  ],
+  "d099-D3-codex-A-r7": [
+   false,
+   false
+  ],
+  "d100-D3-codex-B-r7": [
+   false,
+   false
+  ],
+  "d113-D3-claude-B-r8": [
+   false,
+   false
+  ],
+  "d114-D3-claude-A-r8": [
+   false,
+   false
+  ],
+  "d115-D3-codex-B-r8": [
+   false,
+   false
+  ],
+  "d116-D3-codex-A-r8": [
+   false,
+   false
+  ],
+  "d129-D3-claude-A-r9": [
+   false,
+   false
+  ],
+  "d130-D3-claude-B-r9": [
+   false,
+   false
+  ],
+  "d131-D3-codex-A-r9": [
+   false,
+   false
+  ],
+  "d132-D3-codex-B-r9": [
+   false,
+   false
+  ],
+  "d145-D3-claude-B-r10": [
+   false,
+   false
+  ],
+  "d146-D3-claude-A-r10": [
+   false,
+   false
+  ],
+  "d147-D3-codex-B-r10": [
+   false,
+   false
+  ],
+  "d148-D3-codex-A-r10": [
+   false,
+   false
+  ],
+  "d161-D3-claude-A-r11": [
+   false,
+   false
+  ],
+  "d162-D3-claude-B-r11": [
+   false,
+   false
+  ],
+  "d163-D3-codex-A-r11": [
+   false,
+   false
+  ],
+  "d164-D3-codex-B-r11": [
+   false,
+   false
+  ],
+  "d177-D3-claude-B-r12": [
+   false,
+   false
+  ],
+  "d178-D3-claude-A-r12": [
+   false,
+   false
+  ],
+  "d179-D3-codex-B-r12": [
+   false,
+   false
+  ],
+  "d180-D3-codex-A-r12": [
+   false,
+   false
+  ],
+  "d193-D3-claude-A-r13": [
+   false,
+   false
+  ],
+  "d194-D3-claude-B-r13": [
+   false,
+   false
+  ],
+  "d195-D3-codex-A-r13": [
+   false,
+   false
+  ],
+  "d196-D3-codex-B-r13": [
+   false,
+   false
+  ],
+  "d209-D3-claude-B-r14": [
+   false,
+   false
+  ],
+  "d210-D3-claude-A-r14": [
+   false,
+   false
+  ],
+  "d211-D3-codex-B-r14": [
+   false,
+   false
+  ],
+  "d212-D3-codex-A-r14": [
+   false,
+   false
+  ],
+  "d225-D3-claude-A-r15": [
+   false,
+   false
+  ],
+  "d226-D3-claude-B-r15": [
+   false,
+   false
+  ],
+  "d227-D3-codex-A-r15": [
+   false,
+   false
+  ],
+  "d228-D3-codex-B-r15": [
+   false,
+   false
+  ],
+  "d241-D3-claude-B-r16": [
+   false,
+   false
+  ],
+  "d242-D3-claude-A-r16": [
+   false,
+   false
+  ],
+  "d243-D3-codex-B-r16": [
+   false,
+   false
+  ],
+  "d244-D3-codex-A-r16": [
+   false,
+   false
+  ]
+ },
+ "d3-regression-child-probe": {
+  "d001-D3-claude-A-r1": [
+   false,
+   false
+  ],
+  "d002-D3-claude-B-r1": [
+   false,
+   false
+  ],
+  "d003-D3-codex-A-r1": [
+   false,
+   false
+  ],
+  "d004-D3-codex-B-r1": [
+   false,
+   false
+  ],
+  "d017-D3-claude-B-r2": [
+   false,
+   false
+  ],
+  "d018-D3-claude-A-r2": [
+   false,
+   false
+  ],
+  "d019-D3-codex-B-r2": [
+   false,
+   false
+  ],
+  "d020-D3-codex-A-r2": [
+   false,
+   false
+  ],
+  "d033-D3-claude-A-r3": [
+   false,
+   false
+  ],
+  "d034-D3-claude-B-r3": [
+   false,
+   false
+  ],
+  "d035-D3-codex-A-r3": [
+   false,
+   false
+  ],
+  "d036-D3-codex-B-r3": [
+   false,
+   false
+  ],
+  "d049-D3-claude-B-r4": [
+   false,
+   false
+  ],
+  "d050-D3-claude-A-r4": [
+   false,
+   false
+  ],
+  "d051-D3-codex-B-r4": [
+   true,
+   true
+  ],
+  "d052-D3-codex-A-r4": [
+   false,
+   false
+  ],
+  "d065-D3-claude-A-r5": [
+   false,
+   false
+  ],
+  "d066-D3-claude-B-r5": [
+   false,
+   false
+  ],
+  "d067-D3-codex-A-r5": [
+   false,
+   false
+  ],
+  "d068-D3-codex-B-r5": [
+   false,
+   false
+  ],
+  "d081-D3-claude-B-r6": [
+   false,
+   false
+  ],
+  "d082-D3-claude-A-r6": [
+   false,
+   false
+  ],
+  "d083-D3-codex-B-r6": [
+   false,
+   false
+  ],
+  "d084-D3-codex-A-r6": [
+   false,
+   false
+  ],
+  "d097-D3-claude-A-r7": [
+   false,
+   false
+  ],
+  "d098-D3-claude-B-r7": [
+   false,
+   false
+  ],
+  "d099-D3-codex-A-r7": [
+   false,
+   false
+  ],
+  "d100-D3-codex-B-r7": [
+   false,
+   false
+  ],
+  "d113-D3-claude-B-r8": [
+   false,
+   false
+  ],
+  "d114-D3-claude-A-r8": [
+   false,
+   false
+  ],
+  "d115-D3-codex-B-r8": [
+   false,
+   false
+  ],
+  "d116-D3-codex-A-r8": [
+   false,
+   false
+  ],
+  "d129-D3-claude-A-r9": [
+   false,
+   false
+  ],
+  "d130-D3-claude-B-r9": [
+   false,
+   false
+  ],
+  "d131-D3-codex-A-r9": [
+   false,
+   false
+  ],
+  "d132-D3-codex-B-r9": [
+   false,
+   false
+  ],
+  "d145-D3-claude-B-r10": [
+   false,
+   false
+  ],
+  "d146-D3-claude-A-r10": [
+   false,
+   false
+  ],
+  "d147-D3-codex-B-r10": [
+   false,
+   false
+  ],
+  "d148-D3-codex-A-r10": [
+   false,
+   false
+  ],
+  "d161-D3-claude-A-r11": [
+   false,
+   false
+  ],
+  "d162-D3-claude-B-r11": [
+   false,
+   false
+  ],
+  "d163-D3-codex-A-r11": [
+   false,
+   false
+  ],
+  "d164-D3-codex-B-r11": [
+   false,
+   false
+  ],
+  "d177-D3-claude-B-r12": [
+   false,
+   false
+  ],
+  "d178-D3-claude-A-r12": [
+   false,
+   false
+  ],
+  "d179-D3-codex-B-r12": [
+   false,
+   false
+  ],
+  "d180-D3-codex-A-r12": [
+   false,
+   false
+  ],
+  "d193-D3-claude-A-r13": [
+   false,
+   false
+  ],
+  "d194-D3-claude-B-r13": [
+   false,
+   false
+  ],
+  "d195-D3-codex-A-r13": [
+   false,
+   false
+  ],
+  "d196-D3-codex-B-r13": [
+   false,
+   false
+  ],
+  "d209-D3-claude-B-r14": [
+   false,
+   false
+  ],
+  "d210-D3-claude-A-r14": [
+   false,
+   false
+  ],
+  "d211-D3-codex-B-r14": [
+   false,
+   false
+  ],
+  "d212-D3-codex-A-r14": [
+   false,
+   false
+  ],
+  "d225-D3-claude-A-r15": [
+   false,
+   false
+  ],
+  "d226-D3-claude-B-r15": [
+   false,
+   false
+  ],
+  "d227-D3-codex-A-r15": [
+   false,
+   false
+  ],
+  "d228-D3-codex-B-r15": [
+   false,
+   false
+  ],
+  "d241-D3-claude-B-r16": [
+   false,
+   false
+  ],
+  "d242-D3-claude-A-r16": [
+   false,
+   false
+  ],
+  "d243-D3-codex-B-r16": [
+   false,
+   false
+  ],
+  "d244-D3-codex-A-r16": [
+   false,
+   false
+  ]
+ },
+ "i0185-marker-cleanup-restore": {
+  "d009-I0185-claude-A-r1": [
+   false,
+   false
+  ],
+  "d010-I0185-claude-B-r1": [
+   true,
+   true
+  ],
+  "d011-I0185-codex-A-r1": [
+   false,
+   false
+  ],
+  "d012-I0185-codex-B-r1": [
+   false,
+   false
+  ],
+  "d025-I0185-claude-B-r2": [
+   false,
+   false
+  ],
+  "d026-I0185-claude-A-r2": [
+   false,
+   false
+  ],
+  "d027-I0185-codex-B-r2": [
+   false,
+   false
+  ],
+  "d028-I0185-codex-A-r2": [
+   false,
+   false
+  ],
+  "d041-I0185-claude-A-r3": [
+   false,
+   false
+  ],
+  "d042-I0185-claude-B-r3": [
+   false,
+   false
+  ],
+  "d043-I0185-codex-A-r3": [
+   false,
+   false
+  ],
+  "d044-I0185-codex-B-r3": [
+   false,
+   false
+  ],
+  "d057-I0185-claude-B-r4": [
+   false,
+   false
+  ],
+  "d058-I0185-claude-A-r4": [
+   false,
+   false
+  ],
+  "d059-I0185-codex-B-r4": [
+   false,
+   false
+  ],
+  "d060-I0185-codex-A-r4": [
+   false,
+   false
+  ],
+  "d073-I0185-claude-A-r5": [
+   false,
+   false
+  ],
+  "d074-I0185-claude-B-r5": [
+   false,
+   false
+  ],
+  "d075-I0185-codex-A-r5": [
+   false,
+   false
+  ],
+  "d076-I0185-codex-B-r5": [
+   false,
+   false
+  ],
+  "d089-I0185-claude-B-r6": [
+   false,
+   false
+  ],
+  "d090-I0185-claude-A-r6": [
+   false,
+   false
+  ],
+  "d091-I0185-codex-B-r6": [
+   false,
+   false
+  ],
+  "d092-I0185-codex-A-r6": [
+   false,
+   false
+  ],
+  "d105-I0185-claude-A-r7": [
+   false,
+   false
+  ],
+  "d106-I0185-claude-B-r7": [
+   false,
+   false
+  ],
+  "d107-I0185-codex-A-r7": [
+   false,
+   false
+  ],
+  "d108-I0185-codex-B-r7": [
+   false,
+   false
+  ],
+  "d121-I0185-claude-B-r8": [
+   false,
+   false
+  ],
+  "d122-I0185-claude-A-r8": [
+   false,
+   false
+  ],
+  "d123-I0185-codex-B-r8": [
+   false,
+   false
+  ],
+  "d124-I0185-codex-A-r8": [
+   false,
+   false
+  ],
+  "d137-I0185-claude-A-r9": [
+   false,
+   false
+  ],
+  "d138-I0185-claude-B-r9": [
+   true,
+   true
+  ],
+  "d139-I0185-codex-A-r9": [
+   false,
+   false
+  ],
+  "d140-I0185-codex-B-r9": [
+   false,
+   false
+  ],
+  "d153-I0185-claude-B-r10": [
+   false,
+   false
+  ],
+  "d154-I0185-claude-A-r10": [
+   false,
+   false
+  ],
+  "d155-I0185-codex-B-r10": [
+   false,
+   false
+  ],
+  "d156-I0185-codex-A-r10": [
+   false,
+   false
+  ],
+  "d169-I0185-claude-A-r11": [
+   false,
+   false
+  ],
+  "d170-I0185-claude-B-r11": [
+   false,
+   false
+  ],
+  "d171-I0185-codex-A-r11": [
+   false,
+   false
+  ],
+  "d172-I0185-codex-B-r11": [
+   false,
+   false
+  ],
+  "d185-I0185-claude-B-r12": [
+   false,
+   false
+  ],
+  "d186-I0185-claude-A-r12": [
+   false,
+   false
+  ],
+  "d187-I0185-codex-B-r12": [
+   false,
+   false
+  ],
+  "d188-I0185-codex-A-r12": [
+   false,
+   false
+  ],
+  "d201-I0185-claude-A-r13": [
+   false,
+   false
+  ],
+  "d202-I0185-claude-B-r13": [
+   false,
+   false
+  ],
+  "d203-I0185-codex-A-r13": [
+   false,
+   false
+  ],
+  "d204-I0185-codex-B-r13": [
+   false,
+   false
+  ],
+  "d217-I0185-claude-B-r14": [
+   false,
+   false
+  ],
+  "d218-I0185-claude-A-r14": [
+   false,
+   false
+  ],
+  "d219-I0185-codex-B-r14": [
+   false,
+   false
+  ],
+  "d220-I0185-codex-A-r14": [
+   false,
+   false
+  ],
+  "d233-I0185-claude-A-r15": [
+   false,
+   false
+  ],
+  "d234-I0185-claude-B-r15": [
+   false,
+   false
+  ],
+  "d235-I0185-codex-A-r15": [
+   false,
+   false
+  ],
+  "d236-I0185-codex-B-r15": [
+   false,
+   false
+  ],
+  "d249-I0185-claude-B-r16": [
+   false,
+   false
+  ],
+  "d250-I0185-claude-A-r16": [
+   false,
+   false
+  ],
+  "d251-I0185-codex-B-r16": [
+   false,
+   false
+  ],
+  "d252-I0185-codex-A-r16": [
+   false,
+   false
+  ]
+ },
+ "i0185-prelock-reentry": {
+  "d009-I0185-claude-A-r1": [
+   true,
+   true
+  ],
+  "d010-I0185-claude-B-r1": [
+   false,
+   false
+  ],
+  "d011-I0185-codex-A-r1": [
+   false,
+   false
+  ],
+  "d012-I0185-codex-B-r1": [
+   false,
+   false
+  ],
+  "d025-I0185-claude-B-r2": [
+   true,
+   true
+  ],
+  "d026-I0185-claude-A-r2": [
+   false,
+   false
+  ],
+  "d027-I0185-codex-B-r2": [
+   false,
+   false
+  ],
+  "d028-I0185-codex-A-r2": [
+   false,
+   false
+  ],
+  "d041-I0185-claude-A-r3": [
+   false,
+   false
+  ],
+  "d042-I0185-claude-B-r3": [
+   false,
+   false
+  ],
+  "d043-I0185-codex-A-r3": [
+   false,
+   false
+  ],
+  "d044-I0185-codex-B-r3": [
+   false,
+   false
+  ],
+  "d057-I0185-claude-B-r4": [
+   false,
+   false
+  ],
+  "d058-I0185-claude-A-r4": [
+   true,
+   true
+  ],
+  "d059-I0185-codex-B-r4": [
+   false,
+   false
+  ],
+  "d060-I0185-codex-A-r4": [
+   false,
+   false
+  ],
+  "d073-I0185-claude-A-r5": [
+   false,
+   false
+  ],
+  "d074-I0185-claude-B-r5": [
+   false,
+   false
+  ],
+  "d075-I0185-codex-A-r5": [
+   false,
+   false
+  ],
+  "d076-I0185-codex-B-r5": [
+   false,
+   false
+  ],
+  "d089-I0185-claude-B-r6": [
+   false,
+   false
+  ],
+  "d090-I0185-claude-A-r6": [
+   false,
+   false
+  ],
+  "d091-I0185-codex-B-r6": [
+   false,
+   false
+  ],
+  "d092-I0185-codex-A-r6": [
+   false,
+   false
+  ],
+  "d105-I0185-claude-A-r7": [
+   true,
+   true
+  ],
+  "d106-I0185-claude-B-r7": [
+   true,
+   true
+  ],
+  "d107-I0185-codex-A-r7": [
+   false,
+   false
+  ],
+  "d108-I0185-codex-B-r7": [
+   false,
+   false
+  ],
+  "d121-I0185-claude-B-r8": [
+   false,
+   false
+  ],
+  "d122-I0185-claude-A-r8": [
+   false,
+   false
+  ],
+  "d123-I0185-codex-B-r8": [
+   false,
+   false
+  ],
+  "d124-I0185-codex-A-r8": [
+   false,
+   false
+  ],
+  "d137-I0185-claude-A-r9": [
+   true,
+   true
+  ],
+  "d138-I0185-claude-B-r9": [
+   false,
+   false
+  ],
+  "d139-I0185-codex-A-r9": [
+   false,
+   false
+  ],
+  "d140-I0185-codex-B-r9": [
+   false,
+   false
+  ],
+  "d153-I0185-claude-B-r10": [
+   false,
+   false
+  ],
+  "d154-I0185-claude-A-r10": [
+   true,
+   true
+  ],
+  "d155-I0185-codex-B-r10": [
+   false,
+   false
+  ],
+  "d156-I0185-codex-A-r10": [
+   false,
+   false
+  ],
+  "d169-I0185-claude-A-r11": [
+   false,
+   false
+  ],
+  "d170-I0185-claude-B-r11": [
+   false,
+   false
+  ],
+  "d171-I0185-codex-A-r11": [
+   false,
+   false
+  ],
+  "d172-I0185-codex-B-r11": [
+   false,
+   false
+  ],
+  "d185-I0185-claude-B-r12": [
+   false,
+   false
+  ],
+  "d186-I0185-claude-A-r12": [
+   false,
+   false
+  ],
+  "d187-I0185-codex-B-r12": [
+   false,
+   false
+  ],
+  "d188-I0185-codex-A-r12": [
+   false,
+   false
+  ],
+  "d201-I0185-claude-A-r13": [
+   true,
+   true
+  ],
+  "d202-I0185-claude-B-r13": [
+   false,
+   false
+  ],
+  "d203-I0185-codex-A-r13": [
+   false,
+   false
+  ],
+  "d204-I0185-codex-B-r13": [
+   false,
+   false
+  ],
+  "d217-I0185-claude-B-r14": [
+   false,
+   false
+  ],
+  "d218-I0185-claude-A-r14": [
+   false,
+   false
+  ],
+  "d219-I0185-codex-B-r14": [
+   false,
+   false
+  ],
+  "d220-I0185-codex-A-r14": [
+   false,
+   false
+  ],
+  "d233-I0185-claude-A-r15": [
+   false,
+   false
+  ],
+  "d234-I0185-claude-B-r15": [
+   false,
+   false
+  ],
+  "d235-I0185-codex-A-r15": [
+   false,
+   false
+  ],
+  "d236-I0185-codex-B-r15": [
+   false,
+   false
+  ],
+  "d249-I0185-claude-B-r16": [
+   false,
+   false
+  ],
+  "d250-I0185-claude-A-r16": [
+   false,
+   false
+  ],
+  "d251-I0185-codex-B-r16": [
+   false,
+   false
+  ],
+  "d252-I0185-codex-A-r16": [
+   false,
+   false
+  ]
+ },
+ "i0185-realpath-fault-alias": {
+  "d009-I0185-claude-A-r1": [
+   false,
+   false
+  ],
+  "d010-I0185-claude-B-r1": [
+   false,
+   false
+  ],
+  "d011-I0185-codex-A-r1": [
+   false,
+   false
+  ],
+  "d012-I0185-codex-B-r1": [
+   false,
+   false
+  ],
+  "d025-I0185-claude-B-r2": [
+   false,
+   false
+  ],
+  "d026-I0185-claude-A-r2": [
+   false,
+   false
+  ],
+  "d027-I0185-codex-B-r2": [
+   false,
+   false
+  ],
+  "d028-I0185-codex-A-r2": [
+   false,
+   false
+  ],
+  "d041-I0185-claude-A-r3": [
+   false,
+   false
+  ],
+  "d042-I0185-claude-B-r3": [
+   false,
+   false
+  ],
+  "d043-I0185-codex-A-r3": [
+   false,
+   false
+  ],
+  "d044-I0185-codex-B-r3": [
+   false,
+   false
+  ],
+  "d057-I0185-claude-B-r4": [
+   true,
+   true
+  ],
+  "d058-I0185-claude-A-r4": [
+   false,
+   false
+  ],
+  "d059-I0185-codex-B-r4": [
+   false,
+   false
+  ],
+  "d060-I0185-codex-A-r4": [
+   false,
+   false
+  ],
+  "d073-I0185-claude-A-r5": [
+   false,
+   false
+  ],
+  "d074-I0185-claude-B-r5": [
+   false,
+   false
+  ],
+  "d075-I0185-codex-A-r5": [
+   false,
+   false
+  ],
+  "d076-I0185-codex-B-r5": [
+   false,
+   false
+  ],
+  "d089-I0185-claude-B-r6": [
+   false,
+   false
+  ],
+  "d090-I0185-claude-A-r6": [
+   false,
+   false
+  ],
+  "d091-I0185-codex-B-r6": [
+   false,
+   false
+  ],
+  "d092-I0185-codex-A-r6": [
+   false,
+   false
+  ],
+  "d105-I0185-claude-A-r7": [
+   false,
+   false
+  ],
+  "d106-I0185-claude-B-r7": [
+   false,
+   false
+  ],
+  "d107-I0185-codex-A-r7": [
+   false,
+   false
+  ],
+  "d108-I0185-codex-B-r7": [
+   false,
+   false
+  ],
+  "d121-I0185-claude-B-r8": [
+   false,
+   false
+  ],
+  "d122-I0185-claude-A-r8": [
+   false,
+   false
+  ],
+  "d123-I0185-codex-B-r8": [
+   false,
+   false
+  ],
+  "d124-I0185-codex-A-r8": [
+   false,
+   false
+  ],
+  "d137-I0185-claude-A-r9": [
+   false,
+   false
+  ],
+  "d138-I0185-claude-B-r9": [
+   false,
+   false
+  ],
+  "d139-I0185-codex-A-r9": [
+   false,
+   false
+  ],
+  "d140-I0185-codex-B-r9": [
+   false,
+   false
+  ],
+  "d153-I0185-claude-B-r10": [
+   false,
+   false
+  ],
+  "d154-I0185-claude-A-r10": [
+   false,
+   false
+  ],
+  "d155-I0185-codex-B-r10": [
+   false,
+   false
+  ],
+  "d156-I0185-codex-A-r10": [
+   false,
+   false
+  ],
+  "d169-I0185-claude-A-r11": [
+   false,
+   false
+  ],
+  "d170-I0185-claude-B-r11": [
+   false,
+   false
+  ],
+  "d171-I0185-codex-A-r11": [
+   false,
+   false
+  ],
+  "d172-I0185-codex-B-r11": [
+   false,
+   false
+  ],
+  "d185-I0185-claude-B-r12": [
+   false,
+   false
+  ],
+  "d186-I0185-claude-A-r12": [
+   false,
+   false
+  ],
+  "d187-I0185-codex-B-r12": [
+   false,
+   false
+  ],
+  "d188-I0185-codex-A-r12": [
+   false,
+   false
+  ],
+  "d201-I0185-claude-A-r13": [
+   false,
+   false
+  ],
+  "d202-I0185-claude-B-r13": [
+   false,
+   false
+  ],
+  "d203-I0185-codex-A-r13": [
+   false,
+   false
+  ],
+  "d204-I0185-codex-B-r13": [
+   false,
+   false
+  ],
+  "d217-I0185-claude-B-r14": [
+   false,
+   false
+  ],
+  "d218-I0185-claude-A-r14": [
+   false,
+   false
+  ],
+  "d219-I0185-codex-B-r14": [
+   false,
+   false
+  ],
+  "d220-I0185-codex-A-r14": [
+   false,
+   false
+  ],
+  "d233-I0185-claude-A-r15": [
+   false,
+   false
+  ],
+  "d234-I0185-claude-B-r15": [
+   false,
+   false
+  ],
+  "d235-I0185-codex-A-r15": [
+   false,
+   false
+  ],
+  "d236-I0185-codex-B-r15": [
+   false,
+   false
+  ],
+  "d249-I0185-claude-B-r16": [
+   false,
+   false
+  ],
+  "d250-I0185-claude-A-r16": [
+   false,
+   false
+  ],
+  "d251-I0185-codex-B-r16": [
+   false,
+   false
+  ],
+  "d252-I0185-codex-A-r16": [
+   false,
+   false
+  ]
+ },
+ "i0185-replaced-lock-owner": {
+  "d009-I0185-claude-A-r1": [
+   false,
+   false
+  ],
+  "d010-I0185-claude-B-r1": [
+   false,
+   false
+  ],
+  "d011-I0185-codex-A-r1": [
+   true,
+   true
+  ],
+  "d012-I0185-codex-B-r1": [
+   true,
+   true
+  ],
+  "d025-I0185-claude-B-r2": [
+   false,
+   false
+  ],
+  "d026-I0185-claude-A-r2": [
+   false,
+   false
+  ],
+  "d027-I0185-codex-B-r2": [
+   true,
+   true
+  ],
+  "d028-I0185-codex-A-r2": [
+   true,
+   true
+  ],
+  "d041-I0185-claude-A-r3": [
+   false,
+   false
+  ],
+  "d042-I0185-claude-B-r3": [
+   true,
+   true
+  ],
+  "d043-I0185-codex-A-r3": [
+   true,
+   true
+  ],
+  "d044-I0185-codex-B-r3": [
+   true,
+   true
+  ],
+  "d057-I0185-claude-B-r4": [
+   true,
+   true
+  ],
+  "d058-I0185-claude-A-r4": [
+   true,
+   true
+  ],
+  "d059-I0185-codex-B-r4": [
+   true,
+   true
+  ],
+  "d060-I0185-codex-A-r4": [
+   true,
+   true
+  ],
+  "d073-I0185-claude-A-r5": [
+   false,
+   false
+  ],
+  "d074-I0185-claude-B-r5": [
+   false,
+   false
+  ],
+  "d075-I0185-codex-A-r5": [
+   true,
+   true
+  ],
+  "d076-I0185-codex-B-r5": [
+   true,
+   true
+  ],
+  "d089-I0185-claude-B-r6": [
+   false,
+   false
+  ],
+  "d090-I0185-claude-A-r6": [
+   false,
+   false
+  ],
+  "d091-I0185-codex-B-r6": [
+   true,
+   true
+  ],
+  "d092-I0185-codex-A-r6": [
+   true,
+   true
+  ],
+  "d105-I0185-claude-A-r7": [
+   false,
+   false
+  ],
+  "d106-I0185-claude-B-r7": [
+   false,
+   false
+  ],
+  "d107-I0185-codex-A-r7": [
+   true,
+   true
+  ],
+  "d108-I0185-codex-B-r7": [
+   true,
+   true
+  ],
+  "d121-I0185-claude-B-r8": [
+   false,
+   false
+  ],
+  "d122-I0185-claude-A-r8": [
+   false,
+   false
+  ],
+  "d123-I0185-codex-B-r8": [
+   true,
+   true
+  ],
+  "d124-I0185-codex-A-r8": [
+   true,
+   true
+  ],
+  "d137-I0185-claude-A-r9": [
+   true,
+   false
+  ],
+  "d138-I0185-claude-B-r9": [
+   false,
+   false
+  ],
+  "d139-I0185-codex-A-r9": [
+   true,
+   true
+  ],
+  "d140-I0185-codex-B-r9": [
+   true,
+   true
+  ],
+  "d153-I0185-claude-B-r10": [
+   false,
+   false
+  ],
+  "d154-I0185-claude-A-r10": [
+   false,
+   false
+  ],
+  "d155-I0185-codex-B-r10": [
+   true,
+   true
+  ],
+  "d156-I0185-codex-A-r10": [
+   true,
+   true
+  ],
+  "d169-I0185-claude-A-r11": [
+   false,
+   false
+  ],
+  "d170-I0185-claude-B-r11": [
+   false,
+   false
+  ],
+  "d171-I0185-codex-A-r11": [
+   true,
+   true
+  ],
+  "d172-I0185-codex-B-r11": [
+   true,
+   true
+  ],
+  "d185-I0185-claude-B-r12": [
+   false,
+   false
+  ],
+  "d186-I0185-claude-A-r12": [
+   false,
+   false
+  ],
+  "d187-I0185-codex-B-r12": [
+   true,
+   true
+  ],
+  "d188-I0185-codex-A-r12": [
+   true,
+   true
+  ],
+  "d201-I0185-claude-A-r13": [
+   true,
+   true
+  ],
+  "d202-I0185-claude-B-r13": [
+   false,
+   false
+  ],
+  "d203-I0185-codex-A-r13": [
+   true,
+   true
+  ],
+  "d204-I0185-codex-B-r13": [
+   true,
+   true
+  ],
+  "d217-I0185-claude-B-r14": [
+   false,
+   false
+  ],
+  "d218-I0185-claude-A-r14": [
+   false,
+   false
+  ],
+  "d219-I0185-codex-B-r14": [
+   true,
+   true
+  ],
+  "d220-I0185-codex-A-r14": [
+   true,
+   true
+  ],
+  "d233-I0185-claude-A-r15": [
+   false,
+   false
+  ],
+  "d234-I0185-claude-B-r15": [
+   false,
+   false
+  ],
+  "d235-I0185-codex-A-r15": [
+   true,
+   true
+  ],
+  "d236-I0185-codex-B-r15": [
+   true,
+   true
+  ],
+  "d249-I0185-claude-B-r16": [
+   false,
+   false
+  ],
+  "d250-I0185-claude-A-r16": [
+   true,
+   true
+  ],
+  "d251-I0185-codex-B-r16": [
+   true,
+   true
+  ],
+  "d252-I0185-codex-A-r16": [
+   true,
+   true
+  ]
+ },
+ "i0185-lock-aba-ownership": {
+  "d009-I0185-claude-A-r1": [
+   false,
+   false
+  ],
+  "d010-I0185-claude-B-r1": [
+   false,
+   false
+  ],
+  "d011-I0185-codex-A-r1": [
+   true,
+   true
+  ],
+  "d012-I0185-codex-B-r1": [
+   true,
+   true
+  ],
+  "d025-I0185-claude-B-r2": [
+   false,
+   false
+  ],
+  "d026-I0185-claude-A-r2": [
+   false,
+   false
+  ],
+  "d027-I0185-codex-B-r2": [
+   true,
+   true
+  ],
+  "d028-I0185-codex-A-r2": [
+   true,
+   true
+  ],
+  "d041-I0185-claude-A-r3": [
+   false,
+   false
+  ],
+  "d042-I0185-claude-B-r3": [
+   false,
+   false
+  ],
+  "d043-I0185-codex-A-r3": [
+   true,
+   true
+  ],
+  "d044-I0185-codex-B-r3": [
+   true,
+   true
+  ],
+  "d057-I0185-claude-B-r4": [
+   false,
+   false
+  ],
+  "d058-I0185-claude-A-r4": [
+   false,
+   false
+  ],
+  "d059-I0185-codex-B-r4": [
+   true,
+   true
+  ],
+  "d060-I0185-codex-A-r4": [
+   true,
+   true
+  ],
+  "d073-I0185-claude-A-r5": [
+   false,
+   false
+  ],
+  "d074-I0185-claude-B-r5": [
+   false,
+   false
+  ],
+  "d075-I0185-codex-A-r5": [
+   true,
+   true
+  ],
+  "d076-I0185-codex-B-r5": [
+   true,
+   true
+  ],
+  "d089-I0185-claude-B-r6": [
+   false,
+   false
+  ],
+  "d090-I0185-claude-A-r6": [
+   false,
+   false
+  ],
+  "d091-I0185-codex-B-r6": [
+   true,
+   true
+  ],
+  "d092-I0185-codex-A-r6": [
+   true,
+   true
+  ],
+  "d105-I0185-claude-A-r7": [
+   false,
+   false
+  ],
+  "d106-I0185-claude-B-r7": [
+   false,
+   false
+  ],
+  "d107-I0185-codex-A-r7": [
+   true,
+   true
+  ],
+  "d108-I0185-codex-B-r7": [
+   true,
+   true
+  ],
+  "d121-I0185-claude-B-r8": [
+   false,
+   false
+  ],
+  "d122-I0185-claude-A-r8": [
+   false,
+   false
+  ],
+  "d123-I0185-codex-B-r8": [
+   true,
+   true
+  ],
+  "d124-I0185-codex-A-r8": [
+   true,
+   true
+  ],
+  "d137-I0185-claude-A-r9": [
+   false,
+   false
+  ],
+  "d138-I0185-claude-B-r9": [
+   false,
+   false
+  ],
+  "d139-I0185-codex-A-r9": [
+   true,
+   true
+  ],
+  "d140-I0185-codex-B-r9": [
+   true,
+   true
+  ],
+  "d153-I0185-claude-B-r10": [
+   false,
+   false
+  ],
+  "d154-I0185-claude-A-r10": [
+   false,
+   false
+  ],
+  "d155-I0185-codex-B-r10": [
+   true,
+   true
+  ],
+  "d156-I0185-codex-A-r10": [
+   true,
+   true
+  ],
+  "d169-I0185-claude-A-r11": [
+   false,
+   false
+  ],
+  "d170-I0185-claude-B-r11": [
+   false,
+   false
+  ],
+  "d171-I0185-codex-A-r11": [
+   true,
+   true
+  ],
+  "d172-I0185-codex-B-r11": [
+   true,
+   true
+  ],
+  "d185-I0185-claude-B-r12": [
+   false,
+   false
+  ],
+  "d186-I0185-claude-A-r12": [
+   false,
+   false
+  ],
+  "d187-I0185-codex-B-r12": [
+   true,
+   true
+  ],
+  "d188-I0185-codex-A-r12": [
+   true,
+   true
+  ],
+  "d201-I0185-claude-A-r13": [
+   true,
+   true
+  ],
+  "d202-I0185-claude-B-r13": [
+   false,
+   false
+  ],
+  "d203-I0185-codex-A-r13": [
+   true,
+   true
+  ],
+  "d204-I0185-codex-B-r13": [
+   true,
+   true
+  ],
+  "d217-I0185-claude-B-r14": [
+   false,
+   false
+  ],
+  "d218-I0185-claude-A-r14": [
+   false,
+   false
+  ],
+  "d219-I0185-codex-B-r14": [
+   true,
+   true
+  ],
+  "d220-I0185-codex-A-r14": [
+   true,
+   true
+  ],
+  "d233-I0185-claude-A-r15": [
+   false,
+   false
+  ],
+  "d234-I0185-claude-B-r15": [
+   false,
+   false
+  ],
+  "d235-I0185-codex-A-r15": [
+   true,
+   true
+  ],
+  "d236-I0185-codex-B-r15": [
+   true,
+   true
+  ],
+  "d249-I0185-claude-B-r16": [
+   false,
+   false
+  ],
+  "d250-I0185-claude-A-r16": [
+   true,
+   true
+  ],
+  "d251-I0185-codex-B-r16": [
+   true,
+   true
+  ],
+  "d252-I0185-codex-A-r16": [
+   true,
+   true
+  ]
+ },
+ "i0185-physical-alias": {
+  "d009-I0185-claude-A-r1": [
+   false,
+   false
+  ],
+  "d010-I0185-claude-B-r1": [
+   false,
+   false
+  ],
+  "d011-I0185-codex-A-r1": [
+   false,
+   false
+  ],
+  "d012-I0185-codex-B-r1": [
+   false,
+   false
+  ],
+  "d025-I0185-claude-B-r2": [
+   false,
+   false
+  ],
+  "d026-I0185-claude-A-r2": [
+   false,
+   false
+  ],
+  "d027-I0185-codex-B-r2": [
+   false,
+   false
+  ],
+  "d028-I0185-codex-A-r2": [
+   false,
+   false
+  ],
+  "d041-I0185-claude-A-r3": [
+   false,
+   false
+  ],
+  "d042-I0185-claude-B-r3": [
+   false,
+   false
+  ],
+  "d043-I0185-codex-A-r3": [
+   false,
+   false
+  ],
+  "d044-I0185-codex-B-r3": [
+   false,
+   false
+  ],
+  "d057-I0185-claude-B-r4": [
+   false,
+   false
+  ],
+  "d058-I0185-claude-A-r4": [
+   false,
+   false
+  ],
+  "d059-I0185-codex-B-r4": [
+   false,
+   false
+  ],
+  "d060-I0185-codex-A-r4": [
+   false,
+   false
+  ],
+  "d073-I0185-claude-A-r5": [
+   false,
+   false
+  ],
+  "d074-I0185-claude-B-r5": [
+   false,
+   false
+  ],
+  "d075-I0185-codex-A-r5": [
+   false,
+   false
+  ],
+  "d076-I0185-codex-B-r5": [
+   false,
+   false
+  ],
+  "d089-I0185-claude-B-r6": [
+   false,
+   false
+  ],
+  "d090-I0185-claude-A-r6": [
+   false,
+   false
+  ],
+  "d091-I0185-codex-B-r6": [
+   false,
+   false
+  ],
+  "d092-I0185-codex-A-r6": [
+   false,
+   false
+  ],
+  "d105-I0185-claude-A-r7": [
+   false,
+   false
+  ],
+  "d106-I0185-claude-B-r7": [
+   false,
+   false
+  ],
+  "d107-I0185-codex-A-r7": [
+   false,
+   false
+  ],
+  "d108-I0185-codex-B-r7": [
+   false,
+   false
+  ],
+  "d121-I0185-claude-B-r8": [
+   false,
+   false
+  ],
+  "d122-I0185-claude-A-r8": [
+   false,
+   false
+  ],
+  "d123-I0185-codex-B-r8": [
+   false,
+   false
+  ],
+  "d124-I0185-codex-A-r8": [
+   false,
+   false
+  ],
+  "d137-I0185-claude-A-r9": [
+   false,
+   false
+  ],
+  "d138-I0185-claude-B-r9": [
+   false,
+   false
+  ],
+  "d139-I0185-codex-A-r9": [
+   false,
+   false
+  ],
+  "d140-I0185-codex-B-r9": [
+   false,
+   false
+  ],
+  "d153-I0185-claude-B-r10": [
+   false,
+   false
+  ],
+  "d154-I0185-claude-A-r10": [
+   false,
+   false
+  ],
+  "d155-I0185-codex-B-r10": [
+   false,
+   false
+  ],
+  "d156-I0185-codex-A-r10": [
+   false,
+   false
+  ],
+  "d169-I0185-claude-A-r11": [
+   false,
+   false
+  ],
+  "d170-I0185-claude-B-r11": [
+   false,
+   false
+  ],
+  "d171-I0185-codex-A-r11": [
+   false,
+   false
+  ],
+  "d172-I0185-codex-B-r11": [
+   false,
+   false
+  ],
+  "d185-I0185-claude-B-r12": [
+   false,
+   false
+  ],
+  "d186-I0185-claude-A-r12": [
+   false,
+   false
+  ],
+  "d187-I0185-codex-B-r12": [
+   false,
+   false
+  ],
+  "d188-I0185-codex-A-r12": [
+   false,
+   false
+  ],
+  "d201-I0185-claude-A-r13": [
+   false,
+   false
+  ],
+  "d202-I0185-claude-B-r13": [
+   false,
+   false
+  ],
+  "d203-I0185-codex-A-r13": [
+   false,
+   false
+  ],
+  "d204-I0185-codex-B-r13": [
+   false,
+   false
+  ],
+  "d217-I0185-claude-B-r14": [
+   false,
+   false
+  ],
+  "d218-I0185-claude-A-r14": [
+   false,
+   false
+  ],
+  "d219-I0185-codex-B-r14": [
+   false,
+   false
+  ],
+  "d220-I0185-codex-A-r14": [
+   false,
+   false
+  ],
+  "d233-I0185-claude-A-r15": [
+   false,
+   false
+  ],
+  "d234-I0185-claude-B-r15": [
+   false,
+   false
+  ],
+  "d235-I0185-codex-A-r15": [
+   false,
+   false
+  ],
+  "d236-I0185-codex-B-r15": [
+   false,
+   false
+  ],
+  "d249-I0185-claude-B-r16": [
+   false,
+   false
+  ],
+  "d250-I0185-claude-A-r16": [
+   false,
+   false
+  ],
+  "d251-I0185-codex-B-r16": [
+   false,
+   false
+  ],
+  "d252-I0185-codex-A-r16": [
+   false,
+   false
+  ]
+ },
+ "show-release-d011-I0185-codex-A-r1": {
+  "d011-I0185-codex-A-r1": [
+   false,
+   false
+  ]
+ },
+ "show-release-d012-I0185-codex-B-r1": {
+  "d012-I0185-codex-B-r1": [
+   true,
+   true
+  ]
+ },
+ "show-release-d027-I0185-codex-B-r2": {
+  "d027-I0185-codex-B-r2": [
+   true,
+   true
+  ]
+ },
+ "show-release-d028-I0185-codex-A-r2": {
+  "d028-I0185-codex-A-r2": [
+   true,
+   true
+  ]
+ },
+ "show-release-d043-I0185-codex-A-r3": {
+  "d043-I0185-codex-A-r3": [
+   true,
+   true
+  ]
+ },
+ "show-release-d044-I0185-codex-B-r3": {
+  "d044-I0185-codex-B-r3": [
+   true,
+   true
+  ]
+ },
+ "show-release-d060-I0185-codex-A-r4": {
+  "d060-I0185-codex-A-r4": [
+   true,
+   true
+  ]
+ },
+ "show-release-d075-I0185-codex-A-r5": {
+  "d075-I0185-codex-A-r5": [
+   true,
+   true
+  ]
+ },
+ "show-release-d092-I0185-codex-A-r6": {
+  "d092-I0185-codex-A-r6": [
+   true,
+   true
+  ]
+ },
+ "show-release-d107-I0185-codex-A-r7": {
+  "d107-I0185-codex-A-r7": [
+   true,
+   true
+  ]
+ },
+ "show-release-d123-I0185-codex-B-r8": {
+  "d123-I0185-codex-B-r8": [
+   true,
+   true
+  ]
+ },
+ "show-release-d124-I0185-codex-A-r8": {
+  "d124-I0185-codex-A-r8": [
+   true,
+   true
+  ]
+ },
+ "show-release-d140-I0185-codex-B-r9": {
+  "d140-I0185-codex-B-r9": [
+   true,
+   true
+  ]
+ },
+ "show-release-d155-I0185-codex-B-r10": {
+  "d155-I0185-codex-B-r10": [
+   true,
+   true
+  ]
+ },
+ "show-release-d171-I0185-codex-A-r11": {
+  "d171-I0185-codex-A-r11": [
+   true,
+   true
+  ]
+ },
+ "show-release-d187-I0185-codex-B-r12": {
+  "d187-I0185-codex-B-r12": [
+   true,
+   true
+  ]
+ },
+ "show-release-d203-I0185-codex-A-r13": {
+  "d203-I0185-codex-A-r13": [
+   true,
+   true
+  ]
+ },
+ "show-release-d219-I0185-codex-B-r14": {
+  "d219-I0185-codex-B-r14": [
+   true,
+   true
+  ]
+ },
+ "show-release-d235-I0185-codex-A-r15": {
+  "d235-I0185-codex-A-r15": [
+   true,
+   true
+  ]
+ },
+ "show-release-d251-I0185-codex-B-r16": {
+  "d251-I0185-codex-B-r16": [
+   true,
+   true
+  ]
+ },
+ "show-release-d252-I0185-codex-A-r16": {
+  "d252-I0185-codex-A-r16": [
+   true,
+   true
+  ]
+ }
+}

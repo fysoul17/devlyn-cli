@@ -1,6 +1,6 @@
 # 0257 apparatus
 
-`DESIGN.md` is frozen; [`amendment-1.md`](amendment-1.md) (2026-10-22) replaces its account rule, [`amendment-2.md`](amendment-2.md) (2026-10-22) replaces its window reserve with a 95% exhaustion guard, and [`amendment-3.md`](amendment-3.md) (2026-10-23) handles proven Docker daemon loss as an archived infrastructure fault. All measured cells are fresh; 0256 data only qualifies the apparatus.
+`DESIGN.md` is frozen; the measured result is in [`RESULT.md`](RESULT.md); [`amendment-1.md`](amendment-1.md) (2026-10-22) replaces its account rule, [`amendment-2.md`](amendment-2.md) (2026-10-22) replaces its window reserve with a 95% exhaustion guard, and [`amendment-3.md`](amendment-3.md) (2026-10-23) handles proven Docker daemon loss as an archived infrastructure fault. All measured cells are fresh; 0256 data only qualifies the apparatus.
 
 | File | Origin and delta |
 |---|---|
