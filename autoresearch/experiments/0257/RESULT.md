@@ -158,3 +158,15 @@ attribution to the package as a whole. I0185 B carries no principles text. Per-t
 the better summary. "Below zero" in prediction 2 holds on the point estimate only.
 
 No product change follows from this experiment alone; the next candidate is an owner decision.
+
+## Addendum 2026-10-25 (post hoc; changes no reading)
+
+A read-only diagnosis of the claude cells ([results/claude-diagnosis.md](results/claude-diagnosis.md); reviewed by Astra ultra and Grok 4.7 in two read-only rounds, `results/claude-diag-r*`) finds one
+pattern more frequent in Claude B in this sample: it notices a case the request does not spell out, leaves it and
+reports it. On F10 no B cell handles a body the JSON parser rejects (A 8/8), and 7 of 8 B reports say the request did
+not specify it; on F11, whose request already gives a body-level `{ error: 'invalid_body' }` with no field, 6 of 8
+B cells handle it. On D3, 10 of 16 B cells route
+parsing around the public `parseOptions` (A 4/16, post hoc), a choice that also has a real design tradeoff. Codex with
+the same text shows neither. The responsible package component is not identified; separating the candidates needs an
+owner-approved ablation. False completions occur in both arms by the same mechanism; the package does not eliminate
+them, and these counts cannot show whether it changes their frequency.
