@@ -1564,8 +1564,8 @@ function cleanupCurrentFingerprints() {
   return Object.fromEntries([...CLEANUP_CORE, '_shared'].map((name) => [name, fingerprint(path.join(CONFIG_SOURCE, 'skills', name))]));
 }
 
-function cleanupGit(root, args) {
-  return spawnSync('git', ['-C', root, ...args], { env: { ...gitEnvironment(), GIT_OPTIONAL_LOCKS: '0' }, encoding: 'utf8' });
+function cleanupGit(root, args, options = {}) {
+  return spawnSync('git', ['-C', root, ...args], { env: { ...gitEnvironment(), GIT_OPTIONAL_LOCKS: '0' }, encoding: 'utf8', ...options });
 }
 
 let cleanupPythonBinary;
@@ -1859,38 +1859,63 @@ function cleanupDeliver(scope, items, current) {
 }
 
 // Whether the remote base (the allocated worktree's HEAD) removed a copy this checkout tracks: the
-// checkout holds it as it was where the two histories meet, and the base no longer has it. A copy
-// committed only here, or changed here since, is not one the base removed.
+// base holds no path of that name in any spelling, and the checkout holds the copy, under its
+// tracked spelling, as it was where the two histories meet. A copy committed only here, or changed
+// here since, is not one the base removed.
 function cleanupRemovedUpstream(root, worktree) {
-  const object = (spec) => {
-    const result = cleanupGit(root, ['rev-parse', '--verify', '--quiet', spec]);
-    return !result.error && result.status === 0 ? result.stdout.trim() : null;
+  const read = (cwd, args, options) => {
+    const result = cleanupGit(cwd, args, options);
+    return !result.error && result.status === 0 ? result.stdout : null;
   };
-  const base = cleanupGit(worktree, ['rev-parse', 'HEAD']);
-  const fork = !base.error && base.status === 0 ? cleanupGit(root, ['merge-base', 'HEAD', base.stdout.trim()]) : null;
-  if (!fork || fork.error || fork.status !== 0) return () => false;
-  const at = fork.stdout.trim();
+  const object = (spec) => read(root, ['rev-parse', '--verify', '--quiet', spec])?.trim() || null;
+  const base = read(worktree, ['rev-parse', 'HEAD'])?.trim();
+  const fork = base ? read(root, ['merge-base', 'HEAD', base])?.trim() : null;
+  let upstream; // the base's paths, folded to lower case, read once and only when needed
   return (relative) => {
-    const before = object(`${at}:${relative}`);
-    return before !== null && before === object(`HEAD:${relative}`);
+    if (!fork) return false;
+    if (upstream === undefined) {
+      upstream = read(root, ['ls-tree', '-r', '-z', '--name-only', base], { maxBuffer: 1 << 30 })
+        ?.split('\0').filter(Boolean).map((name) => name.toLowerCase()) ?? null;
+    }
+    const lower = relative.toLowerCase();
+    if (!upstream || upstream.some((name) => name === lower || name.startsWith(`${lower}/`))) return false;
+    // The tracked spelling, which a case-insensitive file system lets differ from the one on disk.
+    const tracked = read(root, ['ls-files', '-z', '--', `:(icase,literal)${relative}`])?.split('\0').find(Boolean);
+    const spelled = tracked?.slice(0, relative.length);
+    if (!spelled || spelled.toLowerCase() !== lower) return false;
+    const before = object(`${fork}:${spelled}`);
+    return before !== null && before === object(`HEAD:${spelled}`);
   };
 }
 
 // The copies the remote base dropped stay in this checkout until it takes that base: a checkout on
-// the base branch is fast-forwarded to it, as a task's owner reconciles after delivery. Another
-// branch, or a fast-forward Git refuses (local changes in the way, local commits), is left as it is.
+// the base branch is fast-forwarded to it, as a task's owner reconciles after delivery. The base is
+// fetched into a ref this call owns (FETCH_HEAD can be rewritten by another fetch meanwhile) and
+// merged by its commit, only while the checkout is still the one checked before the fetch. Another
+// branch, or a fast-forward Git refuses (local changes or ignored files in the way, local
+// commits), is left as it is.
 function cleanupUpdateCheckout(scope) {
-  const branch = cleanupGit(scope.root, ['symbolic-ref', '--quiet', '--short', 'HEAD']);
-  if (branch.error || branch.status !== 0 || branch.stdout.trim() !== scope.remote.base) {
-    return { error: cleanupReason('update-checkout', { detail: `${branch.stdout.trim() || 'a detached HEAD'} is checked out` }) };
-  }
-  for (const args of [['fetch', '--quiet', 'origin', scope.remote.base], ['merge', '--ff-only', '--quiet', 'FETCH_HEAD']]) {
+  const failed = (detail) => ({ error: cleanupReason('update-checkout', { detail }) });
+  const read = (args) => {
     const result = cleanupGit(scope.root, args);
-    if (result.error || result.status !== 0) {
-      return { error: cleanupReason('update-checkout', { detail: result.error?.message || result.stderr.trim() }) };
-    }
+    return !result.error && result.status === 0 ? result.stdout.trim() : null;
+  };
+  const checkout = () => [read(['symbolic-ref', '--quiet', '--short', 'HEAD']), read(['rev-parse', 'HEAD'])];
+  const [branch, head] = checkout();
+  if (branch !== scope.remote.base || !head) return failed(`${branch || 'a detached HEAD'} is checked out`);
+  const ref = `refs/devlyn/cleanup/${crypto.randomBytes(8).toString('hex')}`;
+  try {
+    const fetched = cleanupGit(scope.root, ['fetch', '--quiet', '--no-write-fetch-head', 'origin', `+refs/heads/${scope.remote.base}:${ref}`]);
+    if (fetched.error || fetched.status !== 0) return failed(fetched.error?.message || fetched.stderr.trim());
+    const target = read(['rev-parse', '--verify', `${ref}^{commit}`]);
+    const [now, at] = checkout();
+    if (!target || now !== branch || at !== head) return failed('the checkout changed while the base was fetched');
+    const merged = cleanupGit(scope.root, ['merge', '--ff-only', '--no-autostash', '--no-overwrite-ignore', '--quiet', target]);
+    if (merged.error || merged.status !== 0) return failed(merged.error?.message || merged.stderr.trim());
+    return {};
+  } finally {
+    cleanupGit(scope.root, ['update-ref', '-d', ref]);
   }
-  return {};
 }
 
 // Inside the allocated worktree: prove every reviewed item, remove them, commit, and write the
