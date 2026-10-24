@@ -301,7 +301,8 @@ class CleanupFixture(unittest.TestCase):
         changes the upstream clone further before that commit."""
         upstream = self.root / f"{repo.name}-upstream"
         self.run_ok(["git", "clone", "-q", bare, upstream])
-        relatives = [item["relative"] for item in plan["scopes"][0]["items"] if item["route"] == "delivery"]
+        relatives = [item["relative"] for item in plan["scopes"][0]["items"]
+                     if item["route"] == "delivery" and item["action"] == "remove"]
         self.assertTrue(relatives)
         self.run_ok(["git", "rm", "-rq", "--", *relatives], cwd=upstream)
         if also:
@@ -315,6 +316,16 @@ class CleanupFixture(unittest.TestCase):
         self.run_ok(["git", "add", "-A"], cwd=repo)
         self.run_ok(["git", "commit", "-qm", "install"], cwd=repo)
         return repo, self.fake_github(repo)
+
+    def rewritten_upstream(self, repo, bare):
+        upstream = self.root / f"{repo.name}-upstream"
+        self.run_ok(["git", "clone", "-q", bare, upstream])
+        skill = upstream / ".agents/skills/devlyn-ideate"
+        shutil.rmtree(skill)
+        self.historical_skill(skill)
+        self.run_ok(["git", "add", "-A"], cwd=upstream)
+        self.run_ok(["git", "commit", "-qm", "another shipped copy"], cwd=upstream)
+        self.run_ok(["git", "push", "-q", "origin", "main"], cwd=upstream)
 
     @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
     def test_the_checkout_update_is_a_fast_forward_whatever_the_branch_merge_options(self):
@@ -358,8 +369,9 @@ class CleanupFixture(unittest.TestCase):
     @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
     def test_a_copy_the_base_kept_under_another_spelling_is_not_taken_as_removed(self):
         # Prediction (review MEDIUM): a reviewed copy the base still holds, renamed only in case, is not one the base
-        # removed; the scope stays stale-plan and the checkout is not moved.
+        # removed; the scope stays stale-plan and a checkout with local commits is not moved.
         repo, bare = self.installed_and_pushed("spelling")
+        self.run_ok(["git", "commit", "--allow-empty", "-qm", "local work"], cwd=repo)
         plan, path = self.plan("--project", repo)
 
         def rename(upstream):
@@ -393,6 +405,79 @@ class CleanupFixture(unittest.TestCase):
         self.assertFalse(json.loads((self.root / "gh.json").read_text(encoding="utf-8")).get("prs"))
         self.assertEqual(self.run_ok(["git", "branch", "--list", "devlyn/cleanup-*"], cwd=repo).stdout.strip(), "")
         self.assertFalse(list((self.root / "behind.devlyn.noindex").glob("devlyn-cleanup-*")))
+
+    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
+    def test_items_the_remote_base_already_settled_include_settings_edits(self):
+        # Prediction: upstream removals plus the retired settings edit settle the whole review; apply is done,
+        # fast-forwards to main, and leaves no PR, cleanup branch or worktree.
+        repo, bare = self.installed_and_pushed("settled")
+        settings = repo / ".claude/settings.json"
+        settings.parent.mkdir(exist_ok=True)
+        retired = {"type": "command", "command": 'python3 "$CLAUDE_PROJECT_DIR/.claude/skills/_shared/resolve-stop-hook.py"'}
+        data = {"custom": "owner", "hooks": {"Stop": [{"hooks": [retired]}]}}
+        settings.write_text(json.dumps(data) + "\n", encoding="utf-8")
+        self.run_ok(["git", "add", ".claude/settings.json"], cwd=repo)
+        self.run_ok(["git", "commit", "-qm", "retired settings"], cwd=repo)
+        self.run_ok(["git", "push", "-q", "origin", "main"], cwd=repo)
+        plan, path = self.plan("--project", repo)
+        self.assertIn(("settings-entry", "edit", "settings.json", "delivery", None), self.actions(plan["scopes"][0]))
+        cleaned = {"custom": "owner", "hooks": {"Stop": []}}
+
+        def edit(upstream):
+            (upstream / ".claude/settings.json").write_text(json.dumps(cleaned, indent=2) + "\n", encoding="utf-8")
+            self.run_ok(["git", "add", ".claude/settings.json"], cwd=upstream)
+
+        self.removed_upstream(repo, bare, plan, also=edit)
+        [scope] = self.apply(plan, path)["scopes"]
+        self.assertEqual((scope["state"], scope["error"], scope["delivery"]), ("done", None, None), scope)
+        self.assertEqual(self.run_ok(["git", "rev-parse", "HEAD"], cwd=repo).stdout,
+                         self.run_ok(["git", "--git-dir", bare, "rev-parse", "main"]).stdout)
+        self.assertEqual(json.loads(settings.read_text(encoding="utf-8")), cleaned)
+        self.assertFalse(json.loads((self.root / "gh.json").read_text(encoding="utf-8")).get("prs"))
+        self.assertEqual(self.run_ok(["git", "branch", "--list", "devlyn/cleanup-*"], cwd=repo).stdout.strip(), "")
+        self.assertFalse(list((self.root / "settled.devlyn.noindex").glob("devlyn-cleanup-*")))
+
+    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
+    def test_stale_delivery_updates_a_behind_checkout_for_the_next_review(self):
+        # Prediction: changed upstream bytes still fail stale-plan without deletion or a PR, but main takes
+        # the base; a fresh plan then reviews those bytes and delivers successfully.
+        repo, bare = self.installed_and_pushed("rewritten")
+        (repo / "unrelated").mkdir()
+        (repo / "unrelated/note").write_text("owner\n", encoding="utf-8")
+        plan, path = self.plan("--project", repo)
+        self.rewritten_upstream(repo, bare)
+        base = self.run_ok(["git", "--git-dir", bare, "rev-parse", "main"]).stdout
+        [scope] = self.apply(plan, path)["scopes"]
+        self.assertEqual((scope["state"], scope["error"]["code"], scope["delivery"]), ("failed", "stale-plan", None), scope)
+        self.assertIn(".agents/skills/devlyn-ideate", scope["error"]["params"]["detail"])
+        self.assertFalse(json.loads((self.root / "gh.json").read_text(encoding="utf-8")).get("prs"))
+        self.assertEqual(self.run_ok(["git", "branch", "--list", "devlyn/cleanup-*"], cwd=repo).stdout.strip(), "")
+        self.assertFalse(list((self.root / "rewritten.devlyn.noindex").glob("devlyn-cleanup-*")))
+        self.assertEqual(self.run_ok(["git", "rev-parse", "HEAD"], cwd=repo).stdout, base)
+        self.assertEqual(self.run_ok(["git", "diff", "HEAD", "--"], cwd=repo).stdout, "")
+        self.assertTrue(all(Path(item["path"]).exists() for item in plan["scopes"][0]["items"]))
+        self.assertEqual((repo / "unrelated/note").read_text(encoding="utf-8"), "owner\n")
+        plan, path = self.plan("--project", repo)
+        [scope] = self.apply(plan, path)["scopes"]
+        self.assertEqual((scope["state"], scope["error"], scope["delivery"]["state"]), ("done", None, "merged"), scope)
+
+    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
+    def test_stale_delivery_on_another_branch_requires_checkout_update(self):
+        # Prediction: a behind checkout on another branch cannot take the changed base; report update-checkout,
+        # keep HEAD and the copies unchanged, and release the allocation without opening a PR.
+        repo, bare = self.installed_and_pushed("rewritten-feature")
+        self.run_ok(["git", "checkout", "-qb", "work"], cwd=repo)
+        before = self.run_ok(["git", "rev-parse", "HEAD"], cwd=repo).stdout
+        plan, path = self.plan("--project", repo)
+        self.rewritten_upstream(repo, bare)
+        [scope] = self.apply(plan, path)["scopes"]
+        self.assertEqual((scope["state"], scope["error"]["code"], scope["delivery"]), ("failed", "update-checkout", None), scope)
+        self.assertEqual(self.run_ok(["git", "rev-parse", "HEAD"], cwd=repo).stdout, before)
+        self.assertEqual(self.run_ok(["git", "diff", "HEAD", "--"], cwd=repo).stdout, "")
+        self.assertTrue(all(Path(item["path"]).exists() for item in plan["scopes"][0]["items"]))
+        self.assertFalse(json.loads((self.root / "gh.json").read_text(encoding="utf-8")).get("prs"))
+        self.assertEqual(self.run_ok(["git", "branch", "--list", "devlyn/cleanup-*"], cwd=repo).stdout.strip(), "")
+        self.assertFalse(list((self.root / "rewritten-feature.devlyn.noindex").glob("devlyn-cleanup-*")))
 
     @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
     def test_a_checkout_on_another_branch_is_left_and_asked_to_update(self):

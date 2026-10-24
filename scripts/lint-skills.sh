@@ -258,7 +258,8 @@ retired_names='devlyn[-:]resolve|resolve-stop-hook|archive_run|collect-codex-fin
 offenders=$(
   {
     git grep -nIE "$retired_names" -- bin config .agents scripts .github CLAUDE.md AGENTS.md package.json \
-      ':!scripts/lint-skills.sh' ':!scripts/test-windows-portability.py' ':!scripts/fixtures/instructions' ':!scripts/fixtures/cleanup' \
+      ':!scripts/lint-skills.sh' ':!scripts/test-windows-portability.py' ':!scripts/test-harness-cleanup.py' \
+      ':!scripts/fixtures/instructions' ':!scripts/fixtures/cleanup' \
       ':!bin/instruction-templates.json' ':!bin/skill-history.json' ':!bin/devlyn.js' || true
     sed '/<!-- legacy-surface-map:begin/,/<!-- legacy-surface-map:end/s/.*//' README.md \
       | grep -nE "$retired_names" | sed 's#^#README.md:#' || true
