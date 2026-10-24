@@ -1891,9 +1891,9 @@ function cleanupRemovedUpstream(root, worktree) {
 // The copies the remote base dropped stay in this checkout until it takes that base: a checkout on
 // the base branch is fast-forwarded to it, as a task's owner reconciles after delivery. The base is
 // fetched into a ref this call owns (FETCH_HEAD can be rewritten by another fetch meanwhile) and
-// merged by its commit, only while the checkout is still the one checked before the fetch. Another
-// branch, or a fast-forward Git refuses (local changes or ignored files in the way, local
-// commits), is left as it is.
+// merged by its commit, only while the checkout is still the one checked before the fetch, and the
+// result must be that commit. Another branch, or a fast-forward Git refuses (local changes or ignored
+// files in the way, local commits), is left as it is.
 function cleanupUpdateCheckout(scope) {
   const failed = (detail) => ({ error: cleanupReason('update-checkout', { detail }) });
   const read = (args) => {
@@ -1910,9 +1910,12 @@ function cleanupUpdateCheckout(scope) {
     const target = read(['rev-parse', '--verify', `${ref}^{commit}`]);
     const [now, at] = checkout();
     if (!target || now !== branch || at !== head) return failed('the checkout changed while the base was fetched');
-    const merged = cleanupGit(scope.root, ['merge', '--ff-only', '--no-autostash', '--no-overwrite-ignore', '--quiet', target]);
+    // The branch's own merge options (`--squash`, `-s ours`) would turn this into something else.
+    const merged = cleanupGit(scope.root, ['-c', `branch.${branch}.mergeOptions=`,
+      'merge', '--ff-only', '--no-squash', '--no-autostash', '--no-overwrite-ignore', '--quiet', target]);
     if (merged.error || merged.status !== 0) return failed(merged.error?.message || merged.stderr.trim());
-    return {};
+    const [after, landed] = checkout();
+    return after === branch && landed === target ? {} : failed('the fast-forward did not land on the base');
   } finally {
     cleanupGit(scope.root, ['update-ref', '-d', ref]);
   }

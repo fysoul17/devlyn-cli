@@ -317,6 +317,22 @@ class CleanupFixture(unittest.TestCase):
         return repo, self.fake_github(repo)
 
     @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
+    def test_the_checkout_update_is_a_fast_forward_whatever_the_branch_merge_options(self):
+        # Prediction (review MEDIUM): a branch configured to squash or merge with `-s ours` still lands exactly on the
+        # base commit, with nothing left staged.
+        for number, options in enumerate(["--squash", "-s ours"]):
+            with self.subTest(options=options):
+                repo, bare = self.installed_and_pushed(f"options{number}")
+                self.run_ok(["git", "config", "branch.main.mergeOptions", options], cwd=repo)
+                plan, path = self.plan("--project", repo)
+                self.removed_upstream(repo, bare, plan)
+                [scope] = self.apply(plan, path)["scopes"]
+                self.assertEqual((scope["state"], scope["error"]), ("done", None), scope)
+                self.assertEqual(self.run_ok(["git", "rev-parse", "HEAD"], cwd=repo).stdout,
+                                 self.run_ok(["git", "--git-dir", bare, "rev-parse", "main"]).stdout)
+                self.assertEqual(self.run_ok(["git", "status", "--porcelain"], cwd=repo).stdout, "")
+
+    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
     def test_the_checkout_update_never_overwrites_an_ignored_file(self):
         # Prediction (review HIGH): when the base now tracks a path the checkout ignores, the fast-forward is refused
         # and the local file keeps its bytes; the scope asks for the update instead of reporting done.
