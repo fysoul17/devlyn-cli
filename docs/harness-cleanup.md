@@ -43,12 +43,17 @@ under the user-root locks. Tracked items are delivered as one change per reposit
 `_shared/task-complete.py` allocates a worktree from the remote base, the same proof runs
 there, the commit `chore(devlyn): remove legacy devlyn-cli copies` is checked by a fresh
 plan and completed by the repository's completion policy. A failed delivery releases its
-worktree, branch and receipt.
+worktree, branch and receipt. A reviewed copy the remote base no longer has passes only when
+the checkout holds it unchanged since its fork point with that base, which removed it (an
+earlier cleanup's merged PR); with every copy so removed nothing is delivered. After a merged
+delivery, or such a removal, a checkout on the base branch is fast-forwarded to the base, so
+its copies go too; another branch, or a fast-forward Git refuses, fails the scope as
+`update-checkout` and is left as it is.
 
 The result is `{state: succeeded|partial|failed, scopes}`; each scope reports `state`
 (`skipped`, `done`, `failed`), `delivery` (`{state: merged|pr-open, url}`) and `error`.
 `--events` streams each scope's progress as one JSON line before the result. New codes:
-`stale-plan`, `apply-failed`, `delivery-failed`, `auth-failed`, `requirement-missing`
-(`{name}`), and the skip reasons above.
+`stale-plan`, `apply-failed`, `delivery-failed`, `auth-failed`, `update-checkout`,
+`requirement-missing` (`{name}`), and the skip reasons above.
 
 Tests: `python3 scripts/test-harness-cleanup.py`, with `TMPDIR` set to scratch.

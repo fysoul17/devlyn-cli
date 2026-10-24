@@ -1834,43 +1834,86 @@ function cleanupDeliver(scope, items, current) {
     '--branch', branch, '--worktree', worktree, '--repository', scope.remote.repository,
     '--remote', 'origin', '--base', scope.remote.base], scope.root).stdout);
   if (allocated?.status !== 'ALLOCATED') return { error: cleanupReason('delivery-failed', { detail: allocated?.reason || 'allocation failed' }) };
-  const release = (error) => {
+  const release = (error = null) => {
     for (const args of [['worktree', 'remove', '--force', worktree], ['branch', '-D', branch]]) {
       const result = cleanupGit(scope.root, args);
-      if (result.error || result.status !== 0) return { error: cleanupReason(error.code, { ...error.params,
+      if (result.error || result.status !== 0) return { error: cleanupReason(error?.code || 'delivery-failed', { ...error?.params,
         releaseError: result.error?.message || result.stderr.trim(), worktree, receipt: allocated.receipt }) };
     }
     fs.rmSync(path.dirname(allocated.receipt), { recursive: true, force: true });
-    return { error };
+    return error ? { error } : {};
   };
   let prepared;
-  try { prepared = cleanupDeliveryCommit(worktree, items, current, release); }
+  try { prepared = cleanupDeliveryCommit(worktree, items, current, release, cleanupRemovedUpstream(scope.root, worktree)); }
   catch (error) { return release(cleanupReason('apply-failed', { detail: error.message })); }
   if (prepared.error) return prepared;
+  // Every reviewed copy is already gone from the remote base: the checkout only has to take it.
+  if (!prepared.acceptance) return cleanupUpdateCheckout(scope);
   const completed = lastJson(run(['complete', '--receipt', allocated.receipt, '--acceptance', prepared.acceptance, '--writers-stopped'], scope.root).stdout);
   const status = completed?.delivery_status || completed?.status;
-  if (status === 'COMPLETE' || status === 'MERGED') return { delivery: { state: 'merged', url: completed.pr || null } };
+  if (status === 'COMPLETE' || status === 'MERGED') return { ...cleanupUpdateCheckout(scope), delivery: { state: 'merged', url: completed.pr || null } };
   if (completed?.pr) return { delivery: { state: 'pr-open', url: completed.pr } };
   const reason = completed?.reason || 'delivery did not complete';
   const auth = /\b(authentication|unauthorized|gh auth login|could not read Username|HTTP 40[13])\b/i.test(reason);
   return { error: cleanupReason(auth ? 'auth-failed' : 'delivery-failed', { detail: reason, ...(completed?.resume ? { resume: completed.resume } : {}) }) };
 }
 
+// Whether the remote base (the allocated worktree's HEAD) removed a copy this checkout tracks: the
+// checkout holds it as it was where the two histories meet, and the base no longer has it. A copy
+// committed only here, or changed here since, is not one the base removed.
+function cleanupRemovedUpstream(root, worktree) {
+  const object = (spec) => {
+    const result = cleanupGit(root, ['rev-parse', '--verify', '--quiet', spec]);
+    return !result.error && result.status === 0 ? result.stdout.trim() : null;
+  };
+  const base = cleanupGit(worktree, ['rev-parse', 'HEAD']);
+  const fork = !base.error && base.status === 0 ? cleanupGit(root, ['merge-base', 'HEAD', base.stdout.trim()]) : null;
+  if (!fork || fork.error || fork.status !== 0) return () => false;
+  const at = fork.stdout.trim();
+  return (relative) => {
+    const before = object(`${at}:${relative}`);
+    return before !== null && before === object(`HEAD:${relative}`);
+  };
+}
+
+// The copies the remote base dropped stay in this checkout until it takes that base: a checkout on
+// the base branch is fast-forwarded to it, as a task's owner reconciles after delivery. Another
+// branch, or a fast-forward Git refuses (local changes in the way, local commits), is left as it is.
+function cleanupUpdateCheckout(scope) {
+  const branch = cleanupGit(scope.root, ['symbolic-ref', '--quiet', '--short', 'HEAD']);
+  if (branch.error || branch.status !== 0 || branch.stdout.trim() !== scope.remote.base) {
+    return { error: cleanupReason('update-checkout', { detail: `${branch.stdout.trim() || 'a detached HEAD'} is checked out` }) };
+  }
+  for (const args of [['fetch', '--quiet', 'origin', scope.remote.base], ['merge', '--ff-only', '--quiet', 'FETCH_HEAD']]) {
+    const result = cleanupGit(scope.root, args);
+    if (result.error || result.status !== 0) {
+      return { error: cleanupReason('update-checkout', { detail: result.error?.message || result.stderr.trim() }) };
+    }
+  }
+  return {};
+}
+
 // Inside the allocated worktree: prove every reviewed item, remove them, commit, and write the
 // acceptance completion binds. A failure releases the worktree; so does a throw, in the caller.
-function cleanupDeliveryCommit(worktree, items, current, release) {
+// With every reviewed copy already removed by the remote base, the worktree is released with
+// nothing to deliver.
+function cleanupDeliveryCommit(worktree, items, current, release, removedUpstream) {
   const fresh = cleanupProjectScope(worktree, current);
   const available = new Map(fresh.items.map((item) => [`${item.kind}\u0000${item.relative}`, item]));
   const pairs = items.map((reviewed) => {
     const fresh = available.get(`${reviewed.kind}\u0000${reviewed.relative}`);
     return { reviewed, fresh, before: fresh && cleanupPreimage(fresh.path) };
   });
-  const stale = pairs.filter(({ reviewed, fresh, before }) => !fresh || fresh.action !== reviewed.action || fresh.route !== 'delivery'
-    || before.type !== reviewed.before.type || before.sha256 !== reviewed.before.sha256);
+  const stale = pairs.filter(({ reviewed, fresh, before }) => (fresh
+    ? fresh.action !== reviewed.action || fresh.route !== 'delivery'
+      || before.type !== reviewed.before.type || before.sha256 !== reviewed.before.sha256
+    : !removedUpstream(reviewed.relative)));
   // Check the entire batch before mutating even one item; the remote base cannot replace the reviewed preimage.
   if (stale.length) return release(cleanupReason('stale-plan', { detail: stale.map(({ reviewed }) => reviewed.relative).join(', ') }));
+  const present = pairs.filter(({ fresh }) => fresh);
+  if (!present.length) return release();
   const applied = [];
-  for (const { reviewed, fresh } of pairs) {
+  for (const { reviewed, fresh } of present) {
     const error = cleanupApplyItem({ ...fresh, before: reviewed.before });
     if (error) return release(cleanupReason(error.code, { ...error.params, detail: reviewed.relative }));
     applied.push(fresh.relative);
