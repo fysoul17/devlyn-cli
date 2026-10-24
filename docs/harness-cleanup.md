@@ -43,12 +43,15 @@ under the user-root locks. Tracked items are delivered as one change per reposit
 `_shared/task-complete.py` allocates a worktree from the remote base, the same proof runs
 there, the commit `chore(devlyn): remove legacy devlyn-cli copies` is checked by a fresh
 plan and completed by the repository's completion policy. A failed delivery releases its
-worktree, branch and receipt. A reviewed copy the remote base no longer has, in any spelling,
-passes only when the checkout holds it, under its tracked spelling, unchanged since its fork
-point with that base, which removed it (an earlier cleanup's merged PR); with every copy so
-removed nothing is delivered. After a merged delivery, or such a removal, a checkout on the
+worktree, branch and receipt. A reviewed item with no counterpart in the base's fresh plan
+passes only when the base changed its content or removed it in every spelling, and the checkout
+holds it, under its tracked spelling, unchanged since the fork point. With every item so settled,
+nothing is delivered. A fresh counterpart with different bytes still fails as `stale-plan`;
+before reporting that refusal and its detail, a checkout strictly behind the base takes the base
+so the next plan reviews its bytes. On a stale delivery, a checkout not behind stays untouched. After a merged
+delivery, or when every item is already settled, the checkout also takes the base. A checkout on the
 base branch is fast-forwarded to the base (fetched into a ref the call owns, merged by commit
-without autostash or overwriting ignored files), so its copies go too; another branch, or a
+without autostash or overwriting ignored files); another branch, or a
 fast-forward Git refuses, fails the scope as `update-checkout` and is left as it is.
 
 The result is `{state: succeeded|partial|failed, scopes}`; each scope reports `state`

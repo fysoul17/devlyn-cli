@@ -1843,11 +1843,25 @@ function cleanupDeliver(scope, items, current) {
     fs.rmSync(path.dirname(allocated.receipt), { recursive: true, force: true });
     return error ? { error } : {};
   };
+  const baseHead = cleanupGit(worktree, ['rev-parse', 'HEAD']);
+  if (baseHead.error || baseHead.status !== 0) return release(cleanupReason('repository-unreadable', { detail: baseHead.error?.message || baseHead.stderr.trim() }));
+  const base = baseHead.stdout.trim();
   let prepared;
-  try { prepared = cleanupDeliveryCommit(worktree, items, current, release, cleanupRemovedUpstream(scope.root, worktree)); }
+  try { prepared = cleanupDeliveryCommit(worktree, items, current, release, cleanupSettledUpstream(scope.root, base)); }
   catch (error) { return release(cleanupReason('apply-failed', { detail: error.message })); }
+  if (prepared.error?.code === 'stale-plan') {
+    const head = cleanupGit(scope.root, ['rev-parse', 'HEAD']);
+    // A stale review must see the base's bytes next time. Local commits keep today's refusal.
+    if (!head.error && head.status === 0 && head.stdout.trim() !== base) {
+      const ancestor = cleanupGit(scope.root, ['merge-base', '--is-ancestor', head.stdout.trim(), base]);
+      if (!ancestor.error && ancestor.status === 0) {
+        const updated = cleanupUpdateCheckout(scope);
+        if (updated.error) return updated;
+      }
+    }
+  }
   if (prepared.error) return prepared;
-  // Every reviewed copy is already gone from the remote base: the checkout only has to take it.
+  // The remote base already settled every reviewed item: the checkout only has to take it.
   if (!prepared.acceptance) return cleanupUpdateCheckout(scope);
   const completed = lastJson(run(['complete', '--receipt', allocated.receipt, '--acceptance', prepared.acceptance, '--writers-stopped'], scope.root).stdout);
   const status = completed?.delivery_status || completed?.status;
@@ -1858,18 +1872,16 @@ function cleanupDeliver(scope, items, current) {
   return { error: cleanupReason(auth ? 'auth-failed' : 'delivery-failed', { detail: reason, ...(completed?.resume ? { resume: completed.resume } : {}) }) };
 }
 
-// Whether the remote base (the allocated worktree's HEAD) removed a copy this checkout tracks: the
-// base holds no path of that name in any spelling, and the checkout holds the copy, under its
-// tracked spelling, as it was where the two histories meet. A copy committed only here, or changed
-// here since, is not one the base removed.
-function cleanupRemovedUpstream(root, worktree) {
+// With no fresh counterpart, the base settled an item only if it changed the path's content or
+// removed it in every spelling, while the checkout holds it under its tracked spelling unchanged
+// since the fork point. A copy committed or changed only here is not one the base settled.
+function cleanupSettledUpstream(root, base) {
   const read = (cwd, args, options) => {
     const result = cleanupGit(cwd, args, options);
     return !result.error && result.status === 0 ? result.stdout : null;
   };
   const object = (spec) => read(root, ['rev-parse', '--verify', '--quiet', spec])?.trim() || null;
-  const base = read(worktree, ['rev-parse', 'HEAD'])?.trim();
-  const fork = base ? read(root, ['merge-base', 'HEAD', base])?.trim() : null;
+  const fork = read(root, ['merge-base', 'HEAD', base])?.trim();
   let upstream; // the base's paths, folded to lower case, read once and only when needed
   return (relative) => {
     if (!fork) return false;
@@ -1878,17 +1890,20 @@ function cleanupRemovedUpstream(root, worktree) {
         ?.split('\0').filter(Boolean).map((name) => name.toLowerCase()) ?? null;
     }
     const lower = relative.toLowerCase();
-    if (!upstream || upstream.some((name) => name === lower || name.startsWith(`${lower}/`))) return false;
+    if (!upstream) return false;
     // The tracked spelling, which a case-insensitive file system lets differ from the one on disk.
     const tracked = read(root, ['ls-files', '-z', '--', `:(icase,literal)${relative}`])?.split('\0').find(Boolean);
     const spelled = tracked?.slice(0, relative.length);
     if (!spelled || spelled.toLowerCase() !== lower) return false;
     const before = object(`${fork}:${spelled}`);
-    return before !== null && before === object(`HEAD:${spelled}`);
+    if (before === null || before !== object(`HEAD:${spelled}`)) return false;
+    const after = object(`${base}:${spelled}`);
+    return after !== null ? after !== before
+      : !upstream.some((name) => name === lower || name.startsWith(`${lower}/`));
   };
 }
 
-// The copies the remote base dropped stay in this checkout until it takes that base: a checkout on
+// The remote base's cleanup or changed copies reach this checkout only when it takes that base: a checkout on
 // the base branch is fast-forwarded to it, as a task's owner reconciles after delivery. The base is
 // fetched into a ref this call owns (FETCH_HEAD can be rewritten by another fetch meanwhile) and
 // merged by its commit, only while the checkout is still the one checked before the fetch, and the
@@ -1923,9 +1938,9 @@ function cleanupUpdateCheckout(scope) {
 
 // Inside the allocated worktree: prove every reviewed item, remove them, commit, and write the
 // acceptance completion binds. A failure releases the worktree; so does a throw, in the caller.
-// With every reviewed copy already removed by the remote base, the worktree is released with
+// With every reviewed item already settled by the remote base, the worktree is released with
 // nothing to deliver.
-function cleanupDeliveryCommit(worktree, items, current, release, removedUpstream) {
+function cleanupDeliveryCommit(worktree, items, current, release, settledUpstream) {
   const fresh = cleanupProjectScope(worktree, current);
   const available = new Map(fresh.items.map((item) => [`${item.kind}\u0000${item.relative}`, item]));
   const pairs = items.map((reviewed) => {
@@ -1935,7 +1950,7 @@ function cleanupDeliveryCommit(worktree, items, current, release, removedUpstrea
   const stale = pairs.filter(({ reviewed, fresh, before }) => (fresh
     ? fresh.action !== reviewed.action || fresh.route !== 'delivery'
       || before.type !== reviewed.before.type || before.sha256 !== reviewed.before.sha256
-    : !removedUpstream(reviewed.relative)));
+    : !settledUpstream(reviewed.relative)));
   // Check the entire batch before mutating even one item; the remote base cannot replace the reviewed preimage.
   if (stale.length) return release(cleanupReason('stale-plan', { detail: stale.map(({ reviewed }) => reviewed.relative).join(', ') }));
   const present = pairs.filter(({ fresh }) => fresh);
