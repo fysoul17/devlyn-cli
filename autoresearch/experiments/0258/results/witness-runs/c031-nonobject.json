@@ -1,0 +1,15 @@
+{
+  "witness": "results/witnesses/f10-c031-nonobject-json.js",
+  "witness_sha256": "91dea8bf2cc26292400f81bca7637c29df0d82bc0f0e3ff017d15a76bd931548",
+  "cell": "c031-F10-claude-C-r16",
+  "image": "devlyn-0256",
+  "run": "copy of snapshot, --network none, --cap-drop ALL, no-new-privileges, uid 501, twice",
+  "exits": [1, 1],
+  "result_each_pass": [
+    {"body": "null", "status": 400, "type": "text/html; charset=utf-8", "ok": false},
+    {"body": "5", "status": 400, "type": "text/html; charset=utf-8", "ok": false},
+    {"body": "\"text\"", "status": 400, "type": "text/html; charset=utf-8", "ok": false},
+    {"body": "true", "status": 400, "type": "text/html; charset=utf-8", "ok": false},
+    {"body": "[1]", "status": 400, "type": "application/json; charset=utf-8", "ok": true}
+  ]
+}
