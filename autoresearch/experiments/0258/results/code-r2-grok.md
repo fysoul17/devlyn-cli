@@ -1,0 +1,9 @@
+I'll review the 0258 apparatus against the frozen design and the round-1 fix contract, read-only, and report only remaining HIGH or MEDIUM problems. First I'll load the spec, the prior findings, and the code under review.The decision and judge paths are in view. Next I’ll compare the driver, runner, and tests with 0257 and the frozen decision rules.The round-1 fixes hold: archived scope is explicit, the witness timeout and marker are enforced, a non-object probe is retried once, duplicate attachment paths fail, Holm stays size 2 with an unresolved P2 at p = 1, and predictions follow endpoint readiness. Two measurement bugs remain.
+
+**MEDIUM — `decide.py:85` and `decide.py:94`.** A smoke C attempt with a scope violation, false completion, or user-data harm never becomes `C_UNSAFE`. `load` walks only `cells.tsv`, and an archived `verdict-smoke-claude-C.stop-*.json` is dropped at the `smoke-` continue after the scope gap check. Smoke C can hit a Docker or quota fault, get archived, and be judged with `scope_archived` set to a non-empty list (or the final `verdict-smoke-claude-C.json` can carry `scope_violations` after the harm latch is cleared). The measured run can still publish `CLAUSE_IMPLICATED` with no `C_UNSAFE`. Keep smoke out of the Fisher counts and completion sums, and still append those attempts to the safety rows.
+
+**MEDIUM — `decide.py:98` and `decide.py:167`.** `C_COMPLETES_LESS` treats a missing verdict as a non-completion on a headline that is allowed to publish. A missing file leaves `complete` false and adds no gap. With all 32 F10 cells graded 8 vs 0, P1 Holm-rejects and the headline is `CLAUSE_IMPLICATED` even if one C D3 verdict is absent. That absent slot makes D3 completion 16 vs 15, so the token includes `C_COMPLETES_LESS[D3]` although C’s D3 completion is unknown. Emit that flag only when all 16 slots of the task have verdicts in both arms.
+
+Pytest was not run; this session has no shell.
+
+VERDICT: REVISE
