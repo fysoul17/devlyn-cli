@@ -89,14 +89,15 @@ function effectiveConfig(context) {
   const keys = {
     claude: ['appendSystemPrompt', 'pluginDirs'], codex: ['developer_instructions', 'skills', 'marketplaces', 'plugins'],
     grok: ['rules'], omp: ['appendSystemPrompt', 'skills'], antigravity: [], cursor: [],
-    opencode: ['inlineConfig'], kimi: ['ownerAgent'], copilot: ['skillsDirs'], qwen: ['appendSystemPrompt'],
+    opencode: ['inlineConfig', 'skillsPaths'], kimi: ['ownerAgent'], copilot: ['skillsDirs', 'instructionsDirs'], qwen: ['appendSystemPrompt'],
   }[context.engine];
   if (!object(config) || Object.keys(config).some((key) => !keys.includes(key))) return null;
-  for (const field of ['appendSystemPrompt', 'developer_instructions', 'rules', 'inlineConfig', 'skillsDirs']) {
+  for (const field of ['appendSystemPrompt', 'developer_instructions', 'rules', 'inlineConfig', 'skillsDirs', 'instructionsDirs']) {
     if (config[field] !== undefined && config[field] !== null && !textValue(config[field])) return null;
   }
   if (context.engine === 'kimi' && typeof config.ownerAgent !== 'boolean') return null;
   if (config.pluginDirs !== undefined && (!strings(config.pluginDirs) || !config.pluginDirs.every(path.isAbsolute))) return null;
+  if (config.skillsPaths != null && !strings(config.skillsPaths)) return null;
   if (context.engine === 'codex') {
     for (const key of ['marketplaces', 'plugins', 'skills']) if (config[key] != null && !object(config[key])) return null;
     if (config.skills?.config !== undefined && (!Array.isArray(config.skills.config)
@@ -144,7 +145,10 @@ function discoveryRoots(context, env, config) {
     for (const dir of config?.skills?.customDirectories || []) add(context.cwd, dir);
   }
   if (engine === 'codex' && process.platform !== 'win32') add('/etc/codex', 'skills');
-  if (engine === 'opencode') add(env.OPENCODE_CONFIG_DIR, 'skills');
+  if (engine === 'opencode') {
+    add(env.OPENCODE_CONFIG_DIR, 'skills');
+    for (const dir of config?.skillsPaths || []) add(context.cwd, dir);
+  }
   if (engine === 'copilot') for (const dir of (config?.skillsDirs ?? env.COPILOT_SKILLS_DIRS ?? '').split(',').filter(Boolean)) add(context.cwd, dir);
   for (let dir = path.resolve(context.cwd); ; dir = path.dirname(dir)) {
     if (native[1]) add(dir, native[1], 'skills');
@@ -156,9 +160,11 @@ function discoveryRoots(context, env, config) {
   return [...new Set(roots)];
 }
 
-function inspectSkills(context, release, env, config) {
+function inspectSkills(context, release, env, config, active) {
   const found = [], errors = [], hashes = new Map();
   for (const root of discoveryRoots(context, env, config)) {
+    // Reusing the selected, verified release is not a competing OpenCode source.
+    if (active && context.engine === 'opencode' && config?.skillsPaths && root === path.join(release.root, 'config/skills')) continue;
     for (const name of SKILLS) {
       const dir = path.join(root, name);
       try {
@@ -227,7 +233,7 @@ function planActivation(releaseRoot, input, env = process.env) {
     fail('release-version-conflict', { version: context.recordedRelease.version }, 3);
   }
   const config = effectiveConfig(context);
-  const { found, errors } = inspectSkills(context, release, env, config);
+  const { found, errors } = inspectSkills(context, release, env, config, !off);
   if (errors.length) status.hide = channel('partial', null, errors);
   status.inheritedDevlyn = found.filter((entry) => entry.owned).map((entry) => entry.path);
   const supported = supportedVersion(context.engine, context.version);
@@ -368,19 +374,35 @@ function planActivation(releaseRoot, input, env = process.env) {
       let inline;
       try { inline = config.inlineConfig == null ? {} : JSON.parse(config.inlineConfig); }
       catch (error) { if (!(error instanceof SyntaxError)) throw error; inline = null; }
-      if (!object(inline) || (inline.instructions !== undefined && !strings(inline.instructions))) {
-        status.principles = channel('partial', null, [reason('config-unreadable', { field: 'inlineConfig.instructions' })]);
-        status.skills = channel('partial', null, [reason('config-unreadable', { field: 'inlineConfig.instructions' })]);
+      const invalidField = !object(inline) || (inline.instructions !== undefined && !strings(inline.instructions))
+        ? 'inlineConfig.instructions'
+        : config.skillsPaths != null && inline.skills !== undefined && !object(inline.skills) ? 'inlineConfig.skills' : null;
+      if (invalidField) {
+        status.principles = channel('partial', null, [reason('config-unreadable', { field: invalidField })]);
+        status.skills = channel('partial', null, [reason('config-unreadable', { field: invalidField })]);
         break;
       }
+      if (Array.isArray(config.skillsPaths) && !collisions.length && !errors.length) {
+        inline.skills = { ...inline.skills, paths: [...new Set([...config.skillsPaths, path.join(release.root, 'config/skills')])] };
+        native('skills.paths', 'read-file', `Read ${path.join(release.root, 'config/skills/devlyn-ideate/SKILL.md')}`);
+      } else fallback(config.skillsPaths == null ? [] : [...collisions, ...errors]);
       plan.envPatch.OPENCODE_CONFIG_CONTENT = JSON.stringify({ ...inline,
         instructions: [...(inline.instructions || []), file('devlyn-instructions.md', instructions)] });
-      principles('OPENCODE_CONFIG_CONTENT.instructions'); fallback();
+      principles('OPENCODE_CONFIG_CONTENT.instructions');
       break;
     }
     case 'copilot': {
-      status.principles = context.committedBlockApplies ? channel('configured', 'native-project')
-        : channel('unavailable', null, [reason('principles-unavailable')]);
+      if (!context.committedBlockApplies) {
+        const directory = path.join(context.runDir, 'copilot');
+        if (directory.includes(',')) {
+          status.principles = channel('unavailable', null, [reason('principles-unavailable', { detail: 'comma-in-path' })]);
+        } else {
+          file('copilot/devlyn.instructions.md', '---\napplyTo: "**"\n---\n' + instructions);
+          const dirs = config.instructionsDirs ?? env.COPILOT_CUSTOM_INSTRUCTIONS_DIRS ?? '';
+          plan.envPatch.COPILOT_CUSTOM_INSTRUCTIONS_DIRS = dirs.split(',').includes(directory) ? dirs : (dirs ? `${dirs},${directory}` : directory);
+          principles('COPILOT_CUSTOM_INSTRUCTIONS_DIRS');
+        }
+      }
       const root = path.join(release.root, 'config/skills');
       if (root.includes(',') || collisions.length || errors.length) {
         status.skills = channel('partial', null, root.includes(',') ? [reason('skills-unavailable', { detail: 'comma-in-path' })] : [...collisions, ...errors]);

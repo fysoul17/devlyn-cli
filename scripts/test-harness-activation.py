@@ -109,6 +109,7 @@ class ActivationTests(unittest.TestCase):
                 for key, value in tomllib.loads(args[index + 1]).items()}
 
     def test_per_engine_fresh_fixture(self):
+        # Prediction: Copilot configures both session channels; other engine defaults stay unchanged.
         flags = dict(claude='--plugin-dir', codex='-c', grok='--rules', omp='--config',
                      kimi='--agent-file', qwen='--append-system-prompt')
         for engine in VERSIONS:
@@ -123,7 +124,7 @@ class ActivationTests(unittest.TestCase):
                     self.assertEqual(plan['engineArgs'], [])
                     self.assertEqual(plan['channels']['principles']['reasons'][0]['code'], 'principles-task-only')
                 if engine == 'copilot':
-                    self.assertEqual(plan['channels']['principles']['state'], 'unavailable')
+                    self.assertEqual(plan['channels']['overall'], 'configured')
                 for file in plan['files']:
                     self.assertEqual(file['sha256'], hashlib.sha256(file['utf8'].encode()).hexdigest())
                     self.assertFalse(Path(file['relativePath']).is_absolute())
@@ -331,6 +332,179 @@ class ActivationTests(unittest.TestCase):
             plan = self.plan(ctx)
             self.assertEqual(plan['envPatch'], {})
             self.assertEqual(plan['files'], [])
+
+    def test_copilot_instructions_file(self):
+        # Prediction: Copilot plans an apply-to-all file with the same defaults/catalog and a verified hash.
+        plan = self.plan(self.context('copilot'))
+        instructions = self.plan(self.context('opencode'))['files'][0]['utf8']
+        content = '---\napplyTo: "**"\n---\n' + instructions
+        self.assertEqual(plan['files'], [{'relativePath': 'copilot/devlyn.instructions.md', 'utf8': content,
+                                          'sha256': hashlib.sha256(content.encode()).hexdigest()}])
+        self.assertEqual(plan['envPatch']['COPILOT_CUSTOM_INSTRUCTIONS_DIRS'], str(self.run_dir / 'copilot'))
+        self.assertEqual(plan['channels']['principles'], {
+            'state': 'configured', 'mechanism': 'COPILOT_CUSTOM_INSTRUCTIONS_DIRS', 'reasons': []})
+        self.assertEqual(plan['channels']['overall'], 'configured')
+
+    def test_copilot_instructions_merge_and_dedupe(self):
+        # Prediction: effective instructionsDirs wins over env; null/absent uses env; an existing run dir is unchanged.
+        directory = str(self.run_dir / 'copilot')
+        self.env['COPILOT_CUSTOM_INSTRUCTIONS_DIRS'] = '/env one,/env two'
+        for config, expected in [({}, '/env one,/env two,' + directory),
+                                 ({'instructionsDirs': None}, '/env one,/env two,' + directory),
+                                 ({'instructionsDirs': ''}, directory),
+                                 ({'instructionsDirs': '/owner one,/owner two'}, '/owner one,/owner two,' + directory),
+                                 ({'instructionsDirs': '/owner,' + directory + ',/last'}, '/owner,' + directory + ',/last')]:
+            with self.subTest(config=config):
+                ctx = self.context('copilot')
+                ctx['effectiveConfig'] = config
+                self.assertEqual(self.plan(ctx)['envPatch']['COPILOT_CUSTOM_INSTRUCTIONS_DIRS'], expected)
+        self.env['COPILOT_CUSTOM_INSTRUCTIONS_DIRS'] = '/env,' + directory
+        self.assertEqual(self.plan(self.context('copilot'))['envPatch']['COPILOT_CUSTOM_INSTRUCTIONS_DIRS'], '/env,' + directory)
+
+    def test_copilot_instructions_comma_fallback(self):
+        # Prediction: a comma in the run path leaves principles unavailable without an instruction file/env patch.
+        ctx = self.context('copilot')
+        ctx['runDir'] = str(self.case / 'run,comma')
+        plan = self.plan(ctx)
+        self.assertEqual(plan['files'], [])
+        self.assertNotIn('COPILOT_CUSTOM_INSTRUCTIONS_DIRS', plan['envPatch'])
+        self.assertEqual(plan['channels']['principles'], {'state': 'unavailable', 'mechanism': None,
+            'reasons': [{'code': 'principles-unavailable', 'params': {'detail': 'comma-in-path'}}]})
+        self.assertEqual(plan['channels']['skills']['state'], 'configured')
+
+    def test_copilot_instructions_committed_block_wins(self):
+        # Prediction: committed principles bypass instruction injection even with a comma or release-local runDir.
+        ctx = self.context('copilot')
+        ctx['committedBlockApplies'] = True
+        ctx['effectiveConfig'] = {'instructionsDirs': '/owner'}
+        for directory in (self.run_dir, self.case / 'run,comma', self.package / 'run'):
+            with self.subTest(directory=directory):
+                ctx['runDir'] = str(directory)
+                plan = self.plan(ctx)
+                self.assertEqual(plan['files'], [])
+                self.assertNotIn('COPILOT_CUSTOM_INSTRUCTIONS_DIRS', plan['envPatch'])
+                self.assertEqual(plan['channels']['principles'], {
+                    'state': 'configured', 'mechanism': 'native-project', 'reasons': []})
+                self.assertEqual(plan['channels']['skills']['state'], 'configured')
+
+    def test_opencode_native_skills_merge(self):
+        # Prediction: effective paths survive unchanged, duplicates collapse, inline urls remain, and invocation stays read-file.
+        ctx = self.context('opencode')
+        owner = {'instructions': ['owner.md'], 'skills': {'paths': ['/stale-inline'], 'urls': ['https://example.com/skills']},
+                 'permission': {'bash': 'ask'}}
+        for paths in ([], ['relative/skills', '/owner skills', 'relative/skills']):
+            with self.subTest(paths=paths):
+                ctx['effectiveConfig'] = {'inlineConfig': json.dumps(owner), 'skillsPaths': paths}
+                plan = self.plan(ctx)
+                merged = json.loads(plan['envPatch']['OPENCODE_CONFIG_CONTENT'])
+                self.assertEqual(merged['skills'], {'paths': list(dict.fromkeys([*paths, str(self.package / 'config/skills')])),
+                                                   'urls': owner['skills']['urls']})
+                self.assertEqual(merged['instructions'], ['owner.md', str(self.run_dir / 'devlyn-instructions.md')])
+                self.assertEqual(merged['permission'], owner['permission'])
+                self.assertEqual(plan['channels']['skills'], {'state': 'configured', 'mechanism': 'skills.paths', 'reasons': []})
+                self.assertEqual(plan['channels']['overall'], 'configured')
+                self.assertEqual(plan['channels']['invocation'], {
+                    'kind': 'read-file', 'text': 'Read ' + str(self.package / 'config/skills/devlyn-ideate/SKILL.md')})
+                self.assertNotIn('OPENCODE_CONFIG_DIR', plan['envPatch'])
+
+    def test_opencode_native_skills_release_path_once(self):
+        # Prediction: an already-selected release root is deduplicated, not treated as a competing skill source.
+        ctx = self.context('opencode')
+        root = str(self.package / 'config/skills')
+        ctx['effectiveConfig'] = {'skillsPaths': [root, root]}
+        plan = self.plan(ctx)
+        self.assertEqual(json.loads(plan['envPatch']['OPENCODE_CONFIG_CONTENT'])['skills']['paths'], [root])
+        self.assertEqual(plan['channels']['overall'], 'configured')
+
+    def test_opencode_native_skills_unknown_paths_keep_catalog(self):
+        # Prediction: absent/null effective paths preserve inline skills and the original partial catalog behavior.
+        ctx = self.context('opencode')
+        owner = {'skills': {'paths': ['relative/skills'], 'urls': ['https://example.com/skills']}}
+        for extra in ({}, {'skillsPaths': None}):
+            with self.subTest(extra=extra):
+                ctx['effectiveConfig'] = {'inlineConfig': json.dumps(owner), **extra}
+                plan = self.plan(ctx)
+                self.assertEqual(json.loads(plan['envPatch']['OPENCODE_CONFIG_CONTENT'])['skills'], owner['skills'])
+                self.assertEqual(plan['channels']['skills'], {'state': 'partial', 'mechanism': 'absolute-catalog',
+                    'reasons': [{'code': 'skills-catalog', 'params': {}}]})
+                self.assertEqual(plan['channels']['invocation']['kind'], 'read-file')
+                self.assertEqual(plan['channels']['principles']['state'], 'configured')
+
+    def test_opencode_known_selection_none_reports_inherited(self):
+        # Prediction: disabling activation still reports effective release skills that cannot be selectively hidden.
+        ctx = self.context('opencode')
+        root = self.package / 'config/skills'
+        ctx['effectiveConfig'] = {'skillsPaths': [str(root)]}
+        for changes in ({'projectChoice': 'none'}, {'launchMode': 'resume', 'recordedRelease': None}):
+            with self.subTest(changes=changes):
+                plan = self.plan({**ctx, **changes})
+                self.assertEqual(plan['channels']['inheritedDevlyn'],
+                                 [str(root / name / 'SKILL.md') for name in ('devlyn-ideate', 'devlyn-engines')])
+                self.assertEqual(plan['channels']['hide']['state'], 'partial')
+                self.assertEqual(plan['envPatch'], {})
+                self.assertEqual(plan['files'], [])
+
+    def test_opencode_malformed_inline_skills(self):
+        # Prediction: malformed inline skills fail closed before an effective-path overlay could mask them.
+        ctx = self.context('opencode')
+        for skills in (None, [], 'owner', True):
+            with self.subTest(skills=skills):
+                ctx['effectiveConfig'] = {'skillsPaths': [], 'inlineConfig': json.dumps({'skills': skills})}
+                plan = self.plan(ctx)
+                self.assertEqual(plan['envPatch'], {})
+                self.assertEqual(plan['files'], [])
+                for channel in ('principles', 'skills'):
+                    self.assertEqual(plan['channels'][channel], {'state': 'partial', 'mechanism': None,
+                        'reasons': [{'code': 'config-unreadable', 'params': {'field': 'inlineConfig.skills'}}]})
+
+    def test_opencode_native_skills_collision_keeps_catalog(self):
+        # Prediction: collisions in effective paths (relative to cwd) or supplied roots prevent the native overlay.
+        root = self.project / 'owner-skills'
+        skill = root / 'devlyn-ideate'
+        skill.mkdir(parents=True)
+        (skill / 'SKILL.md').write_text('---\nname: devlyn-ideate\ndescription: owner\n---\nOwner')
+        for effective_path in (str(root), 'owner-skills', None):
+            with self.subTest(effective_path=effective_path):
+                ctx = self.context('opencode')
+                owner = {'skills': {'paths': ['/inline-owner'], 'urls': ['https://example.com/skills']}}
+                ctx['effectiveConfig'] = {'inlineConfig': json.dumps(owner),
+                                          'skillsPaths': [effective_path] if effective_path else []}
+                if effective_path is None:
+                    ctx['skillRoots'] = [str(root)]
+                plan = self.plan(ctx)
+                self.assertEqual(json.loads(plan['envPatch']['OPENCODE_CONFIG_CONTENT'])['skills'], owner['skills'])
+                self.assertEqual(plan['channels']['skills'], {'state': 'partial', 'mechanism': 'absolute-catalog',
+                    'reasons': [{'code': 'name-collision', 'params': {'name': 'devlyn-ideate', 'path': str(skill / 'SKILL.md')}},
+                                {'code': 'skills-catalog', 'params': {}}]})
+                self.assertEqual(plan['channels']['invocation']['kind'], 'read-file')
+
+    @unittest.skipIf(os.name == 'nt', 'symlink fixture needs POSIX privileges')
+    def test_opencode_native_skills_inspection_error_keeps_catalog(self):
+        # Prediction: an uninspectable effective skill source reports its error and prevents the native overlay.
+        root = self.project / 'owner-skills'
+        root.mkdir()
+        (root / 'devlyn-ideate').symlink_to(self.case / 'missing', target_is_directory=True)
+        ctx = self.context('opencode')
+        ctx['effectiveConfig'] = {'skillsPaths': ['owner-skills']}
+        plan = self.plan(ctx)
+        self.assertNotIn('skills', json.loads(plan['envPatch']['OPENCODE_CONFIG_CONTENT']))
+        self.assertEqual(plan['channels']['skills']['state'], 'partial')
+        self.assertEqual([r['code'] for r in plan['channels']['skills']['reasons']],
+                         ['name-collision', 'config-unreadable', 'skills-catalog'])
+
+    def test_session_channel_effective_config_validation(self):
+        # Prediction: invalid types/NULs fail closed instead of injecting either session channel.
+        for engine, key, values in [('copilot', 'instructionsDirs', [[], {}, 1, 'bad\0path']),
+                                    ('opencode', 'skillsPaths', ['', {}, 1, [None], ['bad\0path']])]:
+            for value in values:
+                with self.subTest(engine=engine, value=value):
+                    ctx = self.context(engine)
+                    ctx['effectiveConfig'] = {key: value}
+                    plan = self.plan(ctx)
+                    self.assertEqual(plan['envPatch'], {})
+                    self.assertEqual(plan['files'], [])
+                    self.assertEqual(plan['channels']['skills']['reasons'],
+                                     [{'code': 'config-unreadable', 'params': {'field': 'effectiveConfig'}}])
 
     def test_copilot_append_and_kimi_wrapper(self):
         ctx = self.context('copilot')
