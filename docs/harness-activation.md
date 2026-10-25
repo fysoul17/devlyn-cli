@@ -172,7 +172,7 @@ project principles apply), and this catalog. OMP/Qwen/Grok merge owner append
 text; OpenCode preserves inline keys/instruction entries.
 OpenCode merges known effective `skillsPaths` into inline `skills.paths`; absent/null keeps catalog fallback.
 Copilot appends a per-run apply-to-all instructions directory via `COPILOT_CUSTOM_INSTRUCTIONS_DIRS`.
-Kimi cannot replace an owner agent or a resumed profile;
+Kimi uses `--skills-dir` with project roots before user roots and release skills last; owner agents and resumed profiles remain unchanged.
 Cursor/Antigravity remain partial with task-only delivery.
 
 Tests: `python3 scripts/test-harness-activation.py --codex-probe` packs/extracts
