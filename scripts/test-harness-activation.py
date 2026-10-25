@@ -506,6 +506,132 @@ class ActivationTests(unittest.TestCase):
                     self.assertEqual(plan['channels']['skills']['reasons'],
                                      [{'code': 'config-unreadable', 'params': {'field': 'effectiveConfig'}}])
 
+    def test_kimi_native_skills_order(self):
+        # Prediction: project roots precede user roots, with the release last and read-file invocation retained.
+        roots = [self.project / '.kimi-code/skills', self.project / '.agents/skills',
+                 self.home / '.kimi-code/skills', self.home / '.agents/skills']
+        for root in roots:
+            skill = root / 'owner-skill'
+            skill.mkdir(parents=True)
+            (skill / 'SKILL.md').write_text('---\nname: owner-skill\ndescription: owner\n---\n' + str(root))
+        plan = self.plan(self.context('kimi'))
+        self.assertEqual(plan['engineArgs'], ['--agent-file', str(self.run_dir / 'devlyn-kimi.md'),
+            *[arg for root in [*roots, self.package / 'config/skills'] for arg in ('--skills-dir', str(root))]])
+        self.assertEqual(plan['channels']['skills'], {'state': 'configured', 'mechanism': '--skills-dir', 'reasons': []})
+        self.assertEqual(plan['channels']['overall'], 'configured')
+        self.assertEqual(plan['channels']['invocation'], {'kind': 'read-file',
+            'text': 'Read ' + str(self.package / 'config/skills/devlyn-ideate/SKILL.md')})
+        self.assertTrue(plan['files'][0]['utf8'].startswith('${base_prompt}\n\n'))
+        self.assertEqual(plan['channels']['principles']['mechanism'], 'agent-file')
+
+    def test_kimi_native_skills_missing_roots(self):
+        # Prediction: absent roots and non-directory roots are skipped, leaving only the release skills.
+        # Observed: shared collision inspection reports ENOTDIR for a file root, requiring catalog fallback.
+        # Prediction (revised): absent roots are skipped; file roots keep that explicit error fallback.
+        plan = self.plan(self.context('kimi'))
+        self.assertEqual(plan['engineArgs'], ['--agent-file', str(self.run_dir / 'devlyn-kimi.md'),
+                                             '--skills-dir', str(self.package / 'config/skills')])
+        self.assertEqual(plan['channels']['skills']['state'], 'configured')
+        (self.project / '.kimi-code').mkdir()
+        (self.project / '.kimi-code/skills').write_text('not a directory')
+        plan = self.plan(self.context('kimi'))
+        self.assertEqual(plan['engineArgs'], ['--agent-file', str(self.run_dir / 'devlyn-kimi.md')])
+        self.assertEqual(plan['channels']['skills']['mechanism'], 'absolute-catalog')
+        self.assertIn('config-unreadable', [r['code'] for r in plan['channels']['skills']['reasons']])
+
+    def test_kimi_native_skills_custom_home(self):
+        # Prediction: KIMI_CODE_HOME replaces the default Kimi home, while OS-home .agents skills still load.
+        custom = self.case / 'custom kimi home'
+        roots = [custom / 'skills', self.home / '.agents/skills']
+        for root in [*roots, self.home / '.kimi-code/skills']:
+            root.mkdir(parents=True)
+        self.env['KIMI_CODE_HOME'] = str(custom)
+        plan = self.plan(self.context('kimi'))
+        self.assertEqual(plan['engineArgs'][2:],
+            [arg for root in [*roots, self.package / 'config/skills'] for arg in ('--skills-dir', str(root))])
+
+    def test_kimi_native_skills_project_from_git_file(self):
+        # Prediction: a nested cwd finds the nearest .git file and excludes intermediate and outer roots.
+        shutil.rmtree(self.project / '.git')
+        (self.project / '.git').write_text('gitdir: /fixture/worktree')
+        nested = self.project / 'sub/deep'
+        nested.mkdir(parents=True)
+        roots = [self.project / '.kimi-code/skills', self.project / '.agents/skills']
+        for root in [*roots, nested / '.kimi-code/skills', self.project / 'sub/.agents/skills',
+                     self.case / '.agents/skills']:
+            root.mkdir(parents=True)
+        ctx = self.context('kimi')
+        ctx['cwd'] = str(nested)
+        plan = self.plan(ctx)
+        self.assertEqual(plan['engineArgs'][2:],
+            [arg for root in [*roots, self.package / 'config/skills'] for arg in ('--skills-dir', str(root))])
+
+    def test_kimi_native_skills_no_git_uses_cwd(self):
+        # Prediction: without any .git ancestor only cwd's project roots load, never a parent's roots.
+        shutil.rmtree(self.project / '.git')
+        roots = [self.project / '.kimi-code/skills', self.project / '.agents/skills']
+        for root in [*roots, self.case / '.kimi-code/skills', self.case / '.agents/skills']:
+            root.mkdir(parents=True)
+        plan = self.plan(self.context('kimi'))
+        self.assertEqual(plan['engineArgs'][2:],
+            [arg for root in [*roots, self.package / 'config/skills'] for arg in ('--skills-dir', str(root))])
+
+    @unittest.skipIf(os.name == 'nt', 'symlink fixture needs POSIX privileges')
+    def test_kimi_native_skills_realpath_dedupe(self):
+        # Prediction: aliases resolve to physical roots and duplicate roots retain only their first position.
+        physical = self.case / 'physical-skills'
+        physical.mkdir()
+        for root in [self.project / '.kimi-code/skills', self.home / '.agents/skills']:
+            root.parent.mkdir(parents=True)
+            root.symlink_to(physical, target_is_directory=True)
+        second = self.project / '.agents/skills'
+        second.mkdir(parents=True)
+        plan = self.plan(self.context('kimi'))
+        self.assertEqual(plan['engineArgs'][2:],
+            [arg for root in [physical, second, self.package / 'config/skills'] for arg in ('--skills-dir', str(root))])
+
+    def test_kimi_native_skills_collision_keeps_catalog(self):
+        # Prediction: an owner devlyn-ideate prevents all skills-dir flags and preserves the catalog with a collision reason.
+        skill = self.project / '.kimi-code/skills/devlyn-ideate'
+        skill.mkdir(parents=True)
+        (skill / 'SKILL.md').write_text('---\nname: devlyn-ideate\ndescription: owner\n---\nOwner')
+        plan = self.plan(self.context('kimi'))
+        self.assertEqual(plan['engineArgs'], ['--agent-file', str(self.run_dir / 'devlyn-kimi.md')])
+        self.assertEqual(plan['channels']['skills'], {'state': 'partial', 'mechanism': 'absolute-catalog',
+            'reasons': [{'code': 'name-collision', 'params': {'name': 'devlyn-ideate', 'path': str(skill / 'SKILL.md')}},
+                        {'code': 'skills-catalog', 'params': {}}]})
+        self.assertEqual(plan['channels']['invocation']['kind'], 'read-file')
+
+    @unittest.skipIf(os.name == 'nt', 'symlink fixture needs POSIX privileges')
+    def test_kimi_native_skills_inspection_error_keeps_catalog(self):
+        # Prediction: an uninspectable skill prevents native registration and exposes the collision and inspection error.
+        root = self.project / '.kimi-code/skills'
+        root.mkdir(parents=True)
+        (root / 'devlyn-ideate').symlink_to(self.case / 'missing', target_is_directory=True)
+        plan = self.plan(self.context('kimi'))
+        self.assertEqual(plan['engineArgs'], ['--agent-file', str(self.run_dir / 'devlyn-kimi.md')])
+        self.assertEqual(plan['channels']['skills']['mechanism'], 'absolute-catalog')
+        self.assertEqual([r['code'] for r in plan['channels']['skills']['reasons']],
+                         ['name-collision', 'config-unreadable', 'skills-catalog'])
+
+    def test_kimi_owner_agent_and_continuation_unchanged(self):
+        # Prediction: owner agents and recorded resume/fork sessions still receive no files, argv, or invocation.
+        for mode, owner in [('fresh', True), ('resume', False), ('fork', False)]:
+            with self.subTest(mode=mode, owner=owner):
+                ctx = self.context('kimi')
+                ctx['launchMode'] = mode
+                ctx['effectiveConfig']['ownerAgent'] = owner
+                if mode != 'fresh':
+                    ctx['recordedRelease'] = self.release
+                plan = self.plan(ctx)
+                self.assertEqual(plan['engineArgs'], [])
+                self.assertEqual(plan['files'], [])
+                self.assertEqual(plan['envPatch'], {})
+                self.assertIsNone(plan['channels']['invocation'])
+                for name in ('principles', 'skills'):
+                    self.assertEqual(plan['channels'][name], {'state': 'partial', 'mechanism': None,
+                        'reasons': [{'code': name + '-unavailable', 'params': {'launchMode': mode, 'ownerAgent': owner}}]})
+
     def test_copilot_append_and_kimi_wrapper(self):
         ctx = self.context('copilot')
         ctx['effectiveConfig'] = {'skillsDirs': '/owner one,/owner two'}

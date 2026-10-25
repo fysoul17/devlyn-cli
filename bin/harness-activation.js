@@ -160,6 +160,33 @@ function discoveryRoots(context, env, config) {
   return [...new Set(roots)];
 }
 
+function kimiSkillRoots(context, env) {
+  const home = env.HOME || env.USERPROFILE || os.homedir();
+  let project = path.resolve(context.cwd);
+  const roots = new Set(), errors = [];
+  for (let dir = project; ; dir = path.dirname(dir)) {
+    const git = path.join(dir, '.git');
+    try {
+      if (fs.statSync(git, { throwIfNoEntry: false })) { project = dir; break; }
+    } catch (error) {
+      errors.push(reason('config-unreadable', { path: git, detail: error.message }));
+      break;
+    }
+    if (dir === path.dirname(dir)) break;
+  }
+  // --skills-dir replaces auto discovery and makes every root user-priority:
+  // first-name wins, so preserve workspace precedence by putting it first.
+  for (const root of [path.join(project, '.kimi-code/skills'), path.join(project, '.agents/skills'),
+    path.resolve(env.KIMI_CODE_HOME || path.join(home, '.kimi-code'), 'skills'), path.resolve(home, '.agents/skills')]) {
+    try {
+      if (fs.statSync(root, { throwIfNoEntry: false })?.isDirectory()) roots.add(fs.realpathSync(root));
+    } catch (error) {
+      errors.push(reason('config-unreadable', { path: root, detail: error.message }));
+    }
+  }
+  return { roots: [...roots], errors };
+}
+
 function inspectSkills(context, release, env, config, active) {
   const found = [], errors = [], hashes = new Map();
   for (const root of discoveryRoots(context, env, config)) {
@@ -420,7 +447,12 @@ function planActivation(releaseRoot, input, env = process.env) {
         status.skills = channel('partial', null, [reason('skills-unavailable', { launchMode: context.launchMode, ownerAgent: config.ownerAgent })]);
       } else {
         plan.engineArgs.push('--agent-file', file('devlyn-kimi.md', joinText('${base_prompt}', instructions)));
-        principles('agent-file'); fallback();
+        principles('agent-file');
+        const kimi = kimiSkillRoots(context, env);
+        if (!collisions.length && !errors.length && !kimi.errors.length) {
+          for (const root of [...kimi.roots, path.join(release.root, 'config/skills')]) plan.engineArgs.push('--skills-dir', root);
+          native('--skills-dir', 'read-file', `Read ${path.join(release.root, 'config/skills/devlyn-ideate/SKILL.md')}`);
+        } else fallback([...collisions, ...errors, ...kimi.errors]);
       }
       break;
     case 'antigravity':
