@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import errno
 import functools
 import hashlib
 import json
@@ -160,6 +161,93 @@ def registrations(receipt):
     return rows
 
 
+def worktree_roots(receipt):
+    anchor = Path(receipt["anchor"])
+    return (anchor.parent / ".devlyn-worktrees" / anchor.name,
+            anchor.parent / (anchor.name + ".devlyn.noindex"),
+            anchor.parent / (anchor.name + ".devlyn"))
+
+
+def resolve_for_pruning(path):
+    try:
+        return path.resolve()
+    except RuntimeError as exc:  # Python 3.12 raises RuntimeError for symlink loops.
+        raise CompletionError(f"parent cleanup cannot resolve {path}: {exc}") from exc
+
+
+def prune_empty_parents(receipt, parent, root, *, include_root=False):
+    """Remove only empty, unredirected directories within an explicit boundary."""
+    require(parent.is_relative_to(root), f"parent cleanup escapes root: {parent}")
+    keep_root = Path(receipt["keep_root"]) if receipt.get("keep_root") else None
+    registered = registrations(receipt)
+    while parent.is_relative_to(root) and (include_root or parent != root):
+        if keep_root is not None and keep_root.is_relative_to(parent):
+            break
+        require(parent == resolve_for_pruning(parent), f"parent cleanup traverses a symlink or junction: {parent}")
+        # resolve also checks ancestors; lstat rejects reparse points even when they resolve in place.
+        try:
+            info = parent.lstat()
+        except FileNotFoundError:
+            info = None
+        require(info is None or not (stat.S_ISLNK(info.st_mode) or
+                getattr(info, "st_file_attributes", 0) & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0)),
+                f"parent cleanup traverses a symlink or junction: {parent}")
+        if any(Path(path).is_relative_to(parent) for path in registered):
+            return f"registered worktree retains parent: {parent}"
+        try:
+            parent.rmdir()
+        except FileNotFoundError:
+            pass  # Already removed by another cleanup.
+        except OSError as exc:
+            if exc.errno in {errno.ENOTEMPTY, errno.EEXIST}:
+                break
+            raise
+        if parent == root:
+            break
+        parent = parent.parent
+
+
+def prune_named_parents(receipt):
+    work = Path(receipt["worktree"])
+    for root in worktree_roots(receipt):
+        if work != root and work.is_relative_to(root):
+            require(work == resolve_for_pruning(work) and not os.path.lexists(work),
+                    f"parent cleanup requires an absent, unredirected worktree: {work}")
+            require(str(work) not in registrations(receipt), "missing worktree is still registered; retain")
+            prune_empty_parents(receipt, work.parent, root, include_root=True)
+            break
+
+
+def emit_warning(warnings, message):
+    print(message, file=sys.stderr, flush=True)
+    warnings.append(message)
+
+
+def create_worktree_directory(receipt, target, directory, warnings):
+    container = worktree_roots(receipt)[0].parent
+    for attempt in range(3):
+        try:
+            if target.is_relative_to(container) and target != container:
+                try:
+                    container.mkdir()
+                except FileExistsError:
+                    require(container.is_dir(), f"worktree container is not a directory: {container}")
+                else:
+                    try:
+                        shared("platform-support")["mark_hidden"](container)
+                    except OSError as exc:
+                        emit_warning(warnings, f"visibility unchanged: {container}: could not set FILE_ATTRIBUTE_HIDDEN: {exc}; continuing")
+            target.parent.mkdir(parents=True, exist_ok=True)
+            try:
+                target.mkdir()
+            except FileExistsError as exc:
+                raise CompletionError(f"worktree directory {target} already exists and is not devlyn's; leave it; choose another --worktree path, delete receipt directory {directory}, then allocate again") from exc
+            return
+        except FileNotFoundError:
+            if attempt == 2:
+                raise
+
+
 def remote_url(receipt):
     values = [gref(receipt, "remote", "get-url", "--all", receipt["remote"]),
               gref(receipt, "remote", "get-url", "--push", "--all", receipt["remote"])]
@@ -217,8 +305,9 @@ def ignore_task_records(work):
             f"{directory} records are not ignored or .devlyn is dirty; repair the starting commit's .devlyn paths and ignore rules before allocating")
 
 
-def allocate(args, *, exclude_receipts=()):
+def allocate(args, *, exclude_receipts=(), warnings=None):
     """Reconcile older tasks, except receipts the queue has identified as invalid."""
+    warnings = [] if warnings is None else warnings
     work = Path(git(Path(args.repo).resolve(), "rev-parse", "--show-toplevel")).resolve()
     common = Path(git(work, "rev-parse", "--path-format=absolute", "--git-common-dir")).resolve()
     require(args.task.strip(), "task identity is required")
@@ -242,10 +331,14 @@ def allocate(args, *, exclude_receipts=()):
     target = Path(args.worktree).resolve()  # A relative, `..` or symlinked (macOS /tmp) path names its real location.
     require(not target.exists() and all(not target.is_relative_to(p) and not p.is_relative_to(target) for p in map(Path, registrations(receipt))), "linked worktree must be an absent path disjoint from every registered worktree")
     receipt["worktree"] = str(target)
+    if getattr(args, "keep_root", None) is not None:
+        keep_root = Path(args.keep_root).resolve()
+        require(target != keep_root and target.is_relative_to(keep_root), f"worktree must be below kept root: {keep_root}")
+        receipt["keep_root"] = str(keep_root)
     key = hashlib.sha256(args.branch.encode()).hexdigest()[:24]
     directory = common / "devlyn-completion" / key
     path = directory / "receipt.json"
-    reconciled = [] if local else reconcile(common, path, work, exclude_receipts=exclude_receipts)
+    reconciled = [] if local else reconcile(common, path, work, exclude_receipts=exclude_receipts, warnings=warnings)
     measured = target
     while not measured.exists():
         require(measured.parent != measured, f"no existing ancestor of {target} to measure free space")
@@ -266,7 +359,21 @@ def allocate(args, *, exclude_receipts=()):
     # Persist prospective intent BEFORE native creation. An interrupted allocation
     # stays visibly incomplete; a later call may not adopt whatever now exists.
     atomic_json(path, receipt)
-    gref(receipt, "worktree", "add", "-b", args.branch, str(target), receipt["baseline"])
+    for root in worktree_roots(receipt)[1:]:
+        try:
+            prune_empty_parents(receipt, root, root, include_root=True)
+        except (CompletionError, OSError) as exc:
+            emit_warning(warnings, f"legacy root cleanup retained: {root}: {exc}; continuing")
+    create_worktree_directory(receipt, target, directory, warnings)
+    try:
+        shared("platform-support")["mark_not_content_indexed"](target)
+    except OSError as exc:
+        warning = f"content indexing unchanged: {target}: could not set FILE_ATTRIBUTE_NOT_CONTENT_INDEXED: {exc}; continuing"
+        emit_warning(warnings, warning)
+    try:
+        gref(receipt, "worktree", "add", "-b", args.branch, str(target), receipt["baseline"])
+    except CompletionError as exc:
+        raise CompletionError(f"{exc}; remove the empty directory {target} this allocation created; if branch {args.branch} exists, inspect it and delete it only if nothing else owns it; delete receipt directory {directory}, then allocate again") from exc
     try:
         ignore_task_records(target)
     except CompletionError as exc:
@@ -281,7 +388,7 @@ def allocate(args, *, exclude_receipts=()):
         atomic_json(path, owned)
     return {"status": "ALLOCATED", "receipt": str(path), "worktree": str(target), "scratch": str(scratch),
             "build_dirs": owned["build_dirs"],
-            "reconciled": reconciled}
+            "reconciled": reconciled, "warnings": warnings}
 
 
 def exact_commit(receipt, value, flag):
@@ -637,7 +744,8 @@ def clean_scratch_command(args):
                 "receipt": str(path), "scratch_cleanup": result, "product_verdict_unchanged": True}
 
 
-def cleanup(receipt, path, pr):
+def cleanup(receipt, path, pr, *, warnings=None):
+    warnings = [] if warnings is None else warnings
     require(pr["state"] == "MERGED" and pr.get("mergedAt") and pr.get("mergeCommit", {}).get("oid"), "actual matching merge evidence is required")
     sha = receipt["publish_sha"]
     branch_ref = "refs/heads/" + receipt["branch"]
@@ -673,6 +781,10 @@ def cleanup(receipt, path, pr):
             gref(receipt, "worktree", "remove", str(work))
         else:
             require(str(work) not in registrations(receipt), "missing worktree is still registered; retain")
+        try:
+            prune_named_parents(receipt)
+        except (CompletionError, OSError) as exc:
+            emit_warning(warnings, f"parent cleanup retained: {work.parent}: {exc}; continuing")
     checked_out = [p for p, row in registrations(receipt).items() if row.get("branch") == branch_ref]
     require(not checked_out, "task branch is still checked out at " + ", ".join(checked_out) + "; switch it off the task branch before cleanup")
     # Check ownership/ref identity once more immediately before each deletion.
@@ -708,7 +820,7 @@ def locked_receipt(path, *, blocking=True):
         yield receipt
 
 
-def completion_result(receipt, path, status):
+def completion_result(receipt, path, status, *, warnings=None):
     if receipt.get("delivery") != status:
         receipt["delivery"] = status  # Phase-independent checkpoint: the latest delivery outcome.
         atomic_json(path, receipt)
@@ -729,13 +841,15 @@ def completion_result(receipt, path, status):
                 scratch["record_error"] = str(record_error)
     retained = scratch["status"] == "RETAINED" or "workspace_cleanup" in receipt
     return {"status": "CLEANUP_PENDING" if status == "COMPLETE" and retained else status,
+            "warnings": [] if warnings is None else warnings,
             "delivery_status": status, "receipt": str(path), "pr": receipt.get("pr_url"), "resume": resume,
             "acceptance": (receipt.get("acceptance") or {}).get("kind"), "product_verdict_unchanged": True,
             "scratch_path": str(path.parent / "scratch") if "scratch_identity" in receipt else None,
             "scratch_cleanup": scratch, "workspace_cleanup": receipt.get("workspace_cleanup")}
 
 
-def reconcile(common, allocated, anchor, *, exclude_receipts=()):
+def reconcile(common, allocated, anchor, *, exclude_receipts=(), warnings=None):
+    warnings = [] if warnings is None else warnings
     results = []
     for path in sorted((common / "devlyn-completion").glob("*/receipt.json")):
         if path == allocated or path in exclude_receipts:
@@ -762,14 +876,15 @@ def reconcile(common, allocated, anchor, *, exclude_receipts=()):
                 repo_policy(receipt)
                 receipt["merge"] = pr
                 atomic_json(path, receipt)
-                cleanup(receipt, path, pr)
-                results.append(completion_result(receipt, path, "COMPLETE"))
+                cleanup(receipt, path, pr, warnings=warnings)
+                results.append(completion_result(receipt, path, "COMPLETE", warnings=warnings))
         except (Exception, SystemExit) as error:
             results.append({"receipt": str(path), "status": "RETAINED", "reason": str(error)})
     return results
 
 
-def complete(args):
+def complete(args, *, warnings=None):
+    warnings = [] if warnings is None else warnings
     path = Path(args.receipt).absolute()
     with locked_receipt(path) as receipt:
         local = args.local_only or receipt.get("local_only")
@@ -781,7 +896,7 @@ def complete(args):
             receipt["writers_released"] = True
             atomic_json(path, receipt)
         def result(status):
-            return completion_result(receipt, path, status)
+            return completion_result(receipt, path, status, warnings=warnings)
         if (receipt.get("acceptance") or {}).get("verdict") == "FAILED":
             return result("FAILED")
         if args.local_only or receipt.get("local_only"):
@@ -802,6 +917,11 @@ def complete(args):
         require(remote_url(receipt) == receipt["remote_url"], "remote URL changed since allocation")
         if receipt.get("status") == "COMPLETE":
             verify_files(path.parent / "custody", receipt["files"])
+            if receipt["linked"]:
+                try:
+                    prune_named_parents(receipt)
+                except (CompletionError, OSError) as exc:
+                    emit_warning(warnings, f"parent cleanup retained: {Path(receipt['worktree']).parent}: {exc}; continuing")
             return result("COMPLETE")
         if not receipt.get("acceptance"):
             # Before first binding the owner has committed the product; inspect
@@ -887,7 +1007,7 @@ def complete(args):
         receipt["merge"] = pr
         atomic_json(path, receipt)
         try:
-            cleanup(receipt, path, pr)
+            cleanup(receipt, path, pr, warnings=warnings)
         except (WritersUnobservable, WriterActive) as error:
             # Conservative retention: the merge settles delivery; workspace, task refs and custody stay, reported.
             receipt["workspace_cleanup"] = {"status": "RETAINED", "reason": str(error), "resume": shlex.join([
@@ -1156,6 +1276,114 @@ class CompletionTests(unittest.TestCase):
         return argparse.Namespace(repo=str(self.work), task=name, branch="task/" + name,
                                   repository="test/project", base="main", remote="origin", worktree=str(worktree),
                                   local_base=None, from_receipt=None, start=None)
+
+    def test_allocation_marks_exclusively_created_empty_target_before_checkout(self):
+        # Prediction: persisted intent precedes exclusive creation and marking; real Git then populates that directory.
+        from unittest.mock import patch
+        target = self.root / "new-parent" / "new"
+        events = []
+        save, mkdir = atomic_json, Path.mkdir
+
+        def persist(path, receipt):
+            save(path, receipt)
+            if receipt["allocation"] == "allocating":
+                self.assertFalse(target.exists())
+                self.assertEqual(read_json(path)["worktree"], str(target))
+                events.append("intent")
+
+        def create(path, *args, **kwargs):
+            if path == target:
+                self.assertEqual(events, ["intent"])
+                self.assertEqual(kwargs, {})
+                events.append("mkdir")
+            return mkdir(path, *args, **kwargs)
+
+        def mark(path):
+            self.assertEqual(path, target)
+            self.assertEqual(events, ["intent", "mkdir"])
+            self.assertTrue(path.is_dir())
+            self.assertEqual(list(path.iterdir()), [])
+            events.append("mark")
+
+        target.parent.mkdir()
+        with patch.dict(os.environ, self.env), patch.dict(allocate.__globals__, atomic_json=persist), \
+                patch.object(Path, "mkdir", create), patch.dict(shared("platform-support"), mark_not_content_indexed=mark):
+            result = allocate(self.allocation_args("new", target))
+        self.assertEqual(events, ["intent", "mkdir", "mark"])
+        self.assertEqual(result["warnings"], [])
+        self.assertEqual((target / "product").read_text(), "baseline\n")
+        self.assertTrue((target / ".git").is_file())
+        receipt = read_json(Path(result["receipt"]))
+        gitdir = Path(self.g("rev-parse", "--absolute-git-dir", work=target))
+        self.assertEqual((receipt["allocation"], receipt["worktree_gitdir"]), ("owned", str(gitdir)))
+        self.assertEqual(receipt["worktree_identity"], workspace_identity(target, gitdir))
+        self.assertEqual(receipt["scratch_identity"], workspace_identity(Path(result["scratch"]), Path(result["receipt"]).parent))
+        self.assertEqual(self.g("symbolic-ref", "--short", "HEAD", work=target), receipt["branch"])
+        self.assertEqual(self.g("rev-parse", "HEAD", work=target), receipt["baseline"])
+
+    def test_allocation_marking_failure_warns_and_remains_owned(self):
+        # Prediction: an attribute error is printed immediately and returned, while checkout and ownership succeed.
+        from io import StringIO
+        from unittest.mock import Mock, patch
+        target = self.root / "new"
+        stderr = StringIO()
+        with patch.dict(os.environ, self.env), contextlib.redirect_stderr(stderr), \
+                patch.dict(shared("platform-support"), mark_not_content_indexed=Mock(side_effect=OSError("fixture attribute denied"))):
+            result = allocate(self.allocation_args("new", target))
+        warning = f"content indexing unchanged: {target}: could not set FILE_ATTRIBUTE_NOT_CONTENT_INDEXED: fixture attribute denied; continuing"
+        self.assertEqual(result["warnings"], [warning])
+        self.assertEqual(stderr.getvalue(), warning + "\n")
+        self.assertEqual(read_json(Path(result["receipt"]))["allocation"], "owned")
+        self.assertEqual((target / "product").read_text(), "baseline\n")
+
+    def test_allocation_refuses_raced_target_without_marking(self):
+        # Prediction: a creator arriving after the absent check is never adopted, marked or removed.
+        from unittest.mock import Mock, patch
+        target = self.root / "new"
+        save = atomic_json
+        receipts = []
+
+        def race(path, receipt):
+            save(path, receipt)
+            receipts.append(path)
+            target.mkdir()
+            (target / "foreign").write_text("retain", encoding="utf-8")
+
+        mark = Mock()
+        with patch.dict(os.environ, self.env), patch.dict(allocate.__globals__, atomic_json=race), \
+                patch.dict(shared("platform-support"), mark_not_content_indexed=mark):
+            with self.assertRaises(CompletionError) as raised:
+                allocate(self.allocation_args("new", target))
+        self.assertIn(f"already exists and is not devlyn's; leave it; choose another --worktree path, delete receipt directory {receipts[0].parent}, then allocate again", str(raised.exception))
+        mark.assert_not_called()
+        self.assertEqual((target / "foreign").read_text(), "retain")
+        self.assertEqual(read_json(receipts[0])["allocation"], "allocating")
+        self.assertEqual(self.g("branch", "--list", "task/new"), "")
+
+    def test_allocation_git_failure_retains_intent_and_names_recovery(self):
+        # Prediction: a competing branch survives Git's refusal; recovery requires inspecting its ownership.
+        from io import StringIO
+        from unittest.mock import Mock, patch
+        target = self.root / "new"
+        stderr = StringIO()
+        run = gref
+
+        def fail_checkout(receipt, *args):
+            if args[:2] == ("worktree", "add"):
+                self.assertIn("fixture attribute denied; continuing", stderr.getvalue())
+                run(receipt, "branch", "task/new", receipt["baseline"])
+            return run(receipt, *args)
+
+        with patch.dict(os.environ, self.env), contextlib.redirect_stderr(stderr), \
+                patch.dict(allocate.__globals__, gref=fail_checkout), \
+                patch.dict(shared("platform-support"), mark_not_content_indexed=Mock(side_effect=OSError("fixture attribute denied"))):
+            with self.assertRaises(CompletionError) as raised:
+                allocate(self.allocation_args("new", target))
+        path, = (self.work / ".git/devlyn-completion").glob("*/receipt.json")
+        self.assertEqual(read_json(path)["allocation"], "allocating")
+        self.assertEqual(list(target.iterdir()), [])
+        self.assertEqual(self.g("rev-parse", "task/new"), read_json(path)["baseline"])
+        self.assertIn(f"remove the empty directory {target} this allocation created; if branch task/new exists, inspect it and delete it only if nothing else owns it; delete receipt directory {path.parent}, then allocate again", str(raised.exception))
 
     def test_disk_gate_refuses_without_allocation_artifacts(self):
         # Prediction: below 10 GiB on a 100 GiB filesystem, no receipt, branch or worktree is created.

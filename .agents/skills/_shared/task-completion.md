@@ -54,12 +54,15 @@ not write to the shared checkout.
 ```sh
 python3 "$DEVLYN_SHARED_DIR/task-complete.py" allocate --repo . \
   --task '<task identity>' --branch '<absent task branch>' \
-  --worktree '<repo parent>/<repo name>.devlyn.noindex/<task directory>' \
+  --worktree '<repo parent>/.devlyn-worktrees/<repo name>/<task directory>' \
   --repository '<owner/repo>' --remote origin --base main
 ```
 
 Every delivery allocation owns a linked worktree; `--worktree` is required and
 must name an absent path.
+Cleanup removes empty parents through the exact per-repo root shown above or its legacy `.devlyn.noindex`/`.devlyn` root, keeping the shared `.devlyn-worktrees` container. Allocation also sweeps empty legacy roots for this repo.
+On Windows, allocation marks only a newly created shared container hidden and creates the worktree not content-indexed (content only; names stay indexed); files copied in keep their own attributes.
+A marking failure continues allocation and is reported in `warnings`.
 Remote allocation first cleans earlier merged deliveries, then allocation refuses with `BLOCKED:disk`
 without creating a receipt, branch or worktree when that filesystem has less than max(10 GiB, 2%) free; free space and allocate again.
 A publication allocation normally starts at the exact fetched remote base,

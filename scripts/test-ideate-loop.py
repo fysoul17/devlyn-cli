@@ -718,7 +718,7 @@ class LoopFixture(unittest.TestCase):
                 parent.mkdir(parents=True, exist_ok=True)
                 v = {"states": {"aa.t1": {"receipt": receipt}}, "cleanup": [], "anchor": self.anchor}
                 spelling = str(registered).replace("\\", "/") if os.name == "nt" else str(registered).replace("/", "\\")
-                with mock.patch.dict(helper, registrations=mock.Mock(return_value={str(registered): {"worktree": spelling}})), \
+                with mock.patch.dict(helper["prune_empty_parents"].__globals__, registrations=mock.Mock(return_value={str(registered): {"worktree": spelling}})), \
                         mock.patch.dict(self.queue["prune_parents"].__globals__, git=mock.Mock(return_value="worktree " + spelling + "\0\0")):
                     self.queue["prune_parents"](v, root)
                 self.assertTrue(parent.is_dir(), "registered worktree's parent was pruned")
@@ -856,6 +856,10 @@ class LoopFixture(unittest.TestCase):
         self.fault_drain("", local=False, root=root)
         self.assertFalse(parent.exists())
         self.assertTrue(root.is_dir())
+        completed = json.loads(self.run_ok([sys.executable, str(self.helper), "complete", "--receipt",
+                                           str(self.receipt_path("aa.t1"))]))
+        self.assertEqual(completed["status"], "COMPLETE")
+        self.assertTrue(root.is_dir(), "completion must retain a custom root outside every named root")
         receipt = self.receipt("aa.t1")
         self.assertEqual(self.g("rev-parse", receipt["recovery_ref"]), receipt["publish_sha"])
         self.assertTrue(self.receipt_path("aa.t1").with_name("custody").is_dir())
@@ -1124,14 +1128,390 @@ class LoopFixture(unittest.TestCase):
         self.assertIn("recovery conflict:", self.tasks(result)["aa.t1"]["reason"])
         self.assertEqual((self.calls("aa.t1"), path.read_text(encoding="utf-8")), (0, original))
 
-    def test_default_drain_allocates_noindex_worktree_outside_anchor(self):
+    def direct_allocate(self, name, work):
+        helper = self.queue["shared"]("task-complete")
+        args = argparse.Namespace(repo=self.anchor, task=name, branch="task/" + name, worktree=str(work),
+                                  repository=None, base=None, remote="origin", local_base=self.base,
+                                  from_receipt=None, start=None)
+        with mock.patch.dict(os.environ, self.env), mock.patch.object(helper["shutil"], "disk_usage",
+                return_value=argparse.Namespace(total=100 * 1024**3, free=100 * 1024**3)):
+            return helper["allocate"](args)
+
+    def test_direct_cleanup_prunes_exact_roots_after_removal_or_deregistration(self):
+        # Prediction: real Git removal prunes each named root, retains the shared container, and refuses a missing
+        # registered tree until deregistration. An arbitrary suffix-lookalike root has no named-root ownership.
+        helper = self.queue["shared"]("task-complete")
+        roots = helper["worktree_roots"]({"anchor": str(self.anchor)})
+        for index, root in enumerate((*roots, self.root / "foreign.devlyn.noindex")):
+            with self.subTest(root=root):
+                work = root / "loop/task"
+                allocation = self.direct_allocate("cleanup" + str(index), work)
+                path = Path(allocation["receipt"])
+                receipt = json.loads(path.read_text(encoding="utf-8"))
+                receipt.update(publish_sha=self.base, source_sha=self.base, writers_released=True, files={}, remote_url={})
+                self.g("update-ref", receipt["recovery_ref"], self.base)
+                pr = {"state": "MERGED", "mergedAt": "fixture", "mergeCommit": {"oid": self.base}}
+                with mock.patch.dict(helper["cleanup"].__globals__,
+                                     verify_files=mock.Mock(), read_json=mock.Mock(return_value={}),
+                                     removable=mock.Mock(), records_manifest=mock.Mock(return_value={}),
+                                     repo_policy=mock.Mock(), remote_base=mock.Mock(return_value=self.base),
+                                     remote_url=mock.Mock(return_value={}), remote_head=mock.Mock(return_value=None)), \
+                        mock.patch.dict(os.environ, self.env):
+                    if index == 1:
+                        shutil.rmtree(work)
+                        with self.assertRaisesRegex(helper["CompletionError"], "missing worktree is still registered"):
+                            helper["cleanup"](receipt, path, pr)
+                        self.assertTrue(root.is_dir())
+                        self.g("worktree", "prune")
+                    if index == 2:
+                        rmdir = Path.rmdir
+
+                        def denied(parent):
+                            if parent == work.parent:
+                                raise PermissionError("fixture parent denied")
+                            return rmdir(parent)
+
+                        warnings = []
+                        with mock.patch.object(Path, "rmdir", denied):
+                            helper["cleanup"](receipt, path, pr, warnings=warnings)
+                        self.assertFalse(work.exists())
+                        self.assertEqual(receipt["status"], "COMPLETE")
+                        self.assertEqual(warnings, [f"parent cleanup retained: {work.parent}: fixture parent denied; continuing"])
+                    helper["cleanup"](receipt, path, pr)
+                self.assertFalse(work.exists())
+                self.assertEqual(root.exists(), index == 3)
+                self.assertTrue((self.anchor.parent / ".devlyn-worktrees").is_dir())
+
+    def test_named_pruning_keeps_siblings_ds_store_and_registered_missing(self):
+        # Prediction: siblings and .DS_Store stop rmdir; a real registered-but-missing sibling also prevents pruning.
+        helper = self.queue["shared"]("task-complete")
+        root = helper["worktree_roots"]({"anchor": str(self.anchor)})[0]
+        parent = root / "loop"
+        receipt = {"anchor": str(self.anchor), "common_gitdir": str(self.common), "worktree": str(parent / "task")}
+        parent.mkdir(parents=True)
+        for name in ("sibling", ".DS_Store"):
+            retained = parent / name
+            retained.write_text("keep", encoding="utf-8")
+            helper["prune_named_parents"](receipt)
+            self.assertEqual(retained.read_text(encoding="utf-8"), "keep")
+            retained.unlink()
+        sibling = parent / "missing"
+        self.g("worktree", "add", "-q", "-b", "missing", str(sibling))
+        shutil.rmtree(sibling)
+        helper["prune_named_parents"](receipt)
+        self.assertTrue(parent.is_dir())
+        self.g("worktree", "prune")
+        helper["prune_named_parents"](receipt)
+        self.assertFalse(root.exists())
+        self.assertTrue(root.parent.is_dir())
+
+    def test_pruning_rejects_redirected_ancestors(self):
+        # Prediction: a symlink (or Windows junction) above the task cannot redirect either named or custom pruning.
+        helper = self.queue["shared"]("task-complete")
+        root = helper["worktree_roots"]({"anchor": str(self.anchor)})[0]
+        outside = self.root / "outside"
+        (outside / "loop").mkdir(parents=True)
+        root.parent.mkdir()
+        if os.name == "nt":
+            self.run_ok(["cmd.exe", "/d", "/c", "mklink", "/J", str(root), str(outside)])
+        else:
+            root.symlink_to(outside, target_is_directory=True)
+        receipt = {"anchor": str(self.anchor), "common_gitdir": str(self.common), "worktree": str(root / "loop/task")}
+        try:
+            with self.assertRaisesRegex(helper["CompletionError"], "unredirected"):
+                helper["prune_named_parents"](receipt)
+            with self.assertRaisesRegex(helper["CompletionError"], "symlink or junction"):
+                helper["prune_empty_parents"](receipt, root / "loop", root)
+            self.assertTrue((outside / "loop").is_dir())
+        finally:
+            root.rmdir() if os.name == "nt" else root.unlink()
+
+    def test_allocate_sweeps_only_empty_exact_legacy_roots(self):
+        # Prediction: allocate removes only the anchor's empty legacy roots; occupied, redirected and foreign roots stay.
+        helper = self.queue["shared"]("task-complete")
+        roots = helper["worktree_roots"]({"anchor": str(self.anchor)})[1:]
+        foreign = self.root / "other.devlyn.noindex"
+        foreign.mkdir()
+        for root in roots:
+            root.mkdir()
+        self.direct_allocate("sweep", self.root / "task1")
+        self.assertEqual([root.exists() for root in roots], [False, False])
+        self.assertTrue(foreign.is_dir())
+        roots[0].mkdir()
+        (roots[0] / ".DS_Store").touch()
+        self.g("worktree", "add", "-q", "-b", "missing", str(roots[1] / "missing"))
+        shutil.rmtree(roots[1] / "missing")
+        result = self.direct_allocate("sweep2", self.root / "task2")
+        self.assertTrue(all(root.is_dir() for root in roots))
+        self.assertEqual(result["warnings"], [])
+        self.g("worktree", "prune")
+        with mock.patch.object(Path, "rmdir", side_effect=PermissionError("fixture prune denied")):
+            result = self.direct_allocate("sweep3", self.root / "task3")
+        self.assertEqual(len(result["warnings"]), 2)
+        self.assertTrue(all("fixture prune denied" in warning for warning in result["warnings"]))
+
+    def test_legacy_sweep_refuses_symlinks_and_junctions(self):
+        # Prediction: an exact legacy name redirected to an empty foreign directory is retained with a warning.
+        root = self.anchor.parent / (self.anchor.name + ".devlyn.noindex")
+        outside = self.root / "outside"
+        outside.mkdir()
+        if os.name == "nt":
+            self.run_ok(["cmd.exe", "/d", "/c", "mklink", "/J", str(root), str(outside)])
+        else:
+            root.symlink_to(outside, target_is_directory=True)
+        try:
+            result = self.direct_allocate("redirect", self.root / "task")
+            self.assertIn("symlink or junction", " ".join(result["warnings"]))
+            self.assertTrue(root.is_dir() and outside.is_dir())
+        finally:
+            root.rmdir() if os.name == "nt" else root.unlink()
+
+    @unittest.skipIf(os.name == "nt", "POSIX permissions and fake delivery require POSIX")
+    def test_nested_custom_root_keeps_permissions_after_completion_and_drain(self):
+        # Prediction: completion and drain remove only descendants of an explicit custom root, preserving its 0700 mode.
+        self.remote(pending=False)
+        self.plan("private", [CHAIN[0]], {"private.t1": {"product": "greeting"}}, delivery="auto")
+        named = self.anchor.parent / ".devlyn-worktrees" / self.anchor.name
+        root = named / "private-root"
+        root.mkdir(parents=True, mode=0o700)
+        result = self.fault_drain("", local=False, root=root)
+        self.assertEqual(self.tasks(result)["private.t1"]["delivery"], "COMPLETE")
+        self.assertTrue(root.is_dir())
+        self.assertEqual(stat.S_IMODE(root.stat().st_mode), 0o700)
+        self.assertFalse((root / "private").exists())
+        self.assertEqual(self.receipt("private.t1")["keep_root"], str(root))
+        # Repeated completion and a later drain both respect the recorded boundary.
+        completed = json.loads(self.run_ok([sys.executable, str(self.helper), "complete", "--receipt",
+                                           str(self.receipt_path("private.t1"))]))
+        self.assertEqual(completed["status"], "COMPLETE")
+        self.assertTrue(root.is_dir())
+        self.assertEqual(stat.S_IMODE(root.stat().st_mode), 0o700)
+        (root / "private").mkdir()
+        self.fault_drain("", local=False, root=root)
+        self.assertFalse((root / "private").exists())
+        self.assertTrue(root.is_dir() and named.is_dir())
+        self.assertEqual(stat.S_IMODE(root.stat().st_mode), 0o700)
+        self.assertEqual(self.calls("private.t1"), 1)
+
+    @unittest.skipIf(os.name == "nt", "fake delivery requires POSIX")
+    def test_pruning_resolve_runtime_error_warns_without_blocking_completion(self):
+        # Prediction: Python 3.12's resolve RuntimeError becomes a path-naming pruning warning on completed receipts.
+        self.remote(pending=False)
+        self.plan("cycle", [CHAIN[0]], {"cycle.t1": {"product": "greeting"}}, delivery="auto")
+        self.drain(local=False)
+        receipt = self.receipt("cycle.t1")
+        self.assertNotIn("keep_root", receipt)
+        work = Path(receipt["worktree"])
+        work.parent.mkdir(parents=True)
+        helper = self.queue["shared"]("task-complete")
+        resolve = Path.resolve
+        for failing in (work, work.parent):
+            with self.subTest(path=failing):
+                def cyclic(path, *args, **kwargs):
+                    if path == failing:
+                        raise RuntimeError("fixture symlink loop")
+                    return resolve(path, *args, **kwargs)
+
+                with mock.patch.object(Path, "resolve", cyclic), mock.patch.dict(os.environ, self.env):
+                    completed = helper["complete"](argparse.Namespace(receipt=str(self.receipt_path("cycle.t1")),
+                        acceptance=None, local_only=False, writers_stopped=False, mode=None))
+                    view = {"states": {"cycle.t1": {"receipt": receipt}}, "cleanup": []}
+                    self.queue["prune_parents"](view, work.parent.parent)
+                self.assertEqual(completed["status"], "COMPLETE")
+                warning, = completed["warnings"]
+                self.assertIn("parent cleanup retained:", warning)
+                self.assertIn(str(failing), warning)
+                self.assertIn("fixture symlink loop", warning)
+                self.assertTrue(warning.endswith("; continuing"))
+                retained, = view["cleanup"]
+                self.assertIn("parent cleanup retained:", retained)
+                self.assertIn(str(failing), retained)
+                self.assertIn("fixture symlink loop", retained)
+                self.assertTrue(work.parent.is_dir())
+
+    def test_allocation_retries_disappearing_parent_and_refuses_competing_creator(self):
+        # Prediction: removal immediately before the final mkdir retries; a competing final directory is never adopted.
+        helper = self.queue["shared"]("task-complete")
+        mkdir = Path.mkdir
+        root = helper["worktree_roots"]({"anchor": str(self.anchor)})[0]
+        target = root / "loop/task"
+        attempts = []
+
+        def disappearing(path, *args, **kwargs):
+            if path == target:
+                attempts.append(path)
+                if len(attempts) == 1:
+                    path.parent.rmdir()
+            return mkdir(path, *args, **kwargs)
+
+        with mock.patch.object(Path, "mkdir", disappearing):
+            self.assertEqual(self.direct_allocate("retry", target)["status"], "ALLOCATED")
+        self.assertEqual(len(attempts), 2)
+        target = root / "loop/raced"
+
+        def competing(path, *args, **kwargs):
+            if path == target:
+                mkdir(path)
+                (path / "foreign").write_text("keep", encoding="utf-8")
+            return mkdir(path, *args, **kwargs)
+
+        with mock.patch.object(Path, "mkdir", competing):
+            with self.assertRaises(helper["CompletionError"]) as raised:
+                self.direct_allocate("raced", target)
+        directory = self.common / "devlyn-completion" / hashlib.sha256(b"task/raced").hexdigest()[:24]
+        self.assertIn(f"not devlyn's; leave it; choose another --worktree path, delete receipt directory {directory}, then allocate again", str(raised.exception))
+        self.assertEqual((target / "foreign").read_text(encoding="utf-8"), "keep")
+        self.assertEqual(json.loads((directory / "receipt.json").read_text(encoding="utf-8"))["allocation"], "allocating")
+        self.assertEqual(self.g("branch", "--list", "task/raced"), "")
+
+    def test_allocation_parent_retry_is_bounded(self):
+        # Prediction: an ancestor lost on every final mkdir stops after three attempts and keeps the allocation intent.
+        target = self.root / "parent/task"
+        mkdir, attempts = Path.mkdir, []
+
+        def disappearing(path, *args, **kwargs):
+            if path == target:
+                attempts.append(path)
+                path.parent.rmdir()
+            return mkdir(path, *args, **kwargs)
+
+        with mock.patch.object(Path, "mkdir", disappearing):
+            with self.assertRaises(FileNotFoundError):
+                self.direct_allocate("bounded", target)
+        self.assertEqual(len(attempts), 3)
+        self.assertFalse(target.exists())
+        self.assertEqual(self.g("branch", "--list", "task/bounded"), "")
+
+    def test_allocation_retries_ancestor_creation_and_container_enoent(self):
+        # Prediction: losing an ancestor during recursive mkdir, or ENOENT at container mkdir, retries allocation.
+        helper = self.queue["shared"]("task-complete")
+        mkdir = Path.mkdir
+        target = self.root / "outer/parent/task"
+        attempts = []
+        removed = []
+
+        def disappearing(path, *args, **kwargs):
+            if path == target.parent:
+                if kwargs.get("parents"):
+                    attempts.append(path)
+                elif not removed:
+                    path.parent.rmdir()
+                    removed.append(path.parent)
+            return mkdir(path, *args, **kwargs)
+
+        with mock.patch.object(Path, "mkdir", disappearing):
+            self.assertEqual(self.direct_allocate("ancestor", target)["status"], "ALLOCATED")
+        self.assertEqual((len(attempts), removed), (2, [target.parent.parent]))
+        container = helper["worktree_roots"]({"anchor": str(self.anchor)})[0].parent
+        attempts = []
+
+        def missing_container(path, *args, **kwargs):
+            if path == container:
+                attempts.append(path)
+                if len(attempts) == 1:
+                    raise FileNotFoundError("fixture container ancestor disappeared")
+            return mkdir(path, *args, **kwargs)
+
+        with mock.patch.object(Path, "mkdir", missing_container):
+            result = self.direct_allocate("container", container / self.anchor.name / "task")
+        self.assertEqual((result["status"], len(attempts)), ("ALLOCATED", 2))
+
+    def test_marking_warning_survives_checkout_failure_in_drain_reports(self):
+        # Prediction: a marking warning reaches drain JSON and reports even when checkout then fails.
+        self.plan("warn", [CHAIN[0]], {})
+        result = self.fault_drain(
+            "def indexing(path):\n    raise OSError('fixture indexing denied')\n"
+            "h['shared']('platform-support')['mark_not_content_indexed'] = indexing\n"
+            "hg = h['allocate'].__globals__\nreal = hg['gref']\n"
+            "def checkout(receipt, *args):\n"
+            "    if args[:2] == ('worktree', 'add'):\n        raise h['CompletionError']('fixture checkout denied')\n"
+            "    return real(receipt, *args)\nhg['gref'] = checkout\n")
+        warning = f"content indexing unchanged: {self.receipt('warn.t1')['worktree']}: could not set FILE_ATTRIBUTE_NOT_CONTENT_INDEXED: fixture indexing denied; continuing"
+        self.assertEqual((result["status"], result["warnings"]), ("WAITING", [warning]))
+        self.assertIn("fixture checkout denied", self.tasks(result)["warn.t1"]["reason"])
+        self.assertEqual(self.calls("warn.t1"), 0)
+        self.assertTrue(result["reports"])
+        for report in result["reports"]:
+            self.assertIn(warning, Path(report).read_text(encoding="utf-8"))
+
+    @unittest.skipIf(os.name == "nt", "fake delivery and symlinks require POSIX")
+    def test_symlinked_named_root_warns_without_blocking_cleanup_or_completion(self):
+        # Prediction: redirecting the empty root after removal retains it, deletes task refs and completes;
+        # repeated completion still succeeds and both command results and drain reports contain its stderr warning.
+        bare, _ = self.remote(pending=False)
+        self.plan("redirect", [CHAIN[0]], {"redirect.t1": {"product": "greeting"}}, delivery="auto")
+        root = self.anchor.parent / ".devlyn-worktrees" / self.anchor.name
+        outside = self.root / "outside"
+        outside.mkdir()
+        result = self.fault_drain(
+            "hg = h['cleanup'].__globals__\nreal = hg['prune_named_parents']\n"
+            "def redirect(receipt):\n"
+            "    root = h['worktree_roots'](receipt)[0]\n"
+            "    if not root.is_symlink():\n"
+            "        pathlib.Path(receipt['worktree']).parent.rmdir()\n"
+            "        root.rmdir()\n"
+            "        root.symlink_to(root.parent.parent / 'outside', target_is_directory=True)\n"
+            "    return real(receipt)\nhg['prune_named_parents'] = redirect\n", local=False)
+        self.assertEqual(self.tasks(result)["redirect.t1"]["delivery"], "COMPLETE")
+        warning, = result["warnings"]
+        self.assertIn("parent cleanup retained:", warning)
+        self.assertIn("unredirected worktree", warning)
+        self.assertTrue(warning.endswith("; continuing"))
+        self.assertTrue(root.is_symlink() and outside.is_dir())
+        self.assertEqual(self.g("branch", "--list", "devlyn/redirect/t1"), "")
+        self.assertEqual(self.run_ok(["git", "--git-dir", str(bare), "branch", "--list", "devlyn/redirect/t1"]), "")
+        for report in result["reports"]:
+            self.assertIn(warning, Path(report).read_text(encoding="utf-8"))
+        for _ in range(2):
+            completed = subprocess.run([sys.executable, str(self.helper), "complete", "--receipt",
+                                        str(self.receipt_path("redirect.t1"))], env=self.env,
+                                       capture_output=True, text=True, encoding="utf-8")
+            self.assertEqual(completed.returncode, 0, completed.stderr + completed.stdout)
+            self.assertEqual((json.loads(completed.stdout)["status"], json.loads(completed.stdout)["warnings"]),
+                             ("COMPLETE", [warning]))
+            self.assertIn(warning, completed.stderr)
+
+    def test_attribute_failures_warn_in_direct_output_and_drain_reports(self):
+        # Prediction: hidden and indexing failures are printed and returned directly, then reach every drain report.
+        from io import StringIO
+        import contextlib
+        helper = self.queue["shared"]("task-complete")
+        container = self.anchor.parent / ".devlyn-worktrees"
+        stderr = StringIO()
+        with mock.patch.dict(helper["shared"]("platform-support"),
+                             mark_hidden=mock.Mock(side_effect=OSError("fixture hidden denied")),
+                             mark_not_content_indexed=mock.Mock(side_effect=OSError("fixture indexing denied"))), \
+                contextlib.redirect_stderr(stderr):
+            result = self.direct_allocate("hidden", container / self.anchor.name / "direct")
+        warning = f"visibility unchanged: {container}: could not set FILE_ATTRIBUTE_HIDDEN: fixture hidden denied; continuing"
+        indexing = f"content indexing unchanged: {result['worktree']}: could not set FILE_ATTRIBUTE_NOT_CONTENT_INDEXED: fixture indexing denied; continuing"
+        self.assertEqual(result["warnings"], [warning, indexing])
+        self.assertEqual(stderr.getvalue(), warning + "\n" + indexing + "\n")
+        self.g("worktree", "remove", result["worktree"])
+        helper["prune_named_parents"](json.loads(Path(result["receipt"]).read_text(encoding="utf-8")))
+        container.rmdir()  # Fixture reset so this drain is the exclusive creator again.
+        self.plan("hidden", [CHAIN[0]], {"hidden.t1": {"product": "greeting"}})
+        result = self.fault_drain("def hidden(path):\n    raise OSError('fixture hidden denied')\n"
+                                  "def indexing(path):\n    raise OSError('fixture indexing denied')\n"
+                                  "h['shared']('platform-support')['mark_hidden'] = hidden\n"
+                                  "h['shared']('platform-support')['mark_not_content_indexed'] = indexing\n")
+        self.assertIn(warning, result["warnings"])
+        indexing = f"content indexing unchanged: {self.receipt('hidden.t1')['worktree']}: could not set FILE_ATTRIBUTE_NOT_CONTENT_INDEXED: fixture indexing denied; continuing"
+        self.assertIn(indexing, result["warnings"])
+        for report in result["reports"]:
+            text = Path(report).read_text(encoding="utf-8")
+            self.assertIn(warning, text)
+            self.assertIn(indexing, text)
+        self.assertEqual(self.tasks(result)["hidden.t1"]["result"], "accepted")
+
+    def test_default_drain_allocates_hidden_worktree_outside_anchor(self):
         # Prediction: a default drain passes the real allocation's absent/disjoint check and accepts a task in
-        # <anchor parent>/<anchor name>.devlyn.noindex/<loop>/<task>, outside the anchor on every OS.
+        # <anchor parent>/.devlyn-worktrees/<anchor name>/<loop>/<task>, outside the anchor on every OS.
         self.plan("nx", [CHAIN[0]], {"nx.t1": {"product": "greeting"}})
         task = self.tasks(self.drain())["nx.t1"]
         receipt = self.receipt("nx.t1")
         work = Path(receipt["worktree"])
-        self.assertEqual(work, self.anchor.parent / f"{self.anchor.name}.devlyn.noindex" / "nx" / "t1")
+        self.assertEqual(work, self.anchor.parent / ".devlyn-worktrees" / self.anchor.name / "nx" / "t1")
         self.assertFalse(work.is_relative_to(self.anchor))
         self.assertFalse(self.anchor.is_relative_to(work))
         self.assertEqual(receipt["allocation"], "owned")
@@ -1190,51 +1570,82 @@ class LoopFixture(unittest.TestCase):
 
     @unittest.skipIf(os.name != "nt", "Windows file attributes")
     def test_windows_default_drain_disables_content_indexing_with_inheritance(self):
-        # Prediction: setting the newly created default root before Git allocates makes its loop/task directories,
-        # checked-out file and .git file inherit the bit, even when the root's parent does not have it.
+        # Prediction: marking the task before checkout covers nested files, .git and later files; its parents stay unmarked.
         self.allow_content_indexing(self.root)
         self.plan("nx", [CHAIN[0]], {"nx.t1": {"product": "greeting"}})
         task = self.tasks(self.drain())["nx.t1"]
         work = Path(self.receipt("nx.t1")["worktree"])
-        for path in (work.parent.parent, work.parent, work, work / ".gitignore", work / ".git"):
+        (work / "later.txt").write_text("later", encoding="utf-8")
+        for path in (work, work / "docs/specs/queue.md", work / ".git", work / "later.txt"):
             with self.subTest(path=path):
                 self.assertTrue(path.stat().st_file_attributes & stat.FILE_ATTRIBUTE_NOT_CONTENT_INDEXED)
+        for path in (work.parent.parent, work.parent):
+            self.assertFalse(path.stat().st_file_attributes & stat.FILE_ATTRIBUTE_NOT_CONTENT_INDEXED)
+        self.assertTrue(work.parents[2].stat().st_file_attributes & stat.FILE_ATTRIBUTE_HIDDEN)
         self.assertEqual((task["result"], task["delivery"], self.calls("nx.t1")), ("accepted", "LOCAL_ONLY", 1))
 
     @unittest.skipIf(os.name != "nt", "Windows file attributes")
     def test_windows_existing_default_root_keeps_content_indexing(self):
-        # Prediction: an existing default root and its new task keep their owner's content-indexing setting.
-        root = self.anchor.parent / f"{self.anchor.name}.devlyn.noindex"
-        root.mkdir()
+        # Prediction: the existing default root keeps its attributes while the new task is marked.
+        root = self.anchor.parent / ".devlyn-worktrees" / self.anchor.name
+        root.mkdir(parents=True)
         self.allow_content_indexing(root)
+        platform = self.queue["shared"]("platform-support")
+        platform["_kernel"].SetFileAttributesW(str(root.parent), root.parent.stat().st_file_attributes & ~stat.FILE_ATTRIBUTE_HIDDEN)
+        container_before = root.parent.stat().st_file_attributes
+        before = root.stat().st_file_attributes
         self.plan("nx", [CHAIN[0]], {"nx.t1": {"product": "greeting"}})
         self.assertEqual(self.tasks(self.drain())["nx.t1"]["result"], "accepted")
-        for path in (root, Path(self.receipt("nx.t1")["worktree"])):
-            self.assertFalse(path.stat().st_file_attributes & stat.FILE_ATTRIBUTE_NOT_CONTENT_INDEXED)
+        self.assertEqual(root.stat().st_file_attributes, before)
+        self.assertEqual(root.parent.stat().st_file_attributes, container_before)
+        self.assertTrue(Path(self.receipt("nx.t1")["worktree"]).stat().st_file_attributes & stat.FILE_ATTRIBUTE_NOT_CONTENT_INDEXED)
 
     @unittest.skipIf(os.name != "nt", "Windows file attributes")
     def test_windows_explicit_worktree_root_keeps_content_indexing(self):
-        # Prediction: explicit roots are untouched, including an explicit spelling of the default path.
+        # Prediction: explicit roots keep their attributes, including an explicit default path; every task is marked.
         self.allow_content_indexing(self.root)
-        for loop, root in (("ex", self.root / "custom"), ("nx", self.anchor.parent / f"{self.anchor.name}.devlyn.noindex")):
+        for loop, root in (("ex", self.root / "custom"), ("nx", self.anchor.parent / ".devlyn-worktrees" / self.anchor.name)):
             with self.subTest(root=root):
+                root.mkdir(parents=True)
+                before = root.stat().st_file_attributes
                 self.plan(loop, [CHAIN[0]], {f"{loop}.t1": {"product": "greeting"}})
                 self.assertEqual(self.tasks(self.fault_drain("", root=root))[f"{loop}.t1"]["result"], "accepted")
-                for path in (root, Path(self.receipt(f"{loop}.t1")["worktree"])):
-                    self.assertFalse(path.stat().st_file_attributes & stat.FILE_ATTRIBUTE_NOT_CONTENT_INDEXED)
+                self.assertEqual(root.stat().st_file_attributes, before)
+                self.assertTrue(Path(self.receipt(f"{loop}.t1")["worktree"]).stat().st_file_attributes & stat.FILE_ATTRIBUTE_NOT_CONTENT_INDEXED)
+
+    @unittest.skipIf(os.name != "nt", "Windows file attributes")
+    def test_windows_direct_allocation_marks_worktree_under_unmarked_custom_parent(self):
+        # Prediction: direct allocate marks the explicit worktree before Git populates it, without changing its parent.
+        parent = self.root / "custom"
+        parent.mkdir()
+        self.allow_content_indexing(parent)
+        before = parent.stat().st_file_attributes
+        work = parent / "direct"
+        result = json.loads(self.run_ok([sys.executable, str(self.helper), "allocate", "--repo", str(self.anchor),
+                                        "--task", "direct", "--branch", "task/direct", "--worktree", str(work),
+                                        "--local-base", self.base]))
+        self.assertEqual((result["status"], result["warnings"]), ("ALLOCATED", []))
+        self.assertEqual(parent.stat().st_file_attributes, before)
+        for path in (work, work / "docs/specs/queue.md", work / ".git"):
+            self.assertTrue(path.stat().st_file_attributes & stat.FILE_ATTRIBUTE_NOT_CONTENT_INDEXED)
 
     @unittest.skipIf(os.name != "nt", "Windows file attributes")
     def test_windows_content_indexing_failure_is_diagnostic_and_tasks_run(self):
-        # Prediction: one failed attribute call leaves indexing enabled, survives later queue views as a cleanup
-        # diagnostic, and neither blocks the first task nor retries on the now-existing root for its dependent.
+        # Prediction: each failed attribute call survives later queue views in warnings and reports; both tasks run.
         self.allow_content_indexing(self.root)
         self.plan("nx", CHAIN, {"nx.t1": {"product": "greeting"}, "nx.t2": {"product": "app"}})
         result = self.fault_drain("def mark(path):\n    raise OSError('fixture attribute denied')\n"
-                                  "q['shared']('platform-support')['mark_not_content_indexed'] = mark\n")
-        root = self.anchor.parent / f"{self.anchor.name}.devlyn.noindex"
-        self.assertEqual(result["cleanup"], [
-            f"content indexing unchanged: {root}: could not set FILE_ATTRIBUTE_NOT_CONTENT_INDEXED: fixture attribute denied; continuing"])
-        self.assertFalse(root.stat().st_file_attributes & stat.FILE_ATTRIBUTE_NOT_CONTENT_INDEXED)
+                                  "h['shared']('platform-support')['mark_not_content_indexed'] = mark\n")
+        root = self.anchor.parent / ".devlyn-worktrees" / self.anchor.name
+        warnings = [f"content indexing unchanged: {root / 'nx' / task}: could not set FILE_ATTRIBUTE_NOT_CONTENT_INDEXED: fixture attribute denied; continuing"
+                    for task in ("t1", "t2")]
+        self.assertEqual([warning for warning in result["warnings"] if "content indexing unchanged:" in warning], warnings)
+        for path in (root, root / "nx/t1", root / "nx/t2"):
+            self.assertFalse(path.stat().st_file_attributes & stat.FILE_ATTRIBUTE_NOT_CONTENT_INDEXED)
+        for path in result["reports"]:
+            report = Path(path).read_text(encoding="utf-8")
+            for warning in warnings:
+                self.assertIn(warning, report)
         self.assertEqual({identity: (task["result"], task["delivery"], self.calls(identity))
                           for identity, task in self.tasks(result).items()},
                          {"nx.t1": ("accepted", "LOCAL_ONLY", 1), "nx.t2": ("accepted", "LOCAL_ONLY", 1)})
@@ -1253,15 +1664,47 @@ class LoopFixture(unittest.TestCase):
         with self.assertRaises(OSError):
             platform["mark_not_content_indexed"](self.root / "missing")
 
+    @unittest.skipIf(os.name != "nt", "Windows file attributes")
+    def test_mark_hidden_preserves_attributes_and_marks_only_exclusive_container_creator(self):
+        # Prediction: the helper preserves indexing bits; allocation marks the container once and leaves existing dirs.
+        platform = self.queue["shared"]("platform-support")
+        path = self.root / "attributes"
+        path.mkdir()
+        platform["mark_not_content_indexed"](path)
+        before = path.stat().st_file_attributes
+        platform["mark_hidden"](path)
+        self.assertEqual(path.stat().st_file_attributes, before | stat.FILE_ATTRIBUTE_HIDDEN)
+        with self.assertRaises(OSError):
+            platform["mark_hidden"](self.root / "missing")
+        container = self.anchor.parent / ".devlyn-worktrees"
+        mark = platform["mark_hidden"]
+        recorded = []
+
+        def hidden(path):
+            self.assertEqual(path, container)
+            attrs = path.stat().st_file_attributes
+            mark(path)
+            self.assertEqual(path.stat().st_file_attributes, attrs | stat.FILE_ATTRIBUTE_HIDDEN)
+            recorded.append(path)
+
+        helper = self.queue["shared"]("task-complete")
+        with mock.patch.dict(helper["shared"]("platform-support"), mark_hidden=hidden):
+            self.direct_allocate("first", container / self.anchor.name / "first")
+            attrs = container.stat().st_file_attributes
+            self.direct_allocate("second", container / self.anchor.name / "second")
+        self.assertEqual(recorded, [container])
+        self.assertEqual(container.stat().st_file_attributes, attrs)
+
     @unittest.skipIf(os.name == "nt", "POSIX no-op")
     def test_mark_not_content_indexed_is_noop_on_posix(self):
         # Prediction: on POSIX the helper does nothing, even for a nonexistent path.
         self.assertIsNone(self.queue["shared"]("platform-support")["mark_not_content_indexed"](self.root / "missing"))
+        self.assertIsNone(self.queue["shared"]("platform-support")["mark_hidden"](self.root / "missing"))
 
     def test_default_drain_creates_no_root_without_fresh_allocation(self):
         # Prediction: no runnable task, allocation preflight refusal and resuming an old-root receipt each leave the
         # default root absent; only a fresh allocation that passed queue preflight needs it.
-        root = self.anchor.parent / f"{self.anchor.name}.devlyn.noindex"
+        root = self.anchor.parent / ".devlyn-worktrees" / self.anchor.name
         self.assertEqual(self.drain()["tasks"], [])
         self.assertFalse(root.exists())
         self.plan("nx", [CHAIN[0]], {"nx.t1": {"product": "greeting"}})
@@ -1270,19 +1713,19 @@ class LoopFixture(unittest.TestCase):
         self.assertEqual(self.calls("nx.t1"), 0)
         self.assertFalse(root.exists())
         self.behaviors["nx.t1"] = {"exit_now": 1}
-        old_root = self.anchor.parent / f"{self.anchor.name}.devlyn"
+        old_root = self.anchor.parent / f"{self.anchor.name}.devlyn.noindex"
         self.assertEqual(self.tasks(self.fault_drain("", root=old_root))["nx.t1"]["result"], "active")
         self.behaviors["nx.t1"] = {"product": "greeting"}
         self.assertEqual(self.tasks(self.drain())["nx.t1"]["result"], "accepted")
         self.assertEqual(Path(self.receipt("nx.t1")["worktree"]), old_root / "nx" / "t1")
         self.assertFalse(root.exists())
 
-    def test_default_drain_resumes_old_root_receipt_and_allocates_new_task_noindex(self):
+    def test_default_drain_resumes_old_root_receipt_and_allocates_new_task_hidden(self):
         # Prediction: interruption after an owned allocation under the old .devlyn root resumes at its recorded path;
-        # the same default drain allocates the fresh dependent under .devlyn.noindex, without duplicating the old tree.
+        # the same default drain allocates the fresh dependent under .devlyn-worktrees/<repo>, without duplicating the old tree.
         self.plan("nx", CHAIN, {"nx.t1": {"product": "greeting"}, "nx.t2": {"product": "app"}})
         old_root = self.anchor.parent / f"{self.anchor.name}.devlyn"
-        new_root = self.anchor.parent / f"{self.anchor.name}.devlyn.noindex"
+        new_root = self.anchor.parent / ".devlyn-worktrees" / self.anchor.name
         argv = self.drain_argv()
         argv[argv.index("--"):argv.index("--")] = ["--worktree-root", str(old_root)]
         crashed = subprocess.run([sys.executable, "-c", CRASH, "replace", "packet.json", *argv[1:]], cwd=self.root,
@@ -1317,7 +1760,7 @@ class LoopFixture(unittest.TestCase):
         self.assertIn("existing branch cannot be adopted", self.tasks(result)["aa.t1"]["reason"])
         self.assertEqual(self.g("rev-parse", "devlyn/aa/t1"), self.base)
         self.g("branch", "-D", "devlyn/aa/t1")  # Explicit fixture recovery.
-        work = self.root / "repo.devlyn.noindex/aa/t1"
+        work = self.root / ".devlyn-worktrees/repo/aa/t1"
         work.mkdir(parents=True)
         (work / "sentinel").write_text("keep", encoding="utf-8")
         self.independent("cc")
@@ -2420,10 +2863,11 @@ class LoopFixture(unittest.TestCase):
         tasks = self.tasks(self.drain(local=False))
         self.assertEqual({identity: task["delivery"] for identity, task in tasks.items()}, {"sd.t1": "COMPLETE", "sd.t2": "COMPLETE"})
         self.assertEqual([Path(self.receipt(identity)["worktree"]).exists() for identity in tasks], [False, False])
-        parent = self.root / "repo.devlyn.noindex/sd"
+        parent = self.root / ".devlyn-worktrees/repo/sd"
         self.assertFalse(parent.exists())
-        self.assertTrue(parent.parent.is_dir())
-        parent.mkdir()  # Model interruption between worktree removal and empty-parent pruning.
+        self.assertFalse(parent.parent.exists())
+        self.assertTrue(parent.parent.parent.is_dir())
+        parent.mkdir(parents=True)  # Model interruption between worktree removal and empty-parent pruning.
         report = self.common / "devlyn-loops/sd/drain-report.md"
         report.unlink()
         self.drain(local=False)
@@ -2959,7 +3403,7 @@ class LoopFixture(unittest.TestCase):
                 identity = f"{loop}.t1"
                 self.assertEqual(self.calls(identity), 0)
                 self.assertFalse(self.receipt_path(identity).exists())
-                self.assertFalse((self.anchor.parent / f"{self.anchor.name}.devlyn.noindex" / loop / "t1").exists())
+                self.assertFalse((self.anchor.parent / ".devlyn-worktrees" / self.anchor.name / loop / "t1").exists())
                 self.assertEqual(tasks[identity]["result"], "pending")
                 self.assertEqual(tasks[identity]["reason"], f"{mode} delivery base main is not the repository's default branch release; "
                                  "plan the loop on release, or drain with --local-only")
