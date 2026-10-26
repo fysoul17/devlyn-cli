@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 import re
 import subprocess
+import sys
 import tempfile
 import unittest
 from unittest import mock
@@ -22,8 +23,9 @@ def load(name, path=None):
     return module
 
 
-control, generate, decide, instructions, driver, prepare, run_cell = (
-    load(n) for n in ('control', 'generate_cells', 'decide', 'instructions', 'driver', 'prepare', 'run_cell'))
+control, generate, decide, instructions, driver, prepare, run_cell, quota, reclassify = (
+    load(n) for n in ('control', 'generate_cells', 'decide', 'instructions', 'driver', 'prepare', 'run_cell',
+                      'quota', 'reclassify'))
 
 SEVEN_RULES = (
     'Seven rules govern every change.\n'
@@ -535,6 +537,129 @@ class Decision(unittest.TestCase):
                 'false_completion': 1, 'scope_violation': 1, 'user_data_harm': 1})
             self.assertIn('C_UNSAFE[' + '|'.join(sorted((final, false_attempt, harm_attempt))) + ']',
                           outcome['flags'])
+
+
+class AmendmentOne(unittest.TestCase):
+    @staticmethod
+    def stream(out, events):
+        path = out / 'run/stdout'
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(''.join(json.dumps(event) + '\n' for event in events))
+
+    @staticmethod
+    def retry(status):
+        return {'type': 'system', 'subtype': 'api_retry', 'error_status': status,
+                'error': 'authentication_failed'}
+
+    @staticmethod
+    def result(**fields):
+        return {'type': 'result', 'is_error': True, 'terminal_reason': 'api_error',
+                'api_error_status': None, **fields}
+
+    def test_d007_retry_shape_and_success(self):
+        with tempfile.TemporaryDirectory() as temp:
+            out = Path(temp)
+            retries = [self.retry(529) for _ in range(9)] + [self.retry(401)]
+            self.stream(out, retries + [{'type': 'assistant', 'message': {'model': '<synthetic>'}},
+                                        self.result(result='irrelevant model prose')])
+            self.assertEqual(quota.classify(out), {'execution': [{
+                'fault': 'auth', 'kind': 'claude authentication retry', 'path': 'run/stdout'}],
+                'assessment': []})
+            self.stream(out, [self.retry(401), {'type': 'result', 'is_error': False,
+                                                'terminal_reason': 'success', 'api_error_status': None}])
+            self.assertEqual(quota.classify(out)['execution'], [])
+
+    def test_retry_status_and_original_result_precedence(self):
+        with tempfile.TemporaryDirectory() as temp:
+            out = Path(temp)
+            self.stream(out, [self.retry(403), self.result()])
+            self.assertEqual(quota.classify(out)['execution'][0]['kind'], 'claude authentication retry')
+            self.stream(out, [self.retry(401), self.retry(529), self.result()])
+            self.assertEqual(quota.classify(out)['execution'], [])
+            self.stream(out, [self.retry(401), self.result(api_error_status=401)])
+            self.assertEqual(quota.classify(out)['execution'], [{
+                'fault': 'auth', 'kind': 'claude authentication result', 'path': 'run/stdout'}])
+            assessment = out / 'assessment/check/stdout'
+            assessment.parent.mkdir(parents=True)
+            assessment.write_text(json.dumps(self.retry(403)) + '\n' + json.dumps(self.result()) + '\n')
+            self.assertEqual(quota.classify(out)['assessment'], [{
+                'fault': 'auth', 'kind': 'claude authentication retry', 'path': 'assessment/check/stdout'}])
+
+    def test_retry_does_not_survive_result_or_model_turn_or_override_status(self):
+        with tempfile.TemporaryDirectory() as temp:
+            out = Path(temp)
+            success = {'type': 'result', 'is_error': False, 'terminal_reason': 'success',
+                       'api_error_status': None}
+            self.stream(out, [self.retry(401), success, self.result()])
+            self.assertEqual(quota.classify(out)['execution'], [])
+            self.stream(out, [self.retry(401),
+                              {'type': 'assistant', 'message': {'model': 'claude-sonnet'}},
+                              self.result()])
+            self.assertEqual(quota.classify(out)['execution'], [])
+            self.stream(out, [self.retry(401), self.result(api_error_status=500)])
+            self.assertEqual(quota.classify(out)['execution'], [])
+
+    def test_reclassify_and_preflight_refusal(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            output = root / 'output'
+            output.mkdir()
+            runtime = root / 'runtime.json'
+            runtime.write_text(json.dumps({'output': str(output)}))
+            names = ['match', 'already-stop', 'recorded', 'no-fault', 'absent']
+            schedule = root / 'cells.tsv'
+            schedule.write_text(''.join(f'{name} D3 B claude 1\n' for name in names))
+            originals = {}
+            for name in names[:-1]:
+                cell_dir = output / name
+                if name != 'already-stop':
+                    cell_dir.mkdir()
+                    self.stream(cell_dir, [self.retry(401), self.result()]
+                                if name != 'no-fault' else [self.retry(529), self.result()])
+                record = {'cell': name, 'status': 'STOP' if name == 'already-stop' else 'PRODUCT_INCOMPLETE',
+                          'reason': 'old reason', 'quota': {'execution': [dict(kind='existing')]
+                          if name == 'recorded' else [], 'assessment': []}, 'other': {'kept': True}}
+                if name == 'already-stop':
+                    del record['quota']
+                path = output / f'verdict-{name}.json'
+                path.write_text(json.dumps(record, indent=2))
+                originals[name] = path.read_bytes()
+            printed = io.StringIO()
+            with contextlib.redirect_stdout(printed):
+                summary = reclassify.main(runtime, schedule)
+            self.assertEqual(summary, {'checked': 4, 'skipped': 3, 'reclassified': 1})
+            self.assertEqual(len(printed.getvalue().splitlines()), 2)
+            self.assertEqual(json.loads(printed.getvalue().splitlines()[-1]), summary)
+            updated = json.loads((output / 'verdict-match.json').read_text())
+            self.assertEqual(updated['status'], 'STOP')
+            self.assertEqual(updated['reason'],
+                             'shared account fault during execution: claude authentication retry')
+            self.assertEqual(updated['quota']['execution'][0]['kind'], 'claude authentication retry')
+            self.assertEqual(updated['other'], {'kept': True})
+            self.assertEqual(updated['reclassified'], {
+                'from_status': 'PRODUCT_INCOMPLETE', 'from_reason': 'old reason',
+                'from_sha256': hashlib.sha256(originals['match']).hexdigest(),
+                'amendment': 'amendment-1.md'})
+            for name in ('already-stop', 'recorded', 'no-fault'):
+                self.assertEqual((output / f'verdict-{name}.json').read_bytes(), originals[name])
+
+            (output / 'verdict-match.json').write_bytes(originals['match'])
+            (output / 'verdict-no-fault.json').write_text('{bad json')
+            with self.assertRaisesRegex(ValueError, 'malformed verdict'), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                reclassify.main(runtime, schedule)
+            command = subprocess.run([sys.executable, str(HERE / 'reclassify.py'), str(runtime), str(schedule)],
+                                     capture_output=True, text=True)
+            self.assertNotEqual(command.returncode, 0)
+            self.assertIn('malformed verdict', command.stderr)
+            self.assertEqual((output / 'verdict-match.json').read_bytes(), originals['match'])
+            (output / 'verdict-no-fault.json').unlink()
+            (output / 'match/run/stdout').unlink()
+            (output / 'match/run').rmdir()
+            (output / 'match').rmdir()
+            with self.assertRaisesRegex(FileNotFoundError, 'missing cell directory'):
+                reclassify.main(runtime, schedule)
+            self.assertEqual((output / 'verdict-match.json').read_bytes(), originals['match'])
 
 
 class DriverControls(unittest.TestCase):
