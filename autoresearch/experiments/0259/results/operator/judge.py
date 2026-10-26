@@ -1,5 +1,6 @@
 """Operator tool (not apparatus) for root's 0259 judgments.
 0257's judge.py with runtime path from NX01_0259_RUNTIME and 0259 cells.tsv.
+NX01_0259_JUDGE_SCRATCH selects an absolute scratch directory when set.
 
 judge.py cells                    measured cells and their tasks
 judge.py findings                 every severe assessor finding of the measured cells, as JSON
@@ -23,8 +24,21 @@ RUNTIME = Path(os.environ['NX01_0259_RUNTIME'])
 CONFIG = json.loads(RUNTIME.read_text())
 LIVE = Path(CONFIG['output']).parent
 OUT = Path(CONFIG['output'])
-SCRATCH = LIVE / 'scratch' / 'judge'
+scratch_override = os.environ.get('NX01_0259_JUDGE_SCRATCH')
+SCRATCH = Path(scratch_override) if scratch_override else LIVE / 'scratch' / 'judge'
+if scratch_override and not SCRATCH.is_absolute():
+    raise ValueError('NX01_0259_JUDGE_SCRATCH must be an absolute path')
 CELLS = Path(__file__).resolve().parents[2] / 'cells.tsv'
+
+
+def stage_witness(witness, temp):
+    witness_dir = Path(temp) / 'witness'
+    witness_dir.mkdir()
+    copied = witness_dir / witness.name
+    shutil.copy2(witness, copied)
+    if hashlib.sha256(copied.read_bytes()).digest() != hashlib.sha256(witness.read_bytes()).digest():
+        raise ValueError(f'witness copy differs from source: {witness}')
+    return witness_dir
 
 
 def measured():
@@ -67,12 +81,13 @@ def run(witness, cells):
             with tempfile.TemporaryDirectory(prefix='witness-', dir=SCRATCH) as temp:
                 work = Path(temp) / 'work'
                 shutil.copytree(OUT / cell / 'snapshot', work, symlinks=True)
+                witness_dir = stage_witness(witness, temp)
                 container = f'witness-{cell}-{index}'
                 try:
                     done = subprocess.run(['docker', 'run', '--rm', '--name', container, '--network', 'none', '--cap-drop', 'ALL',
                                            '--security-opt', 'no-new-privileges', '--user', '501:501',
                                            '--mount', f'type=bind,src={work},dst=/work',
-                                           '--mount', f'type=bind,src={witness.parent},dst=/witness,readonly',
+                                           '--mount', f'type=bind,src={witness_dir},dst=/witness,readonly',
                                            '-w', '/work', '-e', 'HOME=/tmp', image,
                                            'python3' if witness.suffix == '.py' else 'node',
                                            f'/witness/{witness.name}'],
@@ -119,11 +134,12 @@ def probe(cells, source_runtime=None):
         try:
             work = Path(temp.name) / 'work'
             shutil.copytree(source_out / cell / 'snapshot', work, symlinks=True)
+            witness_dir = stage_witness(witness, temp.name)
             try:
                 done = subprocess.run(['docker', 'run', '--rm', '--name', container, '--network', 'none',
                                        '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--user', '501:501',
                                        '--mount', f'type=bind,src={work},dst=/work',
-                                       '--mount', f'type=bind,src={witness.parent},dst=/witness,readonly',
+                                       '--mount', f'type=bind,src={witness_dir},dst=/witness,readonly',
                                        '-w', '/work', '-e', 'HOME=/tmp', image, 'node',
                                        f'/witness/{witness.name}', task], capture_output=True, text=True, timeout=60)
             except subprocess.TimeoutExpired as exc:

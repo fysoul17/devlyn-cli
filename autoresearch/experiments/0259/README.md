@@ -14,6 +14,8 @@
 | `quota.py` | 0233 classifier plus the retry-only authentication shape in amendment 1. |
 | `reclassify.py` | Reclassify finished measured verdicts with preserved execution faults. |
 | `amendment-1.md` | Dated authentication-fault amendment and rerun procedure. |
+| `amendment-2.md` | Dated grading amendment for the Docker `/Users` bind-mount hang. |
+| `RESULT.md` | Measured result. |
 | `decide.py` | Copy; 0259 token and PRINCIPLE headlines. |
 | `test_apparatus.py` | Copy; seven-rule fixtures, exact six-rule output and failure cases for every edit source, real B check when available, and pinned instrument hashes. |
 | `results/operator/judge.py` | Copy; 0259 runtime variable; original witness output markers retained. |
@@ -31,3 +33,5 @@
 8. Audit all attempts, prepare audit and severe judgments in 0257's JSON format, then decide with `python3 autoresearch/experiments/0259/decide.py <output> <audit.json> <severe.json>`.
 
 Amendment 1: let the running driver finish its schedule without changing its loaded code. Move the measured checkout to the amendment commit, then run `python3 autoresearch/experiments/0259/reclassify.py <runtime.json> autoresearch/experiments/0259/cells.tsv` and record its output. Relaunch the driver with the same schedule; it skips finished cells and archives and reruns reclassified STOP cells.
+
+Amendment 2: if Docker hangs on bind mounts from `/Users`, set `NX01_0259_JUDGE_SCRATCH` to an absolute directory under `/private/tmp` before running `judge.py`; it mounts its snapshot copies and a sha256-checked witness copy from there.

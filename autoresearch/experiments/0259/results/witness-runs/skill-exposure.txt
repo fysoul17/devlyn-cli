@@ -1,0 +1,6 @@
+task arm: kind=[cells, calls]
+('D3', 'B') {'skill_calls': [0, 0], 'principles': [0, 0], 'skill_md': [0, 0], 'task_completion_md': [0, 0]}
+('D3', 'C') {'skill_calls': [0, 0], 'principles': [0, 0], 'skill_md': [0, 0], 'task_completion_md': [0, 0]}
+('F10', 'B') {'skill_calls': [0, 0], 'principles': [1, 1], 'skill_md': [0, 0], 'task_completion_md': [12, 18]}
+('F10', 'C') {'skill_calls': [0, 0], 'principles': [0, 0], 'skill_md': [0, 0], 'task_completion_md': [13, 19]}
+c021-F10-claude-B-r11 principles cat .claude/skills/_shared/task-completion.md | head -120; cat .claude/skills/_shared/runtime-principles.md; git remote -v

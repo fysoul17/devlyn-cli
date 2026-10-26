@@ -1,0 +1,49 @@
+{
+  "cell": "c014-F10-claude-C-r7",
+  "witness": "f10-nonobject-json.js",
+  "witness_sha256": "91dea8bf2cc26292400f81bca7637c29df0d82bc0f0e3ff017d15a76bd931548",
+  "judge_run": {
+    "attempts": [
+      {
+        "exit": 1
+      },
+      {
+        "exit": 1
+      }
+    ],
+    "result": true
+  },
+  "manual_run_stdout": [
+    {
+      "body": "null",
+      "status": 400,
+      "type": "application/json; charset=utf-8",
+      "ok": false
+    },
+    {
+      "body": "5",
+      "status": 400,
+      "type": "application/json; charset=utf-8",
+      "ok": false
+    },
+    {
+      "body": "\"text\"",
+      "status": 400,
+      "type": "application/json; charset=utf-8",
+      "ok": false
+    },
+    {
+      "body": "true",
+      "status": 400,
+      "type": "application/json; charset=utf-8",
+      "ok": false
+    },
+    {
+      "body": "[1]",
+      "status": 400,
+      "type": "application/json; charset=utf-8",
+      "ok": true
+    }
+  ],
+  "manual_run_exit": 1
+}

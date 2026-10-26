@@ -1,0 +1,103 @@
+{
+  "cell": "c007-F10-claude-C-r4",
+  "witness": "f10-same-process-instances.js",
+  "v1": {
+    "witness_sha256": "89f5fc489e536c8edb1f22c4eaad636e987da71aa336ea731c96f5ec3cd8a697",
+    "note": "checked loss only in rounds where both POSTs got 201 (result review round 2, Astra HIGH); superseded",
+    "judge_run": {
+      "attempts": [
+        {
+          "exit": 0
+        },
+        {
+          "exit": 0
+        }
+      ],
+      "result": false
+    }
+  },
+  "v2": {
+    "witness_sha256": "c1dead986aa8ea83df795f258d21914539512a21c83f7b349be29fbbebceb2a2",
+    "note": "checks after every round that every item ever answered 201 is still stored",
+    "judge_run": {
+      "attempts": [
+        {
+          "exit": 1
+        },
+        {
+          "exit": 1
+        }
+      ],
+      "result": true
+    },
+    "manual_run_1": [
+      {
+        "round": 0,
+        "statuses": [
+          500,
+          201
+        ],
+        "ids": [
+          null,
+          3
+        ],
+        "missing": [
+          "b-0"
+        ],
+        "storedAfterFailure": [
+          "a-0"
+        ],
+        "lost": true
+      }
+    ],
+    "manual_run_2": [
+      {
+        "round": 0,
+        "statuses": [
+          500,
+          201
+        ],
+        "ids": [
+          null,
+          3
+        ],
+        "missing": [],
+        "storedAfterFailure": [],
+        "lost": false
+      },
+      {
+        "round": 1,
+        "statuses": [
+          500,
+          201
+        ],
+        "ids": [
+          null,
+          4
+        ],
+        "missing": [],
+        "storedAfterFailure": [],
+        "lost": false
+      },
+      {
+        "round": 2,
+        "statuses": [
+          201,
+          500
+        ],
+        "ids": [
+          5,
+          null
+        ],
+        "missing": [
+          "a-2"
+        ],
+        "storedAfterFailure": [
+          "b-2"
+        ],
+        "lost": true
+      }
+    ],
+    "stderr": "the failing POST logs ENOENT on rename of items.json.<pid>.tmp (both instances share the process's temp-file name)"
+  }
+}

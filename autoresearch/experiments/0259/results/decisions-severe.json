@@ -1,0 +1,19 @@
+{
+  "severe": {
+    "c007-F10-claude-C-r4": {
+      "codex:0": {
+        "disposition": "reproduced",
+        "witness": "f10-two-instances-lost-update"
+      }
+    }
+  },
+  "adjudicated": {},
+  "witnesses": {
+    "f10-two-instances-lost-update": {
+      "c007-F10-claude-C-r4": [
+        true,
+        true
+      ]
+    }
+  }
+}
