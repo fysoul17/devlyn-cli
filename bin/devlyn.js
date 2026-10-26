@@ -1344,9 +1344,9 @@ function showHelp() {
 // ---------------------------------------------------------------------------
 // Legacy cleanup for the built-in harness: Devlyn delivers devlyn-cli per session, so every copy an
 // earlier install left in a skill root, and the files those installs added, become legacy. A plan
-// is read-only and lists each item with its proof. Apply plans again from what is on disk now and
-// acts only on items both plans name the same way, so a plan file can narrow a cleanup but never
-// widen it: untracked copies go in place, tracked ones through the project's delivery policy.
+// takes the remote base by fast-forward when possible, then lists each item with its proof. Apply
+// plans again from disk and acts only on items both plans name the same way. A plan can narrow
+// cleanup but never widen it: untracked copies go in place, tracked ones through the project's delivery policy.
 // Every removal needs shipped-content proof; names only identify candidates.
 // ---------------------------------------------------------------------------
 
@@ -1565,7 +1565,8 @@ function cleanupCurrentFingerprints() {
 }
 
 function cleanupGit(root, args, options = {}) {
-  return spawnSync('git', ['-C', root, ...args], { env: { ...gitEnvironment(), GIT_OPTIONAL_LOCKS: '0' }, encoding: 'utf8', ...options });
+  return spawnSync('git', ['-C', root, ...args], { encoding: 'utf8', ...options,
+    env: { ...gitEnvironment(), GIT_OPTIONAL_LOCKS: '0', ...options.env } });
 }
 
 let cleanupPythonBinary;
@@ -1722,7 +1723,18 @@ function cleanupScopes(inputs, current) {
 }
 
 function cleanupPlan(inputs) {
-  const plan = { schemaVersion: 1, version: PKG.version, inputs, scopes: cleanupScopes(inputs, cleanupCurrentFingerprints()) };
+  const current = cleanupCurrentFingerprints();
+  let scopes = cleanupScopes(inputs, current);
+  let changed = false;
+  for (const scope of scopes) {
+    if (scope.kind === 'project' && scope.remote && scope.items.some((item) => item.route === 'delivery' && ['remove', 'edit'].includes(item.action))) {
+      const updated = cleanupUpdateCheckout(scope);
+      if (updated.changed) changed = true;
+    }
+  }
+  // The review covers the bytes delivery acts on, including scopes sharing a checkout.
+  if (changed) scopes = cleanupScopes(inputs, current);
+  const plan = { schemaVersion: 1, version: PKG.version, inputs, scopes };
   return { ...plan, digest: cleanupDigest(plan) };
 }
 
@@ -1920,7 +1932,8 @@ function cleanupUpdateCheckout(scope) {
   if (branch !== scope.remote.base || !head) return failed(`${branch || 'a detached HEAD'} is checked out`);
   const ref = `refs/devlyn/cleanup/${crypto.randomBytes(8).toString('hex')}`;
   try {
-    const fetched = cleanupGit(scope.root, ['fetch', '--quiet', '--no-write-fetch-head', 'origin', `+refs/heads/${scope.remote.base}:${ref}`]);
+    const fetched = cleanupGit(scope.root, ['fetch', '--quiet', '--no-write-fetch-head', 'origin', `+refs/heads/${scope.remote.base}:${ref}`],
+      { timeout: 30000, env: { GIT_TERMINAL_PROMPT: '0' } });
     if (fetched.error || fetched.status !== 0) return failed(fetched.error?.message || fetched.stderr.trim());
     const target = read(['rev-parse', '--verify', `${ref}^{commit}`]);
     const [now, at] = checkout();
@@ -1930,7 +1943,7 @@ function cleanupUpdateCheckout(scope) {
       'merge', '--ff-only', '--no-squash', '--no-autostash', '--no-overwrite-ignore', '--quiet', target]);
     if (merged.error || merged.status !== 0) return failed(merged.error?.message || merged.stderr.trim());
     const [after, landed] = checkout();
-    return after === branch && landed === target ? {} : failed('the fast-forward did not land on the base');
+    return after === branch && landed === target ? { changed: landed !== head } : failed('the fast-forward did not land on the base');
   } finally {
     cleanupGit(scope.root, ['update-ref', '-d', ref]);
   }
