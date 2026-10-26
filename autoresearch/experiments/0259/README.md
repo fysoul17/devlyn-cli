@@ -11,6 +11,9 @@
 | `generate_cells.py` | Copy; experiment name only. |
 | `cells.tsv`, `smoke.tsv` | Byte-identical copies; 64 measured cells and two SMOKE cells. |
 | `driver.py` | Copy; experiment name only. |
+| `quota.py` | 0233 classifier plus the retry-only authentication shape in amendment 1. |
+| `reclassify.py` | Reclassify finished measured verdicts with preserved execution faults. |
+| `amendment-1.md` | Dated authentication-fault amendment and rerun procedure. |
 | `decide.py` | Copy; 0259 token and PRINCIPLE headlines. |
 | `test_apparatus.py` | Copy; seven-rule fixtures, exact six-rule output and failure cases for every edit source, real B check when available, and pinned instrument hashes. |
 | `results/operator/judge.py` | Copy; 0259 runtime variable; original witness output markers retained. |
@@ -26,3 +29,5 @@
 6. Run measured cells with `python3 autoresearch/experiments/0259/driver.py <runtime.json> autoresearch/experiments/0259/cells.tsv`.
 7. Set `NX01_0259_RUNTIME=<runtime.json>`; after grading, run `python3 autoresearch/experiments/0259/results/operator/judge.py probe <F10 cells>` and `python3 autoresearch/experiments/0259/results/operator/judge.py run autoresearch/experiments/0259/results/witnesses/d3-parseoptions-override.js <D3 cells>`.
 8. Audit all attempts, prepare audit and severe judgments in 0257's JSON format, then decide with `python3 autoresearch/experiments/0259/decide.py <output> <audit.json> <severe.json>`.
+
+Amendment 1: let the running driver finish its schedule without changing its loaded code. Move the measured checkout to the amendment commit, then run `python3 autoresearch/experiments/0259/reclassify.py <runtime.json> autoresearch/experiments/0259/cells.tsv` and record its output. Relaunch the driver with the same schedule; it skips finished cells and archives and reruns reclassified STOP cells.
