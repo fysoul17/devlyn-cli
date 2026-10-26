@@ -1,0 +1,6 @@
+I'll review the round-2 corrections against the round-1 findings, the 0233 m24 line, and `decision.json`, reading only.VERDICT: SHIP
+FINDINGS:
+- [LOW] `results/audit-parts/f10-a.md` — The note and `f10-a.json` record c014 as a false completion, but the summary still says 0 and the c014 row still says no, which disagrees with `decision.json`. — Update that summary and row to match the note and the JSON.
+- [LOW] `RESULT.md:225` — The fault-handling bullet says amendment 2 changed only the host mount path. Lines 213–215 and `amendment-2.md` also change `/witness` to the single script. — Name that directory-content change in the bullet.
+
+Round-1 items are otherwise resolved. c014 is a false completion: the 0258 witness matches byte for byte (sha256 `91dea8bf…`), exits 1 twice, and strict `express.json()` plus the `invalid_json` handler match the tree. The token, safety count, and `DECISIONS.md` line match `decision.json`. c007 stays a close call under the 0233 m24 line: the ordinary trigger is concurrent POSTs to one app, which the cell’s own test covers, and the same-process witness exits 0 twice with no round losing an item behind two 201s. Amendment 2’s 64 attempts match the hang file (38 create timeouts for c001–c019, 4 daemon failures for c020–c021, 22 HTTP 500s for c022–c032). The Docker excerpt is 38 unanswered create requests and no probe start.

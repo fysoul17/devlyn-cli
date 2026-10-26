@@ -1,0 +1,546 @@
+{
+  "c001-F10-claude-B-r1": {
+    "attempts": [
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "Command '['docker', 'run', '--rm', '--name', 'probe-c001-F10-claude-B-r1', '--network', 'none', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--user', '501:501', '--mount', 'type=bind,src=/Users/aipalm/.local/share/nx01/0259-live/scratch/judge/probe-gfp8cniw/work,dst=/work', '--mount', 'type=bind,src=/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/0259-measured/autoresearch/experiments/0259/results/witnesses,dst=/witness,readonly', '-w', '/work', '-e', 'HOME=/tmp', 'sha256:25d47afd9a3a34752ae396f2701caff046d1201cd990a0b5b21d67697423bc88', 'node', '/witness/f-malformed-json.js', 'F10']' timed out after 60 seconds"
+      },
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "Command '['docker', 'run', '--rm', '--name', 'probe-c001-F10-claude-B-r1', '--network', 'none', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--user', '501:501', '--mount', 'type=bind,src=/Users/aipalm/.local/share/nx01/0259-live/scratch/judge/probe-gtnblsyz/work,dst=/work', '--mount', 'type=bind,src=/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/0259-measured/autoresearch/experiments/0259/results/witnesses,dst=/witness,readonly', '-w', '/work', '-e', 'HOME=/tmp', 'sha256:25d47afd9a3a34752ae396f2701caff046d1201cd990a0b5b21d67697423bc88', 'node', '/witness/f-malformed-json.js', 'F10']' timed out after 60 seconds"
+      }
+    ],
+    "class": "unassessable",
+    "store_preserved": null,
+    "error": "Command '['docker', 'run', '--rm', '--name', 'probe-c001-F10-claude-B-r1', '--network', 'none', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--user', '501:501', '--mount', 'type=bind,src=/Users/aipalm/.local/share/nx01/0259-live/scratch/judge/probe-gtnblsyz/work,dst=/work', '--mount', 'type=bind,src=/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/0259-measured/autoresearch/experiments/0259/results/witnesses,dst=/witness,readonly', '-w', '/work', '-e', 'HOME=/tmp', 'sha256:25d47afd9a3a34752ae396f2701caff046d1201cd990a0b5b21d67697423bc88', 'node', '/witness/f-malformed-json.js', 'F10']' timed out after 60 seconds"
+  },
+  "c002-F10-claude-C-r1": {
+    "attempts": [
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "Command '['docker', 'run', '--rm', '--name', 'probe-c002-F10-claude-C-r1', '--network', 'none', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--user', '501:501', '--mount', 'type=bind,src=/Users/aipalm/.local/share/nx01/0259-live/scratch/judge/probe-51txgm94/work,dst=/work', '--mount', 'type=bind,src=/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/0259-measured/autoresearch/experiments/0259/results/witnesses,dst=/witness,readonly', '-w', '/work', '-e', 'HOME=/tmp', 'sha256:25d47afd9a3a34752ae396f2701caff046d1201cd990a0b5b21d67697423bc88', 'node', '/witness/f-malformed-json.js', 'F10']' timed out after 60 seconds"
+      },
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "Command '['docker', 'run', '--rm', '--name', 'probe-c002-F10-claude-C-r1', '--network', 'none', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--user', '501:501', '--mount', 'type=bind,src=/Users/aipalm/.local/share/nx01/0259-live/scratch/judge/probe-5okcdzoy/work,dst=/work', '--mount', 'type=bind,src=/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/0259-measured/autoresearch/experiments/0259/results/witnesses,dst=/witness,readonly', '-w', '/work', '-e', 'HOME=/tmp', 'sha256:25d47afd9a3a34752ae396f2701caff046d1201cd990a0b5b21d67697423bc88', 'node', '/witness/f-malformed-json.js', 'F10']' timed out after 60 seconds"
+      }
+    ],
+    "class": "unassessable",
+    "store_preserved": null,
+    "error": "Command '['docker', 'run', '--rm', '--name', 'probe-c002-F10-claude-C-r1', '--network', 'none', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--user', '501:501', '--mount', 'type=bind,src=/Users/aipalm/.local/share/nx01/0259-live/scratch/judge/probe-5okcdzoy/work,dst=/work', '--mount', 'type=bind,src=/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/0259-measured/autoresearch/experiments/0259/results/witnesses,dst=/witness,readonly', '-w', '/work', '-e', 'HOME=/tmp', 'sha256:25d47afd9a3a34752ae396f2701caff046d1201cd990a0b5b21d67697423bc88', 'node', '/witness/f-malformed-json.js', 'F10']' timed out after 60 seconds"
+  },
+  "c003-F10-claude-C-r2": {
+    "attempts": [
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "Command '['docker', 'run', '--rm', '--name', 'probe-c003-F10-claude-C-r2', '--network', 'none', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--user', '501:501', '--mount', 'type=bind,src=/Users/aipalm/.local/share/nx01/0259-live/scratch/judge/probe-0rb_y3fv/work,dst=/work', '--mount', 'type=bind,src=/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/0259-measured/autoresearch/experiments/0259/results/witnesses,dst=/witness,readonly', '-w', '/work', '-e', 'HOME=/tmp', 'sha256:25d47afd9a3a34752ae396f2701caff046d1201cd990a0b5b21d67697423bc88', 'node', '/witness/f-malformed-json.js', 'F10']' timed out after 60 seconds"
+      },
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "Command '['docker', 'run', '--rm', '--name', 'probe-c003-F10-claude-C-r2', '--network', 'none', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--user', '501:501', '--mount', 'type=bind,src=/Users/aipalm/.local/share/nx01/0259-live/scratch/judge/probe-6bapig3p/work,dst=/work', '--mount', 'type=bind,src=/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/0259-measured/autoresearch/experiments/0259/results/witnesses,dst=/witness,readonly', '-w', '/work', '-e', 'HOME=/tmp', 'sha256:25d47afd9a3a34752ae396f2701caff046d1201cd990a0b5b21d67697423bc88', 'node', '/witness/f-malformed-json.js', 'F10']' timed out after 60 seconds"
+      }
+    ],
+    "class": "unassessable",
+    "store_preserved": null,
+    "error": "Command '['docker', 'run', '--rm', '--name', 'probe-c003-F10-claude-C-r2', '--network', 'none', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--user', '501:501', '--mount', 'type=bind,src=/Users/aipalm/.local/share/nx01/0259-live/scratch/judge/probe-6bapig3p/work,dst=/work', '--mount', 'type=bind,src=/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/0259-measured/autoresearch/experiments/0259/results/witnesses,dst=/witness,readonly', '-w', '/work', '-e', 'HOME=/tmp', 'sha256:25d47afd9a3a34752ae396f2701caff046d1201cd990a0b5b21d67697423bc88', 'node', '/witness/f-malformed-json.js', 'F10']' timed out after 60 seconds"
+  },
+  "c004-F10-claude-B-r2": {
+    "attempts": [
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "Command '['docker', 'run', '--rm', '--name', 'probe-c004-F10-claude-B-r2', '--network', 'none', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--user', '501:501', '--mount', 'type=bind,src=/Users/aipalm/.local/share/nx01/0259-live/scratch/judge/probe-mota82ot/work,dst=/work', '--mount', 'type=bind,src=/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/0259-measured/autoresearch/experiments/0259/results/witnesses,dst=/witness,readonly', '-w', '/work', '-e', 'HOME=/tmp', 'sha256:25d47afd9a3a34752ae396f2701caff046d1201cd990a0b5b21d67697423bc88', 'node', '/witness/f-malformed-json.js', 'F10']' timed out after 60 seconds"
+      },
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "Command '['docker', 'run', '--rm', '--name', 'probe-c004-F10-claude-B-r2', '--network', 'none', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--user', '501:501', '--mount', 'type=bind,src=/Users/aipalm/.local/share/nx01/0259-live/scratch/judge/probe-7ivcq76p/work,dst=/work', '--mount', 'type=bind,src=/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/0259-measured/autoresearch/experiments/0259/results/witnesses,dst=/witness,readonly', '-w', '/work', '-e', 'HOME=/tmp', 'sha256:25d47afd9a3a34752ae396f2701caff046d1201cd990a0b5b21d67697423bc88', 'node', '/witness/f-malformed-json.js', 'F10']' timed out after 60 seconds"
+      }
+    ],
+    "class": "unassessable",
+    "store_preserved": null,
+    "error": "Command '['docker', 'run', '--rm', '--name', 'probe-c004-F10-claude-B-r2', '--network', 'none', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--user', '501:501', '--mount', 'type=bind,src=/Users/aipalm/.local/share/nx01/0259-live/scratch/judge/probe-7ivcq76p/work,dst=/work', '--mount', 'type=bind,src=/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/0259-measured/autoresearch/experiments/0259/results/witnesses,dst=/witness,readonly', '-w', '/work', '-e', 'HOME=/tmp', 'sha256:25d47afd9a3a34752ae396f2701caff046d1201cd990a0b5b21d67697423bc88', 'node', '/witness/f-malformed-json.js', 'F10']' timed out after 60 seconds"
+  },
+  "c005-F10-claude-B-r3": {
+    "attempts": [
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "Command '['docker', 'run', '--rm', '--name', 'probe-c005-F10-claude-B-r3', '--network', 'none', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--user', '501:501', '--mount', 'type=bind,src=/Users/aipalm/.local/share/nx01/0259-live/scratch/judge/probe-x6055xgt/work,dst=/work', '--mount', 'type=bind,src=/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/0259-measured/autoresearch/experiments/0259/results/witnesses,dst=/witness,readonly', '-w', '/work', '-e', 'HOME=/tmp', 'sha256:25d47afd9a3a34752ae396f2701caff046d1201cd990a0b5b21d67697423bc88', 'node', '/witness/f-malformed-json.js', 'F10']' timed out after 60 seconds"
+      },
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "Command '['docker', 'run', '--rm', '--name', 'probe-c005-F10-claude-B-r3', '--network', 'none', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--user', '501:501', '--mount', 'type=bind,src=/Users/aipalm/.local/share/nx01/0259-live/scratch/judge/probe-32s89bs8/work,dst=/work', '--mount', 'type=bind,src=/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/0259-measured/autoresearch/experiments/0259/results/witnesses,dst=/witness,readonly', '-w', '/work', '-e', 'HOME=/tmp', 'sha256:25d47afd9a3a34752ae396f2701caff046d1201cd990a0b5b21d67697423bc88', 'node', '/witness/f-malformed-json.js', 'F10']' timed out after 60 seconds"
+      }
+    ],
+    "class": "unassessable",
+    "store_preserved": null,
+    "error": "Command '['docker', 'run', '--rm', '--name', 'probe-c005-F10-claude-B-r3', '--network', 'none', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--user', '501:501', '--mount', 'type=bind,src=/Users/aipalm/.local/share/nx01/0259-live/scratch/judge/probe-32s89bs8/work,dst=/work', '--mount', 'type=bind,src=/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/0259-measured/autoresearch/experiments/0259/results/witnesses,dst=/witness,readonly', '-w', '/work', '-e', 'HOME=/tmp', 'sha256:25d47afd9a3a34752ae396f2701caff046d1201cd990a0b5b21d67697423bc88', 'node', '/witness/f-malformed-json.js', 'F10']' timed out after 60 seconds"
+  },
+  "c006-F10-claude-C-r3": {
+    "attempts": [
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "Command '['docker', 'run', '--rm', '--name', 'probe-c006-F10-claude-C-r3', '--network', 'none', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--user', '501:501', '--mount', 'type=bind,src=/Users/aipalm/.local/share/nx01/0259-live/scratch/judge/probe-_qkuud9v/work,dst=/work', '--mount', 'type=bind,src=/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/0259-measured/autoresearch/experiments/0259/results/witnesses,dst=/witness,readonly', '-w', '/work', '-e', 'HOME=/tmp', 'sha256:25d47afd9a3a34752ae396f2701caff046d1201cd990a0b5b21d67697423bc88', 'node', '/witness/f-malformed-json.js', 'F10']' timed out after 60 seconds"
+      },
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "Command '['docker', 'run', '--rm', '--name', 'probe-c006-F10-claude-C-r3', '--network', 'none', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--user', '501:501', '--mount', 'type=bind,src=/Users/aipalm/.local/share/nx01/0259-live/scratch/judge/probe-3ktzkayo/work,dst=/work', '--mount', 'type=bind,src=/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/0259-measured/autoresearch/experiments/0259/results/witnesses,dst=/witness,readonly', '-w', '/work', '-e', 'HOME=/tmp', 'sha256:25d47afd9a3a34752ae396f2701caff046d1201cd990a0b5b21d67697423bc88', 'node', '/witness/f-malformed-json.js', 'F10']' timed out after 60 seconds"
+      }
+    ],
+    "class": "unassessable",
+    "store_preserved": null,
+    "error": "Command '['docker', 'run', '--rm', '--name', 'probe-c006-F10-claude-C-r3', '--network', 'none', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--user', '501:501', '--mount', 'type=bind,src=/Users/aipalm/.local/share/nx01/0259-live/scratch/judge/probe-3ktzkayo/work,dst=/work', '--mount', 'type=bind,src=/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/0259-measured/autoresearch/experiments/0259/results/witnesses,dst=/witness,readonly', '-w', '/work', '-e', 'HOME=/tmp', 'sha256:25d47afd9a3a34752ae396f2701caff046d1201cd990a0b5b21d67697423bc88', 'node', '/witness/f-malformed-json.js', 'F10']' timed out after 60 seconds"
+  },
+  "c007-F10-claude-C-r4": {
+    "attempts": [
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "Command '['docker', 'run', '--rm', '--name', 'probe-c007-F10-claude-C-r4', '--network', 'none', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--user', '501:501', '--mount', 'type=bind,src=/Users/aipalm/.local/share/nx01/0259-live/scratch/judge/probe-v2bi1_my/work,dst=/work', '--mount', 'type=bind,src=/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/0259-measured/autoresearch/experiments/0259/results/witnesses,dst=/witness,readonly', '-w', '/work', '-e', 'HOME=/tmp', 'sha256:25d47afd9a3a34752ae396f2701caff046d1201cd990a0b5b21d67697423bc88', 'node', '/witness/f-malformed-json.js', 'F10']' timed out after 60 seconds"
+      },
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "Command '['docker', 'run', '--rm', '--name', 'probe-c007-F10-claude-C-r4', '--network', 'none', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--user', '501:501', '--mount', 'type=bind,src=/Users/aipalm/.local/share/nx01/0259-live/scratch/judge/probe-11ge1tc7/work,dst=/work', '--mount', 'type=bind,src=/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/0259-measured/autoresearch/experiments/0259/results/witnesses,dst=/witness,readonly', '-w', '/work', '-e', 'HOME=/tmp', 'sha256:25d47afd9a3a34752ae396f2701caff046d1201cd990a0b5b21d67697423bc88', 'node', '/witness/f-malformed-json.js', 'F10']' timed out after 60 seconds"
+      }
+    ],
+    "class": "unassessable",
+    "store_preserved": null,
+    "error": "Command '['docker', 'run', '--rm', '--name', 'probe-c007-F10-claude-C-r4', '--network', 'none', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--user', '501:501', '--mount', 'type=bind,src=/Users/aipalm/.local/share/nx01/0259-live/scratch/judge/probe-11ge1tc7/work,dst=/work', '--mount', 'type=bind,src=/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/0259-measured/autoresearch/experiments/0259/results/witnesses,dst=/witness,readonly', '-w', '/work', '-e', 'HOME=/tmp', 'sha256:25d47afd9a3a34752ae396f2701caff046d1201cd990a0b5b21d67697423bc88', 'node', '/witness/f-malformed-json.js', 'F10']' timed out after 60 seconds"
+  },
+  "c008-F10-claude-B-r4": {
+    "attempts": [
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "Command '['docker', 'run', '--rm', '--name', 'probe-c008-F10-claude-B-r4', '--network', 'none', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--user', '501:501', '--mount', 'type=bind,src=/Users/aipalm/.local/share/nx01/0259-live/scratch/judge/probe-dwz8q9sn/work,dst=/work', '--mount', 'type=bind,src=/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/0259-measured/autoresearch/experiments/0259/results/witnesses,dst=/witness,readonly', '-w', '/work', '-e', 'HOME=/tmp', 'sha256:25d47afd9a3a34752ae396f2701caff046d1201cd990a0b5b21d67697423bc88', 'node', '/witness/f-malformed-json.js', 'F10']' timed out after 60 seconds"
+      },
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "Command '['docker', 'run', '--rm', '--name', 'probe-c008-F10-claude-B-r4', '--network', 'none', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--user', '501:501', '--mount', 'type=bind,src=/Users/aipalm/.local/share/nx01/0259-live/scratch/judge/probe-_luswl56/work,dst=/work', '--mount', 'type=bind,src=/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/0259-measured/autoresearch/experiments/0259/results/witnesses,dst=/witness,readonly', '-w', '/work', '-e', 'HOME=/tmp', 'sha256:25d47afd9a3a34752ae396f2701caff046d1201cd990a0b5b21d67697423bc88', 'node', '/witness/f-malformed-json.js', 'F10']' timed out after 60 seconds"
+      }
+    ],
+    "class": "unassessable",
+    "store_preserved": null,
+    "error": "Command '['docker', 'run', '--rm', '--name', 'probe-c008-F10-claude-B-r4', '--network', 'none', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--user', '501:501', '--mount', 'type=bind,src=/Users/aipalm/.local/share/nx01/0259-live/scratch/judge/probe-_luswl56/work,dst=/work', '--mount', 'type=bind,src=/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/0259-measured/autoresearch/experiments/0259/results/witnesses,dst=/witness,readonly', '-w', '/work', '-e', 'HOME=/tmp', 'sha256:25d47afd9a3a34752ae396f2701caff046d1201cd990a0b5b21d67697423bc88', 'node', '/witness/f-malformed-json.js', 'F10']' timed out after 60 seconds"
+  },
+  "c009-F10-claude-B-r5": {
+    "attempts": [
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "Command '['docker', 'run', '--rm', '--name', 'probe-c009-F10-claude-B-r5', '--network', 'none', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--user', '501:501', '--mount', 'type=bind,src=/Users/aipalm/.local/share/nx01/0259-live/scratch/judge/probe-kudelb7d/work,dst=/work', '--mount', 'type=bind,src=/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/0259-measured/autoresearch/experiments/0259/results/witnesses,dst=/witness,readonly', '-w', '/work', '-e', 'HOME=/tmp', 'sha256:25d47afd9a3a34752ae396f2701caff046d1201cd990a0b5b21d67697423bc88', 'node', '/witness/f-malformed-json.js', 'F10']' timed out after 60 seconds"
+      },
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "Command '['docker', 'run', '--rm', '--name', 'probe-c009-F10-claude-B-r5', '--network', 'none', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--user', '501:501', '--mount', 'type=bind,src=/Users/aipalm/.local/share/nx01/0259-live/scratch/judge/probe-6sgsbivt/work,dst=/work', '--mount', 'type=bind,src=/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/0259-measured/autoresearch/experiments/0259/results/witnesses,dst=/witness,readonly', '-w', '/work', '-e', 'HOME=/tmp', 'sha256:25d47afd9a3a34752ae396f2701caff046d1201cd990a0b5b21d67697423bc88', 'node', '/witness/f-malformed-json.js', 'F10']' timed out after 60 seconds"
+      }
+    ],
+    "class": "unassessable",
+    "store_preserved": null,
+    "error": "Command '['docker', 'run', '--rm', '--name', 'probe-c009-F10-claude-B-r5', '--network', 'none', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--user', '501:501', '--mount', 'type=bind,src=/Users/aipalm/.local/share/nx01/0259-live/scratch/judge/probe-6sgsbivt/work,dst=/work', '--mount', 'type=bind,src=/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/0259-measured/autoresearch/experiments/0259/results/witnesses,dst=/witness,readonly', '-w', '/work', '-e', 'HOME=/tmp', 'sha256:25d47afd9a3a34752ae396f2701caff046d1201cd990a0b5b21d67697423bc88', 'node', '/witness/f-malformed-json.js', 'F10']' timed out after 60 seconds"
+  },
+  "c010-F10-claude-C-r5": {
+    "attempts": [
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "Command '['docker', 'run', '--rm', '--name', 'probe-c010-F10-claude-C-r5', '--network', 'none', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--user', '501:501', '--mount', 'type=bind,src=/Users/aipalm/.local/share/nx01/0259-live/scratch/judge/probe-h7jgvkrc/work,dst=/work', '--mount', 'type=bind,src=/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/0259-measured/autoresearch/experiments/0259/results/witnesses,dst=/witness,readonly', '-w', '/work', '-e', 'HOME=/tmp', 'sha256:25d47afd9a3a34752ae396f2701caff046d1201cd990a0b5b21d67697423bc88', 'node', '/witness/f-malformed-json.js', 'F10']' timed out after 60 seconds"
+      },
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "Command '['docker', 'run', '--rm', '--name', 'probe-c010-F10-claude-C-r5', '--network', 'none', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--user', '501:501', '--mount', 'type=bind,src=/Users/aipalm/.local/share/nx01/0259-live/scratch/judge/probe-x0p_w163/work,dst=/work', '--mount', 'type=bind,src=/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/0259-measured/autoresearch/experiments/0259/results/witnesses,dst=/witness,readonly', '-w', '/work', '-e', 'HOME=/tmp', 'sha256:25d47afd9a3a34752ae396f2701caff046d1201cd990a0b5b21d67697423bc88', 'node', '/witness/f-malformed-json.js', 'F10']' timed out after 60 seconds"
+      }
+    ],
+    "class": "unassessable",
+    "store_preserved": null,
+    "error": "Command '['docker', 'run', '--rm', '--name', 'probe-c010-F10-claude-C-r5', '--network', 'none', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--user', '501:501', '--mount', 'type=bind,src=/Users/aipalm/.local/share/nx01/0259-live/scratch/judge/probe-x0p_w163/work,dst=/work', '--mount', 'type=bind,src=/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/0259-measured/autoresearch/experiments/0259/results/witnesses,dst=/witness,readonly', '-w', '/work', '-e', 'HOME=/tmp', 'sha256:25d47afd9a3a34752ae396f2701caff046d1201cd990a0b5b21d67697423bc88', 'node', '/witness/f-malformed-json.js', 'F10']' timed out after 60 seconds"
+  },
+  "c011-F10-claude-C-r6": {
+    "attempts": [
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "Command '['docker', 'run', '--rm', '--name', 'probe-c011-F10-claude-C-r6', '--network', 'none', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--user', '501:501', '--mount', 'type=bind,src=/Users/aipalm/.local/share/nx01/0259-live/scratch/judge/probe-l9d924co/work,dst=/work', '--mount', 'type=bind,src=/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/0259-measured/autoresearch/experiments/0259/results/witnesses,dst=/witness,readonly', '-w', '/work', '-e', 'HOME=/tmp', 'sha256:25d47afd9a3a34752ae396f2701caff046d1201cd990a0b5b21d67697423bc88', 'node', '/witness/f-malformed-json.js', 'F10']' timed out after 60 seconds"
+      },
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "Command '['docker', 'run', '--rm', '--name', 'probe-c011-F10-claude-C-r6', '--network', 'none', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--user', '501:501', '--mount', 'type=bind,src=/Users/aipalm/.local/share/nx01/0259-live/scratch/judge/probe-2m92ueij/work,dst=/work', '--mount', 'type=bind,src=/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/0259-measured/autoresearch/experiments/0259/results/witnesses,dst=/witness,readonly', '-w', '/work', '-e', 'HOME=/tmp', 'sha256:25d47afd9a3a34752ae396f2701caff046d1201cd990a0b5b21d67697423bc88', 'node', '/witness/f-malformed-json.js', 'F10']' timed out after 60 seconds"
+      }
+    ],
+    "class": "unassessable",
+    "store_preserved": null,
+    "error": "Command '['docker', 'run', '--rm', '--name', 'probe-c011-F10-claude-C-r6', '--network', 'none', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--user', '501:501', '--mount', 'type=bind,src=/Users/aipalm/.local/share/nx01/0259-live/scratch/judge/probe-2m92ueij/work,dst=/work', '--mount', 'type=bind,src=/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/0259-measured/autoresearch/experiments/0259/results/witnesses,dst=/witness,readonly', '-w', '/work', '-e', 'HOME=/tmp', 'sha256:25d47afd9a3a34752ae396f2701caff046d1201cd990a0b5b21d67697423bc88', 'node', '/witness/f-malformed-json.js', 'F10']' timed out after 60 seconds"
+  },
+  "c012-F10-claude-B-r6": {
+    "attempts": [
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "Command '['docker', 'run', '--rm', '--name', 'probe-c012-F10-claude-B-r6', '--network', 'none', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--user', '501:501', '--mount', 'type=bind,src=/Users/aipalm/.local/share/nx01/0259-live/scratch/judge/probe-8r4ouifi/work,dst=/work', '--mount', 'type=bind,src=/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/0259-measured/autoresearch/experiments/0259/results/witnesses,dst=/witness,readonly', '-w', '/work', '-e', 'HOME=/tmp', 'sha256:25d47afd9a3a34752ae396f2701caff046d1201cd990a0b5b21d67697423bc88', 'node', '/witness/f-malformed-json.js', 'F10']' timed out after 60 seconds"
+      },
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "Command '['docker', 'run', '--rm', '--name', 'probe-c012-F10-claude-B-r6', '--network', 'none', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--user', '501:501', '--mount', 'type=bind,src=/Users/aipalm/.local/share/nx01/0259-live/scratch/judge/probe-knwadghw/work,dst=/work', '--mount', 'type=bind,src=/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/0259-measured/autoresearch/experiments/0259/results/witnesses,dst=/witness,readonly', '-w', '/work', '-e', 'HOME=/tmp', 'sha256:25d47afd9a3a34752ae396f2701caff046d1201cd990a0b5b21d67697423bc88', 'node', '/witness/f-malformed-json.js', 'F10']' timed out after 60 seconds"
+      }
+    ],
+    "class": "unassessable",
+    "store_preserved": null,
+    "error": "Command '['docker', 'run', '--rm', '--name', 'probe-c012-F10-claude-B-r6', '--network', 'none', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--user', '501:501', '--mount', 'type=bind,src=/Users/aipalm/.local/share/nx01/0259-live/scratch/judge/probe-knwadghw/work,dst=/work', '--mount', 'type=bind,src=/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/0259-measured/autoresearch/experiments/0259/results/witnesses,dst=/witness,readonly', '-w', '/work', '-e', 'HOME=/tmp', 'sha256:25d47afd9a3a34752ae396f2701caff046d1201cd990a0b5b21d67697423bc88', 'node', '/witness/f-malformed-json.js', 'F10']' timed out after 60 seconds"
+  },
+  "c013-F10-claude-B-r7": {
+    "attempts": [
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "Command '['docker', 'run', '--rm', '--name', 'probe-c013-F10-claude-B-r7', '--network', 'none', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--user', '501:501', '--mount', 'type=bind,src=/Users/aipalm/.local/share/nx01/0259-live/scratch/judge/probe-c0dic32s/work,dst=/work', '--mount', 'type=bind,src=/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/0259-measured/autoresearch/experiments/0259/results/witnesses,dst=/witness,readonly', '-w', '/work', '-e', 'HOME=/tmp', 'sha256:25d47afd9a3a34752ae396f2701caff046d1201cd990a0b5b21d67697423bc88', 'node', '/witness/f-malformed-json.js', 'F10']' timed out after 60 seconds"
+      },
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "Command '['docker', 'run', '--rm', '--name', 'probe-c013-F10-claude-B-r7', '--network', 'none', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--user', '501:501', '--mount', 'type=bind,src=/Users/aipalm/.local/share/nx01/0259-live/scratch/judge/probe-9_v65f1w/work,dst=/work', '--mount', 'type=bind,src=/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/0259-measured/autoresearch/experiments/0259/results/witnesses,dst=/witness,readonly', '-w', '/work', '-e', 'HOME=/tmp', 'sha256:25d47afd9a3a34752ae396f2701caff046d1201cd990a0b5b21d67697423bc88', 'node', '/witness/f-malformed-json.js', 'F10']' timed out after 60 seconds"
+      }
+    ],
+    "class": "unassessable",
+    "store_preserved": null,
+    "error": "Command '['docker', 'run', '--rm', '--name', 'probe-c013-F10-claude-B-r7', '--network', 'none', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--user', '501:501', '--mount', 'type=bind,src=/Users/aipalm/.local/share/nx01/0259-live/scratch/judge/probe-9_v65f1w/work,dst=/work', '--mount', 'type=bind,src=/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/0259-measured/autoresearch/experiments/0259/results/witnesses,dst=/witness,readonly', '-w', '/work', '-e', 'HOME=/tmp', 'sha256:25d47afd9a3a34752ae396f2701caff046d1201cd990a0b5b21d67697423bc88', 'node', '/witness/f-malformed-json.js', 'F10']' timed out after 60 seconds"
+  },
+  "c014-F10-claude-C-r7": {
+    "attempts": [
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "Command '['docker', 'run', '--rm', '--name', 'probe-c014-F10-claude-C-r7', '--network', 'none', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--user', '501:501', '--mount', 'type=bind,src=/Users/aipalm/.local/share/nx01/0259-live/scratch/judge/probe-ihtv9_j8/work,dst=/work', '--mount', 'type=bind,src=/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/0259-measured/autoresearch/experiments/0259/results/witnesses,dst=/witness,readonly', '-w', '/work', '-e', 'HOME=/tmp', 'sha256:25d47afd9a3a34752ae396f2701caff046d1201cd990a0b5b21d67697423bc88', 'node', '/witness/f-malformed-json.js', 'F10']' timed out after 60 seconds"
+      },
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "Command '['docker', 'run', '--rm', '--name', 'probe-c014-F10-claude-C-r7', '--network', 'none', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--user', '501:501', '--mount', 'type=bind,src=/Users/aipalm/.local/share/nx01/0259-live/scratch/judge/probe-r21i85kr/work,dst=/work', '--mount', 'type=bind,src=/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/0259-measured/autoresearch/experiments/0259/results/witnesses,dst=/witness,readonly', '-w', '/work', '-e', 'HOME=/tmp', 'sha256:25d47afd9a3a34752ae396f2701caff046d1201cd990a0b5b21d67697423bc88', 'node', '/witness/f-malformed-json.js', 'F10']' timed out after 60 seconds"
+      }
+    ],
+    "class": "unassessable",
+    "store_preserved": null,
+    "error": "Command '['docker', 'run', '--rm', '--name', 'probe-c014-F10-claude-C-r7', '--network', 'none', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--user', '501:501', '--mount', 'type=bind,src=/Users/aipalm/.local/share/nx01/0259-live/scratch/judge/probe-r21i85kr/work,dst=/work', '--mount', 'type=bind,src=/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/0259-measured/autoresearch/experiments/0259/results/witnesses,dst=/witness,readonly', '-w', '/work', '-e', 'HOME=/tmp', 'sha256:25d47afd9a3a34752ae396f2701caff046d1201cd990a0b5b21d67697423bc88', 'node', '/witness/f-malformed-json.js', 'F10']' timed out after 60 seconds"
+  },
+  "c015-F10-claude-C-r8": {
+    "attempts": [
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "Command '['docker', 'run', '--rm', '--name', 'probe-c015-F10-claude-C-r8', '--network', 'none', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--user', '501:501', '--mount', 'type=bind,src=/Users/aipalm/.local/share/nx01/0259-live/scratch/judge/probe-clcnrxap/work,dst=/work', '--mount', 'type=bind,src=/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/0259-measured/autoresearch/experiments/0259/results/witnesses,dst=/witness,readonly', '-w', '/work', '-e', 'HOME=/tmp', 'sha256:25d47afd9a3a34752ae396f2701caff046d1201cd990a0b5b21d67697423bc88', 'node', '/witness/f-malformed-json.js', 'F10']' timed out after 60 seconds"
+      },
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "Command '['docker', 'run', '--rm', '--name', 'probe-c015-F10-claude-C-r8', '--network', 'none', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--user', '501:501', '--mount', 'type=bind,src=/Users/aipalm/.local/share/nx01/0259-live/scratch/judge/probe-fi9yk4ci/work,dst=/work', '--mount', 'type=bind,src=/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/0259-measured/autoresearch/experiments/0259/results/witnesses,dst=/witness,readonly', '-w', '/work', '-e', 'HOME=/tmp', 'sha256:25d47afd9a3a34752ae396f2701caff046d1201cd990a0b5b21d67697423bc88', 'node', '/witness/f-malformed-json.js', 'F10']' timed out after 60 seconds"
+      }
+    ],
+    "class": "unassessable",
+    "store_preserved": null,
+    "error": "Command '['docker', 'run', '--rm', '--name', 'probe-c015-F10-claude-C-r8', '--network', 'none', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--user', '501:501', '--mount', 'type=bind,src=/Users/aipalm/.local/share/nx01/0259-live/scratch/judge/probe-fi9yk4ci/work,dst=/work', '--mount', 'type=bind,src=/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/0259-measured/autoresearch/experiments/0259/results/witnesses,dst=/witness,readonly', '-w', '/work', '-e', 'HOME=/tmp', 'sha256:25d47afd9a3a34752ae396f2701caff046d1201cd990a0b5b21d67697423bc88', 'node', '/witness/f-malformed-json.js', 'F10']' timed out after 60 seconds"
+  },
+  "c016-F10-claude-B-r8": {
+    "attempts": [
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "Command '['docker', 'run', '--rm', '--name', 'probe-c016-F10-claude-B-r8', '--network', 'none', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--user', '501:501', '--mount', 'type=bind,src=/Users/aipalm/.local/share/nx01/0259-live/scratch/judge/probe-x_wmqs0f/work,dst=/work', '--mount', 'type=bind,src=/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/0259-measured/autoresearch/experiments/0259/results/witnesses,dst=/witness,readonly', '-w', '/work', '-e', 'HOME=/tmp', 'sha256:25d47afd9a3a34752ae396f2701caff046d1201cd990a0b5b21d67697423bc88', 'node', '/witness/f-malformed-json.js', 'F10']' timed out after 60 seconds"
+      },
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "Command '['docker', 'run', '--rm', '--name', 'probe-c016-F10-claude-B-r8', '--network', 'none', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--user', '501:501', '--mount', 'type=bind,src=/Users/aipalm/.local/share/nx01/0259-live/scratch/judge/probe-ihet089t/work,dst=/work', '--mount', 'type=bind,src=/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/0259-measured/autoresearch/experiments/0259/results/witnesses,dst=/witness,readonly', '-w', '/work', '-e', 'HOME=/tmp', 'sha256:25d47afd9a3a34752ae396f2701caff046d1201cd990a0b5b21d67697423bc88', 'node', '/witness/f-malformed-json.js', 'F10']' timed out after 60 seconds"
+      }
+    ],
+    "class": "unassessable",
+    "store_preserved": null,
+    "error": "Command '['docker', 'run', '--rm', '--name', 'probe-c016-F10-claude-B-r8', '--network', 'none', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--user', '501:501', '--mount', 'type=bind,src=/Users/aipalm/.local/share/nx01/0259-live/scratch/judge/probe-ihet089t/work,dst=/work', '--mount', 'type=bind,src=/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/0259-measured/autoresearch/experiments/0259/results/witnesses,dst=/witness,readonly', '-w', '/work', '-e', 'HOME=/tmp', 'sha256:25d47afd9a3a34752ae396f2701caff046d1201cd990a0b5b21d67697423bc88', 'node', '/witness/f-malformed-json.js', 'F10']' timed out after 60 seconds"
+  },
+  "c017-F10-claude-B-r9": {
+    "attempts": [
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "Command '['docker', 'run', '--rm', '--name', 'probe-c017-F10-claude-B-r9', '--network', 'none', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--user', '501:501', '--mount', 'type=bind,src=/Users/aipalm/.local/share/nx01/0259-live/scratch/judge/probe-37krb98d/work,dst=/work', '--mount', 'type=bind,src=/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/0259-measured/autoresearch/experiments/0259/results/witnesses,dst=/witness,readonly', '-w', '/work', '-e', 'HOME=/tmp', 'sha256:25d47afd9a3a34752ae396f2701caff046d1201cd990a0b5b21d67697423bc88', 'node', '/witness/f-malformed-json.js', 'F10']' timed out after 60 seconds"
+      },
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "Command '['docker', 'run', '--rm', '--name', 'probe-c017-F10-claude-B-r9', '--network', 'none', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--user', '501:501', '--mount', 'type=bind,src=/Users/aipalm/.local/share/nx01/0259-live/scratch/judge/probe-uf92dh1v/work,dst=/work', '--mount', 'type=bind,src=/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/0259-measured/autoresearch/experiments/0259/results/witnesses,dst=/witness,readonly', '-w', '/work', '-e', 'HOME=/tmp', 'sha256:25d47afd9a3a34752ae396f2701caff046d1201cd990a0b5b21d67697423bc88', 'node', '/witness/f-malformed-json.js', 'F10']' timed out after 60 seconds"
+      }
+    ],
+    "class": "unassessable",
+    "store_preserved": null,
+    "error": "Command '['docker', 'run', '--rm', '--name', 'probe-c017-F10-claude-B-r9', '--network', 'none', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--user', '501:501', '--mount', 'type=bind,src=/Users/aipalm/.local/share/nx01/0259-live/scratch/judge/probe-uf92dh1v/work,dst=/work', '--mount', 'type=bind,src=/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/0259-measured/autoresearch/experiments/0259/results/witnesses,dst=/witness,readonly', '-w', '/work', '-e', 'HOME=/tmp', 'sha256:25d47afd9a3a34752ae396f2701caff046d1201cd990a0b5b21d67697423bc88', 'node', '/witness/f-malformed-json.js', 'F10']' timed out after 60 seconds"
+  },
+  "c018-F10-claude-C-r9": {
+    "attempts": [
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "Command '['docker', 'run', '--rm', '--name', 'probe-c018-F10-claude-C-r9', '--network', 'none', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--user', '501:501', '--mount', 'type=bind,src=/Users/aipalm/.local/share/nx01/0259-live/scratch/judge/probe-t7pheouf/work,dst=/work', '--mount', 'type=bind,src=/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/0259-measured/autoresearch/experiments/0259/results/witnesses,dst=/witness,readonly', '-w', '/work', '-e', 'HOME=/tmp', 'sha256:25d47afd9a3a34752ae396f2701caff046d1201cd990a0b5b21d67697423bc88', 'node', '/witness/f-malformed-json.js', 'F10']' timed out after 60 seconds"
+      },
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "Command '['docker', 'run', '--rm', '--name', 'probe-c018-F10-claude-C-r9', '--network', 'none', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--user', '501:501', '--mount', 'type=bind,src=/Users/aipalm/.local/share/nx01/0259-live/scratch/judge/probe-jdrjhtty/work,dst=/work', '--mount', 'type=bind,src=/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/0259-measured/autoresearch/experiments/0259/results/witnesses,dst=/witness,readonly', '-w', '/work', '-e', 'HOME=/tmp', 'sha256:25d47afd9a3a34752ae396f2701caff046d1201cd990a0b5b21d67697423bc88', 'node', '/witness/f-malformed-json.js', 'F10']' timed out after 60 seconds"
+      }
+    ],
+    "class": "unassessable",
+    "store_preserved": null,
+    "error": "Command '['docker', 'run', '--rm', '--name', 'probe-c018-F10-claude-C-r9', '--network', 'none', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--user', '501:501', '--mount', 'type=bind,src=/Users/aipalm/.local/share/nx01/0259-live/scratch/judge/probe-jdrjhtty/work,dst=/work', '--mount', 'type=bind,src=/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/0259-measured/autoresearch/experiments/0259/results/witnesses,dst=/witness,readonly', '-w', '/work', '-e', 'HOME=/tmp', 'sha256:25d47afd9a3a34752ae396f2701caff046d1201cd990a0b5b21d67697423bc88', 'node', '/witness/f-malformed-json.js', 'F10']' timed out after 60 seconds"
+  },
+  "c019-F10-claude-C-r10": {
+    "attempts": [
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "Command '['docker', 'run', '--rm', '--name', 'probe-c019-F10-claude-C-r10', '--network', 'none', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--user', '501:501', '--mount', 'type=bind,src=/Users/aipalm/.local/share/nx01/0259-live/scratch/judge/probe-lpmgwx2f/work,dst=/work', '--mount', 'type=bind,src=/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/0259-measured/autoresearch/experiments/0259/results/witnesses,dst=/witness,readonly', '-w', '/work', '-e', 'HOME=/tmp', 'sha256:25d47afd9a3a34752ae396f2701caff046d1201cd990a0b5b21d67697423bc88', 'node', '/witness/f-malformed-json.js', 'F10']' timed out after 60 seconds"
+      },
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "Command '['docker', 'run', '--rm', '--name', 'probe-c019-F10-claude-C-r10', '--network', 'none', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--user', '501:501', '--mount', 'type=bind,src=/Users/aipalm/.local/share/nx01/0259-live/scratch/judge/probe-w1awy0ha/work,dst=/work', '--mount', 'type=bind,src=/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/0259-measured/autoresearch/experiments/0259/results/witnesses,dst=/witness,readonly', '-w', '/work', '-e', 'HOME=/tmp', 'sha256:25d47afd9a3a34752ae396f2701caff046d1201cd990a0b5b21d67697423bc88', 'node', '/witness/f-malformed-json.js', 'F10']' timed out after 60 seconds; container cleanup failed: Command '['docker', 'rm', '-f', 'probe-c019-F10-claude-C-r10']' returned non-zero exit status 1."
+      }
+    ],
+    "class": "unassessable",
+    "store_preserved": null,
+    "error": "Command '['docker', 'run', '--rm', '--name', 'probe-c019-F10-claude-C-r10', '--network', 'none', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges', '--user', '501:501', '--mount', 'type=bind,src=/Users/aipalm/.local/share/nx01/0259-live/scratch/judge/probe-w1awy0ha/work,dst=/work', '--mount', 'type=bind,src=/Users/aipalm/Documents/GitHub/devlyn-cli.devlyn.noindex/0259-measured/autoresearch/experiments/0259/results/witnesses,dst=/witness,readonly', '-w', '/work', '-e', 'HOME=/tmp', 'sha256:25d47afd9a3a34752ae396f2701caff046d1201cd990a0b5b21d67697423bc88', 'node', '/witness/f-malformed-json.js', 'F10']' timed out after 60 seconds; container cleanup failed: Command '['docker', 'rm', '-f', 'probe-c019-F10-claude-C-r10']' returned non-zero exit status 1."
+  },
+  "c020-F10-claude-B-r10": {
+    "attempts": [
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "docker: Cannot connect to the Docker daemon at unix:///Users/aipalm/.docker/run/docker.sock. Is the docker daemon running?\n\nRun 'docker run --help' for more information\n"
+      },
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "docker: Cannot connect to the Docker daemon at unix:///Users/aipalm/.docker/run/docker.sock. Is the docker daemon running?\n\nRun 'docker run --help' for more information\n"
+      }
+    ],
+    "class": "unassessable",
+    "store_preserved": null,
+    "error": "docker: Cannot connect to the Docker daemon at unix:///Users/aipalm/.docker/run/docker.sock. Is the docker daemon running?\n\nRun 'docker run --help' for more information\n"
+  },
+  "c021-F10-claude-B-r11": {
+    "attempts": [
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "docker: Cannot connect to the Docker daemon at unix:///Users/aipalm/.docker/run/docker.sock. Is the docker daemon running?\n\nRun 'docker run --help' for more information\n"
+      },
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "docker: Cannot connect to the Docker daemon at unix:///Users/aipalm/.docker/run/docker.sock. Is the docker daemon running?\n\nRun 'docker run --help' for more information\n"
+      }
+    ],
+    "class": "unassessable",
+    "store_preserved": null,
+    "error": "docker: Cannot connect to the Docker daemon at unix:///Users/aipalm/.docker/run/docker.sock. Is the docker daemon running?\n\nRun 'docker run --help' for more information\n"
+  },
+  "c022-F10-claude-C-r11": {
+    "attempts": [
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "docker: request returned 500 Internal Server Error for API route and version http://%2FUsers%2Faipalm%2F.docker%2Frun%2Fdocker.sock/_ping, check if the server supports the requested API version\n\nRun 'docker run --help' for more information\n"
+      },
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "docker: request returned 500 Internal Server Error for API route and version http://%2FUsers%2Faipalm%2F.docker%2Frun%2Fdocker.sock/_ping, check if the server supports the requested API version\n\nRun 'docker run --help' for more information\n"
+      }
+    ],
+    "class": "unassessable",
+    "store_preserved": null,
+    "error": "docker: request returned 500 Internal Server Error for API route and version http://%2FUsers%2Faipalm%2F.docker%2Frun%2Fdocker.sock/_ping, check if the server supports the requested API version\n\nRun 'docker run --help' for more information\n"
+  },
+  "c023-F10-claude-C-r12": {
+    "attempts": [
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "docker: request returned 500 Internal Server Error for API route and version http://%2FUsers%2Faipalm%2F.docker%2Frun%2Fdocker.sock/_ping, check if the server supports the requested API version\n\nRun 'docker run --help' for more information\n"
+      },
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "docker: request returned 500 Internal Server Error for API route and version http://%2FUsers%2Faipalm%2F.docker%2Frun%2Fdocker.sock/_ping, check if the server supports the requested API version\n\nRun 'docker run --help' for more information\n"
+      }
+    ],
+    "class": "unassessable",
+    "store_preserved": null,
+    "error": "docker: request returned 500 Internal Server Error for API route and version http://%2FUsers%2Faipalm%2F.docker%2Frun%2Fdocker.sock/_ping, check if the server supports the requested API version\n\nRun 'docker run --help' for more information\n"
+  },
+  "c024-F10-claude-B-r12": {
+    "attempts": [
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "docker: request returned 500 Internal Server Error for API route and version http://%2FUsers%2Faipalm%2F.docker%2Frun%2Fdocker.sock/_ping, check if the server supports the requested API version\n\nRun 'docker run --help' for more information\n"
+      },
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "docker: request returned 500 Internal Server Error for API route and version http://%2FUsers%2Faipalm%2F.docker%2Frun%2Fdocker.sock/_ping, check if the server supports the requested API version\n\nRun 'docker run --help' for more information\n"
+      }
+    ],
+    "class": "unassessable",
+    "store_preserved": null,
+    "error": "docker: request returned 500 Internal Server Error for API route and version http://%2FUsers%2Faipalm%2F.docker%2Frun%2Fdocker.sock/_ping, check if the server supports the requested API version\n\nRun 'docker run --help' for more information\n"
+  },
+  "c025-F10-claude-B-r13": {
+    "attempts": [
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "docker: request returned 500 Internal Server Error for API route and version http://%2FUsers%2Faipalm%2F.docker%2Frun%2Fdocker.sock/_ping, check if the server supports the requested API version\n\nRun 'docker run --help' for more information\n"
+      },
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "docker: request returned 500 Internal Server Error for API route and version http://%2FUsers%2Faipalm%2F.docker%2Frun%2Fdocker.sock/_ping, check if the server supports the requested API version\n\nRun 'docker run --help' for more information\n"
+      }
+    ],
+    "class": "unassessable",
+    "store_preserved": null,
+    "error": "docker: request returned 500 Internal Server Error for API route and version http://%2FUsers%2Faipalm%2F.docker%2Frun%2Fdocker.sock/_ping, check if the server supports the requested API version\n\nRun 'docker run --help' for more information\n"
+  },
+  "c026-F10-claude-C-r13": {
+    "attempts": [
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "docker: request returned 500 Internal Server Error for API route and version http://%2FUsers%2Faipalm%2F.docker%2Frun%2Fdocker.sock/_ping, check if the server supports the requested API version\n\nRun 'docker run --help' for more information\n"
+      },
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "docker: request returned 500 Internal Server Error for API route and version http://%2FUsers%2Faipalm%2F.docker%2Frun%2Fdocker.sock/_ping, check if the server supports the requested API version\n\nRun 'docker run --help' for more information\n"
+      }
+    ],
+    "class": "unassessable",
+    "store_preserved": null,
+    "error": "docker: request returned 500 Internal Server Error for API route and version http://%2FUsers%2Faipalm%2F.docker%2Frun%2Fdocker.sock/_ping, check if the server supports the requested API version\n\nRun 'docker run --help' for more information\n"
+  },
+  "c027-F10-claude-C-r14": {
+    "attempts": [
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "docker: request returned 500 Internal Server Error for API route and version http://%2FUsers%2Faipalm%2F.docker%2Frun%2Fdocker.sock/_ping, check if the server supports the requested API version\n\nRun 'docker run --help' for more information\n"
+      },
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "docker: request returned 500 Internal Server Error for API route and version http://%2FUsers%2Faipalm%2F.docker%2Frun%2Fdocker.sock/_ping, check if the server supports the requested API version\n\nRun 'docker run --help' for more information\n"
+      }
+    ],
+    "class": "unassessable",
+    "store_preserved": null,
+    "error": "docker: request returned 500 Internal Server Error for API route and version http://%2FUsers%2Faipalm%2F.docker%2Frun%2Fdocker.sock/_ping, check if the server supports the requested API version\n\nRun 'docker run --help' for more information\n"
+  },
+  "c028-F10-claude-B-r14": {
+    "attempts": [
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "docker: request returned 500 Internal Server Error for API route and version http://%2FUsers%2Faipalm%2F.docker%2Frun%2Fdocker.sock/_ping, check if the server supports the requested API version\n\nRun 'docker run --help' for more information\n"
+      },
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "docker: request returned 500 Internal Server Error for API route and version http://%2FUsers%2Faipalm%2F.docker%2Frun%2Fdocker.sock/_ping, check if the server supports the requested API version\n\nRun 'docker run --help' for more information\n"
+      }
+    ],
+    "class": "unassessable",
+    "store_preserved": null,
+    "error": "docker: request returned 500 Internal Server Error for API route and version http://%2FUsers%2Faipalm%2F.docker%2Frun%2Fdocker.sock/_ping, check if the server supports the requested API version\n\nRun 'docker run --help' for more information\n"
+  },
+  "c029-F10-claude-B-r15": {
+    "attempts": [
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "docker: request returned 500 Internal Server Error for API route and version http://%2FUsers%2Faipalm%2F.docker%2Frun%2Fdocker.sock/_ping, check if the server supports the requested API version\n\nRun 'docker run --help' for more information\n"
+      },
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "docker: request returned 500 Internal Server Error for API route and version http://%2FUsers%2Faipalm%2F.docker%2Frun%2Fdocker.sock/_ping, check if the server supports the requested API version\n\nRun 'docker run --help' for more information\n"
+      }
+    ],
+    "class": "unassessable",
+    "store_preserved": null,
+    "error": "docker: request returned 500 Internal Server Error for API route and version http://%2FUsers%2Faipalm%2F.docker%2Frun%2Fdocker.sock/_ping, check if the server supports the requested API version\n\nRun 'docker run --help' for more information\n"
+  },
+  "c030-F10-claude-C-r15": {
+    "attempts": [
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "docker: request returned 500 Internal Server Error for API route and version http://%2FUsers%2Faipalm%2F.docker%2Frun%2Fdocker.sock/_ping, check if the server supports the requested API version\n\nRun 'docker run --help' for more information\n"
+      },
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "docker: request returned 500 Internal Server Error for API route and version http://%2FUsers%2Faipalm%2F.docker%2Frun%2Fdocker.sock/_ping, check if the server supports the requested API version\n\nRun 'docker run --help' for more information\n"
+      }
+    ],
+    "class": "unassessable",
+    "store_preserved": null,
+    "error": "docker: request returned 500 Internal Server Error for API route and version http://%2FUsers%2Faipalm%2F.docker%2Frun%2Fdocker.sock/_ping, check if the server supports the requested API version\n\nRun 'docker run --help' for more information\n"
+  },
+  "c031-F10-claude-C-r16": {
+    "attempts": [
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "docker: request returned 500 Internal Server Error for API route and version http://%2FUsers%2Faipalm%2F.docker%2Frun%2Fdocker.sock/_ping, check if the server supports the requested API version\n\nRun 'docker run --help' for more information\n"
+      },
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "docker: request returned 500 Internal Server Error for API route and version http://%2FUsers%2Faipalm%2F.docker%2Frun%2Fdocker.sock/_ping, check if the server supports the requested API version\n\nRun 'docker run --help' for more information\n"
+      }
+    ],
+    "class": "unassessable",
+    "store_preserved": null,
+    "error": "docker: request returned 500 Internal Server Error for API route and version http://%2FUsers%2Faipalm%2F.docker%2Frun%2Fdocker.sock/_ping, check if the server supports the requested API version\n\nRun 'docker run --help' for more information\n"
+  },
+  "c032-F10-claude-B-r16": {
+    "attempts": [
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "docker: request returned 500 Internal Server Error for API route and version http://%2FUsers%2Faipalm%2F.docker%2Frun%2Fdocker.sock/_ping, check if the server supports the requested API version\n\nRun 'docker run --help' for more information\n"
+      },
+      {
+        "class": "unassessable",
+        "store_preserved": null,
+        "error": "docker: request returned 500 Internal Server Error for API route and version http://%2FUsers%2Faipalm%2F.docker%2Frun%2Fdocker.sock/_ping, check if the server supports the requested API version\n\nRun 'docker run --help' for more information\n"
+      }
+    ],
+    "class": "unassessable",
+    "store_preserved": null,
+    "error": "docker: request returned 500 Internal Server Error for API route and version http://%2FUsers%2Faipalm%2F.docker%2Frun%2Fdocker.sock/_ping, check if the server supports the requested API version\n\nRun 'docker run --help' for more information\n"
+  }
+}
