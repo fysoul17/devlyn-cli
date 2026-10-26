@@ -1347,7 +1347,7 @@ function showHelp() {
 // takes the remote base by fast-forward when possible, then lists each item with its proof. Apply
 // plans again from disk and acts only on items both plans name the same way. A plan can narrow
 // cleanup but never widen it: untracked copies go in place, tracked ones through the project's delivery policy.
-// Every removal needs shipped-content proof; names only identify candidates.
+// Removals need shipped-content proof or an explicit choice of a reviewed modified copy.
 // ---------------------------------------------------------------------------
 
 const CLEANUP_CORE = ['devlyn-ideate', 'devlyn-engines'];
@@ -1355,12 +1355,17 @@ const CLEANUP_CORE = ['devlyn-ideate', 'devlyn-engines'];
 function cleanupReason(code, params = {}) { return { code, params }; }
 
 // What a path is now, so apply can refuse an item that changed after it was reviewed.
-function cleanupPreimage(file) {
+function cleanupPreimage(file, exact = false) {
   const stat = fs.lstatSync(file, { throwIfNoEntry: false });
   if (!stat) return { type: 'missing', sha256: null };
   if (stat.isSymbolicLink()) return { type: 'link', sha256: null };
   if (stat.isDirectory()) {
-    try { return { type: 'directory', sha256: fingerprint(file) }; }
+    try {
+      if (!exact) return { type: 'directory', sha256: fingerprint(file) };
+      const entries = fs.readdirSync(file).sort().map((name) => [name, cleanupPreimage(path.join(file, name), true)]);
+      return { type: 'directory', sha256: entries.some(([, before]) => before.sha256 === null) ? null
+        : crypto.createHash('sha256').update(JSON.stringify(entries)).digest('hex') };
+    }
     catch { return { type: 'directory', sha256: null }; }
   }
   if (stat.isFile()) return { type: 'file', sha256: crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex') };
@@ -1412,6 +1417,46 @@ function cleanupMarkerOwned(file, current) {
   if (!entries.length || entries.some(([name, hash]) => current[name] !== hash
       && !(Object.hasOwn(SKILL_HISTORY.skills, name) && SKILL_HISTORY.skills[name].includes(hash)))) return false;
   return text === JSON.stringify({ schemaVersion: 1, package: PKG.name, version: marker.version, skills: marker.skills }, null, 2) + '\n';
+}
+
+function cleanupSkillRoots(roots, current, includeModified = false) {
+  const resolved = new Map();
+  const linked = new Set();
+  const active = new Set();
+  for (const [base, root] of roots) {
+    let target = root;
+    const stat = fs.lstatSync(root, { throwIfNoEntry: false });
+    const parents = cleanupRealParents(base, root);
+    if (parents && stat?.isSymbolicLink()) {
+      const link = fs.readlinkSync(root);
+      let dir = path.isAbsolute(link) ? path.parse(link).root : path.dirname(root);
+      // Check each hop before normalizing `..`, so even a link followed by `..` is refused.
+      for (const part of link.slice(path.parse(link).root.length).split(path.sep).filter(Boolean)) {
+        dir = path.join(dir, part);
+        if (!fs.lstatSync(dir, { throwIfNoEntry: false })?.isDirectory()) { dir = null; break; }
+      }
+      if (dir && cleanupRealParents(base, dir)) {
+        target = fs.realpathSync.native(dir);
+        linked.add(target);
+      }
+    } else if (parents && stat?.isDirectory()) target = fs.realpathSync.native(root);
+    if (!resolved.has(target)) resolved.set(target, base);
+    if (cleanupInUse(root) || cleanupInUse(target)) active.add(target);
+  }
+  return [...resolved].flatMap(([root, base]) => {
+    const items = cleanupSkillRoot(base, root, current);
+    const occupied = includeModified && items.some((item) => item.kind === 'install-lock');
+    const protectedCopies = new Set(items.filter((item) => [...linked].some((target) => target === item.path || target.startsWith(item.path + path.sep))));
+    for (const item of items) {
+      if ((protectedCopies.size && cleanupSupport(item)) || protectedCopies.has(item)) {
+        Object.assign(item, { action: 'skip', reasons: [cleanupReason('dependent-copy')] });
+      }
+      if (cleanupAction(item, includeModified) === 'remove' && (active.has(root) || occupied)) {
+        Object.assign(item, { action: 'skip', reasons: [cleanupReason(occupied ? 'occupied-lock' : 'in-use')] });
+      }
+    }
+    return items.map((item) => linked.has(root) ? { ...item, keepRoot: true } : item);
+  });
 }
 
 // The legacy items of one skill root, each with its proof and the base its parents are checked from.
@@ -1495,9 +1540,6 @@ function cleanupSkillRoot(base, root, current) {
       items.push({ kind: 'install-marker', path: file, base, action: proven ? 'remove' : 'skip',
         reasons: proven ? [] : [cleanupReason('modified-copy')] });
     }
-  }
-  if (cleanupInUse(root)) {
-    for (const item of items) if (item.action === 'remove') Object.assign(item, { action: 'skip', reasons: [cleanupReason('in-use')] });
   }
   return items;
 }
@@ -1648,7 +1690,7 @@ function cleanupRetainSupport(items) {
   return items;
 }
 
-function cleanupProjectScope(project, current) {
+function cleanupProjectScope(project, current, includeModified = false) {
   const { repositoryIdentity } = require('./harness-status');
   const { physicalRoot } = require('./release');
   const root = physicalRoot(project);
@@ -1660,12 +1702,12 @@ function cleanupProjectScope(project, current) {
   // The home folder's roots are this machine's: the machine scope cleans them under the user-root locks.
   if (cleanupSameFile(base, os.homedir())) return { ...scope, items: whole('home-folder') };
   const items = [
-    ...['.agents', '.claude'].flatMap((dir) => cleanupSkillRoot(base, path.join(base, dir, 'skills'), current)),
+    ...cleanupSkillRoots(['.agents', '.claude'].map((dir) => [base, path.join(base, dir, 'skills')]), current, includeModified),
     ...cleanupCommands(base), ...cleanupProjectFiles(base), ...cleanupInstructions(base),
   ];
-  const busy = identity && items.some((item) => item.action !== 'skip') ? cleanupQueueBusy(base) : null;
+  const busy = identity && items.some((item) => cleanupAction(item, includeModified) !== 'skip') ? cleanupQueueBusy(base) : null;
   for (const item of items) {
-    if (busy && item.action !== 'skip') Object.assign(item, { action: 'skip', reasons: [busy] });
+    if (busy && cleanupAction(item, includeModified) !== 'skip') Object.assign(item, { action: 'skip', reasons: [busy] });
     const relative = path.relative(base, item.path).split(path.sep).join('/');
     let tracked = false;
     try { tracked = cleanupTracked(item.path); }
@@ -1674,23 +1716,17 @@ function cleanupProjectScope(project, current) {
   }
   if (!scope.remote) {
     for (const item of scope.items) {
-      if (item.route === 'delivery' && item.action !== 'skip') Object.assign(item, { action: 'skip', reasons: [cleanupReason('no-remote')] });
+      if (item.route === 'delivery' && cleanupAction(item, includeModified) !== 'skip') Object.assign(item, { action: 'skip', reasons: [cleanupReason('no-remote')] });
     }
   }
   cleanupRetainSupport(scope.items);
   return scope;
 }
 
-function cleanupMachineScope(home, accountHomes, current) {
+function cleanupMachineScope(home, accountHomes, current, includeModified = false) {
   const roots = [...['.agents', '.codex', '.claude', '.grok'].map((dir) => [home, path.join(home, dir, 'skills')]),
     ...accountHomes.map((account) => [path.dirname(account), path.join(account, 'skills')])];
-  const seen = new Set();
-  const items = [];
-  for (const [base, root] of roots) {
-    if (seen.has(root)) continue;
-    seen.add(root);
-    items.push(...cleanupSkillRoot(base, root, current));
-  }
+  const items = cleanupSkillRoots(roots, current, includeModified);
   items.push(...cleanupCommands(home));
   for (const item of items) {
     try {
@@ -1703,13 +1739,13 @@ function cleanupMachineScope(home, accountHomes, current) {
   return { kind: 'machine', root: home, name: null, remote: null, items: cleanupRetainSupport(items) };
 }
 
-function cleanupScopes(inputs, current) {
+function cleanupScopes(inputs, current, includeModified = false) {
   const { sha256 } = require('./release');
   const scopes = [];
-  if (inputs.machine) scopes.push({ id: 'machine', ...cleanupMachineScope(os.homedir(), inputs.accountHomes, current) });
+  if (inputs.machine) scopes.push({ id: 'machine', ...cleanupMachineScope(os.homedir(), inputs.accountHomes, current, includeModified) });
   for (const project of inputs.projects) {
     let scope;
-    try { scope = cleanupProjectScope(project, current); }
+    try { scope = cleanupProjectScope(project, current, includeModified); }
     catch (error) {
       scope = { kind: 'project', root: project, name: path.basename(project), remote: null, items: [{ kind: 'project', path: project, base: project,
         relative: '', route: 'local', action: 'skip', reasons: [cleanupReason(error.reason?.code === 'repository-unreadable' ? 'repository-unreadable' : 'project-unreadable', { detail: error.message })] }] };
@@ -1717,7 +1753,7 @@ function cleanupScopes(inputs, current) {
     scopes.push({ id: `project:${sha256(Buffer.from(project)).slice(0, 12)}`, ...scope });
   }
   for (const scope of scopes) {
-    scope.items = scope.items.map((item, index) => ({ id: `${scope.id}:${index}`, ...item, before: cleanupPreimage(item.path) }));
+    scope.items = scope.items.map((item, index) => ({ id: `${scope.id}:${index}`, ...item, before: cleanupPreimage(item.path, cleanupCanInclude(item)) }));
   }
   return scopes;
 }
@@ -1754,10 +1790,10 @@ function cleanupDigest(plan) {
 
 // Apply one item a fresh plan proves right now; returns a reason when it is not what was proven.
 function cleanupApplyItem(item) {
-  const now = cleanupPreimage(item.path);
+  const now = cleanupPreimage(item.path, Boolean(item.included));
   if (now.type !== item.before.type || now.sha256 !== item.before.sha256) return cleanupReason('stale-plan');
   if (!cleanupRealParents(item.base, item.path)) return cleanupReason('outside-link');
-  if (item.action === 'remove') {
+  if (cleanupAction(item) === 'remove') {
     fs.rmSync(item.path, { recursive: true }); // lstat/realParents never follow a link; rm removes the entry itself.
     return null;
   }
@@ -1777,16 +1813,17 @@ function cleanupApplyItem(item) {
 function cleanupProven(reviewed, fresh) {
   const key = (item) => `${item.kind}\u0000${item.path}`;
   const now = new Map(fresh.items.map((item) => [key(item), item]));
-  const asked = new Set(reviewed.items.filter((item) => item.action === 'remove' || item.action === 'edit').map(key));
+  const asked = new Set(reviewed.items.filter((item) => ['remove', 'edit'].includes(cleanupAction(item))).map(key));
   // A copy left out of the review stays, so the `_shared` and marker beside it stay too.
   const narrowed = new Set(fresh.items.filter((item) => item.action === 'remove' && !cleanupSupport(item) && !asked.has(key(item)))
     .map((item) => path.dirname(item.path)));
-  return reviewed.items.filter((item) => item.action === 'remove' || item.action === 'edit').map((item) => {
+  return reviewed.items.filter((item) => ['remove', 'edit'].includes(cleanupAction(item))).map((item) => {
     const match = now.get(key(item));
-    const same = match && match.action === item.action && match.route === item.route
+    const same = match && match.action === item.action && (!item.included || (cleanupCanInclude(match) && item.before.sha256 !== null))
+      && match.relative === item.relative && match.route === item.route
       && match.before.type === item.before.type && match.before.sha256 === item.before.sha256
       && !(cleanupSupport(item) && narrowed.has(path.dirname(item.path)));
-    return { reviewed: item, fresh: same ? match : null };
+    return { reviewed: item, fresh: same ? { ...match, included: item.included } : null };
   });
 }
 
@@ -1795,10 +1832,19 @@ function cleanupSupport(item) {
   return path.basename(item.path) === '_shared' || item.kind === 'install-marker';
 }
 
+function cleanupCanInclude(item) {
+  return !cleanupSupport(item) && item.action === 'skip'
+    && item.reasons.length === 1 && item.reasons[0].code === 'modified-copy';
+}
+
+function cleanupAction(item, includeModified = false) {
+  return item.included || (includeModified && cleanupCanInclude(item)) ? 'remove' : item.action;
+}
+
 function cleanupLocal(scope, items) {
   const results = new Map();
-  const roots = [...new Set(items.map((item) => path.dirname(item.path)).filter((dir) => path.basename(dir) === 'skills'
-    && fs.lstatSync(dir, { throwIfNoEntry: false })?.isDirectory()))];
+  const roots = [...new Set(items.filter((item) => item.keepRoot || path.basename(path.dirname(item.path)) === 'skills')
+    .map((item) => path.dirname(item.path)).filter((dir) => fs.lstatSync(dir, { throwIfNoEntry: false })?.isDirectory()))];
   const act = (item) => {
     try {
       if (cleanupTracked(item.path)) { results.set(item.id, cleanupReason('tracked-copy')); return; }
@@ -1824,7 +1870,7 @@ function cleanupLocal(scope, items) {
   // After the locks are released, so a root holds nothing but what stayed.
   for (const root of new Set(items.filter((item) => results.get(item.id) === null && item.kind !== 'instructions')
     .map((item) => path.dirname(item.path)))) {
-    if (path.basename(root) !== 'skills') continue;
+    if (path.basename(root) !== 'skills' || scope.items.some((item) => item.keepRoot && path.dirname(item.path) === root)) continue;
     try { if (fs.lstatSync(root).isDirectory() && fs.readdirSync(root).length === 0) fs.rmdirSync(root); } catch {}
   }
   return results;
@@ -1943,7 +1989,8 @@ function cleanupUpdateCheckout(scope) {
       'merge', '--ff-only', '--no-squash', '--no-autostash', '--no-overwrite-ignore', '--quiet', target]);
     if (merged.error || merged.status !== 0) return failed(merged.error?.message || merged.stderr.trim());
     const [after, landed] = checkout();
-    return after === branch && landed === target ? { changed: landed !== head } : failed('the fast-forward did not land on the base');
+    if (after !== branch || landed !== target) return failed('the fast-forward did not land on the base');
+    return { changed: landed !== head };
   } finally {
     cleanupGit(scope.root, ['update-ref', '-d', ref]);
   }
@@ -1954,14 +2001,15 @@ function cleanupUpdateCheckout(scope) {
 // With every reviewed item already settled by the remote base, the worktree is released with
 // nothing to deliver.
 function cleanupDeliveryCommit(worktree, items, current, release, settledUpstream) {
-  const fresh = cleanupProjectScope(worktree, current);
+  const fresh = cleanupProjectScope(worktree, current, items.some((item) => item.included));
   const available = new Map(fresh.items.map((item) => [`${item.kind}\u0000${item.relative}`, item]));
   const pairs = items.map((reviewed) => {
     const fresh = available.get(`${reviewed.kind}\u0000${reviewed.relative}`);
-    return { reviewed, fresh, before: fresh && cleanupPreimage(fresh.path) };
+    return { reviewed, fresh, before: fresh && cleanupPreimage(fresh.path, Boolean(reviewed.included)) };
   });
   const stale = pairs.filter(({ reviewed, fresh, before }) => (fresh
     ? fresh.action !== reviewed.action || fresh.route !== 'delivery'
+      || (reviewed.included && (!cleanupCanInclude(fresh) || before.sha256 === null))
       || before.type !== reviewed.before.type || before.sha256 !== reviewed.before.sha256
     : !settledUpstream(reviewed.relative)));
   // Check the entire batch before mutating even one item; the remote base cannot replace the reviewed preimage.
@@ -1970,12 +2018,14 @@ function cleanupDeliveryCommit(worktree, items, current, release, settledUpstrea
   if (!present.length) return release();
   const applied = [];
   for (const { reviewed, fresh } of present) {
-    const error = cleanupApplyItem({ ...fresh, before: reviewed.before });
+    const error = cleanupApplyItem({ ...fresh, before: reviewed.before, included: reviewed.included });
     if (error) return release(cleanupReason(error.code, { ...error.params, detail: reviewed.relative }));
     applied.push(fresh.relative);
   }
   for (const dir of ['.agents/skills', '.claude/skills']) {
-    try { const full = path.join(worktree, dir); if (fs.readdirSync(full).length === 0) fs.rmdirSync(full); } catch {}
+    const full = path.join(worktree, dir);
+    if (fresh.items.some((item) => item.keepRoot && cleanupSameFile(path.dirname(item.path), full))) continue;
+    try { if (fs.lstatSync(full).isDirectory() && fs.readdirSync(full).length === 0) fs.rmdirSync(full); } catch {}
   }
   const add = cleanupGit(worktree, ['add', '-A', '--', ...applied]);
   const commit = add.status === 0 && cleanupGit(worktree, ['-c', 'user.useConfigOnly=true', 'commit', '-q', '-m',
@@ -1986,7 +2036,8 @@ function cleanupDeliveryCommit(worktree, items, current, release, settledUpstrea
   fs.mkdirSync(path.dirname(evidence), { recursive: true });
   fs.writeFileSync(evidence, check.stdout);
   let left = [];
-  try { left = JSON.parse(check.stdout.trim().split('\n').at(-1)).data.scopes[0].items.filter((item) => item.action !== 'skip' && applied.includes(item.relative)); }
+  try { left = JSON.parse(check.stdout.trim().split('\n').at(-1)).data.scopes[0].items.filter((item) =>
+    cleanupAction({ ...item, included: items.find((reviewed) => reviewed.relative === item.relative)?.included }) !== 'skip' && applied.includes(item.relative)); }
   catch { return release(cleanupReason('delivery-failed', { detail: 'the check after cleanup could not run' })); }
   if (left.length) return release(cleanupReason('delivery-failed', { detail: 'items remain after cleanup' }));
   const head = cleanupGit(worktree, ['rev-parse', 'HEAD']);
@@ -2000,7 +2051,8 @@ function cleanupDeliveryCommit(worktree, items, current, release, settledUpstrea
 
 function cleanupApply(plan, { events = false } = {}) {
   const current = cleanupCurrentFingerprints();
-  const fresh = new Map(cleanupScopes(plan.inputs, current).map((scope) => [scope.id, scope]));
+  const includeModified = plan.scopes.some((scope) => scope.items.some((item) => item.included));
+  const fresh = new Map(cleanupScopes(plan.inputs, current, includeModified).map((scope) => [scope.id, scope]));
   let seq = 0;
   const emit = (scope) => { if (events) process.stdout.write(JSON.stringify({ schemaVersion: 1, event: 'scope', seq: ++seq, scope }) + '\n'); };
   const scopes = [];
@@ -2048,9 +2100,10 @@ function cleanupCommand(args) {
   const opts = options(args, {
     plan: { type: 'boolean' }, apply: { type: 'boolean' }, machine: { type: 'boolean' }, events: { type: 'boolean' },
     project: { type: 'string', multiple: true }, 'account-home': { type: 'string', multiple: true },
-    'plan-file': { type: 'string' }, digest: { type: 'string' },
+    'plan-file': { type: 'string' }, digest: { type: 'string' }, include: { type: 'string', multiple: true },
   });
   if (opts.plan === opts.apply) fail('invalid-arguments', { argument: 'exactly one of --plan or --apply' }, 2);
+  if (opts.plan && opts.include) fail('invalid-arguments', { argument: '--include requires --apply' }, 2);
   for (const dir of [...(opts.project || []), ...(opts['account-home'] || [])]) {
     if (!path.isAbsolute(dir)) fail('invalid-arguments', { argument: 'absolute paths required' }, 2);
   }
@@ -2068,6 +2121,16 @@ function cleanupCommand(args) {
     fail('stale-plan', {}, 3);
   }
   if (plan.version !== PKG.version) fail('stale-plan', { version: plan.version }, 3);
+  const reviewed = plan.scopes.flatMap((scope) => scope.items);
+  for (const item of reviewed) delete item.included;
+  const items = new Map(reviewed.map((item) => [item.id, item]));
+  for (const id of opts.include || []) {
+    const item = items.get(id);
+    if (!item || !cleanupCanInclude(item) || reviewed.filter((item) => item.id === id).length !== 1) {
+      fail('invalid-arguments', { argument: `--include ${id}` }, 2);
+    }
+    item.included = true;
+  }
   return cleanupApply(plan, { events: Boolean(opts.events) });
 }
 

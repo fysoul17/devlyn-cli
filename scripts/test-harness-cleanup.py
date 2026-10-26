@@ -2,6 +2,7 @@
 """Legacy cleanup fixtures: real installs made by this package's installer in temporary homes and
 repositories, then `devlyn cleanup --plan` and `--apply`. No model calls; GitHub is task-complete's
 own fake gh over a local bare repository."""
+import hashlib
 import json
 import os
 import runpy
@@ -70,8 +71,9 @@ class CleanupFixture(unittest.TestCase):
         path.write_text(json.dumps(plan, sort_keys=True), encoding="utf-8")
         return plan, path
 
-    def apply(self, plan, path, code=0):
-        return self.cli("cleanup", "--apply", "--plan-file", path, "--digest", plan["digest"], code=code)
+    def apply(self, plan, path, code=0, include=()):
+        return self.cli("cleanup", "--apply", "--plan-file", path, "--digest", plan["digest"],
+                        *[arg for item in include for arg in ("--include", item)], code=code)
 
     def historical_skill(self, dest, tag="v3.0.1", name="devlyn:ideate"):
         source = f"config/skills/{name}"
@@ -166,6 +168,352 @@ class CleanupFixture(unittest.TestCase):
         plan, _ = self.plan("--project", source, "--project", linked)
         reasons = {scope["name"]: [(item["action"], item["reasons"][0]["code"]) for item in scope["items"]] for scope in plan["scopes"]}
         self.assertEqual(reasons, {"source": [("skip", "source-repository")], "linked": [("skip", "outside-link")]})
+
+    @unittest.skipIf(os.name == "nt", "skill-root symlinks require POSIX")
+    def test_local_linked_roots_keep_their_empty_target(self):
+        # Prediction: two roots sharing a real target remove its copies once locally and keep both links
+        # and the empty directory, even when the real root is itself a conventional agent skill root.
+        for target in ("skills", ".agents/skills"):
+            with self.subTest(target=target):
+                repo = self.repo("local-linked-" + target.replace("/", "-"))
+                self.install(repo, "--claude")
+                if target == "skills":
+                    (repo / ".agents/skills").rename(repo / target)
+                    (repo / ".agents/skills").symlink_to("../skills", target_is_directory=True)
+                shutil.rmtree(repo / ".claude/skills")
+                (repo / ".claude/skills").symlink_to("../" + target, target_is_directory=True)
+                plan, path = self.plan("--project", repo)
+                self.assertEqual(len(plan["scopes"][0]["items"]), 4)
+                self.assertTrue(all(i["action"] == "remove" and i["route"] == "local"
+                                    and i["relative"].startswith(target + "/") for i in plan["scopes"][0]["items"]))
+                self.assertEqual(self.apply(plan, path)["state"], "succeeded")
+                self.assertEqual(list((repo / target).iterdir()), [])
+                self.assertTrue((repo / ".claude/skills").is_symlink())
+                if target == "skills":
+                    self.assertTrue((repo / ".agents/skills").is_symlink())
+
+    @unittest.skipIf(os.name == "nt", "skill-root symlinks require POSIX")
+    def test_machine_linked_roots_are_deduplicated_within_their_base(self):
+        # Prediction: a machine root and its alias are planned once at the real path; account links
+        # are bounded by their paired base, and empty targets still named by links stay.
+        self.install(self.root, "--global")
+        shutil.rmtree(self.home / ".codex/skills")
+        (self.home / ".codex/skills").symlink_to("../.agents/skills", target_is_directory=True)
+        accounts = self.root / "accounts"
+        account = accounts / "one"
+        account.mkdir(parents=True)
+        shutil.copytree(self.home / ".agents/skills", accounts / "shared")
+        (account / "skills").symlink_to("../shared", target_is_directory=True)
+        plan, path = self.plan("--machine", "--account-home", account)
+        items = plan["scopes"][0]["items"]
+        self.assertEqual(len(items), 8)
+        self.assertEqual(len({i["path"] for i in items}), 8)
+        self.assertTrue(all(i["action"] == "remove" for i in items))
+        self.assertEqual(self.apply(plan, path)["state"], "succeeded")
+        self.assertEqual(list((self.home / ".agents/skills").iterdir()), [])
+        self.assertEqual(list((accounts / "shared").iterdir()), [])
+        self.assertTrue((account / "skills").is_symlink())
+        self.assertTrue((self.home / ".codex/skills").is_symlink())
+
+    @unittest.skipIf(os.name == "nt", "skill-root symlinks require POSIX")
+    def test_root_deduplication_uses_resolved_spelling(self):
+        # Prediction: a real root and its link resolve to one canonical directory even when its
+        # stored case differs from the configured path on a case-insensitive filesystem.
+        repo = self.repo("linked-case")
+        self.install(repo)
+        if not (repo / ".AGENTS/skills").is_dir():
+            self.skipTest("case-insensitive filesystem required")
+        (repo / ".agents/skills").rename(repo / ".agents/moving")
+        (repo / ".agents/moving").rename(repo / ".agents/SKILLS")
+        (repo / ".claude").mkdir()
+        (repo / ".claude/skills").symlink_to("../.agents/SKILLS", target_is_directory=True)
+        plan, path = self.plan("--project", repo)
+        self.assertEqual(len(plan["scopes"][0]["items"]), 4)
+        self.assertTrue(all(i["relative"].startswith(".agents/SKILLS/") for i in plan["scopes"][0]["items"]))
+        self.assertEqual(self.apply(plan, path)["state"], "succeeded")
+        self.assertEqual(list((repo / ".agents/SKILLS").iterdir()), [])
+
+    @unittest.skipIf(os.name == "nt", "skill-root symlinks require POSIX")
+    def test_roots_reached_through_another_link_stay_outside_link(self):
+        # Prediction: a link to a link, a linked parent, and a link hidden by `..` are all refused,
+        # even when their eventual directory is inside the project.
+        repo = self.repo("indirect-links")
+        self.install(repo)
+        (repo / ".agents/skills").rename(repo / "skills")
+        (repo / "alias").symlink_to("skills", target_is_directory=True)
+        (repo / "parent").mkdir()
+        (repo / "parent/alias").symlink_to("../skills", target_is_directory=True)
+        for target in ("../alias", "../alias/../skills", "../parent/alias"):
+            with self.subTest(target=target):
+                link = repo / ".agents/skills"
+                link.symlink_to(target, target_is_directory=True)
+                plan, _ = self.plan("--project", repo)
+                self.assertEqual([(i["action"], i["reasons"][0]["code"]) for i in plan["scopes"][0]["items"]],
+                                 [("skip", "outside-link")])
+                link.unlink()
+
+    def test_included_local_modified_copies_leave_support_for_a_later_plan(self):
+        # Prediction: repeatable --include removes only the chosen modified copies; their kept support
+        # stays byte-identical this run and is offered by the next plan.
+        repo = self.repo("chosen-local")
+        self.install(repo)
+        root = repo / ".agents/skills"
+        edited = root / "devlyn-ideate/SKILL.md"
+        edited.write_text(edited.read_text() + "\nOwner note.\n")
+        standard = root / "workflow-routing"
+        standard.mkdir()
+        (standard / "SKILL.md").write_text("Owner's edited workflow.\n")
+        marker = (root / ".devlyn-install.json").read_bytes()
+        plan, path = self.plan("--project", repo)
+        chosen = [i["id"] for i in plan["scopes"][0]["items"] if i["reasons"] == [{"code": "modified-copy", "params": {}}]]
+        self.assertEqual(len(chosen), 2)
+        self.assertEqual(self.apply(plan, path, include=chosen)["state"], "succeeded")
+        self.assertEqual(sorted(p.name for p in root.iterdir()), [".devlyn-install.json", "_shared"])
+        self.assertEqual((root / ".devlyn-install.json").read_bytes(), marker)
+        later, _ = self.plan("--project", repo)
+        self.assertEqual({Path(i["path"]).name for i in later["scopes"][0]["items"] if i["action"] == "remove"},
+                         {"_shared", ".devlyn-install.json"})
+
+    def test_included_copy_changed_after_review_is_refused(self):
+        # Prediction: an included modified copy whose bytes changed after review is stale, even though
+        # it is still modified-copy; no copy or support is removed.
+        repo = self.repo("chosen-stale")
+        self.install(repo)
+        root = repo / ".agents/skills"
+        shutil.rmtree(root / "devlyn-engines")
+        edited = root / "devlyn-ideate/SKILL.md"
+        edited.write_text(edited.read_text() + "\nOwner note.\n")
+        plan, path = self.plan("--project", repo)
+        [item] = plan["scopes"][0]["items"]
+        edited.write_text(edited.read_text() + "\nAnother edit.\n")
+        before = {p.relative_to(root): p.read_bytes() for p in root.rglob("*") if p.is_file()}
+        result = self.apply(plan, path, include=[item["id"]])
+        self.assertEqual(result["scopes"][0]["error"]["code"], "stale-plan")
+        self.assertEqual({p.relative_to(root): p.read_bytes() for p in root.rglob("*") if p.is_file()}, before)
+
+    def test_invalid_included_ids_refuse_the_whole_command(self):
+        # Prediction: unknown ids, remove actions, other skip reasons and modified support fail exit 2
+        # before any change, including a valid include earlier in the same command.
+        repo = self.repo("chosen-invalid")
+        self.install(repo, "--claude")
+        root = repo / ".agents/skills"
+        edited = root / "devlyn-ideate/SKILL.md"
+        edited.write_text(edited.read_text() + "\nOwner note.\n")
+        marker = repo / ".claude/skills/.devlyn-install.json"
+        marker.write_text(marker.read_text() + " ")
+        optional = root / "devlyn\uf03apencil-pull"
+        optional.mkdir()
+        (optional / "SKILL.md").write_text("Optional.\n")
+        plan, path = self.plan("--project", repo)
+        items = plan["scopes"][0]["items"]
+        chosen = next(i["id"] for i in items if i["path"] == str(edited.parent))
+        invalid = ["missing", next(i["id"] for i in items if i["action"] == "remove"),
+                   next(i["id"] for i in items if i["path"] == str(optional)),
+                   next(i["id"] for i in items if i["path"] == str(marker))]
+        before = {p.relative_to(repo): p.read_bytes() for p in repo.rglob("*") if p.is_file()}
+        for item_id in invalid:
+            with self.subTest(item_id=item_id):
+                self.assertEqual(self.apply(plan, path, code=2, include=[chosen, item_id])["code"], "invalid-arguments")
+                self.assertEqual({p.relative_to(repo): p.read_bytes() for p in repo.rglob("*") if p.is_file()}, before)
+
+    @unittest.skipIf(os.name == "nt", "interior symlinks require POSIX")
+    def test_included_copy_without_a_readable_preimage_stays(self):
+        # Prediction: a modified copy with an interior link has no usable fingerprint; two null hashes
+        # cannot prove unchanged bytes, so --include refuses it as stale-plan and keeps all contents.
+        repo = self.repo("chosen-null-proof")
+        self.install(repo)
+        root = repo / ".agents/skills"
+        shutil.rmtree(root / "devlyn-engines")
+        skill = root / "devlyn-ideate"
+        (skill / "link").symlink_to("SKILL.md")
+        plan, path = self.plan("--project", repo)
+        [item] = plan["scopes"][0]["items"]
+        self.assertIsNone(item["before"]["sha256"])
+        (skill / "SKILL.md").write_text("Changed after review.\n")
+        result = self.apply(plan, path, include=[item["id"]])
+        self.assertEqual(result["scopes"][0]["error"]["code"], "stale-plan")
+        self.assertEqual((skill / "SKILL.md").read_text(), "Changed after review.\n")
+        self.assertTrue((skill / "link").is_symlink())
+
+    def test_included_copy_proof_does_not_normalize_owner_bytes(self):
+        # Prediction: include proofs cover exact owner bytes, including line endings and generated
+        # metadata that installer ownership deliberately normalizes or ignores.
+        repo = self.repo("chosen-exact-proof")
+        self.install(repo)
+        root = repo / ".agents/skills"
+        shutil.rmtree(root / "devlyn-engines")
+        skill = root / "devlyn-ideate"
+        edited = skill / "SKILL.md"
+        edited.write_bytes(edited.read_bytes() + b"\nOwner note.\n")
+        for change in ("line-endings", "metadata"):
+            with self.subTest(change=change):
+                plan, path = self.plan("--project", repo)
+                [item] = plan["scopes"][0]["items"]
+                if change == "line-endings":
+                    edited.write_bytes(edited.read_bytes().replace(b"\n", b"\r\n"))
+                else:
+                    (skill / ".DS_Store").write_bytes(b"changed metadata")
+                result = self.apply(plan, path, include=[item["id"]])
+                self.assertEqual(result["scopes"][0]["error"]["code"], "stale-plan")
+                self.assertTrue(edited.exists())
+
+    @unittest.skipIf(os.name == "nt", "process-list fixture and skill-root links require POSIX")
+    def test_running_copies_are_kept_through_aliases_and_include(self):
+        # Prediction: a process naming either the original skill-root alias or a chosen modified copy
+        # keeps that copy; inclusion cannot bypass a running process or an occupied install lock.
+        repo = self.repo("running-linked")
+        self.install(repo)
+        (repo / ".agents/skills").rename(repo / "skills")
+        (repo / ".agents/skills").symlink_to("../skills", target_is_directory=True)
+        self.env["FIXTURE_PROCESSES"] = f"python {repo}/.agents/skills/devlyn-ideate/scripts/queue.py drain"
+        plan, path = self.plan("--project", repo)
+        self.assertTrue(all(i["reasons"] == [{"code": "in-use", "params": {}}] for i in plan["scopes"][0]["items"]))
+        self.assertEqual(self.apply(plan, path)["state"], "succeeded")
+        edited = repo / "skills/devlyn-ideate/SKILL.md"
+        edited.write_text(edited.read_text() + "\nOwner note.\n")
+        for blocker in ("process", "lock"):
+            with self.subTest(blocker=blocker):
+                if blocker == "lock":
+                    self.env.pop("FIXTURE_PROCESSES")
+                    (repo / "skills/.devlyn-install.lock").write_text("occupied")
+                plan, path = self.plan("--project", repo)
+                chosen = next(i for i in plan["scopes"][0]["items"] if i["path"] == str(edited.parent))
+                result = self.apply(plan, path, include=[chosen["id"]])
+                self.assertEqual(result["scopes"][0]["error"]["code"], "stale-plan")
+                self.assertTrue(edited.exists())
+
+    @unittest.skipIf(os.name == "nt", "skill-root symlinks require POSIX")
+    def test_a_linked_target_inside_a_copy_is_never_removed(self):
+        # Prediction: a recognized copy that is itself a linked skill root (or contains one) stays;
+        # deleting an ancestor must never remove a directory another configured root names.
+        repo = self.repo("overlapping-linked")
+        self.install(repo)
+        (repo / ".claude").mkdir()
+        for target in ("devlyn-ideate", "devlyn-ideate/scripts"):
+            with self.subTest(target=target):
+                link = repo / ".claude/skills"
+                link.symlink_to("../.agents/skills/" + target, target_is_directory=True)
+                plan, path = self.plan("--project", repo)
+                self.assertEqual(self.apply(plan, path)["state"], "succeeded")
+                self.assertTrue(link.is_dir())
+                self.assertTrue((repo / ".agents/skills/devlyn-ideate/SKILL.md").exists())
+                link.unlink()
+
+    def test_a_plan_cannot_embed_include_authorization(self):
+        # Prediction: even a correctly digested plan with duplicate ids cannot smuggle the internal
+        # include choice into an apply without --include; the edited copy stays.
+        repo = self.repo("forged-include")
+        self.install(repo)
+        edited = repo / ".agents/skills/devlyn-ideate/SKILL.md"
+        edited.write_text(edited.read_text() + "\nOwner note.\n")
+        plan, path = self.plan("--project", repo)
+        items = plan["scopes"][0]["items"]
+        item = next(i for i in items if i["path"] == str(edited.parent))
+        items.append(dict(item))
+        item["included"] = True
+        del plan["digest"]
+        plan["digest"] = hashlib.sha256(json.dumps(plan, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()).hexdigest()
+        path.write_text(json.dumps(plan))
+        self.assertEqual(self.apply(plan, path)["state"], "succeeded")
+        self.assertTrue(edited.read_text().endswith("Owner note.\n"))
+
+    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
+    def test_included_tracked_modified_copy_is_delivered_with_support_kept(self):
+        # Prediction: an explicitly chosen tracked modified standard is removed through one merged PR;
+        # the support it kept out of the review remains both upstream and in the checkout.
+        repo = self.repo("chosen-delivery")
+        self.install(repo)
+        root = repo / ".agents/skills"
+        standard = root / "workflow-routing"
+        standard.mkdir()
+        (standard / "SKILL.md").write_text("Owner's edited workflow.\n")
+        self.run_ok(["git", "add", "-A"], cwd=repo)
+        self.run_ok(["git", "commit", "-qm", "edited install"], cwd=repo)
+        bare = self.fake_github(repo)
+        plan, path = self.plan("--project", repo)
+        chosen = next(i for i in plan["scopes"][0]["items"] if i["path"] == str(standard))
+        self.assertEqual((chosen["action"], chosen["route"]), ("skip", "delivery"))
+        result = self.apply(plan, path, include=[chosen["id"]])
+        self.assertEqual((result["state"], result["scopes"][0]["delivery"]["state"]), ("succeeded", "merged"))
+        self.assertEqual(sorted(p.name for p in root.iterdir()), [".devlyn-install.json", "_shared"])
+        listed = self.run_ok(["git", "--git-dir", bare, "ls-tree", "-r", "--name-only", "main"]).stdout
+        self.assertNotIn("workflow-routing", listed)
+        self.assertIn(".agents/skills/.devlyn-install.json", listed)
+
+    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
+    def test_included_copy_changed_on_the_base_refuses_delivery(self):
+        # Prediction: even another modified-copy on the base fails the reviewed preimage; the whole
+        # delivery is refused before deletion or PR, then main takes those upstream bytes.
+        repo = self.repo("chosen-base-stale")
+        self.install(repo)
+        edited = repo / ".agents/skills/devlyn-ideate/SKILL.md"
+        edited.write_text(edited.read_text() + "\nOwner note.\n")
+        self.run_ok(["git", "add", "-A"], cwd=repo)
+        self.run_ok(["git", "commit", "-qm", "edited install"], cwd=repo)
+        bare = self.fake_github(repo)
+        plan, path = self.plan("--project", repo)
+        chosen = next(i for i in plan["scopes"][0]["items"] if i["path"] == str(edited.parent))
+        upstream = self.root / "changed-base"
+        self.run_ok(["git", "clone", "-q", bare, upstream])
+        (upstream / chosen["relative"] / "SKILL.md").write_text("Another owner's edit.\n")
+        self.run_ok(["git", "commit", "-qam", "edit again"], cwd=upstream)
+        self.run_ok(["git", "push", "-q", "origin", "main"], cwd=upstream)
+        result = self.apply(plan, path, include=[chosen["id"]])
+        self.assertEqual(result["scopes"][0]["error"]["code"], "stale-plan")
+        self.assertEqual(edited.read_text(), "Another owner's edit.\n")
+        self.assertTrue((edited.parent.parent / "devlyn-engines").is_dir())
+        self.assertEqual(self.run_ok(["git", "branch", "--list", "devlyn/cleanup-*"], cwd=repo).stdout, "")
+
+    def test_include_keeps_dependent_local_support_and_refuses_no_remote(self):
+        # Prediction: local support retained for a tracked copy remains dependent-copy when that
+        # modified copy is included; without a remote the chosen copy fails proof before any removal.
+        repo = self.repo("chosen-no-remote")
+        self.install(repo)
+        root = repo / ".agents/skills"
+        self.run_ok(["git", "add", ".agents/skills/devlyn-ideate"], cwd=repo)
+        self.run_ok(["git", "commit", "-qm", "tracked copy"], cwd=repo)
+        plan, path = self.plan("--project", repo)
+        support = [i for i in plan["scopes"][0]["items"] if Path(i["path"]).name in ("_shared", ".devlyn-install.json")]
+        self.assertEqual(len(support), 2)
+        self.assertTrue(all(i["reasons"] == [{"code": "dependent-copy", "params": {}}] for i in support))
+        for item in support:
+            self.assertEqual(self.apply(plan, path, code=2, include=[item["id"]])["code"], "invalid-arguments")
+        shutil.rmtree(root / "devlyn-engines")
+        edited = root / "devlyn-ideate/SKILL.md"
+        edited.write_text(edited.read_text() + "\nOwner note.\n")
+        plan, path = self.plan("--project", repo)
+        [chosen] = plan["scopes"][0]["items"]
+        result = self.apply(plan, path, include=[chosen["id"]])
+        self.assertEqual(result["scopes"][0]["error"]["code"], "stale-plan")
+        self.assertTrue(edited.exists())
+        self.assertTrue((root / "_shared").is_dir())
+        self.assertTrue((root / ".devlyn-install.json").is_file())
+
+    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
+    def test_included_copy_already_removed_on_the_base_is_settled(self):
+        # Prediction: a reviewed modified copy already removed upstream is settled under --include;
+        # main takes the base without a new PR, and the support omitted from the review stays.
+        repo = self.repo("chosen-settled")
+        self.install(repo)
+        edited = repo / ".agents/skills/devlyn-ideate/SKILL.md"
+        edited.write_text(edited.read_text() + "\nOwner note.\n")
+        self.run_ok(["git", "add", "-A"], cwd=repo)
+        self.run_ok(["git", "commit", "-qm", "edited install"], cwd=repo)
+        bare = self.fake_github(repo)
+        plan, path = self.plan("--project", repo)
+        chosen = next(i for i in plan["scopes"][0]["items"] if i["path"] == str(edited.parent))
+        removed = json.loads(json.dumps(plan))
+        for item in removed["scopes"][0]["items"]:
+            if item["id"] == chosen["id"]:
+                item["action"] = "remove"
+        self.removed_upstream(repo, bare, removed)
+        result = self.apply(plan, path, include=[chosen["id"]])
+        self.assertEqual(result["state"], "succeeded")
+        self.assertIsNone(result["scopes"][0]["delivery"])
+        self.assertFalse(edited.exists())
+        self.assertTrue((edited.parent.parent / "_shared").is_dir())
+        self.assertTrue((edited.parent.parent / ".devlyn-install.json").is_file())
+        self.assertEqual(self.run_ok(["git", "branch", "--list", "devlyn/cleanup-*"], cwd=repo).stdout, "")
 
     def test_tracked_copies_without_a_github_remote_are_not_touched(self):
         # Prediction: committed copies route through delivery; without a GitHub origin they are skipped as no-remote.
@@ -270,6 +618,52 @@ class CleanupFixture(unittest.TestCase):
         plan, _ = self.plan("--project", self.home)
         self.assertEqual([(item["action"], item["reasons"][0]["code"]) for item in plan["scopes"][0]["items"]],
                          [("skip", "home-folder")])
+
+    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
+    def test_tracked_linked_roots_deliver_each_real_copy_once(self):
+        # Prediction: two tracked skill-root links into the project list each real copy once for delivery;
+        # one apply merges their removal, preserving the links, their target and the owner's skill.
+        repo = self.repo("linked-delivery")
+        self.install(repo, "--claude")
+        (repo / ".agents/skills").rename(repo / "skills")
+        shutil.rmtree(repo / ".claude/skills")
+        for agent in (".agents", ".claude"):
+            (repo / agent / "skills").symlink_to("../skills", target_is_directory=True)
+        own = repo / "skills/owner/SKILL.md"
+        own.parent.mkdir()
+        own.write_text("Owner's skill.\n")
+        self.run_ok(["git", "add", "-A"], cwd=repo)
+        self.run_ok(["git", "commit", "-qm", "linked install"], cwd=repo)
+        self.fake_github(repo)
+        plan, path = self.plan("--project", repo)
+        self.assertEqual(sorted((i["relative"], i["action"], i["route"], i["reasons"]) for i in plan["scopes"][0]["items"]),
+                         [(f"skills/{name}", "remove", "delivery", [])
+                          for name in (".devlyn-install.json", "_shared", "devlyn-engines", "devlyn-ideate")])
+        result = self.apply(plan, path)
+        self.assertEqual((result["state"], result["scopes"][0]["delivery"]["state"]), ("succeeded", "merged"))
+        self.assertEqual(sorted(p.name for p in (repo / "skills").iterdir()), ["owner"])
+        self.assertEqual(own.read_text(), "Owner's skill.\n")
+        for agent in (".agents", ".claude"):
+            self.assertEqual(os.readlink(repo / agent / "skills"), "../skills")
+        self.assertEqual(self.run_ok(["git", "status", "--porcelain"], cwd=repo).stdout, "")
+
+    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
+    def test_tracked_linked_roots_preserve_links_after_delivery(self):
+        # Prediction: one apply merges removal of the last tracked copies and preserves the
+        # skill-root link's value, even when Git prunes its empty target directory.
+        repo = self.repo("linked-empty-delivery")
+        self.install(repo)
+        (repo / ".claude").mkdir()
+        (repo / ".claude/skills").symlink_to("../.agents/skills", target_is_directory=True)
+        self.run_ok(["git", "add", "-A"], cwd=repo)
+        self.run_ok(["git", "commit", "-qm", "linked install"], cwd=repo)
+        self.fake_github(repo)
+        plan, path = self.plan("--project", repo)
+        result = self.apply(plan, path)
+        self.assertEqual((result["state"], result["scopes"][0]["delivery"]["state"]), ("succeeded", "merged"))
+        self.assertEqual(os.readlink(repo / ".claude/skills"), "../.agents/skills")
+        for item in plan["scopes"][0]["items"]:
+            self.assertFalse(Path(item["path"]).exists(), item["path"])
 
     @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
     def test_tracked_copies_are_delivered_by_the_project_policy(self):
