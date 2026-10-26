@@ -6,7 +6,7 @@ them and removes only what it can prove devlyn-cli wrote.
 
 ```sh
 devlyn cleanup --plan [--machine] [--project <abs>]… [--account-home <abs>]… --json
-devlyn cleanup --apply --plan-file <abs> --digest <sha256> [--events] --json
+devlyn cleanup --apply --plan-file <abs> --digest <sha256> [--include <item-id>]… [--events] --json
 ```
 
 The envelope, exit codes and `Reason` shape are activation's. `--plan`
@@ -28,8 +28,8 @@ beside them, retired `.claude/commands` and files matching a shipped hash. Edite
 retired Stop hook in `.claude/settings.json`, and an intact managed instruction block from an
 earlier release, brought up to date with owner text around it kept byte-for-byte. A current
 block is the team's principles and stays. Skipped, with a reason: modified copies
-(`modified-copy`), optional add-ons (`optional-skill`), links out of the scope
-(`outside-link`), occupied install locks (`occupied-lock`), roots a running process names
+(`modified-copy`), optional add-ons (`optional-skill`), links out of the scope or through
+another link (`outside-link`), occupied install locks (`occupied-lock`), roots a running process names
 (`in-use`), a project with active queue tasks (`legacy-queue`) or an unreadable queue
 (`queue-unreadable`), devlyn-cli's own repository (`source-repository`), the home folder as a
 project (`home-folder`), tracked items without a remote (`no-remote`) and unreadable projects
@@ -37,10 +37,14 @@ project (`home-folder`), tracked items without a remote (`no-remote`) and unread
 machine copies tracked by a home/dotfiles repository (`tracked-copy`). Local support
 stays while a dependent copy remains on disk (`dependent-copy`), including copies
 awaiting PR delivery.
+Skill-root links directly into their scope are classified once at the real path; cleanup itself
+never removes the links or their target directory. Git may prune an empty target during checkout.
 
 `--apply` refuses a plan whose digest, inputs or version do not match (`stale-plan`, exit 3).
 It plans again from disk and acts only on reviewed items the fresh plan still proves with
-an unchanged preimage; anything else is reported, never forced. Each project's
+an unchanged preimage; anything else is reported, never forced. Repeatable `--include` chooses
+reviewed skips whose sole reason is `modified-copy`, excluding support, with the same fresh proof;
+kept support stays until a later plan, and the digest still covers only the plan. Each project's
 `remote` records the reviewed GitHub repository and base branch, covered by the
 digest. A changed delivery identity fails the scope as `stale-plan` before local
 changes or allocation. Every item in the delivery worktree must match the reviewed
