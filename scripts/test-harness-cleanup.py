@@ -328,6 +328,83 @@ class CleanupFixture(unittest.TestCase):
         self.run_ok(["git", "push", "-q", "origin", "main"], cwd=upstream)
 
     @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
+    def test_plan_updates_a_behind_checkout_before_reviewing_delivery(self):
+        # Prediction: planning takes an already rewritten base and reviews its shipped copy; one apply merges
+        # the cleanup, removes the copy from the checkout, and leaves no cleanup branch or worktree.
+        repo, bare = self.installed_and_pushed("plan-behind")
+        self.rewritten_upstream(repo, bare)
+        base = self.run_ok(["git", "--git-dir", bare, "rev-parse", "main"]).stdout
+        expected = self.run_ok(
+            ["node", "-e", "const {fingerprint}=require(process.argv[1]);console.log(fingerprint(process.argv[2]))",
+             ROOT / "bin/skill-ownership.js", self.root / "plan-behind-upstream/.agents/skills/devlyn-ideate"]).stdout.strip()
+        plan, path = self.plan("--project", repo)
+        self.assertEqual(self.run_ok(["git", "rev-parse", "HEAD"], cwd=repo).stdout, base)
+        item = next(i for i in plan["scopes"][0]["items"] if i["relative"] == ".agents/skills/devlyn-ideate")
+        self.assertEqual((item["action"], item["route"], item["before"]),
+                         ("remove", "delivery", {"type": "directory", "sha256": expected}))
+        [scope] = self.apply(plan, path)["scopes"]
+        self.assertEqual((scope["state"], scope["error"], scope["delivery"]["state"]), ("done", None, "merged"), scope)
+        self.assertFalse((repo / ".agents/skills/devlyn-ideate").exists())
+        self.assertEqual(self.run_ok(["git", "branch", "--list", "devlyn/cleanup-*"], cwd=repo).stdout.strip(), "")
+        self.assertFalse(list((self.root / "plan-behind.devlyn.noindex").glob("devlyn-cleanup-*")))
+
+    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
+    def test_plan_refreshes_both_scopes_sharing_a_behind_checkout(self):
+        # Prediction: when two project inputs share a behind checkout, both scopes review the base copy's
+        # preimage even though only the first scope's update moves HEAD.
+        repo, bare = self.installed_and_pushed("plan-shared")
+        self.rewritten_upstream(repo, bare)
+        base = self.run_ok(["git", "--git-dir", bare, "rev-parse", "main"]).stdout
+        expected = self.run_ok(
+            ["node", "-e", "const {fingerprint}=require(process.argv[1]);console.log(fingerprint(process.argv[2]))",
+             ROOT / "bin/skill-ownership.js", self.root / "plan-shared-upstream/.agents/skills/devlyn-ideate"]).stdout.strip()
+        plan, _ = self.plan("--project", repo, "--project", repo / ".agents")
+        self.assertEqual(self.run_ok(["git", "rev-parse", "HEAD"], cwd=repo).stdout, base)
+        self.assertEqual(len(plan["scopes"]), 2)
+        for scope in plan["scopes"]:
+            with self.subTest(scope=scope["id"]):
+                item = next(i for i in scope["items"] if i["relative"] == ".agents/skills/devlyn-ideate")
+                self.assertEqual((item["action"], item["route"], item["before"]),
+                                 ("remove", "delivery", {"type": "directory", "sha256": expected}))
+
+    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
+    def test_plan_on_another_branch_reviews_the_local_copy(self):
+        # Prediction: a rewritten base does not move another branch during planning; the review keeps the local
+        # preimage and apply still reports update-checkout without moving HEAD.
+        repo, bare = self.installed_and_pushed("plan-feature")
+        self.rewritten_upstream(repo, bare)
+        self.run_ok(["git", "checkout", "-qb", "work"], cwd=repo)
+        before = self.run_ok(["git", "rev-parse", "HEAD"], cwd=repo).stdout
+        expected = self.run_ok(
+            ["node", "-e", "const {fingerprint}=require(process.argv[1]);console.log(fingerprint(process.argv[2]))",
+             ROOT / "bin/skill-ownership.js", repo / ".agents/skills/devlyn-ideate"]).stdout.strip()
+        plan, path = self.plan("--project", repo)
+        self.assertEqual(self.run_ok(["git", "rev-parse", "HEAD"], cwd=repo).stdout, before)
+        item = next(i for i in plan["scopes"][0]["items"] if i["relative"] == ".agents/skills/devlyn-ideate")
+        self.assertEqual((item["action"], item["route"], item["before"]),
+                         ("remove", "delivery", {"type": "directory", "sha256": expected}))
+        [scope] = self.apply(plan, path)["scopes"]
+        self.assertEqual((scope["state"], scope["error"]["code"]), ("failed", "update-checkout"), scope)
+        self.assertEqual(self.run_ok(["git", "rev-parse", "HEAD"], cwd=repo).stdout, before)
+
+    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
+    def test_plan_with_an_unreachable_remote_keeps_the_local_review(self):
+        # Prediction: a failed fetch still returns the local review with HEAD unchanged and no owned ref left.
+        repo, bare = self.installed_and_pushed("plan-offline")
+        self.rewritten_upstream(repo, bare)
+        shutil.rmtree(bare)
+        before = self.run_ok(["git", "rev-parse", "HEAD"], cwd=repo).stdout
+        expected = self.run_ok(
+            ["node", "-e", "const {fingerprint}=require(process.argv[1]);console.log(fingerprint(process.argv[2]))",
+             ROOT / "bin/skill-ownership.js", repo / ".agents/skills/devlyn-ideate"]).stdout.strip()
+        plan, _ = self.plan("--project", repo)
+        self.assertEqual(self.run_ok(["git", "rev-parse", "HEAD"], cwd=repo).stdout, before)
+        item = next(i for i in plan["scopes"][0]["items"] if i["relative"] == ".agents/skills/devlyn-ideate")
+        self.assertEqual((item["action"], item["route"], item["before"]),
+                         ("remove", "delivery", {"type": "directory", "sha256": expected}))
+        self.assertEqual(self.run_ok(["git", "for-each-ref", "refs/devlyn/cleanup/"], cwd=repo).stdout, "")
+
+    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
     def test_the_checkout_update_is_a_fast_forward_whatever_the_branch_merge_options(self):
         # Prediction (review MEDIUM): a branch configured to squash or merge with `-s ours` still lands exactly on the
         # base commit, with nothing left staged.

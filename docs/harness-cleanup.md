@@ -9,12 +9,18 @@ devlyn cleanup --plan [--machine] [--project <abs>]… [--account-home <abs>]…
 devlyn cleanup --apply --plan-file <abs> --digest <sha256> [--events] --json
 ```
 
-The envelope, exit codes and `Reason` shape are activation's. `--plan` is read-only and
+The envelope, exit codes and `Reason` shape are activation's. `--plan`
 returns `{schemaVersion, version, inputs, scopes, digest}`: one `machine` scope (the
 home's `.agents`, `.codex`, `.claude`, `.grok` skills and each account home's `skills`,
 plus legacy commands) and one `project` scope per `--project`. Every item carries `id`,
 `kind`, `path`, `relative`, `route` (`local`, or `delivery` when Git tracks it), `action`
 (`remove`, `edit` or `skip`), `reasons` and its `before` preimage.
+
+For a project with a remote and tracked items to remove or edit, `--plan` first attempts
+the same base-branch fast-forward described below. After all attempts, if any HEAD moved,
+all scopes are planned again so the review covers the bytes delivery acts on. Anything else is planned
+as it stands, including another branch, a refused fast-forward or a failed fetch. The fetch
+is non-interactive and times out after 30 seconds; failure does not fail the plan.
 
 Removed: core skills byte-identical to a shipped copy and their renamed forms, retired
 skills and standard copies, the install marker and `_shared` only when no devlyn skill stays
