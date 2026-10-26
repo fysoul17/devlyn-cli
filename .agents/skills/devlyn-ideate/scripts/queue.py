@@ -661,11 +661,13 @@ def clean(common, recorded):
     return notes
 
 
-def task_complete(action, *, exclude_receipts=(), **values):
+def task_complete(action, *, exclude_receipts=(), warnings=None, **values):
     helper = shared("task-complete")
     try:
         # Preserve the previous-receipt sweep, excluding only queue-invalid owners.
         options = {"exclude_receipts": exclude_receipts} if action == "allocate" else {}
+        if action in {"allocate", "complete"}:
+            options["warnings"] = warnings
         return helper[action](argparse.Namespace(**values), **options)
     except (helper["CompletionError"], OSError, KeyError, TypeError, ValueError) as exc:
         # Inherited helper containment includes these three programming-error types; the controller boundary is narrower.
@@ -1079,7 +1081,8 @@ def allocate(v, row, opts):
     deps = [v["states"][f"{loop}.{dep}"] for dep in package["tasks"][task]["depends_on"]]
     values = {"repo": str(anchor), "task": identity, "branch": branch_of(identity), "repository": None,
               "base": manifest["base_ref"], "remote": "origin", "worktree": str(opts.worktree_root / loop / task),
-              "local_base": None, "from_receipt": None, "start": None}
+              "local_base": None, "from_receipt": None, "start": None,
+              "keep_root": str(opts.keep_root) if opts.keep_root else None}
     if is_local(v, loop):
         tip, start = frontier(v, loop), local_start(v, loop)[0]
         for dep in deps:
@@ -1113,18 +1116,7 @@ def allocate(v, row, opts):
     if values["start"] and (drift := instruction_drift(anchor, start)):
         return (f"the installed instructions ({drift}) in this checkout differ from those in its start commit {start}, so it would run "
                 f"without them; commit them and push them to origin/{manifest['base_ref']}")
-    if os.name == "nt" and opts.default_worktree_root:
-        try:
-            opts.worktree_root.mkdir(exist_ok=False)
-        except FileExistsError:
-            pass  # An existing root belongs to its owner; never change its attributes.
-        else:
-            try:
-                shared("platform-support")["mark_not_content_indexed"](opts.worktree_root)
-            except OSError as exc:
-                opts.root_diagnostics.append(
-                    f"content indexing unchanged: {opts.worktree_root}: could not set FILE_ATTRIBUTE_NOT_CONTENT_INDEXED: {exc}; continuing")
-    result = task_complete("allocate", exclude_receipts=v["invalid_receipts"], **values)
+    result = task_complete("allocate", exclude_receipts=v["invalid_receipts"], warnings=opts.warnings, **values)
     progress(identity, f"allocated {result['worktree']}")
     return None
 
@@ -1340,7 +1332,7 @@ def advance(v, row, opts):
     if receipt.get("delivery") not in SETTLED:
         packet = read_json(path.parent / "packet.json")
         # The plan's mode seeds the first delivery call; a later per-task --mode persists in the receipt.
-        result = task_complete("complete", receipt=str(path), acceptance=None,
+        result = task_complete("complete", warnings=opts.warnings, receipt=str(path), acceptance=None,
                                mode=None if local or receipt.get("mode_override") else packet["delivery"], local_only=local, writers_stopped=True)
         progress(identity, f"delivery {result['status']}")
         if result.get("merge_refused"):
@@ -1498,21 +1490,10 @@ def prune_parents(v, root):
         try:
             if work.exists():
                 continue
-            require(work == work.resolve() and not work.is_symlink() and not parent.is_symlink(),
+            require(work == helper["resolve_for_pruning"](work) and not work.is_symlink() and not parent.is_symlink(),
                     f"symlink or escape at {work}")
-            registered = helper["registrations"](receipt)
-            while parent != root and parent.is_relative_to(root):
-                require(not any(Path(path).is_relative_to(parent) for path in registered),
-                        f"registered worktree retains parent: {parent}")
-                try:
-                    parent.rmdir()
-                except FileNotFoundError:
-                    pass  # A previous cleanup already removed this parent.
-                except OSError as exc:
-                    if exc.errno in {errno.ENOTEMPTY, errno.EEXIST}:
-                        break
-                    raise
-                parent = parent.parent
+            retained = helper["prune_empty_parents"](receipt, parent, root)
+            require(retained is None, retained)
         except (LoopError, OSError, helper["CompletionError"]) as exc:
             v["cleanup"].append(f"parent cleanup retained: {parent}: {exc}; remove it when empty or drain again")
 
@@ -1523,9 +1504,9 @@ def drain(args):
     enforce_binding(common, anchor)
     diagnostics = skill_diagnostics(anchor)
     require(any("{packet}" in part for part in args.executor), "executor argv must contain {packet}, replaced by the task packet path")
-    args.default_worktree_root = args.worktree_root is None
-    args.root_diagnostics = []
-    args.worktree_root = Path(args.worktree_root).resolve() if args.worktree_root else anchor.parent / f"{anchor.name}.devlyn.noindex"
+    args.warnings = diagnostics["warnings"]
+    args.keep_root = Path(args.worktree_root).resolve() if args.worktree_root else None
+    args.worktree_root = args.keep_root or anchor.parent / ".devlyn-worktrees" / anchor.name
     with lock(common, "drain.lock", blocking=False):
         attempted, last, status, reason, refused = set(), None, "DRAINED", None, {}
         try:
@@ -1561,7 +1542,6 @@ def drain(args):
                 last = view(anchor, common, args.local_only)
         if last is None:
             return {"status": status, "reason": reason, **diagnostics}
-        last["cleanup"].extend(args.root_diagnostics)
         annotate(last, refused)
         prune_parents(last, args.worktree_root)
         try:

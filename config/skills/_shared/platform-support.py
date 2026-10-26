@@ -136,6 +136,15 @@ def mark_not_content_indexed(path):
     _kernel.SetFileAttributesW(str(path), attrs | stat.FILE_ATTRIBUTE_NOT_CONTENT_INDEXED)
 
 
+def mark_hidden(path):
+    """Hide a newly created directory on Windows, preserving its other attributes."""
+    if os.name != "nt":
+        return
+    attrs = _kernel.GetFileAttributesW(str(path))
+    _checked(attrs != 0xFFFFFFFF, _kernel.GetFileAttributesW, (str(path),))
+    _kernel.SetFileAttributesW(str(path), attrs | stat.FILE_ATTRIBUTE_HIDDEN)
+
+
 if os.name == "nt":
     import _winapi
     import ctypes
