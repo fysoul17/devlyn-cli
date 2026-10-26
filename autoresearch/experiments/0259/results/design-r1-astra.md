@@ -1,0 +1,6 @@
+VERDICT: SHIP
+FINDINGS:
+
+- [LOW] Arms / Interpretation limits — “Names this principle as one cause” permits stronger semantic attribution than the experiment supports — Keep the whole-line deletion: deleting only the first sentence leaves the abstraction and subtraction instructions active. Keep “Seven rules” and 1, 3–7 unchanged to preserve surviving text. The stated gap limitation is sufficient for this literal ablation; clarify that a positive result implicates the complete rule-2 deletion, without distinguishing individual sentences or the numbering inconsistency.
+- [LOW] Endpoints / Decision / Prediction — No treatment-specific defect found — Retain P1, P2, the two-test Holm family, readiness rules, headlines and predictions. P2 already measures the D3 public-path choice. F10 file length is unnecessary for the behavioral hypothesis; if collected, prespecify the file/counting convention and report it descriptively, outside the tests and headline. Shorter code cannot distinguish simplification from omitted handling.
+- [LOW] Arms — Zero skill reads in 0258 does not establish zero exposure in 0259 — Report skill reads in this run too. Keep the remaining “Subtractive-first” mention unchanged, and interpret any exposure as retained instruction content; do not exclude those cells or infer complete removal of simplicity guidance.
