@@ -1,0 +1,5 @@
+Read-only code review round 3 (final unless a HIGH remains) of the 0261 research apparatus. Do not edit any file.
+
+Worktree: /Users/aipalm/Documents/GitHub/.devlyn-worktrees/devlyn-cli/0261-registration (uncommitted `autoresearch/experiments/0261/`). Your round-2 reviews: /private/tmp/claude-501/-Users-aipalm-Documents-GitHub-devlyn-cli/39734701-88f7-45dd-bd5a-f5397ef89eed/scratchpad/0261-code-r2-astra.raw and /private/tmp/claude-501/-Users-aipalm-Documents-GitHub-devlyn-cli/39734701-88f7-45dd-bd5a-f5397ef89eed/scratchpad/0261-code-r2-grok.raw. The round-2 fix brief: /private/tmp/claude-501/-Users-aipalm-Documents-GitHub-devlyn-cli/39734701-88f7-45dd-bd5a-f5397ef89eed/scratchpad/codex-0261-fix2.md.
+
+Check only whether the three round-2 findings are resolved (two-app/path-alias: exit 1 only for a missing acknowledged item, every later failure exit 2; file-shape witness: first positional file parameter with further parameters; blind.py: bare `set` only), and any new HIGH or MEDIUM. Offline tests: 0261 362 passed; 0260 47 passed, 1 skipped. Under 250 words. End with exactly one line: `VERDICT: SHIP` or `VERDICT: REVISE`.

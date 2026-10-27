@@ -1,0 +1,6 @@
+Read-only confirmation review of one wording fix in devlyn-cli experiment 0261. Do not edit any file.
+
+Worktree: /Users/aipalm/Documents/GitHub/.devlyn-worktrees/devlyn-cli/0261-registration. Previous round: prompt /private/tmp/claude-501/-Users-aipalm-Documents-GitHub-devlyn-cli/39734701-88f7-45dd-bd5a-f5397ef89eed/scratchpad/0261-r6-review.md; reviews /private/tmp/claude-501/-Users-aipalm-Documents-GitHub-devlyn-cli/39734701-88f7-45dd-bd5a-f5397ef89eed/scratchpad/0261-r6-astra.raw (SHIP) and /private/tmp/claude-501/-Users-aipalm-Documents-GitHub-devlyn-cli/39734701-88f7-45dd-bd5a-f5397ef89eed/scratchpad/0261-r6-grok.raw (REVISE, one HIGH: the widening-trigger phrase list read as closed misses "one Node process" and "inside the process").
+Fix applied in `autoresearch/experiments/0261/DESIGN.md`, paragraph "**Widening triggers**": the rule now asks which unit the report names — the operating-system process "in any wording" (examples include "one Node process", "within the process", "inside the process") versus the app instance "in any wording" — and says the examples are not a closed list.
+
+Check only: is the HIGH resolved, do the ten frozen calibration calls stay unchanged under the new wording, and is there any new HIGH or MEDIUM? Under 200 words. End with exactly one line: `VERDICT: SHIP` or `VERDICT: REVISE`.
