@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { contentHash } = require('../bin/skill-ownership');
+const aiOs = require('./cleanup-ai-os-history.json');
 const crypto = require('crypto');
 const { execFileSync } = require('child_process');
 const root = path.join(__dirname, '..');
@@ -66,7 +67,9 @@ for (const [name, hashes] of Object.entries(skills)) {
 // Bundled upstream Vercel bytes cannot prove devlyn ownership of an independent install.
 delete skills['web-design-guidelines'];
 const sorted = (map) => Object.fromEntries(Object.keys(map).sort().map((name) => [name, [...map[name]].sort()]));
+for (const [name, hashes] of Object.entries(aiOs.commands)) for (const hash of hashes) add(commands, name, hash);
 const result = { source: 'scripts/update-cleanup-history.js: LF-normalized Git blobs from first-parent config/agents-config/optional-skills history and release tags; excludes optional-addon hashes and third-party web-design-guidelines; commands: devlyn.*.md from config/commands, .claude/commands, commands and optional-commands/* in the same commits via skill-ownership.contentHash',
+  aiOsSource: { source: aiOs.source, revision: aiOs.revision }, commandDirectories: aiOs.commandDirectories, hooks: aiOs.hooks,
   files: sorted(files), commands: sorted(commands), skills: sorted(skills), evaluators: [...evaluators.values()].sort((a, b) => a.sha256.localeCompare(b.sha256)) };
 const output = JSON.stringify(result, null, 2) + '\n';
 const target = path.join(root, 'bin/cleanup-history.json');

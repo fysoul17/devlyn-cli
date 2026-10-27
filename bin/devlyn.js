@@ -5,6 +5,7 @@ const path = require('path');
 const os = require('os');
 const crypto = require('crypto');
 const { execSync, spawnSync } = require('child_process');
+const { parseTree, findNodeAtLocation, applyEdits } = require('jsonc-parser');
 
 const CONFIG_SOURCE = path.join(__dirname, '..', 'config');
 const OPTIONAL_SKILLS_SOURCE = path.join(__dirname, '..', 'optional-skills');
@@ -887,8 +888,8 @@ function replaceFile(file, text) {
   }
 }
 
-function cleanRetiredSettings(settings) {
-  let changed = false;
+function cleanRetiredSettings(settings, hookScripts = []) {
+  let changed = cleanJarvisSettings(settings, hookScripts);
   // Remove exactly the retired Stop hook command, and its entry only when nothing else is left in it.
   const retiredHook = (hook) => hook?.type === 'command' && hook.command === RETIRED_STOP_HOOK;
   const stop = Array.isArray(settings.hooks?.Stop) ? settings.hooks.Stop : [];
@@ -901,6 +902,91 @@ function cleanRetiredSettings(settings) {
     changed = true;
   }
   return changed;
+}
+
+// A hook's event, matcher and complete command object must be shipped bytes (JSON key order aside).
+// Extra owner hooks and wrapper keys survive. Script names alone never authorize a settings edit.
+function cleanJarvisSettings(settings, scripts) {
+  let changed = false;
+  for (const [event, entries] of Object.entries(settings?.hooks || {})) {
+    if (!Array.isArray(entries)) continue;
+    for (let i = entries.length - 1; i >= 0; i--) {
+      const entry = entries[i];
+      if (!Array.isArray(entry?.hooks)) continue;
+      const kept = entry.hooks.filter((hook) => {
+        const hash = crypto.createHash('sha256').update(cleanupCanonical([event, entry.matcher, hook])).digest('hex');
+        return !scripts.some((script) => CLEANUP_HISTORY.hooks[script]?.entries.includes(hash));
+      });
+      if (kept.length === entry.hooks.length) continue;
+      changed = true;
+      entry.hooks = kept;
+      if (!kept.length && Object.keys(entry).every((key) => ['matcher', 'hooks'].includes(key))) entries.splice(i, 1);
+    }
+  }
+  return changed;
+}
+
+function cleanupHookReferenced(settings, script) {
+  // Conservative even for shell wrappers, absolute paths, Windows separators and malformed entries.
+  return JSON.stringify(settings).toLowerCase().includes(path.posix.basename(script).toLowerCase());
+}
+
+function cleanupReadSettings(base, name = 'settings.json') {
+  const file = path.join(base, '.claude', name);
+  if (!cleanupRealParents(base, file)) return { safe: false };
+  const stat = fs.lstatSync(file, { throwIfNoEntry: false });
+  if (!stat) return { safe: true, settings: {} };
+  if (!stat.isFile() || stat.nlink !== 1) return { safe: false };
+  try {
+    const text = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(fs.readFileSync(file));
+    const settings = JSON.parse(text.replace(/^\uFEFF/, ''));
+    const tree = parseTree(text.replace(/^\uFEFF/, ' '));
+    const hooks = tree.children?.filter((node) => node.children?.[0]?.value === 'hooks') || [];
+    const duplicates = (node) => {
+      if (node.type === 'object') {
+        const names = node.children.map((property) => property.children[0].value);
+        if (new Set(names).size !== names.length) return true;
+      }
+      return node.children?.some(duplicates) || false;
+    };
+    // Duplicate owner keys elsewhere survive; duplicate hook paths make a surgical edit ambiguous.
+    if (hooks.length > 1 || (hooks.length && duplicates(hooks[0]))) return { safe: false };
+    return settings && typeof settings === 'object' && !Array.isArray(settings)
+      ? { safe: true, settings, text } : { safe: false };
+  } catch (error) {
+    if (error instanceof SyntaxError || error.code === 'ERR_ENCODING_INVALID_ENCODED_DATA') return { safe: false };
+    throw error;
+  }
+}
+
+function cleanupSettingsText(text, settings, scripts) {
+  const before = Object.entries(settings.hooks || {}).flatMap(([event, entries]) => !Array.isArray(entries) ? []
+    : entries.map((entry, index) => ({ event, entries, entry, index, hooks: Array.isArray(entry?.hooks) ? [...entry.hooks] : [] })));
+  if (!cleanRetiredSettings(settings, scripts)) return text;
+  const removals = [];
+  for (const { event, entries, entry, index, hooks } of before.reverse()) {
+    const location = ['hooks', event, index];
+    if (!entries.includes(entry)) removals.push(location);
+    else for (let i = hooks.length - 1; i >= 0; i--) if (!entry.hooks.includes(hooks[i])) removals.push([...location, 'hooks', i]);
+  }
+  // Only prune containers this cleanup emptied; pre-existing owner empties are not leftovers.
+  const emptiedEvents = [...new Set(before.map(({ event }) => event))].filter((event) => settings.hooks[event].length === 0);
+  removals.push(...emptiedEvents.map((event) => ['hooks', event]));
+  if (emptiedEvents.length === Object.keys(settings.hooks).length) removals.push(['hooks']);
+  // Remove array elements and object properties by AST ranges, including the adjacent comma, without serializing owner
+  // values. jsonc-parser 3.3.1's modify() truncates a last-element deletion without formatting.
+  for (const location of removals) {
+    let node = findNodeAtLocation(parseTree(text.replace(/^\uFEFF/, ' ')), location);
+    if (node?.parent?.type === 'property') node = node.parent;
+    if (!node || !['array', 'object'].includes(node.parent?.type)) throw new Error('Settings edit path changed');
+    const siblings = node.parent.children, index = siblings.indexOf(node);
+    const previous = siblings[index - 1], next = siblings[index + 1];
+    const offset = previous ? previous.offset + previous.length : node.offset;
+    const end = !previous && next ? next.offset : node.offset + node.length;
+    text = applyEdits(text, [{ offset, length: end - offset, content: '' }]);
+  }
+  const after = JSON.parse(text.replace(/^\uFEFF/, '')); // Refuse an invalid edit before changing any bytes.
+  return Object.keys(after).length === 0 ? null : text;
 }
 
 // Shared user roots need one writer from ownership checks through the last addon write.
@@ -1545,20 +1631,22 @@ function cleanupSkillRoot(base, root, current) {
 }
 
 function cleanupCommands(base) {
-  const commands = path.join(base, '.claude', 'commands');
-  if (!cleanupRealParents(base, path.join(commands, 'x')) || !fs.lstatSync(commands, { throwIfNoEntry: false })?.isDirectory()) return [];
-  const names = new Set(DEPRECATED_FILES.map((file) => path.basename(file).toLowerCase()));
-  return fs.readdirSync(commands).sort().filter((name) => names.has(name.toLowerCase())
-    && fs.lstatSync(path.join(commands, name)).isFile())
-    .map((name) => {
-      const file = path.join(commands, name);
-      const proven = CLEANUP_HISTORY.commands[name.toLowerCase()]?.includes(contentHash(file));
-      return { kind: 'legacy-command', path: file, base, action: proven ? 'remove' : 'skip',
-        reasons: proven ? [] : [cleanupReason('modified-copy')] };
-    });
+  return CLEANUP_HISTORY.commandDirectories.flatMap((directory) => {
+    const commands = path.join(base, directory);
+    if (!cleanupRealParents(base, path.join(commands, 'x')) || !fs.lstatSync(commands, { throwIfNoEntry: false })?.isDirectory()) return [];
+    const names = new Set([...DEPRECATED_FILES.map((file) => path.basename(file).toLowerCase()), ...Object.keys(CLEANUP_HISTORY.commands)]);
+    return fs.readdirSync(commands).sort().filter((name) => names.has(name.toLowerCase())
+      && fs.lstatSync(path.join(commands, name)).isFile())
+      .map((name) => {
+        const file = path.join(commands, name);
+        const proven = CLEANUP_HISTORY.commands[name.toLowerCase()]?.includes(contentHash(file));
+        return { kind: 'legacy-command', path: file, base, action: proven ? 'remove' : 'skip',
+          reasons: proven ? [] : [cleanupReason('modified-copy')] };
+      });
+  });
 }
 
-function cleanupProjectFiles(base) {
+function cleanupProjectFiles(base, includedHooks = new Set()) {
   const items = [];
   const hash = (file) => crypto.createHash('sha256')
     .update(fs.readFileSync(file).toString('latin1').replace(/\r\n/g, '\n'), 'latin1').digest('hex');
@@ -1569,14 +1657,41 @@ function cleanupProjectFiles(base) {
     }
   }
   const settingsFile = path.join(base, '.claude', 'settings.json');
-  if (cleanupRealParents(base, settingsFile) && fs.lstatSync(settingsFile, { throwIfNoEntry: false })?.isFile()) {
-    try {
-      const settings = JSON.parse(fs.readFileSync(settingsFile, 'utf8').replace(/^﻿/, ''));
-      const stop = Array.isArray(settings?.hooks?.Stop) ? settings.hooks.Stop : [];
-      if (stop.some((entry) => Array.isArray(entry?.hooks) && entry.hooks.some((hook) => hook?.type === 'command' && hook.command === RETIRED_STOP_HOOK))) {
-        items.push({ kind: 'settings-entry', path: settingsFile, base, action: 'edit', reasons: [] });
-      }
-    } catch (error) { if (!(error instanceof SyntaxError)) throw error; }
+  const { safe, settings } = cleanupReadSettings(base);
+  const localSettings = cleanupReadSettings(base, 'settings.local.json');
+  const hookScripts = [], hookCandidates = [];
+  for (const [name, history] of Object.entries(CLEANUP_HISTORY.hooks)) {
+    const file = path.join(base, name);
+    const stat = fs.lstatSync(file, { throwIfNoEntry: false });
+    if (!stat) continue;
+    const item = { kind: 'legacy-hook', path: file, base, action: 'skip', reasons: [cleanupReason('outside-link')] };
+    items.push(item);
+    if (!cleanupRealParents(base, file) || !stat.isFile() || stat.nlink !== 1) continue;
+    const proven = history.hashes.includes(contentHash(file));
+    Object.assign(item, { action: proven ? 'remove' : 'skip', reasons: proven ? [] : [cleanupReason('modified-copy')] });
+    if (!safe || !localSettings.safe || cleanupHookReferenced(localSettings.settings, name)) {
+      Object.assign(item, { action: 'skip', reasons: [cleanupReason('dependent-copy')] });
+      continue;
+    }
+    if (!cleanupHookReferenced(settings, name)) continue;
+    const after = structuredClone(settings);
+    cleanJarvisSettings(after, [name]);
+    // Unknown commands/matchers/extra command keys retain the script. Routes cannot split a pair:
+    // a PR leaves the caller's tracked copy in place until the base is taken.
+    if (cleanupHookReferenced(after, name) || cleanupTracked(file) !== cleanupTracked(settingsFile)) {
+      Object.assign(item, { action: 'skip', reasons: [cleanupReason('dependent-copy')] });
+      continue;
+    }
+    item.hookSettings = settingsFile;
+    hookCandidates.push(name);
+    if (proven || includedHooks.has(file)) hookScripts.push(name);
+  }
+  const stop = Array.isArray(settings?.hooks?.Stop) ? settings.hooks.Stop : [];
+  const retiredStop = stop.some((entry) => Array.isArray(entry?.hooks) && entry.hooks.some((hook) => hook?.type === 'command' && hook.command === RETIRED_STOP_HOOK));
+  if (safe && (retiredStop || hookCandidates.length)) {
+    const edit = retiredStop || hookScripts.length > 0;
+    items.push({ kind: 'settings-entry', path: settingsFile, base, action: edit ? 'edit' : 'skip',
+      reasons: edit ? [] : [cleanupReason('dependent-copy')], hookScripts, hookCandidates });
   }
   return items;
 }
@@ -1690,7 +1805,7 @@ function cleanupRetainSupport(items) {
   return items;
 }
 
-function cleanupProjectScope(project, current, includeModified = false) {
+function cleanupProjectScope(project, current, includeModified = false, includedHooks = new Set()) {
   const { repositoryIdentity } = require('./harness-status');
   const { physicalRoot } = require('./release');
   const root = physicalRoot(project);
@@ -1703,7 +1818,7 @@ function cleanupProjectScope(project, current, includeModified = false) {
   if (cleanupSameFile(base, os.homedir())) return { ...scope, items: whole('home-folder') };
   const items = [
     ...cleanupSkillRoots(['.agents', '.claude'].map((dir) => [base, path.join(base, dir, 'skills')]), current, includeModified),
-    ...cleanupCommands(base), ...cleanupProjectFiles(base), ...cleanupInstructions(base),
+    ...cleanupCommands(base), ...cleanupProjectFiles(base, includedHooks), ...cleanupInstructions(base),
   ];
   const busy = identity && items.some((item) => cleanupAction(item, includeModified) !== 'skip') ? cleanupQueueBusy(base) : null;
   for (const item of items) {
@@ -1739,13 +1854,13 @@ function cleanupMachineScope(home, accountHomes, current, includeModified = fals
   return { kind: 'machine', root: home, name: null, remote: null, items: cleanupRetainSupport(items) };
 }
 
-function cleanupScopes(inputs, current, includeModified = false) {
+function cleanupScopes(inputs, current, includeModified = false, includedHooks = new Set()) {
   const { sha256 } = require('./release');
   const scopes = [];
   if (inputs.machine) scopes.push({ id: 'machine', ...cleanupMachineScope(os.homedir(), inputs.accountHomes, current, includeModified) });
   for (const project of inputs.projects) {
     let scope;
-    try { scope = cleanupProjectScope(project, current, includeModified); }
+    try { scope = cleanupProjectScope(project, current, includeModified, includedHooks); }
     catch (error) {
       scope = { kind: 'project', root: project, name: path.basename(project), remote: null, items: [{ kind: 'project', path: project, base: project,
         relative: '', route: 'local', action: 'skip', reasons: [cleanupReason(error.reason?.code === 'repository-unreadable' ? 'repository-unreadable' : 'project-unreadable', { detail: error.message })] }] };
@@ -1789,17 +1904,30 @@ function cleanupDigest(plan) {
 }
 
 // Apply one item a fresh plan proves right now; returns a reason when it is not what was proven.
-function cleanupApplyItem(item) {
+function cleanupValidateItem(item) {
   const now = cleanupPreimage(item.path, Boolean(item.included));
   if (now.type !== item.before.type || now.sha256 !== item.before.sha256) return cleanupReason('stale-plan');
   if (!cleanupRealParents(item.base, item.path)) return cleanupReason('outside-link');
+  return null;
+}
+
+function cleanupApplyItem(item) {
+  const invalid = cleanupValidateItem(item);
+  if (invalid) return invalid;
   if (cleanupAction(item) === 'remove') {
+    if (item.kind === 'legacy-hook') {
+      const { safe, settings } = cleanupReadSettings(item.base);
+      if (!safe || cleanupHookReferenced(settings, item.relative)) return cleanupReason('dependent-copy');
+    }
     fs.rmSync(item.path, { recursive: true }); // lstat/realParents never follow a link; rm removes the entry itself.
     return null;
   }
   if (item.kind === 'settings-entry') {
-    const settings = JSON.parse(fs.readFileSync(item.path, 'utf8').replace(/^﻿/, ''));
-    if (cleanRetiredSettings(settings)) replaceFile(item.path, JSON.stringify(settings, null, 2) + '\n');
+    const { safe, settings, text } = cleanupReadSettings(item.base);
+    if (!safe || text === undefined) return cleanupReason('stale-plan');
+    const after = cleanupSettingsText(text, settings, item.hookScripts);
+    if (after === null) fs.unlinkSync(item.path);
+    else if (after !== text) replaceFile(item.path, after);
     return null;
   }
   if (item.kind === 'instructions') {
@@ -1822,9 +1950,54 @@ function cleanupProven(reviewed, fresh) {
     const same = match && match.action === item.action && (!item.included || (cleanupCanInclude(match) && item.before.sha256 !== null))
       && match.relative === item.relative && match.route === item.route
       && match.before.type === item.before.type && match.before.sha256 === item.before.sha256
+      && cleanupCanonical(match.hookScripts || []) === cleanupCanonical(item.hookScripts || [])
       && !(cleanupSupport(item) && narrowed.has(path.dirname(item.path)));
     return { reviewed: item, fresh: same ? { ...match, included: item.included } : null };
   });
+}
+
+// A narrowed or stale review may not split a settings edit from any script it disables.
+function cleanupCoupledPairs(pairs) {
+  const byPath = new Map(pairs.map((pair) => [pair.reviewed.path, pair]));
+  for (const pair of pairs.filter(({ reviewed }) => reviewed.kind === 'settings-entry')) {
+    const scripts = (pair.reviewed.hookScripts || []).map((name) => byPath.get(path.join(pair.reviewed.base, name)));
+    if (!pair.fresh || scripts.some((script) => !script?.fresh || cleanupAction(script.fresh) !== 'remove')) {
+      pair.fresh = null;
+      for (const script of scripts) if (script) script.fresh = null;
+    }
+  }
+  for (const pair of pairs) {
+    if (pair.reviewed.hookSettings && (!byPath.get(pair.reviewed.hookSettings)?.fresh
+        || !byPath.get(pair.reviewed.hookSettings).fresh.hookScripts.includes(pair.reviewed.relative))) pair.fresh = null;
+  }
+  return pairs;
+}
+
+// Stage the scripts reversibly, then replace settings. A failed rename/write restores the scripts;
+// settings never references a script we permanently removed. Temp bytes are never source evidence.
+function cleanupApplyHookGroup(settings, scripts) {
+  for (const item of [settings, ...scripts]) {
+    const invalid = cleanupValidateItem(item);
+    if (invalid) return invalid;
+  }
+  const staged = [];
+  try {
+    for (const item of scripts) {
+      const temp = `${item.path}.${crypto.randomUUID()}.tmp`;
+      fs.renameSync(item.path, temp);
+      staged.push({ item, temp });
+    }
+    const error = cleanupApplyItem(settings);
+    if (error) throw new Error(error.code);
+  } catch (error) {
+    const errors = [error];
+    for (const { item, temp } of staged.reverse()) {
+      try { fs.renameSync(temp, item.path); } catch (rollback) { errors.push(rollback); }
+    }
+    throw new AggregateError(errors, errors.map((e) => e.message).join('; '));
+  }
+  for (const { temp } of staged) fs.unlinkSync(temp);
+  return null;
 }
 
 // Support entries (`_shared`, the marker) go last, and only when nothing beside them was refused.
@@ -1855,7 +2028,16 @@ function cleanupLocal(scope, items) {
     catch (error) { results.set(item.id, cleanupReason('apply-failed', { detail: error.message })); }
   };
   const run = () => {
-    for (const item of items.filter((item) => !cleanupSupport(item))) act(item);
+    for (const settings of items.filter((item) => item.hookScripts?.length)) {
+      const scripts = items.filter((item) => item.hookSettings === settings.path);
+      const group = [settings, ...scripts];
+      let error;
+      try {
+        error = group.some((item) => cleanupTracked(item.path)) ? cleanupReason('tracked-copy') : cleanupApplyHookGroup(settings, scripts);
+      } catch (failure) { error = cleanupReason('apply-failed', { detail: failure.message }); }
+      for (const item of group) results.set(item.id, error);
+    }
+    for (const item of items.filter((item) => !cleanupSupport(item) && !results.has(item.id))) act(item);
     for (const item of items.filter(cleanupSupport)) {
       const refused = items.some((other) => !cleanupSupport(other) && path.dirname(other.path) === path.dirname(item.path)
         && results.get(other.id) !== null);
@@ -2001,7 +2183,8 @@ function cleanupUpdateCheckout(scope) {
 // With every reviewed item already settled by the remote base, the worktree is released with
 // nothing to deliver.
 function cleanupDeliveryCommit(worktree, items, current, release, settledUpstream) {
-  const fresh = cleanupProjectScope(worktree, current, items.some((item) => item.included));
+  const includedHooks = new Set(items.filter((item) => item.kind === 'legacy-hook' && item.included).map((item) => path.join(worktree, item.relative)));
+  const fresh = cleanupProjectScope(worktree, current, items.some((item) => item.included), includedHooks);
   const available = new Map(fresh.items.map((item) => [`${item.kind}\u0000${item.relative}`, item]));
   const pairs = items.map((reviewed) => {
     const fresh = available.get(`${reviewed.kind}\u0000${reviewed.relative}`);
@@ -2011,13 +2194,23 @@ function cleanupDeliveryCommit(worktree, items, current, release, settledUpstrea
     ? fresh.action !== reviewed.action || fresh.route !== 'delivery'
       || (reviewed.included && (!cleanupCanInclude(fresh) || before.sha256 === null))
       || before.type !== reviewed.before.type || before.sha256 !== reviewed.before.sha256
+      || cleanupCanonical(fresh.hookScripts || []) !== cleanupCanonical(reviewed.hookScripts || [])
     : !settledUpstream(reviewed.relative)));
   // Check the entire batch before mutating even one item; the remote base cannot replace the reviewed preimage.
   if (stale.length) return release(cleanupReason('stale-plan', { detail: stale.map(({ reviewed }) => reviewed.relative).join(', ') }));
+  if (cleanupCoupledPairs(pairs.filter(({ fresh }) => fresh)).some((pair) => !pair.fresh)) return release(cleanupReason('stale-plan'));
   const present = pairs.filter(({ fresh }) => fresh);
   if (!present.length) return release();
   const applied = [];
+  for (const { reviewed, fresh: settings } of present.filter(({ fresh }) => fresh.hookScripts?.length)) {
+    const scripts = present.filter(({ fresh }) => fresh.hookSettings === settings.path)
+      .map(({ reviewed, fresh }) => ({ ...fresh, before: reviewed.before, included: reviewed.included }));
+    const error = cleanupApplyHookGroup({ ...settings, before: reviewed.before }, scripts);
+    if (error) return release(error);
+    applied.push(settings.relative, ...scripts.map((item) => item.relative));
+  }
   for (const { reviewed, fresh } of present) {
+    if (applied.includes(fresh.relative)) continue;
     const error = cleanupApplyItem({ ...fresh, before: reviewed.before, included: reviewed.included });
     if (error) return release(cleanupReason(error.code, { ...error.params, detail: reviewed.relative }));
     applied.push(fresh.relative);
@@ -2052,12 +2245,20 @@ function cleanupDeliveryCommit(worktree, items, current, release, settledUpstrea
 function cleanupApply(plan, { events = false } = {}) {
   const current = cleanupCurrentFingerprints();
   const includeModified = plan.scopes.some((scope) => scope.items.some((item) => item.included));
-  const fresh = new Map(cleanupScopes(plan.inputs, current, includeModified).map((scope) => [scope.id, scope]));
+  const includedHooks = new Set(plan.scopes.flatMap((scope) => scope.items)
+    .filter((item) => item.kind === 'legacy-hook' && item.included).map((item) => item.path));
+  // Explicit selection of a reviewed edited script also selects its reviewed settings preimage.
+  for (const scope of plan.scopes) for (const item of scope.items) {
+    if (!item.hookCandidates || (item.action === 'skip' && item.reasons[0]?.code !== 'dependent-copy')) continue;
+    const selected = item.hookCandidates.filter((name) => includedHooks.has(path.join(item.base, name)));
+    if (selected.length) Object.assign(item, { action: 'edit', reasons: [], hookScripts: [...new Set([...item.hookScripts, ...selected])].sort() });
+  }
+  const fresh = new Map(cleanupScopes(plan.inputs, current, includeModified, includedHooks).map((scope) => [scope.id, scope]));
   let seq = 0;
   const emit = (scope) => { if (events) process.stdout.write(JSON.stringify({ schemaVersion: 1, event: 'scope', seq: ++seq, scope }) + '\n'); };
   const scopes = [];
   for (const reviewed of plan.scopes) {
-    const pairs = cleanupProven(reviewed, fresh.get(reviewed.id) || { items: [] });
+    const pairs = cleanupCoupledPairs(cleanupProven(reviewed, fresh.get(reviewed.id) || { items: [] }));
     const progress = { scopeId: reviewed.id, kind: reviewed.kind, name: reviewed.name, total: pairs.length, state: 'running', delivery: null, error: null };
     if (!pairs.length) { scopes.push({ ...progress, state: 'skipped' }); emit(scopes.at(-1)); continue; }
     emit(progress);
