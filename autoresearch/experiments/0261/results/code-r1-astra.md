@@ -1,0 +1,17 @@
+- **HIGH — [blind.py:67](/Users/aipalm/Documents/GitHub/.devlyn-worktrees/devlyn-cli/0261-registration/autoresearch/experiments/0261/blind.py:67): Credential evidence can enter packets.** Synthetic transcripts containing `cat .claude/.credentials.json` or `cat .codex/auth.json` retain their tool results; filtering only recognizes home/auth directory paths. Tree exclusions also permit `.codex/auth.json`. **Fix:** share a credential-path classifier between tree traversal and transcript filtering, covering credential filenames and directories; suppress corresponding tool results.
+
+- **HIGH — [decide.py:147](/Users/aipalm/Documents/GitHub/.devlyn-worktrees/devlyn-cli/0261-registration/autoresearch/experiments/0261/decide.py:147): Disclosure disputes can incorrectly preserve ADVANCE.** P reads only `false_completion`, independently of reproducing pairs classified `false_claim`. An in-memory test with B=8/C=2 and a third C disclosure disputed from accurate to false claim returned ADVANCE under every assignment. Counting that claim produces C=3/B=8, p=0.0918192, NO_EFFECT; the unresolved disagreement requires NOT_FINISHED. **Fix:** derive coherent P outcomes from claim judgments for every assignment and reject contradictory inputs.
+
+- **MEDIUM — [d4-writer-death.py:122](/Users/aipalm/Documents/GitHub/.devlyn-worktrees/devlyn-cli/0261-registration/autoresearch/experiments/0261/results/witnesses/d4-writer-death.py:122), also stall:139 and startup:93: Setup failures become non-defects.** All three accept pytest exit 1 indiscriminately. Mocked fixture setup errors before injection returned witness exit 0, allowing matching passes to reduce G1. **Fix:** distinguish pytest setup-phase errors from expected failures after injection and return exit 2 for setup failures.
+
+- **MEDIUM — [f10-nonobject-items-file.js:25](/Users/aipalm/Documents/GitHub/.devlyn-worktrees/devlyn-cli/0261-registration/autoresearch/experiments/0261/results/witnesses/f10-nonobject-items-file.js:25): Valid interfaces become inapplicable.** `createApp: file => …` returns exit 3 because parameter detection requires parentheses. Equivalent `function(file)` proceeds. This excludes applicable G1/G4 pairs. **Fix:** support single-parameter arrow signatures and test equivalent interfaces against identical triggers.
+
+- **MEDIUM — [blind.py:85](/Users/aipalm/Documents/GitHub/.devlyn-worktrees/devlyn-cli/0261-registration/autoresearch/experiments/0261/blind.py:85): Unreadable directories silently disappear.** `os.walk()` ignores scanning errors by default. A mocked `PermissionError` let copying complete normally with missing tree evidence. **Fix:** provide a raising `onerror` handler and test that packet generation aborts.
+
+- **LOW — [decide.py:53](/Users/aipalm/Documents/GitHub/.devlyn-worktrees/devlyn-cli/0261-registration/autoresearch/experiments/0261/decide.py:53): Reported Fisher probabilities are not always exact.** The inherited helper returns 1 whenever C≥B; B=C=16 should yield 0.5985738502. Significance is unaffected, but the printed probability/token is wrong. **Fix:** calculate the full hypergeometric tail for equal and reversed counts too.
+
+The insertion, schedule, null-baseline refusal, production removal of `prior_runtime`, witness origins/probe identity, judge limits/agreement, and guard arithmetic checked out.
+
+No files edited. Full pytest was blocked by the read-only sandbox’s unavailable temporary directory. The write-free subset passed **13 tests and 7 subtests**.
+
+VERDICT: REVISE

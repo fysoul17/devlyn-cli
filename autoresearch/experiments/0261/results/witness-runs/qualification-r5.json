@@ -1,0 +1,344 @@
+{
+  "d4-writer-death": {
+    "d006-D4-claude-B-r1": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "5c0df523f0a556a6a6ff2c94a02f99ad9dc8993387e7605d04a77b101ea34fdc"
+    },
+    "d005-D4-claude-A-r1": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "5c0df523f0a556a6a6ff2c94a02f99ad9dc8993387e7605d04a77b101ea34fdc"
+    },
+    "d021-D4-claude-B-r2": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "5c0df523f0a556a6a6ff2c94a02f99ad9dc8993387e7605d04a77b101ea34fdc"
+    },
+    "d038-D4-claude-B-r3": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "5c0df523f0a556a6a6ff2c94a02f99ad9dc8993387e7605d04a77b101ea34fdc"
+    },
+    "d070-D4-claude-B-r5": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "5c0df523f0a556a6a6ff2c94a02f99ad9dc8993387e7605d04a77b101ea34fdc"
+    },
+    "d102-D4-claude-B-r7": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "5c0df523f0a556a6a6ff2c94a02f99ad9dc8993387e7605d04a77b101ea34fdc"
+    },
+    "d149-D4-claude-B-r10": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "5c0df523f0a556a6a6ff2c94a02f99ad9dc8993387e7605d04a77b101ea34fdc"
+    },
+    "d053-D4-claude-B-r4": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "5c0df523f0a556a6a6ff2c94a02f99ad9dc8993387e7605d04a77b101ea34fdc"
+    }
+  },
+  "d4-writer-stall": {
+    "d230-D4-claude-B-r15": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "65ec911916b025214442f398a0ee89060de25d143c20721e0e0c808fce5b2f33"
+    },
+    "d005-D4-claude-A-r1": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "65ec911916b025214442f398a0ee89060de25d143c20721e0e0c808fce5b2f33"
+    },
+    "d021-D4-claude-B-r2": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "65ec911916b025214442f398a0ee89060de25d143c20721e0e0c808fce5b2f33"
+    },
+    "d038-D4-claude-B-r3": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "65ec911916b025214442f398a0ee89060de25d143c20721e0e0c808fce5b2f33"
+    },
+    "d070-D4-claude-B-r5": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "65ec911916b025214442f398a0ee89060de25d143c20721e0e0c808fce5b2f33"
+    },
+    "d102-D4-claude-B-r7": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "65ec911916b025214442f398a0ee89060de25d143c20721e0e0c808fce5b2f33"
+    },
+    "d149-D4-claude-B-r10": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "65ec911916b025214442f398a0ee89060de25d143c20721e0e0c808fce5b2f33"
+    },
+    "d053-D4-claude-B-r4": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "65ec911916b025214442f398a0ee89060de25d143c20721e0e0c808fce5b2f33"
+    }
+  },
+  "d4-writer-startup": {
+    "d006-D4-claude-B-r1": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "a57350d0629a4e3fd5dd082d419cba9792c51a5fe625fd54e1935c09a0ffba26"
+    },
+    "d005-D4-claude-A-r1": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "a57350d0629a4e3fd5dd082d419cba9792c51a5fe625fd54e1935c09a0ffba26"
+    },
+    "d021-D4-claude-B-r2": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "a57350d0629a4e3fd5dd082d419cba9792c51a5fe625fd54e1935c09a0ffba26"
+    },
+    "d038-D4-claude-B-r3": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "a57350d0629a4e3fd5dd082d419cba9792c51a5fe625fd54e1935c09a0ffba26"
+    },
+    "d070-D4-claude-B-r5": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "a57350d0629a4e3fd5dd082d419cba9792c51a5fe625fd54e1935c09a0ffba26"
+    },
+    "d102-D4-claude-B-r7": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "a57350d0629a4e3fd5dd082d419cba9792c51a5fe625fd54e1935c09a0ffba26"
+    },
+    "d149-D4-claude-B-r10": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "a57350d0629a4e3fd5dd082d419cba9792c51a5fe625fd54e1935c09a0ffba26"
+    },
+    "d053-D4-claude-B-r4": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "a57350d0629a4e3fd5dd082d419cba9792c51a5fe625fd54e1935c09a0ffba26"
+    }
+  }
+}
