@@ -1,0 +1,5 @@
+task arm: kind=[cells, calls]  (tool_use inputs in each cell's run/stdout; 0259's count)
+('D3', 'B') {'skill_calls': [0, 0], 'principles': [0, 0], 'skill_md': [0, 0], 'task_completion_md': [0, 0]}
+('D3', 'C') {'skill_calls': [0, 0], 'principles': [0, 0], 'skill_md': [0, 0], 'task_completion_md': [1, 1]}
+('F10', 'B') {'skill_calls': [0, 0], 'principles': [0, 0], 'skill_md': [0, 0], 'task_completion_md': [11, 17]}
+('F10', 'C') {'skill_calls': [0, 0], 'principles': [0, 0], 'skill_md': [0, 0], 'task_completion_md': [14, 17]}

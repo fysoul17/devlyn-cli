@@ -1,0 +1,1356 @@
+{
+  "d3-parseoptions-override": {
+    "d001-D3-claude-B-r1": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "5e706105f608b888ff04fdff530855b84d4c994a466b320640957efa70e14c61"
+    },
+    "d002-D3-claude-C-r1": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "5e706105f608b888ff04fdff530855b84d4c994a466b320640957efa70e14c61"
+    },
+    "d003-D3-claude-C-r2": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "5e706105f608b888ff04fdff530855b84d4c994a466b320640957efa70e14c61"
+    },
+    "d004-D3-claude-B-r2": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "5e706105f608b888ff04fdff530855b84d4c994a466b320640957efa70e14c61"
+    },
+    "d005-D3-claude-B-r3": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "5e706105f608b888ff04fdff530855b84d4c994a466b320640957efa70e14c61"
+    },
+    "d006-D3-claude-C-r3": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "5e706105f608b888ff04fdff530855b84d4c994a466b320640957efa70e14c61"
+    },
+    "d007-D3-claude-C-r4": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "5e706105f608b888ff04fdff530855b84d4c994a466b320640957efa70e14c61"
+    },
+    "d008-D3-claude-B-r4": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "5e706105f608b888ff04fdff530855b84d4c994a466b320640957efa70e14c61"
+    },
+    "d009-D3-claude-B-r5": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "5e706105f608b888ff04fdff530855b84d4c994a466b320640957efa70e14c61"
+    },
+    "d010-D3-claude-C-r5": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "5e706105f608b888ff04fdff530855b84d4c994a466b320640957efa70e14c61"
+    },
+    "d011-D3-claude-C-r6": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "5e706105f608b888ff04fdff530855b84d4c994a466b320640957efa70e14c61"
+    },
+    "d012-D3-claude-B-r6": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "5e706105f608b888ff04fdff530855b84d4c994a466b320640957efa70e14c61"
+    },
+    "d013-D3-claude-B-r7": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "5e706105f608b888ff04fdff530855b84d4c994a466b320640957efa70e14c61"
+    },
+    "d014-D3-claude-C-r7": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "5e706105f608b888ff04fdff530855b84d4c994a466b320640957efa70e14c61"
+    },
+    "d015-D3-claude-C-r8": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "5e706105f608b888ff04fdff530855b84d4c994a466b320640957efa70e14c61"
+    },
+    "d016-D3-claude-B-r8": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "5e706105f608b888ff04fdff530855b84d4c994a466b320640957efa70e14c61"
+    },
+    "d017-D3-claude-B-r9": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "5e706105f608b888ff04fdff530855b84d4c994a466b320640957efa70e14c61"
+    },
+    "d018-D3-claude-C-r9": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "5e706105f608b888ff04fdff530855b84d4c994a466b320640957efa70e14c61"
+    },
+    "d019-D3-claude-C-r10": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "5e706105f608b888ff04fdff530855b84d4c994a466b320640957efa70e14c61"
+    },
+    "d020-D3-claude-B-r10": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "5e706105f608b888ff04fdff530855b84d4c994a466b320640957efa70e14c61"
+    },
+    "d021-D3-claude-B-r11": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "5e706105f608b888ff04fdff530855b84d4c994a466b320640957efa70e14c61"
+    },
+    "d022-D3-claude-C-r11": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "5e706105f608b888ff04fdff530855b84d4c994a466b320640957efa70e14c61"
+    },
+    "d023-D3-claude-C-r12": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "5e706105f608b888ff04fdff530855b84d4c994a466b320640957efa70e14c61"
+    },
+    "d024-D3-claude-B-r12": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "5e706105f608b888ff04fdff530855b84d4c994a466b320640957efa70e14c61"
+    },
+    "d025-D3-claude-B-r13": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "5e706105f608b888ff04fdff530855b84d4c994a466b320640957efa70e14c61"
+    },
+    "d026-D3-claude-C-r13": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "5e706105f608b888ff04fdff530855b84d4c994a466b320640957efa70e14c61"
+    },
+    "d027-D3-claude-C-r14": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "5e706105f608b888ff04fdff530855b84d4c994a466b320640957efa70e14c61"
+    },
+    "d028-D3-claude-B-r14": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "5e706105f608b888ff04fdff530855b84d4c994a466b320640957efa70e14c61"
+    },
+    "d029-D3-claude-B-r15": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "5e706105f608b888ff04fdff530855b84d4c994a466b320640957efa70e14c61"
+    },
+    "d030-D3-claude-C-r15": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "5e706105f608b888ff04fdff530855b84d4c994a466b320640957efa70e14c61"
+    },
+    "d031-D3-claude-C-r16": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "5e706105f608b888ff04fdff530855b84d4c994a466b320640957efa70e14c61"
+    },
+    "d032-D3-claude-B-r16": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "5e706105f608b888ff04fdff530855b84d4c994a466b320640957efa70e14c61"
+    }
+  },
+  "f10-one-process-two-apps": {
+    "c002-F10-claude-C-r1": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "fb82b9a718743660ed7d5c017f7f18260bb4c9c72ce17cb12f26a1bacb79dfcb"
+    },
+    "c003-F10-claude-C-r2": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "fb82b9a718743660ed7d5c017f7f18260bb4c9c72ce17cb12f26a1bacb79dfcb"
+    },
+    "c004-F10-claude-B-r2": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "fb82b9a718743660ed7d5c017f7f18260bb4c9c72ce17cb12f26a1bacb79dfcb"
+    },
+    "c005-F10-claude-B-r3": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "fb82b9a718743660ed7d5c017f7f18260bb4c9c72ce17cb12f26a1bacb79dfcb"
+    },
+    "c007-F10-claude-C-r4": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "fb82b9a718743660ed7d5c017f7f18260bb4c9c72ce17cb12f26a1bacb79dfcb"
+    },
+    "c008-F10-claude-B-r4": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "fb82b9a718743660ed7d5c017f7f18260bb4c9c72ce17cb12f26a1bacb79dfcb"
+    },
+    "c009-F10-claude-B-r5": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "fb82b9a718743660ed7d5c017f7f18260bb4c9c72ce17cb12f26a1bacb79dfcb"
+    },
+    "c010-F10-claude-C-r5": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "fb82b9a718743660ed7d5c017f7f18260bb4c9c72ce17cb12f26a1bacb79dfcb"
+    },
+    "c011-F10-claude-C-r6": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "fb82b9a718743660ed7d5c017f7f18260bb4c9c72ce17cb12f26a1bacb79dfcb"
+    },
+    "c012-F10-claude-B-r6": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "fb82b9a718743660ed7d5c017f7f18260bb4c9c72ce17cb12f26a1bacb79dfcb"
+    },
+    "c013-F10-claude-B-r7": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "fb82b9a718743660ed7d5c017f7f18260bb4c9c72ce17cb12f26a1bacb79dfcb"
+    },
+    "c014-F10-claude-C-r7": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "fb82b9a718743660ed7d5c017f7f18260bb4c9c72ce17cb12f26a1bacb79dfcb"
+    },
+    "c016-F10-claude-B-r8": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "fb82b9a718743660ed7d5c017f7f18260bb4c9c72ce17cb12f26a1bacb79dfcb"
+    },
+    "c017-F10-claude-B-r9": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "fb82b9a718743660ed7d5c017f7f18260bb4c9c72ce17cb12f26a1bacb79dfcb"
+    },
+    "c018-F10-claude-C-r9": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "fb82b9a718743660ed7d5c017f7f18260bb4c9c72ce17cb12f26a1bacb79dfcb"
+    },
+    "c019-F10-claude-C-r10": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "fb82b9a718743660ed7d5c017f7f18260bb4c9c72ce17cb12f26a1bacb79dfcb"
+    },
+    "c021-F10-claude-B-r11": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "fb82b9a718743660ed7d5c017f7f18260bb4c9c72ce17cb12f26a1bacb79dfcb"
+    },
+    "c022-F10-claude-C-r11": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "fb82b9a718743660ed7d5c017f7f18260bb4c9c72ce17cb12f26a1bacb79dfcb"
+    },
+    "c023-F10-claude-C-r12": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "fb82b9a718743660ed7d5c017f7f18260bb4c9c72ce17cb12f26a1bacb79dfcb"
+    },
+    "c024-F10-claude-B-r12": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "fb82b9a718743660ed7d5c017f7f18260bb4c9c72ce17cb12f26a1bacb79dfcb"
+    },
+    "c026-F10-claude-C-r13": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "fb82b9a718743660ed7d5c017f7f18260bb4c9c72ce17cb12f26a1bacb79dfcb"
+    },
+    "c027-F10-claude-C-r14": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "fb82b9a718743660ed7d5c017f7f18260bb4c9c72ce17cb12f26a1bacb79dfcb"
+    },
+    "c028-F10-claude-B-r14": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "fb82b9a718743660ed7d5c017f7f18260bb4c9c72ce17cb12f26a1bacb79dfcb"
+    },
+    "c029-F10-claude-B-r15": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "fb82b9a718743660ed7d5c017f7f18260bb4c9c72ce17cb12f26a1bacb79dfcb"
+    },
+    "c030-F10-claude-C-r15": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "fb82b9a718743660ed7d5c017f7f18260bb4c9c72ce17cb12f26a1bacb79dfcb"
+    },
+    "c032-F10-claude-B-r16": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "fb82b9a718743660ed7d5c017f7f18260bb4c9c72ce17cb12f26a1bacb79dfcb"
+    }
+  },
+  "f10-nonobject-items-file": {
+    "c020-F10-claude-B-r10": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "f18f5d5e3fff4432849f67b09862686cbbe821a12166c80f987fb140173a842f"
+    }
+  },
+  "d3-trailing-delimiter": {
+    "d001-D3-claude-B-r1": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "155ff58dcc8cbec300845904571ef73c58dd4e14b41e503eb908232f9ecb7ab0"
+    },
+    "d002-D3-claude-C-r1": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "155ff58dcc8cbec300845904571ef73c58dd4e14b41e503eb908232f9ecb7ab0"
+    },
+    "d003-D3-claude-C-r2": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "155ff58dcc8cbec300845904571ef73c58dd4e14b41e503eb908232f9ecb7ab0"
+    },
+    "d004-D3-claude-B-r2": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "155ff58dcc8cbec300845904571ef73c58dd4e14b41e503eb908232f9ecb7ab0"
+    },
+    "d005-D3-claude-B-r3": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "155ff58dcc8cbec300845904571ef73c58dd4e14b41e503eb908232f9ecb7ab0"
+    },
+    "d006-D3-claude-C-r3": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "155ff58dcc8cbec300845904571ef73c58dd4e14b41e503eb908232f9ecb7ab0"
+    },
+    "d007-D3-claude-C-r4": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "155ff58dcc8cbec300845904571ef73c58dd4e14b41e503eb908232f9ecb7ab0"
+    },
+    "d008-D3-claude-B-r4": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "155ff58dcc8cbec300845904571ef73c58dd4e14b41e503eb908232f9ecb7ab0"
+    },
+    "d009-D3-claude-B-r5": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "155ff58dcc8cbec300845904571ef73c58dd4e14b41e503eb908232f9ecb7ab0"
+    },
+    "d010-D3-claude-C-r5": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "155ff58dcc8cbec300845904571ef73c58dd4e14b41e503eb908232f9ecb7ab0"
+    },
+    "d011-D3-claude-C-r6": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "155ff58dcc8cbec300845904571ef73c58dd4e14b41e503eb908232f9ecb7ab0"
+    },
+    "d012-D3-claude-B-r6": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "155ff58dcc8cbec300845904571ef73c58dd4e14b41e503eb908232f9ecb7ab0"
+    },
+    "d013-D3-claude-B-r7": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "155ff58dcc8cbec300845904571ef73c58dd4e14b41e503eb908232f9ecb7ab0"
+    },
+    "d014-D3-claude-C-r7": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "155ff58dcc8cbec300845904571ef73c58dd4e14b41e503eb908232f9ecb7ab0"
+    },
+    "d015-D3-claude-C-r8": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "155ff58dcc8cbec300845904571ef73c58dd4e14b41e503eb908232f9ecb7ab0"
+    },
+    "d016-D3-claude-B-r8": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "155ff58dcc8cbec300845904571ef73c58dd4e14b41e503eb908232f9ecb7ab0"
+    },
+    "d017-D3-claude-B-r9": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "155ff58dcc8cbec300845904571ef73c58dd4e14b41e503eb908232f9ecb7ab0"
+    },
+    "d018-D3-claude-C-r9": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "155ff58dcc8cbec300845904571ef73c58dd4e14b41e503eb908232f9ecb7ab0"
+    },
+    "d019-D3-claude-C-r10": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "155ff58dcc8cbec300845904571ef73c58dd4e14b41e503eb908232f9ecb7ab0"
+    },
+    "d020-D3-claude-B-r10": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "155ff58dcc8cbec300845904571ef73c58dd4e14b41e503eb908232f9ecb7ab0"
+    },
+    "d021-D3-claude-B-r11": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "155ff58dcc8cbec300845904571ef73c58dd4e14b41e503eb908232f9ecb7ab0"
+    },
+    "d022-D3-claude-C-r11": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "155ff58dcc8cbec300845904571ef73c58dd4e14b41e503eb908232f9ecb7ab0"
+    },
+    "d023-D3-claude-C-r12": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "155ff58dcc8cbec300845904571ef73c58dd4e14b41e503eb908232f9ecb7ab0"
+    },
+    "d024-D3-claude-B-r12": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "155ff58dcc8cbec300845904571ef73c58dd4e14b41e503eb908232f9ecb7ab0"
+    },
+    "d025-D3-claude-B-r13": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "155ff58dcc8cbec300845904571ef73c58dd4e14b41e503eb908232f9ecb7ab0"
+    },
+    "d026-D3-claude-C-r13": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "155ff58dcc8cbec300845904571ef73c58dd4e14b41e503eb908232f9ecb7ab0"
+    },
+    "d027-D3-claude-C-r14": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "155ff58dcc8cbec300845904571ef73c58dd4e14b41e503eb908232f9ecb7ab0"
+    },
+    "d028-D3-claude-B-r14": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "155ff58dcc8cbec300845904571ef73c58dd4e14b41e503eb908232f9ecb7ab0"
+    },
+    "d029-D3-claude-B-r15": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "155ff58dcc8cbec300845904571ef73c58dd4e14b41e503eb908232f9ecb7ab0"
+    },
+    "d030-D3-claude-C-r15": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "155ff58dcc8cbec300845904571ef73c58dd4e14b41e503eb908232f9ecb7ab0"
+    },
+    "d031-D3-claude-C-r16": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "155ff58dcc8cbec300845904571ef73c58dd4e14b41e503eb908232f9ecb7ab0"
+    },
+    "d032-D3-claude-B-r16": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "155ff58dcc8cbec300845904571ef73c58dd4e14b41e503eb908232f9ecb7ab0"
+    }
+  },
+  "f10-one-process-path-alias": {
+    "c004-F10-claude-B-r2": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "21088c64050723c55d2314441d86061e3a4cc15ea91e0a927a732ff6c4819239"
+    },
+    "c008-F10-claude-B-r4": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "21088c64050723c55d2314441d86061e3a4cc15ea91e0a927a732ff6c4819239"
+    },
+    "c011-F10-claude-C-r6": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "21088c64050723c55d2314441d86061e3a4cc15ea91e0a927a732ff6c4819239"
+    },
+    "c027-F10-claude-C-r14": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "21088c64050723c55d2314441d86061e3a4cc15ea91e0a927a732ff6c4819239"
+    },
+    "c032-F10-claude-B-r16": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "21088c64050723c55d2314441d86061e3a4cc15ea91e0a927a732ff6c4819239"
+    }
+  }
+}
