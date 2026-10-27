@@ -1,0 +1,10 @@
+{
+  "tarball_sha256": "d024f9b48252f943bc537e2c8e7db36715dea0b6baa285a111e43bffe2114fee",
+  "claude_form_length": 4112,
+  "files": {
+    "AGENTS.md": "11a85ab7155374e4242c80a02ab3bb3f671f1ff048cb0138e5fb113ef3d65abf",
+    "CLAUDE.md": "336cc4fbf19beaada7ccf9986414fa91851a8d7a07dfb3ccbe800a69eed0ab49",
+    ".agents/skills/_shared/runtime-principles.md": "6c615346159ead0473da08bbc9645f3807b7265d91b3671620c79bff3abaa407",
+    ".claude/skills/_shared/runtime-principles.md": "6c615346159ead0473da08bbc9645f3807b7265d91b3671620c79bff3abaa407"
+  }
+}
