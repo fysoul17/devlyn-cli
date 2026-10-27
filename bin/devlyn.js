@@ -1430,13 +1430,16 @@ function showHelp() {
 // ---------------------------------------------------------------------------
 // Legacy cleanup for the built-in harness: Devlyn delivers devlyn-cli per session, so every copy an
 // earlier install left in a skill root, and the files those installs added, become legacy. A plan
-// takes the remote base by fast-forward when possible, then lists each item with its proof. Apply
-// plans again from disk and acts only on items both plans name the same way. A plan can narrow
+// reviews tracked items at the fetched base and untracked items in the caller's checkout. Apply
+// proves each item again where it will act. A plan can narrow
 // cleanup but never widen it: untracked copies go in place, tracked ones through the project's delivery policy.
 // Removals need shipped-content proof or an explicit choice of a reviewed modified copy.
 // ---------------------------------------------------------------------------
 
 const CLEANUP_CORE = ['devlyn-ideate', 'devlyn-engines'];
+const CLEANUP_SKILL_ROOTS = ['.agents/skills', '.claude/skills'];
+const CLEANUP_CANDIDATE_PATHS = [...CLEANUP_SKILL_ROOTS, ...CLEANUP_HISTORY.commandDirectories,
+  ...Object.keys(CLEANUP_HISTORY.files), ...Object.keys(CLEANUP_HISTORY.hooks)].map((name) => `:(icase,literal)${name}`);
 
 function cleanupReason(code, params = {}) { return { code, params }; }
 
@@ -1505,7 +1508,7 @@ function cleanupMarkerOwned(file, current) {
   return text === JSON.stringify({ schemaVersion: 1, package: PKG.name, version: marker.version, skills: marker.skills }, null, 2) + '\n';
 }
 
-function cleanupSkillRoots(roots, current, includeModified = false) {
+function cleanupSkillRoots(roots, current, callerBase = null) {
   const resolved = new Map();
   const linked = new Set();
   const active = new Set();
@@ -1527,17 +1530,20 @@ function cleanupSkillRoots(roots, current, includeModified = false) {
       }
     } else if (parents && stat?.isDirectory()) target = fs.realpathSync.native(root);
     if (!resolved.has(target)) resolved.set(target, base);
-    if (cleanupInUse(root) || cleanupInUse(target)) active.add(target);
+    const callerPath = (file) => callerBase ? path.join(callerBase, path.relative(base, file)) : file;
+    if (cleanupInUse(callerPath(root)) || cleanupInUse(callerPath(target))) active.add(target);
   }
   return [...resolved].flatMap(([root, base]) => {
     const items = cleanupSkillRoot(base, root, current);
-    const occupied = includeModified && items.some((item) => item.kind === 'install-lock');
+    const callerRoot = callerBase ? path.join(callerBase, path.relative(base, root)) : root;
+    const occupied = fs.lstatSync(callerRoot, { throwIfNoEntry: false })?.isDirectory()
+      && Boolean(fs.lstatSync(path.join(callerRoot, DEVLYN_INSTALL_LOCK), { throwIfNoEntry: false }));
     const protectedCopies = new Set(items.filter((item) => [...linked].some((target) => target === item.path || target.startsWith(item.path + path.sep))));
     for (const item of items) {
       if ((protectedCopies.size && cleanupSupport(item)) || protectedCopies.has(item)) {
         Object.assign(item, { action: 'skip', reasons: [cleanupReason('dependent-copy')] });
       }
-      if (cleanupAction(item, includeModified) === 'remove' && (active.has(root) || occupied)) {
+      if (cleanupAction(item, true) === 'remove' && (active.has(root) || occupied)) {
         Object.assign(item, { action: 'skip', reasons: [cleanupReason(occupied ? 'occupied-lock' : 'in-use')] });
       }
     }
@@ -1577,7 +1583,7 @@ function cleanupSkillRoot(base, root, current) {
       kept++;
       continue;
     }
-    const core = CLEANUP_CORE.includes(name) || name === '_shared';
+    const core = CLEANUP_CORE.includes(lower) || lower === '_shared';
     if (!core && !deprecated.has(lower) && !renamed.has(lower) && !RETIRED_SKILL_MD_SHA256[lower]) continue;
     if (stat.isSymbolicLink()) {
       items.push({ kind: 'core-skill', path: file, base, action: 'skip', reasons: [cleanupReason('outside-link')] });
@@ -1586,9 +1592,9 @@ function cleanupSkillRoot(base, root, current) {
     }
     if (core) {
       let proven = false;
-      try { proven = fingerprint(file) === current[name] || historicalSkill(file); }
+      try { proven = fingerprint(file) === current[lower] || historicalSkill(file); }
       catch { /* A link or special file inside is not an unedited copy. */ }
-      if (name === '_shared') { if (proven) support.push({ kind: 'core-skill', path: file, base, action: 'remove', reasons: [] }); continue; }
+      if (lower === '_shared') { if (proven) support.push({ kind: 'core-skill', path: file, base, action: 'remove', reasons: [] }); continue; }
       if (proven) items.push({ kind: 'core-skill', path: file, base, action: 'remove', reasons: [] });
       else { items.push({ kind: 'core-skill', path: file, base, action: 'skip', reasons: [cleanupReason('modified-copy')] }); kept++; }
       continue;
@@ -1646,7 +1652,7 @@ function cleanupCommands(base) {
   });
 }
 
-function cleanupProjectFiles(base, includedHooks = new Set()) {
+function cleanupProjectFiles(base, includedHooks = new Set(), callerBase = base) {
   const items = [];
   const hash = (file) => crypto.createHash('sha256')
     .update(fs.readFileSync(file).toString('latin1').replace(/\r\n/g, '\n'), 'latin1').digest('hex');
@@ -1659,6 +1665,7 @@ function cleanupProjectFiles(base, includedHooks = new Set()) {
   const settingsFile = path.join(base, '.claude', 'settings.json');
   const { safe, settings } = cleanupReadSettings(base);
   const localSettings = cleanupReadSettings(base, 'settings.local.json');
+  const callerSettings = callerBase === base ? localSettings : cleanupReadSettings(callerBase, 'settings.local.json');
   const hookScripts = [], hookCandidates = [];
   for (const [name, history] of Object.entries(CLEANUP_HISTORY.hooks)) {
     const file = path.join(base, name);
@@ -1669,7 +1676,8 @@ function cleanupProjectFiles(base, includedHooks = new Set()) {
     if (!cleanupRealParents(base, file) || !stat.isFile() || stat.nlink !== 1) continue;
     const proven = history.hashes.includes(contentHash(file));
     Object.assign(item, { action: proven ? 'remove' : 'skip', reasons: proven ? [] : [cleanupReason('modified-copy')] });
-    if (!safe || !localSettings.safe || cleanupHookReferenced(localSettings.settings, name)) {
+    if (!safe || !localSettings.safe || !callerSettings.safe || cleanupHookReferenced(localSettings.settings, name)
+        || cleanupHookReferenced(callerSettings.settings, name)) {
       Object.assign(item, { action: 'skip', reasons: [cleanupReason('dependent-copy')] });
       continue;
     }
@@ -1805,7 +1813,115 @@ function cleanupRetainSupport(items) {
   return items;
 }
 
-function cleanupProjectScope(project, current, includeModified = false, includedHooks = new Set()) {
+// Filesystem proof is independent of scope discovery and remote-base orchestration.
+function cleanupProjectScan(base, current, includedHooks = new Set(), callerBase = base) {
+  return [
+    ...cleanupSkillRoots(CLEANUP_SKILL_ROOTS.map((dir) => [base, path.join(base, dir)]), current, callerBase),
+    ...cleanupCommands(base), ...cleanupProjectFiles(base, includedHooks, callerBase), ...cleanupInstructions(base),
+  ].map((item) => {
+    let tracked = false;
+    try { tracked = cleanupTracked(item.path); }
+    catch (error) { Object.assign(item, { action: 'skip', reasons: [cleanupReason('repository-unreadable', { detail: error.message })] }); }
+    return cleanupProof({ ...item, relative: path.relative(base, item.path).split(path.sep).join('/'), route: tracked ? 'delivery' : 'local' });
+  });
+}
+
+function cleanupProof(item) {
+  const before = item.before || cleanupPreimage(item.path, cleanupCanInclude(item));
+  if (cleanupCanInclude(item) && before.sha256 === null) {
+    Object.assign(item, { action: 'skip', reasons: [cleanupReason('outside-link')] });
+  }
+  return { ...item, before };
+}
+
+function cleanupReroot(item, from, to) {
+  const move = (file) => path.join(to, path.relative(from, file));
+  return { ...item, path: move(item.path), base: move(item.base), ...(item.hookSettings ? { hookSettings: move(item.hookSettings) } : {}) };
+}
+
+function cleanupGitRead(root, args, options) {
+  const result = cleanupGit(root, args, options);
+  if (result.error || result.status !== 0) throw new Error(result.error?.message || result.stderr.trim());
+  return result.stdout;
+}
+
+function cleanupFetchBase(scope) {
+  const ref = `refs/devlyn/cleanup/${crypto.randomBytes(8).toString('hex')}`;
+  try {
+    cleanupGitRead(scope.root, ['fetch', '--quiet', '--no-write-fetch-head', 'origin', `+refs/heads/${scope.remote.base}:${ref}`],
+      { timeout: 30000, env: { GIT_TERMINAL_PROMPT: '0' } });
+    return cleanupGitRead(scope.root, ['rev-parse', '--verify', `${ref}^{commit}`]).trim();
+  } finally {
+    cleanupGitRead(scope.root, ['update-ref', '-d', ref]);
+  }
+}
+
+function cleanupRemoveSnapshot(root, snapshot) {
+  const removed = cleanupGit(root, ['worktree', 'remove', '--force', snapshot]);
+  if (removed.error || removed.status !== 0) {
+    fs.rmSync(snapshot, { recursive: true, force: true });
+    cleanupGitRead(root, ['worktree', 'prune']);
+  }
+}
+
+// A private full index supplies attributes; only scanner inputs are materialized. Git performs
+// the same conversions as delivery, without receipts, task allocation or caller-index writes.
+function cleanupSnapshot(root, commit) {
+  const snapshot = fs.realpathSync.native(fs.mkdtempSync(path.join(os.tmpdir(), 'dc-')));
+  try {
+    cleanupGitRead(root, ['worktree', 'add', '--detach', '--no-checkout', snapshot, commit]);
+    cleanupGitRead(snapshot, ['read-tree', commit]);
+    const roots = cleanupGitRead(snapshot, ['ls-files', '--stage', '-z', '--', ...CLEANUP_SKILL_ROOTS.map((name) => `:(icase,literal)${name}`)])
+      .split('\0').filter(Boolean)
+      .map((entry) => { const tab = entry.indexOf('\t'); return { mode: entry.slice(0, 6), name: entry.slice(tab + 1) }; });
+    const paths = [...CLEANUP_CANDIDATE_PATHS, ...['.claude/settings.json', '.claude/settings.local.json', 'CLAUDE.md', 'AGENTS.md']
+      .map((name) => `:(icase,literal)${name}`)];
+    for (const { name, mode } of roots) {
+      if (mode !== '120000' || !CLEANUP_SKILL_ROOTS.includes(name.toLowerCase())) continue;
+      const link = cleanupGitRead(root, ['show', `${commit}:${name}`]);
+      // Absolute links cannot resolve inside this private checkout. For relative links, preserve
+      // every directory hop (including those before `..`) that a full checkout would create.
+      if (path.isAbsolute(link)) continue;
+      let directory = '';
+      for (const part of [...path.dirname(name).split(path.sep), ...link.split(process.platform === 'win32' ? /[/\\]/ : '/')]
+        .filter((part) => part && part !== '.')) {
+        if (part === '..') {
+          if (!directory) { directory = null; break; }
+          directory = path.posix.dirname(directory);
+          if (directory === '.') directory = '';
+          continue;
+        }
+        const children = cleanupGitRead(root, ['ls-tree', '-d', '-z', `${commit}:${directory}`]).split('\0').filter(Boolean)
+          .map((entry) => entry.slice(entry.indexOf('\t') + 1));
+        const child = children.find((name) => name === part) || children.find((name) => name.toLowerCase() === part.toLowerCase());
+        if (!child) { directory = null; break; }
+        directory = path.posix.join(directory, child);
+        // Explicit empty trees have no indexed descendants and create no checkout directory.
+        if (!cleanupGitRead(snapshot, ['ls-files', '-z', '--', `:(literal)${directory}/`], { maxBuffer: 1 << 30 })) {
+          directory = null; break;
+        }
+        fs.mkdirSync(path.join(snapshot, directory), { recursive: true });
+      }
+      if (directory) paths.push(`:(icase,literal)${directory}`);
+    }
+    const names = cleanupGitRead(snapshot, ['ls-files', '-z', '--', ...paths], { maxBuffer: 1 << 30 });
+    cleanupGitRead(snapshot, ['checkout-index', '-z', '--stdin'], { input: names });
+    return snapshot;
+  } catch (error) {
+    try { cleanupRemoveSnapshot(root, snapshot); }
+    catch (cleanupError) { throw new AggregateError([error, cleanupError], `${error.message}; ${cleanupError.message}`); }
+    throw error;
+  }
+}
+
+function cleanupObject(root, commit, relative) {
+  const result = cleanupGit(root, ['rev-parse', '--verify', '--quiet', `${commit}:${relative}`]);
+  if (!result.error && result.status === 1) return null;
+  if (result.error || result.status !== 0) throw new Error(result.error?.message || result.stderr.trim());
+  return result.stdout.trim();
+}
+
+function cleanupProjectScope(project, current, includedHooks = new Set(), baseViews = null) {
   const { repositoryIdentity } = require('./harness-status');
   const { physicalRoot } = require('./release');
   const root = physicalRoot(project);
@@ -1814,34 +1930,73 @@ function cleanupProjectScope(project, current, includeModified = false, included
   const scope = { kind: 'project', root: base, name: path.basename(base), remote: identity ? cleanupRemote(base) : null, items: [] };
   const whole = (code) => [{ kind: 'project', path: base, base, relative: '', route: 'local', action: 'skip', reasons: [cleanupReason(code)] }];
   if (identity?.sourceRepository) return { ...scope, items: whole('source-repository') };
-  // The home folder's roots are this machine's: the machine scope cleans them under the user-root locks.
   if (cleanupSameFile(base, os.homedir())) return { ...scope, items: whole('home-folder') };
-  const items = [
-    ...cleanupSkillRoots(['.agents', '.claude'].map((dir) => [base, path.join(base, dir, 'skills')]), current, includeModified),
-    ...cleanupCommands(base), ...cleanupProjectFiles(base, includedHooks), ...cleanupInstructions(base),
-  ];
-  const busy = identity && items.some((item) => cleanupAction(item, includeModified) !== 'skip') ? cleanupQueueBusy(base) : null;
-  for (const item of items) {
-    if (busy && cleanupAction(item, includeModified) !== 'skip') Object.assign(item, { action: 'skip', reasons: [busy] });
-    const relative = path.relative(base, item.path).split(path.sep).join('/');
-    let tracked = false;
-    try { tracked = cleanupTracked(item.path); }
-    catch (error) { Object.assign(item, { action: 'skip', reasons: [cleanupReason('repository-unreadable', { detail: error.message })] }); }
-    scope.items.push({ ...item, relative, route: tracked ? 'delivery' : 'local' });
-  }
-  if (!scope.remote) {
-    for (const item of scope.items) {
-      if (item.route === 'delivery' && cleanupAction(item, includeModified) !== 'skip') Object.assign(item, { action: 'skip', reasons: [cleanupReason('no-remote')] });
+  let caller = cleanupProjectScan(base, current, includedHooks);
+  let callerContext = caller;
+  let delivery = [];
+  if (scope.remote && baseViews && (caller.some((item) => item.route === 'delivery')
+      || cleanupGitRead(base, ['ls-files', '-z', '--', ...CLEANUP_CANDIDATE_PATHS], { maxBuffer: 1 << 30 }).length > 0)) {
+    // Reuse only within a checkout: even identical relative origins can resolve differently across worktrees.
+    const key = JSON.stringify([scope.root, scope.remote.repository, scope.remote.base]);
+    if (!baseViews.has(key)) {
+      let view;
+      try {
+        const commit = cleanupFetchBase(scope);
+        view = { commit, snapshot: cleanupSnapshot(base, commit), root: base };
+      }
+      catch (error) { view = { error }; }
+      baseViews.set(key, view);
     }
+    const view = baseViews.get(key);
+    try {
+      if (view.error) throw view.error;
+      delivery = cleanupProjectScan(view.snapshot, current, new Set(), base)
+        .map((item) => ({ ...cleanupReroot(item, view.snapshot, base), route: 'delivery' }));
+      scope.reviewBase = view.commit;
+      if ([...caller, ...delivery].some((item) => item.route === 'delivery' && ['remove', 'edit'].includes(item.action))) {
+        if (cleanupUpdateCheckout(scope, view.commit).changed) caller = cleanupProjectScan(base, current, includedHooks);
+      }
+      callerContext = caller;
+      const keys = new Set(delivery.map((item) => `${item.kind}\0${item.relative.toLowerCase()}`));
+      const fork = cleanupGit(base, ['merge-base', 'HEAD', view.commit]);
+      caller = caller.filter((item) => item.route === 'local' || !keys.has(`${item.kind}\0${item.relative.toLowerCase()}`))
+        .map((item) => {
+          if (item.route === 'local') return item;
+          const before = fork.status === 0 ? cleanupObject(base, fork.stdout.trim(), item.relative) : null;
+          const settled = before && cleanupObject(base, view.commit, item.relative) === null
+            && cleanupObject(base, 'HEAD', item.relative) === before;
+          return { ...item, action: 'skip', reasons: [cleanupReason(settled ? 'update-checkout' : 'tracked-copy')] };
+        });
+    } catch (error) {
+      delivery = [];
+      delete scope.reviewBase;
+      caller = caller.map((item) => item.route === 'delivery'
+        ? { ...item, action: 'skip', reasons: [cleanupReason('repository-unreadable', { detail: error.message })] } : item);
+    }
+  }
+  // Caller skips include branch-only leftovers and edited untracked copies. Both need support.
+  const kept = new Set([...callerContext, ...caller].filter((item) => item.action === 'skip' && !cleanupSupport(item))
+    .map((item) => path.dirname(item.path).toLowerCase()));
+  for (const item of delivery) {
+    if (cleanupSupport(item) && kept.has(path.dirname(item.path).toLowerCase())) {
+      Object.assign(item, { action: 'skip', reasons: [cleanupReason('dependent-copy')] });
+    }
+  }
+  scope.items = [...delivery, ...caller];
+  const busy = identity && scope.items.some((item) => cleanupAction(item, true) !== 'skip') ? cleanupQueueBusy(base) : null;
+  for (const item of scope.items) {
+    if (cleanupAction(item, true) === 'skip') continue;
+    if (busy) Object.assign(item, { action: 'skip', reasons: [busy] });
+    else if (item.route === 'delivery' && !scope.remote) Object.assign(item, { action: 'skip', reasons: [cleanupReason('no-remote')] });
   }
   cleanupRetainSupport(scope.items);
   return scope;
 }
 
-function cleanupMachineScope(home, accountHomes, current, includeModified = false) {
+function cleanupMachineScope(home, accountHomes, current) {
   const roots = [...['.agents', '.codex', '.claude', '.grok'].map((dir) => [home, path.join(home, dir, 'skills')]),
     ...accountHomes.map((account) => [path.dirname(account), path.join(account, 'skills')])];
-  const items = cleanupSkillRoots(roots, current, includeModified);
+  const items = cleanupSkillRoots(roots, current);
   items.push(...cleanupCommands(home));
   for (const item of items) {
     try {
@@ -1854,13 +2009,13 @@ function cleanupMachineScope(home, accountHomes, current, includeModified = fals
   return { kind: 'machine', root: home, name: null, remote: null, items: cleanupRetainSupport(items) };
 }
 
-function cleanupScopes(inputs, current, includeModified = false, includedHooks = new Set()) {
+function cleanupScopes(inputs, current, includedHooks = new Set(), baseViews = null) {
   const { sha256 } = require('./release');
   const scopes = [];
-  if (inputs.machine) scopes.push({ id: 'machine', ...cleanupMachineScope(os.homedir(), inputs.accountHomes, current, includeModified) });
+  if (inputs.machine) scopes.push({ id: 'machine', ...cleanupMachineScope(os.homedir(), inputs.accountHomes, current) });
   for (const project of inputs.projects) {
     let scope;
-    try { scope = cleanupProjectScope(project, current, includeModified, includedHooks); }
+    try { scope = cleanupProjectScope(project, current, includedHooks, baseViews); }
     catch (error) {
       scope = { kind: 'project', root: project, name: path.basename(project), remote: null, items: [{ kind: 'project', path: project, base: project,
         relative: '', route: 'local', action: 'skip', reasons: [cleanupReason(error.reason?.code === 'repository-unreadable' ? 'repository-unreadable' : 'project-unreadable', { detail: error.message })] }] };
@@ -1868,25 +2023,27 @@ function cleanupScopes(inputs, current, includeModified = false, includedHooks =
     scopes.push({ id: `project:${sha256(Buffer.from(project)).slice(0, 12)}`, ...scope });
   }
   for (const scope of scopes) {
-    scope.items = scope.items.map((item, index) => ({ id: `${scope.id}:${index}`, ...item, before: cleanupPreimage(item.path, cleanupCanInclude(item)) }));
+    scope.items = scope.items.map((item, index) => ({ id: `${scope.id}:${index}`, ...cleanupProof(item) }));
   }
   return scopes;
 }
 
 function cleanupPlan(inputs) {
   const current = cleanupCurrentFingerprints();
-  let scopes = cleanupScopes(inputs, current);
-  let changed = false;
-  for (const scope of scopes) {
-    if (scope.kind === 'project' && scope.remote && scope.items.some((item) => item.route === 'delivery' && ['remove', 'edit'].includes(item.action))) {
-      const updated = cleanupUpdateCheckout(scope);
-      if (updated.changed) changed = true;
+  const baseViews = new Map();
+  try {
+    // The review covers the bytes delivery acts on, including scopes sharing a repository.
+    const scopes = cleanupScopes(inputs, current, new Set(), baseViews);
+    const plan = { schemaVersion: 1, version: PKG.version, inputs, scopes };
+    return { ...plan, digest: cleanupDigest(plan) };
+  } finally {
+    const errors = [];
+    for (const view of baseViews.values()) {
+      if (!view.snapshot) continue;
+      try { cleanupRemoveSnapshot(view.root, view.snapshot); } catch (error) { errors.push(error); }
     }
+    if (errors.length) throw new AggregateError(errors, errors.map((error) => error.message).join('; '));
   }
-  // The review covers the bytes delivery acts on, including scopes sharing a checkout.
-  if (changed) scopes = cleanupScopes(inputs, current);
-  const plan = { schemaVersion: 1, version: PKG.version, inputs, scopes };
-  return { ...plan, digest: cleanupDigest(plan) };
 }
 
 // JSON text with sorted keys: a plan the app stored with its own key order still reads the same.
@@ -1939,36 +2096,42 @@ function cleanupApplyItem(item) {
 
 // A reviewed item's counterpart in the fresh plan, when both name the same action on the same bytes.
 function cleanupProven(reviewed, fresh) {
-  const key = (item) => `${item.kind}\u0000${item.path}`;
+  const key = (item) => `${item.route}\0${item.kind}\0${item.path}`;
   const now = new Map(fresh.items.map((item) => [key(item), item]));
-  const asked = new Set(reviewed.items.filter((item) => ['remove', 'edit'].includes(cleanupAction(item))).map(key));
-  // A copy left out of the review stays, so the `_shared` and marker beside it stay too.
-  const narrowed = new Set(fresh.items.filter((item) => item.action === 'remove' && !cleanupSupport(item) && !asked.has(key(item)))
-    .map((item) => path.dirname(item.path)));
-  return reviewed.items.filter((item) => ['remove', 'edit'].includes(cleanupAction(item))).map((item) => {
+  const pairs = reviewed.items.filter((item) => ['remove', 'edit'].includes(cleanupAction(item))).map((item) => {
     const match = now.get(key(item));
     const same = match && match.action === item.action && (!item.included || (cleanupCanInclude(match) && item.before.sha256 !== null))
       && match.relative === item.relative && match.route === item.route
       && match.before.type === item.before.type && match.before.sha256 === item.before.sha256
-      && cleanupCanonical(match.hookScripts || []) === cleanupCanonical(item.hookScripts || [])
-      && !(cleanupSupport(item) && narrowed.has(path.dirname(item.path)));
-    return { reviewed: item, fresh: same ? { ...match, included: item.included } : null };
+      && cleanupCanonical(match.hookScripts || []) === cleanupCanonical(item.hookScripts || []);
+    return { reviewed: item, fresh: same ? { ...match, id: item.id, included: item.included } : null };
   });
+  // Support stays beside any fresh copy this exact batch will not remove, including unreviewed
+  // siblings and reviewed copies whose proof failed.
+  const removing = new Set(pairs.filter((pair) => pair.fresh && cleanupAction(pair.fresh) === 'remove').map((pair) => key(pair.fresh)));
+  const kept = new Set(fresh.items.filter((item) => !cleanupSupport(item) && !removing.has(key(item)))
+    .map((item) => path.dirname(item.path).toLowerCase()));
+  for (const pair of pairs) {
+    if (cleanupSupport(pair.reviewed) && kept.has(path.dirname(pair.reviewed.path).toLowerCase())) pair.fresh = null;
+  }
+  return pairs;
 }
 
 // A narrowed or stale review may not split a settings edit from any script it disables.
 function cleanupCoupledPairs(pairs) {
-  const byPath = new Map(pairs.map((pair) => [pair.reviewed.path, pair]));
+  const key = (item, file) => `${item.route}\u0000${file}`;
+  const byPath = new Map(pairs.map((pair) => [key(pair.reviewed, pair.reviewed.path), pair]));
   for (const pair of pairs.filter(({ reviewed }) => reviewed.kind === 'settings-entry')) {
-    const scripts = (pair.reviewed.hookScripts || []).map((name) => byPath.get(path.join(pair.reviewed.base, name)));
+    const scripts = (pair.reviewed.hookScripts || []).map((name) => byPath.get(key(pair.reviewed, path.join(pair.reviewed.base, name))));
     if (!pair.fresh || scripts.some((script) => !script?.fresh || cleanupAction(script.fresh) !== 'remove')) {
       pair.fresh = null;
       for (const script of scripts) if (script) script.fresh = null;
     }
   }
   for (const pair of pairs) {
-    if (pair.reviewed.hookSettings && (!byPath.get(pair.reviewed.hookSettings)?.fresh
-        || !byPath.get(pair.reviewed.hookSettings).fresh.hookScripts.includes(pair.reviewed.relative))) pair.fresh = null;
+    const settings = byPath.get(key(pair.reviewed, pair.reviewed.hookSettings));
+    if (pair.reviewed.hookSettings && (!settings?.fresh
+        || !settings.fresh.hookScripts.includes(pair.reviewed.relative))) pair.fresh = null;
   }
   return pairs;
 }
@@ -2002,7 +2165,7 @@ function cleanupApplyHookGroup(settings, scripts) {
 
 // Support entries (`_shared`, the marker) go last, and only when nothing beside them was refused.
 function cleanupSupport(item) {
-  return path.basename(item.path) === '_shared' || item.kind === 'install-marker';
+  return path.basename(item.path).toLowerCase() === '_shared' || item.kind === 'install-marker';
 }
 
 function cleanupCanInclude(item) {
@@ -2091,19 +2254,8 @@ function cleanupDeliver(scope, items, current) {
   if (baseHead.error || baseHead.status !== 0) return release(cleanupReason('repository-unreadable', { detail: baseHead.error?.message || baseHead.stderr.trim() }));
   const base = baseHead.stdout.trim();
   let prepared;
-  try { prepared = cleanupDeliveryCommit(worktree, items, current, release, cleanupSettledUpstream(scope.root, base)); }
+  try { prepared = cleanupDeliveryCommit(worktree, items, current, release, scope, base); }
   catch (error) { return release(cleanupReason('apply-failed', { detail: error.message })); }
-  if (prepared.error?.code === 'stale-plan') {
-    const head = cleanupGit(scope.root, ['rev-parse', 'HEAD']);
-    // A stale review must see the base's bytes next time. Local commits keep today's refusal.
-    if (!head.error && head.status === 0 && head.stdout.trim() !== base) {
-      const ancestor = cleanupGit(scope.root, ['merge-base', '--is-ancestor', head.stdout.trim(), base]);
-      if (!ancestor.error && ancestor.status === 0) {
-        const updated = cleanupUpdateCheckout(scope);
-        if (updated.error) return updated;
-      }
-    }
-  }
   if (prepared.error) return prepared;
   // The remote base already settled every reviewed item: the checkout only has to take it.
   if (!prepared.acceptance) return cleanupUpdateCheckout(scope);
@@ -2115,44 +2267,13 @@ function cleanupDeliver(scope, items, current) {
   return { error: cleanupReason(failureCode(reason), { detail: reason, ...(completed?.resume ? { resume: completed.resume } : {}) }) };
 }
 
-// With no fresh counterpart, the base settled an item only if it changed the path's content or
-// removed it in every spelling, while the checkout holds it under its tracked spelling unchanged
-// since the fork point. A copy committed or changed only here is not one the base settled.
-function cleanupSettledUpstream(root, base) {
-  const read = (cwd, args, options) => {
-    const result = cleanupGit(cwd, args, options);
-    return !result.error && result.status === 0 ? result.stdout : null;
-  };
-  const object = (spec) => read(root, ['rev-parse', '--verify', '--quiet', spec])?.trim() || null;
-  const fork = read(root, ['merge-base', 'HEAD', base])?.trim();
-  let upstream; // the base's paths, folded to lower case, read once and only when needed
-  return (relative) => {
-    if (!fork) return false;
-    if (upstream === undefined) {
-      upstream = read(root, ['ls-tree', '-r', '-z', '--name-only', base], { maxBuffer: 1 << 30 })
-        ?.split('\0').filter(Boolean).map((name) => name.toLowerCase()) ?? null;
-    }
-    const lower = relative.toLowerCase();
-    if (!upstream) return false;
-    // The tracked spelling, which a case-insensitive file system lets differ from the one on disk.
-    const tracked = read(root, ['ls-files', '-z', '--', `:(icase,literal)${relative}`])?.split('\0').find(Boolean);
-    const spelled = tracked?.slice(0, relative.length);
-    if (!spelled || spelled.toLowerCase() !== lower) return false;
-    const before = object(`${fork}:${spelled}`);
-    if (before === null || before !== object(`HEAD:${spelled}`)) return false;
-    const after = object(`${base}:${spelled}`);
-    return after !== null ? after !== before
-      : !upstream.some((name) => name === lower || name.startsWith(`${lower}/`));
-  };
-}
-
 // The remote base's cleanup or changed copies reach this checkout only when it takes that base: a checkout on
 // the base branch is fast-forwarded to it, as a task's owner reconciles after delivery. The base is
 // fetched into a ref this call owns (FETCH_HEAD can be rewritten by another fetch meanwhile) and
 // merged by its commit, only while the checkout is still the one checked before the fetch, and the
 // result must be that commit. Another branch, or a fast-forward Git refuses (local changes or ignored
 // files in the way, local commits), is left as it is.
-function cleanupUpdateCheckout(scope) {
+function cleanupUpdateCheckout(scope, fetchedCommit = null) {
   const failed = (detail) => ({ error: cleanupReason('update-checkout', { detail }) });
   const read = (args) => {
     const result = cleanupGit(scope.root, args);
@@ -2161,14 +2282,9 @@ function cleanupUpdateCheckout(scope) {
   const checkout = () => [read(['symbolic-ref', '--quiet', '--short', 'HEAD']), read(['rev-parse', 'HEAD'])];
   const [branch, head] = checkout();
   if (branch !== scope.remote.base || !head) return failed(`${branch || 'a detached HEAD'} is checked out`);
-  const ref = `refs/devlyn/cleanup/${crypto.randomBytes(8).toString('hex')}`;
-  try {
-    const fetched = cleanupGit(scope.root, ['fetch', '--quiet', '--no-write-fetch-head', 'origin', `+refs/heads/${scope.remote.base}:${ref}`],
-      { timeout: 30000, env: { GIT_TERMINAL_PROMPT: '0' } });
-    if (fetched.error || fetched.status !== 0) return failed(fetched.error?.message || fetched.stderr.trim());
-    const target = read(['rev-parse', '--verify', `${ref}^{commit}`]);
+  const merge = (target) => {
     const [now, at] = checkout();
-    if (!target || now !== branch || at !== head) return failed('the checkout changed while the base was fetched');
+    if (now !== branch || at !== head) return failed('the checkout changed while the base was fetched');
     // The branch's own merge options (`--squash`, `-s ours`) would turn this into something else.
     const merged = cleanupGit(scope.root, ['-c', `branch.${branch}.mergeOptions=`,
       'merge', '--ff-only', '--no-squash', '--no-autostash', '--no-overwrite-ignore', '--quiet', target]);
@@ -2176,33 +2292,58 @@ function cleanupUpdateCheckout(scope) {
     const [after, landed] = checkout();
     if (after !== branch || landed !== target) return failed('the fast-forward did not land on the base');
     return { changed: landed !== head };
-  } finally {
-    cleanupGit(scope.root, ['update-ref', '-d', ref]);
-  }
+  };
+  try { return merge(fetchedCommit || cleanupFetchBase(scope)); }
+  catch (error) { return failed(error.message); }
 }
 
 // Inside the allocated worktree: prove every reviewed item, remove them, commit, and write the
 // acceptance completion binds. A failure releases the worktree; so does a throw, in the caller.
 // With every reviewed item already settled by the remote base, the worktree is released with
 // nothing to deliver.
-function cleanupDeliveryCommit(worktree, items, current, release, settledUpstream) {
-  const includedHooks = new Set(items.filter((item) => item.kind === 'legacy-hook' && item.included).map((item) => path.join(worktree, item.relative)));
-  const fresh = cleanupProjectScope(worktree, current, items.some((item) => item.included), includedHooks);
-  const available = new Map(fresh.items.map((item) => [`${item.kind}\u0000${item.relative}`, item]));
-  const pairs = items.map((reviewed) => {
-    const fresh = available.get(`${reviewed.kind}\u0000${reviewed.relative}`);
-    return { reviewed, fresh, before: fresh && cleanupPreimage(fresh.path, Boolean(reviewed.included)) };
+function cleanupDeliveryCommit(worktree, items, current, release, scope, base) {
+  const reviewed = items.map((item) => cleanupReroot(item, scope.root, worktree));
+  const includedHooks = new Set(reviewed.filter((item) => item.kind === 'legacy-hook' && item.included).map((item) => item.path));
+  const fresh = { items: cleanupProjectScan(worktree, current, includedHooks, scope.root) };
+  const pairs = cleanupProven({ items: reviewed }, fresh);
+  // On a case-insensitive filesystem a literal file scan can see an upstream rename through its
+  // old spelling. The allocated tree must still hold the exact reviewed path before we act on it.
+  if (base !== scope.reviewBase) for (const pair of pairs) {
+    if (pair.fresh && cleanupObject(worktree, base, pair.reviewed.relative) === null) pair.fresh = null;
+  }
+  const mismatch = (paths) => cleanupReason(base === scope.reviewBase ? 'delivery-failed' : 'stale-plan', { detail: paths.join(', ') });
+  let basePaths;
+  const stale = pairs.filter((pair) => {
+    if (pair.fresh) return false;
+    const item = pair.reviewed;
+    // A case-only rename is still a counterpart, never upstream settlement. An absent item
+    // settles only when the path's Git object changed since the reviewed base.
+    if (fresh.items.some((other) => other.kind === item.kind && other.relative.toLowerCase() === item.relative.toLowerCase())) return true;
+    const after = cleanupObject(worktree, base, item.relative);
+    if (after === null) {
+      basePaths ??= cleanupGitRead(worktree, ['ls-tree', '-r', '--name-only', '-z', base], { maxBuffer: 1 << 30 }).toLowerCase().split('\0').filter(Boolean);
+      const relative = item.relative.toLowerCase();
+      if (basePaths.some((name) => name === relative || (item.before.type === 'directory' && name.startsWith(relative + '/')))) return true;
+    }
+    return !scope.reviewBase || cleanupObject(worktree, scope.reviewBase, item.relative) === after;
   });
-  const stale = pairs.filter(({ reviewed, fresh, before }) => (fresh
-    ? fresh.action !== reviewed.action || fresh.route !== 'delivery'
-      || (reviewed.included && (!cleanupCanInclude(fresh) || before.sha256 === null))
-      || before.type !== reviewed.before.type || before.sha256 !== reviewed.before.sha256
-      || cleanupCanonical(fresh.hookScripts || []) !== cleanupCanonical(reviewed.hookScripts || [])
-    : !settledUpstream(reviewed.relative)));
-  // Check the entire batch before mutating even one item; the remote base cannot replace the reviewed preimage.
-  if (stale.length) return release(cleanupReason('stale-plan', { detail: stale.map(({ reviewed }) => reviewed.relative).join(', ') }));
-  if (cleanupCoupledPairs(pairs.filter(({ fresh }) => fresh)).some((pair) => !pair.fresh)) return release(cleanupReason('stale-plan'));
-  const present = pairs.filter(({ fresh }) => fresh);
+  let guard;
+  for (const { reviewed } of stale) {
+    const counterpart = fresh.items.find((item) => item.kind === reviewed.kind && item.relative === reviewed.relative && item.route === reviewed.route);
+    // A caller hook reference can suppress its paired settings edit from the scan even though
+    // the settings bytes remain identical. Actual byte/presence changes still require new proof.
+    const before = cleanupPreimage(reviewed.path, Boolean(reviewed.included));
+    if (before.type !== reviewed.before.type || before.sha256 !== reviewed.before.sha256) {
+      return release(mismatch(stale.map(({ reviewed }) => reviewed.relative)));
+    }
+    if (counterpart?.action === 'skip' && cleanupAction(reviewed) !== 'skip') {
+      guard ??= counterpart.reasons.find((reason) => ['in-use', 'occupied-lock', 'legacy-queue', 'queue-unreadable', 'requirement-missing', 'dependent-copy'].includes(reason.code));
+    }
+  }
+  if (guard) return release(guard);
+  if (stale.length) return release(mismatch(stale.map(({ reviewed }) => reviewed.relative)));
+  const present = cleanupCoupledPairs(pairs.filter(({ fresh }) => fresh));
+  if (present.some((pair) => !pair.fresh)) return release(mismatch(present.filter((pair) => !pair.fresh).map((pair) => pair.reviewed.relative)));
   if (!present.length) return release();
   const applied = [];
   for (const { reviewed, fresh: settings } of present.filter(({ fresh }) => fresh.hookScripts?.length)) {
@@ -2218,7 +2359,7 @@ function cleanupDeliveryCommit(worktree, items, current, release, settledUpstrea
     if (error) return release(cleanupReason(error.code, { ...error.params, detail: reviewed.relative }));
     applied.push(fresh.relative);
   }
-  for (const dir of ['.agents/skills', '.claude/skills']) {
+  for (const dir of CLEANUP_SKILL_ROOTS) {
     const full = path.join(worktree, dir);
     if (fresh.items.some((item) => item.keepRoot && cleanupSameFile(path.dirname(item.path), full))) continue;
     try { if (fs.lstatSync(full).isDirectory() && fs.readdirSync(full).length === 0) fs.rmdirSync(full); } catch {}
@@ -2227,65 +2368,79 @@ function cleanupDeliveryCommit(worktree, items, current, release, settledUpstrea
   const commit = add.status === 0 && cleanupGit(worktree, ['-c', 'user.useConfigOnly=true', 'commit', '-q', '-m',
     `chore(devlyn): remove legacy devlyn-cli copies\n\nDevlyn now delivers devlyn-cli ${PKG.version} to each session it starts, so the copies earlier\ninstalls committed here are no longer used. The managed principles block stays for teammates.`]);
   if (!commit || commit.status !== 0) return release(cleanupReason('delivery-failed', { detail: (commit || add).stderr.trim() }));
-  const check = spawnSync(process.execPath, [path.join(__dirname, 'devlyn.js'), 'cleanup', '--plan', '--project', worktree, '--json'], { encoding: 'utf8' });
+  // This check must observe the committed delivery worktree, not project the still-unclean remote.
+  const inputs = { machine: false, projects: [worktree], accountHomes: [] };
+  const id = `project:${require('./release').sha256(Buffer.from(worktree)).slice(0, 12)}`;
+  let checked;
+  try { checked = cleanupProjectScan(worktree, current); }
+  catch (error) { return release(cleanupReason('delivery-failed', { detail: `cleanupProjectScan: ${error.message}` })); }
+  const unreadable = checked.find((item) => item.reasons.some((reason) => reason.code === 'repository-unreadable'));
+  if (unreadable) return release(cleanupReason('delivery-failed', { detail: `cleanupProjectScan: ${unreadable.path}: ${unreadable.reasons[0].params.detail}` }));
+  const left = checked.filter((item) =>
+    cleanupAction({ ...item, included: items.find((reviewed) => reviewed.relative === item.relative)?.included }) !== 'skip' && applied.includes(item.relative));
+  if (left.length) return release(cleanupReason('delivery-failed', { detail: 'items remain after cleanup' }));
+  const check = { schemaVersion: 1, version: PKG.version, inputs, scopes: [{
+    id, kind: 'project', root: worktree, name: path.basename(worktree), remote: scope.remote,
+    items: checked.map((item, index) => ({ id: `${id}:${index}`, ...item })),
+  }] };
   const evidence = path.join(worktree, '.devlyn', 'cleanup-check.json');
   fs.mkdirSync(path.dirname(evidence), { recursive: true });
-  fs.writeFileSync(evidence, check.stdout);
-  let left = [];
-  try { left = JSON.parse(check.stdout.trim().split('\n').at(-1)).data.scopes[0].items.filter((item) =>
-    cleanupAction({ ...item, included: items.find((reviewed) => reviewed.relative === item.relative)?.included }) !== 'skip' && applied.includes(item.relative)); }
-  catch { return release(cleanupReason('delivery-failed', { detail: 'the check after cleanup could not run' })); }
-  if (left.length) return release(cleanupReason('delivery-failed', { detail: 'items remain after cleanup' }));
+  fs.writeFileSync(evidence, JSON.stringify({ schemaVersion: 1, ok: true, data: { ...check, digest: cleanupDigest(check) } }) + '\n');
   const head = cleanupGit(worktree, ['rev-parse', 'HEAD']);
   if (head.error || head.status !== 0) return release(cleanupReason('repository-unreadable', { detail: head.error?.message || head.stderr.trim() }));
   const acceptance = path.join(worktree, '.devlyn', 'acceptance.json');
   fs.writeFileSync(acceptance, JSON.stringify({ kind: 'direct', task: `devlyn-cli ${PKG.version} legacy cleanup`,
     source_sha: head.stdout.trim(),
-    checks: [{ command: `devlyn cleanup --plan --project ${worktree} --json`, evidence: '.devlyn/cleanup-check.json' }] }));
+    checks: [{ command: `in-process cleanupProjectScan(${JSON.stringify(worktree)}, current): verify readable scan and no actionable applied items`, evidence: '.devlyn/cleanup-check.json' }] }));
   return { acceptance };
 }
 
 function cleanupApply(plan, { events = false } = {}) {
   const current = cleanupCurrentFingerprints();
-  const includeModified = plan.scopes.some((scope) => scope.items.some((item) => item.included));
-  const includedHooks = new Set(plan.scopes.flatMap((scope) => scope.items)
-    .filter((item) => item.kind === 'legacy-hook' && item.included).map((item) => item.path));
+  const hooks = plan.scopes.flatMap((scope) => scope.items).filter((item) => item.kind === 'legacy-hook' && item.included);
+  const includedHooks = new Set(hooks.filter((item) => item.route === 'local').map((item) => item.path));
   // Explicit selection of a reviewed edited script also selects its reviewed settings preimage.
   for (const scope of plan.scopes) for (const item of scope.items) {
     if (!item.hookCandidates || (item.action === 'skip' && item.reasons[0]?.code !== 'dependent-copy')) continue;
-    const selected = item.hookCandidates.filter((name) => includedHooks.has(path.join(item.base, name)));
+    const selected = item.hookCandidates.filter((name) => hooks.some((hook) => hook.route === item.route && hook.path === path.join(item.base, name)));
     if (selected.length) Object.assign(item, { action: 'edit', reasons: [], hookScripts: [...new Set([...item.hookScripts, ...selected])].sort() });
   }
-  const fresh = new Map(cleanupScopes(plan.inputs, current, includeModified, includedHooks).map((scope) => [scope.id, scope]));
+  const fresh = new Map(cleanupScopes(plan.inputs, current, includedHooks).map((scope) => [scope.id, scope]));
   let seq = 0;
   const emit = (scope) => { if (events) process.stdout.write(JSON.stringify({ schemaVersion: 1, event: 'scope', seq: ++seq, scope }) + '\n'); };
   const scopes = [];
   for (const reviewed of plan.scopes) {
-    const pairs = cleanupCoupledPairs(cleanupProven(reviewed, fresh.get(reviewed.id) || { items: [] }));
+    const observed = fresh.get(reviewed.id);
+    const localReview = { items: reviewed.items.filter((item) => item.route === 'local') };
+    const pairs = cleanupCoupledPairs(cleanupProven(localReview, observed || { items: [] }));
+    pairs.push(...reviewed.items.filter((item) => item.route === 'delivery' && ['remove', 'edit'].includes(cleanupAction(item)))
+      .map((item) => ({ reviewed: item, fresh: item })));
     const progress = { scopeId: reviewed.id, kind: reviewed.kind, name: reviewed.name, total: pairs.length, state: 'running', delivery: null, error: null };
     if (!pairs.length) { scopes.push({ ...progress, state: 'skipped' }); emit(scopes.at(-1)); continue; }
     emit(progress);
     try {
-      const observed = fresh.get(reviewed.id);
-      if (reviewed.kind !== observed?.kind
+      if (reviewed.kind !== observed?.kind || reviewed.root !== observed?.root
           || (observed.kind === 'project' && cleanupCanonical(reviewed.remote) !== cleanupCanonical(observed.remote))) {
         Object.assign(progress, { state: 'failed', error: cleanupReason('stale-plan', { detail: 'delivery identity changed' }) });
         scopes.push(progress); emit(progress); continue;
       }
       const refused = pairs.find((pair) => !pair.fresh);
-      // A reviewed copy refused now stays on disk, so the support beside it stays too.
-      const held = new Set(pairs.filter((pair) => !pair.fresh && !cleanupSupport(pair.reviewed))
-        .map((pair) => path.dirname(pair.reviewed.path)));
-      const proven = pairs.filter((pair) => pair.fresh && !(cleanupSupport(pair.fresh) && held.has(path.dirname(pair.fresh.path))))
-        .map((pair) => pair.fresh);
-      const local = cleanupLocal(fresh.get(reviewed.id), proven.filter((item) => item.route === 'local'));
+      const proven = pairs.filter((pair) => pair.fresh).map((pair) => pair.fresh);
+      const local = cleanupLocal(observed, proven.filter((item) => item.route === 'local'));
       const failedLocal = [...local.values()].find((reason) => reason);
-      // A local copy that could not go keeps the tracked support beside it, as cleanupLocal keeps local support.
-      const keptRoots = new Set(proven.filter((item) => item.route === 'local' && local.get(item.id)).map((item) => path.dirname(item.path)));
-      const deliverable = proven.filter((item) => item.route === 'delivery' && !(cleanupSupport(item) && keptRoots.has(path.dirname(item.path))));
-      const delivery = deliverable.length ? cleanupDeliver(fresh.get(reviewed.id), deliverable, current) : null;
+      // Every caller copy survives unless this apply removed it locally, or delivers the tracked
+      // copy at the same path and of the same kind. New and unselected copies retain support too.
+      const copyKey = (item) => `${item.route}\0${item.kind}\0${item.route === 'delivery' ? item.relative.toLowerCase() : item.path}`;
+      const removing = new Set(proven.filter((item) => cleanupAction(item) === 'remove'
+        && (item.route === 'delivery' || local.get(item.id) === null)).map(copyKey));
+      const keptRoots = new Set(observed.items.filter((item) => !cleanupSupport(item) && item.kind !== 'install-lock' && !removing.has(copyKey(item)))
+        .map((item) => path.dirname(item.path).toLowerCase()));
+      const deliverable = proven.filter((item) => item.route === 'delivery' && !(cleanupSupport(item) && keptRoots.has(path.dirname(item.path).toLowerCase())));
+      const retained = proven.some((item) => item.route === 'delivery' && !deliverable.includes(item));
+      const busy = deliverable.length ? cleanupQueueBusy(reviewed.root) : null;
+      const delivery = busy ? { error: busy } : deliverable.length ? cleanupDeliver(reviewed, deliverable, current) : null;
       progress.delivery = delivery?.delivery || null;
-      const error = delivery?.error || failedLocal || (refused && cleanupReason('stale-plan'));
+      const error = delivery?.error || failedLocal || ((refused || retained) && cleanupReason('stale-plan'));
       Object.assign(progress, error ? { state: 'failed', error } : { state: 'done' });
     } catch (error) {
       Object.assign(progress, { state: 'failed', error: error instanceof InstructionError
