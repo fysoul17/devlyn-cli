@@ -690,6 +690,58 @@ class CleanupFixture(unittest.TestCase):
         self.assertFalse((repo / ".agents/skills/devlyn-ideate").exists())
         self.assertEqual(self.run_ok(["git", "status", "--porcelain"], cwd=repo).stdout, "")
 
+    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
+    def test_tracked_copies_under_an_ignored_folder_are_delivered(self):
+        # Prediction: with -A, tracked copies under ignored .claude/ fail delivery-failed. With -u,
+        # cleanup merges their removals (including the chosen modified legacy command) and settings
+        # edit; remote main loses the copies and the checkout takes the merge with a clean status.
+        # An ignored untracked command is removed locally, and an unrelated ignored file stays.
+        repo = self.repo("ignored-delivery")
+        self.install(repo, "--claude")
+        commands = repo / ".claude/commands"
+        commands.mkdir()
+        chosen = commands / "devlyn.design-system.md"
+        chosen.write_text("Owner's edited design-system command.\n", encoding="utf-8")
+        settings = repo / ".claude/settings.json"
+        retired = {"type": "command", "command": 'python3 "$CLAUDE_PROJECT_DIR/.claude/skills/_shared/resolve-stop-hook.py"'}
+        settings.write_text(json.dumps({"custom": "owner", "hooks": {"Stop": [{"hooks": [retired]}]}}) + "\n")
+        self.run_ok(["git", "add", "-A"], cwd=repo)
+        self.run_ok(["git", "commit", "-qm", "legacy install"], cwd=repo)
+        ignore = repo / ".gitignore"
+        ignore.write_text(ignore.read_text(encoding="utf-8") + "\n.claude/\n", encoding="utf-8")
+        self.run_ok(["git", "add", ".gitignore"], cwd=repo)
+        self.run_ok(["git", "commit", "-qm", "ignore claude folder after tracking copies"], cwd=repo)
+        bare = self.fake_github(repo)
+        local = commands / "devlyn.review.md"
+        local.write_text("Owner's local legacy command.\n", encoding="utf-8")
+        kept = repo / ".claude/owner.txt"
+        kept.write_text("Keep my file.\n", encoding="utf-8")
+        self.run_ok(["git", "check-ignore", "--no-index", "--quiet", str(chosen)], cwd=repo)
+        plan, path = self.plan("--project", repo)
+        items = plan["scopes"][0]["items"]
+        self.assertIn(("legacy-command", "skip", chosen.name, "delivery", "modified-copy"), self.actions(plan["scopes"][0]))
+        self.assertIn(("legacy-command", "skip", local.name, "local", "modified-copy"), self.actions(plan["scopes"][0]))
+        self.assertIn(("settings-entry", "edit", "settings.json", "delivery", None), self.actions(plan["scopes"][0]))
+        include = [item["id"] for item in items if item["path"] in (str(chosen), str(local))]
+        result = self.apply(plan, path, include=include)
+        [scope] = result["scopes"]
+        self.assertEqual((result["state"], scope["state"], scope["error"]), ("succeeded", "done", None), scope)
+        self.assertEqual(scope["delivery"]["state"], "merged")
+        listed = self.run_ok(["git", "--git-dir", bare, "ls-tree", "-r", "--name-only", "main"]).stdout.splitlines()
+        self.assertFalse([name for name in listed if name.startswith((".agents/skills/", ".claude/skills/", ".claude/commands/"))])
+        cleaned = {"custom": "owner", "hooks": {"Stop": []}}
+        self.assertEqual(json.loads(self.run_ok(["git", "--git-dir", bare, "show", "main:.claude/settings.json"]).stdout), cleaned)
+        self.assertEqual(json.loads(settings.read_text()), cleaned)
+        self.assertEqual(self.run_ok(["git", "rev-parse", "HEAD"], cwd=repo).stdout,
+                         self.run_ok(["git", "--git-dir", bare, "rev-parse", "main"]).stdout)
+        self.assertFalse(chosen.exists())
+        self.assertFalse(local.exists())
+        self.assertEqual(kept.read_text(encoding="utf-8"), "Keep my file.\n")
+        self.assertNotIn(".claude/owner.txt", listed)
+        self.assertEqual(self.run_ok(["git", "status", "--porcelain"], cwd=repo).stdout, "")
+        again, _ = self.plan("--project", repo)
+        self.assertEqual(again["scopes"][0]["items"], [])
+
     def removed_upstream(self, repo, bare, plan, also=None):
         """What an earlier cleanup merged: the plan's tracked copies removed on the remote main only. `also`
         changes the upstream clone further before that commit."""

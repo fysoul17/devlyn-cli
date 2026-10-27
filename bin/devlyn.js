@@ -2027,7 +2027,7 @@ function cleanupDeliveryCommit(worktree, items, current, release, settledUpstrea
     if (fresh.items.some((item) => item.keepRoot && cleanupSameFile(path.dirname(item.path), full))) continue;
     try { if (fs.lstatSync(full).isDirectory() && fs.readdirSync(full).length === 0) fs.rmdirSync(full); } catch {}
   }
-  const add = cleanupGit(worktree, ['add', '-A', '--', ...applied]);
+  const add = cleanupGit(worktree, ['add', '-u', '--', ...applied]);
   const commit = add.status === 0 && cleanupGit(worktree, ['-c', 'user.useConfigOnly=true', 'commit', '-q', '-m',
     `chore(devlyn): remove legacy devlyn-cli copies\n\nDevlyn now delivers devlyn-cli ${PKG.version} to each session it starts, so the copies earlier\ninstalls committed here are no longer used. The managed principles block stays for teammates.`]);
   if (!commit || commit.status !== 0) return release(cleanupReason('delivery-failed', { detail: (commit || add).stderr.trim() }));
