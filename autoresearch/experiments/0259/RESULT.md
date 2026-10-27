@@ -1,5 +1,7 @@
 # 0259 result: No-overengineering ablation on claude
 
+> **Erratum 1 (2026-10-27, from 0260's grading).** The process-boundary line behind c007 was checked on c007 only. Applied to every F10 tree, it gives B 11 and C 8 false completions, not B 0 and C 2; the headline is unchanged. See [erratum-1.md](erratum-1.md).
+
 Measured 2026-10-26. All 64 measured cells and both SMOKE cells have final verdicts. [DESIGN.md](DESIGN.md) and
 [registration.md](registration.md) are unchanged. Two dated amendments cover infrastructure faults:
 - [amendment 1](amendment-1.md): a retry-only authentication fault. It was written before any measured cell was graded.
