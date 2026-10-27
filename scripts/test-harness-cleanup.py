@@ -48,7 +48,7 @@ class CleanupFixture(unittest.TestCase):
         return result
 
     def cli(self, *args, cwd=None, code=0):
-        result = self.run_ok(["node", CLI, *args, "--json"], cwd=cwd, code=code)
+        result = self.run_ok(["node", getattr(self, "cli_path", CLI), *args, "--json"], cwd=cwd, code=code)
         envelope = json.loads(result.stdout.strip().splitlines()[-1])
         return envelope["data"] if envelope["ok"] else envelope["error"]
 
@@ -106,6 +106,235 @@ class CleanupFixture(unittest.TestCase):
     def actions(scope):
         return sorted((item["kind"], item["action"], Path(item["path"]).name, item["route"],
                        (item["reasons"] or [{}])[0].get("code")) for item in scope["items"])
+
+    def ai_os_package(self):
+        """Synthetic public fixtures, made known only in this copied package's ordinary history JSON."""
+        package = self.root / "package"
+        package.mkdir()
+        for name in ("bin", "config"):
+            shutil.copytree(ROOT / name, package / name)
+        for name in ("package.json", "CLAUDE.md", "AGENTS.md"):
+            shutil.copyfile(ROOT / name, package / name)
+        shutil.copytree(ROOT / "node_modules", package / "node_modules", symlinks=True)
+        self.cli_path = package / "bin/devlyn.js"
+        history_path = package / "bin/cleanup-history.json"
+        history = json.loads(history_path.read_text())
+        self.ai_command = b"# Synthetic retired command\nFixture only.\n"
+        self.ai_script = b"#!/usr/bin/env node\n// Synthetic retired hook fixture.\n"
+        self.ai_hook = {"type": "command", "command": "node .claude/hooks/hook-to-file.mjs", "timeout": 10}
+        self.ai_events = ["PreToolUse", "PostToolUse", "PostToolUseFailure", "Notification", "Stop"]
+        history["commands"]["devlyn.fixture.md"] = [hashlib.sha256(self.ai_command).hexdigest()]
+        history["hooks"][".claude/hooks/hook-to-file.mjs"] = {
+            "hashes": [hashlib.sha256(self.ai_script).hexdigest()],
+            "entries": [hashlib.sha256(json.dumps([event, "*", self.ai_hook], sort_keys=True,
+                        separators=(",", ":")).encode()).hexdigest() for event in self.ai_events]}
+        history_path.write_text(json.dumps(history))
+        return history
+
+    def ai_os_install(self, repo, edited=False):
+        script = repo / ".claude/hooks/hook-to-file.mjs"
+        script.parent.mkdir(parents=True)
+        script.write_bytes(self.ai_script + (b"// Owner edit.\n" if edited else b""))
+        settings = repo / ".claude/settings.json"
+        data = {"env": {"OWNER": "kept ✓"}, "permissions": {"allow": ["Read(*)"]},
+                "hooks": {event: [{"matcher": "*", "hooks": [self.ai_hook]}] for event in self.ai_events}}
+        data["hooks"]["PostToolUse"][0]["hooks"].append({"type": "command", "command": "echo owner"})
+        data["hooks"]["Notification"][0]["ownerKey"] = "keep wrapper"
+        settings.write_text(json.dumps(data, ensure_ascii=False))
+        return script, settings, data
+
+    def test_ai_os_commands_all_providers_and_local_hook_pair(self):
+        # Prediction: known CRLF commands in every provider directory and the hook/settings pair go;
+        # edited/unknown commands and every owner settings key survive. A second plan has no edits.
+        history = self.ai_os_package()
+        repo = self.repo("ai-os-local")
+        script, settings, original = self.ai_os_install(repo)
+        for directory in history["commandDirectories"]:
+            folder = repo / directory
+            folder.mkdir(parents=True, exist_ok=True)
+            (folder / "devlyn.fixture.md").write_bytes(self.ai_command.replace(b"\n", b"\r\n"))
+            (folder / "owner.md").write_text("owner")
+        edited = repo / ".claude/commands/devlyn.recommend.md"
+        edited.write_text("owner edited command")
+        plan, file = self.plan("--project", repo)
+        items = plan["scopes"][0]["items"]
+        self.assertEqual(sum(i["kind"] == "legacy-command" and i["action"] == "remove" for i in items), 4)
+        self.assertIn(("legacy-hook", "remove", script.name, "local", None), self.actions(plan["scopes"][0]))
+        self.assertEqual(self.apply(plan, file)["state"], "succeeded")
+        self.assertFalse(script.exists())
+        expected = {**original, "hooks": {event: [] for event in self.ai_events}}
+        expected["hooks"]["PostToolUse"] = [{"matcher": "*", "hooks": [{"type": "command", "command": "echo owner"}]}]
+        expected["hooks"]["Notification"] = [{"matcher": "*", "hooks": [], "ownerKey": "keep wrapper"}]
+        self.assertEqual(json.loads(settings.read_text()), expected)
+        self.assertEqual(edited.read_text(), "owner edited command")
+        again, _ = self.plan("--project", repo)
+        self.assertTrue(all(i["action"] == "skip" for i in again["scopes"][0]["items"]))
+
+    def test_ai_os_edited_hook_requires_include_and_carries_settings(self):
+        # Prediction: an edited script and its settings stay by default; explicit --include removes
+        # that reviewed script and only its proven settings entries, without a production test switch.
+        self.ai_os_package()
+        repo = self.repo("ai-os-edited")
+        script, settings, _ = self.ai_os_install(repo, edited=True)
+        before = settings.read_bytes()
+        plan, file = self.plan("--project", repo)
+        self.assertIn(("legacy-hook", "skip", script.name, "local", "modified-copy"), self.actions(plan["scopes"][0]))
+        self.apply(plan, file)
+        self.assertEqual(settings.read_bytes(), before)
+        self.assertTrue(script.exists())
+        selected = next(i["id"] for i in plan["scopes"][0]["items"] if i["kind"] == "legacy-hook")
+        self.assertEqual(self.apply(plan, file, include=[selected])["state"], "succeeded")
+        self.assertFalse(script.exists())
+        self.assertNotIn(script.name, settings.read_text())
+
+    def test_ai_os_unknown_references_and_unsafe_settings_keep_hook(self):
+        # Prediction: modified command objects, wrappers, absolute/shell references, malformed JSON,
+        # invalid UTF-8, symlinks and mixed tracking routes never strand a live hook entry.
+        self.ai_os_package()
+        for variant in ("timeout", "extra", "matcher", "shell", "absolute", "json", "utf8", "link", "local", "duplicate-hooks", "tracked-script", "tracked-settings"):
+            if variant == "link" and os.name == "nt":
+                continue  # Windows symlink creation requires privileges; POSIX exercises this refusal.
+            with self.subTest(variant=variant):
+                repo = self.repo("ai-os-" + variant)
+                script, settings, data = self.ai_os_install(repo)
+                hook = data["hooks"]["PreToolUse"][0]["hooks"][0]
+                if variant == "timeout": hook["timeout"] = 11
+                if variant == "extra": hook["async"] = True
+                if variant == "matcher": data["hooks"]["PreToolUse"][0]["matcher"] = "Read"
+                if variant == "shell": hook["command"] += " && echo owner"
+                if variant == "absolute": hook["command"] = "node " + str(script)
+                settings.write_text(json.dumps(data))
+                # The fixture hook object is shared in Python; restore it before the next variant.
+                self.ai_hook = {"type": "command", "command": "node .claude/hooks/hook-to-file.mjs", "timeout": 10}
+                if variant == "json": settings.write_text("{broken")
+                if variant == "utf8": settings.write_bytes(b'{"owner":"\xff"}')
+                if variant == "local": (settings.parent / "settings.local.json").write_text(json.dumps(data))
+                if variant == "duplicate-hooks":
+                    settings.write_text('{"hooks":{},"hooks":' + json.dumps(data["hooks"]) + '}')
+                if variant == "link":
+                    target = repo / "owner-settings.json"
+                    settings.rename(target)
+                    settings.symlink_to(target)
+                if variant.startswith("tracked-"):
+                    self.run_ok(["git", "add", script if variant == "tracked-script" else settings], cwd=repo)
+                before = settings.read_bytes()
+                plan, file = self.plan("--project", repo)
+                item = next(i for i in plan["scopes"][0]["items"] if i["kind"] == "legacy-hook")
+                self.assertEqual((item["action"], item["reasons"][0]["code"]), ("skip", "dependent-copy"))
+                self.apply(plan, file)
+                self.assertTrue(script.exists())
+                self.assertEqual(settings.read_bytes(), before)
+
+    def test_ai_os_stale_or_narrowed_pair_preserves_both(self):
+        # Prediction: changing either reviewed preimage or narrowing either half out refuses both.
+        self.ai_os_package()
+        for variant in ("script", "settings", "omit-script", "omit-settings"):
+            with self.subTest(variant=variant):
+                repo = self.repo("ai-os-stale-" + variant)
+                script, settings, _ = self.ai_os_install(repo)
+                plan, file = self.plan("--project", repo)
+                if variant == "script": script.write_bytes(script.read_bytes() + b"// changed\n")
+                if variant == "settings": settings.write_text(settings.read_text() + "\n")
+                if variant.startswith("omit-"):
+                    kind = "legacy-hook" if variant == "omit-script" else "settings-entry"
+                    plan["scopes"][0]["items"] = [i for i in plan["scopes"][0]["items"] if i["kind"] != kind]
+                    body = {k: v for k, v in plan.items() if k != "digest"}
+                    plan["digest"] = hashlib.sha256(json.dumps(body, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()).hexdigest()
+                    file.write_text(json.dumps(plan))
+                before = settings.read_bytes()
+                self.assertEqual(self.apply(plan, file)["state"], "failed")
+                self.assertTrue(script.exists())
+                self.assertEqual(settings.read_bytes(), before)
+
+    def test_ai_os_settings_write_failure_restores_script(self):
+        # Prediction: a failed settings replacement after staging a script restores its original
+        # bytes/path and leaves settings intact. Inject at Node's filesystem boundary, not a CLI flag.
+        self.ai_os_package()
+        repo = self.repo("ai-os-write-failure")
+        script, settings, _ = self.ai_os_install(repo)
+        before = settings.read_bytes()
+        plan, file = self.plan("--project", repo)
+        preload = self.root / "fail-settings.cjs"
+        preload.write_text("const fs = require('fs'); const rename = fs.renameSync;\n"
+                           "fs.renameSync = (a, b) => {\n"
+                           f"if (b === {json.dumps(str(settings))}) throw new Error('fixture settings rename failure');\n"
+                           "return rename(a, b); };\n")
+        self.env["NODE_OPTIONS"] = "--require " + json.dumps(str(preload), ensure_ascii=False)
+        result = self.apply(plan, file)
+        self.assertEqual(result["state"], "failed")
+        self.assertIn("fixture settings rename failure", result["scopes"][0]["error"]["params"]["detail"])
+        self.assertEqual(script.read_bytes(), self.ai_script)
+        self.assertEqual(settings.read_bytes(), before)
+        self.assertEqual(list(script.parent.glob("*.tmp")), [])
+
+    def test_ai_os_settings_edit_preserves_owner_bytes(self):
+        # Prediction (review HIGH): only proven array elements disappear. BOM, CRLF, duplicate owner
+        # keys, large numbers, escapes and remaining hook objects keep their exact original bytes.
+        self.ai_os_package()
+        repo = self.repo("ai-os-owner-bytes")
+        script, settings, _ = self.ai_os_install(repo)
+        prefix = '\ufeff{\r\n  "ownerNumber":9007199254740993,"duplicate":1,"duplicate":2,\r\n'
+        suffix = ',\r\n  "ownerEscape":"\\u0061"\r\n}\r\n'
+        owner = '{"type":"command", "command":"echo owner", "number":9007199254740993}'
+        retired = json.dumps(self.ai_hook)
+        middle = '"hooks":{"PreToolUse":[{"matcher":"*","hooks":[' + retired + ',' + owner + ',' + retired + ']}]}'
+        settings.write_bytes((prefix + middle + suffix).encode())
+        plan, file = self.plan("--project", repo)
+        self.assertEqual(self.apply(plan, file)["state"], "succeeded")
+        expected = prefix + '"hooks":{"PreToolUse":[{"matcher":"*","hooks":[' + owner + ']}]}' + suffix
+        self.assertEqual(settings.read_bytes(), expected.encode())
+        self.assertFalse(script.exists())
+
+    def test_ai_os_legacy_hook_generations_share_one_settings_edit(self):
+        # Prediction: shell, HTTP mjs and file mjs generations can coexist; all proven scripts and
+        # their settings are removed together, including first/middle/last array deletions.
+        history = self.ai_os_package()
+        repo = self.repo("ai-os-generations")
+        script, settings, _ = self.ai_os_install(repo)
+        scripts = [script]
+        hooks = [self.ai_hook]
+        for name, command in (("post-to-jarvis.sh", "./.claude/hooks/post-to-jarvis.sh"),
+                              ("post-to-jarvis.mjs", "node .claude/hooks/post-to-jarvis.mjs")):
+            file = script.with_name(name)
+            file.write_bytes(self.ai_script)
+            hook = {"type": "command", "command": command, "timeout": 10}
+            history["hooks"][str(file.relative_to(repo)).replace(os.sep, "/")] = {
+                "hashes": [hashlib.sha256(self.ai_script).hexdigest()],
+                "entries": [hashlib.sha256(json.dumps(["PostToolUse", "*", hook], sort_keys=True,
+                            separators=(",", ":")).encode()).hexdigest()]}
+            scripts.append(file)
+            hooks.append(hook)
+        (self.cli_path.parent / "cleanup-history.json").write_text(json.dumps(history))
+        owner = {"type": "command", "command": "echo owner"}
+        settings.write_text(json.dumps({"hooks": {"PostToolUse": [{"matcher": "*", "hooks": [hooks[0], owner, *hooks[1:]]}]}}))
+        plan, file = self.plan("--project", repo)
+        self.assertEqual(sum(i["kind"] == "legacy-hook" and i["action"] == "remove" for i in plan["scopes"][0]["items"]), 3)
+        self.assertEqual(self.apply(plan, file)["state"], "succeeded")
+        self.assertTrue(all(not p.exists() for p in scripts))
+        self.assertEqual(json.loads(settings.read_text()), {"hooks": {"PostToolUse": [{"matcher": "*", "hooks": [owner]}]}})
+
+    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
+    def test_ai_os_tracked_hook_and_commands_use_delivery(self):
+        # Prediction: tracked AI OS commands and hook/settings travel in one PR; its merge removes
+        # the script and references together and keeps unrelated settings in the reconciled checkout.
+        self.ai_os_package()
+        repo = self.repo("ai-os-delivery")
+        script, settings, _ = self.ai_os_install(repo)
+        commands = repo / ".agent/workflows"
+        commands.mkdir(parents=True)
+        command = commands / "devlyn.fixture.md"
+        command.write_bytes(self.ai_command)
+        self.run_ok(["git", "add", "."], cwd=repo)
+        self.run_ok(["git", "commit", "-qm", "legacy AI OS"], cwd=repo)
+        self.fake_github(repo)
+        plan, file = self.plan("--project", repo)
+        self.assertTrue(all(i["route"] == "delivery" for i in plan["scopes"][0]["items"]))
+        result = self.apply(plan, file)
+        self.assertEqual(result["scopes"][0]["delivery"]["state"], "merged", result)
+        self.assertFalse(script.exists())
+        self.assertFalse(command.exists())
+        self.assertNotIn(script.name, settings.read_text())
+        self.assertEqual(json.loads(settings.read_text())["env"], {"OWNER": "kept ✓"})
 
     def test_machine_copies_go_and_the_owner_skill_and_an_edited_copy_stay(self):
         # Prediction: a global install's three roots list devlyn-ideate, devlyn-engines, _shared and the marker; an owner

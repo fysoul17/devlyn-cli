@@ -60,6 +60,7 @@
   "dependencies": {
     "@inquirer/checkbox": "5.2.6",
     "@inquirer/select": "5.2.6",
+    "jsonc-parser": "3.3.1",
     "marked": "15.0.12"
   },
   "devDependencies": {
@@ -71,6 +72,7 @@
   "bundleDependencies": [
     "@inquirer/checkbox",
     "@inquirer/select",
+    "jsonc-parser",
     "marked"
   ]
 }

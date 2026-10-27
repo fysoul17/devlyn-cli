@@ -71,3 +71,42 @@ The result is `{state: succeeded|partial|failed, scopes}`; each scope reports `s
 `requirement-missing` (`{name}`), and the skip reasons above.
 
 Tests: `python3 scripts/test-harness-cleanup.py`, with `TMPDIR` set to scratch.
+
+## Devlyn AI OS history
+
+Cleanup also recognizes the frozen private `agent-devlyn-v1` generation. The public
+manifest contains hashes, never its template text. Command discovery covers
+`.claude/commands`, `.agent/workflows`, `.gemini/commands` and `.cursor/rules`;
+ownership still requires a known content hash. The earliest CLI also wrote Gemini
+commands; later provider registries listed Gemini and Cursor as coming soon.
+The desktop wizard's `devlyn-spec`, `devlyn-plan` and `devlyn-implement` commands
+are included. After the 2026-01-13 CLI removal, `src/prompts/*.md` was embedded
+into the worker/Rust build rather than installed as project slash commands.
+
+The three Jarvis scripts (`post-to-jarvis.sh`, `post-to-jarvis.mjs`,
+`hook-to-file.mjs`) are fingerprinted from evaluated historical CLI, desktop and
+worker generators at their default ports. Their settings entries require a
+historical event, matcher and complete hook object. Owner entries and wrapper keys
+stay byte-for-byte through JSON syntax-tree edits, including large numbers, escapes,
+line endings and duplicate owner keys. Ambiguous duplicate hook paths are refused.
+A script with unknown remaining references (including `settings.local.json`), unsafe settings or a different
+tracking route from its settings stays as `dependent-copy`. Selecting an edited
+script with `--include` also selects its reviewed settings preimage; a narrowed or
+stale pair is refused together. Local write failures restore staged scripts.
+Non-default ports and per-project placeholder substitutions without exact shipped
+hashes stay reviewable modified copies. Project data/configuration is not retired
+by this evidence: `.gitignore`, `devlyn.config.json`, `specs/`, `logs/`, `trees/`,
+`tasks.md` and `.ports.env` stay.
+
+To re-derive the frozen seed from a full local private checkout, then verify the
+combined public history (Node 22):
+
+```sh
+node scripts/update-cleanup-ai-os-history.js /path/to/agent-devlyn-v1 --check
+node scripts/update-cleanup-history.js --check
+```
+
+Omit `--check` to regenerate. The seed pins revision
+`d251b04141134589fb811dd5a0f2e99feef701e1` and traverses all its ancestors; it reads
+Git blobs, never local installed copies. Public CI consumes
+`scripts/cleanup-ai-os-history.json` and needs no private repository access.
