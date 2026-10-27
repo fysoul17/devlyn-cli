@@ -55,9 +55,11 @@ not write to the shared checkout.
 python3 "$DEVLYN_SHARED_DIR/task-complete.py" allocate --repo . \
   --task '<task identity>' --branch '<absent task branch>' \
   --worktree '<repo parent>/.devlyn-worktrees/<repo name>/<task directory>' \
-  --repository '<owner/repo>' --remote origin --base main
+  --remote origin
 ```
 
+The repository comes from the remote's GitHub URL and the base from the repository's default branch; passing either flag checks it instead.
+A non-default base is refused at allocation.
 Every delivery allocation owns a linked worktree; `--worktree` is required and
 must name an absent path.
 Cleanup removes empty parents through the exact per-repo root shown above or its legacy `.devlyn.noindex`/`.devlyn` root, keeping the shared `.devlyn-worktrees` container. Allocation also sweeps empty legacy roots for this repo.

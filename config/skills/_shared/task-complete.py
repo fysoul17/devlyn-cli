@@ -324,10 +324,12 @@ def allocate(args, *, exclude_receipts=(), warnings=None):
     if local:
         receipt["local_only"] = True  # Local work needs no remote: nothing is fetched or pushed.
     else:
-        require(args.repository and args.base, "a remote allocation needs --repository <owner/repo> and --base <branch>; allocate local work with --local-base or --from-receipt")
+        if args.repository is None:
+            receipt["repository"] = repository_from_url(gref(receipt, "remote", "get-url", "--all", args.remote))
         policy(receipt, None)
         receipt["remote_url"] = remote_url(receipt)
         require("\n" not in receipt["remote_url"]["push"] and receipt["remote_url"]["push"] == receipt["remote_url"]["fetch"], "split/multiple remote URLs are unsupported")
+        repo_policy(receipt, allocating=True)
     target = Path(args.worktree).resolve()  # A relative, `..` or symlinked (macOS /tmp) path names its real location.
     require(not target.exists() and all(not target.is_relative_to(p) and not p.is_relative_to(target) for p in map(Path, registrations(receipt))), "linked worktree must be an absent path disjoint from every registered worktree")
     receipt["worktree"] = str(target)
@@ -541,9 +543,17 @@ def repository_info(repository):
     return info
 
 
-def repo_policy(receipt):
+def repo_policy(receipt, *, allocating=False):
     info = repository_info(receipt["repository"])
-    require(info["defaultBranchRef"]["name"] == receipt["base"] and receipt["branch"] != info["defaultBranchRef"]["name"], "base/default branch changed; retain resources")
+    default = info["defaultBranchRef"]["name"]
+    if allocating:
+        if receipt["base"] is None:
+            gref(receipt, "check-ref-format", "refs/heads/" + default)
+            receipt["base"] = default
+        require(receipt["branch"] != receipt["base"], "cannot own a base/default branch")
+    require(default == receipt["base"] and receipt["branch"] != default,
+            f"base {receipt['base']!r} differs from default branch {default!r}; the helper delivers only to the default branch; use a local allocation with --local-base for other bases"
+            if allocating else "base/default branch changed; retain resources")
     return info
 
 
@@ -1409,7 +1419,8 @@ class CompletionTests(unittest.TestCase):
         from unittest.mock import patch
         target = self.root / "absent" / "new"
         exists = Path.exists
-        with patch.object(Path, "exists", lambda path: False if path == target or path in target.parents else exists(path)), \
+        with patch.dict(os.environ, self.env), \
+                patch.object(Path, "exists", lambda path: False if path == target or path in target.parents else exists(path)), \
                 patch.object(shutil, "disk_usage") as usage:
             with self.assertRaisesRegex(CompletionError, f"no existing ancestor of {re.escape(str(target))} to measure free space"):
                 allocate(self.allocation_args("new", target))
@@ -1677,6 +1688,62 @@ class CompletionTests(unittest.TestCase):
             self.g("--no-literal-pathspecs", "check-ignore", "-q", "--", record, work=self.task)
         self.assertEqual(self.g("status", "--porcelain", "--untracked-files=all", work=self.task), "")
 
+    def test_allocate_derives_repository(self):
+        result, _ = self.cli("allocate", "--repo", self.work, "--task", "fixture",
+            "--branch", "task/fixture", "--base", "main", "--worktree", self.root / "linked")
+        self.assertEqual(result["status"], "ALLOCATED")
+        self.assertEqual(read_json(Path(result["receipt"]))["repository"], "test/project")
+
+    def test_allocate_derives_default_base(self):
+        self.g("push", "origin", "main:refs/heads/release")
+        self.configure(default_branch="release")
+        for name, flags in (("explicit", ["--repository", "test/project"]), ("derived", [])):
+            with self.subTest(name=name):
+                result, _ = self.cli("allocate", "--repo", self.work, "--task", name,
+                    "--branch", "task/" + name, "--worktree", self.root / name, *flags)
+                self.assertEqual(result["status"], "ALLOCATED")
+                receipt = read_json(Path(result["receipt"]))
+                self.assertEqual((receipt["repository"], receipt["base"]), ("test/project", "release"))
+                self.assertEqual(self.g("rev-parse", "HEAD", work=Path(result["worktree"])), receipt["baseline"])
+
+    def test_allocate_rejects_nondefault_base_before_resources(self):
+        self.configure(default_branch="release")
+        self.g("update-ref", "-d", "refs/remotes/origin/main")
+        refs, worktrees = self.g("show-ref"), self.g("worktree", "list", "--porcelain")
+        result, process = self.cli("allocate", "--repo", self.work, "--task", "fixture",
+            "--branch", "task/fixture", "--repository", "test/project", "--base", "main",
+            "--worktree", self.root / "linked", success=False)
+        self.assertNotEqual(process.returncode, 0)
+        self.assertEqual(result["status"], "BLOCKED")
+        for text in ("main", "release", "only to the default branch", "--local-base"):
+            self.assertIn(text, result["reason"])
+        self.assertEqual(self.g("show-ref"), refs)
+        self.assertEqual(self.g("worktree", "list", "--porcelain"), worktrees)
+        self.assertFalse((self.work / ".git/devlyn-completion").exists())
+        self.assertFalse((self.root / "linked").exists())
+
+    def test_allocate_rejects_derived_base_as_task_branch(self):
+        self.configure(default_branch="release")
+        refs = self.g("show-ref")
+        result, process = self.cli("allocate", "--repo", self.work, "--task", "fixture",
+            "--branch", "release", "--worktree", self.root / "linked", success=False)
+        self.assertNotEqual(process.returncode, 0)
+        self.assertEqual(result["status"], "BLOCKED")
+        self.assertIn("cannot own a base/default branch", result["reason"])
+        self.assertEqual(self.g("show-ref"), refs)
+        self.assertEqual(self.g("branch", "--list", "release"), "")
+        self.assertFalse((self.work / ".git/devlyn-completion").exists())
+        self.assertFalse((self.root / "linked").exists())
+
+    def test_allocate_rejects_explicit_repository_mismatch(self):
+        result, process = self.cli("allocate", "--repo", self.work, "--task", "fixture",
+            "--branch", "task/fixture", "--repository", "test/other", "--base", "main",
+            "--worktree", self.root / "linked", success=False)
+        self.assertNotEqual(process.returncode, 0)
+        self.assertEqual(result, {"status": "BLOCKED", "reason": "repository differs from remote"})
+        self.assertFalse((self.work / ".git/devlyn-completion").exists())
+        self.assertFalse((self.root / "linked").exists())
+
     def test_allocate_base_with_same_named_tag(self):
         self.g("tag", "main")
         result = self.allocate()
@@ -1687,6 +1754,7 @@ class CompletionTests(unittest.TestCase):
         base = "main\u00a0"
         self.g("switch", "-c", base)
         self.g("push", "origin", "HEAD:refs/heads/"+base)
+        self.configure(default_branch=base)
         result = self.allocate(base=base)
         self.assertEqual(result["status"], "ALLOCATED")
         self.assertEqual(json.loads(self.receipt.read_text(encoding="utf-8"))["base"], base)
@@ -1711,6 +1779,7 @@ class CompletionTests(unittest.TestCase):
     def test_allocate_rejects_short_base_alias(self):
         self.g("branch", "heads/main")
         self.g("tag", "main")
+        self.configure(default_branch="heads/main")
         self.assert_base_identity_rejected("main", "heads/main")
 
     def test_allocate_uses_remote_base_with_dirty_foreign_anchor(self):
@@ -2295,7 +2364,8 @@ ctypes.CDLL(None).pthread_exit(None)
         self.merge_pr()
         receipt, task = self.receipt, self.task
         self.configure(default_branch="changed")
-        result = self.allocate("next")
+        self.g("push", "origin", "main:refs/heads/changed")
+        result = self.allocate("next", base="changed")
         self.assertEqual([(row["receipt"], row["status"]) for row in result["reconciled"]], [(str(receipt), "RETAINED")])
         self.assertIn("base/default branch changed", result["reconciled"][0]["reason"])
         self.assertTrue(task.exists())
@@ -2398,12 +2468,13 @@ ctypes.CDLL(None).pthread_exit(None)
         self.assertEqual(self.g("branch", "--list", "task/fixture"), "")
         self.assertEqual(self.g("ls-remote", "origin", "refs/heads/task/fixture"), "")
         self.configure(default_branch="changed")
+        self.g("push", "origin", "main:refs/heads/changed")
         server = json.loads(self.data.read_text())
-        result = self.allocate("retry")
+        result = self.allocate("retry", base="changed")
         self.assertEqual([(row["receipt"], row["status"]) for row in result["reconciled"]], [(str(receipt), "COMPLETE")])
         self.assertFalse(any(scratch.iterdir()))
         self.assertEqual(json.loads(self.data.read_text()), server)
-        self.assertEqual(self.allocate("later")["reconciled"], [])
+        self.assertEqual(self.allocate("later", base="changed")["reconciled"], [])
 
     def test_reconcile_retries_unattempted_scratch_cleanup(self):
         scratch = Path(self.allocate()["scratch"])
@@ -3158,14 +3229,10 @@ ctypes.CDLL(None).pthread_exit(None)
         self.assertFalse((self.root / "next").exists())
 
     def test_local_allocation_needs_no_repository(self):
-        """E4. Prediction: without --repository, a remote allocation is refused naming it, with nothing created, while a
-        local allocation, here beside an origin that is not GitHub, is ALLOCATED and its local-only completion returns
-        LOCAL_ONLY with nothing pushed. Before: argparse required --repository, so both failed as an argparse error."""
+        """A local allocation beside a non-GitHub origin needs no repository and completes without publication."""
         args = ["allocate", "--repo", self.work, "--base", "main"]
-        refused, _ = self.cli(*args, "--task", "next", "--branch", "task/next", "--worktree", self.root / "next", success=False)
-        self.assertIn("--repository", refused["reason"])
-        self.assertEqual((self.g("branch", "--list", "task/next"), (self.root / "next").exists()), ("", False))
         self.g("remote", "set-url", "origin", "https://gitlab.com/team/project.git")
+        (self.bin / "gh").write_text("#!/bin/sh\nexit 1\n", encoding="utf-8")
         result, _ = self.cli(*args, "--task", "fixture", "--branch", "task/fixture", "--worktree", self.root / "linked",
                              "--local-base", self.g("rev-parse", "HEAD"))
         self.assertEqual(result["status"], "ALLOCATED")
@@ -3175,13 +3242,8 @@ ctypes.CDLL(None).pthread_exit(None)
         self.assertEqual(json.loads(self.data.read_text(encoding="utf-8")).get("pushs", 0), 0)
 
     def test_local_allocation_needs_no_base(self):
-        """P4-2. Prediction: a local allocation with --local-base and no --base, the form agents wrote in 3 of 3 timed
-        runs, is ALLOCATED and completes LOCAL_ONLY, while a remote allocation without --base is refused naming it, with
-        nothing created."""
+        """A local allocation with --local-base and no --base is ALLOCATED and completes LOCAL_ONLY."""
         args = ["allocate", "--repo", self.work, "--task", "fixture", "--branch", "task/fixture", "--worktree", self.root / "linked"]
-        refused, _ = self.cli(*args, "--repository", "test/project", success=False)
-        self.assertIn("--base", refused["reason"])
-        self.assertEqual((self.g("branch", "--list", "task/fixture"), (self.root / "linked").exists()), ("", False))
         result, _ = self.cli(*args, "--local-base", self.g("rev-parse", "HEAD"))
         self.assertEqual(result["status"], "ALLOCATED")
         self.receipt, self.task = Path(result["receipt"]), Path(result["worktree"])
