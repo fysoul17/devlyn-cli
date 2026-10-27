@@ -2067,13 +2067,17 @@ function cleanupDeliver(scope, items, current) {
   if (!python) return { error: cleanupReason('requirement-missing', { name: 'Python 3.11' }) };
   const run = (args, cwd) => spawnSync(python, ['-B', helper, ...args], { cwd, encoding: 'utf8', env: { ...process.env, PYTHONDONTWRITEBYTECODE: '1' } });
   const lastJson = (text) => { try { return JSON.parse(text.trim().split('\n').at(-1)); } catch { return null; } };
+  const failureCode = (reason) => /\b(authentication|unauthorized|gh auth login|could not read Username|HTTP 40[13])\b/i.test(reason) ? 'auth-failed' : 'delivery-failed';
   const short = crypto.randomBytes(4).toString('hex');
   const branch = `devlyn/cleanup-${short}`;
   const worktree = path.join(path.dirname(scope.root), `${path.basename(scope.root)}.devlyn.noindex`, `devlyn-cleanup-${short}`);
   const allocated = lastJson(run(['allocate', '--repo', scope.root, '--task', `devlyn-cli ${PKG.version} legacy cleanup`,
     '--branch', branch, '--worktree', worktree, '--repository', scope.remote.repository,
     '--remote', 'origin', '--base', scope.remote.base], scope.root).stdout);
-  if (allocated?.status !== 'ALLOCATED') return { error: cleanupReason('delivery-failed', { detail: allocated?.reason || 'allocation failed' }) };
+  if (allocated?.status !== 'ALLOCATED') {
+    const reason = allocated?.reason || 'allocation failed';
+    return { error: cleanupReason(failureCode(reason), { detail: reason }) };
+  }
   const release = (error = null) => {
     for (const args of [['worktree', 'remove', '--force', worktree], ['branch', '-D', branch]]) {
       const result = cleanupGit(scope.root, args);
@@ -2108,8 +2112,7 @@ function cleanupDeliver(scope, items, current) {
   if (status === 'COMPLETE' || status === 'MERGED') return { ...cleanupUpdateCheckout(scope), delivery: { state: 'merged', url: completed.pr || null } };
   if (completed?.pr) return { delivery: { state: 'pr-open', url: completed.pr } };
   const reason = completed?.reason || 'delivery did not complete';
-  const auth = /\b(authentication|unauthorized|gh auth login|could not read Username|HTTP 40[13])\b/i.test(reason);
-  return { error: cleanupReason(auth ? 'auth-failed' : 'delivery-failed', { detail: reason, ...(completed?.resume ? { resume: completed.resume } : {}) }) };
+  return { error: cleanupReason(failureCode(reason), { detail: reason, ...(completed?.resume ? { resume: completed.resume } : {}) }) };
 }
 
 // With no fresh counterpart, the base settled an item only if it changed the path's content or

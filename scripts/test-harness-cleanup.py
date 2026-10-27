@@ -1090,6 +1090,22 @@ class CleanupFixture(unittest.TestCase):
         again, _ = self.plan("--project", repo)
         self.assertEqual(again["scopes"][0]["items"], [])
 
+    @unittest.skipIf(os.name == "nt", "fake GitHub uses POSIX wrappers")
+    def test_allocation_auth_failure_is_reported(self):
+        repo = self.repo("allocation-auth")
+        self.install(repo)
+        self.run_ok(["git", "add", "-A"], cwd=repo)
+        self.run_ok(["git", "commit", "-qm", "installed skills"], cwd=repo)
+        self.fake_github(repo)
+        plan, path = self.plan("--project", repo)
+        (self.root / "bin/gh").write_text(
+            f"#!{sys.executable}\nimport sys\nprint('Run gh auth login', file=sys.stderr)\nsys.exit(1)\n")
+        result = self.apply(plan, path)
+        scope = result["scopes"][0]
+        self.assertEqual((scope["state"], scope["error"]["code"]), ("failed", "auth-failed"))
+        self.assertIn("gh auth login", scope["error"]["params"]["detail"])
+        self.assertEqual(self.run_ok(["git", "branch", "--list", "devlyn/cleanup-*"], cwd=repo).stdout, "")
+
     def removed_upstream(self, repo, bare, plan, also=None):
         """What an earlier cleanup merged: the plan's tracked copies removed on the remote main only. `also`
         changes the upstream clone further before that commit."""
