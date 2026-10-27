@@ -88,7 +88,10 @@ The three Jarvis scripts (`post-to-jarvis.sh`, `post-to-jarvis.mjs`,
 worker generators at their default ports. Their settings entries require a
 historical event, matcher and complete hook object. Owner entries and wrapper keys
 stay byte-for-byte through JSON syntax-tree edits, including large numbers, escapes,
-line endings and duplicate owner keys. Ambiguous duplicate hook paths are refused.
+line endings and duplicate owner keys. Both Jarvis and retired Stop-hook cleanup remove event
+keys and the `hooks` key only when cleanup emptied them; pre-existing empty containers stay.
+If that leaves an empty document, the same `settings-entry` / `edit` item deletes the file,
+with its reviewed preimage and local/delivery route unchanged. Ambiguous duplicate hook paths are refused.
 A script with unknown remaining references (including `settings.local.json`), unsafe settings or a different
 tracking route from its settings stays as `dependent-copy`. Selecting an edited
 script with `--include` also selects its reviewed settings preimage; a narrowed or

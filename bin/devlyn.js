@@ -969,19 +969,24 @@ function cleanupSettingsText(text, settings, scripts) {
     if (!entries.includes(entry)) removals.push(location);
     else for (let i = hooks.length - 1; i >= 0; i--) if (!entry.hooks.includes(hooks[i])) removals.push([...location, 'hooks', i]);
   }
-  // Remove array elements by AST ranges, including the adjacent comma, without serializing owner
+  // Only prune containers this cleanup emptied; pre-existing owner empties are not leftovers.
+  const emptiedEvents = [...new Set(before.map(({ event }) => event))].filter((event) => settings.hooks[event].length === 0);
+  removals.push(...emptiedEvents.map((event) => ['hooks', event]));
+  if (emptiedEvents.length === Object.keys(settings.hooks).length) removals.push(['hooks']);
+  // Remove array elements and object properties by AST ranges, including the adjacent comma, without serializing owner
   // values. jsonc-parser 3.3.1's modify() truncates a last-element deletion without formatting.
   for (const location of removals) {
-    const node = findNodeAtLocation(parseTree(text.replace(/^\uFEFF/, ' ')), location);
-    if (!node || node.parent?.type !== 'array') throw new Error('Settings edit path changed');
+    let node = findNodeAtLocation(parseTree(text.replace(/^\uFEFF/, ' ')), location);
+    if (node?.parent?.type === 'property') node = node.parent;
+    if (!node || !['array', 'object'].includes(node.parent?.type)) throw new Error('Settings edit path changed');
     const siblings = node.parent.children, index = siblings.indexOf(node);
     const previous = siblings[index - 1], next = siblings[index + 1];
     const offset = previous ? previous.offset + previous.length : node.offset;
     const end = !previous && next ? next.offset : node.offset + node.length;
     text = applyEdits(text, [{ offset, length: end - offset, content: '' }]);
   }
-  JSON.parse(text.replace(/^\uFEFF/, '')); // Refuse an invalid edit before replacing any bytes.
-  return text;
+  const after = JSON.parse(text.replace(/^\uFEFF/, '')); // Refuse an invalid edit before changing any bytes.
+  return Object.keys(after).length === 0 ? null : text;
 }
 
 // Shared user roots need one writer from ownership checks through the last addon write.
@@ -1921,7 +1926,8 @@ function cleanupApplyItem(item) {
     const { safe, settings, text } = cleanupReadSettings(item.base);
     if (!safe || text === undefined) return cleanupReason('stale-plan');
     const after = cleanupSettingsText(text, settings, item.hookScripts);
-    if (after !== text) replaceFile(item.path, after);
+    if (after === null) fs.unlinkSync(item.path);
+    else if (after !== text) replaceFile(item.path, after);
     return null;
   }
   if (item.kind === 'instructions') {

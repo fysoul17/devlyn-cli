@@ -122,7 +122,8 @@ class CleanupFixture(unittest.TestCase):
         self.ai_command = b"# Synthetic retired command\nFixture only.\n"
         self.ai_script = b"#!/usr/bin/env node\n// Synthetic retired hook fixture.\n"
         self.ai_hook = {"type": "command", "command": "node .claude/hooks/hook-to-file.mjs", "timeout": 10}
-        self.ai_events = ["PreToolUse", "PostToolUse", "PostToolUseFailure", "Notification", "Stop"]
+        self.ai_events = ["PreToolUse", "PostToolUse", "PostToolUseFailure", "Notification", "UserPromptSubmit",
+                          "SessionStart", "Stop", "SubagentStart", "SubagentStop", "PreCompact", "SessionEnd", "PermissionRequest"]
         history["commands"]["devlyn.fixture.md"] = [hashlib.sha256(self.ai_command).hexdigest()]
         history["hooks"][".claude/hooks/hook-to-file.mjs"] = {
             "hashes": [hashlib.sha256(self.ai_script).hexdigest()],
@@ -162,7 +163,7 @@ class CleanupFixture(unittest.TestCase):
         self.assertIn(("legacy-hook", "remove", script.name, "local", None), self.actions(plan["scopes"][0]))
         self.assertEqual(self.apply(plan, file)["state"], "succeeded")
         self.assertFalse(script.exists())
-        expected = {**original, "hooks": {event: [] for event in self.ai_events}}
+        expected = {**original, "hooks": {}}
         expected["hooks"]["PostToolUse"] = [{"matcher": "*", "hooks": [{"type": "command", "command": "echo owner"}]}]
         expected["hooks"]["Notification"] = [{"matcher": "*", "hooks": [], "ownerKey": "keep wrapper"}]
         self.assertEqual(json.loads(settings.read_text()), expected)
@@ -284,6 +285,124 @@ class CleanupFixture(unittest.TestCase):
         expected = prefix + '"hooks":{"PreToolUse":[{"matcher":"*","hooks":[' + owner + ']}]}' + suffix
         self.assertEqual(settings.read_bytes(), expected.encode())
         self.assertFalse(script.exists())
+
+    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
+    def test_only_retired_hooks_remove_settings_through_delivery(self):
+        # Prediction: the templer-landing shape (12 Jarvis-only events), and the retired Stop-only
+        # shape, delete settings through the existing settings-entry item and PR route. Both the
+        # merged tree and caller lose the file; the caller reaches main with a clean checkout.
+        self.ai_os_package()
+        for generation in ("jarvis", "stop"):
+            with self.subTest(generation=generation):
+                repo = self.repo("only-hooks-" + generation)
+                script, settings, _ = self.ai_os_install(repo)
+                hooks = {event: [{"matcher": "*", "hooks": [self.ai_hook]}] for event in self.ai_events}
+                if generation == "stop":
+                    hooks = {"Stop": [{"hooks": [{"type": "command", "command":
+                        'python3 "$CLAUDE_PROJECT_DIR/.claude/skills/_shared/resolve-stop-hook.py"'}]}]}
+                settings.write_bytes(('\ufeff \r\n' + json.dumps({"hooks": hooks}, indent=2) + '\r\n ').encode())
+                self.run_ok(["git", "add", "."], cwd=repo)
+                self.run_ok(["git", "commit", "-qm", "only retired hooks"], cwd=repo)
+                bare = self.fake_github(repo)
+                plan, file = self.plan("--project", repo)
+                [item] = [i for i in plan["scopes"][0]["items"] if i["kind"] == "settings-entry"]
+                self.assertEqual((item["action"], item["route"]), ("edit", "delivery"))
+                self.assertEqual(item["before"]["sha256"], hashlib.sha256(settings.read_bytes()).hexdigest())
+                result = self.apply(plan, file)
+                self.assertEqual(result["state"], "succeeded", result)
+                self.assertEqual(result["scopes"][0]["delivery"]["state"], "merged", result)
+                self.assertTrue(json.loads((self.root / "gh.json").read_text())["prs"])
+                self.assertFalse(settings.exists())
+                self.assertFalse(script.exists())
+                listed = self.run_ok(["git", "--git-dir", bare, "ls-tree", "-r", "--name-only", "main"]).stdout.splitlines()
+                self.assertNotIn(".claude/settings.json", listed)
+                self.assertEqual(self.run_ok(["git", "rev-parse", "HEAD"], cwd=repo).stdout,
+                                 self.run_ok(["git", "--git-dir", bare, "rev-parse", "main"]).stdout)
+                self.assertEqual(self.run_ok(["git", "status", "--porcelain"], cwd=repo).stdout, "")
+
+    def test_emptied_settings_keys_preserve_surrounding_owner_bytes(self):
+        # Prediction: first/middle/last event keys emptied by either hook generation disappear;
+        # owner hooks, empty events, BOM, CRLF, duplicate keys, escapes and large numbers retain bytes.
+        # When only hooks is emptied, its first/middle/last property disappears with its comma.
+        self.ai_os_package()
+        for generation in ("jarvis", "stop"):
+            entry = json.dumps({"matcher": "*", "hooks": [self.ai_hook]} if generation == "jarvis" else
+                {"hooks": [{"type": "command", "command":
+                    'python3 "$CLAUDE_PROJECT_DIR/.claude/skills/_shared/resolve-stop-hook.py"'}]})
+            for position in range(3):
+                for owner_events in (False, True):
+                    with self.subTest(generation=generation, position=position, owner_events=owner_events):
+                        repo = self.repo(f"keys-{generation}-{position}-{owner_events}")
+                        script, settings, _ = self.ai_os_install(repo)
+                        owner = '"OwnerEvent" : [{"hooks":[{"type":"command", "command":"echo owner"}]}]'
+                        events = [owner, '"EmptyEvent" : [ ]'] if owner_events else []
+                        events.insert(position, '"Stop" : [' + entry + ']')
+                        owned = ['"duplicate":9007199254740993', '"duplicate":"\\u0061"']
+                        original = owned.copy()
+                        original.insert(position, '"hooks" : {' + ',\r\n'.join(events) + '}')
+                        if owner_events:
+                            owned.insert(position, '"hooks" : {' + owner + ',\r\n"EmptyEvent" : [ ]}')
+                        before = '\ufeff{\r\n' + ',\r\n'.join(original) + '\r\n}\r\n'
+                        expected = '\ufeff{\r\n' + ',\r\n'.join(owned) + '\r\n}\r\n'
+                        settings.write_bytes(before.encode())
+                        plan, file = self.plan("--project", repo)
+                        self.assertEqual(self.apply(plan, file)["state"], "succeeded")
+                        self.assertEqual(settings.read_bytes(), expected.encode())
+                        self.assertFalse(script.exists())
+
+    def test_preexisting_empty_settings_containers_stay(self):
+        # Prediction: owner-created empty document/hooks/event containers are unchanged, even when
+        # the unreferenced Jarvis script is removed. An empty event beside a removed event stays.
+        self.ai_os_package()
+        entry = json.dumps({"matcher": "*", "hooks": [self.ai_hook]})
+        for index, (before, after) in enumerate([
+            ('\ufeff { }\r\n', '\ufeff { }\r\n'),
+            ('{ "hooks" : { } }\n', '{ "hooks" : { } }\n'),
+            ('{ "hooks" : { "Stop" : [ ] } }', '{ "hooks" : { "Stop" : [ ] } }'),
+            ('{ "hooks" : { "Stop" : [ ], "PreToolUse":[' + entry + '] } }',
+             '{ "hooks" : { "Stop" : [ ] } }'),
+        ]):
+            with self.subTest(index=index):
+                repo = self.repo(f"owner-empty-{index}")
+                script, settings, _ = self.ai_os_install(repo)
+                settings.write_bytes(before.encode())
+                plan, file = self.plan("--project", repo)
+                self.assertEqual(self.apply(plan, file)["state"], "succeeded")
+                self.assertEqual(settings.read_bytes(), after.encode())
+                self.assertFalse(script.exists())
+
+    def test_settings_deletion_binds_preimage_and_restores_script_on_failure(self):
+        # Prediction: a stale preimage or filesystem deletion failure keeps both files intact;
+        # an unchanged review removes both locally. No temporary staged scripts survive failure.
+        self.ai_os_package()
+        for variant in ("stale", "failure", "success"):
+            with self.subTest(variant=variant):
+                repo = self.repo("delete-settings-" + variant)
+                script, settings, _ = self.ai_os_install(repo)
+                settings.write_text(json.dumps({"hooks": {"Stop": [{"matcher": "*", "hooks": [self.ai_hook]}]}}))
+                plan, file = self.plan("--project", repo)
+                if variant == "stale":
+                    settings.write_text(settings.read_text() + "\n")
+                before = settings.read_bytes()
+                if variant == "failure":
+                    preload = self.root / "fail-settings-delete.cjs"
+                    preload.write_text("const fs = require('fs'); const unlink = fs.unlinkSync;\n"
+                        "fs.unlinkSync = (file) => {\n"
+                        f"if (file === {json.dumps(str(settings))}) throw new Error('fixture settings unlink failure');\n"
+                        "return unlink(file); };\n")
+                    self.env["NODE_OPTIONS"] = "--require " + json.dumps(str(preload), ensure_ascii=False)
+                result = self.apply(plan, file)
+                self.env.pop("NODE_OPTIONS", None)
+                self.assertEqual(result["state"], "succeeded" if variant == "success" else "failed", result)
+                if variant == "success":
+                    self.assertFalse(settings.exists())
+                    self.assertFalse(script.exists())
+                else:
+                    self.assertEqual(settings.read_bytes(), before)
+                    self.assertEqual(script.read_bytes(), self.ai_script)
+                    self.assertEqual(list(script.parent.glob("*.tmp")), [])
+                    if variant == "failure":
+                        self.assertIn("fixture settings unlink failure", result["scopes"][0]["error"]["params"]["detail"])
 
     def test_ai_os_legacy_hook_generations_share_one_settings_edit(self):
         # Prediction: shell, HTTP mjs and file mjs generations can coexist; all proven scripts and
@@ -958,7 +1077,7 @@ class CleanupFixture(unittest.TestCase):
         self.assertEqual(scope["delivery"]["state"], "merged")
         listed = self.run_ok(["git", "--git-dir", bare, "ls-tree", "-r", "--name-only", "main"]).stdout.splitlines()
         self.assertFalse([name for name in listed if name.startswith((".agents/skills/", ".claude/skills/", ".claude/commands/"))])
-        cleaned = {"custom": "owner", "hooks": {"Stop": []}}
+        cleaned = {"custom": "owner"}
         self.assertEqual(json.loads(self.run_ok(["git", "--git-dir", bare, "show", "main:.claude/settings.json"]).stdout), cleaned)
         self.assertEqual(json.loads(settings.read_text()), cleaned)
         self.assertEqual(self.run_ok(["git", "rev-parse", "HEAD"], cwd=repo).stdout,
@@ -1173,7 +1292,7 @@ class CleanupFixture(unittest.TestCase):
         self.run_ok(["git", "push", "-q", "origin", "main"], cwd=repo)
         plan, path = self.plan("--project", repo)
         self.assertIn(("settings-entry", "edit", "settings.json", "delivery", None), self.actions(plan["scopes"][0]))
-        cleaned = {"custom": "owner", "hooks": {"Stop": []}}
+        cleaned = {"custom": "owner"}
 
         def edit(upstream):
             (upstream / ".claude/settings.json").write_text(json.dumps(cleaned, indent=2) + "\n", encoding="utf-8")
