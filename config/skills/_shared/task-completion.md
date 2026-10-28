@@ -237,6 +237,9 @@ files inside the tree, inaccessible process state (on Linux, other users'
 processes unless run as root), caller cwd inside the tree, dirty/untracked files,
 a nested repository or worktree, or changed refs/Gitdir/registration retain
 affected resources. Use `git worktree lock` to keep a tree.
+A VM that shared the tree (Docker Desktop after a bind mount) can keep files open
+until it restarts; the helper names it when identifiable and retries cleanup on
+the next allocation or resume after the restart.
 On native Windows, locking and file durability are supported, but the helper cannot prove writer cessation and reports `writer observation unsupported on this platform; retain workspace`. Even `--writers-stopped` cannot authorize deletion without that observation: retain the workspace, its task refs and external receipt/custody, report delivery separately, and preserve the receipt-based resume command. A merged delivery therefore reports `CLEANUP_PENDING` (delivery `COMPLETE`) with `workspace_cleanup` naming the reason and resume. Do not kill unknown processes or force worktree removal to make completion pass.
 
 The receipt directory holds byte-verified `custody/`, `manifest.json` and a guarded
