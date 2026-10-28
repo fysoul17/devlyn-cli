@@ -408,7 +408,7 @@ fi
 
 section "Check 6b: Retained helper self-tests"
 for helper in _shared/role-config.py _shared/task-complete.py _shared/expected-contract.py _shared/invocation-receipt.py \
-  _shared/warm-build-dirs.py \
+  _shared/warm-build-dirs.py _shared/observer.py \
   devlyn-ideate/scripts/queue.py devlyn-ideate/scripts/acceptance.py; do
   if python3 "config/skills/$helper" --self-test; then
     ok "$helper self-test passed"

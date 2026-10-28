@@ -226,7 +226,7 @@ if os.name == "nt":
             self.creating = False
             self.interrupted_signal = None
 
-        def start(self, argv, stdin):
+        def start(self, argv, stdin, *, cwd=None, env=None, stdout=None, stderr=None):
             self.handle = _kernel.CreateJobObjectW(None, None)
             limits = _ExtendedLimits()
             limits.BasicLimitInformation.LimitFlags = 0x2000  # KILL_ON_JOB_CLOSE; no breakaway.
@@ -251,7 +251,8 @@ if os.name == "nt":
                 self.child = subprocess.Popen.__new__(subprocess.Popen)
                 self.creating = True
                 try:
-                    self.child.__init__(command, stdin=stdin, startupinfo=startup, close_fds=True)
+                    self.child.__init__(command, stdin=stdin, startupinfo=startup, close_fds=True,
+                                        cwd=cwd, env=env, stdout=stdout, stderr=stderr)
                 finally:
                     self.creating = False
                 if self.interrupted_signal is not None:
@@ -340,30 +341,103 @@ if os.name == "nt":
                 return target.wait()
 
 
+class CleanupError(OSError):
+    """A process tree that could not be ended."""
+
+
+def _process_snapshot():
+    snapshot = subprocess.run(["ps", "-A", "-o", "pid=", "-o", "ppid=", "-o", "pgid=", "-o", "lstart="],
+                              capture_output=True, text=True, check=True, timeout=1)
+    rows = {}
+    for line in snapshot.stdout.splitlines():
+        if line.strip():
+            pid, parent, group, started = line.split(None, 3)
+            rows[int(pid)] = (int(parent), int(group), started)
+    return rows
+
+
 def terminate_tree(child, job=None):
     if job is not None:
         job.terminate()
         return
+    groups = {child.pid}  # run_process starts the leader in its own session.
+    owned = None
+    leader_reaped = child.returncode is not None
     try:
-        os.killpg(child.pid, signal.SIGTERM)
-    except ProcessLookupError:
-        child.wait()
-        return
-    # Reap the leader and retain the grace period for its surviving descendants.
+        rows = _process_snapshot()
+        children = {}
+        pending = []
+        for pid, (parent, group, _) in rows.items():
+            children.setdefault(parent, []).append((pid, group))
+            if group == child.pid:
+                pending.append(pid)
+        while pending:
+            for pid, group in children.pop(pending.pop(), []):
+                groups.add(group)
+                pending.append(pid)
+        owned = {(pid, started) for pid, (_, group, started) in rows.items() if group in groups}
+    except (OSError, subprocess.SubprocessError, ValueError) as exc:
+        groups = {child.pid}
+        print(f"process cleanup: descendants outside the group were not swept: {exc}", file=sys.stderr)
+
+    def signal_group(group, sig):
+        try:
+            os.killpg(group, sig)
+            return True
+        except ProcessLookupError:
+            return False
+        except OSError as exc:
+            if sig != 0 or not isinstance(exc, PermissionError):
+                print(f"process cleanup: group {group}, signal {sig}: {exc}", file=sys.stderr)
+            return True
+
+    groups = {group for group in groups if signal_group(group, signal.SIGTERM)}
     deadline = time.monotonic() + 5
+    while True:
+        try:
+            leader_reaped = child.poll() is not None or leader_reaped
+        except OSError as exc:
+            print(f"process cleanup: could not poll leader {child.pid}: {exc}", file=sys.stderr)
+        groups = {group for group in groups if signal_group(group, 0)}
+        if not groups:
+            child.wait()
+            return
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            break
+        time.sleep(min(0.05, remaining))
     try:
-        child.wait(timeout=5)
-    except subprocess.TimeoutExpired:
-        pass  # The leader also needs the final group KILL below.
-    time.sleep(max(0, deadline - time.monotonic()))
-    try:
-        os.killpg(child.pid, signal.SIGKILL)
-    except ProcessLookupError:
-        pass  # Every member already exited during the grace period.
-    child.wait()
+        current = _process_snapshot()
+    except (OSError, subprocess.SubprocessError, ValueError) as exc:
+        if owned is not None:
+            print(f"process cleanup: group identities unavailable at escalation: {exc}", file=sys.stderr)
+        owned = None
+    if owned is None:
+        # Until reaped, the leader's pid (and hence its group id) cannot be reused.
+        verified = {child.pid} & groups if not leader_reaped else set()
+    else:
+        verified = {group for pid, (_, group, started) in current.items() if (pid, started) in owned} & groups
+    unverified = groups - verified
+    for group in verified:
+        signal_group(group, signal.SIGKILL)
+    deadline = time.monotonic() + 5
+    while True:
+        leader_alive = True
+        try:
+            leader_alive = child.poll() is None
+        except OSError as exc:
+            print(f"process cleanup: could not reap leader {child.pid}: {exc}", file=sys.stderr)
+        groups = {group for group in groups if signal_group(group, 0)}
+        if not groups and not leader_alive:
+            return
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise CleanupError(f"process cleanup: surviving groups {sorted(groups)}; "
+                               f"unverified groups {sorted(groups & unverified)}; leader {child.pid} still lives: {leader_alive}")
+        time.sleep(min(0.05, remaining))
 
 
-def run_process(argv, stdin, seconds, *, heartbeat=0):
+def run_process(argv, stdin, seconds, *, heartbeat=0, cwd=None, env=None, stdout=None, stderr=None, raise_timeout=False):
     child = None
     job = _WindowsJob() if os.name == "nt" else None
     previous = {}
@@ -378,7 +452,8 @@ def run_process(argv, stdin, seconds, *, heartbeat=0):
     try:
         for sig in (signal.SIGTERM, signal.SIGINT):
             previous[sig] = signal.signal(sig, interrupted)
-        child = job.start(argv, stdin) if job is not None else subprocess.Popen(argv, stdin=stdin, start_new_session=True)
+        child = (job.start(argv, stdin, cwd=cwd, env=env, stdout=stdout, stderr=stderr) if job is not None else
+                 subprocess.Popen(argv, stdin=stdin, start_new_session=True, cwd=cwd, env=env, stdout=stdout, stderr=stderr))
         started = time.monotonic()
         next_heartbeat = started + heartbeat
         if heartbeat:
@@ -391,6 +466,8 @@ def run_process(argv, stdin, seconds, *, heartbeat=0):
                 if seconds and now - started >= seconds:
                     if heartbeat:
                         print(f"[codex-monitored] timeout: elapsed={int(now-started)}s limit={seconds}s", file=sys.stderr, flush=True)
+                    if raise_timeout:
+                        raise subprocess.TimeoutExpired(argv, seconds)
                     return 124
                 if heartbeat and now >= next_heartbeat:
                     print(f"[codex-monitored] heartbeat: elapsed={int(now-started)}s", file=sys.stderr, flush=True)

@@ -7,7 +7,7 @@ requires the owned committed source, reuses the intact outcomes of a wholly clea
 runner result for the same source and contract, executes the rest, evaluates
 file/diff guards, confirms the source is unchanged and checks review records. A
 malformed executor record fails acceptance with its reason. An executor's summary
-verdict is never evidence. Protocol: ../references/loop.md.
+verdict is never evidence; observation captures are retained without judgment. Protocol: ../references/loop.md.
 """
 from __future__ import annotations
 
@@ -19,6 +19,7 @@ import os
 from pathlib import Path
 import re
 import runpy
+import stat
 import subprocess
 import sys
 import tempfile
@@ -408,7 +409,8 @@ def run(packet_path, source=None):
 
 def accept(packet_path, submission_path, failure=None):
     """Drain-side derivation; writes .devlyn/loop/acceptance.json for task-complete custody. A drain-recorded
-    `failure` (changed inputs, an unobservable interrupted execution) fails the task without its submission."""
+    `failure` (changed inputs, an unobservable interrupted execution) fails the task without its submission; observation
+    captures are retained on every path without judgment."""
     packet = load_packet(packet_path)
     work = Path(packet["worktree"])
     result = result_shell(packet, "loop", text(work, "rev-parse", "refs/heads/" + packet["branch"]))
@@ -424,9 +426,25 @@ def accept(packet_path, submission_path, failure=None):
                 derive(packet, submission, result)
     except AcceptanceError as exc:
         result["reasons"].append(f"failed: {exc}")
-    result["verdict"] = "FAILED" if result["reasons"] else "ACCEPTED"
     result["evidence"] = sorted({r[name]["path"] for r in result["commands"] for name in ("stdout", "stderr")}
                                 | {review["path"] for review in result["reviews"]})
+    observations = work / LOOP_DIR / "evidence/observations"
+    try:
+        observer = shared("observer")
+        for parent in (work / ".devlyn", work / LOOP_DIR, observations.parent, observations):
+            if (parent.exists() or parent.is_symlink()) and observer["is_link"](parent.lstat()):
+                result["reasons"].append(f"failed: observation evidence is not a regular file: {parent.relative_to(work).as_posix()}")
+                break
+        else:
+            if observations.exists():
+                files, nonregular = observer["inventory"](observations)
+                result["evidence"] += [(observations / path).relative_to(work).as_posix() for path in files]
+                result["reasons"] += [f"failed: observation evidence is not a regular file: {(observations / path).relative_to(work).as_posix()}"
+                                      for path in nonregular]
+    except OSError as exc:
+        result["reasons"].append(f"failed: cannot read observation evidence: {exc}")
+    result["evidence"] = sorted(set(result["evidence"]))
+    result["verdict"] = "FAILED" if result["reasons"] else "ACCEPTED"
     write_json(work / LOOP_DIR / "acceptance.json", result)
     return result
 
@@ -529,6 +547,80 @@ class AcceptanceTests(unittest.TestCase):
         self.assertIn(".devlyn/reviews/review.json", result["evidence"])
         for path in result["evidence"]:
             self.assertTrue((self.work / path).is_file(), path)
+
+    def test_observation_captures_survive_acceptance_blockers_and_failures(self):
+        self.inputs()
+        source = self.product()
+        capture = ".devlyn/loop/evidence/observations/1/capture.png"
+        self.write(capture, "capture bytes")
+        for fields, reasons in (({}, []), ({"blockers": [{"kind": "needs-review", "detail": "Cannot observe the window"}]},
+                                           ["needs-review: Cannot observe the window"]),
+                                ({"unexpected": True}, None)):
+            with self.subTest(fields=fields):
+                result = self.submit(source, **fields)
+                self.assertIn(capture, result["evidence"])
+                if reasons is not None:
+                    self.assertEqual(result["reasons"], reasons)
+                self.assertEqual(result["verdict"], "ACCEPTED" if fields == {} else "FAILED")
+        failed = accept(self.packet_path, self.root / "absent", failure="interrupted-unobservable: fixture")
+        self.assertEqual((failed["evidence"], failed["reasons"]), ([capture], ["interrupted-unobservable: fixture"]))
+
+    @unittest.skipIf(os.name == "nt", "symlinks require POSIX")
+    def test_observation_symlinks_are_rejected(self):
+        self.inputs()
+        source = self.product()
+        root = ".devlyn/loop/evidence/observations"
+        self.write(root + "/1/capture.png", "capture")
+        link = self.work / root / "redirect"
+        link.symlink_to(self.work, target_is_directory=True)
+        result = self.submit(source)
+        self.assertEqual(result["reasons"], [f"failed: observation evidence is not a regular file: {root}/redirect"])
+        self.assertNotIn(root + "/redirect/product.txt", result["evidence"])
+        self.assertEqual(result["verdict"], "FAILED")
+        link.unlink()
+        (self.work / root).rename(self.work / ".devlyn/captures")
+        (self.work / root).symlink_to(self.work / ".devlyn/captures", target_is_directory=True)
+        self.assertEqual(self.submit(source)["reasons"], [f"failed: observation evidence is not a regular file: {root}"])
+
+    def test_observation_reparse_directories_are_rejected_without_traversal(self):
+        from types import SimpleNamespace
+        from unittest import mock
+        self.inputs()
+        source = self.product()
+        root = ".devlyn/loop/evidence/observations"
+        self.write(root + "/1/capture.png", "capture")
+        original = Path.lstat
+        for relative in (".devlyn/loop/evidence", root + "/1"):
+            def reparse(path, *args, **kwargs):
+                info = original(path, *args, **kwargs)
+                return (SimpleNamespace(st_mode=info.st_mode, st_file_attributes=stat.FILE_ATTRIBUTE_REPARSE_POINT,
+                                        st_reparse_tag=0xA0000003)
+                        if path == self.work / relative else info)
+            with self.subTest(relative=relative), mock.patch.object(Path, "lstat", reparse):
+                result = self.submit(source)
+            self.assertEqual(result["reasons"], [f"failed: observation evidence is not a regular file: {relative}"])
+            self.assertNotIn(root + "/1/capture.png", result["evidence"])
+
+    def test_observation_cloud_reparse_entries_are_retained(self):
+        from types import SimpleNamespace
+        from unittest import mock
+        self.inputs()
+        source = self.product()
+        root = ".devlyn/loop/evidence/observations"
+        capture = root + "/1/capture.png"
+        self.write(capture, "capture")
+        original = Path.lstat
+        for relative in (".devlyn/loop/evidence", root + "/1", capture):
+            def reparse(path, *args, **kwargs):
+                info = original(path, *args, **kwargs)
+                return (SimpleNamespace(st_mode=info.st_mode, st_file_attributes=stat.FILE_ATTRIBUTE_REPARSE_POINT,
+                                        st_reparse_tag=0x9000001A)
+                        if path == self.work / relative else info)
+            with self.subTest(relative=relative), mock.patch.object(Path, "lstat", reparse):
+                result = self.submit(source)
+            self.assertEqual(result["reasons"], [])
+            self.assertEqual(result["verdict"], "ACCEPTED")
+            self.assertIn(capture, result["evidence"])
 
     def test_command_assertions_timeout_and_spawn_failure(self):
         python = sys.executable

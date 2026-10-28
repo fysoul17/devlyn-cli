@@ -43,7 +43,7 @@ Without prompts, `npx devlyn-cli -y` installs AGENTS.md + `.agents/skills/` plus
 
 ## How It Works — Principles and Loops
 
-The managed `CLAUDE.md` / `AGENTS.md` block carries the North Star, seven principles (no workaround, no overengineering, no guesswork, worldclass, best practice, optimized, production ready) and three discipline rules, plus short pointers to the skills. Agents do the work directly under it; for work that splits into tasks, ideate designs a loop and drains it:
+The managed `CLAUDE.md` / `AGENTS.md` block carries the North Star, seven principles (no workaround, no overengineering, no guesswork, worldclass, best practice, optimized, production ready) and three discipline rules, the product observation rule, plus short pointers to the skills. Agents do the work directly under it; for work that splits into tasks, ideate designs a loop and drains it:
 
 ```
 intent  →  direct work under the installed principles, or an ideate loop  →  ship

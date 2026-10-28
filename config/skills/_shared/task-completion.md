@@ -167,6 +167,8 @@ root acceptance file in the task worktree (`.devlyn/acceptance.json`):
 {"kind":"direct","task":"<task identity>","source_sha":"<full commit>","checks":[{"command":"<actual check>","evidence":".devlyn/checks.log"}]}
 ```
 
+A direct check’s evidence may be the directory `.devlyn/loop/evidence/observations`; captures taken outside the task worktree are copied there or retaken before acceptance.
+
 The owner accepts these checks; the helper preserves evidence bytes and does
 not independently prove the assertions. Acceptance binds exact source and
 evidence before publication. Direct `complete` binds acceptance itself; no

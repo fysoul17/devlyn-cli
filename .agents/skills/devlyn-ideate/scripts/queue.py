@@ -1161,6 +1161,7 @@ def ensure_packet(v, row, path, receipt):
         "evidence_dir": str(worktree / ".devlyn" / "loop"),
         "submission": str(path.parent / "submission.json"),
         "runner": [sys.executable, str(Path(__file__).with_name("acceptance.py")), "run", "--packet", str(packet_path)],
+        "observe": [sys.executable, str(SKILLS / "_shared/observer.py"), "call", "--spool", str(path.parent / "observe")],
         "obligations": OBLIGATIONS,
     }
     instructions = packet["methodology"]
@@ -1180,6 +1181,7 @@ def ensure_packet(v, row, path, receipt):
         harness_call("check_binding", binding, harness_call("resolve", SKILLS))
         bound_skills = Path(binding["release"]["root"]) / "config/skills"
         packet["runner"][1] = str(bound_skills / "devlyn-ideate/scripts/acceptance.py")
+        packet["observe"][1] = str(bound_skills / "_shared/observer.py")
         prompt = path.parent / "worker-prompt.md"
         body = (f"Execute task packet {packet_path}. Work only in {worktree} on its owned branch.\n"
                 f"Read {binding['defaults']['path']} and apply it as defaults; explicit user and native owner/project instructions win.\n"
@@ -1238,18 +1240,31 @@ def ensure_submission(identity, packet_path, packet, executor):
         argv = [part.replace("{worktree_git_dir}", git_dir) for part in argv]
     output = Path(packet["evidence_dir"])
     output.mkdir(parents=True, exist_ok=True)
-    record(log, "start")
-    try:
-        # Files, never a pipe: a wrapper such as codex-monitored.sh refuses a piped stdout; stdin is empty, never the driver's.
-        with (output / "executor.stdout").open("ab") as stdout, (output / "executor.stderr").open("ab") as stderr:
-            child = subprocess.Popen(shared("platform-support")["native_argv"](argv, cwd=worktree), cwd=worktree, stdin=subprocess.DEVNULL,
-                                     stdout=stdout, stderr=stderr)
-    except OSError as exc:
-        record(log, f"not started: {one_line(str(exc))}")
-        raise LoopError(f"executor could not start: {exc}; restore the configured executable, permissions or task workspace; "
-                        "the next drain retries") from exc
-    progress(identity, f"executing; output in {output}")
-    code = child.wait()
+    observer = shared("observer")
+    spool = Path(packet_path).parent / "observe"
+    observations = worktree / ".devlyn/loop/evidence/observations"
+    with contextlib.ExitStack() as stack:
+        try:
+            stack.enter_context(observer["serving"](spool, worktree, observations))
+        except OSError as exc:
+            raise LoopError(f"observer could not start: {exc}") from exc
+        record(log, "start")
+        try:
+            # Files, never a pipe: a wrapper such as codex-monitored.sh refuses a piped stdout; stdin is empty, never the driver's.
+            with (output / "executor.stdout").open("ab") as stdout, (output / "executor.stderr").open("ab") as stderr:
+                child = subprocess.Popen(shared("platform-support")["native_argv"](argv, cwd=worktree), cwd=worktree, stdin=subprocess.DEVNULL,
+                                         stdout=stdout, stderr=stderr)
+        except OSError as exc:
+            record(log, f"not started: {one_line(str(exc))}")
+            raise LoopError(f"executor could not start: {exc}; restore the configured executable, permissions or task workspace; "
+                            "the next drain retries") from exc
+        progress(identity, f"executing; output in {output}")
+        while True:
+            try:
+                code = child.wait(timeout=0.1)
+                break
+            except subprocess.TimeoutExpired:
+                observer["pump"](spool, worktree, observations)
     record(log, f"exit {code} (pid {child.pid})")
     if not submission.exists():
         raise Waiting(f"executor exited {code} without a submission (see {output / 'executor.stderr'}); the next drain runs it again")
@@ -2069,6 +2084,74 @@ class QueueTests(unittest.TestCase):
                         held.stdin.close()
         self.assertEqual((read_json(added_path(common, "inv"))["origin"], read_json(added_path(common, "inv"))["branch"]), (str(linked), "side"))
 
+    def test_observer_lifetime_and_start_failure(self):
+        from unittest import mock
+        work, records = self.root / "work", self.root / "records"
+        work.mkdir()
+        records.mkdir()
+        lock = records / "observe/serving.lock"
+
+        def alive():
+            if not lock.exists():
+                return False
+            try:
+                with shared("platform-support")["file_lock"](lock):
+                    return False
+            except BlockingIOError:
+                return True
+        packet = {"worktree": str(work), "submission": str(records / "submission.json"),
+                  "evidence_dir": str(work / ".devlyn/loop"), "observe": ["untrusted", str(self.root / "wrong-spool")]}
+        events = []
+        recording = record
+
+        def logged(path, event):
+            events.append((event, alive()))
+            recording(path, event)
+
+        class Crash(BaseException):
+            pass
+
+        class Child:
+            pid = 4242
+            waits = 0
+
+            def wait(child, timeout=None):
+                self.assertEqual(timeout, 0.1)
+                self.assertTrue(alive())
+                child.waits += 1
+                if child.waits == 1:
+                    raise subprocess.TimeoutExpired("executor", timeout)
+                return 0
+
+        for error in (None, Crash(), OSError("executor unavailable")):
+            with self.subTest(error=error):
+                events.clear()
+                (records / "executions.log").unlink(missing_ok=True)
+                pump = mock.Mock(wraps=shared("observer")["pump"])
+                with mock.patch.dict(ensure_submission.__globals__, record=logged), mock.patch("subprocess.Popen") as spawn, \
+                        mock.patch.dict(shared("observer"), pump=pump):
+                    spawn.side_effect = error
+                    spawn.return_value = Child()
+                    with self.assertRaises(Crash if isinstance(error, Crash) else LoopError) as raised:
+                        ensure_submission("l.t", records / "packet.json", packet, [sys.executable, "{packet}"])
+                self.assertEqual(events[0], ("start", True))
+                self.assertFalse(alive())
+                if error is None:
+                    pump.assert_called_once_with(records / "observe", work, work / ".devlyn/loop/evidence/observations")
+                    self.assertEqual(events[-1], ("exit 0 (pid 4242)", False))
+                elif isinstance(error, OSError):
+                    self.assertIn("executor could not start", str(raised.exception))
+                    self.assertEqual(events[-1], ("not started: executor unavailable", True))
+        (records / "executions.log").unlink()
+        events.clear()
+        with mock.patch.dict(shared("observer"), serving=mock.Mock(side_effect=OSError("spool denied"))), \
+                mock.patch.dict(ensure_submission.__globals__, record=logged), mock.patch("subprocess.Popen") as spawn:
+            with self.assertRaisesRegex(LoopError, "observer could not start: spool denied"):
+                ensure_submission("l.t", records / "packet.json", packet, [sys.executable, "{packet}"])
+            spawn.assert_not_called()
+        self.assertEqual(events, [])
+        self.assertFalse(alive())
+
     def test_a_crash_on_either_side_of_the_spawn_never_starts_a_second_executor(self):
         """The attempt's start is durable before the spawn, so a resumed drain observes writers first: it waits while
         an executor lives and adopts its submission, runs the executor once when none did, and fails the task where
@@ -2090,7 +2173,7 @@ class QueueTests(unittest.TestCase):
         class Child:
             pid = 4242
 
-            def wait(self):
+            def wait(self, timeout=None):
                 return 0
 
         def spawn(argv, **kwargs):
@@ -2131,9 +2214,13 @@ class QueueTests(unittest.TestCase):
                 spawns.clear()
                 checks.clear()
                 for path in records.iterdir():
-                    path.unlink()
+                    if path.is_file():
+                        path.unlink()
                 with self.assertRaises(Crash):
                     drain(crash)
+                self.assertTrue((records / "observe/serving.lock").exists())
+                with shared("platform-support")["file_lock"](records / "observe/serving.lock"):
+                    pass
                 failure = drain(spawn, observe)
                 if crash is crash_after_spawn:
                     # One observation per invocation, without sleep or a second spawn while the writer lives.

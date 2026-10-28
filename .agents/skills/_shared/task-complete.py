@@ -99,8 +99,12 @@ def safe_path(root, relative):
 def file_record(path):
     mode = path.lstat().st_mode
     require(stat.S_ISREG(mode), f"evidence is not a regular file: {path}")
-    raw = path.read_bytes()
-    return {"sha256": hashlib.sha256(raw).hexdigest(), "bytes": len(raw), "mode": stat.S_IMODE(mode)}
+    digest, size = hashlib.sha256(), 0
+    with path.open("rb") as stream:
+        while chunk := stream.read(1024 * 1024):
+            digest.update(chunk)
+            size += len(chunk)
+    return {"sha256": digest.hexdigest(), "bytes": size, "mode": stat.S_IMODE(mode)}
 
 
 def snapshot_files(root, paths):
@@ -1286,6 +1290,15 @@ class CompletionTests(unittest.TestCase):
         return argparse.Namespace(repo=str(self.work), task=name, branch="task/" + name,
                                   repository="test/project", base="main", remote="origin", worktree=str(worktree),
                                   local_base=None, from_receipt=None, start=None)
+
+    def test_file_record_streams_large_evidence(self):
+        from unittest.mock import patch
+        path = self.root / "recording"
+        raw = b"capture" * (1024 * 1024)
+        path.write_bytes(raw)
+        with patch.object(Path, "read_bytes", side_effect=AssertionError("custody must stream")):
+            self.assertEqual(file_record(path), {"sha256": hashlib.sha256(raw).hexdigest(), "bytes": len(raw),
+                                                 "mode": stat.S_IMODE(path.lstat().st_mode)})
 
     def test_allocation_marks_exclusively_created_empty_target_before_checkout(self):
         # Prediction: persisted intent precedes exclusive creation and marking; real Git then populates that directory.

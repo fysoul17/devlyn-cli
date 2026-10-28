@@ -64,6 +64,17 @@ source = (packet["inputs_sha"] if behavior.get("check_only")
           else commit(config["products"][behavior["product"]], "implement " + packet["task"]))
 submission = {"schema_version": 1, "task": packet["task"], "source_sha": source, "summary": "done (informational)",
               "assumptions": behavior.get("assumptions", ["fixture assumption for " + packet["task"]]), "blockers": behavior.get("blockers", [])}
+if behavior.get("observe"):
+    sleeper = ("import pathlib, runpy, sys, time\n"
+               "with runpy.run_path(sys.argv[1])['file_lock'](pathlib.Path(sys.argv[2])):\n"
+               " pathlib.Path(sys.argv[3]).touch()\n time.sleep(60)\n")
+    command = ("import os, pathlib, subprocess, sys, time\n"
+               "p = pathlib.Path(os.environ['DEVLYN_OBSERVATION_DIR'])\n"
+               "child = subprocess.Popen([sys.executable, '-c', sys.argv[1], sys.argv[2], str(p / 'sleeper.lock'), str(p / 'ready')])\n"
+               "while not (p / 'ready').exists():\n time.sleep(0.01)\n"
+               "(p / 'sleeper.pid').write_text(str(child.pid))\n"
+               "(p / 'capture.png').write_bytes(bytes.fromhex(sys.argv[3]))\n")
+    subprocess.run([*packet["observe"], "--", sys.executable, "-c", command, sleeper, config["platform_support"], behavior["observe"]], check=True)
 if behavior.get("runner", True):
     checked = subprocess.run(packet["runner"], check=True, capture_output=True, text=True, encoding="utf-8")
     submission["runner_results"] = [json.loads(checked.stdout)["result"]]
@@ -2220,6 +2231,24 @@ class LoopFixture(unittest.TestCase):
         self.assertEqual((result["status"], self.receipt("au.t1")["baseline"]), ("DRAINED", self.base))
         self.assertIn("- Bring into main: git merge --ff devlyn/au/t1\n", self.report("au"))
 
+    def test_observer_captures_reach_custody_and_end_the_request_tree(self):
+        png = bytes.fromhex("89504e470d0a1a0a0000000d4948445200000001000000010804000000b51c0c02"
+                            "0000000b4944415478da6364f80f00010501012718e3660000000049454e44ae426082")
+        self.plan("seen", CHAIN[:1], {"seen.t1": {"product": "greeting", "observe": png.hex()}})
+        self.assertEqual(self.tasks(self.drain())["seen.t1"]["result"], "accepted")
+        receipt = self.receipt("seen.t1")
+        self.assertEqual(receipt["acceptance"]["verdict"], "ACCEPTED")
+        work = Path(receipt["worktree"])
+        relative = ".devlyn/loop/evidence/observations/1/capture.png"
+        self.assertEqual((self.receipt_path("seen.t1").parent / "custody" / relative).read_bytes(), png)
+        self.assertEqual((work / relative).read_bytes(), png)
+        self.assertEqual(self.g("status", "--porcelain", "--untracked-files=all", work=work), "")
+        self.g("check-ignore", "-q", "--", relative, work=work)
+        observation = work / ".devlyn/loop/evidence/observations/1"
+        self.assertTrue((observation / "sleeper.pid").is_file())
+        with self.queue["shared"]("platform-support")["file_lock"](observation / "sleeper.lock"):
+            pass  # The sleeper held this lock throughout its lifetime.
+
     def test_frontier_is_the_latest_accepted_source(self):
         tasks = [CHAIN[0], ("t2", [], "Notes", [NOTES_CHECK]), ("t3", ["t1"], "Greeting app", [APP_CHECK]), ("t4", ["t2", "t3"], "Notes again", [NOTES_CHECK])]
         self.plan("fr", tasks, {"fr.t1": {"product": "greeting"}, "fr.t2": {"product": "notes"}, "fr.t3": {"product": "app"}, "fr.t4": {"check_only": True}})
@@ -3531,6 +3560,8 @@ class LoopFixture(unittest.TestCase):
         self.assertEqual(self.tasks(self.drain(repo=linked))["bound.t1"]["delivery"], "LOCAL_ONLY")
         packet = json.loads(self.receipt_path("bound.t1").with_name("packet.json").read_bytes())
         self.assertEqual((packet["schema_version"], packet["harness"]), (2, binding["release"]))
+        self.assertEqual(packet["observe"], [sys.executable, str(release / "config/skills/_shared/observer.py"),
+                                             "call", "--spool", str(self.receipt_path("bound.t1").parent / "observe")])
         self.assertEqual(packet["methodology"], {"defaults": {"source": "release", **binding["defaults"]}, "projectInstructions": []})
         for resource in (binding["defaults"], packet["workerPrompt"]):
             self.assertTrue(Path(resource["path"]).is_absolute())
@@ -3619,6 +3650,8 @@ class LoopFixture(unittest.TestCase):
         packet = json.loads(self.receipt_path("own.t1").with_name("packet.json").read_bytes())
         own = self.skills / "_shared/runtime-principles.md"
         self.assertIsNone(packet["harness"])
+        self.assertEqual(packet["observe"], [sys.executable, str(self.skills / "_shared/observer.py"),
+                                             "call", "--spool", str(self.receipt_path("own.t1").parent / "observe")])
         self.assertEqual(packet["methodology"]["defaults"],
                          {"source": "skill", "path": str(own), "sha256": hashlib.sha256(own.read_bytes()).hexdigest()})
         self.assertEqual(self.tasks(self.drain())["own.t1"]["result"], "accepted")
