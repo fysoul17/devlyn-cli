@@ -1,5 +1,7 @@
 # 0257 result: bare vs devlyn-cli 4.2.24 (powered replay)
 
+> **Erratum 1 (2026-10-28, from 0261's qualification).** d021 (claude B) is a false completion that the startup witness missed. Claude B has 11 false completions, not 10; PACKAGE_UNSAFE is unchanged. See [erratum-1.md](erratum-1.md).
+
 Measured 2026-10-22 to 2026-10-24. All 328 measured cells have final verdicts. [DESIGN.md](DESIGN.md) and
 [registration.md](registration.md) are unchanged; the run used [amendment 1](amendment-1.md) (any host account),
 [amendment 2](amendment-2.md) (95% window guard) and [amendment 3](amendment-3.md) (Docker loss is an archived

@@ -1,12 +1,16 @@
 """Offline 0261 contract tests; inherited 0257 apparatus keeps its own suite."""
 import importlib.util
 import contextlib
+import errno
 import hashlib
 import io
 import json
 import os
 from pathlib import Path
+import socket
+import stat
 import subprocess
+import sys
 import tempfile
 import unittest
 import pytest
@@ -407,7 +411,7 @@ class DriverControls(unittest.TestCase):
                 self.assertTrue(instance.dispatch([name, 'SMOKE', 'B', 'claude']))
             self.assertTrue((instance.output / f'{name}.stop-1').exists())
             self.assertTrue((instance.output / f'verdict-{name}.stop-1.json').exists())
-            costs = decide.slot_cost(instance.output, name, new)
+            costs = decide.slot_cost(instance.output, name, new, 'B')
             self.assertEqual([attempt['wall'] for attempt in costs], [9, 4])
 
     def test_retry_only_execution_stops_then_driver_reruns_same_slot(self):
@@ -1144,6 +1148,25 @@ class Decision(unittest.TestCase):
             audit['audited_archived'] = []
             self.assertEqual(decide.evaluate(root, audit, {}, witnesses)['headline'], 'NOT_FINISHED')
 
+    def test_host_fault_archive_counts_once_and_only_b_lower_bound(self):
+        for arm, lower_bound, ready in (('B', True, True), ('B', False, False), ('C', True, False)):
+            with self.subTest(arm=arm, lower_bound=lower_bound), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                audit, witnesses = self.disk(root)
+                name = next(row[0] for row in decide.CELLS if row[2] == arm)
+                archived = name + '.stop-1'
+                old = dict(status='STOP', teardown='FAILED', teardown_error='Cannot connect to the Docker daemon',
+                           reason='host fault (amendment 1): Cannot connect to the Docker daemon', input_tokens=10,
+                           output_tokens=20, owner_seconds=30, usage='UNKNOWN', usage_lower_bound=lower_bound)
+                (root / f'verdict-{archived}.json').write_text(json.dumps(old))
+                audit['audited_archived'].append(archived)
+                audit['scope_archived'] = {archived: []}
+                rows, gaps = decide.load(root, audit, {}, witnesses)
+                self.assertEqual([attempt['wall'] for attempt in rows[name]['attempts']], [30, 100])
+                self.assertIs(rows[name]['attempts'][0]['usage'], ready)
+                self.assertEqual(gaps, [] if ready else [f'{archived}: usage is not COMPLETE'])
+                self.assertEqual(decide.decide(rows, gaps)['headline'] == 'NOT_FINISHED', not ready)
+
     def test_disputes_all_combinations_root_counts_unchanged(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -1267,6 +1290,55 @@ class Baseline(unittest.TestCase):
 
 
 class Blind(unittest.TestCase):
+    def test_copy_tree_records_fifos_without_opening(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp).resolve()
+            source, target = root / 'source', root / 'target'
+            (source / 'owner').mkdir(parents=True)
+            (source / 'regular.txt').write_text('regular evidence')
+            for name in ['owner/fifo', 'AGENTS.md', 'private.key']:
+                os.mkfifo(source / name)
+            script = ('import runpy, sys; from pathlib import Path; '
+                      "runpy.run_path(sys.argv[1])['copy_tree'](Path(sys.argv[2]), Path(sys.argv[3]), "
+                      "[('owner', 'redacted')])")
+            subprocess.run([sys.executable, '-c', script, str(HERE / 'blind.py'), str(source), str(target)],
+                           check=True, capture_output=True, text=True, timeout=5)
+            self.assertEqual((target / 'regular.txt').read_text(), 'regular evidence')
+            self.assertEqual(json.loads((target / 'special-files.json').read_text()), {'redacted/fifo': 'fifo'})
+            self.assertFalse(any(stat.S_ISFIFO(os.lstat(path).st_mode) for path in target.rglob('*')))
+            self.assertEqual({str(path.relative_to(target)) for path in target.rglob('*')},
+                             {'regular.txt', 'special-files.json'})
+
+    def test_copy_tree_rejects_special_files_manifest_collision(self):
+        blind = load('blind')
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp).resolve()
+            source, target = root / 'source', root / 'target'
+            source.mkdir()
+            (source / 'special-files.json').write_text('regular evidence')
+            os.mkfifo(source / 'fifo')
+            with self.assertRaises(ValueError) as raised:
+                blind.copy_tree(source, target, [])
+            self.assertEqual(str(raised.exception),
+                             f'manifest name collides with an end-tree file: {source / "special-files.json"}')
+            self.assertEqual((target / 'special-files.json').read_text(), 'regular evidence')
+
+    def test_copy_tree_rejects_socket(self):
+        blind = load('blind')
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp).resolve()
+            source = root / 'source'
+            source.mkdir()
+            with socket.socket(socket.AF_UNIX) as sock:
+                try:
+                    sock.bind(str(source / 'socket'))
+                except OSError as exc:
+                    if exc.errno == errno.ENAMETOOLONG or 'AF_UNIX path too long' in str(exc):
+                        self.skipTest(str(exc))
+                    raise
+                with self.assertRaisesRegex(ValueError, 'non-regular end-tree file:'):
+                    blind.copy_tree(source, root / 'target', [])
+
     def fixture(self, root):
         blind = load('blind')
         source = root / 'output'
@@ -1328,6 +1400,7 @@ class Blind(unittest.TestCase):
                              b'STOP before grading', b'Earlier stopped report']:
                 self.assertIn(required, contents)
             self.assertFalse(any(p.is_symlink() for p in destination.rglob('*')))
+            self.assertFalse(list(destination.rglob('special-files.json')))
             with mock.patch.object(blind, 'CELLS', rows):
                 with self.assertRaises(FileExistsError):
                     blind.packets(runtime, destination)

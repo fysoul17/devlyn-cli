@@ -1,0 +1,11 @@
+VERDICT: REVISE
+
+- **HIGH — [amend1_record.py:48](/Users/aipalm/Documents/GitHub/.devlyn-worktrees/devlyn-cli/0261-measured/autoresearch/experiments/0261/results/operator/amend1_record.py:48):** Round-1 readiness remains unresolved. `0256/record_usage.py` returns `UNKNOWN` for a missing Claude result envelope, not `PARTIAL`; the patch’s exception never applies. Confirmed with synthetic inputs. Validate and explicitly authorize this attempt’s recovered lower bound while keeping other `UNKNOWN` usage blocked.
+
+- **HIGH — [amend1-decide.patch:29](/Users/aipalm/Documents/GitHub/.devlyn-worktrees/devlyn-cli/0261-measured/autoresearch/experiments/0261/results/amend1-decide.patch:29):** `prior.slot_cost()` already counts FAILED teardown containing `Cannot connect to the Docker daemon`; the wrapper appends it again. Synthetic wall costs 1 + 9 become 19. With PARTIAL usage, the first copy also retains `usage=False`. Classify each archive once and apply the exception to that single entry; test overlapping predicates.
+
+- **HIGH — [amend1_record.py:46](/Users/aipalm/Documents/GitHub/.devlyn-worktrees/devlyn-cli/0261-measured/autoresearch/experiments/0261/results/operator/amend1_record.py:46):** Evidence collection failures do not stop recording. Unlike `run_cell.run`, the script continues reading evidence and publishes a resolved host-fault archive. For **Production ready** failure behavior, stop on collection failures before usage/quota/diagnostics or archival.
+
+- **MEDIUM — [amend1_record.py:41](/Users/aipalm/Documents/GitHub/.devlyn-worktrees/devlyn-cli/0261-measured/autoresearch/experiments/0261/results/operator/amend1_record.py:41):** Round-1 identity enforcement remains unresolved. Non-MATCH results—including caught exceptions yielding UNVERIFIED—still reach archival without latching. Require MATCH; otherwise persist a latch identifying the interrupted attempt and stop before renaming.
+
+Other round-1 HIGH/MEDIUM concerns are addressed. The generated `final.txt`, transcript location, STOP placeholders and preserved-tree layout fit `blind.py`; actual transcript validity remains unverified under blinding. The B-only lower-bound rule is conservative when counted once; C’s lower bound remains `NOT_FINISHED`.

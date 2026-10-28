@@ -1,0 +1,512 @@
+{
+  "f10-data-file-truncated": {
+    "7232445f2822f4a1d98994f6": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "9092bb76426cbbcddcea10217c5b2b3efa8cb460d9776eedf99ee739132b11c5"
+    },
+    "93fe5b31eb405c57340acc53": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "9092bb76426cbbcddcea10217c5b2b3efa8cb460d9776eedf99ee739132b11c5"
+    },
+    "9ac33c04e590fc3bc557dddb": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "9092bb76426cbbcddcea10217c5b2b3efa8cb460d9776eedf99ee739132b11c5"
+    },
+    "bfa9ae6d03cbf6eeb91f4584": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "9092bb76426cbbcddcea10217c5b2b3efa8cb460d9776eedf99ee739132b11c5"
+    },
+    "fd0be13a833d75b247ec06db": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "9092bb76426cbbcddcea10217c5b2b3efa8cb460d9776eedf99ee739132b11c5"
+    },
+    "50ee95c2032a63bf02ae96b4": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "9092bb76426cbbcddcea10217c5b2b3efa8cb460d9776eedf99ee739132b11c5"
+    },
+    "778034897ec2a4fb42fe54c4": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "9092bb76426cbbcddcea10217c5b2b3efa8cb460d9776eedf99ee739132b11c5"
+    },
+    "7d5d4aa20b074a4cb10b462f": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "9092bb76426cbbcddcea10217c5b2b3efa8cb460d9776eedf99ee739132b11c5"
+    },
+    "8138d48c280b63305f2365ff": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "9092bb76426cbbcddcea10217c5b2b3efa8cb460d9776eedf99ee739132b11c5"
+    },
+    "83a0fc88b89745774c7defdf": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "9092bb76426cbbcddcea10217c5b2b3efa8cb460d9776eedf99ee739132b11c5"
+    },
+    "c85aec84311fb6f4077c03ba": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "9092bb76426cbbcddcea10217c5b2b3efa8cb460d9776eedf99ee739132b11c5"
+    },
+    "f6b3c778021ed5aa9290cd1b": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "9092bb76426cbbcddcea10217c5b2b3efa8cb460d9776eedf99ee739132b11c5"
+    }
+  },
+  "f10-data-file-wrong-shape": {
+    "7232445f2822f4a1d98994f6": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "dc8bc2ac64f7fd79817b0721884ad5a0d59e554ce7c6fa3d44ea950fbab55134"
+    },
+    "93fe5b31eb405c57340acc53": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "dc8bc2ac64f7fd79817b0721884ad5a0d59e554ce7c6fa3d44ea950fbab55134"
+    },
+    "9ac33c04e590fc3bc557dddb": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "dc8bc2ac64f7fd79817b0721884ad5a0d59e554ce7c6fa3d44ea950fbab55134"
+    },
+    "bfa9ae6d03cbf6eeb91f4584": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "dc8bc2ac64f7fd79817b0721884ad5a0d59e554ce7c6fa3d44ea950fbab55134"
+    },
+    "fd0be13a833d75b247ec06db": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "dc8bc2ac64f7fd79817b0721884ad5a0d59e554ce7c6fa3d44ea950fbab55134"
+    },
+    "50ee95c2032a63bf02ae96b4": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "dc8bc2ac64f7fd79817b0721884ad5a0d59e554ce7c6fa3d44ea950fbab55134"
+    },
+    "778034897ec2a4fb42fe54c4": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "dc8bc2ac64f7fd79817b0721884ad5a0d59e554ce7c6fa3d44ea950fbab55134"
+    },
+    "7d5d4aa20b074a4cb10b462f": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "dc8bc2ac64f7fd79817b0721884ad5a0d59e554ce7c6fa3d44ea950fbab55134"
+    },
+    "8138d48c280b63305f2365ff": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "dc8bc2ac64f7fd79817b0721884ad5a0d59e554ce7c6fa3d44ea950fbab55134"
+    },
+    "83a0fc88b89745774c7defdf": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "dc8bc2ac64f7fd79817b0721884ad5a0d59e554ce7c6fa3d44ea950fbab55134"
+    },
+    "c85aec84311fb6f4077c03ba": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "dc8bc2ac64f7fd79817b0721884ad5a0d59e554ce7c6fa3d44ea950fbab55134"
+    },
+    "f6b3c778021ed5aa9290cd1b": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "dc8bc2ac64f7fd79817b0721884ad5a0d59e554ce7c6fa3d44ea950fbab55134"
+    }
+  },
+  "f10-data-file-missing": {
+    "7232445f2822f4a1d98994f6": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "1b46122578f3bc04bdb87e660166a93016d7f6573eaa2cc0ae0747c11dd60bc5"
+    },
+    "93fe5b31eb405c57340acc53": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "1b46122578f3bc04bdb87e660166a93016d7f6573eaa2cc0ae0747c11dd60bc5"
+    },
+    "9ac33c04e590fc3bc557dddb": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "1b46122578f3bc04bdb87e660166a93016d7f6573eaa2cc0ae0747c11dd60bc5"
+    },
+    "bfa9ae6d03cbf6eeb91f4584": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "1b46122578f3bc04bdb87e660166a93016d7f6573eaa2cc0ae0747c11dd60bc5"
+    },
+    "fd0be13a833d75b247ec06db": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "1b46122578f3bc04bdb87e660166a93016d7f6573eaa2cc0ae0747c11dd60bc5"
+    },
+    "50ee95c2032a63bf02ae96b4": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "1b46122578f3bc04bdb87e660166a93016d7f6573eaa2cc0ae0747c11dd60bc5"
+    },
+    "778034897ec2a4fb42fe54c4": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "1b46122578f3bc04bdb87e660166a93016d7f6573eaa2cc0ae0747c11dd60bc5"
+    },
+    "7d5d4aa20b074a4cb10b462f": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "1b46122578f3bc04bdb87e660166a93016d7f6573eaa2cc0ae0747c11dd60bc5"
+    },
+    "8138d48c280b63305f2365ff": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "1b46122578f3bc04bdb87e660166a93016d7f6573eaa2cc0ae0747c11dd60bc5"
+    },
+    "83a0fc88b89745774c7defdf": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "1b46122578f3bc04bdb87e660166a93016d7f6573eaa2cc0ae0747c11dd60bc5"
+    },
+    "c85aec84311fb6f4077c03ba": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "1b46122578f3bc04bdb87e660166a93016d7f6573eaa2cc0ae0747c11dd60bc5"
+    },
+    "f6b3c778021ed5aa9290cd1b": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "1b46122578f3bc04bdb87e660166a93016d7f6573eaa2cc0ae0747c11dd60bc5"
+    }
+  }
+}

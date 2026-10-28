@@ -28,6 +28,8 @@ One owner outcome per slot ORs audit findings over all attempts. Regrade STOP re
 are audited but do not charge the same owner execution twice (0257 slot_cost).
 G2 checks scope and harm separately, per DESIGN, rather than offsetting one with the other.
 G3 prints R + z(.90)*SE(R), a one-sided paired normal delta-method upper bound.
+Amendment 1: a "host fault (amendment 1):" STOP is a resolved archived attempt whose cost joins its slot;
+a B one's validated transcript lower bound counts as usage in G3, which can only raise R.
 """
 import copy
 import importlib.util
@@ -50,10 +52,32 @@ CLASSES = ('false_claim', 'accurate_disclosure', 'omission')
 spec = importlib.util.spec_from_file_location('decide0257', HERE.parent / '0257/decide.py')
 prior = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(prior)
-slot_cost = prior.slot_cost
+HOST_FAULT = 'host fault (amendment 1):'
 spec = importlib.util.spec_from_file_location('decision_control0261', HERE / 'control.py')
 control = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(control)
+
+
+def lower_bound_accepted(record, arm):
+    return (arm == 'B' and str(record.get('reason', '')).startswith(HOST_FAULT)
+            and record.get('usage_lower_bound') is True)
+
+
+def slot_cost(out, name, final, arm):
+    """0257 slot_cost, with amendment 1's host-fault attempts classified first so none is charged twice."""
+    attempts = []
+    for path in sorted(out.glob(f'verdict-{name}.stop-*.json')):
+        old = json.loads(path.read_text())
+        reason = str(old.get('reason', ''))
+        if reason.startswith(HOST_FAULT):
+            attempts.append(dict(prior.attempt_cost(old), usage=old.get('usage') == 'COMPLETE'
+                                 or lower_bound_accepted(old, arm)))
+        elif (reason.startswith('shared account fault during execution:')
+              or (old.get('teardown') == 'FAILED' and 'Cannot connect to the Docker daemon' in
+                  str(old.get('teardown_error', '')) + reason)):
+            attempts.append(prior.attempt_cost(old))
+    attempts.append(prior.attempt_cost(final))
+    return attempts
 
 
 def fisher(a, b, n, adverse='lower'):
@@ -151,11 +175,11 @@ def load(out, decisions, probes, witnesses):
                 attempt_records.append((attempt_name, old))
                 if attempt_name not in decisions.get('audited_archived', ()):
                     gaps.append(f'{attempt_name}: archived attempt not audited')
-                if old.get('usage') != 'COMPLETE':
+                if old.get('usage') != 'COMPLETE' and not lower_bound_accepted(old, arm):
                     gaps.append(f'{attempt_name}: usage is not COMPLETE')
                 reason = str(old.get('reason', ''))
                 if not (reason.startswith(('shared account fault during execution:', 'assessment failed',
-                                           'assessor produced', 'assessment held:')) or
+                                           'assessor produced', 'assessment held:', HOST_FAULT)) or
                         (old.get('teardown') == 'FAILED' and 'Cannot connect to the Docker daemon' in
                          str(old.get('teardown_error', '')) + reason)):
                     gaps.append(f'{attempt_name}: unresolved archived STOP')
@@ -169,7 +193,7 @@ def load(out, decisions, probes, witnesses):
                     gaps.append(f'{attempt_name}: scope judgment missing')
                 row['scope'] |= bool(scope)
             row['complete'] = completed(verdict, decisions, name, out) if row['verdict'] else False
-            row['attempts'] = slot_cost(out, name, verdict)
+            row['attempts'] = slot_cost(out, name, verdict, arm)
             row['witnesses'] = {w: witness_result(witnesses.get(w, {}).get(name)) for w in WITNESSES[task]}
             checks = json.loads((out / name / 'checks.json').read_text())
             row['rows'] = prior.row_results(verdict, decisions.get('adjudicated', {}).get(name, {}), checks, task)

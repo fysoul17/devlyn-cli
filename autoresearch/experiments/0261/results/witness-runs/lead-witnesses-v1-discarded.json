@@ -1,0 +1,342 @@
+{
+  "f10-store-truncated": {
+    "7232445f2822f4a1d98994f6": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "0a573f106fc43a0f388f8ed94965814a07d46d23ea1ecac86043a11293a50567"
+    },
+    "93fe5b31eb405c57340acc53": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "0a573f106fc43a0f388f8ed94965814a07d46d23ea1ecac86043a11293a50567"
+    },
+    "9ac33c04e590fc3bc557dddb": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "0a573f106fc43a0f388f8ed94965814a07d46d23ea1ecac86043a11293a50567"
+    },
+    "bfa9ae6d03cbf6eeb91f4584": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "0a573f106fc43a0f388f8ed94965814a07d46d23ea1ecac86043a11293a50567"
+    },
+    "fd0be13a833d75b247ec06db": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "0a573f106fc43a0f388f8ed94965814a07d46d23ea1ecac86043a11293a50567"
+    },
+    "50ee95c2032a63bf02ae96b4": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "0a573f106fc43a0f388f8ed94965814a07d46d23ea1ecac86043a11293a50567"
+    },
+    "778034897ec2a4fb42fe54c4": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "0a573f106fc43a0f388f8ed94965814a07d46d23ea1ecac86043a11293a50567"
+    },
+    "7d5d4aa20b074a4cb10b462f": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "0a573f106fc43a0f388f8ed94965814a07d46d23ea1ecac86043a11293a50567"
+    },
+    "8138d48c280b63305f2365ff": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "0a573f106fc43a0f388f8ed94965814a07d46d23ea1ecac86043a11293a50567"
+    },
+    "83a0fc88b89745774c7defdf": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "0a573f106fc43a0f388f8ed94965814a07d46d23ea1ecac86043a11293a50567"
+    },
+    "c85aec84311fb6f4077c03ba": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "0a573f106fc43a0f388f8ed94965814a07d46d23ea1ecac86043a11293a50567"
+    },
+    "f6b3c778021ed5aa9290cd1b": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "0a573f106fc43a0f388f8ed94965814a07d46d23ea1ecac86043a11293a50567"
+    }
+  },
+  "f10-store-wrong-shape": {
+    "7232445f2822f4a1d98994f6": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "acb79cb8b9307a6f180b74ced4c013c8d50ac2a093621d5d579b5234ace4f21a"
+    },
+    "93fe5b31eb405c57340acc53": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "acb79cb8b9307a6f180b74ced4c013c8d50ac2a093621d5d579b5234ace4f21a"
+    },
+    "9ac33c04e590fc3bc557dddb": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "acb79cb8b9307a6f180b74ced4c013c8d50ac2a093621d5d579b5234ace4f21a"
+    },
+    "bfa9ae6d03cbf6eeb91f4584": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "acb79cb8b9307a6f180b74ced4c013c8d50ac2a093621d5d579b5234ace4f21a"
+    },
+    "fd0be13a833d75b247ec06db": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "acb79cb8b9307a6f180b74ced4c013c8d50ac2a093621d5d579b5234ace4f21a"
+    },
+    "50ee95c2032a63bf02ae96b4": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "acb79cb8b9307a6f180b74ced4c013c8d50ac2a093621d5d579b5234ace4f21a"
+    },
+    "778034897ec2a4fb42fe54c4": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "acb79cb8b9307a6f180b74ced4c013c8d50ac2a093621d5d579b5234ace4f21a"
+    },
+    "7d5d4aa20b074a4cb10b462f": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "acb79cb8b9307a6f180b74ced4c013c8d50ac2a093621d5d579b5234ace4f21a"
+    },
+    "8138d48c280b63305f2365ff": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "acb79cb8b9307a6f180b74ced4c013c8d50ac2a093621d5d579b5234ace4f21a"
+    },
+    "83a0fc88b89745774c7defdf": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "acb79cb8b9307a6f180b74ced4c013c8d50ac2a093621d5d579b5234ace4f21a"
+    },
+    "c85aec84311fb6f4077c03ba": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "acb79cb8b9307a6f180b74ced4c013c8d50ac2a093621d5d579b5234ace4f21a"
+    },
+    "f6b3c778021ed5aa9290cd1b": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "acb79cb8b9307a6f180b74ced4c013c8d50ac2a093621d5d579b5234ace4f21a"
+    }
+  }
+}

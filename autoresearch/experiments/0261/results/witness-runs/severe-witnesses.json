@@ -1,0 +1,146 @@
+{
+  "d4-convert-blocks": {
+    "d013-D4-claude-B-r7": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "cc74002e82ffee8f1a35d17c6ab722c9c96140613d2f794f267473b2ffd95f99"
+    },
+    "d017-D4-claude-B-r9": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "cc74002e82ffee8f1a35d17c6ab722c9c96140613d2f794f267473b2ffd95f99"
+    },
+    "d020-D4-claude-B-r10": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "cc74002e82ffee8f1a35d17c6ab722c9c96140613d2f794f267473b2ffd95f99"
+    },
+    "d022-D4-claude-C-r11": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "cc74002e82ffee8f1a35d17c6ab722c9c96140613d2f794f267473b2ffd95f99"
+    },
+    "d023-D4-claude-C-r12": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "cc74002e82ffee8f1a35d17c6ab722c9c96140613d2f794f267473b2ffd95f99"
+    }
+  },
+  "d4-own-file-tests-hang": {
+    "d013-D4-claude-B-r7": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "6c317c182eca0fe0a7ad273ee32e2181390af3c40e2c5b5b6cff844f4a916d5f"
+    },
+    "d017-D4-claude-B-r9": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "6c317c182eca0fe0a7ad273ee32e2181390af3c40e2c5b5b6cff844f4a916d5f"
+    },
+    "d020-D4-claude-B-r10": {
+      "attempts": [
+        {
+          "exit": 0,
+          "error": null
+        },
+        {
+          "exit": 0,
+          "error": null
+        }
+      ],
+      "result": false,
+      "witness_sha256": "6c317c182eca0fe0a7ad273ee32e2181390af3c40e2c5b5b6cff844f4a916d5f"
+    },
+    "d022-D4-claude-C-r11": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "6c317c182eca0fe0a7ad273ee32e2181390af3c40e2c5b5b6cff844f4a916d5f"
+    },
+    "d023-D4-claude-C-r12": {
+      "attempts": [
+        {
+          "exit": 1,
+          "error": null
+        },
+        {
+          "exit": 1,
+          "error": null
+        }
+      ],
+      "result": true,
+      "witness_sha256": "6c317c182eca0fe0a7ad273ee32e2181390af3c40e2c5b5b6cff844f4a916d5f"
+    }
+  }
+}
