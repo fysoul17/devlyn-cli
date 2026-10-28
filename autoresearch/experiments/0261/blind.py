@@ -7,6 +7,7 @@ A STOP before grading has no checks/snapshot: explicitly mark absent checks and 
 its preserved cell and tmp end trees, excluding trace/Git/managed/dependency content.
 Assessor-only regrades share the same owner evidence and are identified as such.
 Symlinks are recorded as link text in symlinks.json, never followed or copied as links.
+FIFOs are recorded by name in special-files.json, never opened (amendment 2).
 """
 import hashlib
 import importlib.util
@@ -15,6 +16,7 @@ import os
 from pathlib import Path
 import re
 import secrets
+import stat
 import sys
 
 HERE = Path(__file__).resolve().parent
@@ -104,6 +106,7 @@ def copy_tree(source, target, identities):
     if source.is_symlink() or not source.is_dir():
         raise ValueError(f'end tree missing or symlink: {source}')
     links = {}
+    special = {}
     target.mkdir(parents=True)
     def walk_error(error):
         raise error
@@ -124,13 +127,19 @@ def copy_tree(source, target, identities):
                 continue
             if path.is_dir():
                 continue
+            if stat.S_ISFIFO(os.lstat(path).st_mode):
+                special[str(relative)] = 'fifo'
+                continue
             if not path.is_file():
                 raise ValueError(f'non-regular end-tree file: {path}')
             dest = target / relative
             dest.parent.mkdir(parents=True, exist_ok=True)
             dest.write_bytes(redact(read(path), identities))
-    if links:
-        (target / 'symlinks.json').write_bytes(redact(json.dumps(links, indent=2).encode(), identities))
+    for name, manifest in [('symlinks.json', links), ('special-files.json', special)]:
+        if manifest:
+            if (target / name).exists():
+                raise ValueError(f'manifest name collides with an end-tree file: {source / name}')
+            (target / name).write_bytes(redact(json.dumps(manifest, indent=2).encode(), identities))
 
 
 def packets(runtime_path, out_dir):
