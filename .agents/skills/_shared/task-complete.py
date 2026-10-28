@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import ctypes
 import errno
 import functools
 import hashlib
@@ -628,6 +629,18 @@ def linux_process_status(process):
         raise WritersUnobservable("unknown process status; retain tree until writer cessation can be established") from exc
 
 
+def darwin_executable(pid):
+    # The real executable (ps prints argv[0]); only names a retention reason.
+    with contextlib.suppress(OSError):
+        proc_pidpath = ctypes.CDLL("/usr/lib/libproc.dylib").proc_pidpath
+        proc_pidpath.argtypes = [ctypes.c_int, ctypes.c_void_p, ctypes.c_uint32]
+        proc_pidpath.restype = ctypes.c_int
+        buffer = ctypes.create_string_buffer(4096)  # PROC_PIDPATHINFO_MAXSIZE
+        if proc_pidpath(pid, buffer, ctypes.sizeof(buffer)) > 0:
+            return os.fsdecode(buffer.value)
+    return None
+
+
 def stopped_writers(work):
     outside(work)
     # The owner assertion covers its actual children; an OS observation catches
@@ -637,10 +650,18 @@ def stopped_writers(work):
         if result.returncode not in {0, 1} or result.stderr.strip():
             raise WritersUnobservable("writer observation unavailable; retain tree and inspect writers")
         pid = None
-        for line in result.stdout.splitlines():
+        for line in result.stdout.split("\n"):
             if line.startswith("p"):
                 pid = int(line[1:])
             elif line.startswith("n") and pid != os.getpid():
+                executable = darwin_executable(pid)
+                if (executable is not None
+                        and executable.startswith("/System/Library/Frameworks/Virtualization.framework/")
+                        and executable.endswith("/com.apple.Virtualization.VirtualMachine")):
+                    raise WriterActive(
+                        f"active process {pid} is a virtual machine (Docker Desktop or another Virtualization.framework VM) "
+                        "and holds task files, as it can after a bind mount until restarted; "
+                        "stop containers using them and restart the VM's app before resume")
                 raise WriterActive(f"active process {pid} uses task files; stop/yield actual writers before resume")
     elif sys.platform.startswith("linux"):
         for process in Path("/proc").iterdir():
@@ -1834,6 +1855,86 @@ class CompletionTests(unittest.TestCase):
             child.terminate()
             child.wait(timeout=5)
         self.cli("clean-scratch", "--receipt", self.receipt, "--writers-stopped")
+
+    def test_darwin_writer_scan_retains_all_holders_and_names_virtual_machines(self):
+        from unittest.mock import Mock, call, patch
+        pid = os.getpid() + 1
+        vm = "/System/Library/Frameworks/Virtualization.framework/Versions/A/XPCServices/com.apple.Virtualization.VirtualMachine.xpc/Contents/MacOS/com.apple.Virtualization.VirtualMachine"
+        ordinary = f"active process {pid} uses task files; stop/yield actual writers before resume"
+        vm_reason = (f"active process {pid} is a virtual machine (Docker Desktop or another Virtualization.framework VM) "
+                     "and holds task files, as it can after a bind mount until restarted; "
+                     "stop containers using them and restart the VM's app before resume")
+        own = f"p{os.getpid()}\nn{self.work}\nn{self.work / 'product'}\n"
+        lsof = call(["lsof", "-Fpn", "+D", str(self.work)], capture_output=True, text=True, encoding="utf-8")
+        executable = Mock()
+        with patch.object(sys, "platform", "darwin"), patch.object(subprocess, "run") as run, patch.dict(globals(), darwin_executable=executable):
+            for path, reason in ((vm, vm_reason), (vm.replace("VirtualMachine", "EventTap"), ordinary),
+                                 ("/bin/bash", ordinary), (None, ordinary)):
+                for name in ("product", "product\u2028p", "product\u2029p"):
+                    with self.subTest(executable=path, name=name):
+                        run.reset_mock()
+                        executable.reset_mock()
+                        executable.return_value = path
+                        records = (f"p{os.getpid()}\nn{self.work / name}\np{pid}\n"
+                                   f"n{self.work / ('product' if name == 'product' else 'held')}\n")
+                        run.return_value = subprocess.CompletedProcess([], 0, records, "")
+                        with self.assertRaises(WriterActive) as raised:
+                            stopped_writers(self.work)
+                        self.assertEqual(str(raised.exception), reason)
+                        self.assertEqual(run.call_args_list, [lsof])
+                        executable.assert_called_once_with(pid)
+            run.reset_mock()
+            executable.reset_mock()
+            run.return_value = subprocess.CompletedProcess([], 0, own, "")
+            stopped_writers(self.work)
+            self.assertEqual(run.call_args_list, [lsof])
+            executable.assert_not_called()
+            for code, stderr in ((0, "warning"), (1, "warning"), (2, ""), (-1, "")):
+                with self.subTest(code=code, stderr=stderr):
+                    run.return_value = subprocess.CompletedProcess([], code, f"p{pid}\nn{self.work}\n", stderr)
+                    with self.assertRaises(WritersUnobservable):
+                        stopped_writers(self.work)
+                    executable.assert_not_called()
+            run.return_value = subprocess.CompletedProcess([], 1, "", "")
+            stopped_writers(self.work)
+            executable.assert_not_called()
+
+    @unittest.skipUnless(sys.platform == "darwin", "requires macOS proc_pidpath")
+    def test_darwin_executable(self):
+        from unittest.mock import patch
+        with self.subTest(process="self"):
+            executable = darwin_executable(os.getpid())
+            self.assertEqual(executable, os.path.realpath(executable))
+            self.assertTrue(os.path.isfile(executable))
+            self.assertTrue(os.access(executable, os.X_OK))
+        with self.subTest(process="reaped"):
+            with subprocess.Popen([sys.executable, "-c", "pass"]) as child:
+                child.wait(timeout=5)
+            self.assertIsNone(darwin_executable(child.pid))
+        with self.subTest(error="lookup failed"), patch.object(ctypes, "CDLL") as library:
+            library.return_value.proc_pidpath.return_value = 0
+            self.assertIsNone(darwin_executable(os.getpid()))
+        with self.subTest(error="library unavailable"), patch.object(ctypes, "CDLL", side_effect=OSError("libproc unavailable")):
+            self.assertIsNone(darwin_executable(os.getpid()))
+
+    @unittest.skipUnless(sys.platform == "darwin", "requires macOS lsof descriptor access")
+    def test_darwin_real_read_only_descriptors_and_scripts_block(self):
+        script = self.work / "loop.sh"
+        script.write_text("printf 'ready\\n'\nwhile :; do sleep 1; done\n", encoding="utf-8")
+        for command in ([sys.executable, "-c",
+                         "import os, sys, time; f = open(sys.argv[1], 'rb'); "
+                         "d = os.open(sys.argv[2], os.O_RDONLY); print('ready', flush=True); time.sleep(30)",
+                         str(self.work / "product"), str(self.work)], ["/bin/bash", str(script)]):
+            with self.subTest(command=command[0]):
+                child = subprocess.Popen(command, cwd=self.root, stdout=subprocess.PIPE, text=True)
+                try:
+                    self.assertEqual(child.stdout.readline(), "ready\n")
+                    with self.assertRaisesRegex(WriterActive, f"active process {child.pid} uses task files"):
+                        stopped_writers(self.work)
+                finally:
+                    child.kill()
+                    child.wait(timeout=5)
+                    child.stdout.close()
 
     def test_linux_writer_scan_continues_after_vanished_fd(self):
         from unittest.mock import patch
