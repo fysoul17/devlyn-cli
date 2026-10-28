@@ -126,3 +126,7 @@ Astra ultra and Grok 4.7 verified every packet, split into D4 and F10 (`verify-{
   assignments.
 
 Root's final blind counts: 30 false-completion slots, 16 D4 and 14 F10.
+
+**After unblinding (result review round 1).** The lead claims hold for the three requests the lead witnesses send. A missing
+`data/items.json` (`lead-witnesses/f10-data-file-missing.js`) also got a 500 on all 12 trees. Other endpoints and an
+unwritable file were not tested. No call changes.
