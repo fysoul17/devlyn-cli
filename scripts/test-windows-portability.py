@@ -4058,18 +4058,37 @@ else:
     def test_cli_exit_codes_and_transport_completion(self):
         prompt = self.work / 'prompt'; prompt.write_bytes(PAYLOAD + b'\x00\xff')
         target = 'import ctypes,sys; sys.stdout.buffer.write(sys.stdin.buffer.read()); sys.stdout.buffer.flush(); exit=ctypes.windll.kernel32.ExitProcess; exit.argtypes=[ctypes.c_uint]; exit.restype=None; exit(int(sys.argv[-1]))'
+        fixture = self.work / 'codex-fixture'; fixture.mkdir()
+        (fixture / 'package.json').write_text(json.dumps({'name': 'codex-fixture', 'version': '1.0.0', 'bin': {'codex': 'cli.js'}}), encoding='utf-8')
+        (fixture / 'cli.js').write_text('''#!/usr/bin/env node
+const a = process.argv.slice(2);
+if (a.includes('features')) {
+  for (const f of ['apps', 'plugins', 'remote_plugin', 'computer_use', 'browser_use', 'browser_use_external', 'in_app_browser'])
+    console.log(f + ' stable ' + !a.some((v, i) => v === '--disable' && a[i + 1] === f));
+  process.exit(0);
+}
+if (a.includes('mcp')) { console.log('[]'); process.exit(0); }
+const r = require('child_process').spawnSync(process.env.DEVLYN_TEST_PYTHON,
+  ['-c', process.env.DEVLYN_TEST_TARGET, process.env.DEVLYN_TEST_EXIT_CODE], {stdio:'inherit'});
+if (r.error) throw r.error;
+process.exit(r.status);
+''', encoding='utf-8')
+        prefix = self.work / 'native-bin'
+        npm(['install', '--global', '--prefix', str(prefix), '--offline', '--ignore-scripts',
+             '--no-audit', '--no-fund', str(fixture)], self.work)
+        binary = str(prefix / 'codex.cmd')
         for code in (0x80000000, 0xC0000005, 0xFFFFFFFF):
             for route in ('monitored-dispatch', 'monitored-bash'):
                 with self.subTest(code=hex(code), route=route):
                     carrier = prompt.with_name(prompt.name + '.transport.json')
                     carrier.unlink(missing_ok=True)
                     env = environment()
+                    env.update(HOME=str(self.work), USERPROFILE=str(self.work), DEVLYN_TEST_PYTHON=sys.executable,
+                               DEVLYN_TEST_TARGET=target, DEVLYN_TEST_EXIT_CODE=str(code))
                     # Native dispatcher used by codex-monitored.sh; preserve real Python CLI finalization.
                     env['DEVLYN_CODEX_PROMPT_FILE'] = str(prompt)
-                    command = [sys.executable, self.shared / 'invocation-receipt.py', 'dispatch', '--binary', sys.executable,
-                               '--timeout', '10', '--heartbeat', '0', '--', '-c', target, '-']
-                    # Python receives "exec" as a script name from the dispatcher.
-                    (self.work / 'exec').write_text(target.replace('int(sys.argv[-1])', str(code)), encoding='utf-8')
+                    command = [sys.executable, self.shared / 'invocation-receipt.py', 'dispatch', '--binary', binary,
+                               '--timeout', '10', '--heartbeat', '0', '--', '-']
                     if route == 'monitored-bash':
                         bash = shutil.which('bash')
                         self.assertIsNotNone(bash, 'Git Bash is required for the monitored boundary')
@@ -4077,7 +4096,7 @@ else:
                         # direct exec boundary; the native dispatcher/carrier must still retain DWORD.
                         reference = run([bash, '-c', 'exec "$@"', 'fixture', sys.executable, '-c',
                                          target, str(code)], code=None)
-                        env.update(CODEX_BIN=sys.executable, CODEX_MONITORED_TIMEOUT_SEC='10',
+                        env.update(CODEX_BIN=binary, CODEX_MONITORED_TIMEOUT_SEC='10',
                                    CODEX_MONITORED_HEARTBEAT='1')
                         with (self.work / 'stdout').open('wb') as out, (self.work / 'stderr').open('wb') as err:
                             result = subprocess.run([bash, str(self.shared / 'codex-monitored.sh'), '-'],
@@ -4091,7 +4110,7 @@ else:
                     record = json.loads(carrier.read_text(encoding='utf-8'))
                     self.assertEqual(record['exit_code'], code)
                     self.assertEqual(record['status'], 'completed')
-                    self.assertEqual(record['argv'][0], sys.executable)
+                    self.assertEqual(record['argv'][0], self.platform['native_argv']([binary])[0])
                     self.assert_all_ceased()
                     print(f'native {route} target/transport exit={code} observed CLI exit={result.returncode} exact stdin', flush=True)
 
@@ -4240,6 +4259,35 @@ class EngineTests(unittest.TestCase):
         engine_source = r"""#!/usr/bin/env node
 const fs = require('fs');
 const a = process.argv.slice(2);
+const features = ['apps', 'plugins', 'remote_plugin', 'computer_use', 'browser_use', 'browser_use_external', 'in_app_browser'];
+const config = {};
+for (let i = 0; i < a.length; i++) {
+  if (a[i] === '--') break;
+  if (a[i] === '-c') {
+    const value = a[++i], split = value.indexOf('=');
+    if (value.startsWith('mcp_servers."')) throw new Error('invalid transport');
+    config[value.slice(0, split)] = value.slice(split + 1);
+  }
+}
+if (a[0] === 'features' && a[1] === 'list') {
+  for (const f of features) console.log(f + ' under development ' + !a.some((v, i) => v === '--disable' && a[i + 1] === f));
+  process.exit(0);
+}
+if (a.includes('mcp')) {
+  console.log(JSON.stringify([{name:'node_repl',enabled:config['mcp_servers.node_repl.enabled'] !== 'false'},
+                             {name:'pyx-memory',enabled:true}]));
+  process.exit(0);
+}
+if (a.includes('plugin')) {
+  console.log(JSON.stringify([{id:'codex@fixture', scope:'synced', enabled:!a.includes('--settings')}]));
+  process.exit(0);
+}
+if (a.includes('--settings')) {
+  const p = a[a.indexOf('--settings') + 1];
+  fs.writeFileSync(process.env.DEVLYN_TEST_SEEN, JSON.stringify({argv:a, settings:JSON.parse(fs.readFileSync(p)),
+    mode:fs.statSync(p).mode & 0o777, env:process.env.ENABLE_CLAUDEAI_MCP_SERVERS}));
+  process.exit(0);
+}
 if (process.env.DEVLYN_TEST_REPLACE_PROMPT) fs.writeFileSync(process.env.DEVLYN_TEST_REPLACE_PROMPT, 'changed after dispatch');
 if (process.env.DEVLYN_TEST_LEAF) {
   const cp = require('child_process');
@@ -4257,7 +4305,7 @@ if (process.env.DEVLYN_TEST_LEAF) {
 }
 """
         folder = cls.root / 'codex'; folder.mkdir()
-        (folder / 'package.json').write_text(json.dumps({'name': '@openai/codex', 'version':'1.2.3', 'bin':{'codex':'cli.js'}}), encoding='utf-8')
+        (folder / 'package.json').write_text(json.dumps({'name': '@openai/codex', 'version':'1.2.3', 'bin':{'codex':'cli.js', 'claude':'cli.js'}}), encoding='utf-8')
         (folder / 'cli.js').write_text(engine_source, encoding='utf-8'); (folder / 'cli.js').chmod(0o755)
         npm(['install', '--global', '--prefix', str(cls.prefix), '--offline', '--ignore-scripts',
              '--no-audit', '--no-fund', str(folder)], cls.root)
@@ -4272,6 +4320,7 @@ if (process.env.DEVLYN_TEST_LEAF) {
         self.shared = (PACKAGE_ROOT or ROOT) / 'config/skills/_shared'
         self.env = environment(); self.env['PATH'] = str(self.bins) + os.pathsep + self.env['PATH']
         self.env.update(CODEX_BIN=str(self.bins / ('codex.cmd' if os.name == 'nt' else 'codex')),
+                        HOME=str(self.work), USERPROFILE=str(self.work),
                         CODEX_MONITORED_HEARTBEAT='1', CODEX_MONITORED_TIMEOUT_SEC='10',
                         DEVLYN_TEST_SEEN=str(self.work / 'seen.json'))
 
@@ -4295,14 +4344,33 @@ if (process.env.DEVLYN_TEST_LEAF) {
         self.env['DEVLYN_CODEX_PROMPT_FILE'] = str(prompt)
         return prompt, ['-C', str(self.work), '-s', 'workspace-write', '-m', 'fixture-model', '--json']
 
+    def guarded(self, args):
+        return ['exec', *[part for f in ('apps', 'plugins', 'remote_plugin', 'computer_use', 'browser_use',
+                                        'browser_use_external', 'in_app_browser') for part in ('--disable', f)],
+                '-c', 'mcp_servers.node_repl.enabled=false', *args]
+
+    def test_claude_native_launch_settings(self):
+        helper = runpy.run_path(str(self.shared / 'unattended-tools.py'))
+        with patch.dict(os.environ, self.env, clear=True):
+            with helper['claude_launch']([str(self.bins / ('claude.cmd' if os.name == 'nt' else 'claude')), '-p', 'hello'], self.work) as (argv, env):
+                subprocess.run(helper['PLATFORM']['native_argv'](argv, cwd=self.work), cwd=self.work, env=env, check=True)
+                seen = self.seen()
+                self.assertEqual(seen['settings'], {'syncClaudeAiPlugins': False, 'disableClaudeAiConnectors': True,
+                                                   'env': {'ENABLE_CLAUDEAI_MCP_SERVERS': 'false'},
+                                                   'enabledPlugins': {'codex@fixture': False}})
+                self.assertIn('--no-chrome', seen['argv'])
+                self.assertEqual(seen['env'], 'false')
+                if os.name != 'nt':
+                    self.assertEqual(seen['mode'], 0o600)
+
     def test_file_transport_delivers_exact_bytes_once(self):
         self.assertGreaterEqual(len(PAYLOAD), 64 * 1024)
         prompt, args = self.worker()
         self.monitor([*args, '-'])
         self.assertEqual(bytes.fromhex(self.seen()['stdin']), PAYLOAD)
-        self.assertEqual(self.seen()['argv'], ['exec', *args, '-'])
+        self.assertEqual(self.seen()['argv'], self.guarded([*args, '-']))
         record = json.loads(prompt.with_name(prompt.name + '.transport.json').read_text(encoding='utf-8'))
-        self.assertEqual((record['status'], record['exit_code'], record['command'][1:]), ('completed', 0, ['exec', *args, '-']))
+        self.assertEqual((record['status'], record['exit_code'], record['command'][1:]), ('completed', 0, self.guarded([*args, '-'])))
         self.assertEqual(record['prompt']['sha256'], hashlib.sha256(PAYLOAD).hexdigest())
         self.assertNotEqual(self.monitor([*args, '-'], code=None), 0)  # A sealed prompt file is delivered once.
         self.env.pop('DEVLYN_CODEX_PROMPT_FILE')
@@ -4334,7 +4402,7 @@ if (process.env.DEVLYN_TEST_LEAF) {
         dispatch = [sys.executable, self.shared / 'invocation-receipt.py', 'dispatch', '--timeout', '10', '--heartbeat', '0']
         for _ in range(2):
             run([*dispatch, '--binary', 'codex', '--', *argv], cwd=self.work, env=self.env)
-            self.assertEqual(self.seen()['argv'], ['exec', *argv]); self.assertEqual(bytes.fromhex(self.seen()['stdin']), b'')
+            self.assertEqual(self.seen()['argv'], self.guarded(argv)); self.assertEqual(bytes.fromhex(self.seen()['stdin']), b'')
         self.assertFalse((self.work / 'sentinel').exists())
         if os.name == 'nt':
             bad = self.work / 'unknown.cmd'; bad.write_text('@echo unsafe\n', encoding='utf-8')

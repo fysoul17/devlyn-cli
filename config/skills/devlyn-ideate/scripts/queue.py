@@ -1239,17 +1239,30 @@ def ensure_submission(identity, packet_path, packet, executor):
     output = Path(packet["evidence_dir"])
     output.mkdir(parents=True, exist_ok=True)
     record(log, "start")
-    try:
-        # Files, never a pipe: a wrapper such as codex-monitored.sh refuses a piped stdout; stdin is empty, never the driver's.
-        with (output / "executor.stdout").open("ab") as stdout, (output / "executor.stderr").open("ab") as stderr:
-            child = subprocess.Popen(shared("platform-support")["native_argv"](argv, cwd=worktree), cwd=worktree, stdin=subprocess.DEVNULL,
-                                     stdout=stdout, stderr=stderr)
-    except OSError as exc:
-        record(log, f"not started: {one_line(str(exc))}")
-        raise LoopError(f"executor could not start: {exc}; restore the configured executable, permissions or task workspace; "
-                        "the next drain retries") from exc
-    progress(identity, f"executing; output in {output}")
-    code = child.wait()
+    with contextlib.ExitStack() as stack:
+        try:
+            env = None
+            claude_names = {"claude", "claude.exe", "claude.cmd", "claude.bat"}
+            if Path(argv[0]).name.lower() in claude_names:
+                argv, env = stack.enter_context(shared("unattended-tools")["claude_launch"](argv, worktree))
+            else:
+                paths = [Path(part.replace("\\", "/")) for part in argv]
+                node_wrapper = any(path.name.lower() in {"node", "node.exe"} for path in paths)
+                for part, path in zip(argv, paths):
+                    if path.name.lower() in claude_names or (path.name.lower() == "cli.js" and
+                            (node_wrapper or any("claude" in parent.lower() for parent in path.parts[:-1]))):
+                        raise ValueError(f"unattended tools: wrapped Claude or ambiguous Node CLI executor {argv[0]!r} via {part!r} is unsupported; "
+                                         "invoke claude directly as argv[0]")
+            # Files, never a pipe: a wrapper such as codex-monitored.sh refuses a piped stdout; stdin is empty, never the driver's.
+            with (output / "executor.stdout").open("ab") as stdout, (output / "executor.stderr").open("ab") as stderr:
+                child = subprocess.Popen(shared("platform-support")["native_argv"](argv, cwd=worktree), cwd=worktree, stdin=subprocess.DEVNULL,
+                                         stdout=stdout, stderr=stderr, env=env)
+        except (OSError, ValueError) as exc:
+            record(log, f"not started: {one_line(str(exc))}")
+            raise LoopError(f"executor could not start: {exc}; restore the configured executable, permissions or task workspace; "
+                            "the next drain retries") from exc
+        progress(identity, f"executing; output in {output}")
+        code = child.wait()
     record(log, f"exit {code} (pid {child.pid})")
     if not submission.exists():
         raise Waiting(f"executor exited {code} without a submission (see {output / 'executor.stderr'}); the next drain runs it again")

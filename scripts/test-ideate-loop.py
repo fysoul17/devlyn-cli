@@ -162,6 +162,160 @@ TODO_CHECK = {"argv": [sys.executable, "-c", "import pathlib; assert pathlib.Pat
 CHAIN = [("t1", [], "Greeting interface 인사", [GREET_CHECK]), ("t2", ["t1"], "Greeting app [cli]", [APP_CHECK])]
 
 
+@unittest.skipIf(os.name == "nt", "native npm engine fixtures run in test-windows-portability.py")
+class UnattendedToolsTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory(prefix="devlyn-unattended-test-")
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name).resolve()
+        self.claude = self.root / "claude"
+        self.original = ["-p", "prompt stays exact\nnext line", "--dangerously-skip-permissions"]
+        self.claude.write_text(f"#!{sys.executable}\n" + r'''
+import json, os, pathlib, stat, sys
+a = sys.argv[1:]
+settings = pathlib.Path(a[max(i for i, v in enumerate(a) if v == "--settings") + 1]) if "--settings" in a else None
+data = json.loads(settings.read_text()) if settings else None
+record = {"argv": a, "settings": data, "cwd": os.getcwd(),
+          "mode": stat.S_IMODE(settings.stat().st_mode) if settings else None,
+          "env": os.environ.get("ENABLE_CLAUDEAI_MCP_SERVERS")}
+with open("calls.jsonl", "a") as f:
+    f.write(json.dumps(record) + "\n")
+if "plugin" in a:
+    verify = bool(data and data.get("syncClaudeAiPlugins") is False)
+    mode = os.environ.get("VERIFY_MODE" if verify else "LIST_MODE", "")
+    if mode == "fail": sys.exit("plugin discovery failed")
+    if mode == "malformed": print("not json")
+    elif mode == "shape": print('[{"id":"broken","enabled":"yes"}]')
+    else:
+        print(json.dumps([{"id": "codex@market", "scope": "user", "enabled": mode == "sticky" or not verify},
+                          {"id": "account@synced", "scope": "synced", "enabled": not verify},
+                          {"id": "disabled@market", "scope": "user", "enabled": False}]))
+else:
+    pathlib.Path("child.json").write_text(json.dumps(record))
+''', encoding="utf-8")
+        self.claude.chmod(0o755)
+        self.env = {**os.environ, "HOME": str(self.root), "USERPROFILE": str(self.root), "ENABLE_CLAUDEAI_MCP_SERVERS": "true"}
+        self.queue = runpy.run_path(str(LoopFixture.skills / "devlyn-ideate/scripts/queue.py"))
+        self.packet = {"schema_version": 2, "worktree": str(self.root), "submission": str(self.root / "submission.json"),
+                       "methodology": {}, "harness": None, "evidence_dir": str(self.root / "evidence")}
+        self.deny = self.root / ".devlyn/unattended-tools.json"
+        self.deny.parent.mkdir()
+
+    def drain(self, extra=(), error="executor exited 0 without a submission", argv=None):
+        fn = self.queue["ensure_submission"]
+        with mock.patch.dict(os.environ, self.env, clear=True), mock.patch.dict(fn.__globals__, {"harness_call": lambda *a: None}):
+            with self.assertRaisesRegex(self.queue["LoopError"], error):
+                fn("fixture.t01", self.root / "packet.json", self.packet,
+                   argv if argv is not None else [str(self.claude), *self.original, *extra])
+
+    def test_claude_drain_defaults_and_punctuated_deny(self):
+        self.deny.write_text(json.dumps({"claude": ["my.server", "my-server", "claude.ai  Account"]}))
+        self.drain()
+        child = json.loads((self.root / "child.json").read_text())
+        self.assertIn("--no-chrome", child["argv"])
+        self.assertEqual(child["env"], "false")
+        self.assertEqual(child["mode"], 0o600)
+        self.assertEqual(child["argv"][-len(self.original):], self.original)
+        self.assertEqual(child["argv"][:1], ["--settings"])
+        self.assertEqual(child["settings"], {"syncClaudeAiPlugins": False, "disableClaudeAiConnectors": True,
+                         "env": {"ENABLE_CLAUDEAI_MCP_SERVERS": "false"},
+                         "enabledPlugins": {"codex@market": False, "account@synced": False}})
+        self.assertEqual(child["argv"][2:4], ["--disallowedTools=mcp__my_server,mcp__my-server,mcp__claude_ai_Account", "--no-chrome"])
+        self.assertNotIn("--setting-sources", child["argv"])
+        self.assertFalse(Path(child["argv"][child["argv"].index("--settings") + 1]).exists())
+        calls = [json.loads(line) for line in (self.root / "calls.jsonl").read_text().splitlines()]
+        self.assertEqual(len(calls), 3)
+        self.assertTrue(all(c["cwd"] == str(self.root) and c["env"] == "false" for c in calls))
+        self.assertEqual(calls[1]["settings"], child["settings"])
+        self.assertEqual(self.env["ENABLE_CLAUDEAI_MCP_SERVERS"], "true")
+
+    def test_claude_refuses_unverifiable_configuration_flags(self):
+        settings = self.root / "original.json"
+        raw = json.dumps({"env": {"ENABLE_CLAUDEAI_MCP_SERVERS": "true"}})
+        settings.write_text(raw)
+        for flag in ("--settings", "--setting-sources", "--plugin-dir", "--plugin-url", "--chrome"):
+            for extra in ([flag, str(settings), "PROMPT", "-p"], [flag + "=" + str(settings)]):
+                with self.subTest(extra=extra):
+                    self.drain(extra, error=flag + " is not supported")
+                    self.assertFalse((self.root / "calls.jsonl").exists())
+                    self.assertEqual(settings.read_text(), raw)
+
+    def test_claude_preserves_values_and_option_boundaries(self):
+        for args in (["--append-system-prompt", "--", "-p", "prompt"],
+                     ["--name", "contains --settings={} text", "-p", "prompt"],
+                     ["-p", "--", "--settings is prompt text"],
+                     ["--append-system-prompt", "--not-a-policy-flag", "-p", "prompt"]):
+            with self.subTest(args=args):
+                self.drain(argv=[str(self.claude), *args])
+                child = json.loads((self.root / "child.json").read_text())
+                self.assertEqual(child["argv"][:1], ["--settings"])
+                self.assertEqual(child["argv"][2:], ["--no-chrome", *args])
+        # Exact restricted tokens are refused, even when used as option-shaped prompt values.
+        self.drain(argv=[str(self.claude), "-p", "--settings", "ignored"], error="--settings is not supported")
+        self.drain(["--name", "--settings={}"], error="--settings is not supported")
+
+    def test_claude_add_dir_plugin_settings_are_refused(self):
+        extra = self.root / "extra"
+        (extra / ".claude").mkdir(parents=True)
+        for filename in ("settings.json", "settings.local.json"):
+            path = extra / ".claude" / filename
+            for value in ({"enabledPlugins": {"only-here@fixture": True}}, {"enabledPlugins": {}}, []):
+                path.write_text(json.dumps(value))
+                for args in (["--add-dir", str(extra)], ["--add-dir=" + str(extra)],
+                             ["--add-dir", str(self.root / "empty"), str(extra), "-p", "prompt"]):
+                    with self.subTest(filename=filename, args=args, value=value):
+                        self.drain(args, error="Claude --add-dir settings")
+                        self.assertFalse((self.root / "calls.jsonl").exists())
+            path.unlink()
+        (extra / ".claude/settings.json").write_text('{"env":{"BASH_MAX_TIMEOUT_MS":"123456"}}')
+        self.drain(["--add-dir", str(extra)])
+        self.assertTrue((self.root / "child.json").exists())
+
+    def test_wrapped_claude_is_refused_through_dispatch(self):
+        for argv in (["env", "KEY=value", str(self.claude), "-p", "prompt"],
+                     ["node", "/sdk/cli.js", "-p", "prompt"],
+                     ["env", "KEY=value", "node", "/sdk/cli.js", "-p", "prompt"],
+                     ["node", "/sdk/@anthropic-ai/claude-code/cli.js", "-p", "prompt"],
+                     ["node", "/path/to/claude/cli.js", "-p", "prompt"],
+                     ["/sdk/claude-code/cli.js", "-p", "prompt"],
+                     ["launcher", "C:\\tools\\claude.cmd", "-p", "prompt"],
+                     ["launcher", "/tools/claude.exe", "-p", "prompt"]):
+            with self.subTest(argv=argv):
+                self.drain(argv=argv, error="wrapped Claude or ambiguous Node CLI executor.*invoke claude directly")
+                self.assertFalse((self.root / "calls.jsonl").exists())
+                self.assertIn("not started:", (self.root / "executions.log").read_text().splitlines()[-1])
+
+    def test_claude_refuses_failed_malformed_lists_and_sticky_plugins(self):
+        for key, mode, reason in (("LIST_MODE", "fail", "plugin discovery failed"),
+                                  ("LIST_MODE", "malformed", "malformed Claude plugin list"),
+                                  ("LIST_MODE", "shape", "malformed Claude plugin list"),
+                                  ("VERIFY_MODE", "fail", "plugin discovery failed"),
+                                  ("VERIFY_MODE", "malformed", "malformed Claude plugin list"),
+                                  ("VERIFY_MODE", "sticky", "overrides did not disable: codex@market")):
+            with self.subTest(key=key, mode=mode):
+                self.env[key] = mode
+                self.drain(error=reason)
+                self.env.pop(key)
+                self.assertFalse((self.root / "child.json").exists())
+                self.assertIn("not started:", (self.root / "executions.log").read_text().splitlines()[-1])
+
+    def test_claude_refuses_malformed_deny_file(self):
+        for value in ('{', '[]', '{"claude": 1}', '{"codex": [false]}'):
+            self.deny.write_text(value)
+            self.drain(error=re.escape(str(self.deny)))
+            self.assertFalse((self.root / "calls.jsonl").exists())
+
+    def test_non_claude_executor_is_unchanged_through_dispatch(self):
+        other = self.root / "other-engine"
+        other.write_bytes(self.claude.read_bytes())
+        other.chmod(0o755)
+        self.drain(argv=[str(other), "-p", "ordinary invocation"])
+        child = json.loads((self.root / "child.json").read_text())
+        self.assertEqual(child["argv"], ["-p", "ordinary invocation"])
+        self.assertIsNone(child["settings"])
+        self.assertEqual(child["env"], "true")
+
+
 class LoopFixture(unittest.TestCase):
     skills = PACKAGE_ROOT / "config" / "skills"
 

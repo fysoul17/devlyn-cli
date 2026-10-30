@@ -86,6 +86,25 @@ The orchestrator is the CLI you opened (Claude Code, Codex, omp, Pi or Grok); th
 
 `/devlyn-engines` with no arguments shows the executor and the engines detected on this machine; `executor <name>` pins one and `clear` removes the pin. A pin is a promise: an unavailable pinned engine stops dispatch with `BLOCKED:<engine>-unavailable`, and a name with no executor-eligible `_shared/adapters/<name>.md` stops with `BLOCKED:invalid-engine-config`. Adapters ship with devlyn-cli releases; a reinstall replaces `_shared`.
 
+Unattended children disable owner-desktop and account drivers: every monitored
+Codex child and every `claude` drain executor (including `.exe`/`.cmd`/`.bat`)
+uses a launch-only policy. Wrapped Claude launches (such as `env … claude` or
+`node …/claude-code/cli.js`) and ambiguous `node …/cli.js` wrappers are refused;
+invoke Claude directly as argv[0]. A shell command or script that starts an engine
+itself (for example `sh -c '…'`) is not inspected.
+Other engines have no tool guard. Interactive sessions and user settings files stay
+unchanged. Add your own server denies in `~/.devlyn/unattended-tools.json`, for
+example `{"codex":["my-desktop"],"claude":["my.server"]}`; omitted keys mean no
+extra denies, and an absent file means defaults only. Malformed files refuse
+the launch. Codex only overrides names returned by its MCP list, verifies they
+are disabled, and refuses denied names outside ASCII letters, digits, `_` and `-`.
+Claude uses `--disallowedTools=mcp__<server>`: replace each character outside ASCII letters,
+digits, `_` and `-` with `_` (`my.server` → `my_server`); `claude.ai ` names also
+collapse and trim underscores, matching Claude's namespace normalization.
+See [Claude's MCP permission rules](https://code.claude.com/docs/en/permissions#mcp).
+Remote URLs are not denied by default, so workers keep remote memory MCP.
+An account server you never list remains available.
+
 ### Migration from earlier versions
 
 Reinstall with the new version to refresh instructions and skills for the selected
