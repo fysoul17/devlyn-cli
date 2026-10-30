@@ -200,7 +200,10 @@ python3 "$DEVLYN_SHARED_DIR/task-complete.py" complete \
 Project policy is `git config --local devlyn.completionMode auto|pr`; absent means
 `auto`. Invalid local values fail before external effects, even with an override.
 Use `complete --mode auto|pr` for one task, or `--local-only`/`--no-push` to honor
-the user's delivery restriction. These per-task choices persist in the receipt; `--local-only` is refused once the task ref is pushed.
+the user's delivery restriction. These per-task choices persist in the receipt; `--local-only` is refused once the task ref is pushed or delivery is `COMPLETE`.
+
+With no matching PR and the accepted commit already on the fetched base, either
+publication mode pushes no task commit and opens no PR. Delivery is `COMPLETE` with no `pr`; cleanup and retention work as for a merged delivery.
 
 `pr` pushes the exact accepted task ref and creates/reuses its exact repository,
 head and base PR. While OPEN, it cancels owned auto-merge, reports `PR` with its URL
@@ -230,7 +233,7 @@ must never be reported as accepted.
 
 ## Yield and retain recoverability
 
-Cleanup requires actual matching MERGED evidence; linked-tree removal also
+Cleanup requires actual matching MERGED evidence or, with no PR, the accepted commit on the fetched base; linked-tree removal also
 requires the owner's recorded release. OS observation supplements it; neither the receipt
 nor a scan guarantees exclusion of future writers. Processes with cwd or open
 files inside the tree, inaccessible process state (on Linux, other users'
@@ -240,11 +243,11 @@ affected resources. Use `git worktree lock` to keep a tree.
 A VM that shared the tree (Docker Desktop after a bind mount) can keep files open
 until it restarts; the helper names it when identifiable and retries cleanup on
 the next allocation or resume after the restart.
-On native Windows, locking and file durability are supported, but the helper cannot prove writer cessation and reports `writer observation unsupported on this platform; retain workspace`. Even `--writers-stopped` cannot authorize deletion without that observation: retain the workspace, its task refs and external receipt/custody, report delivery separately, and preserve the receipt-based resume command. A merged delivery therefore reports `CLEANUP_PENDING` (delivery `COMPLETE`) with `workspace_cleanup` naming the reason and resume. Do not kill unknown processes or force worktree removal to make completion pass.
+On native Windows, locking and file durability are supported, but the helper cannot prove writer cessation and reports `writer observation unsupported on this platform; retain workspace`. Even `--writers-stopped` cannot authorize deletion without that observation: retain the workspace, its task refs and external receipt/custody, report delivery separately, and preserve the receipt-based resume command. A merged or on-base delivery therefore reports `CLEANUP_PENDING` (delivery `COMPLETE`) with `workspace_cleanup` naming the reason and resume. Do not kill unknown processes or force worktree removal to make completion pass.
 
 The receipt directory holds byte-verified `custody/`, `manifest.json` and a guarded
 `refs/devlyn/completed/<id>` recovery ref. Check evidence is copied there
-before publication; removal rechecks it, the recovery ref and the merge commit on base.
+before publication; removal rechecks it, the recovery ref and the merge or accepted commit on base.
 Ignored build output and other ignored files are disposable under native
 non-force worktree removal. The tree's `.devlyn/` files are byte/mode-verified
 and preserved as `<receipt dir>/records/.devlyn`; changes after an earlier copy

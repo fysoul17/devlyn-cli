@@ -724,6 +724,31 @@ class LoopFixture(unittest.TestCase):
                 self.assertTrue(parent.is_dir(), "registered worktree's parent was pruned")
                 self.assertIn("registered", " ".join(v["cleanup"]))
 
+    def test_require_merged_on_base_receipt(self):
+        # Prediction: settled publish_sha permits dependents only when present in their base.
+        self.g("commit", "--allow-empty", "-qm", "delivered outside helper")
+        published = self.g("rev-parse", "HEAD")
+        receipt = {"delivery": "COMPLETE", "publish_sha": published}
+        row = {"loop": "inv", "task": "t2", "identity": "inv.t2"}
+        v = {"anchor": self.anchor, "packages": {"inv": {"tasks": {"t2": {"depends_on": ["t1"]}}}},
+             "states": {"inv.t1": {"receipt": receipt}}, "manifests": {"inv": {"base_ref": "main"}}}
+        for allocated in (False, True):
+            with self.subTest(allocated=allocated):
+                self.queue["require_merged"](v, row, published, allocated=allocated)
+                with self.assertRaises(self.queue["LoopError"]) as error:
+                    self.queue["require_merged"](v, row, self.base, allocated=allocated)
+                self.assertIn(f"delivered commit {published}", str(error.exception))
+                if not allocated:
+                    self.assertIn("restore that commit on origin/main", str(error.exception))
+        receipt["delivery"] = "PR"
+        with self.assertRaises(self.queue["LoopError"]):
+            self.queue["require_merged"](v, row, published)
+        receipt.update(delivery="COMPLETE", merge={"mergeCommit": {"oid": published}})
+        receipt["publish_sha"] = self.base
+        with self.assertRaisesRegex(self.queue["LoopError"], f"delivered merge {published}"):
+            self.queue["require_merged"](v, row, self.base)
+        self.queue["require_merged"](v, row, published)
+
     def test_review_07_helper_exception_contract_documented(self):
         # Prediction: the inherited helper wrapper still contains all three errors; docs describe that exact exception.
         from unittest import mock

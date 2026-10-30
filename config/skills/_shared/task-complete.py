@@ -777,7 +777,8 @@ def clean_scratch_command(args):
 
 def cleanup(receipt, path, pr, *, warnings=None):
     warnings = [] if warnings is None else warnings
-    require(pr["state"] == "MERGED" and pr.get("mergedAt") and pr.get("mergeCommit", {}).get("oid"), "actual matching merge evidence is required")
+    if pr is not None:
+        require(pr["state"] == "MERGED" and pr.get("mergedAt") and pr.get("mergeCommit", {}).get("oid"), "actual matching merge evidence is required")
     sha = receipt["publish_sha"]
     branch_ref = "refs/heads/" + receipt["branch"]
     # The recovery ref keeps the accepted commit reachable, so squash and
@@ -785,7 +786,7 @@ def cleanup(receipt, path, pr, *, warnings=None):
     require(ref_sha(receipt, receipt["recovery_ref"]) == sha, "recovery reachability changed; retain resources")
     verify_files(path.parent / "custody", receipt["files"])
     require(read_json(path.parent / "manifest.json") == receipt["files"], "custody manifest changed")
-    gref(receipt, "merge-base", "--is-ancestor", pr["mergeCommit"]["oid"], remote_base(receipt))
+    gref(receipt, "merge-base", "--is-ancestor", pr["mergeCommit"]["oid"] if pr else sha, remote_base(receipt))
     gref(receipt, "merge-base", "--is-ancestor", receipt["source_sha"], sha)
     work = Path(receipt["worktree"])
     local = ref_sha(receipt, branch_ref)
@@ -887,26 +888,29 @@ def reconcile(common, allocated, anchor, *, exclude_receipts=(), warnings=None):
             continue
         try:
             receipt = read_json(path)
-            if receipt.get("allocation") != "owned" or not receipt.get("acceptance") or not receipt.get("pr_number") or receipt.get("local_only"):
+            if receipt.get("allocation") != "owned" or not receipt.get("acceptance") or receipt.get("local_only") or not (receipt.get("pr_number") or receipt.get("delivery") == "COMPLETE"):
                 continue
             if receipt.get("status") == "COMPLETE" and (not receipt.get("writers_released") or "scratch_identity" not in receipt or receipt.get("scratch_cleanup", {}).get("status") == "CLEAN"):
                 continue
             with locked_receipt(path, blocking=False) as receipt:
+                if not receipt.get("acceptance") or receipt.get("local_only") or not (receipt.get("pr_number") or receipt.get("delivery") == "COMPLETE"):
+                    continue
                 if receipt.get("status") == "COMPLETE":
                     if receipt.get("writers_released") and "scratch_identity" in receipt and receipt.get("scratch_cleanup", {}).get("status") != "CLEAN":
                         results.append(completion_result(receipt, path, "COMPLETE"))
                     continue
-                if not receipt.get("acceptance") or not receipt.get("pr_number") or receipt.get("local_only"):
-                    continue
-                pr = json.loads(gh(receipt, "pr", "view", str(receipt["pr_number"]), "--json", PR_FIELDS))
-                if pr["state"] != "MERGED":
-                    continue
-                validate_pr(receipt, pr)
+                pr = None
+                if receipt.get("pr_number"):
+                    pr = json.loads(gh(receipt, "pr", "view", str(receipt["pr_number"]), "--json", PR_FIELDS))
+                    if pr["state"] != "MERGED":
+                        continue
+                    validate_pr(receipt, pr)
                 require(not receipt["linked"] or Path(receipt["worktree"]) != anchor, "cannot clean the current allocation's anchor checkout: " + str(anchor))
                 require(remote_url(receipt) == receipt["remote_url"], "remote URL changed since allocation")
                 repo_policy(receipt)
-                receipt["merge"] = pr
-                atomic_json(path, receipt)
+                if pr:
+                    receipt["merge"] = pr
+                    atomic_json(path, receipt)
                 cleanup(receipt, path, pr, warnings=warnings)
                 results.append(completion_result(receipt, path, "COMPLETE", warnings=warnings))
         except (Exception, SystemExit) as error:
@@ -931,6 +935,9 @@ def complete(args, *, warnings=None):
         if (receipt.get("acceptance") or {}).get("verdict") == "FAILED":
             return result("FAILED")
         if args.local_only or receipt.get("local_only"):
+            require(receipt.get("delivery") != "COMPLETE" and receipt.get("status") != "COMPLETE" and "workspace_cleanup" not in receipt,
+                    f"{receipt['task']} delivery is already COMPLETE; "
+                    "--local-only cannot rewrite its delivery, resume it without --local-only")
             require(not receipt.get("pushed"), f"{receipt['task']} already has a pushed PR {receipt.get('pr_url') or receipt['branch']}; "
                     "--local-only cannot rewrite its delivery, resume it without --local-only")
             receipt["local_only"] = True
@@ -969,8 +976,17 @@ def complete(args, *, warnings=None):
             pr = prs[0] if prs else None
         if pr:
             validate_pr(receipt, pr)
-        actual = remote_head(receipt, receipt["branch"])
-        if not pr or pr["state"] != "MERGED":
+        on_base = pr is None and receipt.get("delivery") == "COMPLETE"
+        if pr is None and not on_base:
+            ancestry = subprocess.run(["git", "--git-dir", receipt["common_gitdir"], "merge-base", "--is-ancestor",
+                                       receipt["publish_sha"], remote_base(receipt)], capture_output=True, text=True, encoding="utf-8")
+            require(ancestry.returncode in {0, 1}, "cannot check accepted commit on base: " + ancestry.stderr.strip())
+            on_base = ancestry.returncode == 0
+            if on_base:
+                require(remote_head(receipt, receipt["branch"]) in {None, receipt["publish_sha"]},
+                        "remote task head changed; refusing to overwrite or merge")
+        if not on_base and (not pr or pr["state"] != "MERGED"):
+            actual = remote_head(receipt, receipt["branch"])
             inspect_workspace(receipt)
             verify_files(Path(receipt["worktree"]), receipt["files"])
             require(actual in {None, receipt["publish_sha"]}, "remote task head changed; refusing to overwrite or merge")
@@ -985,9 +1001,10 @@ def complete(args, *, warnings=None):
                 require(len(prs) == 1, "created PR could not be reconciled; resume from receipt")
                 pr = prs[0]
                 validate_pr(receipt, pr)
-        receipt.update(pr_number=pr["number"], pr_url=pr["url"])
-        atomic_json(path, receipt)
-        if mode == "pr" and pr["state"] == "OPEN":
+        if pr:
+            receipt.update(pr_number=pr["number"], pr_url=pr["url"])
+            atomic_json(path, receipt)
+        if pr and mode == "pr" and pr["state"] == "OPEN":
             if pr.get("autoMergeRequest"):
                 gh(receipt, "pr", "merge", str(pr["number"]), "--disable-auto")
                 pr = json.loads(gh(receipt, "pr", "view", str(pr["number"]), "--json", PR_FIELDS))
@@ -995,7 +1012,7 @@ def complete(args, *, warnings=None):
                 require(not pr.get("autoMergeRequest"), "auto-merge request remains on owned PR; retain and inspect")
             if pr["state"] == "OPEN":
                 return result("PR")
-        if pr["state"] != "MERGED":
+        if pr and pr["state"] != "MERGED":
             inspect_workspace(receipt)
             verify_files(Path(receipt["worktree"]), receipt["files"])
             require(remote_head(receipt, receipt["branch"]) == receipt["publish_sha"], "remote head race before merge")
@@ -1035,12 +1052,13 @@ def complete(args, *, warnings=None):
             if pr["state"] != "MERGED":
                 # Merge only when the repository allows it; a refused request leaves the PR for a person.
                 return dict(result("PR"), merge_refused=refused) if refused and not pr.get("autoMergeRequest") else result("PENDING")
-        receipt["merge"] = pr
-        atomic_json(path, receipt)
+        if pr:
+            receipt["merge"] = pr
+            atomic_json(path, receipt)
         try:
             cleanup(receipt, path, pr, warnings=warnings)
         except (WritersUnobservable, WriterActive) as error:
-            # Conservative retention: the merge settles delivery; workspace, task refs and custody stay, reported.
+            # Conservative retention: base containment settles delivery; workspace, task refs and custody stay, reported.
             receipt["workspace_cleanup"] = {"status": "RETAINED", "reason": str(error), "resume": shlex.join([
                 sys.executable, str(Path(__file__).resolve()), "complete", "--receipt", str(path)])}
             atomic_json(path, receipt)
@@ -2169,17 +2187,18 @@ ctypes.CDLL(None).pthread_exit(None)
             with self.assertRaisesRegex(CompletionError, "cannot parse mount table"):
                 scratch_mounts()
 
-    def accept(self):
-        (self.task / "product").write_text("accepted\n", encoding="utf-8")
-        self.g("add", "product", work=self.task)
-        self.g("commit", "-m", "scoped task", work=self.task)
+    def accept(self, *, unchanged=False):
+        if not unchanged:
+            (self.task / "product").write_text("accepted\n", encoding="utf-8")
+            self.g("add", "product", work=self.task)
+            self.g("commit", "-m", "scoped task", work=self.task)
         self.sha = self.g("rev-parse", "HEAD", work=self.task)
         evidence = self.task / ".devlyn"
         evidence.mkdir(exist_ok=True)
         (evidence / "checks.txt").write_text("actual fixture check: accepted bytes\n", encoding="utf-8")
         a = {"kind": "direct", "task": "fixture", "source_sha": self.sha,
              "checks": [{"command": "fixture byte assertion", "evidence": ".devlyn/checks.txt"}]}
-        self.assertEqual((self.task / "product").read_text(encoding="utf-8"), "accepted\n")
+        self.assertEqual((self.task / "product").read_text(encoding="utf-8"), "baseline\n" if unchanged else "accepted\n")
         self.acceptance = evidence / "acceptance.json"
         self.acceptance.write_text(json.dumps(a), encoding="utf-8")
 
@@ -2188,6 +2207,202 @@ ctypes.CDLL(None).pthread_exit(None)
         if acceptance:
             command_args += ["--acceptance", self.acceptance]
         return self.cli(*command_args, *args, success=success, cwd=cwd)
+
+    def test_unchanged_at_base_cleans_without_publication(self):
+        # Prediction: equality with base settles without push/PR, preserving custody and removing the tree, ref and scratch output.
+        self.allocate(); self.accept(unchanged=True)
+        records = records_manifest(self.task)
+        scratch = self.receipt.parent / "scratch"
+        (scratch / "build").write_bytes(b"temporary output")
+        result, _ = self.complete("--writers-stopped")
+        self.assertEqual((result["status"], result["pr"]), ("COMPLETE", None))
+        self.assertFalse(self.task.exists())
+        self.assertEqual(self.g("branch", "--list", "task/fixture"), "")
+        self.assertEqual(self.g("ls-remote", "origin", "refs/heads/task/fixture"), "")
+        self.assertEqual((result["scratch_cleanup"]["status"], list(scratch.iterdir())), ("CLEAN", []))
+        self.assertEqual(records_manifest(self.receipt.parent / "records"), records)
+        receipt = read_json(self.receipt)
+        verify_files(self.receipt.parent / "custody", receipt["files"])
+        self.assertEqual(self.g("rev-parse", receipt["recovery_ref"]), self.sha)
+        d = read_json(self.data)
+        self.assertEqual((d["pushs"], d.get("creates", 0), d.get("deletes", 0)), (0, 0, 0))
+
+    def test_unchanged_ancestor_cleans_in_pr_mode(self):
+        # Prediction: only the freshly fetched base contains the accepted ancestor; PR mode cleans without publication.
+        self.allocate(); self.accept()
+        stale = self.g("rev-parse", "refs/remotes/origin/main")
+        advanced = self.g("commit-tree", self.sha + "^{tree}", "-p", self.sha, "-m", "advance remote base")
+        self.g("push", "origin", advanced + ":refs/heads/main")
+        self.configure(pushs=0)
+        self.g("update-ref", "refs/remotes/origin/main", stale)
+        for ref in ("main", "refs/remotes/origin/main"):
+            self.assertEqual(self.run_cmd(["git", "-C", str(self.work), "merge-base", "--is-ancestor",
+                                          self.sha, ref], success=False).returncode, 1)
+        result, _ = self.complete("--mode", "pr", "--writers-stopped")
+        self.assertEqual((result["status"], result["pr"]), ("COMPLETE", None))
+        self.assertEqual(self.g("rev-parse", "refs/remotes/origin/main"), advanced)
+        self.assertEqual(self.g("rev-parse", "main"), stale)
+        self.assertFalse(self.task.exists())
+        self.assertEqual(self.g("branch", "--list", "task/fixture"), "")
+        d = read_json(self.data)
+        self.assertEqual((d["pushs"], d.get("creates", 0)), (0, 0))
+
+    def test_unchanged_old_pushed_receipt_resumes_with_exact_delete(self):
+        # Prediction: a pushed receipt without a PR resumes with only the exact-lease deletion and settles COMPLETE.
+        from unittest.mock import Mock, patch
+        self.allocate(); self.accept(unchanged=True)
+        self.cli("accept", "--receipt", self.receipt, "--acceptance", self.acceptance)
+        self.g("push", "origin", self.sha + ":refs/heads/task/fixture")
+        receipt = read_json(self.receipt)
+        receipt["pushed"] = True
+        atomic_json(self.receipt, receipt)
+        args = argparse.Namespace(receipt=str(self.receipt), acceptance=None, mode=None, local_only=False, writers_stopped=True)
+        run = Mock(wraps=gref)
+        with patch.dict(os.environ, self.env), patch.dict(complete.__globals__, gref=run):
+            result = complete(args)
+        pushes = [call.args[1:] for call in run.call_args_list if call.args[1] == "push"]
+        self.assertEqual(pushes, [("push", "--force-with-lease=refs/heads/task/fixture:" + self.sha, "origin", ":refs/heads/task/fixture")])
+        self.assertEqual((result["status"], result["pr"]), ("COMPLETE", None))
+        self.assertFalse(self.task.exists())
+        self.assertEqual(self.g("branch", "--list", "task/fixture"), "")
+        self.assertEqual(self.g("ls-remote", "origin", "refs/heads/task/fixture"), "")
+        d = read_json(self.data)
+        self.assertEqual((d["pushs"], d.get("creates", 0), d["deletes"]), (1, 0, 1))
+
+    def test_unchanged_writer_retention_resumes_to_complete(self):
+        # Prediction: either writer refusal settles delivery but retains the tree/ref; resume cleans without push/PR.
+        from unittest.mock import Mock, patch
+        self.allocate(); self.accept(unchanged=True)
+        args = argparse.Namespace(receipt=str(self.receipt), acceptance=str(self.acceptance), mode=None, local_only=False, writers_stopped=True)
+        for error in (WriterActive, WritersUnobservable):
+            with self.subTest(error=error.__name__), patch.dict(os.environ, self.env), \
+                    patch.dict(complete.__globals__, stopped_writers=Mock(side_effect=error("fixture writer retention"))):
+                result = complete(args)
+            self.assertEqual((result["status"], result["delivery_status"], result["pr"]), ("CLEANUP_PENDING", "COMPLETE", None))
+            self.assertEqual(result["workspace_cleanup"]["status"], "RETAINED")
+            self.assertIn(str(self.receipt), result["workspace_cleanup"]["resume"])
+            self.assertTrue(self.task.exists())
+            self.assertNotEqual(self.g("branch", "--list", "task/fixture"), "")
+        result, _ = self.complete(acceptance=False)
+        self.assertEqual((result["status"], result["pr"], result["workspace_cleanup"]), ("COMPLETE", None, None))
+        self.assertFalse(self.task.exists())
+        self.assertEqual(self.g("branch", "--list", "task/fixture"), "")
+        d = read_json(self.data)
+        self.assertEqual((d["pushs"], d.get("creates", 0)), (0, 0))
+
+    def test_unchanged_writer_retention_reconciles_on_allocate(self):
+        # Prediction: the next allocation retries on-base delivery once writer observation succeeds.
+        from unittest.mock import Mock, patch
+        self.allocate(); self.accept(unchanged=True)
+        args = argparse.Namespace(receipt=str(self.receipt), acceptance=str(self.acceptance), mode=None, local_only=False, writers_stopped=True)
+        with patch.dict(os.environ, self.env), \
+                patch.dict(complete.__globals__, stopped_writers=Mock(side_effect=WriterActive("fixture writer retention"))):
+            result = complete(args)
+        self.assertEqual((result["status"], result["delivery_status"], result["pr"]), ("CLEANUP_PENDING", "COMPLETE", None))
+        self.assertEqual(result["workspace_cleanup"]["status"], "RETAINED")
+        receipt, task = self.receipt, self.task
+        result = self.allocate("next")
+        self.assertEqual([(row["receipt"], row["status"]) for row in result["reconciled"]], [(str(receipt), "COMPLETE")])
+        self.assertFalse(task.exists())
+        self.assertEqual(self.g("branch", "--list", "task/fixture"), "")
+
+    def test_unchanged_settled_resume_blocks_after_base_rewind(self):
+        # Prediction: settled delivery never republishes after base rewind; cleanup blocks with the tree and refs kept.
+        from unittest.mock import Mock, patch
+        self.allocate(); self.accept()
+        base = self.g("rev-parse", "main")
+        self.g("push", "origin", self.sha + ":refs/heads/main")
+        args = argparse.Namespace(receipt=str(self.receipt), acceptance=str(self.acceptance), mode=None, local_only=False, writers_stopped=True)
+        with patch.dict(os.environ, self.env), \
+                patch.dict(complete.__globals__, stopped_writers=Mock(side_effect=WriterActive("fixture writer retention"))):
+            result = complete(args)
+        self.assertEqual((result["status"], result["delivery_status"], result["pr"]), ("CLEANUP_PENDING", "COMPLETE", None))
+        self.assertIsNone(read_json(self.receipt).get("status"))
+        self.g("push", "origin", "+" + base + ":refs/heads/main")
+        self.configure(pushs=0)
+        for mode in ("auto", "pr"):
+            with self.subTest(mode=mode):
+                result, _ = self.complete("--mode", mode, acceptance=False, success=False)
+                self.assertEqual(result["status"], "BLOCKED")
+                self.assertIn("merge-base:", result["reason"])
+                self.assertTrue(self.task.exists())
+                receipt = read_json(self.receipt)
+                self.assertEqual(receipt["delivery"], "COMPLETE")
+                self.assertEqual(self.g("rev-parse", "task/fixture"), self.sha)
+                self.assertEqual(self.g("rev-parse", receipt["recovery_ref"]), self.sha)
+                self.assertEqual(self.g("ls-remote", "origin", "refs/heads/task/fixture"), "")
+                d = read_json(self.data)
+                self.assertEqual((d["pushs"], d.get("creates", 0), d.get("merges", 0)), (0, 0, 0))
+
+    def test_unchanged_interrupted_cleanup_refuses_local_only(self):
+        # Prediction: both cleanup checkpoints prevent local-only relabeling before delivery is persisted.
+        from unittest.mock import Mock, patch
+        self.allocate(); self.accept(unchanged=True)
+        args = argparse.Namespace(receipt=str(self.receipt), acceptance=str(self.acceptance), mode=None, local_only=False, writers_stopped=True)
+        for retained in (True, False):
+            with self.subTest(retained=retained), patch.dict(os.environ, self.env), \
+                    patch.dict(complete.__globals__,
+                               stopped_writers=Mock(side_effect=WriterActive("fixture writer retention") if retained else None),
+                               completion_result=Mock(side_effect=RuntimeError("fixture interruption"))):
+                with self.assertRaisesRegex(RuntimeError, "fixture interruption"):
+                    complete(args)
+                receipt = read_json(self.receipt)
+                self.assertIsNone(receipt.get("delivery"))
+                self.assertFalse(receipt.get("pushed"))
+                self.assertEqual("workspace_cleanup" in receipt, retained)
+                self.assertEqual(receipt.get("status"), None if retained else "COMPLETE")
+                result, _ = self.complete("--local-only", acceptance=False, success=False)
+                self.assertEqual(result["status"], "BLOCKED")
+                self.assertIn("already COMPLETE", result["reason"])
+                self.assertFalse(read_json(self.receipt).get("local_only"))
+        self.assertEqual(self.complete(acceptance=False)[0]["status"], "COMPLETE")
+
+    def test_merged_foreign_remote_head_records_merge_and_retains_ref(self):
+        # Prediction: merged PRs record merge evidence and reach cleanup's remote-ref retention guard.
+        self.allocate(); self.accept()
+        self.complete("--mode", "pr")
+        self.run_cmd(["gh", "pr", "merge", "1", "--merge", "--match-head-commit", self.sha,
+                      "--repo", "github.com/test/project"])
+        self.g("commit", "--allow-empty", "-m", "foreign commit")
+        foreign = self.g("rev-parse", "HEAD")
+        self.g("push", "origin", "+" + foreign + ":refs/heads/task/fixture")
+        result, _ = self.complete("--writers-stopped", success=False)
+        self.assertEqual(result["status"], "BLOCKED")
+        self.assertIn("remote branch changed after merge; retain ref", result["reason"])
+        self.assertEqual(read_json(self.receipt)["merge"], read_json(self.data)["prs"][0])
+        self.assertEqual(self.g("ls-remote", "origin", "refs/heads/task/fixture").split()[0], foreign)
+
+    def test_unchanged_foreign_remote_head_retains_worktree(self):
+        # Prediction: a foreign remote task head refuses completion before worktree removal.
+        self.allocate(); self.accept(unchanged=True)
+        self.g("commit", "--allow-empty", "-m", "foreign commit")
+        self.g("push", "origin", "HEAD:refs/heads/task/fixture")
+        result, _ = self.complete("--writers-stopped", success=False)
+        self.assertEqual(result["status"], "BLOCKED")
+        self.assertIn("remote task head changed", result["reason"])
+        self.assertTrue(self.task.exists())
+
+    def test_unchanged_scratch_retention_reconciles_on_allocate(self):
+        # Prediction: status COMPLETE without a PR still retries retained scratch on the next allocation.
+        scratch = Path(self.allocate()["scratch"])
+        self.accept(unchanged=True)
+        (scratch / ".git").mkdir()
+        result, _ = self.complete("--writers-stopped")
+        self.assertEqual((result["status"], result["scratch_cleanup"]["status"]), ("CLEANUP_PENDING", "RETAINED"))
+        receipt = self.receipt
+        self.assertEqual(read_json(receipt)["status"], "COMPLETE")
+        (scratch / ".git").rmdir()
+        result = self.allocate("next")
+        self.assertEqual([(row["receipt"], row["status"]) for row in result["reconciled"]], [(str(receipt), "COMPLETE")])
+        self.assertFalse(any(scratch.iterdir()))
+
+    def test_unchanged_complete_refuses_local_only(self):
+        # Prediction: a delivered on-base receipt cannot be rewritten as local-only.
+        self.allocate(); self.accept(unchanged=True)
+        self.assertEqual(self.complete("--writers-stopped")[0]["status"], "COMPLETE")
+        result, _ = self.complete("--local-only", acceptance=False, success=False)
+        self.assertIn("already COMPLETE", result["reason"])
+        self.assertEqual(read_json(self.receipt)["delivery"], "COMPLETE")
 
     def test_reject_repository_rewrite_before_allocation(self):
         intended = "https://github.com/test/project.git"

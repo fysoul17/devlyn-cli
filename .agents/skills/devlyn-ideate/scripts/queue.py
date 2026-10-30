@@ -1034,15 +1034,19 @@ def input_files(v, row, receipt, local):
 
 
 def require_merged(v, row, base, *, allocated=False):
-    """auto/pr: every prerequisite's merge commit must be in the base, before allocation and before every execution."""
+    """auto/pr: every prerequisite's delivered commit must be in the base, before allocation and before every execution."""
     for dep in v["packages"][row["loop"]]["tasks"][row["task"]]["depends_on"]:
         receipt = v["states"][f"{row['loop']}.{dep}"]["receipt"] or {}
         merge = ((receipt.get("merge") or {}).get("mergeCommit") or {}).get("oid")
+        kind = "merge"
+        if not receipt.get("merge") and receipt.get("delivery") == "COMPLETE":
+            merge = receipt.get("publish_sha")
+            kind = "commit"
         remedy = ("retain this allocation and plan the continuation as a new loop, or perform verified recovery of a never-executed allocation"
-                  if allocated else f"restore that merge on origin/{manifest_of(v, row['loop'])['base_ref']}, then drain again")
+                  if allocated else f"restore that {kind} on origin/{manifest_of(v, row['loop'])['base_ref']}, then drain again")
         require(merge and ancestor(v["anchor"], merge, base),
                 f"{row['identity']}: {'allocated baseline' if allocated else 'base'} {base} lacks prerequisite {row['loop']}.{dep}'s "
-                f"delivered merge {merge}; {remedy}")
+                f"delivered {kind} {merge}; {remedy}")
 
 
 def package_drift(v, loop, start, where):
