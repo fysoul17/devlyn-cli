@@ -110,7 +110,7 @@ Follow [loop.md](references/loop.md). The executor is the configured route, the 
 
 | Executor | argv |
 |---|---|
-| Claude | `claude -p "<prompt>" --dangerously-skip-permissions --add-dir "<git dir>"` |
+| Claude | `claude -p "<prompt>" --dangerously-skip-permissions --add-dir "<git dir>"` (drain prepends `--settings <temporary-policy.json> --no-chrome` and any `--disallowedTools=<list>` denies after `claude`) |
 | Codex | `bash "<DEVLYN_SHARED_DIR>/codex-monitored.sh" --skip-git-repo-check -s workspace-write -c 'sandbox_workspace_write.writable_roots=["<git dir>","{worktree_git_dir}"]' -c 'sandbox_workspace_write.network_access=true' "<prompt>"` |
 
 Another engine needs an argv that starts one fresh non-interactive session able, without prompts, to edit, run commands and commit in its task worktree and to write the packet's submission file. `<prompt>` carries the absolute binding values, while `{packet}` stays literal for the drain to fill:

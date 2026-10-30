@@ -157,6 +157,7 @@ def monitor_descendant_regression() -> None:
         fake_codex = work / "fake-codex"
         fake_codex.write_text(
             f"#!{real_bash}\n"
+            "case \" $* \" in *' features list '*) for f in apps plugins remote_plugin computer_use browser_use browser_use_external in_app_browser; do printf '%s stable false\\n' \"$f\"; done; exit 0;; *' mcp list --json '*) printf '[]\\n'; exit 0;; esac\n"
             "printf '%s\\n' \"$$\" > \"$DEVLYN_WATCHDOG_TEST_CODEX_PID\"\n"
             "while [ ! -e \"$DEVLYN_WATCHDOG_TEST_RELEASE\" ]; do\n"
             "  \"$DEVLYN_WATCHDOG_TEST_REAL_SLEEP\" 0.01\n"
@@ -184,6 +185,7 @@ def monitor_descendant_regression() -> None:
             ):
                 env.pop(key)
         env.update({
+            "HOME": str(work), "USERPROFILE": str(work),
             "CODEX_BIN": str(fake_codex),
             "CODEX_MONITORED_HEARTBEAT": "1",
             "CODEX_MONITORED_TIMEOUT_SEC": "30",
@@ -411,11 +413,173 @@ def monitor_descendant_regression() -> None:
             raise
 
 
+def unattended_tools_regression():
+    with tempfile.TemporaryDirectory() as raw_tmp:
+        work = pathlib.Path(raw_tmp).resolve()
+        fake = work / "codex"
+        fake.write_text(f"#!{sys.executable}\n" + '''
+import json, os, pathlib, re, sys
+a = sys.argv[1:]
+with open("probes.jsonl", "a") as stream:
+    stream.write(json.dumps({"argv": a, "cwd": os.getcwd()}) + "\\n")
+features = "apps plugins remote_plugin computer_use browser_use browser_use_external in_app_browser".split()
+config, disabled = {}, set()
+i = 0
+while i < len(a):
+    token = a[i]
+    if token == "--": break
+    if token.startswith("-c") and not token.startswith("--") and len(token) > 2:
+        key, value = "-c", token[2:].removeprefix("=")
+    else:
+        key, equal, value = token.partition("=")
+        if key in ("-c", "--config", "--disable", "--enable", "-p", "--profile", "-C", "--cd") and not equal:
+            i += 1
+            value = a[i]
+    if key in ("-c", "--config"):
+        name, sep, val = value.partition("=")
+        if not sep: sys.exit("missing config value")
+        if name.startswith('mcp_servers."'): sys.exit("invalid transport in " + name)
+        config[name] = val
+    if key == "--disable": disabled.add(value)
+    i += 1
+if a == ["--version"]:
+    print("codex-fixture 1.2.3")
+elif a[:2] == ["features", "list"]:
+    if os.environ.get("FEATURE_FAIL"):
+        sys.exit("Unknown feature flag: in_app_browser")
+    for f in features:
+        mode = os.environ.get("FEATURE_MODE") if f == "apps" else None
+        if mode == "missing": continue
+        print(f, "under development", "garbled" if mode == "malformed" else str(mode == "sticky" or f not in disabled).lower())
+elif "mcp" in a:
+    assert a[a.index("mcp"):a.index("mcp") + 3] == ["mcp", "list", "--json"], a
+    verify = any(k.endswith(".enabled") for k in config)
+    if os.environ.get("LIST_FAIL") or (verify and os.environ.get("VERIFY_FAIL")):
+        sys.exit("cannot list servers")
+    raw = os.environ.get("VERIFY_SERVERS" if verify else "SERVERS", os.environ.get("SERVERS", '[{"name":"node_repl","enabled":true},{"name":"pyx-memory","enabled":true}]'))
+    try: servers = json.loads(raw)
+    except ValueError:
+        print(raw); sys.exit(0)
+    if isinstance(servers, list) and all(isinstance(s, dict) and "name" in s and isinstance(s.get("enabled"), bool) for s in servers):
+        servers = {s["name"]: s for s in servers}
+        for key in config:
+            match = re.fullmatch(r"mcp_servers\\.([A-Za-z0-9_-]+)\\.command", key)
+            if match:
+                name = match[1]
+                servers.setdefault(name, {"name": name, "enabled": True})
+        for key, val in config.items():
+            match = re.fullmatch(r"mcp_servers\\.([A-Za-z0-9_-]+)\\.(command|enabled)", key)
+            if match:
+                name, field = match.groups()
+                if field == "command": servers.setdefault(name, {"name": name, "enabled": True})
+                elif not os.environ.get("MCP_STICKY"):
+                    if name not in servers: sys.exit("invalid transport")
+                    servers[name]["enabled"] = val == "true"
+        servers = list(servers.values())
+    print(json.dumps(servers))
+else:
+    assert a[0] == "exec" and a[1:15] == [v for f in features for v in ("--disable", f)], a
+    pathlib.Path("seen.json").write_text(json.dumps(a))
+    pathlib.Path("stdin").write_bytes(sys.stdin.buffer.read())
+    sys.exit(int(os.environ.get("EXEC_CODE", "0")))
+''', encoding="utf-8")
+        fake.chmod(0o755)
+        wrapper = pathlib.Path(__file__).resolve().with_name("codex-monitored.sh")
+        env = {k: v for k, v in os.environ.items() if not k.startswith("CODEX_") and k != "DEVLYN_CODEX_PROMPT_FILE"}
+        env.update(HOME=str(work), USERPROFILE=str(work), CODEX_BIN=str(fake))
+        seen = work / "seen.json"
+        deny = work / ".devlyn/unattended-tools.json"
+        deny.parent.mkdir()
+
+        def launch(extra=None, code=0, args=None):
+            seen.unlink(missing_ok=True)
+            with (work / "stdout").open("wb") as stdout, (work / "stderr").open("wb") as stderr:
+                result = subprocess.run(["bash", str(wrapper), *(args or ["hello"])], cwd=work,
+                                        env={**env, **(extra or {})}, stdout=stdout, stderr=stderr, timeout=60)
+            error = (work / "stderr").read_text(encoding="utf-8")
+            assert result.returncode == code, (result.returncode, error)
+            if code == 2:
+                assert not seen.exists(), error
+            return error
+
+        launch(code=7, extra={"EXEC_CODE": "7"})
+        argv = json.loads(seen.read_text())
+        shutdown = [v for f in ("apps", "plugins", "remote_plugin", "computer_use", "browser_use",
+                                "browser_use_external", "in_app_browser") for v in ("--disable", f)]
+        assert argv == ["exec", *shutdown, "-c", "mcp_servers.node_repl.enabled=false", "hello"], argv
+        assert not any("computer-use" in a or "pyx-memory" in a for a in argv)
+        assert (work / "stdin").read_bytes() == b""
+
+        name = "desktop-custom"
+        deny.write_text(json.dumps({"codex": [name, "absent"]}), encoding="utf-8")
+        discovery = work / "project"
+        discovery.mkdir()
+        prompt = work / "prompt.md"
+        prompt.write_bytes(b"exact prompt\nsecond line\n")
+        launch(extra={"CODEX_BIN": "./codex", "SERVERS": json.dumps([{"name": name, "enabled": True}]),
+                      "DEVLYN_CODEX_PROMPT_FILE": str(prompt)},
+               args=["-C", str(discovery), "--config=model_reasoning_effort=high", "--", "-"])
+        argv = json.loads(seen.read_text())
+        assert f"mcp_servers.{name}.enabled=false" in argv, argv
+        assert not any("absent" in a or "node_repl" in a for a in argv)
+        assert argv[-2:] == ["--", "-"] and (work / "stdin").read_bytes() == prompt.read_bytes()
+        receipt = json.loads(prompt.with_name("prompt.md.transport.json").read_text())
+        assert receipt["command"] == ["./codex", *argv] and receipt["status"] == "completed"
+        probes = [json.loads(line) for line in (discovery / "probes.jsonl").read_text().splitlines()]
+        listing = [p for p in probes if "mcp" in p["argv"]][-1]
+        assert listing["cwd"] == str(discovery) and "model_reasoning_effort=high" in listing["argv"], listing
+
+        deny.write_text(json.dumps({"codex": ["desktop.quoted"]}), encoding="utf-8")
+        assert "desktop.quoted" in launch({"SERVERS": '[{"name":"desktop.quoted","enabled":true}]'}, code=2)
+        deny.unlink()
+        # Every accepted spelling reaches discovery, without moving or altering caller argv.
+        for option, value in (("-c", 'mcp_servers.node_repl.command="echo"'), ("--config", 'mcp_servers.node_repl.command="echo"'),
+                              ("-p", "fixture"), ("--profile", "fixture"), ("--enable", "hooks"), ("--disable", "hooks"),
+                              ("-C", str(discovery)), ("--cd", str(discovery))):
+            forms = [[option, value], [option + "=" + value]]
+            if option in {"-c", "-p", "-C"}:
+                forms.append([option + value])
+            for form in forms:
+                for log in (work / "probes.jsonl", discovery / "probes.jsonl"):
+                    log.unlink(missing_ok=True)
+                launch(args=[*form, "--", "prompt"], extra={"SERVERS": '[]'})
+                actual = json.loads(seen.read_text())
+                assert actual[-len(form) - 2:] == [*form, "--", "prompt"], actual
+                directory = discovery if option in {"-C", "--cd"} else work
+                probes = [json.loads(line) for line in (directory / "probes.jsonl").read_text().splitlines()]
+                listings = [p for p in probes if "mcp" in p["argv"]]
+                assert len(listings) == 2, listings
+                for listing in listings:
+                    assert listing["cwd"] == str(directory), listing
+                    if option not in {"-C", "--cd"}:
+                        assert [option, value] in [listing["argv"][i:i + 2] for i in range(len(listing["argv"]) - 1)], listing
+                if option in {"-c", "--config"}:
+                    assert "mcp_servers.node_repl.enabled=false" in actual, actual
+
+        for mode in ("sticky", "missing", "malformed"):
+            assert "Codex feature" in launch({"FEATURE_MODE": mode}, code=2)
+        assert "overrides did not disable" in launch({"MCP_STICKY": "1"}, code=2)
+        assert "overrides did not disable" in launch(args=["-c", "mcp_servers.node_repl.enabled=true", "hello"], code=2)
+        assert "cannot list servers" in launch({"VERIFY_FAIL": "1"}, code=2)
+        assert "malformed Codex mcp list" in launch({"VERIFY_SERVERS": "not json"}, code=2)
+
+        for bad in ('{', '[]', '{"codex": "x"}', '{"claude": [1]}', '{"codex":[],"codex":[]}'):
+            deny.write_text(bad, encoding="utf-8")
+            assert str(deny) in launch(code=2)
+        deny.unlink()
+        assert "codex-fixture 1.2.3" in launch({"FEATURE_FAIL": "1"}, code=2)
+        assert "cannot list servers" in launch({"LIST_FAIL": "1"}, code=2)
+        for bad in ('not json', '{}', '[{}]', '[{"name":"node_repl","enabled":"true"}]'):
+            assert "malformed Codex mcp list" in launch({"SERVERS": bad}, code=2)
+    print("PASS unattended Codex defaults, discovery, receipts and fail-closed refusals")
+
+
 def self_test() -> int:
     monitor_descendant_regression()
     if os.name == "nt":
         print("SKIP POSIX executable-shell wrapper fixture; native npm transport is covered by test-windows-portability.py")
         return 0
+    unattended_tools_regression()
     with tempfile.TemporaryDirectory() as raw_tmp:
         work = pathlib.Path(raw_tmp)
         fake_codex = work / "fake-codex"
@@ -442,15 +606,17 @@ def complete_dispatch(exit_code):
 
 def dispatch_codex(args):
     argv = args.argv[1:] if args.argv[:1] == ["--"] else args.argv
-    command = [args.binary, "exec", *argv]
-    actual = PLATFORM["native_argv"](command)
     prompt = os.environ.get("DEVLYN_CODEX_PROMPT_FILE")
     if prompt == "":
         raise TransportError("DEVLYN_CODEX_PROMPT_FILE must name a readable prompt file")
+    if prompt:
+        file_prompt_args(argv)
+    argv = runpy.run_path(str(pathlib.Path(__file__).with_name("unattended-tools.py")))["codex_launch"](args.binary, argv)
+    command = [args.binary, "exec", *argv]
+    actual = PLATFORM["native_argv"](command)
     stream, carrier, transport = None, None, None
     try:
         if prompt:
-            file_prompt_args(argv)
             stream, carrier, transport = prepare_transport(prompt, command, actual, args.timeout)
         if transport is not None:
             write_transport(carrier, transport)
