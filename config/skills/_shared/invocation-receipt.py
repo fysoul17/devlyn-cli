@@ -93,9 +93,12 @@ def file_prompt_args(argv):
 
 
 def prepare_transport(prompt_path, seconds):
-    path = pathlib.Path(prompt_path).resolve(strict=True)
-    with PLATFORM["open_stdin"](path) as source:
-        raw = source.read()
+    try:
+        path = pathlib.Path(prompt_path).resolve(strict=True)
+        with PLATFORM["open_stdin"](path) as source:
+            raw = source.read()
+    except (OSError, ValueError) as exc:
+        raise TransportError(f"DEVLYN_CODEX_PROMPT_FILE is not a readable prompt file: {prompt_path}") from exc
     record = {"schema_version": 1, "transport": "stdin-file",
               "prompt": {"path": str(path), "sha256": sha256(raw), "bytes": len(raw)},
               "timeout_sec": seconds,

@@ -4391,7 +4391,8 @@ if (process.env.DEVLYN_TEST_LEAF) {
             self.env['DEVLYN_CODEX_PROMPT_FILE'] = str(source)
             self.assertNotEqual(self.monitor([*args, '-'], code=None), 0)
             if source:
-                self.assertIn(str(source).encode('utf-8'), (self.work / 'stderr').read_bytes())
+                self.assertIn(f'DEVLYN_CODEX_PROMPT_FILE is not a readable prompt file: {source}'.encode('utf-8'),
+                              (self.work / 'stderr').read_bytes())
             self.assertFalse((self.work / 'seen.json').exists())
             self.assertFalse(calls.exists())
 
