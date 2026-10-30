@@ -92,13 +92,13 @@ def file_prompt_args(argv):
         raise TransportError("file transport requires the sole prompt argument '-'; competing prompts are forbidden")
 
 
-def prepare_transport(prompt_path, command, argv, seconds):
+def prepare_transport(prompt_path, seconds):
     path = pathlib.Path(prompt_path).resolve(strict=True)
     with PLATFORM["open_stdin"](path) as source:
         raw = source.read()
     record = {"schema_version": 1, "transport": "stdin-file",
               "prompt": {"path": str(path), "sha256": sha256(raw), "bytes": len(raw)},
-              "command": command, "argv": argv, "timeout_sec": seconds,
+              "timeout_sec": seconds,
               "status": "started", "exit_code": None}
     carrier = path.with_name(path.name + ".transport.json")
     if carrier.exists():
@@ -611,14 +611,15 @@ def dispatch_codex(args):
         raise TransportError("DEVLYN_CODEX_PROMPT_FILE must name a readable prompt file")
     if prompt:
         file_prompt_args(argv)
-    argv = runpy.run_path(str(pathlib.Path(__file__).with_name("unattended-tools.py")))["codex_launch"](args.binary, argv)
-    command = [args.binary, "exec", *argv]
-    actual = PLATFORM["native_argv"](command)
     stream, carrier, transport = None, None, None
     try:
         if prompt:
-            stream, carrier, transport = prepare_transport(prompt, command, actual, args.timeout)
+            stream, carrier, transport = prepare_transport(prompt, args.timeout)
+        argv = runpy.run_path(str(pathlib.Path(__file__).with_name("unattended-tools.py")))["codex_launch"](args.binary, argv)
+        command = [args.binary, "exec", *argv]
+        actual = PLATFORM["native_argv"](command)
         if transport is not None:
+            transport.update(command=command, argv=actual)
             write_transport(carrier, transport)
         if os.name != "nt":
             if stream is not None:

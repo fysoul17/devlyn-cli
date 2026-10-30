@@ -4260,6 +4260,7 @@ class EngineTests(unittest.TestCase):
         engine_source = r"""#!/usr/bin/env node
 const fs = require('fs');
 const a = process.argv.slice(2);
+if (process.env.DEVLYN_TEST_CALLS) fs.appendFileSync(process.env.DEVLYN_TEST_CALLS, JSON.stringify(a) + '\n');
 const features = ['apps', 'plugins', 'remote_plugin', 'computer_use', 'browser_use', 'browser_use_external', 'in_app_browser'];
 const config = {};
 for (let i = 0; i < a.length; i++) {
@@ -4381,13 +4382,19 @@ if (process.env.DEVLYN_TEST_LEAF) {
     def test_rejects_competing_and_missing_before_launch(self):
         prompt, args = self.worker()
         carrier = prompt.with_name(prompt.name + '.transport.json')
+        calls = self.work / 'calls.jsonl'
+        self.env['DEVLYN_TEST_CALLS'] = str(calls)
         for arguments in ([*args, '-', 'competing'], [*args, '-', '-'], [*args, SHORT_PAYLOAD.decode()], [*args, '--unknown', '-']):
             self.assertNotEqual(self.monitor(arguments, code=None), 0)
             self.assertFalse((self.work / 'seen.json').exists()); self.assertFalse(carrier.exists())
-        for source in ('', self.work / 'missing', self.work):
+            self.assertFalse(calls.exists())
+        for source in ('', self.work / '없는 파일', self.work):
             self.env['DEVLYN_CODEX_PROMPT_FILE'] = str(source)
             self.assertNotEqual(self.monitor([*args, '-'], code=None), 0)
+            if source:
+                self.assertIn(str(source).encode('utf-8'), (self.work / 'stderr').read_bytes())
             self.assertFalse((self.work / 'seen.json').exists())
+            self.assertFalse(calls.exists())
 
     def test_snapshot_delivers_bytes_even_if_source_changes_after_dispatch(self):
         prompt, args = self.worker()
