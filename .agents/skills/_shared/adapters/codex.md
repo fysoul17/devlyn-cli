@@ -22,3 +22,5 @@ Interactive Codex and user configuration files are unchanged.
 If an exec-only configuration option (such as `--ignore-user-config` on Codex
 0.164.0) cannot be applied to `mcp list`, discovery refuses the launch; it never
 falls back to listing a different configuration.
+
+The sandbox also denies browsers, simulators and screen capture, so a delegating orchestrator runs `python3 "$DEVLYN_SHARED_DIR/observer.py" run --spool <workspace>/.devlyn/observer --worktree <workspace> --out <workspace>/.devlyn/loop/evidence/observations -- bash "$DEVLYN_SHARED_DIR/codex-monitored.sh" …` and gives the implementer the call argv `python3 "$DEVLYN_SHARED_DIR/observer.py" call --spool <workspace>/.devlyn/observer --`; the observer returns captures only. The implementer captures every requested journey and asks the controller for independent acceptance; the controller decides `ship` against `_shared/ship-bar.md`, with at most one repair and complete recapture.

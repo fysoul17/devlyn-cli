@@ -55,9 +55,12 @@ id: t02
 loop_id: inventory
 title: Reservation behavior
 kind: feature
+user_facing: true
 review_requirements: [R3]
 ---
 ```
+
+`user_facing` is an optional literal `true` or `false` (default `false` for existing contracts). Set it for user-facing changes before execution. The controller copies it and the verbatim committed task contract as `request` into the packet and receipt; the executor cannot unset it. A user-facing task needs independent acceptance in addition to mechanical checks and requirement reviews.
 
 `kind` (`feature`, `spike`, `prototype`) describes the deliverable and routes nothing. `review_requirements` lists requirement IDs that need semantic or source judgment (`[]` when none). An optional `complexity` is descriptive only. `status` is rejected: queue state lives in the queue and receipts.
 

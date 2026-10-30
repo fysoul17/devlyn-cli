@@ -23,6 +23,8 @@ local-only route and report `LOCAL_ONLY`, the commit and why no PR/merge occurre
 An explicit PR/merge request remains blocked. Authentication, network and
 configuration failures are not grounds for this fallback.
 
+For a user-facing receipt, retain the complete labelled image inventory at `.devlyn/loop/evidence/captures.json`: `{"source_sha":"<accepted source>","captures":[{"path":"observations/1/phone.png","label":"phone 390px — submitted"}]}`. Paths are unique regular PNG/JPEG/WebP images relative to that evidence directory. `complete` launches a fresh read-only reviewer against the recorded request, capture digests and [ship-bar.md](ship-bar.md) before binding acceptance or publishing. A caller verdict has no authority. Send-back reports `NOT SHIPPABLE` with verbatim defects and leaves the candidate repairable; repair and recapture the complete packet, then call `complete` once more. Two send-backs are terminal, a third review is refused, and unknown or interrupted review state fails closed as `needs-review`. Controller authority lives in the OS-home `~/.devlyn/acceptance-looks/<sha256 of absolute common Gitdir>/<receipt id>/` (0700), outside the repository and Git common directory; receipt copies never confer a verdict. It fixes the flag, request digest, absolute reviewer/interpreter commands and review history. Missing custody or receipt disagreement fails closed. The second review needs a changed source SHA and image digest with every original capture label; extra requests after ship leave that ship intact. Pre-launch validation/discovery failures are correctable refusals and spend no attempt. Codex uses the shared unattended-tool guard and native process monitor with an external capture cwd, private auth-only HOME/CODEX_HOME, read-only sandbox, images and supported ignore-config/rules flags. Only its reviewer environment drops `CODEX_BLOCKED`. Unavailable recorded Codex uses recorded Claude with safe/restricted mode, empty setting sources/MCP configuration and capture-only Read: an **unmeasured fallback**. Reconciliation and cleanup apply the same source/request/capture-bound ship gate, using retained captures after workspace removal.
+
 ## Concurrent writers
 
 When other sessions or agents are known to write this checkout (the user says
@@ -46,8 +48,7 @@ directory, resolving directory symlinks first. Missing source identity is
 BLOCKED:skill-source-unresolved; a missing task-complete.py is
 BLOCKED:shared-dir-unresolved. Never select another installation.
 
-For direct delivery, run the bound task-complete.py after completing the request's
-edits and checks, before committing the delivery candidate. Allocate before
+For user-facing direct work, the session launcher sets `DEVLYN_USER_FACING=1` or repository-local `git config devlyn.userFacing true` before work starts. Run `allocate --request-file <file>` before editing: the file must hold the nonempty verbatim UTF-8 request. Allocation fixes the flag and request digest in external controller custody and copies them into the receipt; `complete` cannot unset them. For other direct delivery, run the bound task-complete.py after completing the request's edits and checks, before committing the delivery candidate. Allocate before
 editing when concurrency requires isolation; if isolation is unavailable, do
 not write to the shared checkout.
 
@@ -166,6 +167,8 @@ root acceptance file in the task worktree (`.devlyn/acceptance.json`):
 ```json
 {"kind":"direct","task":"<task identity>","source_sha":"<full commit>","checks":[{"command":"<actual check>","evidence":".devlyn/checks.log"}]}
 ```
+
+A direct check’s evidence may be the directory `.devlyn/loop/evidence/observations`; captures taken outside the task worktree are copied there or retaken before acceptance.
 
 The owner accepts these checks; the helper preserves evidence bytes and does
 not independently prove the assertions. Acceptance binds exact source and

@@ -67,7 +67,7 @@ def file_prompt_args(argv):
     """File mode accepts one explicit stdin prompt and no positional competitors."""
     values = {"-C", "--cd", "-s", "--sandbox", "-m", "--model", "-c", "--config",
               "-o", "--output-last-message", "--output-schema", "--color", "--enable",
-              "--disable", "--add-dir"}
+              "--disable", "--add-dir", "-i", "--image"}
     flags = {"--json", "--ignore-user-config", "--ignore-rules", "--ephemeral",
              "--skip-git-repo-check", "--full-auto"}
     positional = []
