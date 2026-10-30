@@ -17,6 +17,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import platform
 import re
 import runpy
 import stat
@@ -491,7 +492,17 @@ def derive(packet, submission, result):
 
 
 class AcceptanceTests(unittest.TestCase):
+    def macho_header(self):
+        cpu = {"arm64": 0x0100000c, "x86_64": 0x01000007}[platform.machine()]
+        return bytes.fromhex("cffaedfe") + cpu.to_bytes(4, "little") + bytes(24)
+
     def setUp(self):
+        if sys.platform != "darwin" and os.name != "nt":
+            # Darwin argv tests emulate an unquarantined script; Linux has a different xattr namespace.
+            import errno
+            from unittest import mock
+            self.enterContext(mock.patch.object(errno, "ENOATTR", errno.ENODATA, create=True))
+            self.enterContext(mock.patch.object(os, "getxattr", side_effect=OSError(errno.ENOATTR, "attribute absent")))
         self.temp = tempfile.TemporaryDirectory(prefix="devlyn-acceptance ")
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name).resolve()
@@ -776,6 +787,300 @@ class AcceptanceTests(unittest.TestCase):
         self.assertNotIn("reused_from", result["commands"][0])
         self.assertEqual(((self.work / ".devlyn/count").read_text(), result["verdict"]), ("2", "ACCEPTED"))
 
+    @unittest.skipIf(os.name == "nt", "requires POSIX executable permissions and paths")
+    def test_darwin_runs_shebang_programs_through_their_interpreter(self):
+        """Prediction: Darwin's 512-byte shebang rules preserve argv and candidate spelling; unsafe rewrites
+        preserve the original command and CPython's PATH search without a shell fallback."""
+        from types import SimpleNamespace
+        from unittest import mock
+        resolve = shared("platform-support")["native_argv"]
+        with tempfile.TemporaryDirectory(prefix="devlyn-shebang-") as temporary, \
+                mock.patch.object(platform, "machine", return_value="arm64"), \
+                mock.patch.dict(resolve.__globals__, {"sys": SimpleNamespace(platform="darwin")}):
+            root = Path(temporary).resolve()
+            interpreter = root / "interpreter"
+            interpreter.write_bytes(self.macho_header()); interpreter.chmod(0o755)
+            p = os.fsencode(interpreter)
+            script = root / "s"
+            cases = [
+                ("1", b"#!" + p + b"\n", []),
+                ("2", b"#!  " + p + b"  a   b\tc  \n", ["a", "b", "c"]),
+                ("3", b"#!" + p + b" a#b c\n", ["a"]),
+                ("4", b"#!" + p + b" a  # c\n", ["a"]),
+                ("5", b"#!" + p + b" #", []),
+                ("6", b"#!" + p + b" a\r\n", ["a\r"]),
+                ("7", b"#!" + p + b"\r\n", None),
+                ("8a", b"#!" + p, None), ("8b", b"#!" + p + b" a", None),
+                ("9a", b"#!   \n", None), ("9b", b"#! #x\n", None),
+                ("10", b"#!" + p + b" a\0b c\n", None),
+                ("11", b"#!interpreter\n", None),
+                ("14", b"#!/usr/bin/env P a b\n", ["/usr/bin/env", "P", "a", "b"]),
+                ("15a", b"#!" + p + b" " * (509 - len(p)) + b"\n", []),
+                ("15b", b"#!" + p + b" " * (510 - len(p)) + b"\n", None),
+                ("17", b"plain text\n", None),
+                ("blank-limit", b"#!" + b" " * 510 + b"\n", None),
+            ]
+            for vector, header, arguments in cases:
+                with self.subTest(vector=vector):
+                    if vector == "14" and sys.platform != "darwin":
+                        self.skipTest("/usr/bin/env is a Mach-O image only on macOS")
+                    script.write_bytes(header); script.chmod(0o755)
+                    expected = [str(script), "X"] if arguments is None else [str(interpreter), *arguments, str(script), "X"]
+                    if vector == "14":
+                        expected = [*arguments, str(script), "X"]
+                    self.assertEqual(resolve([str(script), "X"]), expected)
+
+            script.write_bytes(b"#!" + p + b"\n")
+            for mode, body in ((0o644, b"binary"), (0o755, b"#!/bin/sh\n"), (0o755, b"")):
+                with self.subTest(vector="12/13", mode=mode, body=body):
+                    interpreter.write_bytes(body); interpreter.chmod(mode)
+                    self.assertEqual(resolve([str(script), "X"]), [str(script), "X"])
+            interpreter.write_bytes(self.macho_header()); interpreter.chmod(0o755)
+            for mode in (0o4755, 0o2755, 0o644):
+                with self.subTest(vector="18/17", mode=mode):
+                    script.chmod(mode)
+                    if script.stat().st_mode & 0o7777 != mode:
+                        self.skipTest("filesystem strips set-id bits")
+                    self.assertEqual(resolve([str(script), "X"]), [str(script), "X"])
+            script.chmod(0o755)
+            folder = root / "D"; folder.mkdir()
+            link = root / "link"; link.symlink_to(script)
+            for candidate in (str(root) + "/D/../x//s", str(link), "./s"):
+                with self.subTest(vector="16/23", candidate=candidate):
+                    (root / "x").mkdir(exist_ok=True)
+                    (root / "x/s").write_bytes(script.read_bytes()); (root / "x/s").chmod(0o755)
+                    self.assertEqual(resolve([candidate, "X"], cwd=root), [str(interpreter), candidate, "X"])
+
+            a, b = root / "a", root / "b"
+            a.mkdir(); b.mkdir()
+            second = b / "s"; second.write_bytes(script.read_bytes()); second.chmod(0o755)
+            first = a / "s"; first.mkdir()
+            with mock.patch.dict(os.environ, {"PATH": f"{a}:{b}"}):
+                self.assertEqual(resolve(["s", "X"], cwd=root), [str(interpreter), str(second), "X"])
+                first.rmdir(); first.write_bytes(script.read_bytes()); first.chmod(0o644)
+                self.assertEqual(resolve(["s", "X"], cwd=root), [str(interpreter), str(second), "X"])
+                first.write_bytes(b"#!/missing-interpreter\n"); first.chmod(0o755)
+                self.assertEqual(resolve(["s", "X"], cwd=root), ["s", "X"])  # 19: CPython must retry b/s.
+            for path, candidate in ((f"missing:{b}", str(second)), (f"missing::{b}", "s"), (f":{b}", "s"),
+                                    (f"b:{b}", "b/s")):
+                with self.subTest(vector="21", path=path), mock.patch.dict(os.environ, {"PATH": path}):
+                    self.assertEqual(resolve(["s", "X"], cwd=root), [str(interpreter), candidate, "X"])
+            for entry in ("/" + "x" * 1021, "/" + "é" * 511):
+                with self.subTest(vector="22", entry=entry), mock.patch.dict(os.environ, {"PATH": f"{entry}:{b}"}):
+                    self.assertEqual(resolve(["s", "X"], cwd=root), ["s", "X"])
+            with mock.patch.dict(os.environ, {"PATH": str(b)}), mock.patch.object(os, "getcwd", return_value=str(root)):
+                self.assertEqual(resolve(["./s", "X"]), [str(interpreter), "./s", "X"])
+            with mock.patch.object(os, "getcwd", side_effect=OSError("cwd unavailable")):
+                self.assertEqual(resolve(["s", "X"]), ["s", "X"])
+
+    @unittest.skipIf(os.name == "nt", "requires POSIX executable permissions and paths")
+    def test_darwin_interpreter_eligibility(self):
+        """Prediction: only executable, regular, non-set-id Mach-O interpreters with a native CPU and subtype rewrite;
+        capability bits are ignored, arm64e is accepted, and x86_64h and unknown subtypes are declined."""
+        import shutil
+        import stat
+        from types import SimpleNamespace
+        from unittest import mock
+        helper = shared("platform-support")
+        resolve = helper["native_argv"]
+        prefix = helper["darwin_script_argv"]
+        with tempfile.TemporaryDirectory(prefix="devlyn-interpreter-") as temporary, \
+                mock.patch.object(platform, "machine", return_value="arm64"), \
+                mock.patch.dict(resolve.__globals__, {"sys": SimpleNamespace(platform="darwin")}):
+            root = Path(temporary).resolve()
+            interpreter = root / "interpreter"
+            script = root / "s"
+            script.write_bytes(b"#!" + os.fsencode(interpreter) + b"\n"); script.chmod(0o755)
+            interpreter.mkdir()
+            self.assertIsNone(prefix(str(script), str(root)))
+            interpreter.rmdir()
+            for body in (b"plain text\n", b"", b"#!/bin/sh\n", b"\xcf\xfa\xed", b"\x7fELF"):
+                with self.subTest(body=body):
+                    interpreter.write_bytes(body); interpreter.chmod(0o755)
+                    self.assertIsNone(prefix(str(script), str(root)))
+                    self.assertEqual(resolve([str(script), "X"]), [str(script), "X"])
+            for machine, cpu in (("arm64", 0x0100000c), ("x86_64", 0x01000007)):
+                for magic in ("feedface", "feedfacf", "cefaedfe", "cffaedfe",
+                              "cafebabe", "bebafeca", "cafebabf", "bfbafeca"):
+                    order = "little" if magic in ("cefaedfe", "cffaedfe", "bebafeca", "bfbafeca") else "big"
+                    fat = magic in ("cafebabe", "bebafeca", "cafebabf", "bfbafeca")
+                    if fat:
+                        size = 32 if magic in ("cafebabf", "bfbafeca") else 20
+                    else:
+                        size = 32 if magic in ("feedfacf", "cffaedfe") else 28
+                    for image_cpu, subtype, accepted in ((0x01000007, 0, False), (0x01000007, 3, True), (0x01000007, 8, False),
+                                                         (0x0100000c, 0, True), (0x0100000c, 1, True),
+                                                         (0x0100000c, 0x80000002, True), (0x0100000c, 9, False)):
+                        image = bytes.fromhex(magic)
+                        if fat:
+                            image += (1).to_bytes(4, order)
+                        image += image_cpu.to_bytes(4, order) + subtype.to_bytes(4, order) + bytes(size - (8 if fat else 12))
+                        for truncated in (False, True):
+                            with self.subTest(machine=machine, magic=magic, cpu=image_cpu, subtype=subtype, truncated=truncated), \
+                                    mock.patch.object(platform, "machine", return_value=machine):
+                                interpreter.write_bytes(image[:-1] if truncated else image); interpreter.chmod(0o755)
+                                compatible = cpu == image_cpu and accepted
+                                expected = [str(interpreter), str(script)] if compatible and not truncated else None
+                                self.assertEqual(prefix(str(script), str(root)), expected)
+                                self.assertEqual(resolve([str(script), "X"]), [*expected, "X"] if expected else [str(script), "X"])
+                    if fat:
+                        # A later native slice must also be found in a universal image.
+                        universal = bytes.fromhex(magic) + (2).to_bytes(4, order)
+                        universal += b"".join(value.to_bytes(4, order) + subtype.to_bytes(4, order) + bytes(size - 8)
+                                              for value, subtype in ((0x01000007, 3), (0x0100000c, 0)))
+                        with mock.patch.object(platform, "machine", return_value=machine):
+                            interpreter.write_bytes(universal)
+                            self.assertEqual(prefix(str(script), str(root)), [str(interpreter), str(script)])
+            interpreter.write_bytes(self.macho_header())
+            interpreter.chmod(0o644)
+            self.assertIsNone(prefix(str(script), str(root)))
+            link = root / "link"; link.symlink_to(interpreter)
+            for bit in (stat.S_ISUID, stat.S_ISGID):
+                with self.subTest(set_id=oct(bit)):
+                    interpreter.chmod(0o755 | bit)
+                    if not interpreter.stat().st_mode & bit:
+                        self.skipTest(f"filesystem or sandbox strips interpreter set-id bit {oct(bit)}")
+                    for target in (interpreter, link):
+                        script.write_bytes(b"#!" + os.fsencode(target) + b"\n")
+                        self.assertIsNone(prefix(str(script), str(root)))
+                        self.assertEqual(resolve([str(script), "X"]), [str(script), "X"])
+            for kind in ("copy", "symlink"):
+                with self.subTest(shell=kind):
+                    if sys.platform != "darwin":
+                        self.skipTest("/bin/sh is a Mach-O image only on macOS")
+                    shell = root / kind
+                    if kind == "copy":
+                        shutil.copyfile("/bin/sh", shell); shell.chmod(0o755)
+                    else:
+                        shell.symlink_to("/bin/sh")
+                    script.write_bytes(b"#!" + os.fsencode(shell) + b"\n")
+                    self.assertEqual(prefix(str(script), str(root)), [str(shell), str(script)])
+                    self.assertEqual(resolve([str(script), "X"]), [str(shell), str(script), "X"])
+
+    @unittest.skipIf(os.name == "nt", "requires POSIX executable permissions and paths")
+    def test_darwin_relative_candidates_and_path_errors(self):
+        """Prediction: a cwd join exceeding PATH_MAX still rewrites; directory search errors stop PATH inspection."""
+        import contextlib
+        import errno
+        from types import SimpleNamespace
+        from unittest import mock
+        helper = shared("platform-support")
+        resolve = helper["native_argv"]
+        prefix = helper["darwin_script_argv"]
+        with tempfile.TemporaryDirectory(prefix="devlyn-relative-") as temporary, \
+                mock.patch.object(platform, "machine", return_value="arm64"), \
+                mock.patch.dict(resolve.__globals__, {"sys": SimpleNamespace(platform="darwin")}), \
+                contextlib.ExitStack() as handles:
+            root = Path(temporary).resolve()
+            interpreter = root / "interpreter"
+            interpreter.write_bytes(self.macho_header()); interpreter.chmod(0o755)
+            body = b"#!" + os.fsencode(interpreter) + b"\n"
+            directory = "d" * 100
+            candidate = directory + "/s"
+            cwd = str(root)
+            fd = os.open(cwd, os.O_RDONLY | os.O_DIRECTORY)
+            handles.callback(os.close, fd)
+            for _ in range(10):
+                os.mkdir(directory, dir_fd=fd)
+                child_fd = os.open(directory, os.O_RDONLY | os.O_DIRECTORY, dir_fd=fd)
+                handles.callback(os.close, child_fd)
+                with os.fdopen(os.open("s", os.O_WRONLY | os.O_CREAT, 0o755, dir_fd=child_fd), "wb") as stream:
+                    stream.write(body)
+                with mock.patch.dict(os.environ, {"PATH": directory}):
+                    self.assertEqual(prefix("s", cwd), [str(interpreter), candidate])
+                    self.assertEqual(resolve(["s", "X"], cwd=cwd), [str(interpreter), candidate, "X"])
+                self.assertEqual(prefix("./" + candidate, cwd), [str(interpreter), "./" + candidate])
+                if len(os.fsencode(os.path.join(cwd, candidate))) > 1024:
+                    break
+                cwd = os.path.join(cwd, directory)
+                fd = child_fd
+            else:
+                self.fail("fixture must exceed Darwin PATH_MAX")
+            if sys.platform == "darwin":
+                with self.assertRaises(OSError) as caught:
+                    os.stat(os.path.join(cwd, candidate))
+                self.assertEqual(caught.exception.errno, errno.ENAMETOOLONG)
+
+            blocked = root / "blocked"; blocked.mkdir()
+            first = blocked / "s"; first.write_bytes(body); first.chmod(0o755)
+            second = root / "s"; second.write_bytes(body); second.chmod(0o755)
+            with mock.patch.dict(os.environ, {"PATH": f"{blocked}:{root}"}):
+                self.assertEqual(prefix("s", str(root)), [str(interpreter), str(first)])
+                blocked.chmod(0o600)
+                try:
+                    if os.geteuid() == 0:
+                        self.skipTest("root bypasses directory search permission")
+                    with self.assertRaises(PermissionError):
+                        first.stat()
+                    self.assertIsNone(prefix("s", str(root)))
+                    self.assertEqual(resolve(["s", "X"], cwd=root), ["s", "X"])
+                finally:
+                    blocked.chmod(0o700)
+            # ENAMETOOLONG is not an absent candidate, even if a later PATH entry works.
+            with mock.patch.dict(os.environ, {"PATH": f"{'x' * 256}:{root}"}):
+                self.assertIsNone(prefix("s", str(root)))
+
+    @unittest.skipUnless(sys.platform == "darwin", "requires macOS quarantine attributes")
+    def test_darwin_script_quarantine(self):
+        """Prediction: quarantine presence (including empty values and symlink targets) and xattr errors decline."""
+        import errno
+        from types import SimpleNamespace
+        from unittest import mock
+        helper = shared("platform-support")
+        resolve = helper["native_argv"]
+        prefix = helper["darwin_script_argv"]
+        with tempfile.TemporaryDirectory(prefix="devlyn-quarantine-") as temporary, \
+                mock.patch.object(platform, "machine", return_value="arm64"), \
+                mock.patch.dict(resolve.__globals__, {"sys": SimpleNamespace(platform="darwin")}):
+            root = Path(temporary).resolve()
+            interpreter = root / "interpreter"
+            interpreter.write_bytes(self.macho_header()); interpreter.chmod(0o755)
+            script = root / "s"
+            script.write_bytes(b"#!" + os.fsencode(interpreter) + b"\n"); script.chmod(0o755)
+            link = root / "link"; link.symlink_to(script)
+            for value in (None, "0083;00000000;Test;", ""):
+                if value is not None:
+                    if hasattr(os, "setxattr"):
+                        os.setxattr(script, "com.apple.quarantine", value.encode())
+                    else:
+                        subprocess.run(["/usr/bin/xattr", "-w", "com.apple.quarantine", value, str(script)], check=True)
+                for target in (script, link):
+                    with self.subTest(value=value, target=target.name):
+                        expected = [str(interpreter), str(target)] if value is None else None
+                        self.assertEqual(prefix(str(target), str(root)), expected)
+                        self.assertEqual(resolve([str(target), "X"]), [*expected, "X"] if expected else [str(target), "X"])
+            # Exercise the os.getxattr branch as well, including fail-closed errors.
+            for error in (errno.ENOATTR, errno.EACCES, errno.ENOTSUP, errno.EIO):
+                with self.subTest(error=error), \
+                        mock.patch.object(os, "getxattr", create=True, side_effect=OSError(error, os.strerror(error))):
+                    expected = [str(interpreter), str(script)] if error == errno.ENOATTR else None
+                    self.assertEqual(prefix(str(script), str(root)), expected)
+            with mock.patch.object(os, "getxattr", create=True, return_value=b""):
+                self.assertIsNone(prefix(str(script), str(root)))
+
+    @unittest.skipIf(os.name == "nt", "requires POSIX executable permissions and paths")
+    def test_darwin_path_unset_uses_cpython_default(self):
+        """Prediction: unset PATH searches os.get_exec_path() in order, including os.defpath."""
+        from types import SimpleNamespace
+        from unittest import mock
+        resolve = shared("platform-support")["native_argv"]
+        with tempfile.TemporaryDirectory(prefix="devlyn-default-path-") as temporary, \
+                mock.patch.object(platform, "machine", return_value="arm64"), \
+                mock.patch.dict(resolve.__globals__, {"sys": SimpleNamespace(platform="darwin")}), \
+                mock.patch.dict(os.environ):
+            os.environ.pop("PATH", None)
+            root = Path(temporary).resolve()
+            interpreter = root / "interpreter"
+            interpreter.write_bytes(self.macho_header()); interpreter.chmod(0o755)
+            for name in ("a", "b"):
+                folder = root / name; folder.mkdir()
+                script = folder / "s"
+                script.write_bytes(b"#!" + os.fsencode(interpreter) + b"\n"); script.chmod(0o755)
+            for default in (f"{root}/a:{root}/b", f"{root}/b:{root}/a"):
+                with self.subTest(default=default), mock.patch.object(os, "defpath", default):
+                    candidate = os.path.join(os.get_exec_path()[0], "s")
+                    self.assertEqual(resolve(["s", "X"], cwd=root), [str(interpreter), candidate, "X"])
+
     def test_windows_runs_node_command_shims_without_cmd(self):
         """Windows resolution mocked: verification argv such as ["npm", "test"] runs the Node and script its command
         shim names, as cmd.exe would resolve it; any other batch file is refused with an actionable message."""
@@ -814,7 +1119,8 @@ class AcceptanceTests(unittest.TestCase):
         def npm_prefix(argv, cwd=None, **kwargs):  # what node npm-prefix.js prints, recorded with the directory it ran in
             lookups.append((argv, cwd))
             return SimpleNamespace(stdout=f"{prefix}\n")
-        windows = {"os": SimpleNamespace(name="nt"), "shutil": SimpleNamespace(which=lambda name: str(found[name]) if name in found else None),
+        windows = {"os": SimpleNamespace(name="nt"), "sys": SimpleNamespace(platform="win32"),
+                   "shutil": SimpleNamespace(which=lambda name: str(found[name]) if name in found else None),
                    "subprocess": SimpleNamespace(run=npm_prefix)}
         with mock.patch.dict(platform["native_argv"].__globals__, windows):
             resolve = platform["native_argv"]

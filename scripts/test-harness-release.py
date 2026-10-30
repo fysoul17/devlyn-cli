@@ -175,7 +175,8 @@ class ReleaseTests(unittest.TestCase):
             (self.case / 'npm-cli.js').write_text('// npm fixture')
             (self.case / 'node.exe').write_text('adjacent Node')
             simulated = SimpleNamespace(name='nt', environ=os.environ)
-            with mock.patch.dict(resolve.__globals__, os=simulated), mock.patch('shutil.which', return_value=str(shim)):
+            with mock.patch.dict(resolve.__globals__, os=simulated, sys=SimpleNamespace(platform='win32')), \
+                    mock.patch('shutil.which', return_value=str(shim)):
                 self.assertEqual(resolve(['npm', 'test']),
                                  [str(self.case / 'node.exe'), str(self.case / 'npm-cli.js'), 'test'])
 

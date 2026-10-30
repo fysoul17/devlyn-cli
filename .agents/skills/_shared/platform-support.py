@@ -6,6 +6,7 @@ import contextlib
 import errno
 import os
 from pathlib import Path
+import platform
 import re
 import shutil
 import signal
@@ -81,7 +82,14 @@ NPM_CLI = re.compile(r'SET "(NP[MX]_CLI_JS)=%~dp0\\([^"\r\n]+)"')
 
 def native_argv(argv, cwd=None):
     """Resolve argv as Windows does, for a command that will run in cwd; a Node command shim runs its Node and script
-    directly, never cmd /c."""
+    directly, never cmd /c; on macOS avoid kernel #! exec, whose process tree keeps kernel memory for each later
+    #! exec until restart."""
+    if sys.platform == "darwin":
+        try:
+            prefix = darwin_script_argv(argv[0], cwd or os.getcwd())
+            return [*prefix, *argv[1:]] if prefix else list(argv)
+        except (OSError, ValueError, TypeError, NotImplementedError, IndexError):
+            return list(argv)  # Preserve CPython's PATH search and errors without a shell fallback.
     if os.name != "nt":
         return list(argv)
     binary = shutil.which(argv[0])
@@ -98,6 +106,99 @@ def native_argv(argv, cwd=None):
     if node is None:
         raise FileNotFoundError(f"node.exe unavailable for {shim}")
     return [node, str(script.resolve(strict=True)), *argv[1:]]
+
+
+def darwin_script_argv(program, cwd):
+    """The argv prefix macOS would build for a safely resolved script with a native interpreter, else None.
+
+    Search with CPython's os.get_exec_path(), including os.defpath when PATH is unset. A CPU-compatible
+    interpreter with an otherwise damaged image fails against the interpreter instead of retrying PATH.
+    The interpreter path is executed as it is at exec time: replacing it requires write access that
+    already lets the writer run code as the user. A set-id replacement owned by another user cannot
+    raise privilege; only root can create root-owned set-id files. Quarantined scripts are declined;
+    other exec-only MAC policies that permit reading but deny executing the script are not consulted.
+    """
+    cpu = {"arm64": 0x0100000c, "x86_64": 0x01000007}.get(platform.machine())
+    if cpu is None:
+        return None
+    subtypes = (0, 1, 2) if cpu == 0x0100000c else (3,)
+    entries = [None] if "/" in program else os.get_exec_path()
+    with contextlib.ExitStack() as handles:
+        try:
+            cwd_fd = os.open(cwd, os.O_RDONLY | os.O_DIRECTORY)
+            handles.callback(os.close, cwd_fd)
+            for entry in entries:
+                if entry is not None and len(os.fsencode(entry)) + len(os.fsencode(program)) + 2 > 1024:
+                    return None
+                candidate = program if entry is None else os.path.join(entry, program)
+                try:
+                    mode = os.stat(candidate, dir_fd=cwd_fd).st_mode
+                except (FileNotFoundError, NotADirectoryError):
+                    continue
+                if not stat.S_ISREG(mode) or not os.access(candidate, os.X_OK, dir_fd=cwd_fd, effective_ids=True):
+                    continue
+                with os.fdopen(os.open(candidate, os.O_RDONLY | os.O_NONBLOCK, dir_fd=cwd_fd), "rb") as stream:
+                    mode = os.fstat(stream.fileno()).st_mode
+                    if not stat.S_ISREG(mode) or mode & (stat.S_ISUID | stat.S_ISGID):
+                        return None
+                    try:
+                        if hasattr(os, "getxattr"):
+                            os.getxattr(stream.fileno(), "com.apple.quarantine")
+                        else:
+                            # CPython exposes os.getxattr on Linux, but macOS needs its native fd API.
+                            import ctypes
+                            getxattr = ctypes.CDLL(None, use_errno=True).fgetxattr
+                            getxattr.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_void_p, ctypes.c_size_t,
+                                                ctypes.c_uint32, ctypes.c_int]
+                            getxattr.restype = ctypes.c_ssize_t
+                            if getxattr(stream.fileno(), b"com.apple.quarantine", None, 0, 0, 0) < 0:
+                                error = ctypes.get_errno()
+                                raise OSError(error, os.strerror(error))
+                    except OSError as exc:
+                        if exc.errno != getattr(errno, "ENOATTR", None):
+                            return None
+                    else:
+                        return None
+                    header = stream.read(512)
+                if not header.startswith(b"#!"):
+                    return None
+                line = re.split(b"[#\n]", header[2:], maxsplit=1)
+                if len(line) != 2:
+                    return None
+                words = re.split(b"[ \t]+", line[0].strip(b" \t"))
+                if b"\0" in line[0] or not words[0].startswith(b"/"):
+                    return None
+                interpreter = os.fsdecode(words[0])
+                mode = os.stat(interpreter).st_mode
+                if (not stat.S_ISREG(mode) or mode & (stat.S_ISUID | stat.S_ISGID)
+                        or not os.access(interpreter, os.X_OK, effective_ids=True)):
+                    return None
+                with open_stdin(interpreter) as stream:
+                    image = stream.read(512)
+                magic = int.from_bytes(image[:4], "big")
+                if magic not in (0xfeedface, 0xfeedfacf, 0xcefaedfe, 0xcffaedfe,
+                                 0xcafebabe, 0xbebafeca, 0xcafebabf, 0xbfbafeca):
+                    return None
+                order = "little" if magic in (0xcefaedfe, 0xcffaedfe, 0xbebafeca, 0xbfbafeca) else "big"
+                if magic in (0xfeedface, 0xfeedfacf, 0xcefaedfe, 0xcffaedfe):
+                    size = 32 if magic in (0xfeedfacf, 0xcffaedfe) else 28
+                    if (len(image) < size or int.from_bytes(image[4:8], order) != cpu
+                            or int.from_bytes(image[8:12], order) & ~0xff000000 not in subtypes):
+                        return None
+                else:
+                    count = int.from_bytes(image[4:8], order)
+                    size = 32 if magic in (0xcafebabf, 0xbfbafeca) else 20
+                    if len(image) < 8 or count > (len(image) - 8) // size:
+                        return None
+                    if not any(int.from_bytes(image[8 + i * size:12 + i * size], order) == cpu
+                               and int.from_bytes(image[12 + i * size:16 + i * size], order) & ~0xff000000 in subtypes
+                               for i in range(count)):
+                        return None
+                return [*map(os.fsdecode, words), candidate]
+        except (OSError, ValueError, TypeError, NotImplementedError):
+            # Preserve the original exec, including PATH retries, whenever inspection is uncertain.
+            return None
+    return None
 
 
 def shim_script(shim, raw, node, cwd=None):

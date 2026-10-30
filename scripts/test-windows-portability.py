@@ -4373,6 +4373,9 @@ if (process.env.DEVLYN_TEST_LEAF) {
         self.assertEqual(self.seen()['argv'], self.guarded([*args, '-']))
         record = json.loads(prompt.with_name(prompt.name + '.transport.json').read_text(encoding='utf-8'))
         self.assertEqual((record['status'], record['exit_code'], record['command'][1:]), ('completed', 0, self.guarded([*args, '-'])))
+        if os.name != 'nt':
+            expected = ['/usr/bin/env', 'node', self.env['CODEX_BIN'], *record['command'][1:]] if sys.platform == 'darwin' else record['command']
+            self.assertEqual(record['argv'], expected)
         self.assertEqual(record['prompt']['sha256'], hashlib.sha256(PAYLOAD).hexdigest())
         self.assertNotEqual(self.monitor([*args, '-'], code=None), 0)  # A sealed prompt file is delivered once.
         self.env.pop('DEVLYN_CODEX_PROMPT_FILE')
@@ -4392,7 +4395,8 @@ if (process.env.DEVLYN_TEST_LEAF) {
             self.env['DEVLYN_CODEX_PROMPT_FILE'] = str(source)
             self.assertNotEqual(self.monitor([*args, '-'], code=None), 0)
             if source:
-                self.assertIn(str(source).encode('utf-8'), (self.work / 'stderr').read_bytes())
+                self.assertIn(f'DEVLYN_CODEX_PROMPT_FILE is not a readable prompt file: {source}'.encode('utf-8'),
+                              (self.work / 'stderr').read_bytes())
             self.assertFalse((self.work / 'seen.json').exists())
             self.assertFalse(calls.exists())
 
