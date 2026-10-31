@@ -100,8 +100,12 @@ def safe_path(root, relative):
 def file_record(path):
     mode = path.lstat().st_mode
     require(stat.S_ISREG(mode), f"evidence is not a regular file: {path}")
-    raw = path.read_bytes()
-    return {"sha256": hashlib.sha256(raw).hexdigest(), "bytes": len(raw), "mode": stat.S_IMODE(mode)}
+    digest, size = hashlib.sha256(), 0
+    with path.open("rb") as stream:
+        while chunk := stream.read(1024 * 1024):
+            digest.update(chunk)
+            size += len(chunk)
+    return {"sha256": digest.hexdigest(), "bytes": size, "mode": stat.S_IMODE(mode)}
 
 
 def snapshot_files(root, paths):
@@ -312,6 +316,19 @@ def allocate(args, *, exclude_receipts=(), warnings=None):
     work = Path(git(Path(args.repo).resolve(), "rev-parse", "--show-toplevel")).resolve()
     common = Path(git(work, "rev-parse", "--path-format=absolute", "--git-common-dir")).resolve()
     require(args.task.strip(), "task identity is required")
+    contract = getattr(args, "loop_contract", None)
+    request = None
+    if contract is not None:
+        user_facing, request = contract["user_facing"], contract["request"].encode("utf-8")
+    else:
+        configured = subprocess.run(["git", "-C", str(work), "config", "--local", "--bool", "--get", "devlyn.userFacing"],
+                                    capture_output=True, text=True, encoding="utf-8")
+        require(configured.returncode in (0, 1), "invalid repository-local devlyn.userFacing: " + configured.stderr.strip())
+        user_facing = os.environ.get("DEVLYN_USER_FACING") == "1" or configured.stdout.strip() == "true"
+        if user_facing:
+            require(getattr(args, "request_file", None), "user-facing allocation requires --request-file with the verbatim request")
+            request = Path(args.request_file).read_bytes()
+            require(request.decode("utf-8").strip(), "request file must contain a nonempty UTF-8 request")
     git(work, "check-ref-format", "refs/heads/" + args.branch)
     if args.base is not None:
         git(work, "check-ref-format", "refs/heads/" + args.base)
@@ -319,7 +336,8 @@ def allocate(args, *, exclude_receipts=(), warnings=None):
     require(re.fullmatch(r"[A-Za-z0-9_.-]+", args.remote), "unsafe remote name")
     receipt = {"task": args.task, "repository": args.repository, "remote": args.remote,
                "base": args.base, "branch": args.branch, "common_gitdir": str(common),
-               "anchor": str(work), "linked": True, "allocation": "allocating"}
+               "anchor": str(work), "linked": True, "allocation": "allocating",
+               "user_facing": user_facing, "acceptance_owner": "loop" if contract is not None else "direct"}
     require(not ref_sha(receipt, "refs/heads/"+args.branch), "existing branch cannot be adopted")
     local = local_baseline(receipt, args)
     if local:
@@ -359,6 +377,9 @@ def allocate(args, *, exclude_receipts=(), warnings=None):
     scratch = directory / "scratch"
     scratch.mkdir()
     receipt["scratch_identity"] = workspace_identity(scratch, directory)
+    if request is not None:
+        (directory / "request.txt").write_bytes(request)
+        receipt["request_sha256"] = hashlib.sha256(request).hexdigest()
     # Persist prospective intent BEFORE native creation. An interrupted allocation
     # stays visibly incomplete; a later call may not adopt whatever now exists.
     atomic_json(path, receipt)
@@ -383,6 +404,9 @@ def allocate(args, *, exclude_receipts=(), warnings=None):
         raise CompletionError(f"{exc}; remove worktree {target} and branch {args.branch}, delete receipt directory {directory}, then allocate again") from exc
     receipt["worktree_gitdir"] = git(target, "rev-parse", "--absolute-git-dir")
     receipt["worktree_identity"] = workspace_identity(target, Path(receipt["worktree_gitdir"]))
+    # Failed worktree setup must remain recoverable without abandoning controller custody.
+    # Initialize only after setup succeeds, still before ownership permits any executor.
+    shared("acceptance-look")["initialize"](directory, args.task, request, user_facing)
     receipt["allocation"] = "owned"
     atomic_json(path, receipt)
     # Owned first: an interrupted warm-up leaves a usable allocation whose build starts cold.
@@ -439,6 +463,8 @@ def refuse_retired_pipeline(receipt, path, supplied, local, flags):
 def bind_acceptance(receipt, path, supplied):
     work = Path(receipt["worktree"])
     if receipt.get("acceptance"):
+        if receipt["acceptance"].get("verdict") != "FAILED":
+            require((reason := acceptance_look_problem(receipt, path, receipt["source_sha"])) is None, reason)
         if supplied:
             require(file_record(Path(supplied))["sha256"] == receipt["acceptance_digest"], "acceptance changed; resume with the original acceptance")
         verify_files(path.parent / "custody", receipt["files"])
@@ -473,6 +499,12 @@ def bind_acceptance(receipt, path, supplied):
         paths.extend(evidence)
     else:
         raise CompletionError("acceptance kind must be direct|loop")
+    if not failed:
+        reason = acceptance_look_problem(receipt, path, sha)
+        require(reason is None, reason)
+    if receipt.get("user_facing") and not failed:
+        inventory = shared("acceptance-look")["captures"](work / ".devlyn/loop/evidence", sha)
+        paths += [".devlyn/loop/evidence/captures.json", *[".devlyn/loop/evidence/" + c["path"] for c in inventory]]
     files = snapshot_files(work, paths)
     destination = safe_path(path.parent, "custody")
     if destination.exists():
@@ -776,6 +808,7 @@ def clean_scratch_command(args):
 
 
 def cleanup(receipt, path, pr, *, warnings=None):
+    require((reason := acceptance_look_problem(receipt, path, receipt["source_sha"])) is None, reason)
     warnings = [] if warnings is None else warnings
     if pr is not None:
         require(pr["state"] == "MERGED" and pr.get("mergedAt") and pr.get("mergeCommit", {}).get("oid"), "actual matching merge evidence is required")
@@ -853,6 +886,8 @@ def locked_receipt(path, *, blocking=True):
 
 
 def completion_result(receipt, path, status, *, warnings=None):
+    if status == "COMPLETE":
+        require((reason := acceptance_look_problem(receipt, path, receipt["source_sha"])) is None, reason)
     if receipt.get("delivery") != status:
         receipt["delivery"] = status  # Phase-independent checkpoint: the latest delivery outcome.
         atomic_json(path, receipt)
@@ -895,6 +930,7 @@ def reconcile(common, allocated, anchor, *, exclude_receipts=(), warnings=None):
             with locked_receipt(path, blocking=False) as receipt:
                 if not receipt.get("acceptance") or receipt.get("local_only") or not (receipt.get("pr_number") or receipt.get("delivery") == "COMPLETE"):
                     continue
+                require((reason := acceptance_look_problem(receipt, path, receipt["source_sha"])) is None, reason)
                 if receipt.get("status") == "COMPLETE":
                     if receipt.get("writers_released") and "scratch_identity" in receipt and receipt.get("scratch_cleanup", {}).get("status") != "CLEAN":
                         results.append(completion_result(receipt, path, "COMPLETE"))
@@ -918,6 +954,62 @@ def reconcile(common, allocated, anchor, *, exclude_receipts=(), warnings=None):
     return results
 
 
+def recorded_request(receipt, path):
+    request = (path.parent / "request.txt").read_bytes()
+    require(hashlib.sha256(request).hexdigest() == receipt.get("request_sha256"), "recorded request digest changed")
+    return request
+
+
+def acceptance_look_problem(receipt, path, source):
+    helper = shared("acceptance-look")
+    try:
+        state = helper["binding"](path.parent, receipt)
+        if not state["user_facing"]:
+            return None
+        request = recorded_request(receipt, path)
+        evidence = Path(receipt["worktree"]) / ".devlyn/loop/evidence"
+        # A merged tree may already be gone. Its preserved capture bytes still bind ship.
+        roots = [path.parent / "custody/.devlyn/loop/evidence"] if receipt.get("acceptance") else []
+        if evidence.exists() or not roots:
+            roots.append(evidence)
+        for root in roots:
+            inventory = helper["captures"](root, source)
+            if reason := helper["problem"](state, source, request, inventory):
+                return reason
+        return None
+    except (OSError, UnicodeError, ValueError, CompletionError) as exc:
+        return f"needs-review: {exc}"
+
+
+def direct_look(receipt, path, supplied):
+    helper = shared("acceptance-look")
+    try:
+        require(supplied, "user-facing completion requires acceptance and captures before review")
+        acceptance = read_json(Path(supplied))
+        require(isinstance(acceptance, dict), "direct acceptance must be an object")
+        source = acceptance.get("source_sha")
+        require(acceptance.get("task") == receipt["task"] and acceptance.get("kind") == "direct", "direct acceptance identity changed")
+        require(isinstance(source, str) and re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", source), "acceptance needs exact source SHA")
+        request = recorded_request(receipt, path)
+
+        def verify():
+            try:
+                inspect_workspace(dict(receipt, publish_sha=source))
+                require(ref_sha(receipt, "refs/heads/" + receipt["branch"]) == source, "accepted source changed")
+            except CompletionError as exc:
+                raise ValueError(str(exc)) from exc
+
+        state = helper["binding"](path.parent, receipt, request)
+        # A completed ship can resume delivery without spending another review.
+        if state["attempts"] and not helper["problem"](state, source, request):
+            return acceptance_look_problem(receipt, path, source), state
+        state = helper["review"](path.parent, receipt["task"], source, request,
+                                 Path(receipt["worktree"]) / ".devlyn/loop/evidence", verify)
+        return helper["problem"](state, source, request), state
+    except (OSError, UnicodeError, ValueError, CompletionError) as exc:
+        return f"needs-review: {exc}", None
+
+
 def complete(args, *, warnings=None):
     warnings = [] if warnings is None else warnings
     path = Path(args.receipt).absolute()
@@ -934,6 +1026,22 @@ def complete(args, *, warnings=None):
             return completion_result(receipt, path, status, warnings=warnings)
         if (receipt.get("acceptance") or {}).get("verdict") == "FAILED":
             return result("FAILED")
+        state = None
+        try:
+            state = shared("acceptance-look")["binding"](path.parent, receipt)
+            reason = None
+            if state["user_facing"]:
+                if receipt.get("acceptance"):
+                    reason = acceptance_look_problem(receipt, path, receipt["source_sha"])
+                elif receipt.get("acceptance_owner") == "direct":
+                    reason, state = direct_look(receipt, path, args.acceptance)
+                else:
+                    reason = "needs-review: drain acceptance has not bound a controller verdict"
+        except (OSError, UnicodeError, ValueError, CompletionError) as exc:
+            reason = f"needs-review: {exc}"
+        if reason:
+            return {**result("NOT SHIPPABLE"), "reason": reason,
+                    "defects": state["attempts"][-1].get("defects", []) if state and state["attempts"] else []}
         if args.local_only or receipt.get("local_only"):
             require(receipt.get("delivery") != "COMPLETE" and receipt.get("status") != "COMPLETE" and "workspace_cleanup" not in receipt,
                     f"{receipt['task']} delivery is already COMPLETE; "
@@ -1080,6 +1188,7 @@ def main():
     allocation.add_argument("--local-base")
     allocation.add_argument("--from-receipt")
     allocation.add_argument("--start")
+    allocation.add_argument("--request-file", help="verbatim UTF-8 request; required for user-facing allocation")
     binding = actions.add_parser("accept")
     binding.add_argument("--receipt", required=True)
     binding.add_argument("--acceptance", required=True)
@@ -1250,6 +1359,7 @@ sys.exit(r.returncode)
 
 class CompletionTests(unittest.TestCase):
     def setUp(self):
+        shared.cache_clear()
         from unittest.mock import Mock, patch
         self.temp = tempfile.TemporaryDirectory(prefix="devlyn-completion-")
         self.addCleanup(self.temp.cleanup)
@@ -1265,13 +1375,34 @@ class CompletionTests(unittest.TestCase):
         disk_usage = patch.object(shutil, "disk_usage", return_value=Mock(total=100 * 1024**3, free=100 * 1024**3))
         disk_usage.start()
         self.addCleanup(disk_usage.stop)
+        # Tests own a small OS-home substitute; production ignores HOME overrides.
+        home_patch = ("import runpy\n"
+                      "_look_run = runpy.run_path\n"
+                      "def _look_path(*args, **kwargs):\n"
+                      "    value = _look_run(*args, **kwargs)\n"
+                      "    if pathlib.Path(args[0]).name == 'acceptance-look.py':\n"
+                      "        value['custody_root'].__globals__['controller_home'] = lambda: pathlib.Path(__file__).parent\n"
+                      "    return value\n"
+                      "runpy.run_path = _look_path\n")
+        with (self.root / "sitecustomize.py").open("a") as stream:
+            stream.write(home_patch)
+        from unittest.mock import patch
+        real_run = runpy.run_path
+        def fixture_run(*args, **kwargs):
+            value = real_run(*args, **kwargs)
+            if Path(args[0]).name == "acceptance-look.py":
+                value["custody_root"].__globals__["controller_home"] = lambda: self.root
+            return value
+        owner = patch.object(runpy, "run_path", fixture_run)
+        owner.start()
+        self.addCleanup(owner.stop)
         self.work = self.root / "work"
         self.bare = self.root / "remote.git"
         self.bin = self.root / "bin"
         self.bin.mkdir()
         self.data = self.root / "gh.json"
         self.data.write_text(json.dumps({"bare": str(self.bare)}), encoding="utf-8")
-        self.env = {**os.environ, "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": str(self.root / "gitconfig"),
+        self.env = {**os.environ, "HOME": str(self.root), "USERPROFILE": str(self.root), "CODEX_HOME": str(self.root / "unused-auth"), "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": str(self.root / "gitconfig"),
                     "GIT_AUTHOR_NAME": "Fixture", "GIT_AUTHOR_EMAIL": "fixture@example.invalid",
                     "GIT_COMMITTER_NAME": "Fixture", "GIT_COMMITTER_EMAIL": "fixture@example.invalid",
                     "FIXTURE_GH": str(self.data), "REAL_GIT": shutil.which("git"),
@@ -1313,9 +1444,11 @@ class CompletionTests(unittest.TestCase):
         r = self.run_cmd([sys.executable, str(Path(__file__).resolve()), *map(str, args)], success=success, cwd=cwd)
         return json.loads(r.stdout), r
 
-    def allocate(self, name="fixture", base="main"):
+    def allocate(self, name="fixture", base="main", *, request_file=None):
         args = ["allocate", "--repo", self.work, "--task", name, "--branch", "task/"+name, "--repository", "test/project", "--base", base,
                 "--worktree", self.root / ("linked" if name == "fixture" else name)]
+        if request_file is not None:
+            args += ["--request-file", request_file]
         result, _ = self.cli(*args)
         self.receipt = Path(result["receipt"])
         self.task = Path(result["worktree"])
@@ -1325,6 +1458,15 @@ class CompletionTests(unittest.TestCase):
         return argparse.Namespace(repo=str(self.work), task=name, branch="task/" + name,
                                   repository="test/project", base="main", remote="origin", worktree=str(worktree),
                                   local_base=None, from_receipt=None, start=None)
+
+    def test_file_record_streams_large_evidence(self):
+        from unittest.mock import patch
+        path = self.root / "recording"
+        raw = b"capture" * (1024 * 1024)
+        path.write_bytes(raw)
+        with patch.object(Path, "read_bytes", side_effect=AssertionError("custody must stream")):
+            self.assertEqual(file_record(path), {"sha256": hashlib.sha256(raw).hexdigest(), "bytes": len(raw),
+                                                 "mode": stat.S_IMODE(path.lstat().st_mode)})
 
     def test_allocation_marks_exclusively_created_empty_target_before_checkout(self):
         # Prediction: persisted intent precedes exclusive creation and marking; real Git then populates that directory.
@@ -1519,6 +1661,10 @@ class CompletionTests(unittest.TestCase):
         receipt["scratch_identity"] = workspace_identity(scratch, self.receipt.parent)
         self.g("switch", "-c", "task/fixture")
         receipt["worktree_identity"] = workspace_identity(self.work, common)
+        receipt["user_facing"] = False
+        from unittest.mock import patch
+        with patch.dict(os.environ, self.env):
+            shared("acceptance-look")["initialize"](self.receipt.parent, receipt["task"], None, False)
         self.receipt.write_text(json.dumps(receipt), encoding="utf-8")
         self.task = self.work
 
@@ -2207,6 +2353,184 @@ ctypes.CDLL(None).pthread_exit(None)
         if acceptance:
             command_args += ["--acceptance", self.acceptance]
         return self.cli(*command_args, *args, success=success, cwd=cwd)
+
+    def user_facing(self, verdicts, *, configured=False, local=True):
+        request = self.root / "request.txt"
+        request.write_text("Show the phone layout.\n", encoding="utf-8")
+        if configured:
+            self.g("config", "--local", "devlyn.userFacing", "true")
+        else:
+            self.env["DEVLYN_USER_FACING"] = "1"
+        fake = shared("acceptance-look")["FAKE_CODEX"]
+        binary = self.bin / "codex"
+        binary.write_text(f"#!{sys.executable}\n" + fake)
+        binary.chmod(0o755)
+        self.look_fixture = self.root / "look.json"
+        self.look_fixture.write_text(json.dumps({"verdicts": verdicts}))
+        self.env["FIXTURE_LOOK"] = str(self.look_fixture)
+        if local:
+            self.allocate_local("fixture", local_base=self.g("rev-parse", "HEAD"), request_file=request)
+        else:
+            self.allocate(request_file=request)
+        self.accept()
+        self.capture_look()
+        # The executor cannot unset the allocation flag with later environment/config changes.
+        self.env.pop("DEVLYN_USER_FACING", None)
+        self.g("config", "--local", "devlyn.userFacing", "false")
+
+    def look_custody(self):
+        from unittest.mock import patch
+        with patch.dict(os.environ, self.env):
+            return shared("acceptance-look")["custody_root"](self.receipt.parent)
+
+    def capture_look(self):
+        evidence = self.task / ".devlyn/loop/evidence"
+        evidence.mkdir(parents=True, exist_ok=True)
+        (evidence / "phone.png").write_bytes(self.sha.encode())
+        (evidence / "captures.json").write_text(json.dumps({"source_sha": self.sha, "captures": [
+            {"path": "phone.png", "label": "phone 390px"}]}))
+
+    def test_user_facing_allocation_requires_request(self):
+        for configured in (False, True):
+            with self.subTest(configured=configured):
+                self.env["DEVLYN_USER_FACING"] = "0" if configured else "1"
+                self.g("config", "--local", "devlyn.userFacing", str(configured).lower())
+                result, _ = self.cli("allocate", "--repo", self.work, "--task", "fixture", "--branch", "task/fixture",
+                                     "--worktree", self.root / "missing", "--local-base", self.g("rev-parse", "HEAD"), success=False)
+                self.assertIn("--request-file", result["reason"])
+                self.assertFalse((self.root / "missing").exists())
+
+    @unittest.skipIf(os.name == "nt", "fake reviewer is a POSIX executable")
+    def test_user_facing_direct_ship_env_flag(self):
+        self.user_facing([{"verdict": "ship", "defects": []}], local=False)
+        result, _ = self.complete("--mode", "pr")
+        self.assertEqual(result["status"], "PR", result)
+        self.assertEqual(read_json(self.data)["pushs"], 1)
+        receipt = read_json(self.receipt)
+        self.assertTrue(receipt["user_facing"])
+        self.assertEqual(receipt["source_sha"], self.sha)
+        state = read_json(self.look_custody() / "acceptance-look.json")
+        self.assertEqual(state["attempts"][-1]["verdict"], "ship")
+        self.assertEqual((self.receipt.parent / "request.txt").read_bytes(), b"Show the phone layout.\n")
+        self.assertIn(".devlyn/loop/evidence/phone.png", receipt["files"])
+
+    @unittest.skipIf(os.name == "nt", "fake reviewer is a POSIX executable")
+    def test_user_facing_direct_send_back_repair_ship_config_flag(self):
+        back = {"verdict": "send_back", "defects": [{"capture": "phone 390px", "defect": "text clipped"}]}
+        self.user_facing([back, {"verdict": "ship", "defects": []}], configured=True)
+        supplied = read_json(self.acceptance)
+        supplied["verdict"] = "ship"  # Caller verdict is ignored.
+        atomic_json(self.acceptance, supplied)
+        result, _ = self.complete("--local-only")
+        self.assertEqual((result["status"], result["defects"]), ("NOT SHIPPABLE", back["defects"]))
+        self.assertNotIn("acceptance", read_json(self.receipt))
+        self.assertEqual(read_json(self.data)["pushs"], 0)
+        (self.task / "repair.txt").write_text("repair")
+        self.g("add", "repair.txt", work=self.task)
+        self.g("commit", "-qm", "repair", work=self.task)
+        self.sha = self.g("rev-parse", "HEAD", work=self.task)
+        supplied["source_sha"] = self.sha
+        atomic_json(self.acceptance, supplied)
+        self.capture_look()
+        result, _ = self.complete("--local-only")
+        self.assertEqual(result["status"], "LOCAL_ONLY", result)
+        self.assertEqual(len(read_json(self.look_fixture)["calls"]), 2)
+
+    @unittest.skipIf(os.name == "nt", "fake reviewer is a POSIX executable")
+    def test_user_facing_caller_acceptance_without_review_cannot_publish(self):
+        self.user_facing([{"verdict": "ship", "defects": []}], local=False)
+        result, _ = self.cli("accept", "--receipt", self.receipt, "--acceptance", self.acceptance, success=False)
+        self.assertIn("no controller review", result["reason"])
+        self.assertNotIn("acceptance", read_json(self.receipt))
+        (self.task / ".devlyn/loop/evidence/captures.json").unlink()
+        result, _ = self.complete("--mode", "pr")
+        self.assertEqual(result["status"], "NOT SHIPPABLE", result)
+        self.assertEqual(read_json(self.data)["pushs"], 0)
+
+    @unittest.skipIf(os.name == "nt", "fake reviewer is a POSIX executable")
+    def test_user_facing_planted_receipt_ship_is_ignored(self):
+        back = {"verdict": "send_back", "defects": [{"capture": "phone 390px", "defect": "clipped"}]}
+        self.user_facing([back])
+        helper = shared("acceptance-look")
+        planted = read_json(self.look_custody() / "acceptance-look.json")
+        planted["attempts"] = [{"round": 1, "task": "fixture", "source_sha": self.sha,
+                                "request_sha256": planted["request_sha256"], "status": "finished", **{"verdict": "ship", "defects": []},
+                                "engine": "codex", "model": "fake", "effort": "high",
+                                "captures": helper["captures"](self.task / ".devlyn/loop/evidence", self.sha)}]
+        atomic_json(self.receipt.parent / "acceptance-look.json", planted)
+        result, _ = self.complete("--local-only")
+        self.assertEqual(result["status"], "NOT SHIPPABLE", result)
+        self.assertEqual(result["defects"], back["defects"])
+        self.assertEqual(len(read_json(self.look_fixture)["calls"]), 1)
+
+    @unittest.skipIf(os.name == "nt", "fake reviewer is a POSIX executable")
+    def test_user_facing_receipt_flag_cannot_be_cleared(self):
+        self.user_facing([{"verdict": "ship", "defects": []}], local=False)
+        receipt = read_json(self.receipt)
+        receipt["user_facing"] = False
+        receipt.pop("request_sha256")
+        atomic_json(self.receipt, receipt)
+        result, _ = self.complete("--mode", "pr")
+        self.assertEqual(result["status"], "NOT SHIPPABLE", result)
+        self.assertIn("disagrees", result["reason"])
+        result, _ = self.cli("accept", "--receipt", self.receipt, "--acceptance", self.acceptance, success=False)
+        self.assertIn("disagrees", result["reason"])
+        self.assertEqual(read_json(self.data)["pushs"], 0)
+        self.assertNotIn("calls", read_json(self.look_fixture))
+
+    @unittest.skipIf(os.name == "nt", "fake reviewer is a POSIX executable")
+    def test_user_facing_prelaunch_failure_is_correctable(self):
+        self.user_facing([{"verdict": "ship", "defects": []}])
+        (self.task / ".devlyn/loop/evidence/captures.json").write_text("")
+        result, _ = self.complete("--local-only")
+        self.assertEqual(result["status"], "NOT SHIPPABLE", result)
+        state = read_json(self.look_custody() / "acceptance-look.json")
+        self.assertEqual((state["attempts"], state["terminal"]), ([], None))
+        self.capture_look()
+        result, _ = self.complete("--local-only")
+        self.assertEqual(result["status"], "LOCAL_ONLY", result)
+        self.assertEqual(len(read_json(self.look_fixture)["calls"]), 1)
+
+    @unittest.skipIf(os.name == "nt", "fake reviewer is a POSIX executable")
+    def test_user_facing_reconciliation_requires_bound_ship(self):
+        from unittest.mock import patch
+        self.user_facing([{"verdict": "ship", "defects": []}], local=False)
+        self.complete("--mode", "pr")
+        self.merge_pr()
+        state_path = self.look_custody() / "acceptance-look.json"
+        original = state_path.read_bytes()
+        receipt = read_json(self.receipt)
+        with patch.dict(os.environ, self.env):
+            self.assertIsNone(acceptance_look_problem(receipt, self.receipt, self.sha))
+            # A removed worktree still has source/capture-bound retained evidence.
+            self.assertIsNone(acceptance_look_problem(dict(receipt, worktree=str(self.root / "gone")), self.receipt, self.sha))
+            for status in ("PR", "COMPLETE"):
+                for invalid in ("missing", "corrupt", "source", "captures", "flag"):
+                    with self.subTest(status=status, invalid=invalid):
+                        changed = dict(receipt, status=status, writers_released=True, scratch_cleanup={"status": "PENDING"})
+                        state_path.write_bytes(original)
+                        state = read_json(state_path)
+                        if invalid == "missing":
+                            state_path.unlink()
+                        elif invalid == "corrupt":
+                            state_path.write_text("{}")
+                        elif invalid in {"source", "captures"}:
+                            if invalid == "source":
+                                state["attempts"][-1]["source_sha"] = "b" * 40
+                            else:
+                                state["attempts"][-1]["captures"][0]["sha256"] = "b" * 64
+                            atomic_json(state_path, state)
+                        else:
+                            changed["user_facing"] = False
+                        atomic_json(self.receipt, changed)
+                        with patch.dict(reconcile.__globals__, {"cleanup": lambda *a, **k: self.fail("cleanup before ship"),
+                                                               "completion_result": lambda *a, **k: self.fail("COMPLETE before ship")}):
+                            results = reconcile(Path(receipt["common_gitdir"]), self.root / "other", self.work)
+                        self.assertEqual(results[0]["status"], "RETAINED", results)
+                        self.assertIn("needs-review", results[0]["reason"])
+                        self.assertTrue(self.task.exists())
+        state_path.write_bytes(original)
+        atomic_json(self.receipt, receipt)
 
     def test_unchanged_at_base_cleans_without_publication(self):
         # Prediction: equality with base settles without push/PR, preserving custody and removing the tree, ref and scratch output.

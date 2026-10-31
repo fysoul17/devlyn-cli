@@ -43,7 +43,7 @@ META_SECTIONS = ("Intent", "Constraints and exclusions", "Tasks", "Overall accep
 TASK_SECTIONS = ("Context and goal", "Requirements", "Scope and constraints", "Out of scope", "Prerequisite inputs",
                  "Verification", "Deliverable and cleanup")
 MANIFEST_KEYS = {"schema_version", "loop_id", "base_ref", "base_sha", "delivery", "tasks", "integration_task_id"}
-FRONTMATTER_KEYS = {"id", "loop_id", "title", "kind", "review_requirements", "complexity"}
+FRONTMATTER_KEYS = {"id", "loop_id", "title", "kind", "review_requirements", "complexity", "user_facing"}
 KINDS = {"feature", "spike", "prototype"}
 UNSUPPORTED = {"process_evidence": "phase process obligations", "required_risk_probe_requirements": "risk-probe obligations",
                "tier_a_waivers": "benchmark scope waivers", "spec_output_files": "benchmark scope surfaces"}
@@ -52,6 +52,7 @@ OBLIGATIONS = [
     "Work only in this worktree on its owned branch under the installed methodology; never edit the loop package or docs/specs/queue.md.",
     "Commit any source changes on the owned branch; when none are needed, use inputs_sha without creating an empty commit. Leave no uncommitted or untracked source and remove residue the change created.",
     "Run `runner` on the committed candidate; review records must bind engine, model, that source and both contract digests.",
+    "For user_facing tasks, capture every requested journey in evidence/captures.json and call acceptance_look; on send_back repair and recapture the complete packet once, then call again. Only the controller decides ship. Never write controller review state.",
     "Write `submission` and exit; report a blocker instead of weakening acceptance.",
 ]
 
@@ -401,7 +402,7 @@ def load_task(anchor, manifest, entry, rev):
         fail("status is queue state, not contract; remove it from the frontmatter")
     if unknown := sorted(set(front) - FRONTMATTER_KEYS):
         fail(f"unknown frontmatter key(s): {', '.join(unknown)}")
-    if missing := sorted(FRONTMATTER_KEYS - {"complexity"} - set(front)):
+    if missing := sorted(FRONTMATTER_KEYS - {"complexity", "user_facing"} - set(front)):
         fail(f"missing frontmatter key(s): {', '.join(missing)}")
     if (front["id"], front["loop_id"]) != (task, loop_id):
         fail("frontmatter id and loop_id must match the manifest")
@@ -409,6 +410,8 @@ def load_task(anchor, manifest, entry, rev):
         fail("title must be a non-empty line")
     if not isinstance(front["kind"], str) or front["kind"] not in KINDS:
         fail("kind must be feature, spike or prototype")
+    if front.get("user_facing", "false") not in ("true", "false"):
+        fail("user_facing must be true or false")
     review = front["review_requirements"]
     if not isinstance(review, list):
         fail("review_requirements must be a list such as [R2] or []")
@@ -423,6 +426,7 @@ def load_task(anchor, manifest, entry, rev):
         fail(f"review_requirements name unknown requirement(s): {', '.join(unknown)}")
     expected, expected_path = package_text(anchor, rev, f"docs/specs/{loop_id}/{task}/spec.expected.json")
     return {"id": task, "title": front["title"], "kind": front["kind"], "requirements": requirements, "review": review,
+            "user_facing": front.get("user_facing", "false") == "true", "request": package_bytes(anchor, rev, f"docs/specs/{loop_id}/{task}/spec.md").decode("utf-8"),
             "depends_on": entry["depends_on"], "expected": load_expected(expected, expected_path, requirements, review)}
 
 
@@ -1086,7 +1090,8 @@ def allocate(v, row, opts):
     values = {"repo": str(anchor), "task": identity, "branch": branch_of(identity), "repository": None,
               "base": manifest["base_ref"], "remote": "origin", "worktree": str(opts.worktree_root / loop / task),
               "local_base": None, "from_receipt": None, "start": None,
-              "keep_root": str(opts.keep_root) if opts.keep_root else None}
+              "keep_root": str(opts.keep_root) if opts.keep_root else None,
+              "loop_contract": package["tasks"][task]}
     if is_local(v, loop):
         tip, start = frontier(v, loop), local_start(v, loop)[0]
         for dep in deps:
@@ -1151,6 +1156,7 @@ def ensure_packet(v, row, path, receipt):
 
     packet = {
         "schema_version": 2, "task": identity, "title": spec["title"], "kind": spec["kind"],
+        "user_facing": spec["user_facing"], "request": spec["request"],
         "worktree": str(worktree), "branch": branch, "receipt": str(path), "scratch": str(path.parent / "scratch"),
         "allocation_base": baseline, "inputs_sha": inputs,
         "contract": identity_of(f"docs/specs/{loop}/{task}/spec.md"),
@@ -1165,8 +1171,10 @@ def ensure_packet(v, row, path, receipt):
         "evidence_dir": str(worktree / ".devlyn" / "loop"),
         "submission": str(path.parent / "submission.json"),
         "runner": [sys.executable, str(Path(__file__).with_name("acceptance.py")), "run", "--packet", str(packet_path)],
+        "observe": [sys.executable, str(SKILLS / "_shared/observer.py"), "call", "--spool", str(path.parent / "observe")],
         "obligations": OBLIGATIONS,
     }
+    packet["acceptance_look"] = [*packet["observe"], "--kind", "acceptance-look"]
     instructions = packet["methodology"]
     binding = harness_call("read_binding", v["common"])
     if binding:
@@ -1184,6 +1192,8 @@ def ensure_packet(v, row, path, receipt):
         harness_call("check_binding", binding, harness_call("resolve", SKILLS))
         bound_skills = Path(binding["release"]["root"]) / "config/skills"
         packet["runner"][1] = str(bound_skills / "devlyn-ideate/scripts/acceptance.py")
+        packet["observe"][1] = str(bound_skills / "_shared/observer.py")
+        packet["acceptance_look"][1] = packet["observe"][1]
         prompt = path.parent / "worker-prompt.md"
         body = (f"Execute task packet {packet_path}. Work only in {worktree} on its owned branch.\n"
                 f"Read {binding['defaults']['path']} and apply it as defaults; explicit user and native owner/project instructions win.\n"
@@ -1204,7 +1214,47 @@ def record(log, event):
         os.fsync(stream.fileno())
 
 
-def ensure_submission(identity, packet_path, packet, executor):
+def review_request(spool, packet, look_state):
+    """Claim the oldest review request beside the capture pump; no worker argv or prompt."""
+    requests = sorted((spool / "requests").glob("*.json"))
+    if not requests:
+        return False
+    request = requests[0]
+    try:
+        value = acceptance()["read_json"](request)
+    except acceptance()["AcceptanceError"]:
+        return False  # observer reports malformed capture requests.
+    if not isinstance(value, dict) or value.get("kind") != "acceptance-look":
+        return False
+    claimed = spool / "claimed" / request.name
+    request.rename(claimed)
+    if set(value) != {"kind"} or not packet.get("user_facing"):
+        reply = {"outcome": {"kind": "refused", "detail": "review requires user_facing and only kind; no argv or prompt"}}
+    else:
+        helper = shared("acceptance-look")
+        work = Path(packet["worktree"])
+        source = git(work, "rev-parse", "refs/heads/" + packet["branch"])
+
+        def verify():
+            problems = acceptance()["source_problems"](packet, source)
+            if problems:
+                raise ValueError("; ".join(problems))
+
+        try:
+            helper["binding"](Path(packet["receipt"]).parent, packet)
+            state = helper["review"](Path(packet["receipt"]).parent, packet["task"], source,
+                                     packet["request"].encode("utf-8"), work / ".devlyn/loop/evidence", verify, state=look_state)
+            last = state["attempts"][-1] if state["attempts"] else {}
+            reason = helper["problem"](state, source, packet["request"].encode("utf-8"))
+            reply = {"verdict": "send_back" if reason else "ship", "defects": last.get("defects", []),
+                     "round": len(state["attempts"]), "reason": reason}
+        except (OSError, UnicodeError, ValueError) as exc:
+            reply = {"outcome": {"kind": "refused", "detail": str(exc)}}
+    shared("observer")["write_json"](spool / "replies" / request.name, reply)
+    return True
+
+
+def ensure_submission(identity, packet_path, packet, executor, look_state=None):
     """Run the executor once unless its submission exists; returns a drain-recorded failure reason, else None. An
     executor that exits without writing its submission raises Waiting: the task stays active and the next drain runs it
     again.
@@ -1232,6 +1282,15 @@ def ensure_submission(identity, packet_path, packet, executor):
             raise LoopError(f"cannot establish that an interrupted execution stopped: {exc}; repair writer observation, then drain again") from exc
     if submission.exists():
         return None
+    helper = shared("acceptance-look")
+    try:
+        state = helper["binding"](Path(packet["receipt"]).parent, packet)
+    except (OSError, UnicodeError, ValueError) as exc:
+        return f"needs-review: {exc}"
+    if state["terminal"]:
+        return helper["problem"](state, "", packet["request"].encode("utf-8"))
+    if look_state is None:
+        look_state = state
     defaults = packet["methodology"].get("defaults") if packet.get("schema_version") == 2 else None
     if packet.get("harness") is None and defaults and not Path(defaults["path"]).is_file():
         # An installation's own copy moves with its updates; only its absence matters, and only before a spawn.
@@ -1242,8 +1301,15 @@ def ensure_submission(identity, packet_path, packet, executor):
         argv = [part.replace("{worktree_git_dir}", git_dir) for part in argv]
     output = Path(packet["evidence_dir"])
     output.mkdir(parents=True, exist_ok=True)
-    record(log, "start")
+    observer = shared("observer")
+    spool = Path(packet_path).parent / "observe"
+    observations = worktree / ".devlyn/loop/evidence/observations"
     with contextlib.ExitStack() as stack:
+        try:
+            stack.enter_context(observer["serving"](spool, worktree, observations))
+        except OSError as exc:
+            raise LoopError(f"observer could not start: {exc}") from exc
+        record(log, "start")
         try:
             env = None
             claude_names = {"claude", "claude.exe", "claude.cmd", "claude.bat"}
@@ -1266,7 +1332,13 @@ def ensure_submission(identity, packet_path, packet, executor):
             raise LoopError(f"executor could not start: {exc}; restore the configured executable, permissions or task workspace; "
                             "the next drain retries") from exc
         progress(identity, f"executing; output in {output}")
-        code = child.wait()
+        while True:
+            try:
+                code = child.wait(timeout=0.1)
+                break
+            except subprocess.TimeoutExpired:
+                if not review_request(spool, packet, look_state):
+                    observer["pump"](spool, worktree, observations)
     record(log, f"exit {code} (pid {child.pid})")
     if not submission.exists():
         raise Waiting(f"executor exited {code} without a submission (see {output / 'executor.stderr'}); the next drain runs it again")
@@ -1330,11 +1402,12 @@ def advance(v, row, opts):
         if not failure and not receipt.get("local_only"):
             require_merged(v, row, receipt["baseline"], allocated=True)
         packet_path, packet = ensure_packet(v, row, path, receipt)
+        look_state = shared("acceptance-look")["load"](path.parent, identity, packet["request"].encode("utf-8"))
         state["phase"] = "executor"
-        failure = failure or ensure_submission(identity, packet_path, packet, opts.executor)
+        failure = failure or ensure_submission(identity, packet_path, packet, opts.executor, look_state)
         state["phase"] = "acceptance"
         try:
-            result = acceptance()["accept"](packet_path, packet["submission"], failure)
+            result = acceptance()["accept"](packet_path, packet["submission"], failure, look_state=look_state)
         except acceptance()["AcceptanceError"] as exc:
             raise LoopError(f"{identity}: acceptance could not run: {exc}") from exc
         progress(identity, result["verdict"].lower() + "".join(f"; {reason}" for reason in result["reasons"][:3]))
@@ -2086,6 +2159,85 @@ class QueueTests(unittest.TestCase):
                         held.stdin.close()
         self.assertEqual((read_json(added_path(common, "inv"))["origin"], read_json(added_path(common, "inv"))["branch"]), (str(linked), "side"))
 
+    def execution_packet(self):
+        from unittest import mock
+        work, records = self.root / "work", self.anchor / ".git/devlyn-completion/fixture"
+        work.mkdir()
+        records.mkdir(parents=True)
+        request = "Run the fixture task.\n"
+        helper = shared("acceptance-look")
+        self.enterContext(mock.patch.dict(helper["custody_root"].__globals__, controller_home=lambda: self.root / "controller"))
+        helper["initialize"](records, "l.t", request.encode("utf-8"), False)
+        packet = {"task": "l.t", "receipt": str(records / "receipt.json"), "request": request, "user_facing": False,
+                  "worktree": str(work), "submission": str(records / "submission.json"), "inputs_sha": "0" * 40,
+                  "evidence_dir": str(work / ".devlyn/loop")}
+        return work, records, packet
+
+    def test_observer_lifetime_and_start_failure(self):
+        from unittest import mock
+        work, records, packet = self.execution_packet()
+        lock = records / "observe/serving.lock"
+
+        def alive():
+            if not lock.exists():
+                return False
+            try:
+                with shared("platform-support")["file_lock"](lock):
+                    return False
+            except BlockingIOError:
+                return True
+        packet["observe"] = ["untrusted", str(self.root / "wrong-spool")]
+        events = []
+        recording = record
+
+        def logged(path, event):
+            events.append((event, alive()))
+            recording(path, event)
+
+        class Crash(BaseException):
+            pass
+
+        class Child:
+            pid = 4242
+            waits = 0
+
+            def wait(child, timeout=None):
+                self.assertEqual(timeout, 0.1)
+                self.assertTrue(alive())
+                child.waits += 1
+                if child.waits == 1:
+                    raise subprocess.TimeoutExpired("executor", timeout)
+                return 0
+
+        for error in (None, Crash(), OSError("executor unavailable")):
+            with self.subTest(error=error):
+                events.clear()
+                (records / "executions.log").unlink(missing_ok=True)
+                pump = mock.Mock(wraps=shared("observer")["pump"])
+                with mock.patch.dict(ensure_submission.__globals__, record=logged), mock.patch("subprocess.Popen") as spawn, \
+                        mock.patch.dict(shared("observer"), pump=pump):
+                    spawn.side_effect = error
+                    spawn.return_value = Child()
+                    with self.assertRaises(Crash if isinstance(error, Crash) else LoopError) as raised:
+                        ensure_submission("l.t", records / "packet.json", packet, [sys.executable, "{packet}"])
+                self.assertEqual(events[0], ("start", True))
+                self.assertFalse(alive())
+                if error is None:
+                    pump.assert_called_once_with(records / "observe", work, work / ".devlyn/loop/evidence/observations")
+                    self.assertEqual(events[-1], ("exit 0 (pid 4242)", False))
+                elif isinstance(error, OSError):
+                    self.assertIn("executor could not start", str(raised.exception))
+                    self.assertEqual(events[-1], ("not started: executor unavailable", True))
+        (records / "executions.log").unlink()
+        events.clear()
+        with mock.patch.dict(shared("observer"), serving=mock.Mock(side_effect=OSError("spool denied"))), \
+                mock.patch.dict(ensure_submission.__globals__, record=logged), mock.patch("subprocess.Popen") as spawn:
+            with self.assertRaisesRegex(LoopError, "observer could not start: spool denied"):
+                ensure_submission("l.t", records / "packet.json", packet, [sys.executable, "{packet}"])
+            spawn.assert_not_called()
+        self.assertEqual(events, [])
+        self.assertFalse(alive())
+
     def test_a_crash_on_either_side_of_the_spawn_never_starts_a_second_executor(self):
         """The attempt's start is durable before the spawn, so a resumed drain observes writers first: it waits while
         an executor lives and adopts its submission, runs the executor once when none did, and fails the task where
@@ -2094,11 +2246,7 @@ class QueueTests(unittest.TestCase):
         with a blocked-infrastructure blocker, which made the task [F]."""
         from unittest import mock
         helper = shared("task-complete")
-        work, records = self.root / "work", self.root / "records"
-        work.mkdir()
-        records.mkdir()
-        packet = {"worktree": str(work), "submission": str(records / "submission.json"), "inputs_sha": "0" * 40,
-                  "evidence_dir": str(work / ".devlyn/loop")}
+        work, records, packet = self.execution_packet()
         spawns, checks = [], []
 
         class Crash(BaseException):
@@ -2107,7 +2255,7 @@ class QueueTests(unittest.TestCase):
         class Child:
             pid = 4242
 
-            def wait(self):
+            def wait(self, timeout=None):
                 return 0
 
         def spawn(argv, **kwargs):
@@ -2148,9 +2296,13 @@ class QueueTests(unittest.TestCase):
                 spawns.clear()
                 checks.clear()
                 for path in records.iterdir():
-                    path.unlink()
+                    if path.is_file():
+                        path.unlink()
                 with self.assertRaises(Crash):
                     drain(crash)
+                self.assertTrue((records / "observe/serving.lock").exists())
+                with shared("platform-support")["file_lock"](records / "observe/serving.lock"):
+                    pass
                 failure = drain(spawn, observe)
                 if crash is crash_after_spawn:
                     # One observation per invocation, without sleep or a second spawn while the writer lives.

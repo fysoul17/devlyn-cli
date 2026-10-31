@@ -236,6 +236,8 @@ jobs:
               ('portability', [sys.executable, '-X', 'utf8=0', str(driver), '--package-root', str(package)], 480),
               ('engines-self-test', [sys.executable, '-X', 'utf8=0',
                   str(package / 'config/skills/_shared/role-config.py'), '--self-test'], 240),
+              ('observer-self-test', [sys.executable, '-X', 'utf8=0',
+                  str(package / 'config/skills/_shared/observer.py'), '--self-test'], 240),
               # Windows has no clone primitive here: allocation must skip warming before any lock or Cargo call.
               ('warm-build-dirs-self-test', [sys.executable, '-X', 'utf8=0',
                   str(package / 'config/skills/_shared/warm-build-dirs.py'), '--self-test'], 240),

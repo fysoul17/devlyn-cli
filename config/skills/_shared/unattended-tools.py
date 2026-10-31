@@ -68,13 +68,14 @@ def listed(command, cwd, label, key, env=None):
         raise PolicyError(f"unattended tools: malformed {label} output: {exc}") from exc
 
 
-def codex_launch(binary, argv):
+def codex_launch(binary, argv, *, cwd=None, env=None, native=None):
     denied = {"node_repl", "computer-use", *deny_names("codex")}
-    resolved = shutil.which(binary)
-    if resolved is None:
-        raise PolicyError(f"unattended tools: Codex executable unavailable: {binary}")
-    native = PLATFORM["native_argv"]([str(Path(resolved).absolute())])
-    cwd, config, profile = Path.cwd(), [], []
+    if native is None:
+        resolved = shutil.which(binary)
+        if resolved is None:
+            raise PolicyError(f"unattended tools: Codex executable unavailable: {binary}")
+        native = PLATFORM["native_argv"]([str(Path(resolved).absolute())])
+    cwd, config, profile = cwd or Path.cwd(), [], []
     # Only configuration inputs belong in discovery; prompt/model/output arguments do not.
     values = {"-c", "--config", "-p", "--profile", "--enable", "--disable", "-C", "--cd",
               "-m", "--model", "-s", "--sandbox", "-o", "--output-last-message", "--output-schema",
@@ -107,7 +108,7 @@ def codex_launch(binary, argv):
     shutdown = [part for feature in CODEX_FEATURES for part in ("--disable", feature)]
     try:
         # Codex 0.164 accepts profiles on mcp, but not on features list.
-        raw = probe([*native, "features", "list", *shutdown, *config], cwd, "Codex feature preflight")
+        raw = probe([*native, "features", "list", *shutdown, *config], cwd, "Codex feature preflight", env)
         states = {}
         for row in raw.splitlines():
             fields = row.split()
@@ -119,10 +120,10 @@ def codex_launch(binary, argv):
         if unsafe:
             raise PolicyError(f"unattended tools: Codex features not disabled: {', '.join(unsafe)}")
     except PolicyError as exc:
-        version = probe([*native, "--version"], cwd, "Codex version").strip()
+        version = probe([*native, "--version"], cwd, "Codex version", env).strip()
         raise PolicyError(f"{exc} (Codex version: {version})") from exc
     command = [*native, *profile, "mcp", "list", "--json"]
-    servers = listed([*command, *shutdown, *config], cwd, "Codex mcp list --json", "name")
+    servers = listed([*command, *shutdown, *config], cwd, "Codex mcp list --json", "name", env)
     targeted = {s["name"] for s in servers} & denied
     overrides = []
     for name in sorted(targeted):
@@ -131,7 +132,7 @@ def codex_launch(binary, argv):
         overrides.extend(["-c", f"mcp_servers.{name}.enabled=false"])
     # Match launch order: caller overrides come after the policy. Refuse a conflict.
     verification = listed([*command, *shutdown, *overrides, *config], cwd,
-                          "Codex mcp list --json verification", "name")
+                          "Codex mcp list --json verification", "name", env)
     disabled = {s["name"] for s in verification if not s["enabled"]}
     unsafe = (targeted - disabled) | {s["name"] for s in verification if s["enabled"] and s["name"] in denied}
     if unsafe:

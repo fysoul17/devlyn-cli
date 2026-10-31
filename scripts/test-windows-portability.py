@@ -35,7 +35,8 @@ CURRENT_RULES = (
      ' (default PR and merge), following `_shared/task-completion.md` in `.claude/skills/` or `.agents/skills/` (project, else `~`).'
      ' With known concurrent writers, isolate before editing; on unexplained changes, pause writes until safe or isolated.'
      ' An ideate drain delivers every task. Explicit limits win; commit alone stays local.').encode(),
-    b'Remove code your change makes unused; only report unrelated pre-existing dead code.')
+    b'Remove code your change makes unused; only report unrelated pre-existing dead code.',
+    b'a build, a test pass or reading the source is not observation.')
 
 
 def environment():
@@ -2834,22 +2835,18 @@ console.log(JSON.stringify(Object.fromEntries(DEVLYN_CORE_SKILLS.map((name) =>
                     self.assertNotIn(b'prospective task-branch ownership (linked worktree optional)', after)
                     self.assertNotIn(b'1. **No workaround**', custom)
                     self.assertIn(CURRENT_DEFAULTS, managed)
-                    self.assertEqual([managed.count(rule) for rule in CURRENT_RULES], [1, 1])
+                    self.assertEqual([managed.count(rule) for rule in CURRENT_RULES], [1] * len(CURRENT_RULES))
                     self.assertIn(before, [p.read_bytes() for p in (self.project / '.devlyn/instructions').glob(name + '*.backup')])
                     self.invoke(f"updateInstructions('{name}');")
                     self.assertEqual(dest.read_bytes(), after)
 
     def test_instruction_4_x_blocks_are_replaced_in_place(self):
-        # 4.1.0 renamed the AGENTS.md title and intro; design-ui, the queue skill and resolve were
-        # retired after it. A 4.0.1, 4.1.0 or main (9ecbe51c, d2d34e3e, 415e2d14) block is replaced, never stacked,
-        # and an edited one keeps only the edits: its stock paragraphs, the retired ones too, are
-        # registered fingerprints. Prediction (P4-1): no block keeps the delivery pointer that allocated a
-        # worktree for every direct task, or 415e2d14's delivery only on a ship request; the new block holds
-        # the default-delivery line and principle 2's cleanup sentence once each.
+        # Earlier managed blocks are replaced in place, preserving custom edits and installing
+        # each current delivery, cleanup and observation rule exactly once.
         prefix, suffix = b'# Team rules\n\nUse pnpm.\n\n', b'\n# Local tail\n\nKeep me.\n'
         for name, version in (('AGENTS.md', '4.0.1'), ('AGENTS.md', '4.1.0'), ('AGENTS.md', '9ecbe51c'), ('AGENTS.md', 'd2d34e3e'),
                               ('AGENTS.md', '415e2d14'), ('CLAUDE.md', '4.1.0'), ('CLAUDE.md', '9ecbe51c'), ('CLAUDE.md', 'd2d34e3e'),
-                              ('CLAUDE.md', '415e2d14')):
+                              ('CLAUDE.md', '415e2d14'), ('AGENTS.md', '4.2.0'), ('CLAUDE.md', '4.2.0')):
             dest = self.project / name
             block = (Path(__file__).resolve().parent / f'fixtures/instructions/{name[:-3].lower()}-{version}.md').read_bytes()
             for edited in (False, True):
@@ -2864,7 +2861,7 @@ console.log(JSON.stringify(Object.fromEntries(DEVLYN_CORE_SKILLS.map((name) =>
                         self.assertTrue(after.endswith(suffix.replace(b'\n', eol)))
                         self.assertIn(b'# Project Instructions' + eol, managed)
                         self.assertIn(CURRENT_DEFAULTS, managed)
-                        self.assertEqual([managed.count(rule) for rule in CURRENT_RULES], [1, 1])
+                        self.assertEqual([managed.count(rule) for rule in CURRENT_RULES], [1] * len(CURRENT_RULES))
                         self.assertEqual(after.count(b'2. **No overengineering**'), 1)
                         for stale in (b'Codex CLI reads this file', b'design-ui', b'devlyn-queue', b'references/task-completion.md',
                                       b'outer-loop.md', b'queue drains retain', b'--quick', b'--from-spec', b'per item: spec it',
@@ -3361,7 +3358,7 @@ console.log(JSON.stringify(Object.fromEntries(DEVLYN_CORE_SKILLS.map((name) =>
         prefix, suffix = b'# Team rules\n\nUse pnpm.\n\n', b'\n# Local tail\n\nKeep me.\n'
         fixtures = Path(__file__).resolve().parent / 'fixtures/instructions'
         shipped = {p.name for p in (self.package / 'config/skills/_shared').iterdir() if p.name != '__pycache__'}
-        for version in ('4.1.0', '9ecbe51c', '415e2d14'):
+        for version in ('4.1.0', '9ecbe51c', '415e2d14', '4.2.0'):
             with self.subTest(version=version):
                 self.project = self.case / f'project-{version}'; self.project.mkdir()
                 self.home = self.case / f'home-{version}'; self.home.mkdir()
@@ -3379,7 +3376,10 @@ console.log(JSON.stringify(Object.fromEntries(DEVLYN_CORE_SKILLS.map((name) =>
                 global_settings.write_bytes(settings.read_bytes())
                 for name in ('AGENTS.md', 'CLAUDE.md'):
                     block = (fixtures / f'{name[:-3].lower()}-{version}.md').read_bytes()
-                    self.assertIn(b'asks to ship' if version == '415e2d14' else b'devlyn-resolve', block)
+                    if version == '4.2.0':
+                        self.assertNotIn(b'- Observation', block)
+                    else:
+                        self.assertIn(b'asks to ship' if version == '415e2d14' else b'devlyn-resolve', block)
                     (self.project / name).write_bytes(prefix + block + suffix)
                 result = self.cli('-y')
                 self.cli('-y', '--global', '--claude')
@@ -3405,7 +3405,7 @@ console.log(JSON.stringify(Object.fromEntries(DEVLYN_CORE_SKILLS.map((name) =>
                     self.assertEqual(data.count(b'devlyn:instructions:begin'), 1)
                     self.assertIn(CURRENT_DEFAULTS, data)
                     new_block = data.split(b'<!-- devlyn:instructions:begin')[1]
-                    self.assertEqual([new_block.count(rule) for rule in CURRENT_RULES], [1, 1])
+                    self.assertEqual([new_block.count(rule) for rule in CURRENT_RULES], [1] * len(CURRENT_RULES))
                     for stale in (b'devlyn-resolve', b'asks to ship', b'allocated before editing'):
                         self.assertNotIn(stale, data)
                 # Upgrading again changes nothing.
@@ -3443,6 +3443,7 @@ completion['atomic_json'](p, {'message':payload})
 assert completion['read_json'](p)['message'] == payload
 contract = runpy.run_path(shared / 'expected-contract.py')
 assert runpy.run_path(shared / 'warm-build-dirs.py')['warm'](work, work, work) == []
+assert callable(runpy.run_path(shared / 'observer.py')['serving'])
 assert contract['loads_strict_json'](p.read_text(encoding='utf-8'))['message'] == payload
 # Explicit cp949 streams are distinct from the observed native ANSI default.
 sys.stdout.reconfigure(encoding='cp949', errors='strict')
