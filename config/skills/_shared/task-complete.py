@@ -380,7 +380,6 @@ def allocate(args, *, exclude_receipts=(), warnings=None):
     if request is not None:
         (directory / "request.txt").write_bytes(request)
         receipt["request_sha256"] = hashlib.sha256(request).hexdigest()
-    shared("acceptance-look")["initialize"](directory, args.task, request, user_facing)
     # Persist prospective intent BEFORE native creation. An interrupted allocation
     # stays visibly incomplete; a later call may not adopt whatever now exists.
     atomic_json(path, receipt)
@@ -405,6 +404,9 @@ def allocate(args, *, exclude_receipts=(), warnings=None):
         raise CompletionError(f"{exc}; remove worktree {target} and branch {args.branch}, delete receipt directory {directory}, then allocate again") from exc
     receipt["worktree_gitdir"] = git(target, "rev-parse", "--absolute-git-dir")
     receipt["worktree_identity"] = workspace_identity(target, Path(receipt["worktree_gitdir"]))
+    # Failed worktree setup must remain recoverable without abandoning controller custody.
+    # Initialize only after setup succeeds, still before ownership permits any executor.
+    shared("acceptance-look")["initialize"](directory, args.task, request, user_facing)
     receipt["allocation"] = "owned"
     atomic_json(path, receipt)
     # Owned first: an interrupted warm-up leaves a usable allocation whose build starts cold.

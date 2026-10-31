@@ -1303,9 +1303,9 @@ class LoopFixture(unittest.TestCase):
                                  f"    if row['identity'] == '{loop}.t1':\n        raise g['LoopError']('inputs unavailable; restore package')\n"
                                  "    return real(v, row, *args)\ng['ensure_packet'] = call\n")
                 elif target == "acceptance":
-                    injection = ("a = q['acceptance']()\nreal = a['accept']\ndef call(packet, *args):\n"
+                    injection = ("a = q['acceptance']()\nreal = a['accept']\ndef call(packet, *args, **kwargs):\n"
                                  f"    if json.loads(packet.read_text(encoding='utf-8'))['task'] == '{loop}.t1':\n        raise a['AcceptanceError']('checks unavailable')\n"
-                                 "    return real(packet, *args)\na['accept'] = call\n")
+                                 "    return real(packet, *args, **kwargs)\na['accept'] = call\n")
                 else:
                     injection = ("real = g['task_complete']\ndef call(action, **kw):\n"
                                  f"    if action == '{target}' and json.loads(pathlib.Path(kw['receipt']).read_text(encoding='utf-8'))['task'] == '{loop}.t1':\n"
@@ -3100,6 +3100,8 @@ class LoopFixture(unittest.TestCase):
         self.assertEqual((self.calls("hk.t1"), self.calls("lo.t1")), (0, 1))
         hook.unlink()
         path, receipt = self.receipt_path("hk.t1"), self.receipt("hk.t1")
+        look = self.queue["shared"]("acceptance-look")
+        self.assertFalse(look["custody_root"](path.parent).exists())
         reason = (f"allocation did not finish ({path}); remove its worktree {receipt['worktree']} and branch {receipt['branch']} if present, "
                   f"delete {path.parent}, then drain again")
         tasks = self.tasks(self.drain())
@@ -3110,6 +3112,7 @@ class LoopFixture(unittest.TestCase):
         self.g("branch", "-D", receipt["branch"])
         shutil.rmtree(path.parent)
         self.assertEqual((self.tasks(self.drain())["hk.t1"]["result"], self.calls("hk.t1")), ("accepted", 1))
+        self.assertFalse(look["binding"](path.parent, self.receipt("hk.t1"))["user_facing"])
 
     def remote(self, **server):
         """GitHub stand-in: task-complete's fake gh and transport wrappers over a local bare repository."""

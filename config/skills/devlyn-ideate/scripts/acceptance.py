@@ -516,6 +516,13 @@ class AcceptanceTests(unittest.TestCase):
         self.write(".gitignore", ".devlyn/\n")
         self.commit("base")
         self.g("switch", "-q", "-c", "devlyn/l/t")
+        from unittest import mock
+        self.request = "# task R1 R2\n"
+        self.receipt_root = self.work / ".git/devlyn-completion/fixture"
+        self.receipt_root.mkdir(parents=True)
+        helper = shared("acceptance-look")
+        self.enterContext(mock.patch.dict(helper["custody_root"].__globals__, controller_home=lambda: self.root / "controller"))
+        helper["initialize"](self.receipt_root, "l.t", self.request.encode("utf-8"), False)
         self.commands = [
             {"argv": [sys.executable, "-c", "import pathlib; print(pathlib.Path('product.txt').read_text())"],
              "stdout_contains": ["ready"], "contract_refs": ["R1"]},
@@ -537,7 +544,7 @@ class AcceptanceTests(unittest.TestCase):
 
     def inputs(self, expected=None, review=()):
         base = self.g("rev-parse", "HEAD")
-        files = {"docs/specs/l/meta.md": "# meta\n", "docs/specs/l/t/spec.md": "# task R1 R2\n",
+        files = {"docs/specs/l/meta.md": "# meta\n", "docs/specs/l/t/spec.md": self.request,
                  "docs/specs/l/t/spec.expected.json": json.dumps(expected or {"verification_commands": self.commands}),
                  QUEUE: "- [ ] l.t [T](docs/specs/l/t/spec.md)\n"}
         for rel, data in files.items():
@@ -545,11 +552,12 @@ class AcceptanceTests(unittest.TestCase):
         inputs = self.commit("inputs")
         digest = {rel: sha256((self.work / rel).read_bytes()) for rel in files}
         self.packet = {"task": "l.t", "worktree": str(self.work), "branch": "devlyn/l/t", "inputs_sha": inputs, "allocation_base": base,
+                       "receipt": str(self.receipt_root / "receipt.json"), "request": self.request, "user_facing": False,
                        "contract": {"path": str(self.work / "docs/specs/l/t/spec.md"), "sha256": digest["docs/specs/l/t/spec.md"]},
                        "expected": {"path": str(self.work / "docs/specs/l/t/spec.expected.json"), "sha256": digest["docs/specs/l/t/spec.expected.json"]},
                        "meta": {"path": str(self.work / "docs/specs/l/meta.md"), "sha256": digest["docs/specs/l/meta.md"]},
                        "requirements": ["R1", "R2"], "review_requirements": list(review)}
-        self.packet_path = self.root / "packet.json"
+        self.packet_path = self.receipt_root / "packet.json"
         self.packet_path.write_text(json.dumps(self.packet), encoding="utf-8")
 
     def product(self, body="ready"):

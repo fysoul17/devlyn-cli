@@ -2159,11 +2159,23 @@ class QueueTests(unittest.TestCase):
                         held.stdin.close()
         self.assertEqual((read_json(added_path(common, "inv"))["origin"], read_json(added_path(common, "inv"))["branch"]), (str(linked), "side"))
 
+    def execution_packet(self):
+        from unittest import mock
+        work, records = self.root / "work", self.anchor / ".git/devlyn-completion/fixture"
+        work.mkdir()
+        records.mkdir(parents=True)
+        request = "Run the fixture task.\n"
+        helper = shared("acceptance-look")
+        self.enterContext(mock.patch.dict(helper["custody_root"].__globals__, controller_home=lambda: self.root / "controller"))
+        helper["initialize"](records, "l.t", request.encode("utf-8"), False)
+        packet = {"task": "l.t", "receipt": str(records / "receipt.json"), "request": request, "user_facing": False,
+                  "worktree": str(work), "submission": str(records / "submission.json"), "inputs_sha": "0" * 40,
+                  "evidence_dir": str(work / ".devlyn/loop")}
+        return work, records, packet
+
     def test_observer_lifetime_and_start_failure(self):
         from unittest import mock
-        work, records = self.root / "work", self.root / "records"
-        work.mkdir()
-        records.mkdir()
+        work, records, packet = self.execution_packet()
         lock = records / "observe/serving.lock"
 
         def alive():
@@ -2174,8 +2186,7 @@ class QueueTests(unittest.TestCase):
                     return False
             except BlockingIOError:
                 return True
-        packet = {"worktree": str(work), "submission": str(records / "submission.json"),
-                  "evidence_dir": str(work / ".devlyn/loop"), "observe": ["untrusted", str(self.root / "wrong-spool")]}
+        packet["observe"] = ["untrusted", str(self.root / "wrong-spool")]
         events = []
         recording = record
 
@@ -2235,11 +2246,7 @@ class QueueTests(unittest.TestCase):
         with a blocked-infrastructure blocker, which made the task [F]."""
         from unittest import mock
         helper = shared("task-complete")
-        work, records = self.root / "work", self.root / "records"
-        work.mkdir()
-        records.mkdir()
-        packet = {"worktree": str(work), "submission": str(records / "submission.json"), "inputs_sha": "0" * 40,
-                  "evidence_dir": str(work / ".devlyn/loop")}
+        work, records, packet = self.execution_packet()
         spawns, checks = [], []
 
         class Crash(BaseException):
