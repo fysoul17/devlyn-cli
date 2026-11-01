@@ -442,6 +442,40 @@ assert.deepEqual(fs.readdirSync(path.join(store, 'devlyn-cli')), []);
             data = self.cli('status', '--project', repo)['instructions'][0]
             self.assertEqual((data['ownership'], data['committed']), (expected, False))
 
+    def test_previous_managed_instructions_are_outdated_and_cleanup_preserves_owner_bytes(self):
+        # Prediction: intact 4.2.x/4.3.x blocks are outdated; cleanup replaces only their managed bytes.
+        repo = self.init_repo(self.case / 'repo')
+        home = self.case / 'home'
+        home.mkdir()
+        env = {**environment(), 'HOME': str(home), 'USERPROFILE': str(home),
+               'CODEX_HOME': str(home / '.codex')}
+        prefix = '\ufeff# Owner rules\r\n\r\nKeep 한글 and spacing.  \r\n\r\n'.encode()
+        suffix = b'\n# Local footer\nKeep this exact tail.  '
+        for name in ('AGENTS.md', 'CLAUDE.md'):
+            template = run(['git', 'show', f'c903a9c8:{name}'], cwd=ROOT).stdout.replace(b'\r\n', b'\n')
+            self.assertEqual(hashlib.sha256(template).hexdigest(),
+                             '4823ba898cdf99ce24366a3d1983af63cdb14d2e1b95b5bdafea49097f457ff5')
+            body = (b'Project-specific instructions outside this managed block take precedence over these defaults.\n\n'
+                    + template.rstrip(b'\n') + b'\n')
+            block = (b'<!-- devlyn:instructions:begin sha256=' + hashlib.sha256(body).hexdigest().encode()
+                     + b' -->\n' + body + b'<!-- devlyn:instructions:end -->\n')
+            (repo / name).write_bytes(prefix + block.replace(b'\n', b'\r\n') + suffix)
+        before = self.cli('status', '--project', repo, env=env)['instructions']
+        self.assertEqual([item['ownership'] for item in before], ['outdated', 'outdated'])
+        plan = self.cli('cleanup', '--plan', '--project', repo, env=env)
+        items = plan['scopes'][0]['items']
+        self.assertEqual(sorted((item['relative'], item['action']) for item in items),
+                         [('AGENTS.md', 'edit'), ('CLAUDE.md', 'edit')])
+        plan_file = self.case / 'plan.json'
+        plan_file.write_text(json.dumps(plan), encoding='utf-8')
+        result = self.cli('cleanup', '--apply', '--plan-file', plan_file, '--digest', plan['digest'], env=env)
+        self.assertEqual(result['state'], 'succeeded')
+        for name in ('AGENTS.md', 'CLAUDE.md'):
+            current = (self.package / 'harness' / name).read_bytes().replace(b'\n', b'\r\n')
+            self.assertEqual((repo / name).read_bytes(), prefix + current + suffix)
+        after = self.cli('status', '--project', repo, env=env)['instructions']
+        self.assertEqual([item['ownership'] for item in after], ['current', 'current'])
+
     def test_committed_compares_raw_instruction_bytes(self):
         repo = self.init_repo(self.case / 'repo')
         agents = repo / 'AGENTS.md'
