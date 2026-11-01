@@ -123,7 +123,7 @@ Execute the devlyn loop task packet {packet}: read its workerPrompt when present
 python3 "$DEVLYN_SKILL_DIR/scripts/queue.py" drain --repo . [--local-only] -- <executor argv>
 ```
 
-A drain can run for hours. Do not end the turn until it exits: run it in the foreground with the longest allowed timeout, or in the background and await its completion notice, because a headless host kills background tasks at its final response.
+A drain can run for hours. Do not end the turn until it exits: run it in the foreground with the longest allowed timeout, or in the background and await its completion notice, because reporting the drain's result requires observing its exit.
 
 - `WAITING` on legacy rows: plan and materialize each under the autonomous policy, then drain again; a row whose planning stops on material ambiguity stays pending and its question is reported.
 - Other `WAITING`: report each task’s reason and recovery command. Task-local failures leave dependents and barrier-held siblings waiting while independent work continues; the next drain retries eligible work once. An interrupted executor is observed once per drain and cannot be adopted or respawned until it stops. `BLOCKED` means authoritative queue reconstruction or preflight failed, including a held drain lock. Never edit receipts, refs or queue rows to get past either result.
