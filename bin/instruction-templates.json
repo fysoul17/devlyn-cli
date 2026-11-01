@@ -37,6 +37,18 @@
         "length": 12306,
         "sha256": "0de6061f9dff8e88964e542bb8a5e113996e480bef597774fb15eaa766472129"
       }
+    },
+    {
+      "versions": [
+        "4.3.20"
+      ],
+      "length": 4018,
+      "sha256": "4823ba898cdf99ce24366a3d1983af63cdb14d2e1b95b5bdafea49097f457ff5",
+      "preamble": "# Project Instructions\n\ndevlyn-cli installs the `devlyn-ideate` and `devlyn-engines` skills alongside the principles below, which are non-negotiable on every change \u2014 yours and any sub-agent's.\n\n",
+      "body": {
+        "length": 3823,
+        "sha256": "372d8fcee5f2498bcf282ebd3b3ba74d2ccf317019406193317275864d1f78a2"
+      }
     }
   ],
   "CLAUDE.md": [
@@ -76,6 +88,18 @@
       "body": {
         "length": 25922,
         "sha256": "dd9f0f63f559a3b9a6e2bbf102045b01f6b73bce684dd27124ee6d6af3641b91"
+      }
+    },
+    {
+      "versions": [
+        "4.3.20"
+      ],
+      "length": 4018,
+      "sha256": "4823ba898cdf99ce24366a3d1983af63cdb14d2e1b95b5bdafea49097f457ff5",
+      "preamble": "# Project Instructions\n\ndevlyn-cli installs the `devlyn-ideate` and `devlyn-engines` skills alongside the principles below, which are non-negotiable on every change \u2014 yours and any sub-agent's.\n\n",
+      "body": {
+        "length": 3823,
+        "sha256": "372d8fcee5f2498bcf282ebd3b3ba74d2ccf317019406193317275864d1f78a2"
       }
     }
   ],
@@ -124,6 +148,7 @@
       "1e422822267e34b88f562ba5255de6dd01f0ecefaf0418c9ef833171ee45e355",
       "1f3336666bede137770444293ff66e5c104f84de7e63221c0f35c562dd8081ea",
       "2004e8e621b572a5d0a24298a2f9f605e449c54e36eafbd47cbaac134422ff17",
+      "20fc8ed06133075933c2b06161d0e304a0d6d9203a2df5d1373ade9c1b4f687b",
       "20fe0401771436eecdbccfaf8e24742d387292bf73017b583f8078133117c133",
       "2203c9d11299068ec05668c24ebbd2eb461fdf832928524a21ce97933ea2cc16",
       "220ddfe5b75c8b2787a674d801d05c1394fafc40a30ed4a83d88545b44732943",
@@ -490,6 +515,7 @@
       "1fa41c8a810b585535072b74f943a8570d942eb5617154353a5c8b6ebff4a2fb",
       "201b88453127e7a4dceb42a7ce6250812ed8a1aa00687c989d58741695ec8291",
       "20a6ad5c33b13bc791f34e1e414aadd5bf9b25383d21f0dde96a76cd9f45606a",
+      "20fc8ed06133075933c2b06161d0e304a0d6d9203a2df5d1373ade9c1b4f687b",
       "211bb6710ed1fcef43007513d049ad370e7c3031c0c27d0f9f0b56fc3f0d5355",
       "2245a7c07fa1440095d01e4b938ab33040472ee6a1d2eb0f1962ebab1d6fdbb8",
       "2293106039eca5e9e892aa51952bd545fb571731b416ff8f0b259c471be21cc4",

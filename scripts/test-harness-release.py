@@ -442,6 +442,18 @@ assert.deepEqual(fs.readdirSync(path.join(store, 'devlyn-cli')), []);
             data = self.cli('status', '--project', repo)['instructions'][0]
             self.assertEqual((data['ownership'], data['committed']), (expected, False))
 
+    def test_previous_release_instructions_are_owned(self):
+        # Published 4.3.20 blocks must remain outdated Devlyn defaults, not modified user content.
+        repo = self.init_repo(self.case / 'repo')
+        for name in ('AGENTS.md', 'CLAUDE.md'):
+            original = (Path(__file__).resolve().parent / 'fixtures/instructions'
+                        / f'{name[:-3].lower()}-4.3.20.md').read_bytes()
+            for eol in (b'\n', b'\r\n'):
+                with self.subTest(name=name, eol=eol):
+                    (repo / name).write_bytes(b'\xef\xbb\xbf# Owner rules' + eol + original.replace(b'\n', eol))
+                    data = next(item for item in self.cli('status', '--project', repo)['instructions'] if Path(item['path']).name == name)
+                    self.assertEqual(data['ownership'], 'outdated')
+
     def test_committed_compares_raw_instruction_bytes(self):
         repo = self.init_repo(self.case / 'repo')
         agents = repo / 'AGENTS.md'
