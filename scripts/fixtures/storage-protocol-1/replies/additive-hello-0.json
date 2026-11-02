@@ -1,0 +1,13 @@
+{
+  "future_reply": {
+    "version": 2
+  },
+  "kind": "hello",
+  "value": {
+    "capabilities": [
+      "reserve"
+    ],
+    "schema": 2,
+    "storage_protocol": 1
+  }
+}

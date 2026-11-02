@@ -19,6 +19,100 @@ HELPER = ROOT / "config" / "skills" / "_shared" / "task-complete.py"
 
 
 class CleanupFixture(unittest.TestCase):
+    def test_uncertain_managed_allocation_preserves_recovery_fields(self):
+        body = r"""
+const fs = require('fs'), path = require('path'), vm = require('vm');
+const source = fs.readFileSync(process.argv[1], 'utf8');
+const start = source.indexOf('function cleanupDeliver('), end = source.indexOf("// The remote base's cleanup", start);
+const refusal = {status:'BLOCKED', reason:'uncertain allocation', receipt:'/receipt.json', resume:'recover saved operation',
+  storage_error:{code:'storage_io', operation:'allocate', phase:'helper'}};
+const context = {CONFIG_SOURCE:'.', PKG:{version:'test'}, path, crypto:require('crypto'), process,
+  cleanupPython:()=>'python3', cleanupReason:(code,params)=>({code,params}),
+  spawnSync:()=>({stdout:JSON.stringify(refusal)})};
+vm.runInNewContext(source.slice(start,end) + '; result=cleanupDeliver({root:"/fixture",remote:{repository:"fixture",base:"main"}},[],{});',context);
+for (const key of ['receipt','resume','storage_error']) {
+  if (JSON.stringify(context.result.error.params[key]) !== JSON.stringify(refusal[key])) throw Error('lost '+key);
+}
+"""
+        self.run_ok(['node', '-e', body, CLI])
+
+    def test_managed_release_resets_its_edits_and_commit_before_abandonment(self):
+        repo = self.repo('managed-release')
+        baseline = self.run_ok(['git', 'rev-parse', 'HEAD'], cwd=repo).stdout.strip()
+        work = repo.parent / (repo.name + '.devlyn.noindex') / 'devlyn-cleanup-deadbeef'
+        self.run_ok(['git', 'worktree', 'add', '-b', 'devlyn/cleanup-deadbeef', work], cwd=repo)
+        receipt = self.root / 'release-receipt.json'
+        receipt.write_text(json.dumps({'mode': 'managed', 'baseline': baseline}))
+        body = r"""
+const fs=require('fs'),path=require('path'),vm=require('vm'),cp=require('child_process');
+const [filename,repo,receipt,baseline]=process.argv.slice(1), source=fs.readFileSync(filename,'utf8');
+const start=source.indexOf('function cleanupDeliver('),end=source.indexOf("// The remote base's cleanup",start);
+for (const committed of [false,true]) {
+  let recovered=false;
+  const context={CONFIG_SOURCE:'.',PKG:{version:'test'},path,process,fs,
+    crypto:{randomBytes:()=>Buffer.from('deadbeef','hex')}, cleanupPython:()=>'python3',cleanupReason:(code,params)=>({code,params}),
+    cleanupGit:(cwd,args)=>cp.spawnSync('git',['-C',cwd,...args],{encoding:'utf8'}),
+    spawnSync:(python,args)=>{
+      if (args.includes('allocate')) return {stdout:JSON.stringify({status:'ALLOCATED',receipt})};
+      if (!args.includes('--for-removal')) throw Error('wrong recovery');
+      const work=path.join(path.dirname(repo),path.basename(repo)+'.devlyn.noindex','devlyn-cleanup-deadbeef');
+      if (cp.spawnSync('git',['-C',work,'rev-parse','HEAD'],{encoding:'utf8'}).stdout.trim()!==baseline) throw Error('branch not reset');
+      if (cp.spawnSync('git',['-C',work,'status','--porcelain'],{encoding:'utf8'}).stdout.trim()) throw Error('edits not reset');
+      recovered=true;return {stdout:JSON.stringify({status:'ABANDONED'})};},
+    cleanupDeliveryCommit:(work,items,current,release)=>{
+      fs.writeFileSync(path.join(work,'README.md'),'cleanup own edit');
+      cp.spawnSync('git',['-C',work,'add','README.md']);
+      if (committed && cp.spawnSync('git',['-C',work,'commit','-qm','cleanup own commit']).status!==0) throw Error('fixture commit');
+      return release({code:'apply-failed',params:{detail:'fixture failure'}});},cleanupUpdateCheckout:()=>({})};
+  vm.runInNewContext(source.slice(start,end)+'; result=cleanupDeliver({root:'+JSON.stringify(repo)+',remote:{repository:"fixture",base:"main"}},[],{});',context);
+  if (!recovered || context.result.error.params.resume) throw Error('release did not settle');
+}
+"""
+        self.run_ok(['node', '-e', body, CLI, repo, receipt, baseline])
+
+    def test_managed_delivery_release_uses_fenced_removal_and_keeps_receipt(self):
+        body = r"""
+const fs = require('fs'), path = require('path'), vm = require('vm');
+const filename = process.argv[1], receiptPath = process.argv[2];
+const source = fs.readFileSync(filename, 'utf8');
+const start = source.indexOf('function cleanupDeliver(');
+const end = source.indexOf("// The remote base's cleanup", start);
+for (const binding of [{allocation:'managed_owned'}, {mode:'managed'}, {allocation_state:'managed_future'}, {allocation:'owned'}]) {
+fs.writeFileSync(receiptPath, JSON.stringify({...binding, baseline:'baseline', storage:{request:{operation_id:'saved-allocation-operation'}}}));
+const marker = path.join(path.dirname(receiptPath), 'storage-allocation.json');
+if (binding.allocation === 'owned') fs.writeFileSync(marker, 'Rust-owned');
+for (const schedule of ['head-failure', 'nothing-present', 'storage-outage', 'pins-refusal']) {
+  const calls = [];
+  const context = { CONFIG_SOURCE: path.dirname(filename), PKG: {version:'test'}, path, crypto: require('crypto'),
+    process, console, fs: {readFileSync: fs.readFileSync, lstatSync: fs.lstatSync, rmSync: () => {throw Error('managed receipt deleted');}},
+    cleanupPython: () => 'python3', cleanupReason: (code, params) => ({code, params}),
+    spawnSync: (python, args) => {
+      calls.push(args);
+      if (args.includes('allocate')) return {stdout: JSON.stringify({status:'ALLOCATED', receipt:receiptPath})};
+      if (!args.includes('recover-storage') || !args.includes('--for-removal')) throw Error('unfenced managed release');
+      if (args[args.indexOf('--operation-id')+1] !== 'saved-allocation-operation') throw Error('recovery lost operation identity');
+      return {stdout: JSON.stringify({status: ['storage-outage', 'pins-refusal'].includes(schedule) ? 'BLOCKED' : 'ABANDONED', reason:'offline',
+        ...(schedule === 'pins-refusal' ? {resume:'verified-recovery --operation-id saved-allocation-operation --for-removal'} : {})})};
+    },
+    cleanupGit: (root, args) => {
+      if (args[0] === 'reset' && args.join(' ') === 'reset --hard baseline') return {status:0};
+      if (args[0] !== 'rev-parse') throw Error('unexpected Git managed removal');
+      return {status: schedule === 'head-failure' ? 1 : 0, stdout:'baseline', stderr:'failure'};
+    },
+    cleanupDeliveryCommit: (work, items, current, release) => release(), cleanupUpdateCheckout: () => ({}) };
+  vm.runInNewContext(source.slice(start, end) + '; result = cleanupDeliver({root:"/fixture",remote:{repository:"fixture",base:"main"}}, [], {});', context);
+  if (calls.length !== 2 || !fs.existsSync(receiptPath)) throw Error('managed release lost recovery');
+  if (schedule === 'storage-outage' && (!context.result.error.params.resume.includes('--for-removal') ||
+      !context.result.error.params.resume.includes('saved-allocation-operation'))) throw Error('resume identity missing');
+  if (schedule === 'pins-refusal' && context.result.error.params.resume !==
+      'verified-recovery --operation-id saved-allocation-operation --for-removal') throw Error('helper resume not forwarded');
+}
+}
+"""
+        receipt = self.root / 'managed-receipt.json'
+        receipt.write_text(json.dumps({'allocation': 'managed_owned'}))
+        self.run_ok(['node', '-e', body, CLI, receipt])
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix="devlyn cleanup ✓ ")
         self.addCleanup(self.temp.cleanup)

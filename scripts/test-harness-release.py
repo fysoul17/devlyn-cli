@@ -205,6 +205,10 @@ class ReleaseTests(unittest.TestCase):
     def test_digest_covers_every_file_and_mode(self):
         manifest = json.loads((self.package / 'release.json').read_bytes())
         files = {f['path']: f for f in manifest['files']}
+        self.assertIn('config/storage-client-contract.json', files)
+        contract = json.loads((self.package / 'config/storage-client-contract.json').read_bytes())
+        self.assertEqual(contract, {'schema': 1, 'storage_protocol': 1, 'checkout_adapter': 1,
+            'managed_receipt_states': ['managed_pending', 'managed_owned'], 'recovery_removal': 1})
         self.assertTrue(any(p.startswith('node_modules/') for p in files))
         self.assertEqual(set(files), {str(f.relative_to(self.package)).replace(os.sep, '/') for f in self.package.rglob('*') if f.is_file()} - {'release.json'})
         for name, entry in files.items():

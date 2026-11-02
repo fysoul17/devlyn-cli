@@ -526,8 +526,15 @@ def warm_cargo(work, anchor, staging_root, deadline):
     with contextlib.ExitStack() as stack:
         staging = None
         try:
-            if shutil.which("cargo") is None:
-                raise Skip("cargo is not on PATH")
+            # Decide managed cold start before Cargo, destination setup, donors
+            # or any seeding work. Standalone keeps its original path.
+            import runpy
+            storage = runpy.run_path(str(Path(__file__).with_name('storage-client.py')))
+            decision = storage['operation_enrollment']()
+            if decision['mode'] == 'managed':
+                return entry('cargo', 'cold', reason='managed warming deferred; cold start')
+            if shutil.which('cargo') is None:
+                raise Skip('cargo is not on PATH')
             target, relative, parent = destination(work, deadline, stack)
             candidates = donors(work, anchor, relative, deadline)
             if not candidates:
@@ -678,6 +685,11 @@ class WarmTests(unittest.TestCase):
         temporary = tempfile.TemporaryDirectory(prefix="warm-build-dirs-")
         self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name).resolve()
+        test_home = self.root / "home"
+        test_home.mkdir()
+        home_env = mock.patch.dict(os.environ, {"HOME": str(test_home), "USERPROFILE": str(test_home)})
+        home_env.start()
+        self.addCleanup(home_env.stop)
         (self.root / "sitecustomize.py").write_text(
             "import importlib.machinery, importlib.util, pathlib, sys\n"
             "spec = importlib.machinery.PathFinder.find_spec('sitecustomize', [p for p in sys.path if pathlib.Path(p or '.').resolve() != pathlib.Path(__file__).resolve().parent])\n"
@@ -730,7 +742,7 @@ class WarmTests(unittest.TestCase):
             def copy(source, target, deadline):
                 target.parent.mkdir(parents=True, exist_ok=True)
                 subprocess.run(["cp", "-a", "--", str(source), str(target)], check=True)
-            patch = mock.patch(f"{__name__}.clone", copy)
+            patch = mock.patch.dict(warm_cargo.__globals__, clone=copy)
             patch.start()
             self.addCleanup(patch.stop)
 
@@ -831,6 +843,44 @@ class WarmTests(unittest.TestCase):
     def assert_nothing_left(self):
         self.assertEqual([], list(self.staging.iterdir()))
         self.assertEqual("", self.git(self.work, "status", "--porcelain", "--untracked-files=all"))
+
+    @unittest.skipIf(os.name == 'nt', 'Windows keeps its existing skip')
+    def test_managed_skip_precedes_donor_traversal_and_reports_cold_start(self):
+        from unittest import mock
+        import runpy
+        real = runpy.run_path
+        def modules(path, *args, **kwargs):
+            if Path(path).name == 'storage-client.py':
+                return {'operation_enrollment': lambda: {'mode': 'managed'}}
+            return real(path, *args, **kwargs)
+        with mock.patch.object(runpy, 'run_path', modules), \
+             mock.patch.dict(warm_cargo.__globals__, donors=mock.Mock(side_effect=AssertionError('donor traversal')),
+                             destination=mock.Mock(side_effect=AssertionError('destination setup')),
+                             clone=mock.Mock(side_effect=AssertionError('seed')), publish=mock.Mock(side_effect=AssertionError('publish'))):
+            result = self.warm()[0]
+        self.assertEqual(result['status'], 'cold')
+        self.assertIn('cold start', result['reason'])
+        self.assertFalse((self.work / 'target').exists())
+        self.assert_nothing_left()
+
+    @unittest.skipIf(os.name == 'nt', 'warming is POSIX-only')
+    def test_standalone_warm_never_registers_destination(self):
+        from unittest import mock
+        import runpy
+        real = runpy.run_path
+        def modules(path, *args, **kwargs):
+            module = real(path, *args, **kwargs)
+            if Path(path).name == 'storage-client.py':
+                module['Client'] = mock.Mock(side_effect=AssertionError('standalone authority call'))
+                module['operation_id'] = mock.Mock(side_effect=AssertionError('standalone operation'))
+            return module
+        common = Path(self.git(self.work, 'rev-parse', '--path-format=absolute', '--git-common-dir').strip())
+        before = sorted(p.name for p in common.iterdir())
+        with mock.patch.object(runpy, 'run_path', modules):
+            result = self.warm()[0]
+        self.assertEqual(result['status'], 'seeded', result)
+        self.assertEqual(sorted(p.name for p in common.iterdir()), before)
+        self.assertFalse((Path(os.environ['HOME']) / '.devlyn').exists())
 
     @unittest.skipIf(os.name == "nt", "warming is POSIX-only")
     def test_local_git_true_seeds_without_cargo_opt_in(self):

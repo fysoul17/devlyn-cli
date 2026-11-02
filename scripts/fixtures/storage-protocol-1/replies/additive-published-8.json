@@ -1,0 +1,76 @@
+{
+  "kind": "published",
+  "value": {
+    "cache": {
+      "cache_id": "01a840d0-5c00-7000-8000-000000000003",
+      "coverage": "unproven",
+      "created_at": "2026-11-02T00:00:00Z",
+      "creator": {
+        "operation_id": "01a840d0-5c00-7000-8000-000000000001",
+        "product": "devlyn-cli",
+        "protocol_version": 1
+      },
+      "disposable": true,
+      "kind": "cargo_build_cache",
+      "last_release_at": null,
+      "location": {
+        "directory_identity": {
+          "file": "340282366920938463463374607431768211455",
+          "volume": "18446744073709551615"
+        },
+        "entry": "target",
+        "parent": "/repo/작업/é",
+        "parent_evidence": {
+          "identity": {
+            "file": "340282366920938463463374607431768211455",
+            "volume": "18446744073709551615"
+          },
+          "mount": "mount"
+        },
+        "parent_identity": {
+          "file": "340282366920938463463374607431768211455",
+          "future_reply": {
+            "version": 2
+          },
+          "volume": "18446744073709551615"
+        },
+        "pool_id": null,
+        "volume_id": "volume"
+      },
+      "owner": {
+        "allocation_id": "01a840d0-5c00-7000-8000-000000000001",
+        "receipt": "/repo/.git/devlyn-completion/작업/receipt.json",
+        "repository": {
+          "file": "340282366920938463463374607431768211455",
+          "volume": "18446744073709551615"
+        }
+      },
+      "protection": null,
+      "reason": null,
+      "removal_generation": 0,
+      "removal_id": null,
+      "retire_intent": false,
+      "retirement_authorized_by": null,
+      "schema_version": 2,
+      "state": "preparing",
+      "supervisor": {
+        "pid": 42,
+        "start": "linux:987654321"
+      }
+    },
+    "lease": {
+      "acquired_at": "2026-11-02T00:00:00Z",
+      "cache_id": "01a840d0-5c00-7000-8000-000000000003",
+      "consumers": [],
+      "descendants_reconciled": false,
+      "leaf": false,
+      "lease_id": "01a840d0-5c00-7000-8000-000000000004",
+      "operation_id": "publication",
+      "released_at": null,
+      "supervisor": {
+        "pid": 42,
+        "start": "linux:987654321"
+      }
+    }
+  }
+}

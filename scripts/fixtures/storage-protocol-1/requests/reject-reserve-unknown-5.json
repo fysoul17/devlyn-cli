@@ -1,0 +1,28 @@
+{
+  "request": {
+    "op": "reserve",
+    "operation_id": "01a840d0-5c00-7000-8000-000000000001",
+    "owner": {
+      "allocation_id": "01a840d0-5c00-7000-8000-000000000001",
+      "receipt": "/repo/.git/devlyn-completion/작업/receipt.json",
+      "repository": {
+        "file": "340282366920938463463374607431768211455",
+        "volume": "18446744073709551615"
+      }
+    },
+    "plan": {
+      "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "kind": "known",
+      "writes": [
+        {
+          "bytes": "1",
+          "future_input": true,
+          "parent": "/repo/작업/é",
+          "phase": "checkout",
+          "relative": "target/构建"
+        }
+      ]
+    }
+  },
+  "storage_protocol": 1
+}

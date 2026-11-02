@@ -1,0 +1,19 @@
+{
+  "request": {
+    "op": "reserve",
+    "operation_id": "01a840d0-5c00-7000-8000-000000000001",
+    "owner": {
+      "allocation_id": "01a840d0-5c00-7000-8000-000000000001",
+      "receipt": "/repo/.git/devlyn-completion/작업/receipt.json",
+      "repository": {
+        "file": "340282366920938463463374607431768211455",
+        "volume": "18446744073709551615"
+      }
+    },
+    "plan": {
+      "kind": "unknown",
+      "reason": "missing_object"
+    }
+  },
+  "storage_protocol": 1
+}

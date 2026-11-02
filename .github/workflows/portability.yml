@@ -7,7 +7,8 @@ on:
   # node scripts/update-cleanup-history.js && node scripts/update-instruction-templates.js &&
   # node scripts/update-skill-history.js &&
   # node --test scripts/test-installer-menu.cjs && bash scripts/lint-skills.sh &&
-  # python3 scripts/test-ideate-loop.py (then restore the generated bin/*.json files)
+  # python3 scripts/test-ideate-loop.py && python3 scripts/test-storage-client.py
+  # (then restore the generated bin/*.json files)
   workflow_call:
   workflow_dispatch:
 
@@ -83,9 +84,10 @@ jobs:
           test = driver / 'test-windows-portability.py'
           shutil.copyfile('scripts/test-windows-portability.py', test)
           shutil.copyfile('scripts/test-ideate-loop.py', driver / 'test-ideate-loop.py')
+          shutil.copyfile('scripts/test-storage-client.py', driver / 'test-storage-client.py')
           shutil.copytree('scripts/fixtures', driver / 'fixtures')
           check_source()
-          driver_files = [test, driver / 'test-ideate-loop.py',
+          driver_files = [test, driver / 'test-ideate-loop.py', driver / 'test-storage-client.py',
                           *sorted(p for p in (driver / 'fixtures').rglob('*') if p.is_file())]
           for copied in driver_files:
               source = 'scripts/' + copied.relative_to(driver).as_posix()
@@ -102,6 +104,7 @@ jobs:
           subprocess.run(['npm', 'install', '--prefix', str(installed), '--cache', str(root / 'npm-cache'),
                           '--offline', '--ignore-scripts', '--no-audit', '--no-fund', str(tarball)], check=True)
           subprocess.run([sys.executable, str(test), '--package-root', str(installed / 'node_modules/devlyn-cli')], check=True)
+          subprocess.run([sys.executable, 'scripts/test-storage-client.py', '--package-root', str(installed / 'node_modules/devlyn-cli')], check=True)
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() && steps.pack.outputs.source_bound == 'true' }}
         with:
@@ -234,6 +237,8 @@ jobs:
               # The package suite took 172-229 s of 240 and outlasted it once the package carried its release (4.3.2,
               # run 39813295135 attempt 2), so it gets 480 s.
               ('portability', [sys.executable, '-X', 'utf8=0', str(driver), '--package-root', str(package)], 480),
+              ('storage-client', [sys.executable, '-X', 'utf8=0', str(driver.parent / 'test-storage-client.py'),
+                  '--package-root', str(package)], 480),
               ('engines-self-test', [sys.executable, '-X', 'utf8=0',
                   str(package / 'config/skills/_shared/role-config.py'), '--self-test'], 240),
               # Windows has no clone primitive here: allocation must skip warming before any lock or Cargo call.

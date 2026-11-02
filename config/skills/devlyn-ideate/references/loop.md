@@ -37,7 +37,7 @@ The host supplies the executor and maps its configured engine to the argv; the l
 
     | Interrupted | Resume |
     |---|---|
-    | During allocation | A receipt without `allocation: owned` is never adopted: its task waits, naming the recovery (remove its worktree and branch if present, delete the receipt directory, drain again), while independent work continues. |
+    | During allocation | Replay `managed_pending` with `recover-storage --receipt`; `managed_owned` is owned. Managed removal uses `recover-storage --receipt --for-removal` and preserves receipts. An interrupted standalone allocation is never adopted: its task waits, naming the recovery (remove its worktree and branch if present, delete the receipt directory, drain again), while independent work continues. |
     | Inputs commit | A branch head equal to the expected inputs tree is adopted; anything else leaves the task waiting for inspection, preserving the unexpected commits. |
     | During execution | Each attempt's start is recorded before its spawn and its exit after it. A start without an exit gets one writer observation per drain. A live writer leaves the task waiting while independent work continues; a later drain adopts the submission or runs the executor again only after cessation is established; where writers cannot be observed (native Windows) the task becomes `[F] interrupted-unobservable` with its workspace retained, its dependents become prerequisite-blocked and independent work continues. Exactly-once execution is not promised. |
     | During checks | Acceptance reruns; incomplete evidence stays unreferenced. |

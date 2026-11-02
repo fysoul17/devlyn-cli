@@ -1,0 +1,7 @@
+{
+  "future_input": true,
+  "request": {
+    "op": "hello"
+  },
+  "storage_protocol": 1
+}

@@ -1,0 +1,10 @@
+{
+  "kind": "future_kind",
+  "value": {
+    "capabilities": [
+      "reserve"
+    ],
+    "schema": 2,
+    "storage_protocol": 1
+  }
+}

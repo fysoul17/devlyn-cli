@@ -338,7 +338,8 @@ class LoopFixture(unittest.TestCase):
         self.env = {key: value for key, value in os.environ.items() if key not in {"GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR"}}
         self.env["PYTHONPATH"] = str(self.root) + os.pathsep + self.env.get("PYTHONPATH", "")
         self.env["PYTHONDONTWRITEBYTECODE"] = "1"
-        self.env.update(GIT_CONFIG_NOSYSTEM="1", GIT_CONFIG_GLOBAL=str(self.root / "gitconfig"), GIT_CONFIG_COUNT="0",
+        self.env.update(npm_config_cache=str(self.root / "npm-cache"),
+                        GIT_CONFIG_NOSYSTEM="1", GIT_CONFIG_GLOBAL=str(self.root / "gitconfig"), GIT_CONFIG_COUNT="0",
                         GIT_AUTHOR_NAME="Fixture", GIT_AUTHOR_EMAIL="fixture@example.invalid",
                         GIT_COMMITTER_NAME="Fixture", GIT_COMMITTER_EMAIL="fixture@example.invalid")
         self.anchor = self.root / "repo"
@@ -1247,6 +1248,83 @@ class LoopFixture(unittest.TestCase):
         with mock.patch.dict(self.queue["drain"].__globals__, advance=mock.Mock(side_effect=TypeError("programming defect"))):
             with self.assertRaisesRegex(TypeError, "programming defect"):
                 self.queue["drain"](opts)
+
+    def test_managed_receipt_states_are_owned_and_pending_replays_before_execution(self):
+        self.plan_checker('aa', [GREET_CHECK], {'aa.t1': {'product': 'greeting', 'exit_now': 1}})
+        self.drain()
+        path = self.receipt_path('aa.t1')
+        receipt = json.loads(path.read_text())
+        receipt.update(mode='managed', allocation='managed_owned')
+        path.write_text(json.dumps(receipt))
+        v = self.queue['view'](self.anchor, self.common, pure=True)
+        self.assertNotIn('invalid', v['states']['aa.t1'])
+        receipt['allocation'] = 'managed_pending'
+        path.write_text(json.dumps(receipt))
+        v = self.queue['view'](self.anchor, self.common, pure=True)
+        self.assertNotIn('invalid', v['states']['aa.t1'])
+        calls = []
+        def replay(action, **kwargs):
+            calls.append(action)
+            self.assertEqual((action, kwargs['receipt'], kwargs['for_removal']), ('recover_storage', str(path), False))
+            raise self.queue['LoopError']('replay reached before inputs/executor')
+        opts = argparse.Namespace(local_only=False)
+        with mock.patch.dict(self.queue['advance'].__globals__, task_complete=replay), \
+             self.assertRaisesRegex(self.queue['LoopError'], 'replay reached'):
+            self.queue['advance'](v, next(row for row in v['rows'] if row['identity'] == 'aa.t1'), opts)
+        self.assertEqual(calls, ['recover_storage'])
+
+    def test_accepted_managed_fence_resumes_complete_and_retired_custody_is_discoverable(self):
+        self.plan_checker('aa', [GREET_CHECK], {'aa.t1': {'product': 'greeting'}})
+        self.drain()
+        path = self.receipt_path('aa.t1')
+        receipt = json.loads(path.read_text())
+        self.assertTrue(receipt.get('acceptance'))
+        receipt.update(mode='managed', allocation='managed_owned', delivery='PENDING', storage={
+            'request': {'operation_id': '019a41de-0000-7000-8000-000000000001'}, 'removal_request': {}})
+        path.write_text(json.dumps(receipt))
+        v = self.queue['view'](self.anchor, self.common, pure=True)
+        self.assertNotIn('invalid', v['states']['aa.t1'])
+        calls = []
+        def complete(action, **kwargs):
+            calls.append(action)
+            self.assertEqual(action, 'complete')
+            self.assertEqual(kwargs['receipt'], str(path))
+            raise self.queue['LoopError']('accepted delivery reached complete')
+        opts = argparse.Namespace(local_only=False, warnings=[])
+        with mock.patch.dict(self.queue['advance'].__globals__, task_complete=complete), \
+             self.assertRaisesRegex(self.queue['LoopError'], 'reached complete'):
+            self.queue['advance'](v, next(row for row in v['rows'] if row['identity'] == 'aa.t1'), opts)
+        self.assertEqual(calls, ['complete'])
+        receipt.update(delivery='COMPLETE', status='COMPLETE',
+                       scratch_cleanup={'status': 'RETAINED', 'reason': 'writer observation unavailable', 'resume': 'clean-scratch'})
+        receipt['storage']['removal_finished'] = True
+        path.write_text(json.dumps(receipt))
+        retired = path.parent.parent / 'retired' / (receipt['id'] + '.' + receipt['storage']['request']['operation_id'])
+        retired.parent.mkdir()
+        path.parent.rename(retired)
+        v = self.queue['view'](self.anchor, self.common, pure=True)
+        self.assertNotIn('invalid', v['states']['aa.t1'], v['states']['aa.t1'])
+        self.assertEqual(v['states']['aa.t1']['receipt']['delivery'], 'COMPLETE')
+        # An earlier abandoned attempt may sort later after a wall-clock adjustment.
+        abandoned = json.loads(json.dumps(receipt))
+        abandoned.update(status='ABANDONED')
+        abandoned.pop('delivery')
+        abandoned.pop('acceptance')
+        abandoned['storage']['request']['operation_id'] = '019a41de-0001-7000-8000-000000000001'
+        older = retired.parent / (receipt['id'] + '.' + abandoned['storage']['request']['operation_id'])
+        older.mkdir()
+        (older / 'receipt.json').write_text(json.dumps(abandoned))
+        v = self.queue['view'](self.anchor, self.common, pure=True)
+        self.assertNotIn('invalid', v['states']['aa.t1'], v['states']['aa.t1'])
+        self.assertEqual(v['states']['aa.t1']['receipt']['delivery'], 'COMPLETE')
+
+        abandoned['delivery'] = 'COMPLETE'
+        (older / 'receipt.json').write_text(json.dumps(abandoned))
+        with self.assertRaisesRegex(self.queue['LoopError'], 'conflicting delivered receipts'):
+            self.queue['receipt_path'](self.common, 'aa.t1')
+        (older / 'receipt.json').write_text('[]')
+        with self.assertRaisesRegex(self.queue['LoopError'], 'malformed retired receipt'):
+            self.queue['receipt_path'](self.common, 'aa.t1')
 
     def test_robust_malformed_allocation_and_packet_paths_hold_barrier(self):
         # Prediction: a lost allocation checkpoint cannot prove no writer ran; malformed packet paths are invalid data,
@@ -3716,6 +3794,63 @@ class LoopFixture(unittest.TestCase):
             self.assertEqual(hashlib.sha256(Path(resource["path"]).read_bytes()).hexdigest(), resource["sha256"])
         self.assertFalse(binding_path.exists())
         self.assertEqual(before, self.tree_snapshot(release))
+
+    def test_accepted_release_packet_drains_after_checkout_removal(self):
+        (self.anchor / 'AGENTS.md').write_text('Receipt-bound instruction blobs survive removal.\n')
+        self.g('add', 'AGENTS.md')
+        self.g('commit', '-qm', 'project instructions')
+        self.base = self.g('rev-parse', 'HEAD')
+        self.harness_release()
+        self.plan('gone', CHAIN[:1], {'gone.t1': {'product': 'greeting'}})
+        binding_path = self.common / 'devlyn-loops/harness.json'
+        binding = binding_path.read_bytes()
+        self.drain()
+        path = self.receipt_path('gone.t1')
+        receipt = json.loads(path.read_bytes())
+        packet_path = path.with_name('packet.json')
+        packet = json.loads(packet_path.read_bytes())
+        self.assertEqual([Path(entry['path']).name for entry in packet['methodology']['projectInstructions']], ['AGENTS.md'])
+        receipt.pop('delivery')  # Lost completion checkpoint after custody/attachment.
+        path.write_text(json.dumps(receipt))
+        binding_path.write_bytes(binding)
+        self.g('worktree', 'remove', '--force', receipt['worktree'])
+        before = self.calls('gone.t1')
+        resumed = self.drain()
+        self.assertEqual(resumed['status'], 'DRAINED', resumed)
+        self.assertEqual(self.calls('gone.t1'), before)
+        self.assertEqual(json.loads(path.read_bytes())['delivery'], 'LOCAL_ONLY')
+        # Custody and release checks remain authoritative after removal.
+        binding_path.write_bytes(binding)
+        packet['methodology']['projectInstructions'][0]['sha256'] = '0' * 64
+        harness = runpy.run_path(str(self.skills / '_shared/harness-store.py'))
+        with self.assertRaisesRegex(harness['HarnessError'], 'differs from inputs commit'):
+            harness['verify_packet'](packet, packet_path, self.queue['SKILLS'], accepted_receipt=receipt)
+
+    def test_task_complete_refusal_preserves_receipt_and_removal_resume(self):
+        helper = self.queue['shared']('task-complete')
+        error = helper['CompletionError']('retired enrollment')
+        error.storage_error = {'receipt': '/saved/receipt.json',
+                               'resume': 'recover-storage --receipt /saved/receipt.json --for-removal'}
+        with mock.patch.dict(helper, allocate=mock.Mock(side_effect=error)), \
+             self.assertRaisesRegex(self.queue['LoopError'], '/saved/receipt.json.*--for-removal'):
+            self.queue['task_complete']('allocate')
+
+    def test_managed_recovery_ref_is_bound_to_its_allocation_operation(self):
+        self.plan('ref', CHAIN[:1], {'ref.t1': {'product': 'greeting'}})
+        self.drain()
+        path = self.receipt_path('ref.t1')
+        receipt = json.loads(path.read_bytes())
+        operation = '019a41de-0001-7000-8000-000000000001'
+        receipt.update(mode='managed', allocation='managed_owned', storage={'request': {'operation_id': operation}})
+        receipt['recovery_ref'] += '.' + operation
+        self.g('update-ref', receipt['recovery_ref'], receipt['publish_sha'])
+        path.write_text(json.dumps(receipt))
+        view = self.queue['view'](self.anchor, self.common, pure=True)
+        self.assertNotIn('invalid', view['states']['ref.t1'], view['states']['ref.t1'])
+        receipt['recovery_ref'] = receipt['recovery_ref'][:-1] + '2'
+        path.write_text(json.dumps(receipt))
+        view = self.queue['view'](self.anchor, self.common, pure=True)
+        self.assertIn('conflicting recovery ref ownership', view['states']['ref.t1']['invalid'])
 
     def test_harness_concurrent_first_capture(self):
         # Prediction: two first adds serialize the binding and capture; both records retain the same release.

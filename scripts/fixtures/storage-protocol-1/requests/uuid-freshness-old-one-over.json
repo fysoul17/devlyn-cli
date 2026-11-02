@@ -1,0 +1,11 @@
+{
+  "offset_seconds": -604801,
+  "reference_unix_seconds": 1793577600,
+  "request": {
+    "request": {
+      "op": "query_reservation",
+      "operation_id": "01a17581-bc18-7000-8000-000000000001"
+    },
+    "storage_protocol": 1
+  }
+}

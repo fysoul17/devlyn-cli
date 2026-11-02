@@ -1,0 +1,6 @@
+{
+  "request": {
+    "op": "hello"
+  },
+  "storage_protocol": 2
+}

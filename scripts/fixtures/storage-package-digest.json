@@ -1,0 +1,11 @@
+{
+  "recipe": "devlyn-os be065077e storage_client/evidence.rs::package_digest; native UTF-8 relative paths, sorted native names, depth-first directory entries",
+  "files": {
+    "bin/devlyn.js": "console.log(\"retained\");\n",
+    "config/contract.json": "{\"adapter_protocol\":1}\n"
+  },
+  "sha256": {
+    "posix": "0033741cf084e17174f695edacfa33249018589c561bdd1e62361597e5c0c6f2",
+    "windows": "d3594050795d4fc4e6e0a2f14b66e7a833264f89b1305d4b2c555e4279c3cde1"
+  }
+}

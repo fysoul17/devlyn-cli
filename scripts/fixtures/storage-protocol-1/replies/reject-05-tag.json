@@ -1,0 +1,18 @@
+{
+  "kind": "future_kind",
+  "value": {
+    "entries": [
+      {
+        "cache_id": "01a840d0-5c00-7000-8000-000000000003",
+        "generation": 18446744073709551615
+      }
+    ],
+    "finished_at": null,
+    "operation_id": "01a840d0-5c00-7000-8000-000000000007",
+    "removal_id": "01a840d0-5c00-7000-8000-000000000008",
+    "supervisor": {
+      "pid": 42,
+      "start": "linux:987654321"
+    }
+  }
+}

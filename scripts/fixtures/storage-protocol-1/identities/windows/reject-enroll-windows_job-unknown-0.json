@@ -1,0 +1,15 @@
+{
+  "future_input": true,
+  "request": {
+    "consumer": {
+      "created": 9007199254740992,
+      "pid": 42
+    },
+    "containment": "windows_job",
+    "generation": "1",
+    "op": "enroll_reservation_worker",
+    "operation_id": "01a840d0-5c00-7000-8000-000000000005",
+    "reservation_id": "01a840d0-5c00-7000-8000-000000000002"
+  },
+  "storage_protocol": 1
+}

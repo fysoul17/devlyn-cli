@@ -1,0 +1,20 @@
+{
+  "adapter_protocol": 1,
+  "op": "capabilities",
+  "result": {
+    "adapter_protocol": 1,
+    "cargo_destination_scope": "checkout: ancestor and Cargo-home configuration and caller environment are not frozen inputs",
+    "cli_checkout_v1": true,
+    "destination_modes": [
+      "absent",
+      "precreated_empty"
+    ],
+    "helper_release": {
+      "arch": "x86_64",
+      "os": "windows",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "version": "fixture-release"
+    },
+    "receipt_version": 3
+  }
+}

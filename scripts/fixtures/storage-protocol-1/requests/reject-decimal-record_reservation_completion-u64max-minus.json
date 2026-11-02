@@ -1,0 +1,8 @@
+{
+  "request": {
+    "generation": "-1",
+    "op": "record_reservation_completion",
+    "reservation_id": "01a840d0-5c00-7000-8000-000000000002"
+  },
+  "storage_protocol": 1
+}

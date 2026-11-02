@@ -3423,7 +3423,7 @@ class ProcessTests(unittest.TestCase):
 
     def test_utf8_imports_and_cli_with_utf8_mode_disabled(self):
         program = r'''
-import codecs, io, json, locale, pathlib, runpy, sys
+import codecs, io, json, locale, os, pathlib, runpy, sys
 shared, work = map(pathlib.Path, sys.argv[1:])
 with io.TextIOWrapper(io.BytesIO()) as default_text:
     default_encoding = default_text.encoding
@@ -3444,6 +3444,12 @@ assert completion['read_json'](p)['message'] == payload
 contract = runpy.run_path(shared / 'expected-contract.py')
 assert runpy.run_path(shared / 'warm-build-dirs.py')['warm'](work, work, work) == []
 assert contract['loads_strict_json'](p.read_text(encoding='utf-8'))['message'] == payload
+storage = runpy.run_path(shared / 'storage-client.py')
+wire = storage['encode_request']({'op':'locate', 'parent':str(work), 'entry':payload})
+assert json.loads(wire)['request']['entry'] == payload
+os.environ['HOME'] = os.environ['USERPROFILE'] = str(work)
+assert storage['enrollment']()['mode'] == 'standalone'
+assert not (work / '.devlyn').exists()
 # Explicit cp949 streams are distinct from the observed native ANSI default.
 sys.stdout.reconfigure(encoding='cp949', errors='strict')
 sys.stderr.reconfigure(encoding='cp949', errors='strict')

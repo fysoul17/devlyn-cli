@@ -1,0 +1,7 @@
+{
+  "future_input": true,
+  "request": {
+    "op": "allocation_outcome"
+  },
+  "storage_protocol": 1
+}
