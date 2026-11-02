@@ -465,3 +465,8 @@ Four operationally valid Fable5.1/medium A/B B/A reports yield0/4 canonical lite
   - Reading: Codex applied the bullet on 8/8, and the owner rejected all 8. A repair of Claude's statement would be a new, newly frozen candidate, and its effect is unknown.
   - Over 0262–0264 the owner rejected 94 of 96 ratings (accepts: C 2, D 0, E 0), and no rung passed its decision rule.
   - PR #330 is closed without merge. The next step is the owner's. See [RESULT](experiments/0264/RESULT.md).
+- 2026-11-02: The owner stops the UI-quality line after 0264 ("정리하자").
+  - Three rungs ran: the builder looks at its screens (0262 C), an independent reviewer decides "done" (0263 D), and the builder grounds new UI in a product precedent (0264 E). None passed its decision rule.
+  - Over the three rounds the owner rejected 94 of 96 ratings (accepts: C 2, D 0, E 0). The AI answer key does not reproduce the owner's accepts, so it cannot stand in for the owner.
+  - No study is queued, and the next step is the owner's. Draft PRs #316, #328 and #330 stay closed, and their branches are deleted; each head stays in its closed PR.
+  - Private runtime trees were cleaned: the remaining run repositories (each D and E change kept as a diff), dependency, build and Git folders, browser downloads and arm installs. Ratings, packets, AI keys, transcripts, judgments and logs stay local and private.
