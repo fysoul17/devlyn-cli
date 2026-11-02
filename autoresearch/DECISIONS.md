@@ -451,3 +451,17 @@ Four operationally valid Fable5.1/medium A/B B/A reports yield0/4 canonical lite
   - AI raters: Astra ultra agreed 25/32 and Opus 5.5 agreed 26/32. Post-hoc, the Astra rater accepted only 4 of the 11 outputs the same-model in-loop reviewer shipped.
   - Reading: verification at the end, by the builder (C) or by an independent reviewer (D), does not lift the work to the owner's bar. The next candidate targets build-time design quality.
   - PR #328 is closed without merge. See [RESULT](experiments/0263/RESULT.md).
+- 2026-11-01: 0264 registers candidate E, build-time design fidelity for user-facing UI, as one rung. The hypothesis came from 0262 and 0263 owner notes: the builder invents controls, weights and structure instead of grounding new UI in a suitable product precedent.
+  - E is one inline "User-facing UI" bullet in the managed block's Quick Start, kept identical in `CLAUDE.md`, `AGENTS.md` and `_shared/runtime-principles.md`. It asks the implementing executor to pick a precedent, or a stated fallback, and to state it before the first UI edit.
+  - A frozen uptake audit separates delivery from effect: TRIGGER_MISS when fewer than 12 of 16 runs apply it.
+  - The design converged with Astra ultra and Grok 4.7 over four rounds. It was implemented as draft PR #330, which the pilot ran against.
+  - Amendment 1 (owner direction, before any rating): AI raters make an answer key that opens only after the owner's blind click.
+  - See [0264](experiments/0264/DESIGN.md).
+- 2026-11-02: 0264 reads **TRIGGER_MISS**: 10 of 16 E runs applied the bullet (Codex-implemented 8/8, Claude-implemented 2/8), below 12. It is not a quality result.
+  - Every Claude miss inspected comparable surfaces, and three of the six diffs reused a precedent. None stated a precedent before the edit.
+  - The owner rejected all 32 outputs (B drift 0/16), so E CC is 0. Rules (a), (b) and (c) would each have rejected E. The reasons were overall taste: not refined, current, intuitive or attractive. The ratings were not blind to the AI key's aggregate, which root's report named first.
+  - E used 1.11× B's tokens and 1.07× B's wall.
+  - The AI key (Astra ultra + Opus 5.5, ship only if both ship) shipped 0/32. It agrees with the owner 32/32, which does not calibrate it, because the owner accepted nothing. Post hoc and exposed, it also rejected both outputs the owner accepted in 0262.
+  - Reading: Codex applied the bullet on 8/8, and the owner rejected all 8. A repair of Claude's statement would be a new, newly frozen candidate, and its effect is unknown.
+  - Over 0262–0264 the owner rejected 94 of 96 ratings (accepts: C 2, D 0, E 0), and no rung passed its decision rule.
+  - PR #330 is closed without merge. The next step is the owner's. See [RESULT](experiments/0264/RESULT.md).
