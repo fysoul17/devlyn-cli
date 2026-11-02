@@ -1,0 +1,8 @@
+{
+  "future_input": true,
+  "request": {
+    "op": "finish_removal",
+    "removal_id": "01a840d0-5c00-7000-8000-000000000008"
+  },
+  "storage_protocol": 1
+}

@@ -1,0 +1,9 @@
+{
+  "request": {
+    "entry": "target",
+    "future_input": true,
+    "op": "locate",
+    "parent": "/repo/작업/é"
+  },
+  "storage_protocol": 1
+}

@@ -1,0 +1,16 @@
+{
+  "future_input": true,
+  "request": {
+    "consumer": {
+      "pgid": 42,
+      "pid": 42,
+      "start": "linux:00000000-0000-0000-0000-000000000001:987654321"
+    },
+    "containment": "supervised",
+    "generation": "1",
+    "op": "enroll_reservation_worker",
+    "operation_id": "01a840d0-5c00-7000-8000-000000000005",
+    "reservation_id": "01a840d0-5c00-7000-8000-000000000002"
+  },
+  "storage_protocol": 1
+}

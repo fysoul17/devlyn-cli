@@ -169,16 +169,26 @@ def packet_schema(packet):
     resource(packet.get("workerPrompt"))
 
 
-def verify_packet(packet, path, skills):
+def verify_packet(packet, path, skills, *, accepted_receipt=None):
     packet_schema(packet)
     if packet.get("schema_version", 1) == 1:
         return  # Preserve v1 execution without upgrading its resources.
     receipt = packet.get("receipt")
     require(isinstance(receipt, str) and "\0" not in receipt and Path(receipt).is_absolute()
             and Path(receipt).name == "receipt.json" and Path(receipt).parent.parent.name == "devlyn-completion"
-            and Path(receipt) == Path(path).with_name("receipt.json"),
+            and (accepted_receipt is not None or Path(receipt) == Path(path).with_name("receipt.json")),
             "malformed packet receipt path")
-    binding = read_binding(Path(receipt).parent.parent.parent)
+    common = Path(receipt).parent.parent.parent
+    if accepted_receipt is not None:
+        saved = accepted_receipt
+        require(saved.get('acceptance') and saved.get('id') == Path(receipt).parent.name
+                and saved.get('common_gitdir') == str(common) and saved.get('worktree') == packet['worktree'],
+                'accepted packet receipt binding changed')
+        original = Path(receipt)
+        archived = common / 'devlyn-completion/retired' / (
+            saved['id'] + '.' + saved.get('storage', {}).get('request', {}).get('operation_id', '')) / 'receipt.json'
+        require(Path(path).with_name('receipt.json') in (original, archived), 'accepted packet custody path changed')
+    binding = read_binding(common)
     if packet["harness"] is None:
         require(binding is None, "bound task packet has no harness/defaults source")
         # An unbound installation's own defaults change with its normal updates: never gate acceptance or delivery on
@@ -193,15 +203,17 @@ def verify_packet(packet, path, skills):
     defaults = {"source": "release", **binding["defaults"]}
     require(packet["methodology"]["defaults"] == defaults, "packet defaults differ from queue binding")
     expected_runner = [str(Path(ref["root"]) / "config/skills/devlyn-ideate/scripts/acceptance.py"),
-                       "run", "--packet", str(path)]
+                       "run", "--packet", str(Path(receipt).with_name('packet.json'))]
     require(isinstance(packet.get("runner"), list) and packet["runner"][1:] == expected_runner, "packet runner differs from bound release")
     prompt = packet["workerPrompt"]
-    require(prompt["path"] == str(Path(path).parent / "worker-prompt.md") and file_identity(prompt["path"]) == prompt,
+    actual_prompt = file_identity(Path(path).parent / 'worker-prompt.md')
+    require(prompt["path"] == str(Path(receipt).parent / "worker-prompt.md") and actual_prompt['sha256'] == prompt['sha256'],
             "worker prompt changed or missing; restore the bound resource")
     for entry in packet["methodology"]["projectInstructions"]:
         name = Path(entry["path"]).name
         require(name in ("CLAUDE.md", "AGENTS.md") and entry["path"] == str(Path(packet["worktree"]) / name),
                 "project instruction path escapes packet worktree")
-        committed = subprocess.run(["git", "-C", packet["worktree"], "cat-file", "blob", f"{packet['inputs_sha']}:{name}"], capture_output=True)
+        repository = ['--git-dir', str(common)] if accepted_receipt is not None else ['-C', packet['worktree']]
+        committed = subprocess.run(["git", *repository, "cat-file", "blob", f"{packet['inputs_sha']}:{name}"], capture_output=True)
         require(committed.returncode == 0 and hashlib.sha256(committed.stdout).hexdigest() == entry["sha256"],
                 f"project instruction differs from inputs commit: {name}")

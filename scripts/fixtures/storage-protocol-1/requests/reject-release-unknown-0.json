@@ -1,0 +1,9 @@
+{
+  "future_input": true,
+  "request": {
+    "descendants_reconciled": true,
+    "lease_id": "01a840d0-5c00-7000-8000-000000000004",
+    "op": "release"
+  },
+  "storage_protocol": 1
+}

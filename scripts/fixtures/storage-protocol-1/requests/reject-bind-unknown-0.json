@@ -1,0 +1,9 @@
+{
+  "future_input": true,
+  "request": {
+    "cache_id": "01a840d0-5c00-7000-8000-000000000003",
+    "consumers": [],
+    "op": "bind"
+  },
+  "storage_protocol": 1
+}

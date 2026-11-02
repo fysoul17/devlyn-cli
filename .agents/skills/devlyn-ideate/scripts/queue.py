@@ -47,7 +47,7 @@ FRONTMATTER_KEYS = {"id", "loop_id", "title", "kind", "review_requirements", "co
 KINDS = {"feature", "spike", "prototype"}
 UNSUPPORTED = {"process_evidence": "phase process obligations", "required_risk_probe_requirements": "risk-probe obligations",
                "tier_a_waivers": "benchmark scope waivers", "spec_output_files": "benchmark scope surfaces"}
-SETTLED = {"LOCAL_ONLY", "COMPLETE", "FAILED"}
+SETTLED = {"LOCAL_ONLY", "COMPLETE", "FAILED", "CLOSED"}
 OBLIGATIONS = [
     "Work only in this worktree on its owned branch under the installed methodology; never edit the loop package or docs/specs/queue.md.",
     "Commit any source changes on the owned branch; when none are needed, use inputs_sha without creating an empty commit. Leave no uncommitted or untracked source and remove residue the change created.",
@@ -170,10 +170,10 @@ def lock(common, name, *, blocking):
         yield
 
 
-def harness_call(name, *args):
+def harness_call(name, *args, **kwargs):
     helper = shared("harness-store")
     try:
-        return helper[name](*args)
+        return helper[name](*args, **kwargs)
     except helper["HarnessError"] as exc:
         raise LoopError(str(exc)) from exc
 
@@ -542,7 +542,23 @@ def branch_of(identity):
 
 
 def receipt_path(common, identity):
-    return common / "devlyn-completion" / hashlib.sha256(branch_of(identity).encode()).hexdigest()[:24] / "receipt.json"
+    key = hashlib.sha256(branch_of(identity).encode()).hexdigest()[:24]
+    root = common / 'devlyn-completion'
+    active = root / key / 'receipt.json'
+    if active.exists():
+        return active
+    retired = sorted((root / 'retired').glob(key + '.*/receipt.json'))
+    if len(retired) > 1:
+        delivered = []
+        for path in retired:
+            receipt = read_json(path)
+            require(isinstance(receipt, dict), f'{path}: malformed retired receipt')
+            if receipt.get('delivery') == 'COMPLETE':
+                delivered.append(path)
+        require(len(delivered) <= 1, f'conflicting delivered receipts for {identity}: {delivered}')
+        if delivered:
+            return delivered[0]
+    return retired[-1] if retired else active
 
 
 def added_path(common, loop):
@@ -671,7 +687,9 @@ def task_complete(action, *, exclude_receipts=(), warnings=None, **values):
         return helper[action](argparse.Namespace(**values), **options)
     except (helper["CompletionError"], OSError, KeyError, TypeError, ValueError) as exc:
         # Inherited helper containment includes these three programming-error types; the controller boundary is narrower.
-        raise LoopError(f"task-complete {action}: {exc}") from exc
+        details = getattr(exc, "storage_error", {})
+        context = f"; receipt={details.get('receipt')}; resume={details.get('resume')}" if details else ""
+        raise LoopError(f"task-complete {action}: {exc}{context}") from exc
 
 
 def derive_state(anchor, common, row, claims, rev):
@@ -690,7 +708,7 @@ def derive_state(anchor, common, row, claims, rev):
     require(receipt.get("task") == identity and receipt.get("branch") == branch_of(identity) and path == receipt_path(common, identity)
             and path == path.resolve(),
             f"receipt {path} claims {identity} from branch {receipt.get('branch')!r}; conflicting ownership, inspect it")
-    require(receipt.get("allocation") in ("owned", "allocating"),
+    require(receipt.get("allocation") in ("owned", "allocating", "managed_pending", "managed_owned"),
             f"receipt {path}: missing or malformed allocation checkpoint")
     if receipt["allocation"] == "allocating":
         # Never adopted, and no executor ran: the task waits until the user removes what the allocation left.
@@ -700,9 +718,18 @@ def derive_state(anchor, common, row, claims, rev):
         return state
     require(all(isinstance(receipt.get(key), str) and receipt[key] and "\0" not in receipt[key] for key in
                 ("id", "baseline", "worktree", "common_gitdir", "recovery_ref")), f"receipt {path}: malformed allocation fields")
-    require(receipt["common_gitdir"] == str(common) and receipt["id"] == path.parent.name,
+    archived = path.parent.parent == common / 'devlyn-completion/retired'
+    directory_id = receipt['id'] + '.' + receipt.get('storage', {}).get('request', {}).get('operation_id', '') if archived else receipt['id']
+    require(not archived or receipt.get('storage', {}).get('removal_finished') and (
+        receipt.get('status') == 'ABANDONED' or receipt.get('delivery') in {'COMPLETE', 'LOCAL_ONLY', 'FAILED', 'CLOSED'}),
+        f'{path}: nonterminal retired receipt')
+    require(receipt["common_gitdir"] == str(common) and directory_id == path.parent.name,
             f"receipt {path}: conflicting common Gitdir/id binding")
-    require(receipt["recovery_ref"] == "refs/devlyn/completed/" + receipt["id"], f"receipt {path}: conflicting recovery ref ownership")
+    recovery = "refs/devlyn/completed/" + receipt["id"]
+    allowed = {recovery}
+    if receipt['allocation'] in ('managed_pending', 'managed_owned'):
+        allowed.add(recovery + '.' + receipt.get('storage', {}).get('request', {}).get('operation_id', ''))
+    require(receipt["recovery_ref"] in allowed, f"receipt {path}: conflicting recovery ref ownership")
     for key in ("delivery", "product", "pr_url", "base", "remote"):
         require(key not in receipt or receipt[key] is None or isinstance(receipt[key], str), f"receipt {path}: malformed {key}")
     for key in ("acceptance", "queue", "merge", "workspace_cleanup", "scratch_cleanup"):
@@ -753,7 +780,8 @@ def derive_state(anchor, common, row, claims, rev):
         require(bound["worktree"] == receipt["worktree"] and bound["task"] == identity and bound["branch"] == receipt["branch"]
                 and bound["allocation_base"] == receipt["baseline"],
                 f"{packet}: conflicting packet ownership")
-        for key, expected in (("receipt", path), ("scratch", path.parent / "scratch"), ("submission", path.parent / "submission.json"),
+        original = common / 'devlyn-completion' / receipt['id'] / 'receipt.json' if archived else path
+        for key, expected in (("receipt", original), ("scratch", original.parent / "scratch"), ("submission", original.parent / "submission.json"),
                               ("evidence_dir", Path(receipt["worktree"]) / ".devlyn/loop")):
             require(bound.get(key) == str(expected), f"{packet}: malformed or conflicting {key} path")
         require(isinstance(bound["inputs_sha"], str) and SHA_RE.fullmatch(bound["inputs_sha"]), f"{packet}: malformed inputs commit")
@@ -788,7 +816,8 @@ def view(anchor, common, local_only=False, *, pure=False):
     claims, unreadable, damaged = {}, [], {}
     canonical = {receipt_path(common, row["identity"]): row["identity"] for row in rows if row["identity"]}
     branches = {branch_of(identity): identity for identity in canonical.values()}
-    for path in sorted((common / "devlyn-completion").glob("*/receipt.json")):
+    for path in sorted([*(common / "devlyn-completion").glob("*/receipt.json"),
+                        *(path for path in canonical if path.parent.parent.name == "retired")]):
         try:
             receipt = read_json(path)
             require(isinstance(receipt, dict), f"{path}: malformed receipt identity")
@@ -1322,8 +1351,22 @@ def advance(v, row, opts):
     if not path.exists() and (refused := allocate(v, row, opts)):
         return refused
     receipt = read_json(path)
+    if receipt.get('status') == 'ABANDONED':
+        if refused := allocate(v, row, opts):
+            return refused
+        path = receipt_path(v['common'], identity)
+        receipt = read_json(path)
+    accepted = receipt.get('acceptance') or receipt.get('pushed') or receipt.get('pr_number')
+    if receipt.get('allocation') in ('managed_pending', 'managed_owned') and not accepted:
+        require('removal_request' not in receipt.get('storage', {}),
+                'allocation fenced; run ' + shared('task-complete')['receipt_resume'](
+                    'recover-storage', path, receipt, flags=['--for-removal']))
+    if receipt.get('allocation') == 'managed_pending' and not accepted:
+        task_complete('recover_storage', receipt=str(path), for_removal=False,
+                      operation_id=receipt.get('storage', {}).get('request', {}).get('operation_id'))
+        receipt = read_json(path)
     if receipt.get("acceptance") and (path.parent / "packet.json").exists():
-        harness_call("verify_packet", read_json(path.parent / "packet.json"), path.parent / "packet.json", SKILLS)
+        harness_call("verify_packet", read_json(path.parent / "packet.json"), path.parent / "packet.json", SKILLS, accepted_receipt=receipt)
     if not receipt.get("acceptance"):
         state["phase"] = "inputs"
         failure = v["states"][identity].get("inputs_changed")
@@ -1350,6 +1393,7 @@ def advance(v, row, opts):
         packet = read_json(path.parent / "packet.json")
         # The plan's mode seeds the first delivery call; a later per-task --mode persists in the receipt.
         result = task_complete("complete", warnings=opts.warnings, receipt=str(path), acceptance=None,
+                               operation_id=receipt.get("storage", {}).get("request", {}).get("operation_id"),
                                mode=None if local or receipt.get("mode_override") else packet["delivery"], local_only=local, writers_stopped=True)
         progress(identity, f"delivery {result['status']}")
         if result.get("merge_refused"):
@@ -1379,6 +1423,8 @@ def summary(v, row):
                     binding = harness_call("read_binding", v["common"])
                     skills = Path(binding["release"]["root"]) / "config/skills" if binding else SKILLS
                     argv = [sys.executable, str(skills / "_shared/task-complete.py"), "complete", "--receipt", str(state["path"])]
+                    if operation := receipt.get("storage", {}).get("request", {}).get("operation_id"):
+                        argv += ["--operation-id", operation]
                     if receipt.get("writers_released"):
                         argv.append("--writers-stopped")
                     if not receipt.get("local_only") and not receipt.get("mode_override"):

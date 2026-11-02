@@ -1,0 +1,11 @@
+{
+  "adapter_protocol": 1,
+  "error": {
+    "code": "invalid_request",
+    "diagnostic": "json error: unknown field `future_input`, expected one of `adapter_protocol`, `operation_id`, `control_directory`, `repository`, `baseline`, `branch`, `owner`, `external_receipt`, `destination`, `cache_policy` at line 1 column 326",
+    "phase": "request",
+    "receipt": null,
+    "retryable": false
+  },
+  "op": "allocate"
+}

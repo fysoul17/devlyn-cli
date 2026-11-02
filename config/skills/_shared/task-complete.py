@@ -45,8 +45,8 @@ def require(condition, message):
         raise CompletionError(message)
 
 
-def command(argv, *, cwd=None, ok=(0,)):
-    result = subprocess.run(argv, cwd=cwd, capture_output=True, text=True, encoding="utf-8")
+def command(argv, *, cwd=None, ok=(0,), env=None):
+    result = subprocess.run(argv, cwd=cwd, env=env, capture_output=True, text=True, encoding="utf-8")
     require(result.returncode in ok, f"{shlex.join(argv[:4])}: {result.stderr.strip() or result.stdout.strip()}")
     return result.stdout.removesuffix("\n")
 
@@ -74,7 +74,17 @@ def atomic_json(path, value):
             stream.flush()
             os.fsync(stream.fileno())
         os.replace(temporary, path)
-        if os.name != "nt":
+        managed = value.get("allocation") in ("managed_pending", "managed_owned")
+        if managed:
+            directory = path.parent
+            boundary = Path(value["common_gitdir"])
+            while True:
+                storage_call("sync_directory", directory)
+                if directory == boundary:
+                    break
+                require(boundary in directory.parents, "managed receipt durability boundary changed")
+                directory = directory.parent
+        if os.name != "nt" and not managed:
             directory = os.open(path.parent, os.O_RDONLY)
             try:
                 os.fsync(directory)
@@ -306,11 +316,523 @@ def ignore_task_records(work):
             f"{directory} records are not ignored or .devlyn is dirty; repair the starting commit's .devlyn paths and ignore rules before allocating")
 
 
+def storage_call(name, *args, adapter=False, receipt_path=None, **kwargs):
+    module = shared("storage-checkout" if adapter else "storage-client")
+    try:
+        return module[name](*args, **kwargs)
+    except module["StorageRefusal"] as exc:
+        request = args[2] if adapter and len(args) == 3 else kwargs.get("receipt", {}).get("storage", {}).get("request", {})
+        path = receipt_path or request.get("external_receipt")
+        resume = exc.resume or (storage_resume(path, for_removal=name in ('enrollment', 'recovery_registration')) if path else None)
+        error = CompletionError(str(exc) + ('; resume ' + resume if resume else '; repair Devlyn enrollment and retry'))
+        error.storage_error = exc.result(receipt=path, resume=resume)
+        raise error from exc
+
+
+def authority_binding(record):
+    return {key: record[key] for key in ('control_directory', 'control_identity')}
+
+
+def managed_registration(receipt, *, recovery=False):
+    if not recovery:
+        decision = storage_call('enrollment', receipt=receipt)
+    require('storage' in receipt, 'managed receipt binding missing; retain and repair enrollment')
+    saved = receipt['storage']['decision']['registration']
+    if recovery:
+        current = storage_call('recovery_registration', receipt_path=receipt['storage'].get('request', {}).get('external_receipt'))
+        require(authority_binding(current) == authority_binding(saved),
+                'recovery pins authority binding changed; retain and repair enrollment')
+        return {**current, 'helper_path': current['retained_helper']['path']}
+    require(decision['mode'] == 'managed', 'managed enrollment missing')
+    require(authority_binding(decision['registration']) == authority_binding(saved),
+            'enrollment authority binding changed; retain original recovery binding')
+    return decision['registration']
+
+
+def reply_matches(actual, expected):
+    """Compare requested bindings recursively while accepting additive replies."""
+    if isinstance(expected, dict):
+        return isinstance(actual, dict) and all(key in actual and reply_matches(actual[key], value)
+                                               for key, value in expected.items())
+    if isinstance(expected, list):
+        return isinstance(actual, list) and len(actual) == len(expected) and all(reply_matches(a, e) for a, e in zip(actual, expected))
+    return actual == expected
+
+
+def finish_managed_allocation(receipt, path):
+    allocation_replayable(receipt, path)
+    registration = managed_registration(receipt)
+    state = receipt["storage"]
+    capabilities = storage_call("call", registration, "capabilities", {}, adapter=True)
+    require(capabilities["helper_release"]["sha256"] == registration["helper_release"]["sha256"], "helper release changed")
+    storage_rpc(registration, {"op": "hello"}, path)
+    request = state["request"]
+    result = storage_call("call", registration, "allocate", request, adapter=True)
+    binding = result["allocation_binding"]
+    expected = {key: request[key] for key in ("baseline", "branch", "owner")}
+    require(reply_matches(binding, expected)
+            and reply_matches(binding["publication_owner"], request["owner"])
+            and binding["destination"] == request["destination"]["path"]
+            and reply_matches(binding["destination_mode"], {key: value for key, value in request["destination"].items() if key != "path"})
+            and reply_matches(binding["adapter"], {key: request[key] for key in (
+                "operation_id", "repository", "control_directory", "external_receipt")})
+            and result["receipt"] == str(path.with_name("storage-allocation.json"))
+            and binding["receipt"] == result["receipt"], "adapter allocation binding changed")
+    require(result["closure_result"]["established_by"] != "legacy_unreserved", "managed allocation lacks reserved closure")
+    for publication in result["publications"]:
+        require(reply_matches(publication["cache"]["owner"], request["owner"])
+                and publication["lease"]["cache_id"] == publication["cache"]["cache_id"], "publication ownership changed")
+    state["result"] = result
+    # Save the complete public result before post-checkout processing; Rust's
+    # private v3 receipt remains untouched even after a lost Python write.
+    atomic_json(path, receipt)
+    work = Path(receipt["worktree"])
+    ignore_task_records(work)
+    receipt["worktree_gitdir"] = git(work, "rev-parse", "--absolute-git-dir")
+    receipt["worktree_identity"] = workspace_identity(work, Path(receipt["worktree_gitdir"]))
+    receipt["build_dirs"] = [{"tool": "cargo", "status": "cold", "reason": "managed warming deferred",
+        "path": str(Path(p["cache"]["location"]["parent"]) / p["cache"]["location"]["entry"]),
+        "cache_id": p["cache"]["cache_id"], "lease_id": p["lease"]["lease_id"]} for p in result["publications"]]
+    receipt["allocation"] = "managed_owned"
+    atomic_json(path, receipt)
+
+
+def allocation_result(receipt, path, reconciled, warnings):
+    return {"status": "ALLOCATED", "receipt": str(path), "worktree": receipt["worktree"],
+            "scratch": str(path.parent / "scratch"), "build_dirs": receipt.get("build_dirs", []),
+            "reconciled": reconciled, "warnings": warnings + receipt.get("storage", {}).get("result", {}).get("warnings", [])}
+
+
+def path_present(path):
+    """Only ENOENT proves absence; permission and other observation errors refuse."""
+    try:
+        Path(path).lstat()
+        return True
+    except FileNotFoundError:
+        return False
+
+
+def managed_removal_gate(receipt, path, *, registration=None, begin=True):
+    """Durable fence and positive closure, including the exact empty cache set."""
+    retained_modules(receipt)
+    registration = registration or managed_registration(receipt)
+    state = receipt["storage"]
+    if "removal_request" not in state:
+        work = Path(receipt["worktree"])
+        state["removal_request"] = {"adapter_protocol": 1,
+            "allocation_operation_id": state["request"]["operation_id"], "external_receipt": str(path),
+            "removal_operation_id": storage_call("operation_id"),
+            "worktree_identity": storage_call("persistent_identity", work) if path_present(work) else None}
+        atomic_json(path, receipt)
+    result = storage_call("call", registration, "reconcile-for-removal", state["removal_request"], adapter=True)
+    require(result["operation_id"] == state["removal_request"]["removal_operation_id"], "removal fence ID changed")
+    require(result["closure_result"]["established_by"] != "legacy_unreserved", "managed removal lacks positive closure")
+    if "removal_result" in state:
+        require(state["removal_result"]["cache_ids"] == result["cache_ids"], "removal cache set changed")
+    state["removal_result"] = result
+    atomic_json(path, receipt)
+    if result["cache_ids"] and begin:
+        if "begin_removal" not in state:
+            state["begin_removal"] = {"op": "begin_removal", "operation_id": storage_call("operation_id"),
+                                      "cache_ids": result["cache_ids"]}
+            atomic_json(path, receipt)
+        try:
+            removal = storage_rpc(registration, state["begin_removal"], path)
+        except CompletionError as exc:
+            if getattr(exc, 'storage_error', {}).get('code') != 'storage_not_found' or path_present(receipt['worktree']):
+                raise
+            state.pop('removal', None)
+            state['removal_compacted'] = True
+            atomic_json(path, receipt)
+            return registration
+        require(removal["operation_id"] == state["begin_removal"]["operation_id"]
+                and sorted(e["cache_id"] for e in removal["entries"]) == sorted(result["cache_ids"]),
+                "authority removal binding or cache set changed")
+        require(not removal.get("finished_at") or not path_present(receipt["worktree"]),
+                "finished removal path is present; refusing deletion")
+        state["removal"] = removal
+        atomic_json(path, receipt)
+    return registration
+
+
+def receipt_resume(action, path, receipt=None, *, flags=()):
+    receipt = read_json(Path(path)) if receipt is None else receipt
+    require(isinstance(receipt, dict) and isinstance(receipt.get('storage', {}), dict)
+            and isinstance(receipt.get('storage', {}).get('request', {}), dict),
+            f'invalid receipt operation binding: {path}; repair the retained receipt before resuming')
+    operation = receipt.get('storage', {}).get('request', {}).get('operation_id')
+    return shlex.join([sys.executable, str(Path(__file__).resolve()), action, '--receipt', str(path),
+                       *(['--operation-id', operation] if operation else []), *flags])
+
+
+def storage_resume(path, *, for_removal=False):
+    return receipt_resume('recover-storage', path, flags=['--for-removal'] if for_removal else [])
+
+
+def allocation_replayable(receipt, path):
+    if (receipt.get('status') == 'ABANDONED' or receipt.get('storage', {}).get('removal_finished')
+            or 'removal_request' in receipt.get('storage', {})):
+        error = CompletionError('allocation is terminal or fenced; resume owner removal: ' + storage_resume(path, for_removal=True))
+        error.storage_error = {'receipt': str(path), 'resume': storage_resume(path, for_removal=True)}
+        raise error
+
+
+def storage_rpc(registration, request, path=None):
+    module = shared("storage-client")
+    try:
+        return module["Client"](registration["control_directory"]).call(request)
+    except module["StorageRefusal"] as exc:
+        error = CompletionError(str(exc) + "; retain the receipt and replay the saved operation")
+        error.storage_error = exc.result(receipt=str(path) if path else None, resume=storage_resume(path) if path else None)
+        raise error from exc
+
+
+def recover_storage(args):
+    path = resolve_receipt(Path(args.receipt).absolute(), operation_id=getattr(args, "operation_id", None))
+    with locked_receipt(path, operation_id=getattr(args, "operation_id", None), resume=True) as receipt:
+        args.operation_id = receipt.get("storage", {}).get("request", {}).get("operation_id")
+        require(storage_call("managed_receipt", receipt), "receipt is not managed")
+        if args.for_removal:
+            accepted = receipt.get('acceptance') or receipt.get('pushed') or receipt.get('pr_number')
+            if accepted and receipt.get('pr_number') and receipt.get('delivery') not in {'COMPLETE', 'CLOSED'}:
+                pr = json.loads(gh(receipt, 'pr', 'view', str(receipt['pr_number']), '--json', PR_FIELDS))
+                validate_pr(receipt, pr, allow_closed=True)
+                if pr['state'] == 'CLOSED':
+                    require(not pr.get('mergedAt') and not pr.get('mergeCommit'), 'closed PR has merge evidence; retain')
+                    receipt.update(closed_pr=pr, delivery='CLOSED')
+                    atomic_json(path, receipt)
+            if accepted and receipt.get('delivery') in {'LOCAL_ONLY', 'FAILED', 'CLOSED'}:
+                require(receipt.get('writers_released'), 'release writers before owner removal; resume complete --writers-stopped')
+                verify_custody(receipt, path)
+                normalize_failed_checkout(receipt)
+                try:
+                    cleanup_workspace(receipt, path, warnings=[])
+                except WritersUnobservable as exc:
+                    raise WritersUnobservable(manual_removal(receipt, path, exc)) from exc
+                receipt.pop('workspace_cleanup', None)
+                return completion_result(receipt, path, receipt['delivery'])
+            if receipt['storage'].get('removal_finished') and (accepted or receipt.get('status') == 'ABANDONED'):
+                path = retire_terminal(receipt, path)
+                if receipt.get('status') == 'ABANDONED':
+                    return {'status': 'ABANDONED', 'receipt': str(path)}
+                return {'status': 'REMOVAL_RECONCILED', 'receipt': str(path), **receipt['storage'].get('removal_result', {}),
+                        'resume': receipt_resume('complete', path, receipt)}
+            if accepted:
+                managed_removal_gate(receipt, path, registration=managed_registration(receipt, recovery=True), begin=False)
+                return {'status': 'REMOVAL_RECONCILED', 'receipt': str(path), **receipt['storage']['removal_result'],
+                        'resume': receipt_resume('complete', path, receipt)}
+            try:
+                return abandon_managed(receipt, path)
+            except WritersUnobservable as exc:
+                raise WritersUnobservable(manual_removal(receipt, path, exc)) from exc
+        allocation_replayable(receipt, path)
+        if receipt["allocation"] == "managed_pending":
+            finish_managed_allocation(receipt, path)
+        return allocation_result(receipt, path, [], [])
+
+
+def finish_managed_removal(receipt, path, registration):
+    state = receipt['storage']
+    require(not path_present(receipt['worktree']), 'managed tree reappeared; retain')
+    removal = state.get('removal')
+    if removal and not removal.get('finished_at'):
+        finished = storage_rpc(registration, {'op': 'finish_removal', 'removal_id': removal['removal_id']}, path)
+        require(finished['removal_id'] == removal['removal_id']
+                and reply_matches(finished['entries'], [{key: entry[key] for key in ('cache_id', 'generation')}
+                                                          for entry in removal['entries']]) and finished.get('finished_at'),
+                'authority removal completion missing or changed')
+        state['removal_finish_result'] = finished
+    path.with_name('tree-removal.json').unlink(missing_ok=True)
+    storage_call('sync_directory', path.parent)
+    state['removal_finished'] = True
+    atomic_json(path, receipt)
+
+
+def abandon_managed(receipt, path):
+    """Terminal, fenced disposal of a never-published allocation; retain its audit receipt."""
+    require(not receipt.get('acceptance') and not receipt.get('pushed') and not receipt.get('pr_number'),
+            'accepted/published allocations must resume complete for removal')
+    registration = managed_registration(receipt, recovery=True)
+    work = Path(receipt['worktree'])
+    state = receipt['storage']
+    branch = 'refs/heads/' + receipt['branch']
+    require(ref_sha(receipt, branch) in (None, receipt['baseline']), 'abandoned task branch changed; retain source')
+    if state.get('removal_finished'):
+        # FinishRemoval may have persisted before branch deletion/ABANDONED.
+        # A surviving partial tree must still pass the original fenced checks.
+        if path_present(work):
+            require('removal_request' in state and 'tree_removal_digest' in state,
+                    'finished abandonment tree lacks its original fence; retain')
+            remove_managed_tree(receipt, path, registration=registration, abandonment=True)
+    elif not path_present(path.with_name('storage-allocation.json')):
+        require(not path_present(work) and str(work) not in registrations(receipt),
+                'allocation without Rust receipt has a tree; retain and repair')
+    else:
+        if path_present(work):
+            if not path_present(work / '.git') and 'tree_removal_digest' not in state:
+                # Rust may have reserved/precreated an empty destination before
+                # Git established its registration. Closure still precedes deletion.
+                require(not any(work.iterdir()) and str(work) not in registrations(receipt),
+                        'partial checkout without Git metadata contains unknown files; retain')
+                if not shutil.rmtree.avoids_symlink_attacks:
+                    raise WritersUnobservable('safe managed tree removal unsupported; retain')
+                stopped_writers(work)
+                managed_removal_gate(receipt, path, registration=registration)
+                require(storage_call('persistent_identity', work) == state['removal_request']['worktree_identity'],
+                        'abandoned root changed; retain')
+                work.rmdir()
+                storage_call('sync_directory', work.parent)
+            else:
+                if 'worktree_gitdir' not in receipt:
+                    receipt['worktree_gitdir'] = git(work, 'rev-parse', '--absolute-git-dir')
+                    receipt['worktree_identity'] = workspace_identity(work, Path(receipt['worktree_gitdir']))
+                remove_managed_tree(receipt, path, registration=registration, abandonment=True)
+        else:
+            managed_removal_gate(receipt, path, registration=registration)
+        if str(work) in registrations(receipt):
+            remove_managed_registration(receipt)
+        sync_surviving_directory(Path(receipt['common_gitdir']) / 'worktrees')
+        sync_surviving_directory(work.parent)
+        finish_managed_removal(receipt, path, registration)
+    if state.get('removal_finished') and str(work) in registrations(receipt):
+        remove_managed_registration(receipt)
+        sync_surviving_directory(Path(receipt['common_gitdir']) / 'worktrees')
+    if ref_sha(receipt, branch):
+        require(all(row.get('branch') != branch for row in registrations(receipt).values()),
+                'abandoned task branch is still checked out; retain')
+        gref(receipt, 'update-ref', '-d', branch, receipt['baseline'])
+    receipt['status'] = 'ABANDONED'
+    state['removal_finished'] = True
+    atomic_json(path, receipt)
+    path = retire_terminal(receipt, path)
+    return {'status': 'ABANDONED', 'receipt': str(path)}
+
+
+def managed_terminal(receipt):
+    return receipt.get('storage', {}).get('removal_finished') and (
+        receipt.get('status') == 'ABANDONED' or receipt.get('delivery') in {'COMPLETE', 'LOCAL_ONLY', 'FAILED', 'CLOSED'})
+
+
+def retained_modules(receipt):
+    gitdir = receipt.get('worktree_gitdir')
+    if not gitdir:
+        common = receipt.get('common_gitdir')
+        if not common:
+            return
+        # A lost allocation reply may leave only Git's retained registration.
+        admins = Path(common) / 'worktrees'
+        if not path_present(admins):
+            return
+        matches = [admin for admin in admins.iterdir() if
+                   Path((admin / 'gitdir').read_text(encoding='utf-8').strip()) == Path(receipt['worktree']) / '.git']
+        require(len(matches) <= 1, 'ambiguous worktree admin directories; retain')
+        if not matches:
+            return
+        gitdir = str(matches[0])
+    require(not path_present(Path(gitdir) / 'modules'),
+            'retained populated submodules repositories block removal; preserve/publish their source and explicitly resolve '
+            + str(Path(gitdir) / 'modules') + '; retain')
+
+
+def remove_managed_registration(receipt):
+    retained_modules(receipt)
+    require(not path_present(receipt['worktree']), 'managed tree reappeared; retain registration')
+    gref(receipt, 'worktree', 'remove', '--force', receipt['worktree'])
+
+
+def retire_terminal(receipt, path):
+    if not storage_call('managed_receipt', receipt):
+        return path
+    if not managed_terminal(receipt) or path.parent.parent.name == 'retired':
+        return path
+    require(not path_present(receipt['worktree']), 'terminal managed tree reappeared; retain')
+    if receipt.get('status') == 'ABANDONED':
+        require(ref_sha(receipt, 'refs/heads/' + receipt['branch']) is None,
+                'abandoned branch remains; resume owner removal')
+    retired = path.parent.parent / 'retired'
+    retired.mkdir(exist_ok=True)
+    require(retired.resolve() == retired and retired.is_dir(), 'retired receipt directory redirected; retain')
+    destination = retired / (path.parent.name + '.' + receipt['storage']['request']['operation_id'])
+    path.parent.rename(destination)
+    storage_call('sync_directory', retired)
+    storage_call('sync_directory', retired.parent)
+    return destination / path.name
+
+
+def sync_surviving_directory(path):
+    while not path.exists():
+        require(not path_present(path) and path.parent != path, "directory durability ancestry changed")
+        path = path.parent
+    storage_call("sync_directory", path)
+
+
+def removal_file_record(path):
+    # A leaf symlink is data, including a symlink to an external directory.
+    if stat.S_ISLNK(path.lstat().st_mode):
+        return {'type': 'symlink', 'target': os.readlink(path)}
+    return {'type': 'file', **file_record(path)}
+
+
+def removal_eligibility(receipt, path, *, abandonment, partial):
+    work = Path(receipt['worktree'])
+    pointer = work / '.git'
+    if path_present(pointer):
+        require(stat.S_ISREG(pointer.lstat().st_mode)
+                and git(work, 'rev-parse', '--absolute-git-dir') == receipt['worktree_gitdir'],
+                'managed Git pointer changed; retain')
+    else:
+        require(partial and not any(work.iterdir()), 'managed Git pointer missing before tree is empty; retain')
+    require(same_workspace_identity(workspace_identity(work, Path(receipt['worktree_gitdir'])), receipt['worktree_identity']),
+            'partial removal workspace/registration changed')
+    row = registrations(receipt).get(str(work), {})
+    require(row.get('branch') == 'refs/heads/' + receipt['branch'] and 'locked' not in row,
+            'partial removal registration changed')
+    argv = ['git', '--git-dir', receipt['worktree_gitdir'], '--work-tree', str(work)]
+    baseline = receipt['baseline'] if abandonment else receipt['publish_sha']
+    require(command([*argv, 'rev-parse', 'HEAD']) == baseline, 'removal HEAD changed; retain')
+    known = {}
+    for item in command([*argv, 'ls-tree', '-r', '-z', baseline]).split('\0'):
+        if item:
+            fields, relative = item.split('\t', 1)
+            mode, kind, oid = fields.split()
+            known[relative] = (mode, oid)
+    indexed = {}
+    for item in command([*argv, 'ls-files', '--stage', '-z']).split('\0'):
+        if item:
+            fields, relative = item.split('\t', 1)
+            mode, oid, stage = fields.split()
+            require(stage == '0' and known.get(relative) == (mode, oid), 'partial checkout index changed; retain: ' + relative)
+            indexed[relative] = (mode, oid)
+    require(abandonment or indexed == known, 'removal index changed; retain')
+    retained_modules(receipt)
+    require(not any(mode == '160000' and path_present(work / relative / '.git')
+                        for relative, (mode, oid) in known.items()),
+            'working tree contains populated submodules; preserve their source and explicitly resolve them; retain')
+    # Git's own comparison applies eol/clean filters and gitlink semantics. A
+    # private baseline index also handles an interrupted checkout's missing entries.
+    with tempfile.TemporaryDirectory(prefix='.removal-index-', dir=path.parent) as temporary:
+        env = {**os.environ, 'GIT_INDEX_FILE': str(Path(temporary) / 'index')}
+        command([*argv, 'read-tree', baseline], env=env)
+        changes = command([*argv, 'diff', '--no-renames', '--name-status', '-z', baseline, '--'], env=env).split('\0')
+        require(all(changes[i] == 'D' and (partial or abandonment) for i in range(0, len(changes)-1, 2)),
+                'partial removal source changed; retain')
+    nested = command([*argv, 'ls-files', '--others', '--ignored', '--exclude-standard', '-z'])
+    require(not any(name.endswith('/') for name in nested.split('\0')), 'managed tree contains a nested repository; retain')
+    untracked = command([*argv, 'ls-files', '--others', '--exclude-standard', '-z'])
+    # ls-files uses the real index, so a surviving baseline entry missing from
+    # a partial-checkout index must not be mistaken for new source.
+    others = [name for name in untracked.split('\0') if name and name not in known]
+    if abandonment and not partial:
+        require(all(name == '.devlyn/.gitignore' and (work / name).read_bytes() == b'*\n' for name in others),
+                'partial checkout contains new source; retain')
+    return {relative: removal_file_record(work / relative) for relative in others}
+
+
+def remove_managed_tree(receipt, path, *, registration=None, abandonment=False):
+    work = Path(receipt['worktree'])
+    state = receipt['storage']
+    # No irreversible admission before platform support and all first-pass vetoes.
+    partial = 'tree_removal_digest' in state
+    abandonment = abandonment or state.get('abandonment', False)
+    if not partial and not abandonment:
+        removable(receipt, work)
+    if state.get('records_custody'):
+        saved = state['records_custody']
+        require(records_manifest(Path(saved['path'])) == saved['files'], 'retained task records changed; retain tree')
+    files = removal_eligibility(receipt, path, abandonment=abandonment, partial=partial)
+    sidecar = path.with_name('tree-removal.json')
+    if partial:
+        require(file_record(sidecar)['sha256'] == state['tree_removal_digest'], 'removal manifest changed; retain')
+        expected = read_json(sidecar)
+        require(all(relative in expected and record == expected[relative] for relative, record in files.items()),
+                'partial removal file changed or new source; retain')
+    else:
+        expected = files
+    stopped_writers(work)
+    if not shutil.rmtree.avoids_symlink_attacks:
+        raise WritersUnobservable('safe managed tree removal unsupported; retain')
+    require(not any(mount.is_relative_to(work) for mount in scratch_mounts()), 'managed tree contains a mount; retain')
+    if not partial:
+        atomic_json(sidecar, files)
+        state['tree_removal_digest'] = file_record(sidecar)['sha256']
+        if abandonment:
+            state['abandonment'] = True
+        atomic_json(path, receipt)
+    if not state.get('removal_finished'):
+        managed_removal_gate(receipt, path, registration=registration)
+    require(storage_call('persistent_identity', work) == state['removal_request']['worktree_identity'], 'managed tree identity changed')
+    survivors = removal_eligibility(receipt, path, abandonment=abandonment, partial=True)
+    require(all(relative in expected and record == expected[relative] for relative, record in survivors.items()),
+            'partial removal file changed or new source; retain')
+    stopped_writers(work)
+    require(not any(mount.is_relative_to(work) for mount in scratch_mounts()), 'managed tree contains a mount; retain')
+    fd = os.open(work, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        require(os.path.samestat(os.fstat(fd), work.lstat()), 'managed tree changed before removal; retain')
+        empty_owned_tree(fd)
+    finally:
+        os.close(fd)
+    require(storage_call('persistent_identity', work) == state['removal_request']['worktree_identity'], 'managed root replaced; retain')
+    work.rmdir()
+    require(not path_present(work), 'managed tree removal incomplete; retain receipt')
+    storage_call('sync_directory', work.parent)
+
+
+def empty_owned_tree(fd):
+    device = os.fstat(fd).st_dev
+    # Keep ignore rules while their children/siblings survive, and the worktree
+    # pointer until the entire tree is empty. Symlink directories are leaves.
+    for name in sorted(os.listdir(fd), key=lambda name: (name == '.git', name in ('.gitignore', '.gitattributes'), name)):
+        before = os.stat(name, dir_fd=fd, follow_symlinks=False)
+        require(before.st_dev == device, 'managed tree crosses a filesystem; retain')
+        if stat.S_ISDIR(before.st_mode):
+            child = os.open(name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=fd)
+            try:
+                require(os.path.samestat(before, os.fstat(child)), 'managed directory changed before descent; retain')
+                empty_owned_tree(child)
+            finally:
+                os.close(child)
+            require(os.path.samestat(before, os.stat(name, dir_fd=fd, follow_symlinks=False)),
+                    'managed directory changed before unlink; retain')
+            os.rmdir(name, dir_fd=fd)
+        else:
+            os.unlink(name, dir_fd=fd)
+
+
 def allocate(args, *, exclude_receipts=(), warnings=None):
     """Reconcile older tasks, except receipts the queue has identified as invalid."""
     warnings = [] if warnings is None else warnings
     work = Path(git(Path(args.repo).resolve(), "rev-parse", "--show-toplevel")).resolve()
     common = Path(git(work, "rev-parse", "--path-format=absolute", "--git-common-dir")).resolve()
+    key = hashlib.sha256(args.branch.encode()).hexdigest()[:24]
+    path = common / "devlyn-completion" / key / "receipt.json"
+    if path.exists() and storage_call("managed_receipt", read_json(path)):
+        with locked_receipt(path) as saved:
+            if saved.get('status') == 'ABANDONED' and saved.get('storage', {}).get('removal_finished'):
+                retire_terminal(saved, path)
+            else:
+                allocation_replayable(saved, path)
+                # A leftover operation never changes mode after unenrollment.
+                # Refuse this key with its retained recovery, without gating others.
+                managed_registration(saved)
+                require(saved["task"] == args.task and saved["branch"] == args.branch
+                        and saved["worktree"] == str(Path(args.worktree).resolve())
+                        and saved["anchor"] == str(work) and saved["remote"] == args.remote,
+                        "managed replay arguments changed; resume the original receipt")
+                require((args.base is None or args.base == saved["base"])
+                        and (args.repository is None or args.repository == saved["repository"]),
+                        "managed replay repository/base changed")
+                if args.from_receipt:
+                    predecessor = saved.get("allocated_from", {}).get("receipt")
+                    require(predecessor and Path(args.from_receipt).resolve() == common / "devlyn-completion" / predecessor / "receipt.json",
+                            "managed replay predecessor changed")
+                for supplied in (args.local_base, args.start):
+                    require(supplied is None or supplied == saved["baseline"], "managed replay baseline changed")
+                if saved["allocation"] == "managed_pending":
+                    finish_managed_allocation(saved, path)
+                return allocation_result(saved, path, [], warnings)
+    decision = storage_call("operation_enrollment")
+
     require(args.task.strip(), "task identity is required")
     git(work, "check-ref-format", "refs/heads/" + args.branch)
     if args.base is not None:
@@ -342,26 +864,44 @@ def allocate(args, *, exclude_receipts=(), warnings=None):
     directory = common / "devlyn-completion" / key
     path = directory / "receipt.json"
     reconciled = [] if local else reconcile(common, path, work, exclude_receipts=exclude_receipts, warnings=warnings)
-    measured = target
-    while not measured.exists():
-        require(measured.parent != measured, f"no existing ancestor of {target} to measure free space")
-        measured = measured.parent
-    usage = shutil.disk_usage(measured)
-    floor = max(10 * 1024**3, (usage.total + 49) // 50)
-    require(usage.free >= floor,
-            f"BLOCKED:disk {usage.free} bytes ({usage.free / 1024**3:.2f} GiB) free is below the "
-            f"{floor} byte ({floor / 1024**3:.2f} GiB) floor on {measured}; free space "
-            "(for example, run Devlyn disk cleanup or remove finished task worktrees' build output), then allocate again")
+    if decision["mode"] == "standalone":
+        measured = target
+        while not measured.exists():
+            require(measured.parent != measured, f"no existing ancestor of {target} to measure free space")
+            measured = measured.parent
+        usage = shutil.disk_usage(measured)
+        floor = max(10 * 1024**3, (usage.total + 49) // 50)
+        require(usage.free >= floor,
+                f"BLOCKED:disk {usage.free} bytes ({usage.free / 1024**3:.2f} GiB) free is below the "
+                f"{floor} byte ({floor / 1024**3:.2f} GiB) floor on {measured}; free space "
+                "(for example, run Devlyn disk cleanup or remove finished task worktrees' build output), then allocate again")
     receipt["baseline"] = local or exact_commit(receipt, args.start, "--start") or remote_base(receipt)
-    directory.mkdir(parents=True, exist_ok=False)
     receipt["id"] = key
     receipt["recovery_ref"] = "refs/devlyn/completed/" + key
-    scratch = directory / "scratch"
-    scratch.mkdir()
-    receipt["scratch_identity"] = workspace_identity(scratch, directory)
-    # Persist prospective intent BEFORE native creation. An interrupted allocation
-    # stays visibly incomplete; a later call may not adopt whatever now exists.
-    atomic_json(path, receipt)
+    if decision["mode"] == "managed":
+        receipt['mode'] = 'managed'
+        operation = storage_call("operation_id")
+        receipt['recovery_ref'] += '.' + operation
+        receipt.update(allocation="managed_pending", storage={"decision": decision, "request": {
+            "adapter_protocol": 1, "operation_id": operation, "control_directory": decision["registration"]["control_directory"],
+            "repository": str(work), "baseline": receipt["baseline"], "branch": args.branch,
+            "owner": {"repository": storage_call("persistent_identity", work), "allocation_id": operation, "receipt": str(path)},
+            "external_receipt": str(path), "destination": {"state": "absent", "path": str(target)},
+            "cache_policy": "cargo_worktree_v1"}})
+    if decision["mode"] == "managed":
+        directory.parent.mkdir(parents=True, exist_ok=True)
+    allocation_lock = (shared("platform-support")["file_lock"](directory.with_suffix('.lock'), blocking=True)
+                       if decision["mode"] == "managed" else contextlib.nullcontext())
+    with allocation_lock:
+        directory.mkdir(parents=True, exist_ok=False)
+        scratch = directory / "scratch"
+        scratch.mkdir()
+        receipt["scratch_identity"] = workspace_identity(scratch, directory)
+        # Persist prospective intent BEFORE checkout, under the receipt lock.
+        atomic_json(path, receipt)
+        if decision["mode"] == "managed":
+            finish_managed_allocation(receipt, path)
+            return allocation_result(receipt, path, reconciled, warnings)
     for root in worktree_roots(receipt)[1:]:
         try:
             prune_empty_parents(receipt, root, root, include_root=True)
@@ -500,7 +1040,7 @@ def queue_commit(receipt, work, queue, source):
 
 def accept(args):
     """Bind a result's source and evidence custody before terminal metadata or any delivery decision."""
-    path = Path(args.receipt).absolute()
+    path = resolve_receipt(Path(args.receipt).absolute())
     with locked_receipt(path) as receipt:
         refuse_retired_pipeline(receipt, path, args.acceptance, receipt.get("local_only"), [])
         bind_acceptance(receipt, path, args.acceptance)
@@ -510,7 +1050,7 @@ def accept(args):
 
 def attach(args):
     """Attach the queue-only terminal commit to an already bound result; the recovery ref moves with it."""
-    path = Path(args.receipt).absolute()
+    path = resolve_receipt(Path(args.receipt).absolute())
     queue = {"commit": args.commit, "file": args.file}
     with locked_receipt(path) as receipt:
         require(receipt.get("acceptance"), "bind the result before attaching its terminal commit")
@@ -571,12 +1111,13 @@ def remote_head(receipt, branch):
     return rows[0].split()[0] if rows else None
 
 
-def validate_pr(receipt, pr):
+def validate_pr(receipt, pr, *, allow_closed=False):
     owner, name = receipt["repository"].split("/")
     require(pr["url"].lower() == f"https://github.com/{receipt['repository']}/pull/{pr['number']}".lower(), "PR repository mismatch")
     require(pr["headRefName"] == receipt["branch"] and pr["baseRefName"] == receipt["base"] and pr["headRefOid"] == receipt["publish_sha"], "PR head/base/commit changed")
     require(not pr["isCrossRepository"] and pr["headRepository"]["name"].lower() == name.lower() and pr["headRepositoryOwner"]["login"].lower() == owner.lower(), "PR head repository differs")
-    require(pr["state"] in {"OPEN", "MERGED"}, "PR is closed without merge; retain task")
+    require(pr["state"] in ({"OPEN", "MERGED", "CLOSED"} if allow_closed else {"OPEN", "MERGED"}),
+            "PR is closed without merge; retain task")
 
 
 def workspace_identity(work, gitdir):
@@ -591,7 +1132,7 @@ def same_workspace_identity(current, recorded):
     return shape(current) == shape(recorded)
 
 
-def inspect_workspace(receipt):
+def inspect_workspace(receipt, *, clean=True):
     work = Path(receipt["worktree"])
     row = registrations(receipt).get(str(work))
     require(row and "locked" not in row and "prunable" not in row and "detached" not in row, "worktree missing, detached or locked; retain and inspect registration")
@@ -600,7 +1141,31 @@ def inspect_workspace(receipt):
     require(git(work, "rev-parse", "--absolute-git-dir") == receipt["worktree_gitdir"] and str(Path(git(work, "rev-parse", "--path-format=absolute", "--git-common-dir")).resolve()) == receipt["common_gitdir"], "worktree Gitdir ownership changed")
     require(same_workspace_identity(workspace_identity(work, Path(receipt["worktree_gitdir"])), receipt["worktree_identity"]), "worktree/registration was replaced; receipt no longer owns it")
     require(git(work, "rev-parse", "HEAD") == receipt.get("publish_sha", receipt["baseline"]), "task HEAD changed")
-    require(not git(work, "status", "--porcelain", "--untracked-files=all"), "dirty/untracked workspace; retain files and commit only accepted scope")
+    if clean:
+        require(not git(work, "status", "--porcelain", "--untracked-files=all"), "dirty/untracked workspace; retain files and commit only accepted scope")
+
+
+def normalize_failed_checkout(receipt):
+    """The drain attaches its terminal commit without checking it out on FAILED."""
+    work = Path(receipt['worktree'])
+    if (receipt.get('delivery') != 'FAILED' or not receipt.get('queue') or not path_present(work)
+            or receipt.get('storage', {}).get('tree_removal_digest')
+            or not git(work, 'status', '--porcelain', '--untracked-files=all')):
+        return
+    inspect_workspace(receipt, clean=False)
+    source, publish = receipt['source_sha'], receipt['publish_sha']
+    require(receipt['queue']['commit'] == publish
+            and not git(work, 'diff', '--cached', '--name-only', source, '--')
+            and not git(work, 'diff', '--name-only', '--')
+            and not git(work, 'ls-files', '--others', '--exclude-standard'),
+            'dirty FAILED checkout differs from the exact drain source; retain')
+    git(work, 'read-tree', '-m', '-u', source, publish)
+
+
+def manual_removal(receipt, path, reason):
+    return (str(reason) + '; stop all writers and remove the task checkout by hand: ' + receipt['worktree']
+            + '; keep the task branch and receipt, then resume '
+            + receipt_resume('recover-storage', path, receipt, flags=['--for-removal']))
 
 
 def outside(work):
@@ -615,7 +1180,8 @@ def removable(receipt, work):
     # native removal would delete it with its uncommitted work.
     nested = [p for p in git(work, "ls-files", "--others", "--ignored", "--exclude-standard", "-z").split("\0") if p.endswith("/")]
     require(not nested, "nested repository or worktree inside the task tree: " + ", ".join(nested) + "; retain")
-    stopped_writers(work)
+    if not storage_call('managed_receipt', receipt):
+        stopped_writers(work)
 
 
 def linux_process_status(process):
@@ -733,6 +1299,8 @@ def records_manifest(root):
 
 def clean_scratch(receipt, path, writers_stopped):
     """Empty the owned build directory; keep its identity across resume/reuse."""
+    if path.parent.parent.name == 'retired' and receipt.get('scratch_cleanup', {}).get('status') == 'CLEAN':
+        return receipt['scratch_cleanup']
     scratch = path.parent / "scratch"
     if "scratch_identity" not in receipt:
         return {"status": "NOT_OWNED"}
@@ -743,6 +1311,10 @@ def clean_scratch(receipt, path, writers_stopped):
     require(shutil.rmtree.avoids_symlink_attacks, "safe scratch removal unsupported on this platform; retain")
     require(not any(mount.is_relative_to(scratch) for mount in scratch_mounts()), "scratch contains a mounted filesystem; retain")
     stopped_writers(scratch)
+    if storage_call("managed_receipt", receipt):
+        closure = receipt.get("storage", {}).get("result", {}).get("closure_result")
+        storage_call("validate_closure", closure, adapter=True)
+        require(closure["established_by"] != "legacy_unreserved", "scratch cleanup lacks positive closure")
     size = 0
     for directory, dirs, files in os.walk(scratch, followlinks=False, onerror=raise_walk_error):
         require(not any(name.casefold() == ".git" for name in dirs + files), "scratch contains Git recovery data; move it to retained custody before cleanup")
@@ -768,35 +1340,40 @@ def clean_scratch(receipt, path, writers_stopped):
 
 
 def clean_scratch_command(args):
-    path = Path(args.receipt).absolute()
-    with locked_receipt(path) as receipt:
+    path = resolve_receipt(Path(args.receipt).absolute(), operation_id=getattr(args, 'operation_id', None))
+    with locked_receipt(path, operation_id=getattr(args, 'operation_id', None), resume=True) as receipt:
+        args.operation_id = receipt.get('storage', {}).get('request', {}).get('operation_id')
         result = clean_scratch(receipt, path, args.writers_stopped)
+        path = retire_terminal(receipt, path)
         return {"status": "SCRATCH_CLEAN" if result["status"] == "CLEAN" else "SCRATCH_NOT_OWNED",
                 "receipt": str(path), "scratch_cleanup": result, "product_verdict_unchanged": True}
 
 
-def cleanup(receipt, path, pr, *, warnings=None):
-    warnings = [] if warnings is None else warnings
-    if pr is not None:
-        require(pr["state"] == "MERGED" and pr.get("mergedAt") and pr.get("mergeCommit", {}).get("oid"), "actual matching merge evidence is required")
+def verify_custody(receipt, path):
+    require(ref_sha(receipt, receipt['recovery_ref']) == receipt['publish_sha'],
+            'recovery reachability changed; retain resources')
+    verify_files(path.parent / 'custody', receipt['files'])
+    require(read_json(path.parent / 'manifest.json') == receipt['files'], 'custody manifest changed')
+
+
+def cleanup_workspace(receipt, path, *, warnings):
     sha = receipt["publish_sha"]
     branch_ref = "refs/heads/" + receipt["branch"]
-    # The recovery ref keeps the accepted commit reachable, so squash and
-    # rebase merges need only the merge commit on base.
-    require(ref_sha(receipt, receipt["recovery_ref"]) == sha, "recovery reachability changed; retain resources")
-    verify_files(path.parent / "custody", receipt["files"])
-    require(read_json(path.parent / "manifest.json") == receipt["files"], "custody manifest changed")
-    gref(receipt, "merge-base", "--is-ancestor", pr["mergeCommit"]["oid"] if pr else sha, remote_base(receipt))
-    gref(receipt, "merge-base", "--is-ancestor", receipt["source_sha"], sha)
     work = Path(receipt["worktree"])
     local = ref_sha(receipt, branch_ref)
     require(local in {None, sha}, "local task ref changed; retain")
-    if receipt["linked"]:
-        if work.exists():
+    removal_finished = receipt.get('storage', {}).get('removal_finished', False)
+    if removal_finished:
+        require(not path_present(work), 'finished managed removal path reappeared; retain')
+    if receipt["linked"] and not removal_finished:
+        present = path_present(work) if storage_call("managed_receipt", receipt) else work.exists()
+        if present:
             require(receipt.get("writers_released"), "wait actual children, stop/yield known writers, then resume with --writers-stopped")
             require(work != Path(receipt["anchor"]) and work != Path(receipt["common_gitdir"]).parent, "cannot remove retained/main checkout")
-            removable(receipt, work)
-            records = records_manifest(work)
+            partial = storage_call("managed_receipt", receipt) and "tree_removal_digest" in receipt["storage"]
+            if not partial:
+                removable(receipt, work)
+            records = {} if partial else records_manifest(work)
             if records:
                 destination = path.parent / "records"
                 if os.path.lexists(destination) and records_manifest(destination) != records:
@@ -808,15 +1385,52 @@ def cleanup(receipt, path, pr, *, warnings=None):
                         require(records_manifest(Path(temporary)) == records, ".devlyn changed while it was copied; stop its writer and resume")
                         Path(temporary).rename(destination)
                 require(records_manifest(destination) == records, f"records copy mismatch; repair and resume: {destination}")
-            removable(receipt, work)
-            require(records_manifest(work) == records, ".devlyn changed after it was copied; stop its writer and resume")
-            gref(receipt, "worktree", "remove", str(work))
+                if storage_call("managed_receipt", receipt):
+                    receipt["storage"]["records_custody"] = {"path": str(destination), "files": records}
+                    atomic_json(path, receipt)
+            if not partial:
+                removable(receipt, work)
+                require(records_manifest(work) == records, ".devlyn changed after it was copied; stop its writer and resume")
+            if storage_call("managed_receipt", receipt):
+                remove_managed_tree(receipt, path, registration=managed_registration(receipt, recovery=True))
+                if str(work) in registrations(receipt):
+                    remove_managed_registration(receipt)
+                sync_surviving_directory(Path(receipt["common_gitdir"]) / "worktrees")
+            else:
+                gref(receipt, "worktree", "remove", str(work))
         else:
-            require(str(work) not in registrations(receipt), "missing worktree is still registered; retain")
+            if storage_call("managed_receipt", receipt):
+                managed_removal_gate(receipt, path, registration=managed_registration(receipt, recovery=True))
+                if str(work) in registrations(receipt):
+                    remove_managed_registration(receipt)
+                sync_surviving_directory(work.parent)
+                sync_surviving_directory(Path(receipt["common_gitdir"]) / "worktrees")
+            else:
+                require(str(work) not in registrations(receipt), "missing worktree is still registered; retain")
+        if storage_call("managed_receipt", receipt):
+            finish_managed_removal(receipt, path, managed_registration(receipt, recovery=True))
         try:
             prune_named_parents(receipt)
         except (CompletionError, OSError) as exc:
             emit_warning(warnings, f"parent cleanup retained: {work.parent}: {exc}; continuing")
+    if storage_call('managed_receipt', receipt) and receipt.get('storage', {}).get('removal_finished'):
+        if str(work) in registrations(receipt):
+            remove_managed_registration(receipt)
+            sync_surviving_directory(Path(receipt['common_gitdir']) / 'worktrees')
+
+
+def cleanup(receipt, path, pr, *, warnings=None):
+    warnings = [] if warnings is None else warnings
+    if pr is not None:
+        require(pr["state"] == "MERGED" and pr.get("mergedAt") and pr.get("mergeCommit", {}).get("oid"), "actual matching merge evidence is required")
+    sha = receipt["publish_sha"]
+    branch_ref = "refs/heads/" + receipt["branch"]
+    # The recovery ref keeps the accepted commit reachable, so squash and
+    # rebase merges need only the merge commit on base.
+    verify_custody(receipt, path)
+    gref(receipt, "merge-base", "--is-ancestor", pr["mergeCommit"]["oid"] if pr else sha, remote_base(receipt))
+    gref(receipt, "merge-base", "--is-ancestor", receipt["source_sha"], sha)
+    cleanup_workspace(receipt, path, warnings=warnings)
     checked_out = [p for p, row in registrations(receipt).items() if row.get("branch") == branch_ref]
     require(not checked_out, "task branch is still checked out at " + ", ".join(checked_out) + "; switch it off the task branch before cleanup")
     # Check ownership/ref identity once more immediately before each deletion.
@@ -836,19 +1450,69 @@ def cleanup(receipt, path, pr, *, warnings=None):
     atomic_json(path, receipt)
 
 
+def resolve_receipt(path, *, operation_id=None):
+    """Resolve a lost retirement reply without guessing between operations."""
+    require(path.name == 'receipt.json' and path == path.resolve(), 'receipt locator must be nonsymlink and absolute')
+    if path_present(path):
+        if operation_id is None or read_json(path).get('storage', {}).get('request', {}).get('operation_id') == operation_id:
+            return path
+        require(path.parent.parent.name == 'devlyn-completion', 'receipt operation ID differs from saved resume')
+    require(path.parent.parent.name == 'devlyn-completion', 'receipt locator is missing')
+    candidates = []
+    retired = path.parent.parent / 'retired'
+    if path_present(retired):
+        require(retired == retired.resolve() and retired.is_dir(), 'retired receipt directory redirected')
+        for candidate in retired.glob(path.parent.name + '.*/receipt.json'):
+            if operation_id is not None and candidate.parent.name != path.parent.name + '.' + operation_id:
+                continue
+            saved = read_json(candidate)
+            operation = saved.get('storage', {}).get('request', {}).get('operation_id')
+            require(candidate == candidate.resolve() and saved.get('id') == path.parent.name
+                    and Path(saved['common_gitdir']) / 'devlyn-completion' / saved['id'] / 'receipt.json' == path
+                    and saved.get('storage', {}).get('request', {}).get('external_receipt') == str(path)
+                    and candidate.parent.name == saved['id'] + '.' + str(operation)
+                    and managed_terminal(saved),
+                    'retired receipt locator/operation binding changed; retain')
+            if operation_id is None or operation == operation_id:
+                candidates.append(candidate)
+    require(len(candidates) == 1, 'receipt operation/locator missing or ambiguous; use the operation-specific retired receipt: '
+            + ', '.join(map(str, candidates)))
+    return candidates[0]
+
+
 @contextlib.contextmanager
-def locked_receipt(path, *, blocking=True):
-    require(path.name == "receipt.json" and path.parent.parent.name == "devlyn-completion" and path == path.resolve(), "receipt must be its original external nonsymlink path")
-    require(not (path.parent / "lock").is_symlink(), "receipt lock must not be a symlink")
+def locked_receipt(path, *, blocking=True, operation_id=None, resume=False):
+    require(path.name == "receipt.json" and (path.parent.parent.name == "devlyn-completion" or path.parent.parent.name == "retired" and path.parent.parent.parent.name == "devlyn-completion") and path == path.resolve(), "receipt must be its original external nonsymlink path")
+    preview = read_json(path)
+    if storage_call('managed_receipt', preview):
+        root = path.parent.parent if path.parent.parent.name == 'devlyn-completion' else path.parent.parent.parent
+        key = path.parent.name.split('.', 1)[0]
+        lock = root / (key + '.lock')
+    else:
+        lock = path.parent / 'lock'
+    require(not lock.is_symlink(), "receipt lock must not be a symlink")
     with contextlib.ExitStack() as stack:
         try:
-            stack.enter_context(shared("platform-support")["file_lock"](path.parent / "lock", blocking=blocking))
+            stack.enter_context(shared("platform-support")["file_lock"](lock, blocking=blocking))
         except (ImportError, OSError, AttributeError) as exc:
             raise CompletionError(f"receipt lock unavailable: {path}: {exc}") from exc
         receipt = read_json(path)
-        require(path == Path(receipt["common_gitdir"]) / "devlyn-completion" / receipt["id"] / "receipt.json", "receipt/common Gitdir binding mismatch")
+        require(receipt.get('id') == preview.get('id') and receipt.get('storage', {}).get('request', {}).get('operation_id')
+                == preview.get('storage', {}).get('request', {}).get('operation_id'), 'receipt operation changed while locking')
+        if resume:
+            actual = receipt.get('storage', {}).get('request', {}).get('operation_id')
+            require(operation_id is None or actual == operation_id, 'receipt operation ID differs from saved resume; retain both operations')
+        original = Path(receipt['common_gitdir']) / 'devlyn-completion' / receipt['id'] / 'receipt.json'
+        archived = original.parent.parent / 'retired' / (receipt['id'] + '.' + receipt.get('storage', {}).get('request', {}).get('operation_id', '')) / 'receipt.json'
+        require(path == original or path == archived, 'receipt/common Gitdir binding mismatch')
         require(receipt["id"] == hashlib.sha256(receipt["branch"].encode()).hexdigest()[:24] and receipt["branch"] not in {receipt["base"], "main", "master"}, "receipt branch ownership changed")
-        require(receipt["allocation"] == "owned", "allocation was interrupted; no historical adoption is permitted")
+        if storage_call("managed_receipt", receipt):
+            require(receipt.get("storage", {}).get("decision", {}).get("registration") and receipt.get("storage", {}).get("request"), "Open Devlyn and repair this managed receipt binding before resuming")
+            require(receipt["allocation"] in ("managed_pending", "managed_owned"), "Update Devlyn and devlyn-cli, then resume using this receipt.")
+        else:
+            require(receipt["allocation"] == "owned", "allocation was interrupted; no historical adoption is permitted")
+        if path == archived:
+            require(managed_terminal(receipt), 'retired receipt is not terminal')
         yield receipt
 
 
@@ -857,21 +1521,31 @@ def completion_result(receipt, path, status, *, warnings=None):
         receipt["delivery"] = status  # Phase-independent checkpoint: the latest delivery outcome.
         atomic_json(path, receipt)
     released = receipt.get("writers_released", False)
-    resume = shlex.join([sys.executable, str(Path(__file__).resolve()), "complete", "--receipt", str(path)] +
-                        (["--writers-stopped"] if released else []))
     scratch = {"status": "NOT_OWNED"}
-    if "scratch_identity" in receipt:
+    if path.parent.parent.name == "retired" and receipt.get("scratch_cleanup", {}).get("status") == "CLEAN":
+        scratch = receipt["scratch_cleanup"]
+    elif "scratch_identity" in receipt:
         try:
             scratch = clean_scratch(receipt, path, released)
         except (CompletionError, OSError, ValueError, KeyError, TypeError, IndexError) as error:
-            scratch = {"status": "RETAINED", "reason": str(error), "resume": shlex.join([
-                sys.executable, str(Path(__file__).resolve()), "clean-scratch", "--receipt", str(path), "--writers-stopped"])}
+            scratch = {"status": "RETAINED", "reason": str(error), "resume": receipt_resume(
+                'clean-scratch', path, receipt, flags=['--writers-stopped'])}
             receipt["scratch_cleanup"] = scratch
             try:
                 atomic_json(path, receipt)
             except OSError as record_error:
                 scratch["record_error"] = str(record_error)
-    retained = scratch["status"] == "RETAINED" or "workspace_cleanup" in receipt
+    retained = scratch['status'] == 'RETAINED' or 'workspace_cleanup' in receipt
+    path = retire_terminal(receipt, path)
+    if scratch.get('status') == 'RETAINED':
+        scratch_resume = receipt_resume('clean-scratch', path, receipt, flags=['--writers-stopped'])
+        if scratch.get('resume') != scratch_resume:
+            scratch['resume'] = scratch_resume
+            atomic_json(path, receipt)
+    resume = receipt_resume('complete', path, receipt, flags=['--writers-stopped'] if released else [])
+    if 'workspace_cleanup' in receipt and receipt['workspace_cleanup']['resume'] != resume:
+        receipt['workspace_cleanup']['resume'] = resume
+        atomic_json(path, receipt)
     return {"status": "CLEANUP_PENDING" if status == "COMPLETE" and retained else status,
             "warnings": [] if warnings is None else warnings,
             "delivery_status": status, "receipt": str(path), "pr": receipt.get("pr_url"), "resume": resume,
@@ -880,22 +1554,40 @@ def completion_result(receipt, path, status, *, warnings=None):
             "scratch_cleanup": scratch, "workspace_cleanup": receipt.get("workspace_cleanup")}
 
 
+def cleanup_delivered(receipt, path, pr, *, warnings=None):
+    try:
+        cleanup(receipt, path, pr, warnings=warnings)
+    except (CompletionError, OSError) as error:
+        managed_outage = storage_call('managed_receipt', receipt)
+        if not isinstance(error, (WritersUnobservable, WriterActive)) and not managed_outage:
+            raise
+        reason = manual_removal(receipt, path, error) if managed_outage and isinstance(error, WritersUnobservable) else str(error)
+        receipt['workspace_cleanup'] = {'status': 'RETAINED', 'reason': reason, 'resume': receipt_resume('complete', path, receipt)}
+        atomic_json(path, receipt)
+
+
 def reconcile(common, allocated, anchor, *, exclude_receipts=(), warnings=None):
     warnings = [] if warnings is None else warnings
     results = []
-    for path in sorted((common / "devlyn-completion").glob("*/receipt.json")):
+    directory = common / "devlyn-completion"
+    for path in sorted([*directory.glob("*/receipt.json"), *directory.glob("retired/*/receipt.json")]):
         if path == allocated or path in exclude_receipts:
             continue
         try:
             receipt = read_json(path)
-            if receipt.get("allocation") != "owned" or not receipt.get("acceptance") or receipt.get("local_only") or not (receipt.get("pr_number") or receipt.get("delivery") == "COMPLETE"):
+            retired = path.parent.parent.name == 'retired'
+            if retired and receipt.get('delivery') != 'COMPLETE':
                 continue
-            if receipt.get("status") == "COMPLETE" and (not receipt.get("writers_released") or "scratch_identity" not in receipt or receipt.get("scratch_cleanup", {}).get("status") == "CLEAN"):
+            if receipt.get("allocation") not in ("owned", "managed_owned") or not receipt.get("acceptance") or receipt.get("local_only") or not (receipt.get("pr_number") or receipt.get("delivery") == "COMPLETE"):
+                continue
+            if (retired or receipt.get("status") == "COMPLETE") and (not receipt.get("writers_released") or "scratch_identity" not in receipt or receipt.get("scratch_cleanup", {}).get("status") == "CLEAN"):
                 continue
             with locked_receipt(path, blocking=False) as receipt:
+                if retired and receipt.get('delivery') != 'COMPLETE':
+                    continue
                 if not receipt.get("acceptance") or receipt.get("local_only") or not (receipt.get("pr_number") or receipt.get("delivery") == "COMPLETE"):
                     continue
-                if receipt.get("status") == "COMPLETE":
+                if retired or receipt.get("status") == "COMPLETE":
                     if receipt.get("writers_released") and "scratch_identity" in receipt and receipt.get("scratch_cleanup", {}).get("status") != "CLEAN":
                         results.append(completion_result(receipt, path, "COMPLETE"))
                     continue
@@ -911,7 +1603,10 @@ def reconcile(common, allocated, anchor, *, exclude_receipts=(), warnings=None):
                 if pr:
                     receipt["merge"] = pr
                     atomic_json(path, receipt)
-                cleanup(receipt, path, pr, warnings=warnings)
+                if storage_call("managed_receipt", receipt):
+                    cleanup_delivered(receipt, path, pr, warnings=warnings)
+                else:
+                    cleanup(receipt, path, pr, warnings=warnings)
                 results.append(completion_result(receipt, path, "COMPLETE", warnings=warnings))
         except (Exception, SystemExit) as error:
             results.append({"receipt": str(path), "status": "RETAINED", "reason": str(error)})
@@ -920,18 +1615,26 @@ def reconcile(common, allocated, anchor, *, exclude_receipts=(), warnings=None):
 
 def complete(args, *, warnings=None):
     warnings = [] if warnings is None else warnings
-    path = Path(args.receipt).absolute()
-    with locked_receipt(path) as receipt:
-        local = args.local_only or receipt.get("local_only")
-        refuse_retired_pipeline(receipt, path, args.acceptance, local, [*(["--mode", args.mode] if args.mode and not local else []),
-                                                                       *(["--writers-stopped"] if args.writers_stopped else [])])
+    path = resolve_receipt(Path(args.receipt).absolute(), operation_id=getattr(args, "operation_id", None))
+    with locked_receipt(path, operation_id=getattr(args, "operation_id", None), resume=True) as receipt:
+        args.operation_id = receipt.get("storage", {}).get("request", {}).get("operation_id")
+        retired = path.parent.parent.name == 'retired' and 'workspace_cleanup' not in receipt
+        if not retired:
+            local = args.local_only or receipt.get("local_only")
+            refuse_retired_pipeline(receipt, path, args.acceptance, local, [*(["--mode", args.mode] if args.mode and not local else []),
+                                                                           *(["--writers-stopped"] if args.writers_stopped else [])])
         if args.writers_stopped:
             if receipt["linked"]:
                 outside(Path(receipt["worktree"]))
             receipt["writers_released"] = True
             atomic_json(path, receipt)
+        if retired:
+            require(receipt.get('delivery') in {'COMPLETE', 'LOCAL_ONLY', 'FAILED', 'CLOSED'}, 'abandoned receipt has no delivery; allocate anew')
+            return completion_result(receipt, path, receipt['delivery'], warnings=warnings)
         def result(status):
             return completion_result(receipt, path, status, warnings=warnings)
+        if receipt.get('delivery') == 'CLOSED':
+            return result('CLOSED')
         if (receipt.get("acceptance") or {}).get("verdict") == "FAILED":
             return result("FAILED")
         if args.local_only or receipt.get("local_only"):
@@ -1055,13 +1758,7 @@ def complete(args, *, warnings=None):
         if pr:
             receipt["merge"] = pr
             atomic_json(path, receipt)
-        try:
-            cleanup(receipt, path, pr, warnings=warnings)
-        except (WritersUnobservable, WriterActive) as error:
-            # Conservative retention: base containment settles delivery; workspace, task refs and custody stay, reported.
-            receipt["workspace_cleanup"] = {"status": "RETAINED", "reason": str(error), "resume": shlex.join([
-                sys.executable, str(Path(__file__).resolve()), "complete", "--receipt", str(path)])}
-            atomic_json(path, receipt)
+        cleanup_delivered(receipt, path, pr, warnings=warnings)
         return result("COMPLETE")
 
 
@@ -1089,13 +1786,19 @@ def main():
     attachment.add_argument("--file", required=True)
     completion = actions.add_parser("complete")
     completion.add_argument("--receipt", required=True)
+    completion.add_argument("--operation-id")
     completion.add_argument("--acceptance")
     completion.add_argument("--mode", choices=("auto", "pr"))
     completion.add_argument("--local-only", "--no-push", action="store_true")
     completion.add_argument("--writers-stopped", action="store_true")
     scratch_cleanup = actions.add_parser("clean-scratch")
     scratch_cleanup.add_argument("--receipt", required=True)
+    scratch_cleanup.add_argument("--operation-id")
     scratch_cleanup.add_argument("--writers-stopped", action="store_true")
+    recovery = actions.add_parser("recover-storage")
+    recovery.add_argument("--receipt", required=True)
+    recovery.add_argument("--operation-id")
+    recovery.add_argument("--for-removal", action="store_true")
     args = parser.parse_args()
     if args.self_test:
         return self_test()
@@ -1103,15 +1806,24 @@ def main():
         parser.error("allocate, accept, attach, complete or clean-scratch is required")
     try:
         result = {"allocate": allocate, "accept": accept, "attach": attach,
+                  "recover-storage": recover_storage,
                   "clean-scratch": clean_scratch_command, "complete": complete}[args.action](args)
         print(json.dumps(result, sort_keys=True))
         return 0
     except (CompletionError, OSError, ValueError, KeyError, TypeError, IndexError, SystemExit) as exc:
         result = {"status": "BLOCKED", "reason": str(exc)}
-        if args.action != "allocate":
+        if hasattr(exc, "storage_error"):
+            result["storage_error"] = exc.storage_error
+            if exc.storage_error.get("receipt"):
+                result.update(receipt=exc.storage_error["receipt"], resume=exc.storage_error["resume"])
+        if args.action != "allocate" and not result.get("receipt"):
             result["receipt"] = str(Path(args.receipt).absolute())
-        if args.action in {"complete", "clean-scratch"}:
-            result["resume"] = shlex.join([sys.executable, str(Path(__file__).resolve()), args.action, "--receipt", result["receipt"], *(["--writers-stopped"] if args.writers_stopped else [])])
+        if args.action == "recover-storage" and not result.get('resume'):
+            result["resume"] = shlex.join([sys.executable, str(Path(__file__).resolve()), args.action,
+                '--receipt', result['receipt'], *(['--operation-id', args.operation_id] if args.operation_id else []),
+                *(['--for-removal'] if args.for_removal else [])])
+        if args.action in {"complete", "clean-scratch"} and not result.get("resume"):
+            result["resume"] = shlex.join([sys.executable, str(Path(__file__).resolve()), args.action, "--receipt", result["receipt"], *(["--operation-id", args.operation_id] if getattr(args, "operation_id", None) else []), *(["--writers-stopped"] if args.writers_stopped else [])])
         print(json.dumps(result, sort_keys=True))
         return 1
 
@@ -1249,11 +1961,42 @@ sys.exit(r.returncode)
 
 
 class CompletionTests(unittest.TestCase):
+    def test_standalone_without_devlyn_keeps_existing_allocation_and_warm_behavior(self):
+        result = self.allocate()
+        receipt = read_json(self.receipt)
+        self.assertEqual((result["status"], receipt["allocation"], result["build_dirs"]), ("ALLOCATED", "owned", []))
+        self.assertNotIn("storage", receipt)
+        self.assertFalse((Path(self.env["HOME"]) / ".devlyn").exists())
+        self.assertEqual(self.g("rev-parse", "HEAD", work=self.task), receipt["baseline"])
+
+    def test_managed_receipt_states_refuse_before_any_cleanup(self):
+        from unittest.mock import patch
+        common = self.root / "common"
+        branch = "task/managed"
+        identity = hashlib.sha256(branch.encode()).hexdigest()[:24]
+        path = common / "devlyn-completion" / identity / "receipt.json"
+        path.parent.mkdir(parents=True)
+        for state in ("managed_pending", "managed_owned"):
+            with self.subTest(state=state):
+                atomic_json(path, {"id": identity, "branch": branch, "base": "main",
+                                   "common_gitdir": str(common), "allocation": state})
+                before = path.read_bytes()
+                with patch.dict(globals(), cleanup=lambda *args: self.fail("managed cleanup ran")):
+                    with self.assertRaisesRegex(CompletionError, "Open Devlyn"):
+                        with locked_receipt(path):
+                            self.fail("managed receipt reached legacy operations")
+                self.assertEqual(path.read_bytes(), before)
+
     def setUp(self):
         from unittest.mock import Mock, patch
         self.temp = tempfile.TemporaryDirectory(prefix="devlyn-completion-")
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name).resolve()
+        test_home = self.root / "home"
+        test_home.mkdir()
+        home_env = patch.dict(os.environ, {"HOME": str(test_home), "USERPROFILE": str(test_home)})
+        home_env.start()
+        self.addCleanup(home_env.stop)
         (self.root / "sitecustomize.py").write_text(
             "import importlib.machinery, importlib.util, pathlib, sys\n"
             "spec = importlib.machinery.PathFinder.find_spec('sitecustomize', [p for p in sys.path if pathlib.Path(p or '.').resolve() != pathlib.Path(__file__).resolve().parent])\n"
@@ -2269,6 +3012,62 @@ ctypes.CDLL(None).pthread_exit(None)
         d = read_json(self.data)
         self.assertEqual((d["pushs"], d.get("creates", 0), d["deletes"]), (1, 0, 1))
 
+    def test_managed_local_only_scratch_cleanup_requires_closure_without_removal(self):
+        from unittest.mock import patch
+        self.allocate(); self.accept(unchanged=True)
+        self.cli('accept', '--receipt', self.receipt, '--acceptance', self.acceptance)
+        receipt = read_json(self.receipt)
+        receipt.update(mode='managed', allocation='managed_owned', storage={'decision': {'registration': {'fixture': True}}, 'request': {'operation_id': 'saved'}, 'result': {
+            'closure_result': {'established_by': 'never_admitted', 'operation_id': 'saved'}}})
+        atomic_json(self.receipt, receipt)
+        (self.receipt.parent / 'scratch/cache').write_text('scratch')
+        args = argparse.Namespace(receipt=str(self.receipt), acceptance=None, mode=None, local_only=True, writers_stopped=True)
+        with patch.dict(os.environ, self.env), patch.dict(complete.__globals__, managed_registration=lambda receipt, **kwargs: {},
+                managed_removal_gate=lambda *args: self.fail('scratch began checkout removal'),
+                stopped_writers=lambda work: None, scratch_mounts=lambda: []):
+            result = complete(args)
+        self.assertEqual((result['status'], result['scratch_cleanup']['status']), ('LOCAL_ONLY', 'CLEAN'))
+        self.assertNotIn('removal_request', read_json(self.receipt)['storage'])
+        self.assertTrue(self.task.exists())
+
+    def test_managed_storage_outage_after_delivery_is_cleanup_pending(self):
+        from unittest.mock import patch
+        self.allocate(); self.accept(unchanged=True)
+        self.cli('accept', '--receipt', self.receipt, '--acceptance', self.acceptance)
+        receipt = read_json(self.receipt)
+        receipt.update(mode='managed', allocation='managed_owned', storage={'decision': {'registration': {'fixture': True}}, 'request': {'operation_id': 'saved'}, 'result': {
+            'closure_result': {'established_by': 'never_admitted', 'operation_id': 'saved'}}})
+        atomic_json(self.receipt, receipt)
+        def outage(*args, **kwargs):
+            error = CompletionError('authority offline')
+            error.storage_error = {'code': 'storage_unavailable'}
+            raise error
+        args = argparse.Namespace(receipt=str(self.receipt), acceptance=None, mode=None, local_only=False, writers_stopped=True)
+        with patch.dict(os.environ, self.env), patch.dict(complete.__globals__, managed_registration=lambda receipt, **kwargs: {}, cleanup=outage):
+            result = complete(args)
+        self.assertEqual((result['status'], result['delivery_status']), ('CLEANUP_PENDING', 'COMPLETE'))
+        self.assertIn('complete --receipt', result['resume'])
+        self.assertIn('authority offline', result['workspace_cleanup']['reason'])
+        self.assertTrue(self.task.exists())
+
+    def test_reconcile_managed_storage_outage_preserves_complete_delivery(self):
+        from unittest.mock import patch
+        self.allocate(); self.accept(unchanged=True)
+        self.cli('accept', '--receipt', self.receipt, '--acceptance', self.acceptance)
+        receipt = read_json(self.receipt)
+        receipt.update(mode='managed', allocation='managed_owned', delivery='COMPLETE', writers_released=True,
+                       storage={'decision': {'registration': {'fixture': True}}, 'request': {'operation_id': 'saved'}, 'result': {'closure_result': {'established_by': 'never_admitted', 'operation_id': 'saved'}}})
+        atomic_json(self.receipt, receipt)
+        def outage(*args, **kwargs):
+            error = CompletionError('authority offline during reconciliation')
+            error.storage_error = {'code': 'storage_unavailable'}
+            raise error
+        with patch.dict(os.environ, self.env), patch.dict(reconcile.__globals__, managed_registration=lambda receipt, **kwargs: {}, cleanup=outage):
+            [result] = reconcile(Path(receipt['common_gitdir']), self.receipt.with_name('other.json'), self.work)
+        self.assertEqual((result['status'], result['delivery_status']), ('CLEANUP_PENDING', 'COMPLETE'))
+        self.assertIn('complete --receipt', result['resume'])
+        self.assertTrue(self.task.exists())
+
     def test_unchanged_writer_retention_resumes_to_complete(self):
         # Prediction: either writer refusal settles delivery but retains the tree/ref; resume cleans without push/PR.
         from unittest.mock import Mock, patch
@@ -2588,6 +3387,21 @@ ctypes.CDLL(None).pthread_exit(None)
         self.assertNotEqual(self.g("branch", "--list", "task/fixture"), "")
         self.assertEqual(self.g("ls-remote", "origin", "refs/heads/task/fixture").split()[0], self.sha)
 
+    def test_standalone_cleanup_checks_writers_before_reading_records(self):
+        from unittest.mock import patch
+        self.allocate(); self.accept()
+        receipt = read_json(self.receipt)
+        with patch.dict(os.environ, self.env):
+            bind_acceptance(receipt, self.receipt, str(self.acceptance))
+        receipt['writers_released'] = True
+        with patch.dict(os.environ, self.env), patch.dict(cleanup_workspace.__globals__,
+                stopped_writers=unittest.mock.Mock(side_effect=WritersUnobservable('retain workspace')),
+                records_manifest=unittest.mock.Mock(side_effect=AssertionError('records read before writer check'))), \
+                self.assertRaisesRegex(WritersUnobservable, 'retain workspace'):
+            cleanup_workspace(receipt, self.receipt, warnings=[])
+        self.assertTrue(self.task.exists())
+        self.assertFalse((self.receipt.parent / 'records').exists())
+
     def test_release_is_refused_from_inside_the_task_tree(self):
         self.allocate(); self.accept()
         _, r = self.complete("--mode", "pr", "--writers-stopped", cwd=self.task, success=False)
@@ -2831,17 +3645,15 @@ ctypes.CDLL(None).pthread_exit(None)
             child.terminate(); child.wait(timeout=5)
             child.stdout.close()
 
-    def test_reconcile_retains_malformed_receipt_without_failing_allocation(self):
+    def test_invalid_receipt_evidence_blocks_new_allocation(self):
         self.allocate()
+        (Path(self.env["HOME"]) / ".devlyn/storage-client-recovery").mkdir(parents=True)
         receipt, task = self.receipt, self.task
         receipt.write_text("[]", encoding="utf-8")
-        result = self.allocate("next")
-        self.assertEqual(result["status"], "ALLOCATED")
-        self.assertTrue(self.task.exists())
-        self.assertEqual(len(result["reconciled"]), 1)
-        self.assertEqual(result["reconciled"][0]["status"], "RETAINED")
-        self.assertEqual(result["reconciled"][0]["receipt"], str(receipt))
-        self.assertTrue(result["reconciled"][0]["reason"])
+        result, _ = self.cli("allocate", "--repo", self.work, "--task", "next", "--branch", "task/next",
+                             "--worktree", self.root / "next", success=False)
+        self.assertEqual(result["status"], "BLOCKED")
+        self.assertFalse((self.root / "next").exists())
         self.assertEqual(receipt.read_text(), "[]")
         self.assertTrue(task.exists())
         self.assertNotEqual(self.g("branch", "--list", "task/fixture"), "")

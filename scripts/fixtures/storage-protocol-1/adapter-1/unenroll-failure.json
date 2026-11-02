@@ -1,0 +1,11 @@
+{
+  "adapter_protocol": 1,
+  "error": {
+    "code": "storage_invalid",
+    "diagnostic": "storage_invalid: fixture refusal",
+    "phase": "reconcile",
+    "receipt": "storage-client-unenroll.json",
+    "retryable": false
+  },
+  "op": "unenroll"
+}

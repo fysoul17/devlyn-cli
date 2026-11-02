@@ -1,0 +1,28 @@
+{
+  "adapter_protocol": 1,
+  "op": "unenroll",
+  "result": {
+    "archives": [
+      {
+        "destination": "/home/작업/.devlyn/storage-client-retired/id/control",
+        "identity": {
+          "file": "340282366920938463463374607431768211455",
+          "volume": "18446744073709551615"
+        },
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "source": "/home/작업/.devlyn/control"
+      }
+    ],
+    "lock_identity": {
+      "file": "43",
+      "volume": "42"
+    },
+    "operation_id": "01a840d0-5c00-7000-8000-000000000009",
+    "retired": true,
+    "root_identity": {
+      "file": "340282366920938463463374607431768211455",
+      "volume": "18446744073709551615"
+    },
+    "schema": 1
+  }
+}

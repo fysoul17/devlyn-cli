@@ -1,0 +1,20 @@
+{
+  "request": {
+    "op": "reserve",
+    "operation_id": "01a840d0-5c00-7000-8000-000000000001",
+    "owner": null,
+    "plan": {
+      "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "kind": "known",
+      "writes": [
+        {
+          "bytes": "1",
+          "parent": "/repo/작업/é",
+          "phase": "checkout",
+          "relative": "target/构建"
+        }
+      ]
+    }
+  },
+  "storage_protocol": 1
+}

@@ -1,0 +1,10 @@
+{
+  "future_input": true,
+  "request": {
+    "descendants_reconciled": true,
+    "generation": "1",
+    "op": "release_reservation",
+    "reservation_id": "01a840d0-5c00-7000-8000-000000000002"
+  },
+  "storage_protocol": 1
+}

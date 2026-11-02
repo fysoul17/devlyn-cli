@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "storage_insufficient",
+    "message": "storage_insufficient: fixture refusal: 작업"
+  }
+}

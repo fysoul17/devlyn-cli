@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "storage_unavailable",
+    "message": "storage_unavailable: fixture refusal: 작업"
+  }
+}

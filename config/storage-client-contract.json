@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "storage_protocol": 1,
+  "checkout_adapter": 1,
+  "managed_receipt_states": ["managed_pending", "managed_owned"],
+  "recovery_removal": 1
+}

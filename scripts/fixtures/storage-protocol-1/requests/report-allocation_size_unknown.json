@@ -1,0 +1,14 @@
+{
+  "request": {
+    "op": "report_allocation_outcome",
+    "outcome": {
+      "attempt": "01a840d0-5c00-7000-8000-000000000001",
+      "code": "allocation_size_unknown",
+      "project": "/repo/작업/é",
+      "resolves": null,
+      "retryable": true,
+      "taskId": "작업"
+    }
+  },
+  "storage_protocol": 1
+}

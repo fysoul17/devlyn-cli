@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "storage_exhausted",
+    "message": "storage_exhausted: fixture refusal: 작업"
+  }
+}

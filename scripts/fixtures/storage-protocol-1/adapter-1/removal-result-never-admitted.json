@@ -1,0 +1,12 @@
+{
+  "adapter_protocol": 1,
+  "op": "reconcile-for-removal",
+  "result": {
+    "cache_ids": [],
+    "closure_result": {
+      "established_by": "never_admitted",
+      "operation_id": "01a840d0-5c00-7000-8000-000000000001"
+    },
+    "operation_id": "01a840d0-5c00-7000-8000-000000000007"
+  }
+}

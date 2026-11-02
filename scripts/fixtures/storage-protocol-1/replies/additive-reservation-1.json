@@ -1,0 +1,67 @@
+{
+  "kind": "reservation",
+  "value": {
+    "boot_id": "boot-fixture",
+    "destinations": [
+      {
+        "existing_ancestors": [
+          {
+            "file": "340282366920938463463374607431768211455",
+            "volume": "18446744073709551615"
+          }
+        ],
+        "parent_identity": {
+          "file": "340282366920938463463374607431768211455",
+          "volume": "18446744073709551615"
+        },
+        "pool_id": "pool",
+        "volume_id": "volume"
+      }
+    ],
+    "future_reply": {
+      "version": 2
+    },
+    "generation": "1",
+    "granted_at": "2026-11-02T00:00:00Z",
+    "holder": {
+      "pid": 42,
+      "start": "linux:987654321"
+    },
+    "operation_id": "01a840d0-5c00-7000-8000-000000000001",
+    "owner": {
+      "allocation_id": "01a840d0-5c00-7000-8000-000000000001",
+      "receipt": "/repo/.git/devlyn-completion/작업/receipt.json",
+      "repository": {
+        "file": "340282366920938463463374607431768211455",
+        "volume": "18446744073709551615"
+      }
+    },
+    "plan": {
+      "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "kind": "known",
+      "writes": [
+        {
+          "bytes": "1",
+          "parent": "/repo/작업/é",
+          "phase": "checkout",
+          "relative": "target/构建"
+        }
+      ]
+    },
+    "pools": [
+      {
+        "bytes": "1",
+        "id": "pool"
+      }
+    ],
+    "released_at": null,
+    "reservation_id": "01a840d0-5c00-7000-8000-000000000002",
+    "volumes": [
+      {
+        "bytes": "1",
+        "id": "volume"
+      }
+    ],
+    "workers": []
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "adapter_protocol": 1,
+  "op": "allocate",
+  "result": {
+    "allocation_binding": {
+      "adapter": {
+        "control_directory": "/home/작업/.devlyn/control",
+        "external_receipt": "/repo/.git/devlyn-completion/작업/receipt.json",
+        "operation_id": "01a840d0-5c00-7000-8000-000000000001",
+        "repository": "/repo/작업/é"
+      },
+      "baseline": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "branch": "devlyn/작업",
+      "destination": "/work/작업",
+      "destination_mode": {
+        "state": "absent"
+      },
+      "owner": {
+        "allocation_id": "01a840d0-5c00-7000-8000-000000000001",
+        "receipt": "/repo/.git/devlyn-completion/작업/receipt.json",
+        "repository": {
+          "file": "340282366920938463463374607431768211455",
+          "volume": "18446744073709551615"
+        }
+      },
+      "publication_owner": {
+        "allocation_id": "01a840d0-5c00-7000-8000-000000000001",
+        "receipt": "/repo/.git/devlyn-completion/작업/receipt.json",
+        "repository": {
+          "file": "340282366920938463463374607431768211455",
+          "volume": "18446744073709551615"
+        }
+      },
+      "receipt": "/repo/.git/devlyn-completion/작업/storage-allocation.json"
+    },
+    "closure_result": {
+      "established_by": "authority_expired",
+      "operation_id": "01a840d0-5c00-7000-8000-000000000001"
+    },
+    "publications": [],
+    "receipt": "/repo/.git/devlyn-completion/작업/storage-allocation.json",
+    "warnings": []
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "storage_io",
+    "message": "storage_io: fixture refusal: 작업"
+  }
+}

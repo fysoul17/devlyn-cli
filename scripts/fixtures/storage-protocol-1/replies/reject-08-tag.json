@@ -1,0 +1,17 @@
+{
+  "kind": "future_kind",
+  "value": {
+    "acquired_at": "2026-11-02T00:00:00Z",
+    "cache_id": "01a840d0-5c00-7000-8000-000000000003",
+    "consumers": [],
+    "descendants_reconciled": false,
+    "leaf": false,
+    "lease_id": "01a840d0-5c00-7000-8000-000000000004",
+    "operation_id": "publication",
+    "released_at": null,
+    "supervisor": {
+      "pid": 42,
+      "start": "linux:987654321"
+    }
+  }
+}

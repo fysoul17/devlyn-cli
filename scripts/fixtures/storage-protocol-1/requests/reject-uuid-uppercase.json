@@ -1,0 +1,9 @@
+{
+  "request": {
+    "request": {
+      "op": "query_reservation",
+      "operation_id": "01A1998E-4400-7000-8000-000000000001"
+    },
+    "storage_protocol": 1
+  }
+}

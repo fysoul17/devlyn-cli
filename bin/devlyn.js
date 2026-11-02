@@ -2239,9 +2239,34 @@ function cleanupDeliver(scope, items, current) {
     '--remote', 'origin', '--base', scope.remote.base], scope.root).stdout);
   if (allocated?.status !== 'ALLOCATED') {
     const reason = allocated?.reason || 'allocation failed';
-    return { error: cleanupReason(failureCode(reason), { detail: reason }) };
+    return { error: cleanupReason(failureCode(reason), { detail: reason,
+      ...(allocated?.receipt ? { receipt: allocated.receipt } : {}),
+      ...(allocated?.resume ? { resume: allocated.resume } : {}),
+      ...(allocated?.storage_error ? { storage_error: allocated.storage_error } : {}) }) };
   }
   const release = (error = null) => {
+    let receipt, managedMarker;
+    try {
+      receipt = JSON.parse(fs.readFileSync(allocated.receipt, 'utf8'));
+      managedMarker = fs.lstatSync(path.join(path.dirname(allocated.receipt), 'storage-allocation.json'), { throwIfNoEntry: false }) !== undefined;
+    }
+    catch (readError) { return { error: cleanupReason('delivery-failed', { detail: readError.message, receipt: allocated.receipt }) }; }
+    if (managedMarker || receipt.mode === 'managed' || ['allocation', 'allocation_state'].some((key) => String(receipt[key] || '').startsWith('managed'))) {
+      // These are the cleanup's own edits and commit in its private checkout.
+      // Return both index/worktree and branch before asking fenced abandonment.
+      const reset = cleanupGit(worktree, ['reset', '--hard', receipt.baseline]);
+      if (reset.error || reset.status !== 0) return { error: cleanupReason(error?.code || 'delivery-failed', {
+        ...error?.params, detail: reset.error?.message || reset.stderr.trim(), receipt: allocated.receipt }) };
+      const recovery = ['recover-storage', '--receipt', allocated.receipt,
+        ...(receipt.storage?.request?.operation_id ? ['--operation-id', receipt.storage.request.operation_id] : []), '--for-removal'];
+      const recovered = lastJson(run(recovery, scope.root).stdout);
+      if (recovered?.status !== 'ABANDONED') return { error: cleanupReason(error?.code || 'delivery-failed', {
+        ...error?.params, detail: recovered?.reason || 'managed cleanup pending', receipt: allocated.receipt,
+        ...(recovered?.storage_error ? { storage_error: recovered.storage_error } : {}),
+        resume: recovered?.resume || [python, '-B', helper, ...recovery]
+          .map((arg) => `'${arg.replace(/'/g, "'\\''")}'`).join(' ') }) };
+      return error ? { error } : {};
+    }
     for (const args of [['worktree', 'remove', '--force', worktree], ['branch', '-D', branch]]) {
       const result = cleanupGit(scope.root, args);
       if (result.error || result.status !== 0) return { error: cleanupReason(error?.code || 'delivery-failed', { ...error?.params,
