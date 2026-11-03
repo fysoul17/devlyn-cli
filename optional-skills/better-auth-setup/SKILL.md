@@ -462,15 +462,20 @@ These steps apply when the frontend is a separate application that proxies auth 
 
 Replace the static `baseURL` in `src/lib/auth.ts` with `allowedHosts`:
 
+**Security:** `allowedHosts` also authorizes `callbackURL`/`redirectTo` origins and hosts in reset/verification emails.
+List only explicit front-door hosts you control; never trust a shared-platform wildcard (`*.fly.dev`, `*.vercel.app`, `*.workers.dev`, etc.).
+
 ```typescript
 export const auth = betterAuth({
   baseURL: {
     allowedHosts: [
       "your-frontend.com",      // Frontend domain (via proxy)
       "your-backend.fly.dev",   // Backend domain (direct access)
-      "localhost",              // Local development
-      "*.fly.dev",              // Platform internal routing
+      ...(process.env.NODE_ENV === "production"
+        ? []
+        : ["localhost", "localhost:3000", "localhost:3001"]),
     ],
+    ...(process.env.NODE_ENV === "production" ? { protocol: "https" as const } : {}),
     fallback: process.env.BETTER_AUTH_URL,
   },
   basePath: "/auth",
@@ -577,7 +582,8 @@ In addition to the Step 11 checklist, verify:
 
 **Dynamic baseURL**
 - [ ] Backend uses `allowedHosts` (not a static `baseURL` string)
-- [ ] `allowedHosts` includes frontend domain, backend domain, and `localhost`
+- [ ] `allowedHosts` lists only explicit frontend/backend hosts; `localhost` entries are development-only
+- [ ] `baseURL.protocol` is `"https"` in production
 - [ ] `fallback` is set for health checks
 - [ ] `trustedProxyHeaders: true` is in `advanced` config
 

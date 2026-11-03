@@ -135,6 +135,8 @@ headers.set("x-forwarded-proto", url.protocol.replace(":", ""));
 
 **Why both strip AND set?** Stripping prevents clients from spoofing these headers. Setting them tells the backend the true origin of the request. The proxy is the trusted boundary — it's the only thing that knows the real origin.
 
+This example strips client IP headers, so Better Auth's IP rate limiting needs a trusted client-IP header set by an authenticated proxy that overwrites client-supplied values (e.g. `advanced: { ipAddress: { ipAddressHeaders: ["x-auth-client-ip"] } }`). The proxy must send a shared secret that the backend checks in constant time; on EVERY request without valid proof, before rate limiting, the backend must delete or overwrite the client-IP header and use the platform's connecting-IP header (e.g. `Fly-Client-IP`) instead.
+
 ---
 
 ## Location Header Rewriting
@@ -163,15 +165,20 @@ Without this, redirects after OAuth callback would send the user to the backend 
 
 **The correct approach** — use `allowedHosts` with a `fallback`:
 
+**Security:** `allowedHosts` also authorizes `callbackURL`/`redirectTo` origins and hosts in reset/verification emails.
+List only explicit front-door hosts you control; never trust a shared-platform wildcard (`*.fly.dev`, `*.vercel.app`, `*.workers.dev`, etc.).
+
 ```typescript
 export const auth = betterAuth({
   baseURL: {
     allowedHosts: [
       "your-frontend.com",      // Frontend domain (via proxy)
       "your-backend.fly.dev",   // Backend domain (direct access)
-      "localhost",              // Local development
-      "*.fly.dev",              // Platform internal routing
+      ...(process.env.NODE_ENV === "production"
+        ? []
+        : ["localhost", "localhost:3000", "localhost:3001"]),
     ],
+    ...(process.env.NODE_ENV === "production" ? { protocol: "https" as const } : {}),
     fallback: process.env.BETTER_AUTH_URL, // For health checks / unmatched hosts
   },
   basePath: "/auth",
@@ -186,7 +193,7 @@ export const auth = betterAuth({
 
 **How allowedHosts works internally:**
 1. Reads `X-Forwarded-Host` header (set by proxy), falls back to `Host` header
-2. Validates against the allowedHosts list (supports wildcards like `*.fly.dev`)
+2. Validates against the explicit allowedHosts list
 3. Constructs baseURL per-request (not cached!)
 4. If no match, uses `fallback`
 5. OAuth callback URL = `{derived-baseURL}{basePath}/callback/{provider}`
