@@ -2348,6 +2348,9 @@ console.log(JSON.stringify(Object.fromEntries(DEVLYN_CORE_SKILLS.map((name) =>
                      b'# Team rules\n\n```markdown\n' + self.managed() + b'```\n',
                      b'# Team rules\n\n<!--\n' + self.managed() + b'-->\n',
                      b'<details><summary>Example</summary>\n\n' + self.managed() + b'\n</details>\n',
+                     b'\xef\xbb\xbf```markdown\n' + self.managed() + b'```\n',
+                     b'<details\n open>\n\n' + self.managed() + b'\n</details>\n',
+                     b'<div></div><details>\n\n' + self.managed() + b'\n</details>\n',
                      re.sub(rb'^(# [^\n]+\n\n).*?\n\n', rb'\1Our project owns these instructions.\n\n', stock, count=1, flags=re.S)]
         dest = self.project / 'AGENTS.md'
         for before in examples:
@@ -2355,6 +2358,13 @@ console.log(JSON.stringify(Object.fromEntries(DEVLYN_CORE_SKILLS.map((name) =>
                 dest.write_bytes(before)
                 self.invoke("removeInstructions('AGENTS.md');")
                 self.assertEqual(dest.read_bytes(), before)
+
+    def test_instruction_removal_is_not_stopped_by_closed_or_stray_markup_around_a_block(self):
+        dest = self.project / 'AGENTS.md'
+        prefix, suffix = b'Run `make <target>` on <branch>.\n\n<details>\nNotes\n</details>\n\n', b'\n<kbd>K</kbd>\n'
+        dest.write_bytes(prefix + self.managed() + suffix)
+        self.invoke("removeInstructions('AGENTS.md');")
+        self.assertEqual(dest.read_bytes(), prefix + suffix)
 
     def test_instruction_markers_that_do_not_add_up_stay_as_they_are(self):
         dest = self.project / 'AGENTS.md'

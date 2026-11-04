@@ -158,6 +158,14 @@ function holdsDevlynDefaults(name, text) {
   return text.includes(BEGIN) || customInstructions(text, name) !== text;
 }
 
+// An example quotes a block: the text before it leaves a fence or comment open, or an element
+// opened before it closes after it. An owner's stray tag can only keep a block, never lose text.
+function quoted(before, after) {
+  if (scanInstructions(before.replace(/^\uFEFF/, '')).quoting) return true;
+  const opened = before.toLowerCase();
+  return [...after.matchAll(/<\/([a-z][\w:-]*)/gi)].some(([, tag]) => opened.includes(`<${tag.toLowerCase()}`));
+}
+
 // The range a release provably wrote, or null: one block whose bytes still match its own digest
 // and that no example quotes, or one whole template without markers. Anything else is the owner's.
 function devlynCopy(name, text, template) {
@@ -166,9 +174,9 @@ function devlynCopy(name, text, template) {
     const ends = [...text.matchAll(/^<!-- devlyn:instructions:end -->(?:\r?\n|$)/gm)];
     if (starts.length !== 1 || ends.length !== 1 || text.split(BEGIN).length !== 2 || text.split(END).length !== 2) return null;
     const [start] = starts, [end] = ends;
-    const body = start.index + start[0].length, first = start.index + start[1].length;
+    const body = start.index + start[0].length, first = start.index + start[1].length, last = end.index + end[0].length;
     if (end.index < body || digest(normalize(text.slice(body, end.index))) !== start[2]) return null;
-    return scanInstructions(text.slice(0, first)).quoting ? null : { start: first, end: end.index + end[0].length };
+    return quoted(text.slice(0, first), text.slice(last)) ? null : { start: first, end: last };
   }
   const normalized = normalize(template);
   const ranges = legacyRanges(text, [{ length: normalized.length, sha256: digest(normalized) }, ...(legacyTemplates[name] || [])]);
@@ -197,12 +205,6 @@ function retainFile(file, bytes) {
 // Removes the devlyn defaults the file holds, keeping everything else. `write` false writes nothing and returns
 // whether the file needs the removal. `evaluatorOnly` removes only appended evaluator blocks.
 function removeInstructions(name, write = true, directory = process.cwd()) {
-  const projectPackage = path.join(directory, 'package.json');
-  if (fs.existsSync(path.join(directory, 'bin', 'devlyn.js')) && fs.existsSync(projectPackage)
-      && JSON.parse(fs.readFileSync(projectPackage, 'utf8'))?.name === 'devlyn-cli') {
-    console.log(`  → Skipping ${name}; shipped instruction template in devlyn-cli source checkout`);
-    return false;
-  }
   const templatePath = path.join(__dirname, '..', name);
   const template = ['CLAUDE.md', 'AGENTS.md'].includes(name) ? fs.readFileSync(templatePath, 'utf8') : '';
   if (template.includes(BEGIN) || template.includes(END)) {
@@ -212,10 +214,7 @@ function removeInstructions(name, write = true, directory = process.cwd()) {
   const stat = fs.lstatSync(dest, { throwIfNoEntry: false });
   if (!stat) return false;
   const sourceStat = template ? fs.statSync(templatePath) : null;
-  if (stat.isFile() && stat.dev === sourceStat?.dev && stat.ino === sourceStat?.ino) {
-    console.log(`  → Using source ${name}; packaged template left unchanged`);
-    return false;
-  }
+  if (stat.isFile() && stat.dev === sourceStat?.dev && stat.ino === sourceStat?.ino) return false; // The shipped template itself.
   // Do not replace a shared instruction symlink or follow it outside the project.
   if (!stat.isFile()) throw new InstructionError(`Instruction file must be a regular file; preserved: ${dest}.`);
   const before = fs.readFileSync(dest);
