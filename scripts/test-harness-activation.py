@@ -162,15 +162,17 @@ class ActivationTests(unittest.TestCase):
                 ctx['version'] = version
                 self.assertNotEqual(self.plan(ctx)['channels']['overall'], 'unavailable')
 
-    def test_per_engine_committed_block_omits_defaults(self):
+    def test_per_engine_committed_block_still_receives_release_defaults(self):
+        # Prediction: a committed project block (possibly an older release's) never suppresses the selected release text.
         for engine in VERSIONS:
             with self.subTest(engine=engine):
                 ctx = self.context(engine)
-                ctx.update(committedBlockApplies=True, initialPrompt={'text': 'owner task', 'transport': 'argv'})
+                ctx.update(initialPrompt={'text': 'owner task', 'transport': 'argv'})
+                expected = self.plan(ctx)
+                ctx['committedBlockApplies'] = True
                 plan = self.plan(ctx)
-                self.assertNotIn('The following Devlyn instructions are defaults', json.dumps(plan))
-                self.assertEqual(plan['channels']['principles']['mechanism'], 'native-project')
-                self.assertNotEqual(plan['channels']['skills']['state'], 'disabled')
+                self.assertEqual(plan, expected)
+                self.assertIn('The following Devlyn instructions are defaults', json.dumps(plan))
 
     def test_per_engine_resume_fork_uses_recorded_binding_even_when_none(self):
         for engine in VERSIONS:
@@ -372,20 +374,16 @@ class ActivationTests(unittest.TestCase):
             'reasons': [{'code': 'principles-unavailable', 'params': {'detail': 'comma-in-path'}}]})
         self.assertEqual(plan['channels']['skills']['state'], 'configured')
 
-    def test_copilot_instructions_committed_block_wins(self):
-        # Prediction: committed principles bypass instruction injection even with a comma or release-local runDir.
+    def test_copilot_committed_block_does_not_bypass_release_instructions(self):
+        # Prediction: Copilot injects the release text with or without a committed project block.
         ctx = self.context('copilot')
-        ctx['committedBlockApplies'] = True
         ctx['effectiveConfig'] = {'instructionsDirs': '/owner'}
-        for directory in (self.run_dir, self.case / 'run,comma', self.package / 'run'):
-            with self.subTest(directory=directory):
-                ctx['runDir'] = str(directory)
-                plan = self.plan(ctx)
-                self.assertEqual(plan['files'], [])
-                self.assertNotIn('COPILOT_CUSTOM_INSTRUCTIONS_DIRS', plan['envPatch'])
-                self.assertEqual(plan['channels']['principles'], {
-                    'state': 'configured', 'mechanism': 'native-project', 'reasons': []})
-                self.assertEqual(plan['channels']['skills']['state'], 'configured')
+        ctx['committedBlockApplies'] = True
+        plan = self.plan(ctx)
+        self.assertEqual([f['relativePath'] for f in plan['files']], ['copilot/devlyn.instructions.md'])
+        self.assertEqual(plan['envPatch']['COPILOT_CUSTOM_INSTRUCTIONS_DIRS'], '/owner,' + str(self.run_dir / 'copilot'))
+        self.assertEqual(plan['channels']['principles'], {
+            'state': 'configured', 'mechanism': 'COPILOT_CUSTOM_INSTRUCTIONS_DIRS', 'reasons': []})
 
     def test_opencode_native_skills_merge(self):
         # Prediction: effective paths survive unchanged, duplicates collapse, inline urls remain, and invocation stays read-file.

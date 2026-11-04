@@ -312,7 +312,8 @@ function planActivation(releaseRoot, input, env = process.env) {
     status.skills = channel('partial', null, reasons);
     return finish(plan);
   }
-  const defaults = context.committedBlockApplies ? '' : fs.readFileSync(path.join(release.root, 'config/skills/_shared/runtime-principles.md'), 'utf8');
+  // The selected release is the one source of principles; a committed project block never suppresses it.
+  const defaults = fs.readFileSync(path.join(release.root, 'config/skills/_shared/runtime-principles.md'), 'utf8');
   const catalog = skillCatalog(release);
   const instructions = joinText(defaults, catalog);
   const file = (relativePath, utf8) => {
@@ -327,7 +328,7 @@ function planActivation(releaseRoot, input, env = process.env) {
     plan.files.push({ relativePath, utf8, sha256: sha256(utf8) });
     return path.join(context.runDir, relativePath);
   };
-  const principles = (mechanism) => { status.principles = channel('configured', context.committedBlockApplies ? 'native-project' : mechanism); };
+  const principles = (mechanism) => { status.principles = channel('configured', mechanism); };
   const fallback = (reasons = []) => {
     status.skills = channel('partial', 'absolute-catalog', [...reasons, reason('skills-catalog')]);
     status.invocation = { kind: 'read-file', text: `Read ${path.join(release.root, 'config/skills/devlyn-ideate/SKILL.md')}` };
@@ -419,16 +420,14 @@ function planActivation(releaseRoot, input, env = process.env) {
       break;
     }
     case 'copilot': {
-      if (!context.committedBlockApplies) {
-        const directory = path.join(context.runDir, 'copilot');
-        if (directory.includes(',')) {
-          status.principles = channel('unavailable', null, [reason('principles-unavailable', { detail: 'comma-in-path' })]);
-        } else {
-          file('copilot/devlyn.instructions.md', '---\napplyTo: "**"\n---\n' + instructions);
-          const dirs = config.instructionsDirs ?? env.COPILOT_CUSTOM_INSTRUCTIONS_DIRS ?? '';
-          plan.envPatch.COPILOT_CUSTOM_INSTRUCTIONS_DIRS = dirs.split(',').includes(directory) ? dirs : (dirs ? `${dirs},${directory}` : directory);
-          principles('COPILOT_CUSTOM_INSTRUCTIONS_DIRS');
-        }
+      const directory = path.join(context.runDir, 'copilot');
+      if (directory.includes(',')) {
+        status.principles = channel('unavailable', null, [reason('principles-unavailable', { detail: 'comma-in-path' })]);
+      } else {
+        file('copilot/devlyn.instructions.md', '---\napplyTo: "**"\n---\n' + instructions);
+        const dirs = config.instructionsDirs ?? env.COPILOT_CUSTOM_INSTRUCTIONS_DIRS ?? '';
+        plan.envPatch.COPILOT_CUSTOM_INSTRUCTIONS_DIRS = dirs.split(',').includes(directory) ? dirs : (dirs ? `${dirs},${directory}` : directory);
+        principles('COPILOT_CUSTOM_INSTRUCTIONS_DIRS');
       }
       const root = path.join(release.root, 'config/skills');
       if (root.includes(',') || collisions.length || errors.length) {
@@ -464,7 +463,6 @@ function planActivation(releaseRoot, input, env = process.env) {
       } else status.skills = channel('partial', null, [reason('skills-unavailable', { detail: 'no-initial-task' })]);
       break;
   }
-  if (context.committedBlockApplies) status.principles = channel('configured', 'native-project');
   if (plan.engineArgs.length || Object.keys(plan.envPatch).length || plan.prompt) plan.envPatch.DEVLYN_HARNESS_ROOT = release.root;
   return finish(plan);
 }

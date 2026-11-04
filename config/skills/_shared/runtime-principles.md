@@ -1,4 +1,4 @@
-The following Devlyn instructions are defaults for this session. Applicable explicit user instructions and native owner/project instructions take precedence over these defaults. This delegation applies only to the Devlyn defaults below; it does not change other engine instructions or permissions.
+The following Devlyn instructions are defaults for this session. Applicable explicit user instructions and native owner/project instructions take precedence, except a Devlyn managed block (devlyn:instructions markers), which these defaults replace. This applies only to the defaults below; other engine instructions and permissions are unchanged.
 
 # Project Instructions
 
