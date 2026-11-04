@@ -2164,7 +2164,7 @@ class LoopFixture(unittest.TestCase):
         self.plan("inv", CHAIN, {"inv.t1": {"product": "greeting"}, "inv.t2": {"product": "app"}})
         self.drain()
         first, final = self.receipt("inv.t1"), self.receipt("inv.t2")
-        self.assertIn(f"- Bring into main: git merge --ff {final['branch']}\n", self.report("inv"))
+        self.assertIn(self.bring_in_line(final['branch']), self.report("inv"))
         merged = self.bring_in("inv")
         self.assertEqual(merged.returncode, 0, merged.stdout + merged.stderr)
         self.assertEqual((self.g("rev-parse", "HEAD"), self.g("status", "--porcelain", "--untracked-files=all")), (final["publish_sha"], ""))
@@ -2247,7 +2247,7 @@ class LoopFixture(unittest.TestCase):
         self.assertEqual((tasks["aa.t1"]["result"], self.receipt("aa.t1")["baseline"], tasks["bb.t1"].get("reason"), self.calls("bb.t1")),
                          ("accepted", self.base, f"main, the branch bb was added on, is at {self.base}, which does not descend from the manifest "
                           f"base_sha {moved}; bring {moved} into main, or plan the work as a new loop", 0))
-        self.assertIn("- Bring into main: git merge --ff devlyn/aa/t1\n", self.report("aa"))
+        self.assertIn(self.bring_in_line("devlyn/aa/t1"), self.report("aa"))
         self.g("branch", "-f", "main", moved)
         self.assertEqual((self.tasks(self.drain())["bb.t1"]["result"], self.receipt("bb.t1")["baseline"]), ("accepted", moved))
         self.plan("cc", [("t1", [], "Todo", [TODO_CHECK])], {"cc.t1": {"product": "todo"}}, base=moved)
@@ -2299,7 +2299,7 @@ class LoopFixture(unittest.TestCase):
 
     def test_two_local_loops_bring_in_in_either_order(self):
         # Prediction (Q, B): two local loops added before draining keep their rows in their own queue files, so each
-        # report's `git merge --ff <frontier branch>` applies after the other in either order without a conflict, every row
+        # report's bring-in helper applies after the other in either order without a conflict, every row
         # [x]. Before: the reports promised a fast-forward for one loop and a merge for the other, so the other order failed.
         self.plan("aa", [CHAIN[0]], {"aa.t1": {"product": "greeting"}})
         self.plan("bb", [("t1", [], "Notes", [NOTES_CHECK])], {"bb.t1": {"product": "notes"}})
@@ -2307,10 +2307,59 @@ class LoopFixture(unittest.TestCase):
         for order in (("aa", "bb"), ("bb", "aa")):
             self.g("reset", "-q", "--hard", self.base)
             for loop in order:
-                self.assertIn(f"- Bring into main: git merge --ff devlyn/{loop}/t1\n", self.report(loop))
+                self.assertIn(self.bring_in_line(f"devlyn/{loop}/t1"), self.report(loop))
                 merged = self.bring_in(loop)
                 self.assertEqual(merged.returncode, 0, merged.stdout + merged.stderr)
             self.assertEqual({identity: row["mark"] for identity, row in self.rows("HEAD").items()}, {"aa.t1": "x", "bb.t1": "x"})
+
+    def test_bring_in_keeps_an_ignored_file_the_frontier_tracks(self):
+        # Prediction (R5): the anchor ignores notes.txt and holds the owner's own copy while the frontier tracks notes.txt,
+        # so the report's `Bring into` command refuses and leaves the owner's bytes and main as they were. Before: Git's
+        # default overwrites ignored files, so `git merge --ff` replaced the owner's notes.txt and exited 0.
+        self.plan("bb", [("t1", [], "Notes", [NOTES_CHECK])], {"bb.t1": {"product": "notes"}})
+        self.drain()
+        before = self.g("rev-parse", "HEAD")
+        (self.anchor / self.g("rev-parse", "--git-path", "info/exclude")).write_text("notes.txt\n", encoding="utf-8")
+        (self.anchor / "notes.txt").write_text("owner notes\n", encoding="utf-8")
+        merged = self.bring_in("bb")
+        self.assertNotEqual(merged.returncode, 0, merged.stdout + merged.stderr)
+        self.assertEqual(((self.anchor / "notes.txt").read_text(encoding="utf-8"), self.g("rev-parse", "HEAD")), ("owner notes\n", before))
+
+    def test_bring_in_diverged_anchor_keeps_ignored_files(self):
+        # Prediction: a diverged anchor refuses a frontier collision, preserving the owner's bytes, HEAD and index.
+        # Before: --no-overwrite-ignore protected only fast-forwards; ort replaced the ignored file during a true merge.
+        self.plan("bb", [("t1", [], "Notes", [NOTES_CHECK])], {"bb.t1": {"product": "notes"}})
+        self.drain()
+        (self.anchor / "owner.txt").write_text("unrelated owner change\n", encoding="utf-8")
+        self.g("add", "owner.txt")
+        self.g("commit", "-qm", "owner change")
+        before = self.g("rev-parse", "HEAD")
+        before_index = self.g("ls-files", "--stage")
+        (self.anchor / self.g("rev-parse", "--git-path", "info/exclude")).write_text("notes.txt\n", encoding="utf-8")
+        (self.anchor / "notes.txt").write_bytes(b"owner notes\n")
+        result = self.bring_in("bb")
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(((self.anchor / "notes.txt").read_bytes(), self.g("rev-parse", "HEAD"), self.g("ls-files", "--stage")),
+                         (b"owner notes\n", before, before_index))
+
+    def test_bring_in_directory_to_file_keeps_ignored_descendant(self):
+        # Prediction: an ignored descendant survives when a diverged frontier replaces its directory with a file.
+        # Before: an ordinary true merge removed the directory and the owner's ignored secret, exiting zero.
+        self.plan("bb", [("t1", [], "Notes", [NOTES_CHECK])], {"bb.t1": {"product": "notes"}})
+        self.drain()
+        (self.anchor / "owner.txt").write_text("unrelated owner change\n", encoding="utf-8")
+        self.g("add", "owner.txt")
+        self.g("commit", "-qm", "owner change")
+        before = self.g("rev-parse", "HEAD")
+        before_index = self.g("ls-files", "--stage")
+        (self.anchor / self.g("rev-parse", "--git-path", "info/exclude")).write_text("notes.txt/\n", encoding="utf-8")
+        (self.anchor / "notes.txt").mkdir()
+        secret = self.anchor / "notes.txt/secret"
+        secret.write_bytes(b"owner secret\n")
+        result = self.bring_in("bb")
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual((secret.read_bytes(), self.g("rev-parse", "HEAD"), self.g("ls-files", "--stage")),
+                         (b"owner secret\n", before, before_index))
 
     def test_every_queue_file_the_loop_writes_passes_newline_hooks(self):
         # Prediction (R1, Q): pre-commit's end-of-file-fixer check (no file ending in more than one newline) and a check for
@@ -2475,7 +2524,7 @@ class LoopFixture(unittest.TestCase):
         self.assertEqual([(identity, task["result"], task["delivery"]) for identity, task in tasks.items()],
                          [("au.t1", "accepted", "LOCAL_ONLY"), ("lo.t1", "accepted", "LOCAL_ONLY")])
         self.assertEqual((result["status"], self.receipt("au.t1")["baseline"]), ("DRAINED", self.base))
-        self.assertIn("- Bring into main: git merge --ff devlyn/au/t1\n", self.report("au"))
+        self.assertIn(self.bring_in_line("devlyn/au/t1"), self.report("au"))
 
     def test_frontier_is_the_latest_accepted_source(self):
         tasks = [CHAIN[0], ("t2", [], "Notes", [NOTES_CHECK]), ("t3", ["t1"], "Greeting app", [APP_CHECK]), ("t4", ["t2", "t3"], "Notes again", [NOTES_CHECK])]
@@ -2572,7 +2621,7 @@ class LoopFixture(unittest.TestCase):
         t1, t2, t3 = (self.receipt(f"rt.{task}") for task in ("t1", "t2", "t3"))
         self.assertEqual((t2["baseline"], t3["baseline"], t3["source_sha"]), (t1["source_sha"], t2["source_sha"], t3["acceptance"]["inputs_sha"]))
         self.assertEqual([self.calls(f"rt.{task}") for task in ("t1", "t2", "t3")], [2, 1, 1])
-        for line in ("- Whole-loop acceptance: ACCEPTED\n", f"- Bring into main: git merge --ff {t3['branch']}\n"):
+        for line in ("- Whole-loop acceptance: ACCEPTED\n", self.bring_in_line(t3['branch'])):
             self.assertIn(line, self.report("rt"))
 
     @unittest.skipIf(os.name == "nt", "the failing allocation uses a POSIX shell hook")
@@ -2599,7 +2648,7 @@ class LoopFixture(unittest.TestCase):
         tasks = self.tasks(self.drain())
         self.assertEqual(({identity: task["result"] for identity, task in tasks.items()}, self.receipt("oo.t1")["baseline"]),
                          ({"oo.t1": "accepted", "oo.t2": "accepted", "oo.t3": "active"}, self.receipt("oo.t2")["source_sha"]))
-        self.assertIn("- Bring into main: git merge --ff devlyn/oo/t1\n", self.report("oo"))
+        self.assertIn(self.bring_in_line("devlyn/oo/t1"), self.report("oo"))
         self.behaviors["oo.t3"] = {"check_only": True}
         self.assertEqual((self.tasks(self.drain())["oo.t3"]["result"], self.receipt("oo.t3")["baseline"]),
                          ("accepted", self.receipt("oo.t1")["source_sha"]))
@@ -3194,7 +3243,7 @@ class LoopFixture(unittest.TestCase):
         first, second = self.receipt("inv.t1"), self.receipt("inv.t2")
         self.assertEqual((first["baseline"], second["baseline"], second["acceptance"]["inputs_sha"]),
                          (base, first["merge"]["mergeCommit"]["oid"], first["merge"]["mergeCommit"]["oid"]))
-        self.assertIn("- Bring into main: git merge --ff origin/main\n", self.report("inv"))
+        self.assertIn(self.bring_in_line("origin/main"), self.report("inv"))
 
     @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
     def test_no_task_pr_carries_an_unpushed_anchor_commit(self):
@@ -3222,7 +3271,7 @@ class LoopFixture(unittest.TestCase):
         self.assertEqual((self.g("rev-list", "--parents", "-n", "1", "HEAD").split()[1:], self.g("status", "--porcelain", "--untracked-files=all")),
                          ([unpushed, main], ""))
         self.assertEqual(self.run_ok([sys.executable, "app.py", "Ada"], cwd=self.anchor), "Hello, Ada!")
-        self.assertIn("- Bring into main: git merge --ff origin/main\n", (self.common / "devlyn-loops/inv/drain-report.md").read_text(encoding="utf-8"))
+        self.assertIn(self.bring_in_line("origin/main"), (self.common / "devlyn-loops/inv/drain-report.md").read_text(encoding="utf-8"))
 
     @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
     def test_independent_pending_prs_merge_one_after_the_other(self):
@@ -3289,7 +3338,7 @@ class LoopFixture(unittest.TestCase):
         self.assertEqual((self.g("rev-parse", "HEAD"), self.g("status", "--porcelain", "--untracked-files=all")), (main, ""))
         self.assertEqual({identity: row["mark"] for identity, row in self.rows("HEAD").items()}, {"sq.t1": "x", "sq.t2": "x"})
         report = (self.common / "devlyn-loops/sq/drain-report.md").read_text(encoding="utf-8")
-        self.assertIn("- Bring into main: git merge --ff origin/main\n", report)
+        self.assertIn(self.bring_in_line("origin/main"), report)
 
     @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
     def test_a_check_only_task_delivers_after_its_squash_merged_prerequisites(self):
@@ -3353,15 +3402,19 @@ class LoopFixture(unittest.TestCase):
         task = self.tasks(self.drain(local=False))["ed.t2"]
         self.assertEqual((task["result"], "output lacks ['Hello, Ada!', 'Hello, Lin!']" in task["reason"]), ("failed", True))
 
+    def bring_in_line(self, target):
+        command = shlex.join(["python3", str(self.skills / "_shared/bring-in.py"), "--repo", str(self.anchor),
+                              "--branch", "main", "--target", target])
+        return f"- Bring into main: {command}\n"
+
     def bring_in(self, loop):
         """Run the loop's drain report `Bring into` command in the anchor."""
         command = shlex.split(next(line for line in self.report(loop).splitlines() if line.startswith("- Bring into ")).split(": ", 1)[1])
-        self.assertEqual(command[0], "git")
-        return subprocess.run(["git", "-C", str(self.anchor), *command[1:]], env=self.env, capture_output=True, text=True, encoding="utf-8")
+        return subprocess.run(command, cwd=self.anchor, env=self.env, capture_output=True, text=True, encoding="utf-8")
 
     def apply_one_drains_reports(self, order):
         # Prediction (B): one drain delivers an auto loop and accepts a local loop, and both reports are written before
-        # either command runs; the auto report's `git merge --ff origin/main` and the local report's `git merge --ff`
+        # either command runs; the auto and local reports' bring-in helpers
         # then apply in either order with every row [x] and a clean tree. Before: the auto report was chosen when it was
         # written, `git pull --ff-only origin main`, which aborts once the local merge has moved main.
         self.remote(pending=False)
@@ -3369,7 +3422,7 @@ class LoopFixture(unittest.TestCase):
         self.plan("lo", [("t1", [], "Notes", [NOTES_CHECK])], {"lo.t1": {"product": "notes"}})
         tasks = self.tasks(self.drain(local=False))
         self.assertEqual({identity: task["delivery"] for identity, task in tasks.items()}, {"au.t1": "COMPLETE", "lo.t1": "LOCAL_ONLY"})
-        self.assertIn("- Bring into main: git merge --ff origin/main\n", self.report("au"))
+        self.assertIn(self.bring_in_line("origin/main"), self.report("au"))
         for loop in order:
             merged = self.bring_in(loop)
             self.assertEqual(merged.returncode, 0, (loop, merged.stdout + merged.stderr))
@@ -3429,7 +3482,7 @@ class LoopFixture(unittest.TestCase):
         for number in (1, 2):
             self.assertEqual(self.merge_pr(data, number).returncode, 0)
         self.drain(local=False)
-        self.assertIn("- Bring into main: git merge --ff origin/main\n", self.report("aw"))
+        self.assertIn(self.bring_in_line("origin/main"), self.report("aw"))
         merged = self.bring_in("aw")
         self.assertEqual(merged.returncode, 0, merged.stdout + merged.stderr)
         self.assertEqual({identity: row["mark"] for identity, row in self.rows("HEAD").items()}, {"au.t1": "x", "aw.t1": "x", "lo.t1": "x"})

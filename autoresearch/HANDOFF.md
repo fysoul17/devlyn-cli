@@ -154,15 +154,15 @@ Wall, input and output are judged per correctly completed task, failures include
 
 ## State
 
-- **0230 bundle** (`bundle/0225-steps-2-5`, head `f71a17d3`): parked, unmerged.
-  - The v7 review-fix round is kept for reference and for reusing primitives on remote branches: `candidate/bundle-review-fix-v7` at `3eed3956`, and the parked wave 2 as `candidate/v7-w5` (`fc7c1bbe`) and `candidate/v7-w6` (`fa7d0e82`), committed unreviewed.
-  - Owner decision R5 (2026-10-05) protects pre-run ignored user files. It applies again if a methodology layer is ever earned.
+- **0230 bundle** (head `f71a17d3`): closed as superseded on 2026-11-04, never adopted (see [0230](iterations/0230-bundle-steps-3-5.md)).
+  - Owner decision R5 (2026-10-05) protects pre-run ignored user files. The product enforces it through the shared `_shared/bring-in.py`, which every reconciliation and drain `Bring into` runs (DECISIONS 2026-11-04).
+  - The research branches (0227–0229 fixes, the bundle and v7 waves, 0232 rung 1, 0233–0235 candidates) are deleted from origin. Their tips are in `~/.local/share/nx01/archive/devlyn-cli-research-branches-2026-11-04.bundle`.
 - **0231:** superseded by 0232 and never run.
 - **0232 stage 1: CLOSED** (0232 §7). The result is `LIVE:claude=admitted:A,replaces_F:FAIL;codex=admitted:A,replaces_F:FAIL`.
   - Native A stays the admitted rung. I is not admitted: in the claude config it fails on I0185 quality, in the codex config on wall.
   - F completes fewer cells than A at far higher cost.
   - The evidence is in `experiments/0232/results/` and `~/.local/share/nx01/0232-live/out`.
-  - Rung 1 stays unmerged on `candidate/0232-rung1` (`5bf3dc74`).
+  - Rung 1 was never merged (`5bf3dc74`, archived with the research branches above).
 - **Product:**
   - The ideate loop and the retirement of design-ui and the queue skill are merged (PR #169).
   - resolve is retired as a product-scope decision (0232 §8; PR #171, merge `d2d34e3e`). The owner confirmed it on 2026-10-07 (no veto).
