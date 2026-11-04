@@ -43,6 +43,9 @@ const OPTIONS = Object.freeze({
 // `exec` (alias `e`) runs one Codex task; `debug prompt-input` shows the model input without a model call.
 const CODEX_RUNS = new Set(['exec', 'e']);
 const CONTINUATIONS = new Set(['resume', 'fork']);
+// Options that take a list: the words after them are their values, up to the next option.
+const LISTS = new Set(['--add-dir', '--allowedTools', '--allowed-tools', '--disallowedTools', '--disallowed-tools',
+  '--mcp-config', '-i', '--image']);
 // Codex config keys the plan writes; an owner override of one would be overwritten unseen.
 const CODEX_PLANNED_KEYS = ['developer_instructions', 'plugins', 'skills', 'marketplaces'];
 
@@ -67,11 +70,13 @@ function analyzeArgs(engine, args, cwd) {
   const positionals = [];
   const appended = [];
   const pluginDirs = [];
+  let literal = [];
   let print = false;
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     if (arg === '--') {
       kept.push(...args.slice(i));
+      literal = args.slice(i + 1);
       break;
     }
     if (!arg.startsWith('-') || arg === '-') {
@@ -109,11 +114,17 @@ function analyzeArgs(engine, args, cwd) {
     } else if (values.has(name)) {
       const given = value();
       kept.push(...(equals < 0 ? [name, given] : [arg]));
+      if (equals < 0 && LISTS.has(name)) {
+        while (i + 1 < args.length && !args[i + 1].startsWith('-')) kept.push(args[++i]);
+      }
     } else {
       fail('run-argument-unsupported', { engine, argument: name }, 2);
     }
   }
   if (appended.length > 1) fail('run-argument-unsupported', { engine, argument: 'more than one appended system prompt' }, 2);
+  // Interactive Claude and omp route a one-word command even after `--` (`claude -- update`).
+  const routed = engine !== 'codex' && !print && literal.find((word) => !/\s/.test(word));
+  if (routed) fail('run-argument-unsupported', { engine, argument: routed, hint: 'a one-word task needs -p' }, 2);
   const words = positionals.filter((word) => !/\s/.test(word));
   const [first, second] = words;
   const allowed = engine === 'codex'

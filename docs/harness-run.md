@@ -32,8 +32,8 @@ option, an alias or a future flag cannot slip past. Directory-changing options a
 
 A prompt with a space passes as it is. A one-word positional could be the engine's own command
 (`claude attach`, `codex resume`), so a one-word prompt, or any text starting with a dash, goes after
-`--`: `devlyn run claude -p -- hello`. Codex's `exec` (or `e`) and `debug prompt-input` are the only
-commands that pass. Continuing a session stops with `run-continuation-unsupported`: Codex `resume` and
+`--` with `-p`: `devlyn run claude -p -- hello` (interactive Claude and omp route one word as a command
+even after `--`). Codex's `exec` (or `e`) and `debug prompt-input` are the only commands that pass. Continuing a session stops with `run-continuation-unsupported`: Codex `resume` and
 `fork`, and omp's `autoResume` outside `-p`.
 
 The plan's own settings are merged rather than overwritten: Claude's and omp's

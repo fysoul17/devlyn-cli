@@ -207,6 +207,9 @@ class RunTests(unittest.TestCase):
             (('claude', '-rmy session', '-p', 'a task'), {}, 'run-argument-unsupported'),
             (('claude', '-wmy tree', '-p', 'a task'), {}, 'run-argument-unsupported'),
             (('claude', 'attach', 'deadbeef'), {}, 'run-argument-unsupported'),
+            (('claude', '--', 'update'), {}, 'run-argument-unsupported'),
+            (('claude', '--', 'auth', 'status'), {}, 'run-argument-unsupported'),
+            (('omp', '--', 'config'), {}, 'run-argument-unsupported'),
             (('claude', '-p', 'hello'), {}, 'run-argument-unsupported'),
             (('omp', 'hello'), {}, 'run-argument-unsupported'),
             (('omp', '--config', 'x.yml'), {}, 'run-argument-unsupported'),
@@ -235,11 +238,20 @@ class RunTests(unittest.TestCase):
 
     def test_literal_text_after_the_separator_is_a_prompt(self):
         # Prediction: after `--` every word is the task, even one that names a command.
-        for args in (('codex', '--', 'resume'), ('codex', 'exec', '--', 'review'), ('claude', '-p', '--', 'attach'), ('omp', '-p', '--', 'hello')):
+        for args in (('codex', '--', 'resume'), ('codex', 'exec', '--', 'review'), ('claude', '-p', '--', 'attach'), ('omp', '-p', '--', 'hello'),
+                     ('claude', '--', 'a multi word task')):
             with self.subTest(args=args):
                 result = self.devlyn(*args)
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertEqual(self.launch()['argv'][-len(args) + 1:], list(args[1:]))
+
+    def test_a_list_option_keeps_all_its_values(self):
+        for args, tail in ((('claude', '--allowedTools', 'Read', 'Edit', '-p', '--', 'ping'), ['--allowedTools', 'Read', 'Edit', '-p', '--', 'ping']),
+                           (('codex', 'exec', '--image', 'a.png', 'b.png', '--', 'compare them'), ['exec', '--image', 'a.png', 'b.png', '--', 'compare them'])):
+            with self.subTest(args=args):
+                result = self.devlyn(*args)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(self.launch()['argv'][-len(tail):], tail)
 
     def test_a_long_omp_append_text_is_text(self):
         # Prediction: text too long for a path is merged, not refused, and never printed.
