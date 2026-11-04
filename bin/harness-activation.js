@@ -1,7 +1,7 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { ENGINE_IDS, ENGINE_CAPABILITIES, supportedVersion } = require('./engines');
+const { ENGINE_IDS, ENGINE_CAPABILITIES, readableVersion, supportedVersion } = require('./engines');
 const { verifyRelease, sha256, fail, options, HarnessError } = require('./release');
 const { fingerprint } = require('./skill-ownership');
 const history = require('./skill-history.json');
@@ -301,7 +301,9 @@ function planActivation(releaseRoot, input, env = process.env) {
   if (off) return finish(plan);
   plan.release = release;
   if (!supported) {
-    const reasons = [reason('engine-version-unsupported', { minimum: ENGINE_CAPABILITIES[context.engine].minimum })];
+    const reasons = [readableVersion(context.engine, context.version)
+      ? reason('engine-version-unsupported', { minimum: ENGINE_CAPABILITIES[context.engine].minimum })
+      : reason('engine-version-unreadable')];
     status.principles = channel('unavailable', null, reasons);
     status.skills = channel('unavailable', null, reasons);
     return finish(plan);

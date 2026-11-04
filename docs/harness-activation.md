@@ -155,14 +155,16 @@ to the verified release, never to a cache-local queue implementation.
 ## Qualification and reasons
 
 Capability floors live beside CLI-1's single engine list in `bin/engines.js`.
-Floors are the examined versions, not historical introduction claims. A newer
-release of the examined major (a newer Cursor build) is taken as compatible; a
-new major is refused with `engine-version-unsupported`. Configured means prepared delivery,
+Floors are the examined versions, not historical introduction claims. Any newer
+release, a new major included (a newer Cursor build), is taken as compatible: a
+version number is not evidence that a channel broke. A version below the floor is
+refused with `engine-version-unsupported` `{minimum}`; a missing or malformed
+version with `engine-version-unreadable`. Configured means prepared delivery,
 not a model obeyed instructions. Only the existing Claude/Codex executor adapters
 are supported. OMP explicitly declares `executor: no`.
 
 Channel reason codes: `principles-task-only`, `principles-unavailable`,
-`skills-catalog`, `skills-unavailable`, `engine-version-unsupported`,
+`skills-catalog`, `skills-unavailable`, `engine-version-unsupported`, `engine-version-unreadable`,
 `name-collision`, `config-unreadable`. New code: **`executor-unqualified`** with
 `{engine}`; none of the channel codes describes an unqualified executor.
 Existing CLI-1 release/argument/operational error codes remain unchanged.
