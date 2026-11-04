@@ -43,9 +43,13 @@ const OPTIONS = Object.freeze({
 // `exec` (alias `e`) runs one Codex task; `debug prompt-input` shows the model input without a model call.
 const CODEX_RUNS = new Set(['exec', 'e']);
 const CONTINUATIONS = new Set(['resume', 'fork']);
-// Options that take a list: the words after them are their values, up to the next option.
-const LISTS = new Set(['--add-dir', '--allowedTools', '--allowed-tools', '--disallowedTools', '--disallowed-tools',
-  '--mcp-config', '-i', '--image']);
+// Options the engine itself reads as a list: the words after them are their values, up to the next
+// option. Per engine, because the same name takes one value elsewhere (Codex and omp `--add-dir`).
+const LISTS = Object.freeze({
+  claude: new Set(['--add-dir', '--allowedTools', '--allowed-tools', '--disallowedTools', '--disallowed-tools', '--mcp-config']),
+  codex: new Set(['-i', '--image']),
+  omp: new Set(),
+});
 // Codex config keys the plan writes; an owner override of one would be overwritten unseen.
 const CODEX_PLANNED_KEYS = ['developer_instructions', 'plugins', 'skills', 'marketplaces'];
 
@@ -114,7 +118,7 @@ function analyzeArgs(engine, args, cwd) {
     } else if (values.has(name)) {
       const given = value();
       kept.push(...(equals < 0 ? [name, given] : [arg]));
-      if (equals < 0 && LISTS.has(name)) {
+      if (equals < 0 && LISTS[engine].has(name)) {
         while (i + 1 < args.length && !args[i + 1].startsWith('-')) kept.push(args[++i]);
       }
     } else {

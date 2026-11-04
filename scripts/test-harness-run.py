@@ -208,6 +208,8 @@ class RunTests(unittest.TestCase):
             (('claude', '-wmy tree', '-p', 'a task'), {}, 'run-argument-unsupported'),
             (('claude', 'attach', 'deadbeef'), {}, 'run-argument-unsupported'),
             (('claude', '--', 'update'), {}, 'run-argument-unsupported'),
+            (('codex', '--add-dir', '/tmp', 'resume'), {}, 'run-continuation-unsupported'),
+            (('omp', '--add-dir', '/tmp', 'config'), {}, 'run-argument-unsupported'),
             (('claude', '--', 'auth', 'status'), {}, 'run-argument-unsupported'),
             (('omp', '--', 'config'), {}, 'run-argument-unsupported'),
             (('claude', '-p', 'hello'), {}, 'run-argument-unsupported'),
