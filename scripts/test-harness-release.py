@@ -25,7 +25,7 @@ PACKAGE_ROOT = None
 NODE = shutil.which('node')
 PREFIX = ('The following Devlyn instructions are defaults for this session. Explicit user and native owner/project '
           'instructions take precedence, except a Devlyn managed block (devlyn:instructions markers), which these '
-          'replace. They change no other engine instructions or permissions.\n\n')
+          'defaults replace. They change no other engine instructions or permissions.\n\n')
 # Every activation carries this preamble: it stays within the 4.3.23 sentence's 40 words / 297 bytes.
 assert len(PREFIX.split()) <= 40 and len(PREFIX.rstrip().encode()) <= 297, 'session defaults preamble grew'
 

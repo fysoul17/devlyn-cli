@@ -1,4 +1,4 @@
-The following Devlyn instructions are defaults for this session. Explicit user and native owner/project instructions take precedence, except a Devlyn managed block (devlyn:instructions markers), which these replace. They change no other engine instructions or permissions.
+The following Devlyn instructions are defaults for this session. Explicit user and native owner/project instructions take precedence, except a Devlyn managed block (devlyn:instructions markers), which these defaults replace. They change no other engine instructions or permissions.
 
 # Project Instructions
 
