@@ -36,7 +36,7 @@ type ActivationContext = {
   cwd: string;                        // absolute
   runDir: string;                     // absolute, app-owned per-run directory
   projectChoice: "default" | "devlyn" | "none";
-  committedBlockApplies: boolean;     // verified native applicability, not file presence
+  committedBlockApplies: boolean;     // accepted for compatibility; never suppresses the release
   initialPrompt: { text: string; transport: "argv" | "stdin" } | null;
   accountRef?: string | null;          // opaque account ID; never credentials
   accountHome?: string;               // Codex: existing absolute CODEX_HOME
@@ -108,8 +108,10 @@ No new task/model turn is created for an empty terminal.
 Fresh selection uses the supplied release root. On resume/fork, `recordedRelease`
 is mandatory: a reference selects and verifies that exact release (even if the
 project choice is now None); explicit null preserves a disabled session; omission
-returns partial legacy coverage without injecting anything. APP-2 retains the
-recorded principles source when setting `committedBlockApplies`. This contract
+returns partial legacy coverage without injecting anything. Whenever activation
+injects, it injects the selected release's principles: a committed project
+block, possibly from an older release, never replaces them, and the session
+defaults state that they supersede such a block. This contract
 does not claim behavioral resume/child propagation qualification.
 
 None emits no managed activation. Codex can still return targeted hide overrides
@@ -167,8 +169,7 @@ Existing CLI-1 release/argument/operational error codes remain unchanged.
 
 The catalog names the verified release's `config/skills/_shared` absolutely and
 supersedes the defaults' installed-folder references. Claude's single per-run
-append file contains existing append text, immutable defaults (unless native
-project principles apply), and this catalog. OMP/Qwen/Grok merge owner append
+append file contains existing append text, immutable defaults, and this catalog. OMP/Qwen/Grok merge owner append
 text; OpenCode preserves inline keys/instruction entries.
 OpenCode merges known effective `skillsPaths` into inline `skills.paths`; absent/null keeps catalog fallback.
 Copilot appends a per-run apply-to-all instructions directory via `COPILOT_CUSTOM_INSTRUCTIONS_DIRS`.

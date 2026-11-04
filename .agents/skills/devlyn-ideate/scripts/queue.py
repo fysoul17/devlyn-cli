@@ -1215,7 +1215,7 @@ def ensure_packet(v, row, path, receipt):
         packet["runner"][1] = str(bound_skills / "devlyn-ideate/scripts/acceptance.py")
         prompt = path.parent / "worker-prompt.md"
         body = (f"Execute task packet {packet_path}. Work only in {worktree} on its owned branch.\n"
-                f"Read {binding['defaults']['path']} and apply it as defaults; explicit user and native owner/project instructions win.\n"
+                f"Read {binding['defaults']['path']} and apply it as defaults; explicit user and native owner/project instructions win, except a Devlyn managed block (devlyn:instructions markers), which these defaults replace.\n"
                 f"Set DEVLYN_SKILL_DIR={bound_skills / 'devlyn-ideate'} and DEVLYN_SHARED_DIR={bound_skills / '_shared'}.\n"
                 f"Follow Executor exchange and Review records in {bound_skills / 'devlyn-ideate/references/loop.md'}.\n"
                 f"Meet the packet obligations, run its runner and write {packet['submission']}. Never push, open a pull request or merge.\n")
