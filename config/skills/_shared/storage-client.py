@@ -761,10 +761,12 @@ def _evidence(path):
 
 def _same_file(left, right):
     def identity(info):
-        # Windows path stat synthesizes executable bits from the extension;
-        # handle stat cannot. Neither is a permission/identity contract there.
-        mode = stat.S_IFMT(info.st_mode) if os.name == 'nt' else info.st_mode
-        return (info.st_dev, info.st_ino, mode, info.st_size, info.st_mtime_ns, info.st_ctime_ns)
+        if os.name == 'nt':
+            # Windows path stat synthesizes executable bits from the extension, and its
+            # st_ctime is the creation time while handle stat reports the change time
+            # (CPython 3.12, Windows Server 2025). Neither is comparable there.
+            return (info.st_dev, info.st_ino, stat.S_IFMT(info.st_mode), info.st_size, info.st_mtime_ns)
+        return (info.st_dev, info.st_ino, info.st_mode, info.st_size, info.st_mtime_ns, info.st_ctime_ns)
     return right is not None and identity(left) == identity(right)
 
 
