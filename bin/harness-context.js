@@ -15,106 +15,122 @@ const READ_MS = 6000;
 const CODEX_READ_MS = 10000;
 const object = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 
-// Arguments `devlyn run` cannot plan around yet: each would make the launch other than the fresh
-// session the plan describes, or change settings the plan merges without the merge seeing them.
-const REFUSED = Object.freeze({
-  claude: { continuation: ['-c', '--continue', '-r', '--resume', '--fork-session', '--from-pr'],
-    settings: ['--settings', '--setting-sources'] },
-  codex: { continuation: [], settings: ['-p', '--profile'] },
-  omp: { continuation: ['-c', '--continue', '-r', '--resume', '--restore', '--from-claude', '--from-codex'],
-    settings: ['--config', '--profile'] },
+// Engine arguments `devlyn run` passes through: each is known not to change the session's freshness,
+// its directory, or settings the plan merges. Anything else is refused, so a form this list has never
+// seen (an attached short option, an alias, a future flag) cannot slip past as it could past a deny
+// list. `flags` take no value and `values` take one; widen by reading the engine's help.
+const OPTIONS = Object.freeze({
+  claude: {
+    flags: new Set(['-p', '--print', '--verbose', '--dangerously-skip-permissions', '--allow-dangerously-skip-permissions',
+      '--no-session-persistence', '--include-partial-messages', '--no-chrome']),
+    values: new Set(['--model', '--fallback-model', '--effort', '--permission-mode', '--output-format', '--input-format',
+      '--add-dir', '--allowedTools', '--allowed-tools', '--disallowedTools', '--disallowed-tools', '--max-budget-usd',
+      '--json-schema', '--mcp-config']),
+  },
+  codex: {
+    flags: new Set(['--oss', '--search', '--no-alt-screen', '--dangerously-bypass-approvals-and-sandbox',
+      '--skip-git-repo-check', '--ephemeral', '--json']),
+    values: new Set(['-m', '--model', '-s', '--sandbox', '-a', '--ask-for-approval', '-i', '--image', '--add-dir',
+      '--output-schema', '--color', '-o', '--output-last-message']),
+  },
+  omp: {
+    flags: new Set(['-p', '--print', '--no-session', '--no-tools', '--no-lsp', '--no-pty', '--hide-thinking',
+      '--auto-approve', '--print-thoughts', '--no-title']),
+    values: new Set(['--model', '--smol', '--slow', '--plan', '--mode', '--thinking', '--tools', '--service-tier',
+      '--max-time', '--warn-cost', '--max-cost', '--approval-mode', '--add-dir']),
+  },
 });
-// Codex global and `exec` options that take a value, so positional detection skips their value.
-const CODEX_VALUE_FLAGS = new Set(['-c', '--config', '-m', '--model', '-p', '--profile', '-s', '--sandbox',
-  '-a', '--ask-for-approval', '-C', '--cd', '-i', '--image', '--add-dir', '--enable', '--disable', '--color',
-  '-o', '--output-last-message', '--output-schema', '--local-provider']);
+// A bare first word Codex reads as a command, not a task. `exec` (alias `e`) runs one; `debug
+// prompt-input` shows the model input without a model call. The rest are not sessions to activate.
+const CODEX_COMMANDS = new Set(['agents', 'review', 'login', 'logout', 'mcp', 'plugin', 'app-server', 'remote-control',
+  'app', 'completion', 'update', 'doctor', 'sandbox', 'apply', 'archive', 'delete', 'migrate-rollouts', 'migrate-nfs-db',
+  'unarchive', 'cloud', 'exec-server', 'features', 'help']);
+const CONTINUATIONS = new Set(['resume', 'fork']);
 // Codex config keys the plan writes; an owner override of one would be overwritten unseen.
 const CODEX_PLANNED_KEYS = ['developer_instructions', 'plugins', 'skills', 'marketplaces'];
 
-const flagName = (arg) => arg.split('=', 1)[0];
+function readAppend(file, field) {
+  try { return fs.readFileSync(file, 'utf8'); }
+  catch (error) { fail('config-unreadable', { field, detail: error.code || 'unreadable' }, 2); }
+}
 
-// Split the owner's engine arguments: what the plan merges (append text, plugin dirs), what stays,
-// and what stops the launch. Arguments after a literal `--` are never read as options.
+// Read the owner's arguments in order with each option's arity, so a value is never taken for an
+// option. Returns what stays, what the plan merges instead, and whether this is a print run.
 function analyzeArgs(engine, args, cwd) {
-  const end = args.indexOf('--');
-  const options = end < 0 ? args : args.slice(0, end);
-  const refused = REFUSED[engine];
-  for (const arg of options) {
-    const name = flagName(arg);
-    if (refused.continuation.includes(name)) fail('run-continuation-unsupported', { engine, argument: name }, 2);
-    if (refused.settings.includes(name)) fail('run-argument-unsupported', { engine, argument: name }, 2);
-  }
+  const { flags, values } = OPTIONS[engine];
   const kept = [];
-  const appendSources = [];
+  const positionals = [];
+  const appended = [];
   const pluginDirs = [];
-  let launchCwd = cwd;
+  let print = false;
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
-    if (end >= 0 && i >= end) { kept.push(arg); continue; }
-    const name = flagName(arg);
-    const inline = arg.includes('=') && arg.startsWith('--') ? arg.slice(name.length + 1) : null;
+    if (arg === '--') {
+      kept.push(...args.slice(i));
+      positionals.push(...args.slice(i + 1));
+      break;
+    }
+    // Prompt text may start with a dash; an option has no space before any `=`.
+    if (!/^-[^\s=]+(=|$)/.test(arg)) {
+      kept.push(arg);
+      positionals.push(arg);
+      continue;
+    }
+    const equals = arg.startsWith('--') ? arg.indexOf('=') : -1;
+    const name = equals < 0 ? arg : arg.slice(0, equals);
     const value = () => {
-      if (inline !== null) return inline;
-      if (i + 1 >= args.length || (end >= 0 && i + 1 >= end)) fail('invalid-arguments', { argument: name }, 2);
-      return args[++i];
+      if (equals >= 0) return arg.slice(equals + 1);
+      if (++i >= args.length) fail('invalid-arguments', { argument: name }, 2);
+      return args[i];
     };
-    if ((engine === 'claude' || engine === 'omp') && name === '--append-system-prompt') {
-      appendSources.push({ text: value() });
-      continue;
-    }
-    if (engine === 'claude' && name === '--append-system-prompt-file') {
-      const file = path.resolve(cwd, value());
-      try { appendSources.push({ text: fs.readFileSync(file, 'utf8') }); }
-      catch (error) { fail('config-unreadable', { field: '--append-system-prompt-file', detail: error.code || error.message }, 2); }
-      continue;
-    }
-    if (engine === 'claude' && name === '--plugin-dir') {
+    if (flags.has(name) && equals < 0) {
+      if (name === '-p' || name === '--print') print = true;
+      kept.push(arg);
+    } else if (name === '--append-system-prompt' && engine !== 'codex') {
+      const text = value();
+      const file = path.resolve(cwd, text);
+      // omp reads an existing file named here; merging its name would lose the owner's text.
+      appended.push(engine === 'omp' && fs.statSync(file, { throwIfNoEntry: false })?.isFile() ? readAppend(file, name) : text);
+    } else if (name === '--append-system-prompt-file' && engine === 'claude') {
+      appended.push(readAppend(path.resolve(cwd, value()), name));
+    } else if (name === '--plugin-dir' && engine === 'claude') {
       const dir = value();
       pluginDirs.push(path.resolve(cwd, dir));
       kept.push('--plugin-dir', dir);
-      continue;
-    }
-    if (engine === 'codex' && (name === '-c' || name === '--config')) {
+    } else if ((name === '-c' || name === '--config') && engine === 'codex') {
       const setting = value();
       const key = setting.split('=', 1)[0].trim();
       if (CODEX_PLANNED_KEYS.some((planned) => key === planned || key.startsWith(`${planned}.`))) {
         fail('run-argument-unsupported', { engine, argument: `${name} ${key}` }, 2);
       }
       kept.push(name, setting);
-      continue;
+    } else if (values.has(name)) {
+      const given = value();
+      kept.push(...(equals < 0 ? [name, given] : [arg]));
+    } else {
+      fail('run-argument-unsupported', { engine, argument: name }, 2);
     }
-    if (engine === 'codex' && (name === '-C' || name === '--cd')) {
-      const dir = value();
-      launchCwd = path.resolve(cwd, dir);
-      kept.push(name, dir);
-      continue;
-    }
-    kept.push(arg);
   }
-  if (appendSources.length > 1) fail('run-argument-unsupported', { engine, argument: 'more than one appended system prompt' }, 2);
+  if (appended.length > 1) fail('run-argument-unsupported', { engine, argument: 'more than one appended system prompt' }, 2);
   if (engine === 'codex') {
-    // `codex resume` and `codex exec resume` continue a recorded session; `fork` copies one.
-    const positionals = [];
-    for (let i = 0; i < options.length; i++) {
-      const arg = options[i];
-      if (arg.startsWith('-')) { if (CODEX_VALUE_FLAGS.has(arg)) i++; continue; }
-      positionals.push(arg);
-    }
     const [first, second] = positionals;
-    if (first === 'resume' || first === 'fork' || (first === 'exec' && (second === 'resume' || second === 'fork'))) {
-      fail('run-continuation-unsupported', { engine, argument: first === 'exec' ? `exec ${second}` : first }, 2);
+    const run = first === 'exec' || first === 'e';
+    if (CONTINUATIONS.has(first) || (run && CONTINUATIONS.has(second))) {
+      fail('run-continuation-unsupported', { engine, argument: run ? `${first} ${second}` : first }, 2);
+    }
+    if (CODEX_COMMANDS.has(first) || (first === 'debug' && second !== 'prompt-input') || (run && second === 'review')) {
+      fail('run-argument-unsupported', { engine, argument: run ? `${first} ${second}` : first }, 2);
     }
   }
-  const print = options.some((arg) => arg === '-p' || arg === '--print');
-  return { kept, appendSystemPrompt: appendSources[0]?.text, pluginDirs, cwd: launchCwd, print };
+  return { kept, appendSystemPrompt: appended[0], pluginDirs, print };
 }
 
-// The executable a launch runs, resolved once from PATH and used for every probe and the launch.
-function resolveProgram(engine, env) {
+// The executable a launch runs, resolved once to an absolute path and used for every probe and the launch.
+function resolveProgram(engine, env, cwd) {
   if (process.platform === 'win32') fail('run-platform-unsupported', { platform: process.platform }, 2);
   for (const dir of (env.PATH || '').split(path.delimiter)) {
     if (!dir) continue;
-    const candidate = path.join(dir, engine);
+    const candidate = path.resolve(cwd, dir, engine);
     try {
       if (fs.statSync(candidate).isFile()) { fs.accessSync(candidate, fs.constants.X_OK); return candidate; }
     } catch (error) {
@@ -131,13 +147,15 @@ function engineVersion(program, env) {
   return match ? match[0] : null;
 }
 
-function readJsonFile(file, missing = undefined) {
+const ABSENT = Symbol('absent');
+
+// Only a path with nothing at it is absent. A dangling link or a file holding JSON null is a record
+// that cannot be read, which must stop the launch rather than read as no record.
+function readJsonFile(file) {
+  if (!fs.lstatSync(file, { throwIfNoEntry: false })) return ABSENT;
   let text;
   try { text = fs.readFileSync(file, 'utf8'); }
-  catch (error) {
-    if (error.code === 'ENOENT') return missing;
-    fail('config-unreadable', { path: file, detail: error.code || error.message }, 2);
-  }
+  catch (error) { fail('config-unreadable', { path: file, detail: error.code || 'unreadable' }, 2); }
   try { return JSON.parse(text); }
   catch { fail('config-unreadable', { path: file, detail: 'not JSON' }, 2); }
 }
@@ -153,8 +171,8 @@ function gitCommonDir(cwd) {
 // the machine's or this repository's choice. Absent is fine; present but unreadable stops the launch.
 function appState(home, common) {
   const file = path.join(home, '.devlyn/harness/state.json');
-  const state = readJsonFile(file, null);
-  if (state === null) return { defaultRelease: null, choice: 'default' };
+  const state = readJsonFile(file);
+  if (state === ABSENT) return { defaultRelease: null, choice: 'default' };
   const choices = ['default', 'devlyn', 'none'];
   if (!object(state) || state.schemaVersion !== 1 || !(state.defaultRelease === null || state.defaultRelease === undefined
       || (object(state.defaultRelease) && typeof state.defaultRelease.version === 'string'
@@ -189,11 +207,15 @@ function recorded(root, version, digest, source) {
 function selectRelease({ home, common, packageRoot, defaultRelease }) {
   if (common) {
     const file = path.join(common, 'devlyn-loops/harness.json');
-    const binding = readJsonFile(file, null);
-    if (binding !== null) {
+    const binding = readJsonFile(file);
+    if (binding !== ABSENT) {
       const ref = binding?.release;
-      if (!object(binding) || binding.schemaVersion !== 1 || !object(ref) || typeof ref.root !== 'string'
-          || typeof ref.version !== 'string' || typeof ref.digest !== 'string') {
+      const defaults = binding?.defaults;
+      const digest = /^[a-f0-9]{64}$/;
+      if (!object(binding) || Object.keys(binding).sort().join() !== 'defaults,release,schemaVersion' || binding.schemaVersion !== 1
+          || !object(ref) || ref.package !== 'devlyn-cli' || typeof ref.version !== 'string' || !digest.test(ref.digest || '')
+          || typeof ref.root !== 'string' || !path.isAbsolute(ref.root)
+          || !object(defaults) || typeof defaults.path !== 'string' || !digest.test(defaults.sha256 || '')) {
         fail('state-unreadable', { path: file }, 3);
       }
       return recorded(ref.root, ref.version, ref.digest, 'queue');
@@ -213,13 +235,13 @@ function selectRelease({ home, common, packageRoot, defaultRelease }) {
 
 // Claude plugins named devlyn that Claude itself loads here (crates/devlynd harness.rs claude_devlyn_plugins).
 function claudeDevlynPlugins(root, cwd) {
-  const registry = readJsonFile(path.join(root, 'plugins/installed_plugins.json'), null);
-  if (registry === null) return [];
+  const registry = readJsonFile(path.join(root, 'plugins/installed_plugins.json'));
+  if (registry === ABSENT) return [];
   if (!object(registry) || registry.version !== 2 || !object(registry.plugins)) {
     fail('config-unreadable', { field: 'claude plugin registry', detail: 'not version 2' }, 2);
   }
   const settings = [path.join(cwd, '.claude/settings.local.json'), path.join(cwd, '.claude/settings.json'),
-    path.join(root, 'settings.json')].map((file) => readJsonFile(file, null));
+    path.join(root, 'settings.json')].map(readJsonFile);
   const enabled = (id) => settings.find((value) => object(value) && object(value.enabledPlugins)
     && typeof value.enabledPlugins[id] === 'boolean')?.enabledPlugins[id] === true;
   return Object.entries(registry.plugins)
@@ -252,12 +274,16 @@ function codexConfig(program, accountHome, cwd, env) {
       settled = true;
       clearTimeout(timer);
       lines.close();
-      child.kill();
+      // A read-only helper: nothing to save, and one that ignores SIGTERM must not hold this launch.
+      child.kill('SIGKILL');
+      child.stdin.destroy();
+      child.stdout.destroy();
+      child.unref();
       if (error) reject(error); else resolve(value);
     };
     const refuse = (detail) => finish(Object.assign(new Error(detail), { reason: { code: 'config-unreadable', params: { field: 'codex config/read', detail } } }));
     const timer = setTimeout(() => refuse('timed out'), CODEX_READ_MS);
-    child.on('error', (error) => refuse(error.code || error.message));
+    child.on('error', (error) => refuse(error.code || 'did not start'));
     child.on('exit', () => refuse('app-server exited'));
     lines.on('line', (line) => {
       let message;
@@ -265,7 +291,8 @@ function codexConfig(program, accountHome, cwd, env) {
       if (message.id === undefined || !pending.has(message.id)) return;
       const handle = pending.get(message.id);
       pending.delete(message.id);
-      if (message.error) refuse(`${handle.method}: ${message.error.message}`);
+      // Its message can quote configuration, so only the failed method is said.
+      if (message.error) refuse(`${handle.method} refused`);
       else handle.next(message.result);
     });
     let id = 0;
@@ -295,7 +322,7 @@ function codexConfig(program, accountHome, cwd, env) {
 // omp's effective settings in this folder (crates/devlynd harness.rs omp_skills), plus autoResume.
 function ompConfig(program, cwd, env) {
   const result = spawnSync(program, ['config', 'list', '--json'], { cwd, env, encoding: 'utf8', timeout: READ_MS, stdio: ['ignore', 'pipe', 'pipe'] });
-  if (result.error || result.status !== 0) fail('config-unreadable', { field: 'omp config list', detail: (result.stderr || result.error?.message || '').trim().slice(0, 200) }, 2);
+  if (result.error || result.status !== 0) fail('config-unreadable', { field: 'omp config list', detail: result.error?.code || `exit ${result.status}` }, 2);
   let listed;
   try { listed = JSON.parse(result.stdout); } catch { fail('config-unreadable', { field: 'omp config list', detail: 'not JSON' }, 2); }
   if (!object(listed)) fail('config-unreadable', { field: 'omp config list', detail: 'not an object' }, 2);
@@ -306,35 +333,46 @@ function ompConfig(program, cwd, env) {
   return { skills, autoResume: listed.autoResume?.value === true };
 }
 
+// omp loads APPEND_SYSTEM.md only when no append text is given, and the plan always gives some, so
+// the owner's file is carried over: the project's first, then the user's, as omp looks them up.
+function ompOwnerAppend(cwd, home) {
+  for (const file of [path.join(cwd, '.omp/APPEND_SYSTEM.md'), path.join(home, '.omp/agent/APPEND_SYSTEM.md')]) {
+    if (fs.statSync(file, { throwIfNoEntry: false })?.isFile()) return readAppend(file, 'APPEND_SYSTEM.md');
+  }
+  return undefined;
+}
+
 // Everything one fresh launch of `engine` with the owner's `args` needs before planning.
 async function launchInputs({ engine, args, cwd, env, home, packageRoot }) {
   if (!ENGINES.includes(engine)) fail('run-engine-unsupported', { engine, supported: ENGINES.join(',') }, 2);
-  const analyzed = analyzeArgs(engine, args, cwd);
-  const program = resolveProgram(engine, env);
-  const version = engineVersion(program, env);
-  const common = gitCommonDir(analyzed.cwd);
+  const common = gitCommonDir(cwd);
   const state = appState(home, common);
+  // A project turned off gets no plan to protect, so the owner's arguments go through untouched.
+  const off = state.choice === 'none';
+  const analyzed = off ? { kept: args, pluginDirs: [], print: false } : analyzeArgs(engine, args, cwd);
+  const program = resolveProgram(engine, env, cwd);
+  const version = engineVersion(program, env);
   const { release, source } = selectRelease({ home, common, packageRoot, defaultRelease: state.defaultRelease });
   let effectiveConfig;
   let accountHome;
   if (engine === 'claude') {
     const root = env.CLAUDE_CONFIG_DIR || path.join(home, '.claude');
-    effectiveConfig = { pluginDirs: [...analyzed.pluginDirs, ...claudeDevlynPlugins(root, analyzed.cwd)] };
+    effectiveConfig = { pluginDirs: [...analyzed.pluginDirs, ...claudeDevlynPlugins(root, cwd)] };
     if (analyzed.appendSystemPrompt !== undefined) effectiveConfig.appendSystemPrompt = analyzed.appendSystemPrompt;
   } else if (engine === 'codex') {
     accountHome = env.CODEX_HOME || path.join(home, '.codex');
     if (!path.isAbsolute(accountHome) || !fs.statSync(accountHome, { throwIfNoEntry: false })?.isDirectory()) {
       fail('config-unreadable', { field: 'CODEX_HOME', detail: 'not an existing absolute folder' }, 2);
     }
-    effectiveConfig = await codexConfig(program, accountHome, analyzed.cwd, env);
+    effectiveConfig = await codexConfig(program, accountHome, cwd, env);
   } else {
-    const omp = ompConfig(program, analyzed.cwd, env);
-    if (omp.autoResume && !analyzed.print) fail('run-continuation-unsupported', { engine, argument: 'autoResume' }, 2);
+    const omp = ompConfig(program, cwd, env);
+    if (omp.autoResume && !analyzed.print && !off) fail('run-continuation-unsupported', { engine, argument: 'autoResume' }, 2);
     effectiveConfig = { skills: omp.skills };
-    if (analyzed.appendSystemPrompt !== undefined) effectiveConfig.appendSystemPrompt = analyzed.appendSystemPrompt;
+    const appended = analyzed.appendSystemPrompt ?? (off ? undefined : ompOwnerAppend(cwd, home));
+    if (appended !== undefined) effectiveConfig.appendSystemPrompt = appended;
   }
-  return { program, version, release, source, args: analyzed.kept, cwd: analyzed.cwd, choice: state.choice,
-    accountHome, effectiveConfig };
+  return { program, version, release, source, args: analyzed.kept, cwd, choice: state.choice, accountHome, effectiveConfig };
 }
 
 module.exports = { ENGINES, analyzeArgs, launchInputs };

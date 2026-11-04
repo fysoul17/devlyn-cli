@@ -20,9 +20,13 @@ function releaseCommand(release, argv, input) {
   let envelope;
   try { envelope = JSON.parse(result.stdout); } catch { envelope = null; }
   if (!object(envelope) || envelope.schemaVersion !== 1) {
-    fail('cli-failed', { command: argv.slice(0, 2).join(' '), detail: `${result.stderr || result.error?.message || ''}`.trim().slice(0, 300) }, 3);
+    fail('cli-failed', { command: argv.slice(0, 2).join(' '), exit: result.status }, 3);
   }
-  if (!envelope.ok) fail(envelope.error?.code || 'cli-failed', envelope.error?.params || {}, result.status || 3);
+  if (!envelope.ok) {
+    // A `detail` can quote what it failed on, so only the structured reason is carried.
+    const { detail, ...params } = envelope.error?.params || {};
+    fail(envelope.error?.code || 'cli-failed', params, result.status || 3);
+  }
   return envelope.data;
 }
 
@@ -93,7 +97,7 @@ async function runCommand(args) {
     const plan = releaseCommand(inputs.release, ['activation', '--plan', '--release-root', inputs.release.root,
       '--context-file', '-', '--json'], JSON.stringify(context));
     validatePlan(plan, inputs.release);
-    if (inputs.choice !== 'none' && plan.channels.principles.state === 'unavailable') {
+    if (inputs.choice !== 'none' && plan.channels.principles.state !== 'configured') {
       fail('principles-unavailable', { reasons: (plan.channels.principles.reasons || []).map((reason) => reason.code).join(','),
         release: inputs.release.version, source: inputs.source, engineVersion: inputs.version }, 3);
     }

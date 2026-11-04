@@ -13,6 +13,7 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import time
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -28,15 +29,26 @@ if argv == ['--version']:
     print(said if said is not None else {'claude': '2.1.318 (Claude Code)', 'codex': 'codex-cli 0.164.0', 'omp': 'omp/18.14.2'}[name])
     sys.exit(0)
 if name == 'omp' and argv[:3] == ['config', 'list', '--json']:
+    if os.environ.get('FAKE_OMP_FAIL'):
+        print('SECRET-TOKEN in settings', file=sys.stderr)
+        sys.exit(1)
     print(json.dumps({'skills.enabled': {'value': True}, 'skills.customDirectories': {'value': ['/owner/skills']},
                       'autoResume': {'value': os.environ.get('FAKE_AUTORESUME') == '1'}}))
     sys.exit(0)
 if name == 'codex' and argv[:1] == ['app-server']:
+    if os.environ.get('FAKE_HANG'):
+        signal.signal(signal.SIGTERM, signal.SIG_IGN)
     for line in sys.stdin:
         message = json.loads(line)
         if message.get('method') == 'initialize':
             print(json.dumps({'id': message['id'], 'result': {}}), flush=True)
         elif message.get('method') == 'config/read':
+            if os.environ.get('FAKE_HANG'):
+                import time
+                time.sleep(60)
+            if os.environ.get('FAKE_CONFIG_ERROR'):
+                print(json.dumps({'id': message['id'], 'error': {'message': 'bad line: SECRET-TOKEN'}}), flush=True)
+                continue
             print(json.dumps({'method': 'note'}), flush=True)
             print(json.dumps({'id': message['id'], 'result': {'config': {'developer_instructions': 'OWNER DEV',
                 'plugins': None, 'skills': {'config': None}}}}), flush=True)
@@ -152,6 +164,9 @@ class RunTests(unittest.TestCase):
         result = self.devlyn('claude', '-p', '--', '--resume')
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(self.launch()['argv'][-3:], ['-p', '--', '--resume'])
+        result = self.devlyn('claude', '--model=opus', '-p', 'task')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.launch()['argv'][-3:], ['--model=opus', '-p', 'task'])
 
     def test_codex_overrides_precede_the_subcommand_and_the_projection_is_synced(self):
         result = self.devlyn('codex', 'exec', 'do the task')
@@ -165,21 +180,32 @@ class RunTests(unittest.TestCase):
         self.assertTrue(list((self.home / '.codex/plugins/cache').glob('devlyn-harness-v*')), 'no projection')
 
     def test_every_refusal_starts_no_engine(self):
-        # Prediction: each stops before spawn with its own reason and a nonzero exit.
+        # Prediction: each stops before spawn with its own reason, including attached and aliased forms.
         cases = [
             (('grok',), {}, 'run-engine-unsupported'),
-            (('claude', '--resume', 'abc'), {}, 'run-continuation-unsupported'),
-            (('claude', '-c'), {}, 'run-continuation-unsupported'),
+            (('claude', '--resume', 'abc'), {}, 'run-argument-unsupported'),
+            (('claude', '-r123'), {}, 'run-argument-unsupported'),
+            (('claude', '-c'), {}, 'run-argument-unsupported'),
+            (('claude', '--fork-session'), {}, 'run-argument-unsupported'),
             (('claude', '--settings', 'x.json'), {}, 'run-argument-unsupported'),
             (('claude', '--append-system-prompt', 'a', '--append-system-prompt', 'b'), {}, 'run-argument-unsupported'),
-            (('codex', 'resume', '--last'), {}, 'run-continuation-unsupported'),
+            (('codex', 'resume'), {}, 'run-continuation-unsupported'),
+            (('codex', 'resume', '--last'), {}, 'run-argument-unsupported'),
             (('codex', 'exec', 'resume'), {}, 'run-continuation-unsupported'),
+            (('codex', 'e', 'resume'), {}, 'run-continuation-unsupported'),
             (('codex', '-m', 'resume', 'fork'), {}, 'run-continuation-unsupported'),
+            (('codex', 'login'), {}, 'run-argument-unsupported'),
             (('codex', '-p', 'work'), {}, 'run-argument-unsupported'),
+            (('codex', '-pwork'), {}, 'run-argument-unsupported'),
             (('codex', '-c', 'developer_instructions="x"'), {}, 'run-argument-unsupported'),
-            (('codex', '--config', 'plugins.a.enabled=true'), {}, 'run-argument-unsupported'),
+            (('codex', '-cdeveloper_instructions="x"', 'exec', 'task'), {}, 'run-argument-unsupported'),
+            (('codex', '--config=plugins.a.enabled=true'), {}, 'run-argument-unsupported'),
+            (('codex', '-C', 'sub', 'exec', 'task'), {}, 'run-argument-unsupported'),
             (('omp', '--config', 'x.yml'), {}, 'run-argument-unsupported'),
-            (('omp', '-r', 'abc'), {}, 'run-continuation-unsupported'),
+            (('omp', '--cwd=/elsewhere'), {}, 'run-argument-unsupported'),
+            (('omp', '-r', 'abc'), {}, 'run-argument-unsupported'),
+            (('omp', '--session', 'abc'), {}, 'run-argument-unsupported'),
+            (('omp', '--fork', 'abc'), {}, 'run-argument-unsupported'),
             (('omp',), {'FAKE_AUTORESUME': '1'}, 'run-continuation-unsupported'),
             (('omp', '-p', 'x'), {'FAKE_VERSION': 'omp/1.0.0'}, 'principles-unavailable'),
             (('omp', '-p', 'x'), {'FAKE_VERSION': 'unknown'}, 'principles-unavailable'),
@@ -192,13 +218,78 @@ class RunTests(unittest.TestCase):
                 self.assertIn(code, result.stderr)
                 self.assertFalse(self.out.exists(), 'an engine started')
 
+    def test_a_value_is_never_read_as_an_option(self):
+        result = self.devlyn('claude', '--append-system-prompt', '--resume', '--model', '-c', '-p', 'task')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        argv = self.launch()['argv']
+        self.assertEqual(argv[-4:], ['--model', '-c', '-p', 'task'])
+        self.assertIn('--resume', self.launch()['files'][argv[argv.index('--append-system-prompt-file') + 1]])
+
+    def test_a_plan_that_cannot_deliver_the_principles_starts_no_engine(self):
+        # Prediction: the planner refuses NUL in append text as partial; partial principles are not a launch.
+        owner = self.case / 'binary.txt'
+        owner.write_bytes(b'owner\0text')
+        result = self.devlyn('claude', '--append-system-prompt-file', str(owner), '-p', 'task')
+        self.assertNotEqual(result.returncode, 0, result.stderr)
+        self.assertIn('principles-unavailable', result.stderr)
+        self.assertFalse(self.out.exists())
+
+    def test_omp_owner_append_text_survives_the_plans_explicit_prompt(self):
+        # Prediction: an existing file named on the flag, then a discovered APPEND_SYSTEM.md, are merged as text.
+        owner = self.project / 'owner.md'
+        owner.write_text('FROM NAMED FILE', encoding='utf-8')
+        result = self.devlyn('omp', '--append-system-prompt', 'owner.md', '-p', 'x')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('FROM NAMED FILE', self.launch()['argv'][3])
+        (self.project / '.omp').mkdir()
+        (self.project / '.omp/APPEND_SYSTEM.md').write_text('FROM PROJECT FILE', encoding='utf-8')
+        result = self.devlyn('omp', '-p', 'x')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('FROM PROJECT FILE', self.launch()['argv'][3])
+
+    def test_failures_never_print_what_the_engine_said(self):
+        # Prediction: engine diagnostics can quote settings, so only the reason code reaches stderr.
+        for args, env in ((('omp', '-p', 'x'), {'FAKE_OMP_FAIL': '1'}), (('codex', 'exec', 'x'), {'FAKE_CONFIG_ERROR': '1'})):
+            with self.subTest(args=args):
+                result = self.devlyn(*args, env=env)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn('config-unreadable', result.stderr)
+                self.assertNotIn('SECRET-TOKEN', result.stderr + result.stdout)
+                self.assertFalse(self.out.exists())
+
+    def test_a_hung_codex_helper_cannot_hold_the_launch(self):
+        # Prediction: past the read budget the helper is killed, even one ignoring SIGTERM.
+        started = time.monotonic()
+        result = self.devlyn('codex', 'exec', 'x', env={'FAKE_HANG': '1'})
+        self.assertLess(time.monotonic() - started, 30)
+        self.assertIn('config-unreadable', result.stderr)
+        self.assertFalse(self.out.exists())
+
+    def test_a_relative_path_entry_resolves_to_one_absolute_program(self):
+        result = self.devlyn('omp', '-p', 'x', env={'PATH': f'../bin{os.pathsep}{os.environ["PATH"]}'})
+        self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_a_recorded_release_that_does_not_verify_stops_the_launch(self):
         # Prediction: a bad record never yields to this package's release.
         harness = self.home / '.devlyn/harness'
         harness.mkdir(parents=True)
-        (harness / 'state.json').write_text('{', encoding='utf-8')
-        for setup, code in ((lambda: None, 'config-unreadable'),
-                            (lambda: self.state(defaultRelease={'version': '9.9.9', 'digest': '0' * 64}), 'release-unavailable')):
+        state = harness / 'state.json'
+        common = self.project / '.git/devlyn-loops'
+        common.mkdir()
+        binding = common / 'harness.json'
+        def link():
+            state.unlink()
+            state.symlink_to(self.case / 'gone.json')
+        def queue(text):
+            state.unlink()
+            binding.write_text(text, encoding='utf-8')
+        cases = ((lambda: state.write_text('{', encoding='utf-8'), 'config-unreadable'),
+                 (lambda: state.write_text('null', encoding='utf-8'), 'state-unreadable'),
+                 (link, 'config-unreadable'),
+                 (lambda: self.state(defaultRelease={'version': '9.9.9', 'digest': '0' * 64}), 'release-unavailable'),
+                 (lambda: queue('null'), 'state-unreadable'),
+                 (lambda: binding.write_text(json.dumps({'schemaVersion': 1, 'release': self.release}), encoding='utf-8'), 'state-unreadable'))
+        for setup, code in cases:
             with self.subTest(code=code):
                 setup()
                 result = self.devlyn('omp', '-p', 'x')
@@ -233,6 +324,10 @@ class RunTests(unittest.TestCase):
         self.assertEqual(result.returncode, 3, result.stderr)
         self.assertEqual(self.launch()['argv'], ['-p', 'task'])
         self.assertIn('harness off for this project', result.stderr)
+        # Nothing is planned, so the owner's arguments pass through whole.
+        result = self.devlyn('claude', '--append-system-prompt', 'OWNER RULES', '--resume', 'abc', '-p', 'task')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.launch()['argv'], ['--append-system-prompt', 'OWNER RULES', '--resume', 'abc', '-p', 'task'])
 
     def test_a_signal_death_is_reproduced_and_the_run_folder_is_removed(self):
         result = self.devlyn('omp', '-p', 'x', env={'FAKE_SIGNAL': str(int(signal.SIGTERM))})

@@ -22,19 +22,22 @@ engine without activation and says so.
 
 ## Scope
 
-Fresh sessions of Claude, Codex and omp on macOS and Linux. Other engines, Windows, and these
-arguments stop the launch with a reason, because the plan could not describe the session:
+Fresh sessions of Claude, Codex and omp on macOS and Linux. Other engines and Windows stop the
+launch with a reason.
 
-| Engine | Refused | Why |
-|---|---|---|
-| Claude | `-c`, `--continue`, `-r`, `--resume`, `--fork-session`, `--from-pr` | continues a session |
-| Claude | `--settings`, `--setting-sources` | changes settings the merge reads |
-| Codex | `resume`, `fork`, `exec resume`, `exec fork` | continues a session |
-| Codex | `-p`, `--profile`; `-c` on `developer_instructions`, `plugins`, `skills`, `marketplaces` | changes settings the plan writes |
-| omp | `-c`, `--continue`, `-r`, `--resume`, `--restore`, `--from-claude`, `--from-codex`; `autoResume` outside `-p` | continues a session |
-| omp | `--config`, `--profile` | changes settings the merge reads |
+Only arguments known not to change the session's freshness, its directory, or the settings the plan
+merges pass through (`OPTIONS` in `bin/harness-context.js`: model, permission, output and similar
+options, and the prompt). Anything else stops the launch with `run-argument-unsupported`, so an
+attached short option, an alias or a future flag cannot slip past. Continuing a session stops with
+`run-continuation-unsupported`: Codex `resume`, `fork` and their `exec` forms, and omp's `autoResume`
+outside `-p`. Directory-changing options are refused: `cd` first.
 
-Claude's and omp's `--append-system-prompt` and Claude's `--append-system-prompt-file` are merged
-into the plan's single appended prompt; more than one is refused.
+The plan's own settings are merged rather than overwritten: Claude's and omp's
+`--append-system-prompt`, Claude's `--append-system-prompt-file` (one of them, not several) and
+`--plugin-dir`. omp reads a file named on its flag, and without the flag its `.omp/APPEND_SYSTEM.md` or
+`~/.omp/agent/APPEND_SYSTEM.md`, which the plan's explicit prompt would otherwise replace; both are
+carried into the merged text. omp's other config folders are not searched for that file.
+
+When the recorded choice is `none`, nothing is planned and every argument passes through unchanged.
 
 Tests: `python3 scripts/test-harness-run.py` packs this checkout and runs it against fake engines.
