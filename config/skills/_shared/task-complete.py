@@ -316,15 +316,21 @@ def ignore_task_records(work):
             f"{directory} records are not ignored or .devlyn is dirty; repair the starting commit's .devlyn paths and ignore rules before allocating")
 
 
-def storage_call(name, *args, adapter=False, receipt_path=None, **kwargs):
+def storage_call(name, *args, adapter=False, receipt_path=None, resume=None, **kwargs):
     module = shared("storage-checkout" if adapter else "storage-client")
     try:
         return module[name](*args, **kwargs)
     except module["StorageRefusal"] as exc:
         request = args[2] if adapter and len(args) == 3 else kwargs.get("receipt", {}).get("storage", {}).get("request", {})
         path = receipt_path or request.get("external_receipt")
-        resume = exc.resume or (storage_resume(path, for_removal=name in ('enrollment', 'recovery_registration')) if path else None)
-        error = CompletionError(str(exc) + ('; resume ' + resume if resume else '; repair Devlyn enrollment and retry'))
+        resume = exc.resume or resume or (storage_resume(path, for_removal=name in ('enrollment', 'recovery_registration')) if path else None)
+        message = str(exc)
+        if resume:
+            if resume not in message:
+                message += '; resume ' + resume
+        else:
+            message += '; repair Devlyn enrollment and retry'
+        error = CompletionError(message)
         error.storage_error = exc.result(receipt=path, resume=resume)
         raise error from exc
 
@@ -339,10 +345,15 @@ def managed_registration(receipt, *, recovery=False):
     require('storage' in receipt, 'managed receipt binding missing; retain and repair enrollment')
     saved = receipt['storage']['decision']['registration']
     if recovery:
+        storage_call('retirement_refusal')
         current = storage_call('recovery_registration', receipt_path=receipt['storage'].get('request', {}).get('external_receipt'))
+        if authority_binding(current) != authority_binding(saved):
+            refuse_moved(receipt)
         require(authority_binding(current) == authority_binding(saved),
                 'recovery pins authority binding changed; retain and repair enrollment')
         return {**current, 'helper_path': current['retained_helper']['path']}
+    if decision['mode'] != 'managed' or authority_binding(decision['registration']) != authority_binding(saved):
+        refuse_moved(receipt)
     require(decision['mode'] == 'managed', 'managed enrollment missing')
     require(authority_binding(decision['registration']) == authority_binding(saved),
             'enrollment authority binding changed; retain original recovery binding')
@@ -487,11 +498,61 @@ def storage_rpc(registration, request, path=None):
         raise error from exc
 
 
+def refuse_moved(receipt, path=None):
+    if receipt['storage'].get('moved') or storage_call('moved_operation', receipt['storage']['decision']['registration']):
+        path = Path(receipt['storage']['request']['external_receipt']) if path is None else path
+        resume = receipt_resume('recover-storage', path, receipt)
+        error = CompletionError('This task moved with Devlyn; release it and keep its files: ' + resume)
+        error.storage_error = {'receipt': str(path), 'resume': resume}
+        raise error
+
+
+def release_moved(receipt, path, operation):
+    state = receipt['storage']
+    if 'moved' not in state:
+        registration = storage_call('recovery_registration', receipt_path=str(path),
+                                    resume=receipt_resume('recover-storage', path, receipt))
+        registration = {**registration, 'helper_path': registration['retained_helper']['path']}
+        storage_call('replay_retirement', registration, receipt_path=str(path))
+        result = None
+        if path_present(path.with_name('storage-allocation.json')):
+            if 'removal_request' not in state:
+                work = Path(receipt['worktree'])
+                state['removal_request'] = {'adapter_protocol': 1,
+                    'allocation_operation_id': state['request']['operation_id'], 'external_receipt': str(path),
+                    'removal_operation_id': storage_call('operation_id'),
+                    'worktree_identity': storage_call('persistent_identity', work) if path_present(work) else None}
+                atomic_json(path, receipt)
+            result = storage_call('call', registration, 'reconcile-for-removal', state['removal_request'], adapter=True)
+            require(result['operation_id'] == state['removal_request']['removal_operation_id'], 'removal fence ID changed')
+            require(result['closure_result']['established_by'] != 'legacy_unreserved', 'moved release lacks positive closure')
+        state['moved'] = {'operation_id': operation, 'removal_result': result}
+        atomic_json(path, receipt)
+    root = Path(receipt['common_gitdir']) / 'devlyn-completion'
+    moved = root / 'moved'
+    moved.mkdir(exist_ok=True)
+    require(moved.resolve() == moved and moved.is_dir(), 'moved receipt directory redirected; retain')
+    destination = moved / (receipt['id'] + '.' + state['request']['operation_id'])
+    if path.parent != destination:
+        require(not path_present(destination), 'moved receipt destination already exists; retain both')
+        path.parent.rename(destination)
+    # Also retry the retired source barrier after a rename whose reply was lost.
+    if path_present(root / 'retired'):
+        storage_call('sync_directory', root / 'retired')
+    storage_call('sync_directory', moved)
+    storage_call('sync_directory', root)
+    return {'status': 'STORAGE_MOVED', 'receipt': str(destination / 'receipt.json'), **state['moved']}
+
+
 def recover_storage(args):
     path = resolve_receipt(Path(args.receipt).absolute(), operation_id=getattr(args, "operation_id", None))
-    with locked_receipt(path, operation_id=getattr(args, "operation_id", None), resume=True) as receipt:
+    with locked_receipt(path, operation_id=getattr(args, "operation_id", None), resume=True, allow_moved=True) as receipt:
         args.operation_id = receipt.get("storage", {}).get("request", {}).get("operation_id")
         require(storage_call("managed_receipt", receipt), "receipt is not managed")
+        operation = receipt['storage'].get('moved', {}).get('operation_id') or storage_call(
+            'moved_operation', receipt['storage']['decision']['registration'])
+        if operation:
+            return release_moved(receipt, path, operation)
         if args.for_removal:
             accepted = receipt.get('acceptance') or receipt.get('pushed') or receipt.get('pr_number')
             if accepted and receipt.get('pr_number') and receipt.get('delivery') not in {'COMPLETE', 'CLOSED'}:
@@ -1457,32 +1518,41 @@ def resolve_receipt(path, *, operation_id=None):
         if operation_id is None or read_json(path).get('storage', {}).get('request', {}).get('operation_id') == operation_id:
             return path
         require(path.parent.parent.name == 'devlyn-completion', 'receipt operation ID differs from saved resume')
+    kinds = ('retired', 'moved')
+    if path.parent.parent.name == 'retired' and path.parent.parent.parent.name == 'devlyn-completion':
+        key, separator, archived_operation = path.parent.name.partition('.')
+        require(separator and (operation_id is None or operation_id == archived_operation),
+                'receipt operation ID differs from saved resume')
+        operation_id = archived_operation
+        path = path.parent.parent.parent / key / 'receipt.json'
+        kinds = ('moved',)
     require(path.parent.parent.name == 'devlyn-completion', 'receipt locator is missing')
     candidates = []
-    retired = path.parent.parent / 'retired'
-    if path_present(retired):
-        require(retired == retired.resolve() and retired.is_dir(), 'retired receipt directory redirected')
-        for candidate in retired.glob(path.parent.name + '.*/receipt.json'):
-            if operation_id is not None and candidate.parent.name != path.parent.name + '.' + operation_id:
-                continue
-            saved = read_json(candidate)
-            operation = saved.get('storage', {}).get('request', {}).get('operation_id')
-            require(candidate == candidate.resolve() and saved.get('id') == path.parent.name
-                    and Path(saved['common_gitdir']) / 'devlyn-completion' / saved['id'] / 'receipt.json' == path
-                    and saved.get('storage', {}).get('request', {}).get('external_receipt') == str(path)
-                    and candidate.parent.name == saved['id'] + '.' + str(operation)
-                    and managed_terminal(saved),
-                    'retired receipt locator/operation binding changed; retain')
-            if operation_id is None or operation == operation_id:
-                candidates.append(candidate)
-    require(len(candidates) == 1, 'receipt operation/locator missing or ambiguous; use the operation-specific retired receipt: '
+    for kind in kinds:
+        retired = path.parent.parent / kind
+        if path_present(retired):
+            require(retired == retired.resolve() and retired.is_dir(), f'{kind} receipt directory redirected')
+            for candidate in retired.glob(path.parent.name + '.*/receipt.json'):
+                if operation_id is not None and candidate.parent.name != path.parent.name + '.' + operation_id:
+                    continue
+                saved = read_json(candidate)
+                operation = saved.get('storage', {}).get('request', {}).get('operation_id')
+                require(candidate == candidate.resolve() and saved.get('id') == path.parent.name
+                        and Path(saved['common_gitdir']) / 'devlyn-completion' / saved['id'] / 'receipt.json' == path
+                        and saved.get('storage', {}).get('request', {}).get('external_receipt') == str(path)
+                        and candidate.parent.name == saved['id'] + '.' + str(operation)
+                        and (managed_terminal(saved) if kind == 'retired' else bool(saved.get('storage', {}).get('moved'))),
+                        f'{kind} receipt locator/operation binding changed; retain')
+                if operation_id is None or operation == operation_id:
+                    candidates.append(candidate)
+    require(len(candidates) == 1, 'receipt operation/locator missing or ambiguous; use the operation-specific archived receipt: '
             + ', '.join(map(str, candidates)))
     return candidates[0]
 
 
 @contextlib.contextmanager
-def locked_receipt(path, *, blocking=True, operation_id=None, resume=False):
-    require(path.name == "receipt.json" and (path.parent.parent.name == "devlyn-completion" or path.parent.parent.name == "retired" and path.parent.parent.parent.name == "devlyn-completion") and path == path.resolve(), "receipt must be its original external nonsymlink path")
+def locked_receipt(path, *, blocking=True, operation_id=None, resume=False, allow_moved=False):
+    require(path.name == "receipt.json" and (path.parent.parent.name == "devlyn-completion" or path.parent.parent.name in {"retired", "moved"} and path.parent.parent.parent.name == "devlyn-completion") and path == path.resolve(), "receipt must be its original external nonsymlink path")
     preview = read_json(path)
     if storage_call('managed_receipt', preview):
         root = path.parent.parent if path.parent.parent.name == 'devlyn-completion' else path.parent.parent.parent
@@ -1504,7 +1574,8 @@ def locked_receipt(path, *, blocking=True, operation_id=None, resume=False):
             require(operation_id is None or actual == operation_id, 'receipt operation ID differs from saved resume; retain both operations')
         original = Path(receipt['common_gitdir']) / 'devlyn-completion' / receipt['id'] / 'receipt.json'
         archived = original.parent.parent / 'retired' / (receipt['id'] + '.' + receipt.get('storage', {}).get('request', {}).get('operation_id', '')) / 'receipt.json'
-        require(path == original or path == archived, 'receipt/common Gitdir binding mismatch')
+        moved = archived.parent.parent.parent / 'moved' / archived.parent.name / 'receipt.json'
+        require(path in (original, archived, moved), 'receipt/common Gitdir binding mismatch')
         require(receipt["id"] == hashlib.sha256(receipt["branch"].encode()).hexdigest()[:24] and receipt["branch"] not in {receipt["base"], "main", "master"}, "receipt branch ownership changed")
         if storage_call("managed_receipt", receipt):
             require(receipt.get("storage", {}).get("decision", {}).get("registration") and receipt.get("storage", {}).get("request"), "Open Devlyn and repair this managed receipt binding before resuming")
@@ -1513,6 +1584,10 @@ def locked_receipt(path, *, blocking=True, operation_id=None, resume=False):
             require(receipt["allocation"] == "owned", "allocation was interrupted; no historical adoption is permitted")
         if path == archived:
             require(managed_terminal(receipt), 'retired receipt is not terminal')
+        if path == moved:
+            require(receipt.get('storage', {}).get('moved'), 'moved receipt lacks disposition')
+        if storage_call('managed_receipt', receipt) and not allow_moved:
+            refuse_moved(receipt, path)
         yield receipt
 
 

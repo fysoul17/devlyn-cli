@@ -52,6 +52,7 @@ def validate_closure(value):
     require(type(value) is dict, 'positive reservation closure missing')
     tag = value.get('established_by')
     shapes = {'released': {'established_by': ('released',), 'reservation': 'reservation'},
+              'authority_migrated': {'established_by': ('authority_migrated',), 'operation_id': 'str'},
               'authority_expired': {'established_by': ('authority_expired',), 'operation_id': 'str'},
               'never_admitted': {'established_by': ('never_admitted',), 'operation_id': 'str'},
               'legacy_unreserved': {'established_by': ('legacy_unreserved',), 'receipt_version': 'u32'}}

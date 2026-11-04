@@ -188,8 +188,11 @@ def enforce_binding(common, anchor=None):
         if binding and anchor is not None and release_settled_binding(anchor, common, interrupted_add=True):
             return enforce_binding(common)
         if binding:
-            argv = harness_call("recovery_argv", binding, sys.argv[1:])
-            raise LoopError(f"{exc}; recovery argv: {json.dumps(argv, ensure_ascii=False)}") from exc
+            line = shared("storage-client")["queue_handoff"](common, binding)
+            argv = harness_call("recovery_argv", binding, sys.argv[1:]) if line is None else None
+            error = LoopError(f"{exc}; {line}" if line is not None else f"{exc}; recovery argv: {json.dumps(argv, ensure_ascii=False)}")
+            error.handoff = line
+            raise error from exc
         raise
     return binding
 
@@ -1661,7 +1664,11 @@ def inspect(args):
         compatibility.update(compatible=False, reasons=[str(exc)])
         try:
             valid = harness_call("read_binding", common)
-            if valid:
+            if hasattr(exc, "handoff"):
+                line = exc.handoff
+            else:
+                line = shared("storage-client")["queue_handoff"](common, valid) if valid else None
+            if valid and line is None:
                 compatibility["recoveryArgv"] = harness_call("recovery_argv", valid, ["inspect", "--repo", str(anchor), "--json"])
         except (LoopError, OSError):
             pass  # The diagnostic above describes the malformed binding; no safe argv can be inferred.

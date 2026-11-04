@@ -106,8 +106,10 @@ New allocation and warming modes come from enrollment state alone:
 | absent | present | verified `retired: true` | standalone (unenrollment complete) |
 | absent | present | absent, unreadable or incomplete | refuse; Open Devlyn to repair its storage registration |
 
-The journal `storage-client-unenroll.json` is read no-follow only on the last two
-rows. Schema 1, canonical UUIDv7 operation, permanent `storage-client-fence.json`,
+An unfinished retirement takes precedence over enrollment; follow its
+operation-specific retained-helper resume to reconcile or cancel as named.
+The journal `storage-client-unenroll.json` is read no-follow for retirement
+recovery and the last two rows. Schema 1, canonical UUIDv7 operation, permanent `storage-client-fence.json`,
 matching operation/root/lock identities and Rust's archive ordering/path
 validation are required. If native root/lock identities or the home path changed,
 completed retirement permits standalone only when `storage`, `control`,
@@ -119,7 +121,9 @@ completed unenrollment; a leftover managed key retains its own recovery command.
 Existing operations keep their managed identity. Receipts pin the control
 identity; current enrollment verifies the helper before allocation. Recovery uses
 the current verified `storage-client-recovery/pins.json`, including after uninstall
-or unenrollment, and requires its authority binding to match the receipt. Missing
+or unenrollment, and requires its authority binding to match the receipt, except
+for a proven moved task: use its unflagged, operation-specific `recover-storage`
+resume to release it, retain its files, and archive its receipt under `moved/`. Missing
 or invalid pins retain resources and require repair; saved artifacts are never a
 fallback. Enrolled checkout preserves
 `managed_pending`/`managed_owned` and Rust's `storage-allocation.json` subreceipt.

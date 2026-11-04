@@ -86,7 +86,7 @@ def load_cross_language_golden_vectors(directory=FIXTURES / "storage-protocol-1"
         digest = hashlib.sha256(sums).hexdigest()
         client.require(sums == (directory/'SHA256SUMS').read_bytes(), 'vector inventory or hashes changed', 'storage_unsupported')
         client.require((directory/'DIGEST').read_bytes() == (digest+'\n').encode()
-                       and digest == '095a6c699056187a9607d89670705c2ef492c06f76530f1c9bfb1ff325743b05',
+                       and digest == '451e5a2ab3db16fd0e29dbd6220142a7c15e1b9f7b75e84515f85af76ce07bc7',
                        'unverified protocol package', 'storage_unsupported')
         return json.loads((directory/'manifest.json').read_bytes())
     except OSError as exc:
@@ -701,6 +701,132 @@ class EnrollmentTests(unittest.TestCase):
         path = root/"storage-client.json"
         path.write_text(json.dumps(value), encoding="utf-8")
         return path
+
+    def test_queue_handoff_follows_devlyn_hold(self):
+        common = self.home / 'common'
+        common.mkdir()
+        release = self.home / 'release'
+        release.mkdir()
+        reference = {'package': 'devlyn-cli', 'version': '4.3.20', 'digest': 'a'*64, 'root': str(release)}
+        binding = {'release': reference}
+        manifest = {'schemaVersion': 1, 'package': reference['package'], 'version': reference['version'],
+                    'digest': {'algorithm': 'sha256', 'value': reference['digest']}, 'files': []}
+        file = release / 'release.json'
+        file.write_text(json.dumps(manifest))
+        completion = common / 'devlyn-completion'
+        with patch.object(Path, 'iterdir', side_effect=AssertionError('never-enrolled listing')), \
+             patch.object(os, 'open', side_effect=AssertionError('never-enrolled open')):
+            self.assertIsNone(client.queue_handoff(common, binding))
+        # All eight table rows, including refusal precedence and never-enrolled zero scan.
+        refusal = REFUSAL('storage_unavailable', message='repair registration')
+        with patch.object(client, 'operation_enrollment', side_effect=refusal):
+            self.assertEqual(client.queue_handoff(common, binding), 'repair registration')
+        with patch.object(client, 'operation_enrollment', return_value={'mode': 'standalone'}), \
+             patch.object(client, 'recovery_marker', return_value=False):
+            self.assertIsNone(client.queue_handoff(common, binding))
+        for managed in (False, True):
+            for listed in (False, True):
+                for present in (False, True):
+                    with self.subTest(managed=managed, listed=listed, present=present):
+                        manifest['files'] = [{'path': 'config/storage-client-contract.json'}] if listed else []
+                        file.write_text(json.dumps(manifest))
+                        if completion.exists():
+                            shutil.rmtree(completion)
+                        if present:
+                            holder = completion / 'task'
+                            holder.mkdir(parents=True)
+                            (holder / 'receipt.json').write_text('{"allocation":"managed_pending"}')
+                        with patch.object(client, 'operation_enrollment', return_value={'mode': 'managed' if managed else 'standalone'}), \
+                             patch.object(client, 'recovery_marker', return_value=True):
+                            line = client.queue_handoff(common, binding)
+                        if present and not listed:
+                            self.assertIn(str(completion / 'task/receipt.json'), line)
+                            self.assertIn('then start it with Drain in Devlyn' if managed else 'then run this again', line)
+                            self.assertNotIn('delete', line)
+                        elif managed:
+                            self.assertEqual(line, 'Devlyn runs this queue on this computer: start it with Drain in Devlyn')
+                            self.assertNotIn(str(completion / 'task/receipt.json'), line)
+                        else:
+                            self.assertIsNone(line)
+        manifest['files'] = []
+        file.write_text(json.dumps(manifest))
+        shutil.rmtree(completion)
+        completion.mkdir()
+        for name in ('retired', 'moved'):
+            archive = completion / name / 'id.operation'
+            archive.mkdir(parents=True)
+            (archive / 'receipt.json').write_text('{"mode":"managed"}')
+        holder = completion / 'task'
+        holder.mkdir()
+        receipt = holder / 'receipt.json'
+        def line():
+            with patch.object(client, 'operation_enrollment', return_value={'mode': 'standalone'}), \
+                 patch.object(client, 'recovery_marker', return_value=True):
+                return client.queue_handoff(common, binding)
+        self.assertIsNone(line())
+        for raw in ('{"mode":"managed"}', '{"allocation_state":"managed_future"}',
+                    '{"allocation":"managed_owned"}', '{"allocation":5}', '{"mode":5}', '{"mode":null,"mode":null}', '[]', '{'):
+            receipt.write_text(raw)
+            self.assertIn(str(receipt), line())
+        receipt.write_text(json.dumps({'allocation': 'managed_pending', 'large': 'x'*700000}))
+        self.assertNotIn('cannot be read', line())
+        receipt.write_text('{"allocation":"owned","mode":null}')
+        self.assertIsNone(line())
+        receipt.write_text('{')
+        (holder / 'storage-allocation.json').touch()
+        self.assertNotIn('cannot be read', line())  # Rust marker wins over malformed Python receipt.
+        (holder / 'storage-allocation.json').unlink()
+        receipt.unlink()
+        receipt.mkdir()
+        self.assertIn('cannot be read', line())
+        receipt.rmdir()
+        (holder / 'storage-allocation.json').touch()
+        self.assertIn(str(receipt), line())
+        (holder / 'storage-allocation.json').unlink()
+        if os.name != 'nt':
+            receipt.write_text('{"allocation":"managed_pending"}')
+            receipt.chmod(0)
+            try:
+                self.assertIn('cannot be read', line())
+            finally:
+                receipt.chmod(0o600)
+                receipt.unlink()
+            receipt.symlink_to(file)
+            self.assertIn('cannot be read', line())
+            receipt.unlink()
+            os.mkfifo(receipt)
+            self.assertIn('cannot be read', line())
+            receipt.unlink()
+            (completion / 'redirect').symlink_to(release, target_is_directory=True)
+            self.assertIn('cannot be read', line())
+            (completion / 'redirect').unlink()
+        with patch.object(Path, 'iterdir', side_effect=PermissionError('denied')):
+            self.assertIn('cannot be read', line())
+        # Duplicate contract listings and every manifest identity mismatch mean pre-contract.
+        receipt.write_text('{"mode":"managed"}')
+        for change in ({'schemaVersion': 2}, {'package': 'other'}, {'version': '0.0.0'},
+                       {'digest': {'algorithm': 'sha512', 'value': 'a'*64}},
+                       {'files': [{'path': 'config/storage-client-contract.json'}]*2}):
+            file.write_text(json.dumps({**manifest, **change}))
+            self.assertIn('tasks in progress', line())
+        file.unlink()
+        self.assertIn('tasks in progress', line())
+
+    def test_completion_refusal_deduplicates_resume_and_keeps_repair_suffix(self):
+        helper = runpy.run_path(str(SHARED / 'task-complete.py'))
+        storage = helper['shared']('storage-client')
+        resume = 'retained-helper storage-client unenroll --reconcile --json'
+        for message, command, expected in (
+                ('Finish this storage retirement; resume ' + resume, resume,
+                 'Finish this storage retirement; resume ' + resume),
+                ('Finish this storage retirement', resume, 'Finish this storage retirement; resume ' + resume),
+                ('registration unavailable', None, 'registration unavailable; repair Devlyn enrollment and retry')):
+            refusal = storage['StorageRefusal']('storage_unavailable', message=message, resume=command)
+            with self.subTest(message=message), patch.dict(storage, retirement_refusal=unittest.mock.Mock(side_effect=refusal)), \
+                 self.assertRaises(helper['CompletionError']) as raised:
+                helper['storage_call']('retirement_refusal')
+            self.assertEqual(str(raised.exception), expected)
+            self.assertEqual(raised.exception.storage_error['resume'], command)
 
     def test_unset_home_platform_branches_and_json_contract(self):
         import io
@@ -1778,6 +1904,212 @@ class EnrollmentLifecycleTests(unittest.TestCase):
         self.path.write_text(json.dumps(self.record))
         self.pins_path = write_recovery_pins(self.home, self.record)
 
+    def moved_retirement(self, *, retired=True):
+        journal = write_retirement(self.home)
+        journal['retired'] = retired
+        pins = json.loads(self.pins_path.read_text())
+        # The native move tests own real cross-volume proof; rewrite stored volumes only here.
+        def old(value):
+            if isinstance(value, dict):
+                if set(value) == {'volume', 'file'}:
+                    value['volume'] = 'old-volume'
+                else:
+                    for child in value.values():
+                        old(child)
+            elif isinstance(value, list):
+                for child in value:
+                    old(child)
+        old(pins)
+        old(journal)
+        self.path.unlink()
+        self.control.rmdir()
+        self.pins_path.write_text(json.dumps(pins))
+        (self.root / 'storage-client-unenroll.json').write_text(json.dumps(journal))
+        (self.root / 'storage-client-fence.json').write_text(json.dumps({k: v for k, v in journal.items() if k not in {'archives', 'retired'}}))
+        return journal, pins
+
+    def test_retired_moved_home_bootstraps_from_retained_bytes(self):
+        journal, pins = self.moved_retirement()
+        self.assertEqual(client.recovery_registration(), pins['enrollment'])
+        self.assertEqual(client.moved_operation(pins['enrollment']), journal['operation_id'])
+        self.assertEqual(set(json.loads(self.pins_path.read_text())), {'schema', 'enrollment', 'runtime', 'node'})
+        # Lost retirement reply: authenticate by bytes, replay the same operation,
+        # and require the helper to commit the journal before task reconciliation.
+        journal['retired'] = False
+        journal_path = self.root / 'storage-client-unenroll.json'
+        journal_path.write_text(json.dumps(journal))
+        def replay(argv, **kwargs):
+            self.assertEqual(argv, [pins['enrollment']['retained_helper']['path'],
+                                   'storage-client', 'unenroll', '--reconcile', '--json'])
+            self.assertEqual(json.loads(kwargs['input'])['operation_id'], journal['operation_id'])
+            journal['retired'] = True
+            journal_path.write_text(json.dumps(journal))
+            kwargs['stdout'].write(json.dumps({'adapter_protocol': 1, 'op': 'unenroll',
+                'result': journal}).encode()+b'\n')
+            return SimpleNamespace(returncode=0)
+        with patch.object(client.subprocess, 'run', side_effect=replay):
+            client.replay_retirement(client.recovery_registration())
+        # Malformed enrollment metadata is NotMoved, never a digest-only bootstrap.
+        for keys, value in ((('helper_release', 'version'), 'not-semver'),
+                            (('helper_release', 'target'), ''),
+                            (('helper_release', 'sha256'), 'changed'),
+                            (('recovery_release', 'package'), 'another-package'),
+                            (('recovery_release', 'version'), ''),
+                            (('recovery_release', 'digest'), '')):
+            changed = json.loads(json.dumps(pins))
+            changed['enrollment'][keys[0]][keys[1]] = value
+            self.pins_path.write_text(json.dumps(changed))
+            with self.subTest(keys=keys), self.assertRaises(REFUSAL):
+                client.recovery_registration()
+        self.pins_path.write_text(json.dumps(pins))
+        # No identity-only bootstrap on a same-volume replacement, mixed set or changed bytes.
+        changed = json.loads(json.dumps(pins))
+        changed['runtime']['identity']['volume'] = client.persistent_identity(self.root)['volume']
+        self.pins_path.write_text(json.dumps(changed))
+        with self.assertRaises(REFUSAL):
+            client.recovery_registration()
+        self.pins_path.write_text(json.dumps(pins))
+        Path(pins['node']).write_bytes(b'tampered')
+        with self.assertRaises(REFUSAL):
+            client.recovery_registration()
+
+    def test_retirement_replay_refusal_keeps_operation_specific_resume(self):
+        journal, pins = self.moved_retirement(retired=False)
+        before = (self.root / 'storage-client-unenroll.json').read_bytes()
+        reply = {'adapter_protocol': 1, 'op': 'unenroll', 'error': {'code': 'storage_protected',
+                 'phase': 'reconcile', 'retryable': False, 'receipt': 'storage-client-unenroll.json',
+                 'diagnostic': 'retirement blocked'}}
+        def refuse(argv, **kwargs):
+            kwargs['stdout'].write(json.dumps(reply).encode()+b'\n')
+            return SimpleNamespace(returncode=2 if 'error' in reply else 0)
+        for result in ('native-refusal', None, [], {}, {'operation_id': client.operation_id(), 'retired': True},
+                       {'operation_id': journal['operation_id'], 'retired': False}):
+            if result != 'native-refusal':
+                reply = {'adapter_protocol': 1, 'op': 'unenroll', 'result': result}
+            with self.subTest(result=result), patch.object(client.subprocess, 'run', side_effect=refuse), self.assertRaises(REFUSAL) as raised:
+                client.replay_retirement(client.recovery_registration())
+            self.assertIn(journal['operation_id'], raised.exception.resume)
+            self.assertIn('--reconcile', raised.exception.resume)
+        self.assertEqual((self.root / 'storage-client-unenroll.json').read_bytes(), before)
+
+    def test_fence_refusal_names_replay_or_cancel(self):
+        journal, pins = self.moved_retirement(retired=False)
+        with self.assertRaises(REFUSAL) as raised:
+            client.operation_enrollment()
+        argv = shlex.split(raised.exception.resume)
+        self.assertEqual(argv[-5:], [pins['enrollment']['retained_helper']['path'], 'storage-client', 'unenroll', '--reconcile', '--json'])
+        self.assertEqual(json.loads(argv[2])['operation_id'], journal['operation_id'])
+        self.assertNotIn('--cancel', argv)
+        (self.root / 'storage-client-unenroll.json').unlink()
+        with self.assertRaises(REFUSAL) as raised:
+            client.operation_enrollment()
+        self.assertIn('--cancel', shlex.split(raised.exception.resume))
+        self.assertEqual(json.loads(shlex.split(raised.exception.resume)[2])['operation_id'], journal['operation_id'])
+        # An intact fence offers reconciliation and names cancellation separately;
+        # the resume itself must remain one executable operation-specific command.
+        write_recovery_pins(self.home, self.record)
+        fence = {key: journal[key] for key in ('schema', 'operation_id', 'root_identity', 'lock_identity')}
+        fence.update(root_identity=client.persistent_identity(self.root),
+                     lock_identity=client.persistent_identity(self.root / 'storage-client.lock'))
+        (self.root / 'storage-client-fence.json').write_text(json.dumps(fence))
+        with self.assertRaises(REFUSAL) as raised:
+            client.operation_enrollment()
+        argv = shlex.split(raised.exception.resume)
+        self.assertEqual(argv[-5:], [self.record['retained_helper']['path'], 'storage-client', 'unenroll', '--reconcile', '--json'])
+        self.assertNotIn(';', raised.exception.resume)
+        self.assertIn('--cancel', str(raised.exception))
+
+    def test_unlisted_changed_binding_still_refuses(self):
+        helper = runpy.run_path(str(SHARED / 'task-complete.py'))
+        changed = {**self.record, 'control_identity': {'volume': 'other', 'file': 'other'}}
+        receipt = {'storage': {'decision': {'registration': changed}, 'request': {'external_receipt': str(self.home / 'receipt.json')}}}
+        for recovery in (False, True):
+            with self.subTest(recovery=recovery), self.assertRaisesRegex(helper['CompletionError'], 'binding changed'):
+                helper['managed_registration'](receipt, recovery=recovery)
+
+    def test_move_manifest_requires_exact_binding_and_current_takes_precedence(self):
+        operation = client.operation_id()
+        archive = self.root / 'storage-client-moved' / operation
+        archive.mkdir(parents=True)
+        binding = {key: self.record[key] for key in ('control_directory', 'control_identity')}
+        manifest = {'schema': 1, 'operation_id': operation, 'from_volume': binding['control_identity']['volume'],
+                    'to_volume': 'another-volume', 'old_binding': binding}
+        path = archive / 'storage-client-move.json'
+        path.write_text(json.dumps(manifest))
+        self.assertIsNone(client.moved_operation(binding))
+        self.path.unlink()
+        self.assertEqual(client.moved_operation(binding), operation)
+        common = self.home / 'common'
+        receipt = common / 'devlyn-completion/task/receipt.json'
+        receipt.parent.mkdir(parents=True)
+        allocation = client.operation_id()
+        saved = {'allocation': 'managed_pending', 'storage': {'decision': {'registration': binding},
+                 'request': {'operation_id': allocation}}}
+        receipt.write_text(json.dumps(saved))
+        (receipt.parent / 'storage-allocation.json').touch()
+        with patch.object(client, 'operation_enrollment', return_value={'mode': 'standalone'}), \
+             patch.object(client, 'recovery_marker', return_value=True):
+            line = client.queue_handoff(common, {'release': {'root': str(self.home), 'package': 'devlyn-cli',
+                                         'version': '4.3.20', 'digest': 'a'*64}})
+        self.assertIn('recover-storage --receipt ' + str(receipt), line)
+        self.assertIn('--operation-id ' + allocation, line)
+        self.assertNotIn('--for-removal --receipt', line)
+        helper = runpy.run_path(str(SHARED / 'task-complete.py'))
+        with self.assertRaises(helper['CompletionError']) as raised:
+            helper['refuse_moved'](saved, receipt)
+        argv = shlex.split(raised.exception.storage_error['resume'])
+        self.assertNotIn('--for-removal', argv)
+        self.assertEqual(argv[-2:], ['--operation-id', allocation])
+        for mutation in ({'schema': 2}, {'schema': True}, {'operation_id': client.operation_id()},
+                         {'from_volume': manifest['to_volume']}, {'unknown': True},
+                         {'old_binding': {**binding, 'unknown': True}}):
+            path.write_text(json.dumps({**manifest, **mutation}))
+            with self.subTest(mutation=mutation), self.assertRaises(REFUSAL):
+                client.moved_operation(binding)
+        path.write_text('[]')
+        with self.assertRaises(REFUSAL):
+            client.moved_operation(binding)
+        path.write_text(json.dumps({**manifest, 'old_binding': None}))
+        self.assertIsNone(client.moved_operation(binding))
+        path.unlink()
+        if os.name != 'nt':
+            path.symlink_to(self.pins_path)
+            with self.assertRaises(REFUSAL):
+                client.moved_operation(binding)
+
+    def test_never_published_pending_abandons_after_unenroll_with_current_pins(self):
+        helper = runpy.run_path(str(SHARED / 'task-complete.py'))
+        repo = self.home / 'repo'
+        repo.mkdir()
+        subprocess.run(['git', 'init', '-q', repo], check=True)
+        common = repo / '.git'
+        branch = 'task/never-published'
+        key = hashlib.sha256(branch.encode()).hexdigest()[:24]
+        receipt = common / 'devlyn-completion' / key / 'receipt.json'
+        receipt.parent.mkdir(parents=True)
+        saved = {'id': key, 'branch': branch, 'base': 'main', 'baseline': 'a'*40,
+                 'common_gitdir': str(common), 'allocation': 'managed_pending', 'worktree': str(self.home / 'absent'),
+                 'storage': {'decision': {'registration': self.record}, 'request': {
+                    'operation_id': client.operation_id(), 'external_receipt': str(receipt)}}}
+        receipt.write_text(json.dumps(saved))
+        self.path.unlink()
+        write_retirement(self.home)
+        reference = {'release': {'package': 'devlyn-cli', 'version': '4.3.20', 'digest': 'a'*64, 'root': str(self.home)}}
+        self.assertIn(str(receipt), client.queue_handoff(common, reference))
+        with patch.dict(helper['recover_storage'].__globals__, storage_rpc=lambda *a: self.fail('authority RPC')), \
+             patch.dict(helper['shared']('storage-checkout'), call=lambda *a: self.fail('adapter call')):
+            result = helper['recover_storage'](SimpleNamespace(receipt=str(receipt), for_removal=True))
+        self.assertEqual(result['status'], 'ABANDONED')
+        self.assertEqual(Path(result['receipt']).parent.parent.name, 'retired')
+        self.assertIsNone(client.queue_handoff(common, reference))
+
+    def test_validate_closure_accepts_authority_migrated(self):
+        adapter = runpy.run_path(str(SHARED / 'storage-checkout.py'))
+        closure = {'established_by': 'authority_migrated', 'operation_id': client.operation_id()}
+        self.assertEqual(adapter['validate_closure'](closure), closure)
+        with self.assertRaises(adapter['StorageRefusal']):
+            adapter['validate_closure']({'established_by': 'authority_migrated'})
+
     def test_current_pins_recovery_uses_only_retained_artifacts_and_maps_oserror(self):
         self.path.unlink()
         self.control.rename(self.root / 'archived-control')
@@ -2529,6 +2861,135 @@ class ReceiptLifecycleTests(unittest.TestCase):
     def recover(self, *, for_removal=True, path=None):
         return self.helper['recover_storage'](SimpleNamespace(receipt=str(path or self.path), for_removal=for_removal))
 
+    def test_moved_receipt_releases_and_archives_without_deleting(self):
+        work = Path(self.receipt['worktree'])
+        work.mkdir()
+        (work / 'source').write_bytes(b'keep copied edits')
+        self.receipt['storage']['decision']['registration'] = {'control_directory': str(self.root / 'old-control'),
+            'control_identity': {'volume': 'old', 'file': '1'}}
+        self.path.write_text(json.dumps(self.receipt))
+        move = client.operation_id()
+        shared = self.helper['shared']('storage-client')
+        with patch.dict(shared['moved_operation'].__globals__, moved_operation=lambda saved: move), \
+             patch.dict(shared, moved_operation=lambda saved: move, recovery_registration=lambda: {'helper_path': 'helper',
+                        'retained_helper': {'path': 'retained'}}):
+            before = self.path.read_bytes()
+            for flagged in (False, True):
+                with self.subTest(flagged=flagged):
+                    # Simulate a crash after durable disposition but before directory rename.
+                    with patch.object(Path, 'rename', side_effect=OSError('rename interrupted')), self.assertRaises(OSError):
+                        self.recover(for_removal=flagged)
+                    saved = json.loads(self.path.read_text())
+                    self.assertEqual(saved['storage']['moved'], {'operation_id': move, 'removal_result': None})
+                    result = self.recover(for_removal=flagged)
+                    audit = Path(result['receipt'])
+                    self.assertEqual(audit.parent.parent.name, 'moved')
+                    self.assertEqual(self.recover(for_removal=flagged), result)
+                    self.assertEqual(self.recover(path=audit, for_removal=flagged), result)
+                    self.assertEqual((work / 'source').read_bytes(), b'keep copied edits')
+                    self.assertNotIn('status', json.loads(audit.read_text()))
+                    self.assertNotIn('removal_finished', json.loads(audit.read_text())['storage'])
+                    archived = json.loads(audit.read_text())
+                    with patch.dict(self.env, storage_call=lambda *a, **kw: self.fail('reclassified saved moved disposition')):
+                        with self.assertRaises(self.helper['CompletionError']) as raised:
+                            self.helper['refuse_moved'](archived, audit)
+                    self.assertNotIn('--for-removal', shlex.split(raised.exception.storage_error['resume']))
+                    # Reset for the other accepted command spelling.
+                    audit.parent.rename(self.path.parent)
+                    self.path.write_bytes(before)
+        with patch.dict(shared, moved_operation=lambda saved: move, recovery_registration=unittest.mock.Mock(
+                side_effect=shared['StorageRefusal']('storage_unavailable', 'pins unavailable'))):
+            with self.assertRaises(self.helper['CompletionError']) as raised:
+                self.recover(for_removal=True)
+            self.assertNotIn('--for-removal', shlex.split(raised.exception.storage_error['resume']))
+        # A Rust subreceipt reconciles but cannot enter any deletion, Begin, Finish or custody path.
+        (self.path.parent / 'storage-allocation.json').write_text('{}')
+        calls = []
+        original = self.env['storage_call']
+        def call(name, *args, **kwargs):
+            if name == 'moved_operation':
+                return move
+            if name == 'recovery_registration':
+                return {'retained_helper': {'path': 'retained'}}
+            if name == 'call':
+                calls.append(args[1])
+                return {'operation_id': args[2]['removal_operation_id'], 'cache_ids': [],
+                        'closure_result': {'established_by': 'authority_migrated', 'operation_id': move}}
+            return original(name, *args, **kwargs)
+        with patch.dict(self.env, storage_call=call, verify_custody=lambda *a: self.fail('custody'),
+                        storage_rpc=lambda *a: self.fail('authority RPC')):
+            result = self.recover(for_removal=True)
+            self.assertEqual(calls, ['reconcile-for-removal'])
+            self.assertEqual(self.recover(), result)
+
+    def test_retired_moved_receipt_replays_identical_argv(self):
+        retired = Path(self.recover()['receipt'])
+        (retired.parent / 'retained-note').write_bytes(b'keep audit files')
+        operation = self.receipt['storage']['request']['operation_id']
+        argv = ['task-complete.py', 'recover-storage', '--receipt', str(retired), '--operation-id', operation]
+        shared = self.helper['shared']('storage-client')
+        with patch.dict(shared, moved_operation=lambda saved: client.operation_id(),
+                        replay_retirement=lambda registration: None,
+                        recovery_registration=lambda: {'retained_helper': {'path': 'retained'}}), \
+             patch.object(sys, 'argv', argv):
+            # The first successful reply is lost; the caller repeats the exact saved argv.
+            with contextlib.redirect_stdout(io.StringIO()) as lost:
+                self.assertEqual(self.helper['main'](), 0)
+            with contextlib.redirect_stdout(io.StringIO()) as replay:
+                self.assertEqual(self.helper['main'](), 0)
+        result = json.loads(lost.getvalue())
+        self.assertEqual(json.loads(replay.getvalue()), result)
+        audit = Path(result['receipt'])
+        self.assertEqual(audit.parent.parent.name, 'moved')
+        self.assertEqual((audit.parent / 'retained-note').read_bytes(), b'keep audit files')
+        before = audit.read_bytes()
+        for field in ('id', 'common_gitdir', 'operation_id', 'external_receipt', 'moved'):
+            saved = json.loads(before)
+            if field == 'id':
+                saved['id'] = 'another-receipt'
+            elif field == 'common_gitdir':
+                saved['common_gitdir'] = str(self.root / 'other')
+            elif field == 'moved':
+                saved['storage'].pop('moved')
+            else:
+                saved['storage']['request'][field] = client.operation_id() if field == 'operation_id' else str(retired)
+            audit.write_text(json.dumps(saved))
+            with self.subTest(field=field), self.assertRaisesRegex(self.helper['CompletionError'], 'binding changed'):
+                self.helper['resolve_receipt'](retired, operation_id=operation)
+        audit.write_bytes(before)
+        with self.assertRaisesRegex(self.helper['CompletionError'], 'operation ID differs'):
+            self.helper['resolve_receipt'](retired, operation_id=client.operation_id())
+
+    def test_retired_moved_rename_retries_source_durability_barrier(self):
+        retired = Path(self.recover()['receipt'])
+        root = retired.parent.parent.parent
+        operation = self.receipt['storage']['request']['operation_id']
+        args = SimpleNamespace(receipt=str(retired), operation_id=operation, for_removal=False)
+        shared = self.helper['shared']('storage-client')
+        real_sync = shared['sync_directory']
+        synced = []
+        def interrupted_sync(directory):
+            synced.append(directory)
+            if directory == root / 'retired' and not retired.exists():
+                raise OSError('source parent barrier interrupted')
+            real_sync(directory)
+        with patch.dict(shared, moved_operation=lambda saved: client.operation_id(),
+                        replay_retirement=lambda registration: None,
+                        recovery_registration=lambda: {'retained_helper': {'path': 'retained'}},
+                        sync_directory=interrupted_sync):
+            with self.assertRaisesRegex(OSError, 'source parent barrier interrupted'):
+                self.helper['recover_storage'](args)
+        self.assertFalse(retired.exists())
+        self.assertIn(root / 'retired', synced)
+        synced.clear()
+        def sync(directory):
+            synced.append(directory)
+            real_sync(directory)
+        with patch.dict(shared, sync_directory=sync):
+            result = self.helper['recover_storage'](args)
+        self.assertEqual(result['status'], 'STORAGE_MOVED')
+        self.assertEqual(set(synced), {root / 'retired', root / 'moved', root})
+
     def test_missing_recovery_pins_returns_owner_removal_resume(self):
         helper = runpy.run_path(str(SHARED / 'task-complete.py'))
         home = self.root / 'home'
@@ -2571,7 +3032,8 @@ class ReceiptLifecycleTests(unittest.TestCase):
         second = first.parent.parent / (receipt['id'] + '.' + receipt['storage']['request']['operation_id'])
         second.mkdir()
         (second / 'receipt.json').write_text(json.dumps(receipt))
-        with self.assertRaisesRegex(self.helper['CompletionError'], 'ambiguous'):
+        with self.assertRaisesRegex(self.helper['CompletionError'],
+                                    'ambiguous; use the operation-specific archived receipt:'):
             self.recover()
         self.assertEqual(self.recover(path=first)['receipt'], str(first))
 
@@ -2810,7 +3272,8 @@ class ManagedOwnerTests(unittest.TestCase):
         self.work = self.root / 'tree'
         self.work.mkdir()
         self.path = self.root / 'receipt.json'
-        self.receipt = {'worktree': str(self.work), 'storage': {'request': {'operation_id': client.operation_id()}}}
+        self.receipt = {'worktree': str(self.work), 'storage': {'decision': {'registration': {'fixture': True}},
+            'request': {'operation_id': client.operation_id()}}}
         self.closure = {'established_by': 'never_admitted', 'operation_id': client.operation_id()}
         self.env = self.helper['managed_removal_gate'].__globals__
 
