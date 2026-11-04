@@ -146,6 +146,10 @@ class ActivationTests(unittest.TestCase):
         older = dict(cursor='2025.01.01-abcdef1')
         for engine in VERSIONS:
             cases = [(older.get(engine, '0.0.0'), 'engine-version-unsupported', {'minimum': VERSIONS[engine]})]
+            major, minor, patch = (VERSIONS[engine].split('.') + ['0', '0'])[:3] if engine != 'cursor' else ('', '', '')
+            if engine != 'cursor' and int(patch) > 0:
+                # The adjacent patch below the floor is refused too.
+                cases.append((f'{major}.{minor}.{int(patch) - 1}', 'engine-version-unsupported', {'minimum': VERSIONS[engine]}))
             cases += [(version, 'engine-version-unreadable', {}) for version in (None, 'abc', '1.2')]
             for version, code, params in cases:
                 with self.subTest(engine=engine, version=version):
@@ -160,7 +164,7 @@ class ActivationTests(unittest.TestCase):
     def test_newer_releases_including_new_majors_are_taken(self):
         # Prediction: a newer patch, minor or major (and a newer Cursor build) plans exactly like the examined
         # version: a version number is not evidence that a channel broke (omp 18 kept both flags devlyn uses).
-        newer = dict(claude=('2.3.0', '3.0.0'), codex=('0.171.2', '1.0.0'), grok=('1.4.0', '2.0.0'),
+        newer = dict(claude=('2.1.308', '2.3.0', '3.0.0'), codex=('0.163.1', '0.171.2', '1.0.0'), grok=('1.4.0', '2.0.0'),
                      omp=('16.9.1', '18.14.2'), antigravity=('1.6.0', '2.0.0'),
                      cursor=('2026.01.05-abcdef1',), opencode=('1.25.0', '2.0.0'), kimi=('2.9.0', '3.0.0'),
                      copilot=('1.2.0', '2.0.0'), qwen=('0.31.0', '1.0.0'))
