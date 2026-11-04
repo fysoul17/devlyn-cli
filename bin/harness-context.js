@@ -40,14 +40,16 @@ const OPTIONS = Object.freeze({
       '--max-time', '--warn-cost', '--max-cost', '--approval-mode', '--add-dir']),
   },
 });
-// A bare first word Codex reads as a command, not a task. `exec` (alias `e`) runs one; `debug
-// prompt-input` shows the model input without a model call. The rest are not sessions to activate.
-const CODEX_COMMANDS = new Set(['agents', 'review', 'login', 'logout', 'mcp', 'plugin', 'app-server', 'remote-control',
-  'app', 'completion', 'update', 'doctor', 'sandbox', 'apply', 'archive', 'delete', 'migrate-rollouts', 'migrate-nfs-db',
-  'unarchive', 'cloud', 'exec-server', 'features', 'help']);
+// `exec` (alias `e`) runs one Codex task; `debug prompt-input` shows the model input without a model call.
+const CODEX_RUNS = new Set(['exec', 'e']);
 const CONTINUATIONS = new Set(['resume', 'fork']);
 // Codex config keys the plan writes; an owner override of one would be overwritten unseen.
 const CODEX_PLANNED_KEYS = ['developer_instructions', 'plugins', 'skills', 'marketplaces'];
+
+// Text too long for a path, or otherwise no path at all, simply names no file.
+function namesFile(candidate) {
+  try { return fs.statSync(candidate, { throwIfNoEntry: false })?.isFile() === true; } catch { return false; }
+}
 
 function readAppend(file, field) {
   try { return fs.readFileSync(file, 'utf8'); }
@@ -55,7 +57,10 @@ function readAppend(file, field) {
 }
 
 // Read the owner's arguments in order with each option's arity, so a value is never taken for an
-// option. Returns what stays, what the plan merges instead, and whether this is a print run.
+// option. A dash always starts an option, as it does for the engine, and a one-word positional may be
+// the engine's own command (`claude attach`, `codex resume`), so only text with a space is a prompt
+// here; anything literal goes after `--`. Returns what stays, what the plan merges instead, and
+// whether this is a print run.
 function analyzeArgs(engine, args, cwd) {
   const { flags, values } = OPTIONS[engine];
   const kept = [];
@@ -67,11 +72,9 @@ function analyzeArgs(engine, args, cwd) {
     const arg = args[i];
     if (arg === '--') {
       kept.push(...args.slice(i));
-      positionals.push(...args.slice(i + 1));
       break;
     }
-    // Prompt text may start with a dash; an option has no space before any `=`.
-    if (!/^-[^\s=]+(=|$)/.test(arg)) {
+    if (!arg.startsWith('-') || arg === '-') {
       kept.push(arg);
       positionals.push(arg);
       continue;
@@ -88,9 +91,8 @@ function analyzeArgs(engine, args, cwd) {
       kept.push(arg);
     } else if (name === '--append-system-prompt' && engine !== 'codex') {
       const text = value();
-      const file = path.resolve(cwd, text);
       // omp reads an existing file named here; merging its name would lose the owner's text.
-      appended.push(engine === 'omp' && fs.statSync(file, { throwIfNoEntry: false })?.isFile() ? readAppend(file, name) : text);
+      appended.push(engine === 'omp' && namesFile(path.resolve(cwd, text)) ? readAppend(path.resolve(cwd, text), name) : text);
     } else if (name === '--append-system-prompt-file' && engine === 'claude') {
       appended.push(readAppend(path.resolve(cwd, value()), name));
     } else if (name === '--plugin-dir' && engine === 'claude') {
@@ -112,15 +114,14 @@ function analyzeArgs(engine, args, cwd) {
     }
   }
   if (appended.length > 1) fail('run-argument-unsupported', { engine, argument: 'more than one appended system prompt' }, 2);
-  if (engine === 'codex') {
-    const [first, second] = positionals;
-    const run = first === 'exec' || first === 'e';
-    if (CONTINUATIONS.has(first) || (run && CONTINUATIONS.has(second))) {
-      fail('run-continuation-unsupported', { engine, argument: run ? `${first} ${second}` : first }, 2);
-    }
-    if (CODEX_COMMANDS.has(first) || (first === 'debug' && second !== 'prompt-input') || (run && second === 'review')) {
-      fail('run-argument-unsupported', { engine, argument: run ? `${first} ${second}` : first }, 2);
-    }
+  const words = positionals.filter((word) => !/\s/.test(word));
+  const [first, second] = words;
+  const allowed = engine === 'codex'
+    ? (positionals[0] === first && CODEX_RUNS.has(first) ? 1 : (first === 'debug' && second === 'prompt-input' ? 2 : 0)) : 0;
+  const command = words[allowed];
+  if (command !== undefined) {
+    if (engine === 'codex' && CONTINUATIONS.has(command)) fail('run-continuation-unsupported', { engine, argument: command }, 2);
+    fail('run-argument-unsupported', { engine, argument: command, hint: 'a one-word prompt goes after --' }, 2);
   }
   return { kept, appendSystemPrompt: appended[0], pluginDirs, print };
 }
@@ -215,7 +216,8 @@ function selectRelease({ home, common, packageRoot, defaultRelease }) {
       if (!object(binding) || Object.keys(binding).sort().join() !== 'defaults,release,schemaVersion' || binding.schemaVersion !== 1
           || !object(ref) || ref.package !== 'devlyn-cli' || typeof ref.version !== 'string' || !digest.test(ref.digest || '')
           || typeof ref.root !== 'string' || !path.isAbsolute(ref.root)
-          || !object(defaults) || typeof defaults.path !== 'string' || !digest.test(defaults.sha256 || '')) {
+          || !object(defaults) || typeof defaults.path !== 'string' || !path.isAbsolute(defaults.path)
+          || !digest.test(defaults.sha256 || '')) {
         fail('state-unreadable', { path: file }, 3);
       }
       return recorded(ref.root, ref.version, ref.digest, 'queue');

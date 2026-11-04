@@ -137,9 +137,11 @@ async function runCommand(args) {
 async function runMain(args) {
   try { await runCommand(args); }
   catch (error) {
-    if (!(error instanceof HarnessError)) throw error;
-    process.stderr.write(`devlyn run: ${error.reason.code} ${JSON.stringify(error.reason.params)}\n`);
-    process.exitCode = error.exitCode;
+    // Any other error's message can quote a prompt, so only its system code is said.
+    const known = error instanceof HarnessError;
+    const reason = known ? error.reason : { code: 'operation-failed', params: error.code ? { systemCode: error.code } : {} };
+    process.stderr.write(`devlyn run: ${reason.code} ${JSON.stringify(reason.params)}\n`);
+    process.exitCode = known ? error.exitCode : 1;
   }
 }
 

@@ -27,10 +27,14 @@ launch with a reason.
 
 Only arguments known not to change the session's freshness, its directory, or the settings the plan
 merges pass through (`OPTIONS` in `bin/harness-context.js`: model, permission, output and similar
-options, and the prompt). Anything else stops the launch with `run-argument-unsupported`, so an
-attached short option, an alias or a future flag cannot slip past. Continuing a session stops with
-`run-continuation-unsupported`: Codex `resume`, `fork` and their `exec` forms, and omp's `autoResume`
-outside `-p`. Directory-changing options are refused: `cd` first.
+options). Anything else stops the launch with `run-argument-unsupported`, so an attached short
+option, an alias or a future flag cannot slip past. Directory-changing options are refused: `cd` first.
+
+A prompt with a space passes as it is. A one-word positional could be the engine's own command
+(`claude attach`, `codex resume`), so a one-word prompt, or any text starting with a dash, goes after
+`--`: `devlyn run claude -p -- hello`. Codex's `exec` (or `e`) and `debug prompt-input` are the only
+commands that pass. Continuing a session stops with `run-continuation-unsupported`: Codex `resume` and
+`fork`, and omp's `autoResume` outside `-p`.
 
 The plan's own settings are merged rather than overwritten: Claude's and omp's
 `--append-system-prompt`, Claude's `--append-system-prompt-file` (one of them, not several) and
