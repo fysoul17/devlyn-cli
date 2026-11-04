@@ -96,6 +96,18 @@
         "length": 3823,
         "sha256": "372d8fcee5f2498bcf282ebd3b3ba74d2ccf317019406193317275864d1f78a2"
       }
+    },
+    {
+      "versions": [
+        "4.3.21"
+      ],
+      "length": 4018,
+      "sha256": "7d559f330bb426022b8166e0a0cbb77d25ca8d204d3ca6c1f4fbcb18c3963626",
+      "preamble": "# Project Instructions\n\ndevlyn-cli installs the `devlyn-ideate` and `devlyn-engines` skills alongside the principles below, which are non-negotiable on every change \u2014 yours and any sub-agent's.\n\n",
+      "body": {
+        "length": 3823,
+        "sha256": "b8afbb73fb27c01544b411c90242bdfcfaf2537907a943270540cbcdfe2bf148"
+      }
     }
   ],
   "CLAUDE.md": [
@@ -194,6 +206,18 @@
       "body": {
         "length": 3823,
         "sha256": "372d8fcee5f2498bcf282ebd3b3ba74d2ccf317019406193317275864d1f78a2"
+      }
+    },
+    {
+      "versions": [
+        "4.3.21"
+      ],
+      "length": 4018,
+      "sha256": "7d559f330bb426022b8166e0a0cbb77d25ca8d204d3ca6c1f4fbcb18c3963626",
+      "preamble": "# Project Instructions\n\ndevlyn-cli installs the `devlyn-ideate` and `devlyn-engines` skills alongside the principles below, which are non-negotiable on every change \u2014 yours and any sub-agent's.\n\n",
+      "body": {
+        "length": 3823,
+        "sha256": "b8afbb73fb27c01544b411c90242bdfcfaf2537907a943270540cbcdfe2bf148"
       }
     }
   ],
@@ -330,6 +354,7 @@
       "5e329ef8e25962ef0c9b29cf769fa1a92a82ab597ef29118961ff250eee76f70",
       "5e73319288935d1857bf1d9b8a46f56c19bdffd46ff2f822b930f2b17cb1f98d",
       "5eaedae1a36f29150537ca51771c3ed19afadc72e08a304179c52454252ad312",
+      "5f641238add8c0124994452bd9f814412111f23b53355af6b736940b151e2aae",
       "5ffc38dcb6fdccd02c03d67777b3a45ffc131883b61ce604dc8c9d74394dd739",
       "601518dee731c1966283001440827f4250beccc82bfb573d596e04eac45c1918",
       "6152799d5f13bb10d474f2498c0b5258da2ee5197819b67ff87716183711a59b",
@@ -771,6 +796,7 @@
       "5e73319288935d1857bf1d9b8a46f56c19bdffd46ff2f822b930f2b17cb1f98d",
       "5e911fbf2ddc2fafa3a62a42b66036bf9a70c52eab36207678e2a90f13bd157d",
       "5f38703141243c57ce3bd616331b1c6d02b774a9559d1cf6854f92731b1561ca",
+      "5f641238add8c0124994452bd9f814412111f23b53355af6b736940b151e2aae",
       "5fc4015eaff44f45d38070d5c55f8ab3aa99397e02a9451255d3a3565e1f0c77",
       "60a9d5e21a3bf0bb16a04b9680905fd8d3e9332b883f10aae48c00155086206a",
       "6170d780ab4f3cb5e2ea7d2757f9239d35dbbc1f9398e73877a95d5ef4c582ee",
