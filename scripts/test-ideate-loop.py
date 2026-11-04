@@ -3936,6 +3936,74 @@ class LoopFixture(unittest.TestCase):
         self.cli("add", meta)
         self.assertEqual(binding_path.read_bytes(), binding)
 
+    def test_harness_mismatch_withholds_argv_where_devlyn_holds_or_runs_queue(self):
+        release = self.harness_release()
+        self.plan('held', CHAIN[:1], {})
+        other = self.other_release(release, '0.0.0-cli2-hold')
+        meta = self.queue['write_package'](self.anchor, 'more', CHAIN[:1], base=self.base)
+        self.queue_py = other / 'config/skills/devlyn-ideate/scripts/queue.py'
+        binding_path = self.common / 'devlyn-loops/harness.json'
+        listed_binding = binding_path.read_bytes()
+        binding = json.loads(listed_binding)
+        manifest_path = release / 'release.json'
+        listed_manifest = manifest_path.read_bytes()
+        contract = release / 'config/storage-client-contract.json'
+        contract_bytes = contract.read_bytes()
+        contract.unlink()
+        manifest = json.loads(listed_manifest)
+        manifest['files'] = [entry for entry in manifest['files'] if entry['path'] != 'config/storage-client-contract.json']
+        manifest.pop('digest')
+        digest = hashlib.sha256(json.dumps(manifest, sort_keys=True, separators=(',', ':'), ensure_ascii=False).encode()).hexdigest()
+        manifest['digest'] = {'algorithm': 'sha256', 'value': digest}
+        manifest_path.write_text(json.dumps(manifest))
+        binding['release']['digest'] = digest
+        binding_path.write_text(json.dumps(binding))
+        before = binding_path.read_bytes()
+        home = self.root / 'home'
+        home.mkdir()
+        self.env.update(HOME=str(home), USERPROFILE=str(home))
+        storage = self.queue['shared']('storage-client')
+        root = home / '.devlyn'
+        root.mkdir()
+        for setup in ('invalid', 'marker', 'retired'):
+            with self.subTest(setup=setup):
+                if setup == 'invalid':
+                    (root / 'storage-client.json').write_text('{}')
+                elif setup == 'marker':
+                    (root / 'storage-client.json').unlink()
+                    (root / 'storage-client-recovery').mkdir()
+                else:
+                    (root / 'storage-client.lock').touch()
+                    fence = {'schema': 1, 'operation_id': storage['operation_id'](),
+                             'root_identity': storage['persistent_identity'](root),
+                             'lock_identity': storage['persistent_identity'](root / 'storage-client.lock')}
+                    (root / 'storage-client-fence.json').write_text(json.dumps(fence))
+                    (root / 'storage-client-unenroll.json').write_text(json.dumps({**fence, 'retired': True, 'archives': []}))
+                    holder = self.common / 'devlyn-completion/holder'
+                    holder.mkdir(parents=True, exist_ok=True)
+                    (holder / 'receipt.json').write_text('{"allocation":"managed_pending"}')
+                for args in (('drain', '--repo', self.anchor, '--local-only', '--', sys.executable, '-c', 'pass', '{packet}'), ('status', '--repo', self.anchor), ('add', meta)):
+                    result = self.cli(*args, code=1)
+                    self.assertEqual(result['status'], 'BLOCKED')
+                    self.assertNotIn('recovery argv:', result['reason'])
+                    self.assertIn('queue-release-mismatch', result['reason'])
+                    self.assertEqual(binding_path.read_bytes(), before)
+                inspected = self.cli('inspect', '--repo', self.anchor, '--json')
+                self.assertIsNone(inspected['compatibility']['recoveryArgv'])
+                self.assertEqual(binding_path.read_bytes(), before)
+        retired = self.common / 'devlyn-completion/retired'
+        retired.mkdir()
+        holder.rename(retired / 'holder.operation')
+        inspected = self.cli('inspect', '--repo', self.anchor, '--json')
+        self.assertIsNotNone(inspected['compatibility']['recoveryArgv'])
+        (retired / 'holder.operation').rename(holder)
+        manifest_path.write_bytes(listed_manifest)
+        contract.write_bytes(contract_bytes)
+        binding_path.write_bytes(listed_binding)
+        inspected = self.cli('inspect', '--repo', self.anchor, '--json')
+        self.assertIsNotNone(inspected['compatibility']['recoveryArgv'])
+        self.assertEqual(binding_path.read_bytes(), listed_binding)
+
     def test_harness_mismatch_exact_recovery(self):
         # Prediction: another verified release cannot even clean the queue; its refusal carries an exact original argv.
         release = self.harness_release()

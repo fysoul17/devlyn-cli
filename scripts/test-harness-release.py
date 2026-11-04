@@ -135,6 +135,30 @@ class ReleaseTests(unittest.TestCase):
         run(['git', '-C', root, 'add', '.'])
         run(['git', '-C', root, 'commit', '-qm', 'fixture'])
 
+    def test_release_verify_is_read_only_for_valid_and_failing_release(self):
+        root = self.copy()
+        home, temporary = self.case / 'home', self.case / 'tmp'
+        home.mkdir()
+        temporary.mkdir()
+        (home / 'owner-data').write_bytes(b'keep home')
+        (temporary / 'owner-data').write_bytes(b'keep temporary data')
+        env = {**environment(), 'HOME': str(home), 'USERPROFILE': str(home), 'TMPDIR': str(temporary),
+               'TMP': str(temporary), 'TEMP': str(temporary)}
+        for failing in (False, True):
+            with self.subTest(failing=failing):
+                if failing:
+                    with (root / 'config/storage-client-contract.json').open('ab') as file:
+                        file.write(b'\n')
+                roots = (root, home, temporary)
+                def observe(directory):
+                    info = directory.lstat()
+                    return info.st_mode, info.st_size, snapshot(directory)
+                before = [observe(directory) for directory in roots]
+                result = run([NODE, root / 'bin/devlyn.js', 'release', '--verify', '--root', root, '--json'],
+                             cwd=home, env=env, code=1 if failing else 0)
+                self.assertEqual(json.loads(result.stdout)['ok'], not failing)
+                self.assertEqual([observe(directory) for directory in roots], before)
+
     def test_managed_node_verifies_release_without_path_node(self):
         # Prediction: DEVLYN_NODE runs the real verifier with no Node on PATH, including paths with spaces.
         node = self.case / "managed node" / Path(NODE).name

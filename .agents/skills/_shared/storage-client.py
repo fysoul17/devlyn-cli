@@ -26,11 +26,15 @@ import math
 import os
 from pathlib import Path
 import re
+import runpy
+import shlex
 import selectors
 import socket
 import stat
 import struct
+import subprocess
 import sys
+import tempfile
 import threading
 import time
 import uuid
@@ -857,7 +861,7 @@ def regular_digest(path):
         return digest.hexdigest()
 
 
-def package_digest(root):
+def package_digest(root, *, excluded=()):
     digest = hashlib.sha256()
     root = Path(root)
     def visit(directory):
@@ -866,6 +870,8 @@ def package_digest(root):
         for path in sorted(directory.iterdir(), key=lambda p: p.name.encode("utf-8")):
             info = _evidence(path)
             require(info is not None, "retained package entry disappeared")
+            if stat.S_ISREG(info.st_mode) and path.relative_to(root).as_posix() in excluded:
+                continue
             name = str(path.relative_to(root)).encode()
             digest.update(struct.pack("<Q", len(name)))
             digest.update(name)
@@ -887,10 +893,11 @@ ENROLLMENT_SHAPE = {"schema": "u32", "control_directory": "str", "control_identi
     "retained_helper": ARTIFACT_SHAPE, "retained_recovery": ARTIFACT_SHAPE}
 
 
-def verify_artifact(artifact, *, package=False):
+def verify_artifact(artifact, *, package=False, identity=True):
     path = Path(artifact['path'])
     require(path.is_absolute() and str(path.resolve(strict=True)) == artifact['path'], 'noncanonical retained path')
-    require(persistent_identity(artifact['path']) == artifact['identity'], 'retained identity changed')
+    if identity:
+        require(persistent_identity(artifact['path']) == artifact['identity'], 'retained identity changed')
     digest = package_digest(artifact['path']) if package else regular_digest(artifact['path'])
     require(digest == artifact['sha256'], 'retained digest changed')
 
@@ -902,13 +909,25 @@ def verify_registration(record):
         raise StorageRefusal('storage_unavailable', f'registration inspection failed: {exc}', phase='enrollment') from exc
 
 
-def _verify_registration(record):
+def validate_registration_shape(record):
+    """Rust evidence::validate_shape without reading any copied identity."""
     validate(record, ENROLLMENT_SHAPE, exact=True)
     helper, recovery = record["helper_release"], record["recovery_release"]
     require(record["schema"] == 1 and re.fullmatch(
         r"(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?", helper["version"])
-        and 0 < len(helper["target"]) <= 128 and recovery["package"] == "devlyn-cli"
+        and 0 < len(helper["target"].encode()) <= 128 and recovery["package"] == "devlyn-cli"
         and recovery["version"] and recovery["digest"], "unsupported or incomplete enrollment", "storage_unsupported")
+    require(record["retained_helper"]["sha256"] == helper["sha256"]
+            and record["retained_recovery"]["path"] == recovery["root"], "retained release binding changed")
+    for value in (record['control_directory'], record['helper_path'], recovery['root'],
+                  record['retained_helper']['path'], record['retained_recovery']['path']):
+        path = Path(value)
+        require(path.is_absolute() and str(path) == value and '..' not in path.parts, 'noncanonical enrollment path')
+
+
+def _verify_registration(record):
+    validate_registration_shape(record)
+    helper = record['helper_release']
     for value in (record['control_directory'], record['helper_path']):
         path = Path(value)
         require(path.is_absolute() and str(path.resolve(strict=True)) == value, "noncanonical enrollment path")
@@ -916,22 +935,257 @@ def _verify_registration(record):
     require(regular_digest(record["helper_path"]) == helper["sha256"], "helper digest changed")
     verify_artifact(record['retained_helper'])
     verify_artifact(record['retained_recovery'], package=True)
-    require(record["retained_helper"]["sha256"] == helper["sha256"]
-            and record["retained_recovery"]["path"] == recovery["root"], "retained release binding changed")
     return record
 
 
-def read_evidence_json(path, observed):
+def read_evidence_json(path, observed, *, limit=MAX_REQUEST):
     info = _evidence(path)
     require(info is not None and stat.S_ISREG(info.st_mode), f'missing/invalid {path}')
     fd = os.open(path, os.O_RDONLY | getattr(os, 'O_NOFOLLOW', 0) | getattr(os, 'O_NONBLOCK', 0)
                  | getattr(os, 'O_BINARY', 0))
     with os.fdopen(fd, 'rb') as stream:
         require(_same_file(info, os.fstat(stream.fileno())), f'{path} changed while opening')
-        raw = stream.read(MAX_REQUEST + 1)
-    require(len(raw) <= MAX_REQUEST, f'oversized {path}')
+        raw = stream.read() if limit is None else stream.read(limit + 1)
+    require(limit is None or len(raw) <= limit, f'oversized {path}')
     observed.append((path, info))
     return loads(raw)
+
+
+def lifecycle_evidence(root, path, observed):
+    """Optional no-follow evidence, including every ancestor under the root."""
+    current = root
+    for part in path.relative_to(root).parts:
+        current = current / part
+        info = _evidence(current)
+        observed.append((current, info))
+        if info is None:
+            return None
+        require(stat.S_ISREG(info.st_mode) if current == path else stat.S_ISDIR(info.st_mode),
+                f'invalid lifecycle evidence kind: {current}')
+    return read_evidence_json(path, observed)
+
+
+def retirement_evidence(root, observed):
+    shape = {'schema': 'u32', 'operation_id': 'str', 'root_identity': 'identity', 'lock_identity': 'identity'}
+    fence = lifecycle_evidence(root, root / 'storage-client-fence.json', observed)
+    journal = lifecycle_evidence(root, root / 'storage-client-unenroll.json', observed)
+    if fence is not None:
+        validate(fence, shape, exact=True)
+        require(fence['schema'] == 1, 'unsupported retirement fence')
+        canonical_operation(fence['operation_id'])
+    if journal is not None:
+        validate(journal, {**shape, 'retired': 'bool', 'archives': [
+            {'source': 'str', 'destination': 'str', 'identity': 'identity', 'sha256': 'str'}]}, exact=True)
+        require(fence is not None and all(journal[key] == fence[key] for key in shape),
+                'retirement journal/fence differs')
+        sources = ('storage', 'control', 'harness/state.json', 'storage-client.json')
+        names = ('storage', 'control', 'harness-state.json', 'enrollment.json')
+        previous = -1
+        for archive in journal['archives']:
+            require(archive['source'] in [str(root / name) for name in sources], 'invalid retirement source')
+            index = sources.index(str(Path(archive['source']).relative_to(root)))
+            require(index > previous and Path(archive['destination']) == root / 'storage-client-retired'
+                    / fence['operation_id'] / names[index], 'invalid retirement archive path/order')
+            previous = index
+        if not journal['retired']:
+            for name in sources:
+                if str(root / name) not in [entry['source'] for entry in journal['archives']]:
+                    require(_evidence(root / name) is None, 'uninventoried retirement evidence')
+    return fence, journal
+
+
+def _retirement_move(root, pins, observed):
+    """Establish a copied retirement before allowing digest-only bootstrap.
+
+    Compare all identities in the evidence this client reads, never merely a
+    failed retained-artifact identity. Same-volume replacements cannot qualify.
+    """
+    fence, journal = retirement_evidence(root, observed)
+    if fence is None:
+        return False
+    identities = []
+    def record_identities(record):
+        validate_registration_shape(record)
+        identities.extend([record['control_identity'], record['retained_helper']['identity'],
+                           record['retained_recovery']['identity']])
+    record_identities(pins['enrollment'])
+    identities.append(pins['runtime']['identity'])
+    record = lifecycle_evidence(root, root / 'storage-client.json', observed)
+    if record is not None:
+        record_identities(record)
+        require(all(record[key] == pins['enrollment'][key] for key in ('control_directory', 'control_identity')),
+                'move record/pins binding differs')
+    identities.extend([fence['root_identity'], fence['lock_identity']])
+    if journal is not None:
+        identities.extend([journal['root_identity'], journal['lock_identity']])
+        for archive in journal['archives']:
+            identities.append(archive['identity'])
+            paths = [Path(archive[key]) for key in ('source', 'destination')]
+            existing = []
+            for path in paths:
+                # Check every ancestor without interpreting a directory as JSON.
+                current = root
+                for part in path.relative_to(root).parts:
+                    current /= part
+                    info = _evidence(current)
+                    observed.append((current, info))
+                    if info is None:
+                        break
+                    require(current == path or stat.S_ISDIR(info.st_mode), 'invalid archive ancestor')
+                else:
+                    existing.append(path)
+            require(len(existing) == 1, 'incomplete/ambiguous retirement archive')
+            path = existing[0]
+            digest = (package_digest(path, excluded=('service/serve.log', 'service/serve.log.1')
+                                     if path.name == 'control' else ()) if path.is_dir() else regular_digest(path))
+            require(digest == archive['sha256'], 'retirement archive digest changed')
+            if archive['source'] == str(root / 'storage-client.json'):
+                record_identities(read_evidence_json(path, observed))
+    old = identities[0]['volume']
+    require(old and all(identity['volume'] == old and identity['file'] for identity in identities),
+            'mixed or malformed moved identities')
+    current_volume = persistent_identity(root)['volume']
+    if current_volume == old:
+        return False
+    for path, directory in ((root / 'storage-client.lock', False), (root / 'control', True)):
+        info = _evidence(path)
+        if info is not None:
+            require((stat.S_ISDIR(info.st_mode) if directory else stat.S_ISREG(info.st_mode))
+                    and persistent_identity(path)['volume'] == current_volume, 'mixed current move identities')
+    return True
+
+
+def retirement_move(root, pins, observed):
+    try:
+        return _retirement_move(root, pins, observed)
+    except StorageRefusal:
+        # Rust Established::NotMoved: malformed/mixed evidence cannot authorize
+        # bootstrap. The caller must still pass every ordinary identity check.
+        return False
+
+
+def moved_operation(saved):
+    """A committed manifest or established retirement, never registry membership."""
+    home = user_home()
+    if home is None:
+        return None
+    root = (home / '.devlyn').resolve(strict=False)
+    observed = []
+    marker = root / 'storage-client-moved'
+    info = _evidence(marker)
+    journal_info = _evidence(root / 'storage-client-unenroll.json')
+    if info is None and journal_info is None:
+        return None
+    require(type(saved) is dict, 'invalid saved authority binding')
+    current = lifecycle_evidence(root, root / 'storage-client.json', observed)
+    require(current is None or type(current) is dict, 'invalid current enrollment')
+    if current is not None and all(key in current and key in saved and current[key] == saved[key]
+                                   for key in ('control_directory', 'control_identity')):
+        control = Path(current['control_directory'])
+        if _evidence(control) is not None and persistent_identity(control) == current['control_identity']:
+            return None
+    if info is not None:
+        require(stat.S_ISDIR(info.st_mode), 'redirected move archive')
+        for directory in sorted(marker.iterdir()):
+            # Like Rust, non-operation archive names are not manifests.
+            try:
+                canonical_operation(directory.name)
+            except StorageRefusal:
+                continue
+            manifest = lifecycle_evidence(root, directory / 'storage-client-move.json', observed)
+            if manifest is None:
+                continue
+            require(type(manifest) is dict, 'invalid move manifest')
+            validate(manifest, {'schema': 'u32', 'operation_id': 'str', 'from_volume': 'str', 'to_volume': 'str',
+                     'old_binding': {'control_directory': 'str', 'control_identity': 'identity'} if manifest.get('old_binding') is not None else (None,)}, exact=True)
+            require(manifest['schema'] == 1 and manifest['operation_id'] == directory.name
+                    and manifest['from_volume'] and manifest['to_volume']
+                    and manifest['from_volume'] != manifest['to_volume'], 'invalid move manifest')
+            binding = manifest['old_binding']
+            if binding is not None:
+                path = Path(binding['control_directory'])
+                require(path.is_absolute() and str(path) == binding['control_directory'] and '..' not in path.parts
+                        and binding['control_identity']['volume'] == manifest['from_volume']
+                        and binding['control_identity']['file'], 'invalid moved binding')
+            if binding is not None and all(saved.get(key) == binding[key] for key in binding):
+                return manifest['operation_id']
+    if _evidence(root / 'storage-client-unenroll.json') is not None:
+        pins = lifecycle_evidence(root, root / 'storage-client-recovery/pins.json', observed)
+        if pins is None:
+            return None  # No retained binding can establish a moved receipt.
+        validate(pins, {'schema': 'u32', 'enrollment': ENROLLMENT_SHAPE, 'runtime': ARTIFACT_SHAPE, 'node': 'str'}, exact=True)
+        require(pins['schema'] == pins['enrollment']['schema'] == 1, 'unsupported recovery pins')
+        if (all(saved.get(key) == pins['enrollment'][key] for key in ('control_directory', 'control_identity'))
+                and retirement_move(root, pins, observed)):
+            return read_evidence_json(root / 'storage-client-unenroll.json', observed)['operation_id']
+    return None
+
+
+def unenroll_resume(record, operation, *, cancel=False):
+    request = json.dumps({'adapter_protocol': 1, 'operation_id': operation}, separators=(',', ':'))
+    return (shlex.join(['printf', '%s\\n', request]) + ' | '
+            + shlex.join([record['retained_helper']['path'], 'storage-client', 'unenroll',
+                          '--cancel' if cancel else '--reconcile', '--json']))
+
+
+def replay_retirement(record):
+    root = (user_home() / '.devlyn').resolve(strict=True)
+    fence, journal = retirement_evidence(root, [])
+    if journal is None or journal['retired']:
+        return
+    helper = record['retained_helper']['path']
+    require(regular_digest(helper) == record['helper_release']['sha256'], 'retained helper changed')
+    request = {'adapter_protocol': 1, 'operation_id': fence['operation_id']}
+    adapter = runpy.run_path(str(Path(__file__).with_name('storage-checkout.py')))
+    try:
+        with tempfile.TemporaryFile() as output, tempfile.TemporaryFile() as diagnostic:
+            process = subprocess.run([helper, 'storage-client', 'unenroll', '--reconcile', '--json'],
+                                     input=json.dumps(request).encode()+b'\n', stdout=output, stderr=diagnostic)
+            output.seek(0)
+            reply = output.read(MAX_REPLY+1)
+        result = adapter['decode_reply'](reply, 'unenroll', process.returncode)
+        require(type(result) is dict and result.get('operation_id') == fence['operation_id']
+                and result.get('retired') is True, 'retirement replay not complete')
+        _, journal = retirement_evidence(root, [])
+        require(journal is not None and journal['retired'], 'retirement replay did not commit')
+    except (OSError, StorageRefusal, adapter['StorageRefusal']) as exc:
+        resume = unenroll_resume(record, fence['operation_id'])
+        detail = exc.diagnostic if isinstance(exc, StorageRefusal) else str(exc)
+        raise StorageRefusal('storage_unavailable', detail, phase='retirement',
+                             message='Finish this storage retirement; resume ' + resume, resume=resume) from exc
+
+
+def retirement_refusal(root=None):
+    """An interrupted retirement has a headless exit through its retained helper."""
+    if root is None:
+        home = user_home()
+        if home is None:
+            return
+        root = (home / '.devlyn').resolve(strict=False)
+    if _evidence(root / 'storage-client-fence.json') is None and _evidence(root / 'storage-client-unenroll.json') is None:
+        return
+    try:
+        # Completed retirement keeps operation_enrollment's existing validation,
+        # including stale same-disk archive paths. Only an unfinished one exits here.
+        journal = lifecycle_evidence(root, root / 'storage-client-unenroll.json', [])
+        if type(journal) is dict and journal.get('retired') is True:
+            return
+        fence, journal = retirement_evidence(root, [])
+        require(fence is not None, 'retirement fence missing')
+        record = recovery_registration()
+    except (StorageRefusal, OSError, ValueError, RuntimeError) as exc:
+        detail = exc.diagnostic if isinstance(exc, StorageRefusal) else str(exc)
+        repair = 'Open Devlyn to repair its storage registration'
+        raise StorageRefusal('storage_unavailable', detail, phase='enrollment', message=repair, resume=repair) from exc
+    resume = unenroll_resume(record, fence['operation_id'], cancel=journal is None)
+    alternative = ''
+    if journal is None:
+        pins = read_evidence_json(root / 'storage-client-recovery/pins.json', [])
+        if not retirement_move(root, pins, []):
+            alternative = '; or cancel before retirement starts: ' + resume
+            resume = unenroll_resume(record, fence['operation_id'])
+    raise StorageRefusal('storage_unavailable', 'retirement is not complete', phase='enrollment',
+                         message='Finish this storage retirement; resume ' + resume + alternative, resume=resume)
 
 
 def recovery_registration():
@@ -953,11 +1207,13 @@ def recovery_registration():
                 and record['recovery_release']['root'] == record['retained_recovery']['path']
                 and node.is_absolute() and str(node.resolve(strict=True)) == pins['node']
                 and node.is_relative_to(runtime), 'invalid recovery pin paths')
-        verify_artifact(record['retained_helper'])
-        verify_artifact(record['retained_recovery'], package=True)
-        verify_artifact(pins['runtime'], package=True)
+        moved = retirement_move(root, pins, observed)
+        verify_artifact(record['retained_helper'], identity=not moved)
+        verify_artifact(record['retained_recovery'], package=True, identity=not moved)
+        verify_artifact(pins['runtime'], package=True, identity=not moved)
         for path, before in observed:
-            require(_same_file(before, _evidence(path)), f'recovery pins changed: {path}')
+            after = _evidence(path)
+            require(after is None if before is None else _same_file(before, after), f'recovery pins changed: {path}')
         return record
     except (StorageRefusal, OSError, ValueError, RuntimeError) as exc:
         detail = exc.diagnostic if isinstance(exc, StorageRefusal) else str(exc)
@@ -1031,6 +1287,7 @@ def enrollment(*, receipt=None, verify_registration=verify_registration):
             root = named_root
         else:
             root = named_root.resolve(strict=True)
+        retirement_refusal(root)
         evidence = []
         observations = []
 
@@ -1158,6 +1415,84 @@ def operation_enrollment():
         detail = exc.diagnostic if isinstance(exc, StorageRefusal) else str(exc)
         raise StorageRefusal('storage_unavailable', f'registration repair required: {detail}', phase='enrollment',
                              message=repair, resume=repair) from exc
+
+
+def queue_handoff(common, binding):
+    """Follow Devlyn's pre-contract hold without changing enrollment or bindings."""
+    try:
+        decision = operation_enrollment()
+        managed = decision['mode'] == 'managed'
+        if not managed and not recovery_marker():
+            return None
+    except StorageRefusal as exc:
+        return str(exc)
+    reference = binding['release']
+    listed = False
+    try:
+        manifest = read_evidence_json(Path(reference['root']) / 'release.json', [], limit=4*1024*1024)
+        listed = (type(manifest) is dict and type(manifest.get('schemaVersion')) is int
+                  and manifest['schemaVersion'] == 1
+                  and all(manifest.get(key) == reference[key] for key in ('package', 'version'))
+                  and type(manifest.get('digest')) is dict
+                  and manifest['digest'].get('algorithm') == 'sha256'
+                  and manifest['digest'].get('value') == reference['digest']
+                  and type(manifest.get('files')) is list
+                  and sum(type(entry) is dict and entry.get('path') == 'config/storage-client-contract.json'
+                          for entry in manifest['files']) == 1)
+    except (StorageRefusal, OSError, ValueError):
+        listed = False  # An unreadable manifest is pre-contract, never positive absence.
+    drain = 'Devlyn runs this queue on this computer: start it with Drain in Devlyn'
+    if listed:
+        return drain if managed else None
+    holders = []
+    def unreadable(path):
+        holders.append(f'{path} cannot be read; repair it so this release can read it')
+    root = Path(common) / 'devlyn-completion'
+    try:
+        info = _evidence(root)
+        if info is not None:
+            require(stat.S_ISDIR(info.st_mode), 'invalid receipt root')
+            for entry in sorted(root.iterdir()):
+                receipt = entry / 'receipt.json'
+                adapter_marker = False
+                info = None
+                try:
+                    info = _evidence(entry)
+                    require(info is not None, 'receipt entry disappeared')
+                    if not stat.S_ISDIR(info.st_mode):
+                        continue
+                    try:
+                        (entry / 'storage-allocation.json').lstat()
+                        adapter_marker = True  # Any Rust marker kind is positive presence.
+                    except FileNotFoundError:
+                        adapter_marker = False
+                    if _evidence(receipt) is None:
+                        if adapter_marker:
+                            holders.append(str(receipt))
+                        continue
+                    saved = read_evidence_json(receipt, [], limit=None)
+                    if adapter_marker or managed_receipt(saved):
+                        text = str(receipt)
+                        registration = saved.get('storage', {}).get('decision', {}).get('registration')
+                        if registration and moved_operation(registration):
+                            canonical_operation(saved['storage']['request']['operation_id'])
+                            # Share the operation-specific resume builder with task completion.
+                            helper = runpy.run_path(str(Path(__file__).with_name('task-complete.py')))
+                            text += ' resume ' + helper['receipt_resume']('recover-storage', receipt, saved)
+                        holders.append(text)
+                except (StorageRefusal, OSError, ValueError, TypeError, AttributeError, KeyError):
+                    if adapter_marker:
+                        holders.append(str(receipt))
+                        continue
+                    unreadable(receipt if info is not None and stat.S_ISDIR(info.st_mode) else entry)
+    except (StorageRefusal, OSError, ValueError):
+        unreadable(root)
+    if not holders:
+        return drain if managed else None
+    return ('this queue waits for the tasks in progress here: ' + '; '.join(holders)
+            + ". Finish each with this release, and follow any resume a refusal names; a moved task's resume releases it and keeps its files; "
+            + '`recover-storage --for-removal` removes one only when the owner says so (task-completion.md); '
+            + ('then start it with Drain in Devlyn' if managed else 'then run this again'))
 
 
 def sync_directory(path):

@@ -276,6 +276,13 @@
       "codec": "adapter:result",
       "comparison": "json_structure",
       "expected": "removal",
+      "note": "moved authority releases with an empty cache set and the move or retirement operation ID",
+      "path": "adapter-1/removal-result-authority-migrated.json"
+    },
+    {
+      "codec": "adapter:result",
+      "comparison": "json_structure",
+      "expected": "removal",
       "note": "typed exact empty cache set and durable closure evidence",
       "path": "adapter-1/removal-result-expired.json"
     },
