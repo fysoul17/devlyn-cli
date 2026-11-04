@@ -4,10 +4,11 @@ const ENGINE_IDS = Object.freeze([
   'claude', 'codex', 'grok', 'omp', 'antigravity', 'cursor', 'opencode', 'kimi', 'copilot', 'qwen',
 ]);
 
-// The versions each channel was examined on. Newer releases of the same major are taken as
-// compatible: these CLIs ship minor releases weekly, and gating on the examined minor would turn
-// the harness off at every one of them. A new major (or a Cursor build older than the examined one)
-// is refused, since any flag may change there.
+// The versions each channel was examined on. Any newer release, a new major included, is taken as
+// compatible: a version number is not evidence that a channel broke (omp 18 kept both flags devlyn
+// uses), and refusing unexamined majors turned working engines off. Only a version below the examined
+// floor (or a Cursor build older than the examined one) is refused; an unreadable version is refused
+// with its own reason.
 const ENGINE_CAPABILITIES = Object.freeze({
   claude: { minimum: '2.1.307', executor: true },
   codex: { minimum: '0.163.0', executor: true },
@@ -21,20 +22,21 @@ const ENGINE_CAPABILITIES = Object.freeze({
   qwen: { minimum: '0.26.0', executor: false },
 });
 
+function readableVersion(engine, version) {
+  return typeof version === 'string'
+    && (engine === 'cursor' ? /^\d{4}\.\d{2}\.\d{2}-[0-9a-f]+$/ : /^\d+\.\d+\.\d+$/).test(version);
+}
+
 function supportedVersion(engine, version) {
+  if (!readableVersion(engine, version)) return false;
   const capability = ENGINE_CAPABILITIES[engine];
-  if (engine === 'cursor') {
-    const build = typeof version === 'string' && version.match(/^(\d{4})\.(\d{2})\.(\d{2})-[0-9a-f]+$/);
-    return Boolean(build) && build.slice(1).join('') >= capability.minimum.slice(0, 10).replace(/\./g, '');
-  }
-  if (typeof version !== 'string' || !/^\d+\.\d+\.\d+$/.test(version)) return false;
+  if (engine === 'cursor') return version.slice(0, 10).replace(/\./g, '') >= capability.minimum.slice(0, 10).replace(/\./g, '');
   const actual = version.split('.').map(Number);
   const floor = capability.minimum.split('.').map(Number);
-  if (actual[0] !== floor[0]) return false;
-  for (let i = 1; i < 3; i++) {
+  for (let i = 0; i < 3; i++) {
     if (actual[i] !== floor[i]) return actual[i] > floor[i];
   }
   return true;
 }
 
-module.exports = { ENGINE_IDS, ENGINE_CAPABILITIES, supportedVersion };
+module.exports = { ENGINE_IDS, ENGINE_CAPABILITIES, readableVersion, supportedVersion };

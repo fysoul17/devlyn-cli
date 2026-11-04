@@ -141,26 +141,40 @@ class ActivationTests(unittest.TestCase):
                     self.assertEqual(plan['channels'][name]['state'], 'disabled')
                 self.assertEqual(plan['channels']['overall'], 'disabled')
 
-    def test_per_engine_old_and_unknown_generation(self):
+    def test_per_engine_below_floor_and_unreadable_versions_are_refused_with_their_own_reason(self):
+        # Prediction: below the examined floor names the floor; an unreadable version says so; neither plans delivery.
+        older = dict(cursor='2025.01.01-abcdef1')
         for engine in VERSIONS:
-            for version in ('0.0.0', '999.0.0', None):
+            cases = [(older.get(engine, '0.0.0'), 'engine-version-unsupported', {'minimum': VERSIONS[engine]})]
+            cases += [(version, 'engine-version-unreadable', {}) for version in (None, 'abc', '1.2')]
+            for version, code, params in cases:
                 with self.subTest(engine=engine, version=version):
                     ctx = self.context(engine)
                     ctx['version'] = version
                     plan = self.plan(ctx)
                     self.assertEqual(plan['channels']['overall'], 'unavailable')
                     self.assertEqual(plan['engineArgs'], [])
-                    self.assertEqual(plan['channels']['skills']['reasons'][0]['params']['minimum'], VERSIONS[engine])
+                    for name in ('principles', 'skills'):
+                        self.assertEqual(plan['channels'][name]['reasons'], [{'code': code, 'params': params}])
 
-    def test_newer_releases_of_the_examined_major_are_taken(self):
-        # Prediction: a newer minor or patch (and a newer Cursor build) plans like the examined one; a new major does not.
-        newer = dict(claude='2.3.0', codex='0.171.2', grok='1.4.0', omp='16.9.1', antigravity='1.6.0',
-                     cursor='2026.01.05-abcdef1', opencode='1.25.0', kimi='2.9.0', copilot='1.2.0', qwen='0.31.0')
-        for engine, version in newer.items():
-            with self.subTest(engine=engine):
-                ctx = self.context(engine)
-                ctx['version'] = version
-                self.assertNotEqual(self.plan(ctx)['channels']['overall'], 'unavailable')
+    def test_newer_releases_including_new_majors_are_taken(self):
+        # Prediction: a newer patch, minor or major (and a newer Cursor build) plans exactly like the examined
+        # version: a version number is not evidence that a channel broke (omp 18 kept both flags devlyn uses).
+        newer = dict(claude=('2.3.0', '3.0.0'), codex=('0.171.2', '1.0.0'), grok=('1.4.0', '2.0.0'),
+                     omp=('16.9.1', '18.14.2'), antigravity=('1.6.0', '2.0.0'),
+                     cursor=('2026.01.05-abcdef1',), opencode=('1.25.0', '2.0.0'), kimi=('2.9.0', '3.0.0'),
+                     copilot=('1.2.0', '2.0.0'), qwen=('0.31.0', '1.0.0'))
+        for engine, versions in newer.items():
+            ctx = self.context(engine)
+            ctx['initialPrompt'] = {'text': 'owner task', 'transport': 'argv'}
+            examined = self.plan(ctx)
+            for version in versions:
+                with self.subTest(engine=engine, version=version):
+                    ctx['version'] = version
+                    plan = self.plan(ctx)
+                    self.assertNotEqual(plan['channels']['overall'], 'unavailable')
+                    for key in ('engineArgs', 'envPatch', 'prompt', 'files'):
+                        self.assertEqual(plan[key], examined[key])
 
     def test_per_engine_committed_block_still_receives_release_defaults(self):
         # Prediction: a committed project block (possibly an older release's) never suppresses the selected release text.
