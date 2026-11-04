@@ -424,7 +424,7 @@ def unattended_tools_regression():
 import json, os, pathlib, re, sys
 a = sys.argv[1:]
 with open("probes.jsonl", "a") as stream:
-    stream.write(json.dumps({"argv": a, "cwd": os.getcwd()}) + "\\n")
+    stream.write(json.dumps({"argv": a, "cwd": os.getcwd(), "home": os.environ.get("CODEX_HOME")}) + "\\n")
 features = "apps plugins remote_plugin computer_use browser_use browser_use_external in_app_browser".split()
 config, disabled = {}, set()
 i = 0
@@ -445,6 +445,8 @@ while i < len(a):
         config[name] = val
     if key == "--disable": disabled.add(value)
     i += 1
+if a[:1] != ["exec"] and {"--ignore-user-config", "--strict-config"} & set(a):
+    sys.exit("error: unexpected argument")  # Codex 0.164 takes these on exec alone.
 if a == ["--version"]:
     print("codex-fixture 1.2.3")
 elif a[:2] == ["features", "list"]:
@@ -460,6 +462,9 @@ elif "mcp" in a:
     if os.environ.get("LIST_FAIL") or (verify and os.environ.get("VERIFY_FAIL")):
         sys.exit("cannot list servers")
     raw = os.environ.get("VERIFY_SERVERS" if verify else "SERVERS", os.environ.get("SERVERS", '[{"name":"node_repl","enabled":true},{"name":"pyx-memory","enabled":true}]'))
+    home = os.environ.get("CODEX_HOME")
+    if home and not pathlib.Path(home, "config.toml").exists():
+        raw = "[]"  # every fixture server comes from the user config
     try: servers = json.loads(raw)
     except ValueError:
         print(raw); sys.exit(0)
@@ -512,6 +517,19 @@ else:
         assert argv == ["exec", *shutdown, "-c", "mcp_servers.node_repl.enabled=false", "hello"], argv
         assert not any("computer-use" in a or "pyx-memory" in a for a in argv)
         assert (work / "stdin").read_bytes() == b""
+
+        # Codex 0.164 takes --ignore-user-config and --strict-config on exec alone. The probes run on an
+        # empty CODEX_HOME instead, which loads no user MCP server, so no override names one.
+        (work / "probes.jsonl").unlink(missing_ok=True)
+        launch(args=["--ignore-user-config", "--strict-config", "hello"])
+        argv = json.loads(seen.read_text())
+        assert argv == ["exec", *shutdown, "--ignore-user-config", "--strict-config", "hello"], argv
+        probes = [json.loads(line) for line in (work / "probes.jsonl").read_text().splitlines()]
+        launched = [p for p in probes if p["argv"][:1] == ["exec"]]
+        probes = [p for p in probes if p["argv"][:1] != ["exec"]]
+        assert len(probes) == 3 and len({p["home"] for p in probes}) == 1, probes
+        assert probes[0]["home"] and not pathlib.Path(probes[0]["home"]).exists(), probes
+        assert launched == [{"argv": argv, "cwd": str(work), "home": None}], launched
 
         name = "desktop-custom"
         deny.write_text(json.dumps({"codex": [name, "absent"]}), encoding="utf-8")

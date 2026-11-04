@@ -74,7 +74,7 @@ def codex_launch(binary, argv):
     if resolved is None:
         raise PolicyError(f"unattended tools: Codex executable unavailable: {binary}")
     native = PLATFORM["native_argv"]([str(Path(resolved).absolute())])
-    cwd, config, profile = Path.cwd(), [], []
+    cwd, config, profile, ignore_user = Path.cwd(), [], [], False
     # Only configuration inputs belong in discovery; prompt/model/output arguments do not.
     values = {"-c", "--config", "-p", "--profile", "--enable", "--disable", "-C", "--cd",
               "-m", "--model", "-s", "--sandbox", "-o", "--output-last-message", "--output-schema",
@@ -101,41 +101,45 @@ def codex_launch(binary, argv):
                 profile.extend([key, value])
             elif key in {"-c", "--config", "--enable", "--disable"}:
                 config.extend([key, value])
-        elif token in {"--ignore-user-config", "--strict-config"}:
-            config.append(token)
+        elif token == "--ignore-user-config":
+            ignore_user = True
         index += 1
     shutdown = [part for feature in CODEX_FEATURES for part in ("--disable", feature)]
-    try:
-        # Codex 0.164 accepts profiles on mcp, but not on features list.
-        raw = probe([*native, "features", "list", *shutdown, *config], cwd, "Codex feature preflight")
-        states = {}
-        for row in raw.splitlines():
-            fields = row.split()
-            if fields and fields[0] in CODEX_FEATURES:
-                if len(fields) < 3 or fields[-1] not in {"true", "false"} or fields[0] in states:
-                    raise PolicyError(f"unattended tools: malformed Codex feature row: {row}")
-                states[fields[0]] = fields[-1]
-        unsafe = [name for name in CODEX_FEATURES if states.get(name) != "false"]
+    # Codex 0.164 takes --ignore-user-config and --strict-config on exec alone. For such a launch an empty
+    # CODEX_HOME shows the probes what it loads: no user features or MCP servers.
+    with tempfile.TemporaryDirectory() if ignore_user else contextlib.nullcontext() as home:
+        env = {**os.environ, "CODEX_HOME": home} if home else None
+        try:
+            # Codex 0.164 accepts profiles on mcp, but not on features list.
+            raw = probe([*native, "features", "list", *shutdown, *config], cwd, "Codex feature preflight", env)
+            states = {}
+            for row in raw.splitlines():
+                fields = row.split()
+                if fields and fields[0] in CODEX_FEATURES:
+                    if len(fields) < 3 or fields[-1] not in {"true", "false"} or fields[0] in states:
+                        raise PolicyError(f"unattended tools: malformed Codex feature row: {row}")
+                    states[fields[0]] = fields[-1]
+            unsafe = [name for name in CODEX_FEATURES if states.get(name) != "false"]
+            if unsafe:
+                raise PolicyError(f"unattended tools: Codex features not disabled: {', '.join(unsafe)}")
+        except PolicyError as exc:
+            version = probe([*native, "--version"], cwd, "Codex version").strip()
+            raise PolicyError(f"{exc} (Codex version: {version})") from exc
+        command = [*native, *profile, "mcp", "list", "--json"]
+        servers = listed([*command, *shutdown, *config], cwd, "Codex mcp list --json", "name", env)
+        targeted = {s["name"] for s in servers} & denied
+        overrides = []
+        for name in sorted(targeted):
+            if not re.fullmatch(r"[A-Za-z0-9_-]+", name):
+                raise PolicyError(f"unattended tools: cannot safely override Codex server: {name!r}")
+            overrides.extend(["-c", f"mcp_servers.{name}.enabled=false"])
+        # Match launch order: caller overrides come after the policy. Refuse a conflict.
+        verification = listed([*command, *shutdown, *overrides, *config], cwd,
+                              "Codex mcp list --json verification", "name", env)
+        disabled = {s["name"] for s in verification if not s["enabled"]}
+        unsafe = (targeted - disabled) | {s["name"] for s in verification if s["enabled"] and s["name"] in denied}
         if unsafe:
-            raise PolicyError(f"unattended tools: Codex features not disabled: {', '.join(unsafe)}")
-    except PolicyError as exc:
-        version = probe([*native, "--version"], cwd, "Codex version").strip()
-        raise PolicyError(f"{exc} (Codex version: {version})") from exc
-    command = [*native, *profile, "mcp", "list", "--json"]
-    servers = listed([*command, *shutdown, *config], cwd, "Codex mcp list --json", "name")
-    targeted = {s["name"] for s in servers} & denied
-    overrides = []
-    for name in sorted(targeted):
-        if not re.fullmatch(r"[A-Za-z0-9_-]+", name):
-            raise PolicyError(f"unattended tools: cannot safely override Codex server: {name!r}")
-        overrides.extend(["-c", f"mcp_servers.{name}.enabled=false"])
-    # Match launch order: caller overrides come after the policy. Refuse a conflict.
-    verification = listed([*command, *shutdown, *overrides, *config], cwd,
-                          "Codex mcp list --json verification", "name")
-    disabled = {s["name"] for s in verification if not s["enabled"]}
-    unsafe = (targeted - disabled) | {s["name"] for s in verification if s["enabled"] and s["name"] in denied}
-    if unsafe:
-        raise PolicyError(f"unattended tools: Codex MCP overrides did not disable: {', '.join(sorted(unsafe))}")
+            raise PolicyError(f"unattended tools: Codex MCP overrides did not disable: {', '.join(sorted(unsafe))}")
     return [*shutdown, *overrides, *argv]
 
 
