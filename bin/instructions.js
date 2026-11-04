@@ -163,7 +163,7 @@ function quoted(text) {
   for (const token of new Lexer({ gfm: false }).lex(normalize(text.replace(/^\uFEFF/, '')))) {
     if (token.type !== 'html') continue;
     if (token.raw.startsWith(BEGIN)) return [...open.values()].some((depth) => depth > 0);
-    for (const [tag, close, element] of token.raw.matchAll(/<(\/?)([a-z][\w:-]*)\b[^>]*>/gi)) {
+    for (const [tag, close, element] of token.raw.replace(/<!--[\s\S]*?-->/g, '').matchAll(/<(\/?)([a-z][\w:-]*)\b[^>]*>/gi)) {
       if (tag.endsWith('/>') || VOID_ELEMENT.test(element)) continue;
       const name = element.toLowerCase();
       open.set(name, (open.get(name) || 0) + (close ? -1 : 1));

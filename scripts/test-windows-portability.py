@@ -2354,6 +2354,7 @@ console.log(JSON.stringify(Object.fromEntries(DEVLYN_CORE_SKILLS.map((name) =>
                      b'```Use `npm install` for setup.```\n\n```\n' + self.managed() + b'```\n',
                      b'<![CDATA[\n' + self.managed() + b']]>\n',
                      b'<pre>\n\n' + self.managed() + b'</pre>\n',
+                     b'<details>\n<summary>Example</summary>\n<!-- </details> -->\n\n' + self.managed() + b'\n</details>\n',
                      re.sub(rb'^(# [^\n]+\n\n).*?\n\n', rb'\1Our project owns these instructions.\n\n', stock, count=1, flags=re.S)]
         dest = self.project / 'AGENTS.md'
         for before in examples:
