@@ -1129,7 +1129,7 @@ def unenroll_resume(record, operation, *, cancel=False):
 
 
 def replay_retirement(record):
-    root = (user_home() / '.devlyn').resolve(strict=True)
+    root = (user_home() / '.devlyn').resolve(strict=False)
     fence, journal = retirement_evidence(root, [])
     if journal is None or journal['retired']:
         return
