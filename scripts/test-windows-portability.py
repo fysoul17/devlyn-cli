@@ -203,8 +203,52 @@ init({options});
         settings = json.loads((self.project / '.claude/settings.json').read_bytes())
         self.assertEqual(settings['env']['ENABLE_PROMPT_CACHING_1H'], 'true')
 
+    def test_yes_keeps_claude_where_this_project_has_it(self):
+        colon = '' if os.name == 'nt' else ':'
+        body = b'# Old\n'
+        version = json.loads((self.package / 'package.json').read_bytes())['version']
+        stale = {'4.x': {'.claude/skills/devlyn-resolve/stale': body}, '3.x': {f'.claude/skills/devlyn{colon}resolve/SKILL.md': body},
+                 '0.x': {'.claude/commands/devlyn.resolve.md': body}, 'none': {'.claude/skills/my-skill/SKILL.md': body},
+                 # 4.0.1 put optional skills into .claude/skills without the Claude target.
+                 'addons': {f'.claude/skills/{name}/SKILL.md': body for name in
+                            ['devlyn-reap', 'devlyn-pencil-pull', *(f'devlyn{c}reap' for c in ('\uf03a', colon))]}}
+        for case, planted in stale.items():
+            with self.subTest(case=case):
+                self.project = self.case / f'project-{case}'
+                for path, data in planted.items():
+                    (self.project / path).parent.mkdir(parents=True, exist_ok=True); (self.project / path).write_bytes(data)
+                self.cli('-y')
+                claude = case == '0.x'
+                self.assertEqual(self.markers(self.project), {'.agents', '.claude'} if claude else {'.agents'})
+                self.assertFalse((self.project / 'CLAUDE.md').exists())
+                self.assertFalse((self.project / 'AGENTS.md').exists())
+                for path, data in planted.items():
+                    preserved = case == 'none' or (case == 'addons' and all(c not in path for c in (':', '\uf03a')))
+                    self.assertEqual((self.project / path).exists() and (self.project / path).read_bytes() == data, preserved)
+                if claude:
+                    marker = json.loads((self.project / '.claude/skills/.devlyn-install.json').read_bytes())
+                    self.assertEqual(marker['version'], version)
+                    self.assertTrue((self.project / '.claude/skills/devlyn-ideate/SKILL.md').is_file())
+
+    def test_install_and_update_leave_instruction_files_byte_identical(self):
+        # Prediction: principles reach sessions from the release, so no install writes or reads a project copy, and an
+        # old span alone is no install evidence: `-y` does not add the Claude target for it.
+        body = 'Project-specific instructions outside this managed block take precedence over these defaults.\n\n# Old\n'
+        block = (f'<!-- devlyn:instructions:begin sha256={hashlib.sha256(body.encode()).hexdigest()} -->\n'
+                 f'{body}<!-- devlyn:instructions:end -->\n').encode()
+        files = {'AGENTS.md': b'\xef\xbb\xbf# Team\r\n\r\n' + block + b'tail', 'CLAUDE.md': b'@AGENTS.md\n'}
+        for name, data in files.items():
+            (self.project / name).write_bytes(data)
+        self.cli('-y')
+        self.assertEqual(self.markers(self.project), {'.agents'})
+        for args in (('-y', '--claude'), ('update',)):
+            self.cli(*args)
+            for name, data in files.items():
+                self.assertEqual((self.project / name).read_bytes(), data, args)
+        self.assertFalse((self.project / '.devlyn/instructions').exists())
+
     def test_project_install_refuses_the_home_folder(self):
-        # There CLAUDE.md, AGENTS.md and .claude/settings.json would apply to every project.
+        # There .claude/settings.json would apply to every project.
         link = self.case / 'home-link'
         if os.name == 'nt':
             run(['cmd.exe', '/d', '/c', 'mklink', '/J', link, self.project])
@@ -215,7 +259,7 @@ init({options});
                 with self.subTest(home=home, args=args):
                     self.env['DEVLYN_TEST_HOME'] = str(home)
                     result = self.cli(*args, code=1)
-                    self.assertIn(b'This project is your home folder, so its CLAUDE.md, AGENTS.md', result.stderr)
+                    self.assertIn(b'This project is your home folder, so its .claude/settings.json', result.stderr)
                     self.assertNotIn(b'    at ', result.stderr)
                     self.assertEqual(list(self.project.iterdir()), [])
 
@@ -267,14 +311,6 @@ init({options});
                          'env': {'ENABLE_PROMPT_CACHING_1H': 'true', 'BASH_MAX_TIMEOUT_MS': '3600000'}})
         self.assertFalse(hook.exists())
 
-    def test_instruction_file_creation_says_created(self):
-        created = self.invoke("updateInstructions('AGENTS.md');").stdout
-        self.assertIn(b'Created AGENTS.md', created)
-        self.assertNotIn(b'Updated', created)
-        (self.project / 'AGENTS.md').write_bytes(b'# Team rules\n\nUse pnpm.\n')
-        updated = self.invoke("updateInstructions('AGENTS.md');").stdout
-        self.assertIn(b'Updated Devlyn defaults in AGENTS.md; project-specific instructions preserved', updated)
-
     def test_claude_install_ships_no_unreferenced_commit_conventions(self):
         # The managed block no longer points to commit conventions, so a new install adds none;
         # a copy an earlier release installed is the user's now and stays as it is.
@@ -309,9 +345,9 @@ init({options});
                 self.assertEqual({p: p.read_bytes() if p.is_file() else None for p in self.case.rglob('*')}, before)
 
     def test_noninteractive_targets_and_scopes(self):
-        project_files = {'AGENTS.md', '.agents', '.gitignore'}
+        project_files = {'.agents', '.gitignore'}
         cases = [(['-y'], project_files, set()), ([], project_files, set()), (['--yes'], project_files, set()),
-                 (['-y', '--claude'], project_files | {'CLAUDE.md', '.claude'}, set()),
+                 (['-y', '--claude'], project_files | {'.claude'}, set()),
                  (['-y', '--global'], set(), {'.agents', '.codex'}),
                  (['init', '-y', '--global', '--claude'], set(), {'.agents', '.codex', '.claude'})]
         for index, (args, files, home) in enumerate(cases):
@@ -320,10 +356,9 @@ init({options});
                 self.home = self.case / f'home-{index}'; self.home.mkdir()
                 self.env['DEVLYN_TEST_HOME'] = str(self.home)
                 result = self.cli(*args)
-                notice = b'The principles block installs per project: run npx devlyn-cli in the project without --global.'
-                self.assertEqual(result.stdout.count(notice), int('--global' in args))
+                self.assertEqual(result.stdout.count(b'in a terminal, start with: npx devlyn-cli run'), 1)
                 if '--claude' not in args:
-                    where = '~/.claude/skills' if '--global' in args else 'CLAUDE.md + .claude/'
+                    where = '~/.claude/skills' if '--global' in args else '.claude/'
                     self.assertIn(f'{where} for Claude Code: add --claude'.encode(), result.stdout)
                 self.assertEqual({p.name for p in self.project.iterdir()}, files)
                 self.assertEqual(self.markers(self.project), files & {'.agents', '.claude'})
@@ -729,281 +764,6 @@ cp.spawnSync = (file, args, options) => {{
                     code=0 if pattern == b'*.json' else 1)
                 run(['git', 'check-ignore', '.devlyn/probe'], cwd=self.project)
 
-    def test_yes_keeps_claude_where_this_project_has_it(self):
-        colon = '' if os.name == 'nt' else ':'
-        body = 'Project-specific instructions outside this managed block take precedence over these defaults.\n\n# Old\n'
-        block = (f'<!-- devlyn:instructions:begin sha256={hashlib.sha256(body.encode()).hexdigest()} -->\n'
-                 f'{body}<!-- devlyn:instructions:end -->\n').encode()
-        version = json.loads((self.package / 'package.json').read_bytes())['version']
-        legacy = (Path(__file__).resolve().parent / 'fixtures/instructions/legacy-claude.md').read_bytes()
-        # A team may commit CLAUDE.md and ignore .claude/: a fresh clone has only the block, or
-        # the template a release before managed blocks copied in whole.
-        stale = {'4.x': {'.claude/skills/devlyn-resolve/stale': block}, '3.x': {f'.claude/skills/devlyn{colon}resolve/SKILL.md': block},
-                 '0.x': {'.claude/commands/devlyn.resolve.md': block}, 'clone': {'CLAUDE.md': block},
-                 'template-clone': {'CLAUDE.md': legacy}, 'none': {'.claude/skills/my-skill/SKILL.md': block},
-                 # 4.0.1 put optional skills into .claude/skills without the Claude target.
-                 'addons': {f'.claude/skills/{name}/SKILL.md': block for name in
-                            ['devlyn-reap', 'devlyn-pencil-pull', *(f'devlyn{c}reap' for c in ('\uf03a', colon))]}}
-        for case, planted in stale.items():
-            with self.subTest(case=case):
-                self.project = self.case / f'project-{case}'
-                for path, data in planted.items():
-                    (self.project / path).parent.mkdir(parents=True, exist_ok=True); (self.project / path).write_bytes(data)
-                self.cli('-y')
-                claude = case not in ('4.x', '3.x', 'none', 'addons')
-                self.assertEqual(self.markers(self.project), {'.agents', '.claude'} if claude else {'.agents'})
-                self.assertEqual((self.project / 'CLAUDE.md').exists(), claude)
-                self.assertTrue((self.project / 'AGENTS.md').is_file())
-                # Removed or refreshed by the Claude update; a user's own skill stays as it was.
-                for path, data in planted.items():
-                    preserved = case == 'none' or (case == 'addons' and all(c not in path for c in (':', '\uf03a')))
-                    self.assertEqual((self.project / path).exists() and (self.project / path).read_bytes() == data, preserved)
-                if claude:
-                    marker = json.loads((self.project / '.claude/skills/.devlyn-install.json').read_bytes())
-                    self.assertEqual(marker['version'], version)
-                    self.assertTrue((self.project / '.claude/skills/devlyn-ideate/SKILL.md').is_file())
-                    self.assertFalse((self.project / '.claude/skills/devlyn-resolve').exists())
-        # Beside an AGENTS.md, the CLAUDE.md the Claude target writes only imports it. Prediction: in a clone of such a
-        # project, with .claude/ ignored, -y installs the Claude target and the menu preselects it, leaving both files as
-        # committed. Before (da682f47): neither saw a Claude install, so .claude/skills stayed absent.
-        for case, update in (('import-clone', lambda: self.cli('-y')), ('import-clone-menu', lambda: self.interact([['\r'], ['\r'], ['\r']]))):
-            with self.subTest(case=case):
-                self.project = self.case / case; self.project.mkdir()
-                self.cli('-y', '--claude')
-                shutil.rmtree(self.project / '.claude')
-                committed = {name: (self.project / name).read_bytes() for name in ('AGENTS.md', 'CLAUDE.md')}
-                self.assertEqual(committed['CLAUDE.md'], b'@AGENTS.md\n')
-                update()
-                self.assertEqual(self.markers(self.project), {'.agents', '.claude'})
-                self.assertTrue((self.project / '.claude/skills/devlyn-ideate/SKILL.md').is_file())
-                self.assertEqual({name: (self.project / name).read_bytes() for name in committed}, committed)
-        if os.name != 'nt':
-            # A CLAUDE.md linked to AGENTS.md is AGENTS.md's; the Claude target refuses links.
-            self.project = self.case / 'linked'; self.project.mkdir()
-            (self.project / 'AGENTS.md').write_bytes(block); (self.project / 'CLAUDE.md').symlink_to('AGENTS.md')
-            self.cli('-y')
-            self.assertEqual(self.markers(self.project), {'.agents'})
-            self.assertTrue((self.project / 'CLAUDE.md').is_symlink())
-            # An AGENTS.md linked to CLAUDE.md gets its block there when the Claude target runs too.
-            self.project = self.case / 'agents-linked'; (self.project / '.claude/skills').mkdir(parents=True)
-            (self.project / '.claude/skills/.devlyn-install.json').write_text(
-                '{"schemaVersion": 1, "package": "devlyn-cli", "version": "4.0.1"}', encoding='utf-8')
-            (self.project / 'CLAUDE.md').write_bytes(block); (self.project / 'AGENTS.md').symlink_to('CLAUDE.md')
-            self.cli('-y')
-            self.assertEqual(self.markers(self.project), {'.agents', '.claude'})
-            self.assertEqual(json.loads((self.project / '.claude/skills/.devlyn-install.json').read_bytes())['version'], version)
-            self.assertEqual(os.readlink(self.project / 'AGENTS.md'), 'CLAUDE.md')
-            self.assertIn(CURRENT_DEFAULTS, (self.project / 'CLAUDE.md').read_bytes())
-            # Without the Claude target the user is told to add it.
-            result = self.invoke('installAgentsProject();', code=None)
-            self.assertNotEqual(result.returncode, 0)
-            self.assertIn(b'--claude', result.stdout + result.stderr)
-            # Linked elsewhere, even to another hard link of CLAUDE.md, AGENTS.md is still refused.
-            for name in ('shared.md', 'hardlink.md'):
-                shared = self.case / name
-                os.link(self.project / 'CLAUDE.md', shared) if name == 'hardlink.md' else shared.write_bytes(block)
-                (self.project / 'AGENTS.md').unlink(); (self.project / 'AGENTS.md').symlink_to(shared)
-                before = shared.read_bytes()
-                self.cli('-y', code=1)
-                self.assertEqual(shared.read_bytes(), before)
-        # Git for Windows without symlinks checks the link out as a file holding its target.
-        self.project = self.case / 'agents-placeholder'; (self.project / '.claude/skills').mkdir(parents=True)
-        (self.project / '.claude/skills/.devlyn-install.json').write_text(
-            '{"schemaVersion": 1, "package": "devlyn-cli", "version": "4.0.1"}', encoding='utf-8')
-        (self.project / 'CLAUDE.md').write_bytes(block); (self.project / 'AGENTS.md').write_bytes(b'CLAUDE.md')
-        self.cli('-y')
-        self.assertEqual((self.project / 'AGENTS.md').read_bytes(), b'CLAUDE.md')
-        self.assertIn(CURRENT_DEFAULTS, (self.project / 'CLAUDE.md').read_bytes())
-        self.assertEqual(self.markers(self.project), {'.agents', '.claude'})
-        self.assertEqual(self.markers(self.home), set())
-
-    def test_agents_imports_follow_markdown_text_and_complete_paths(self):
-        # Native import syntax includes relative/inline paths; literal examples must not remove defaults.
-        positive = [
-            '@AGENTS.md', '@./AGENTS.md', 'Read @AGENTS.md for rules.', 'Read @./AGENTS.md for rules.',
-            '\ufeff@./AGENTS.md\r\n', '@AGENTS.md#rules', '@./AGENTS.md#rules',
-            '# Rules\n\n- Read @./AGENTS.md for rules.', '> Read @AGENTS.md for rules.',
-            '`@AGENTS.md`\n\nRead @./AGENTS.md for rules.',
-            '---\nnote: "Read @AGENTS.md for rules."\n---\n\nRead @./AGENTS.md for rules.',
-            '---\nRead @AGENTS.md for rules.',  # No closing frontmatter delimiter.
-            '<!-- Shared rules --> @AGENTS.md\n',
-            '<!-- Shared rules --> <!-- Team --> Read @./AGENTS.md#rules for rules.\r\n',
-            '<!-- @OTHER.md --> @AGENTS.md <!-- @OTHER.md -->\n',
-            '<!-- Shared rules --> @AGENTS.md <!-- Unclosed note\n',
-        ]
-        negative = [
-            '`@AGENTS.md`', '`` @AGENTS.md ``', '`example\n@AGENTS.md\nexample`',
-            '```md\n@AGENTS.md\n```', '~~~~md\n@AGENTS.md\n~~~~',
-            '````md\n```\n@AGENTS.md\n```\n````', '    @AGENTS.md',
-            '> ```md\n> @AGENTS.md\n> ```', '- Example\n\n  ```md\n  @AGENTS.md\n  ```',
-            '- ` @AGENTS.md `', '<!-- @AGENTS.md -->', '<div>\n@AGENTS.md\n</div>',
-            '<!-- @AGENTS.md --> <!-- @./AGENTS.md -->\n', '<!-- Unclosed @AGENTS.md\n',
-            '```md\n<!-- Shared rules --> @AGENTS.md\n```', '`<!-- Shared rules --> @AGENTS.md`',
-            '<div><!-- Shared rules --> @AGENTS.md</div>\n',
-            '<!-- Shared rules --> @AGENTS.md.bak\n', '<!-- Shared rules --> @AGENTS.md,\n',
-            '\\@AGENTS.md', 'someone@AGENTS.md', '@"AGENTS.md"', '@@AGENTS.md',
-            '@AGENTS.md.bak', '@AGENTS.md,', '@../AGENTS.md', '@sub/AGENTS.md', '@OTHER.md',
-            # The upstream whitespace advisory's payload must terminate under the bundled parser.
-            '\t\x0b\n',
-            '---\nnote: "Read @AGENTS.md for rules."\n---\n\nUse pnpm.\n',
-            '\ufeff---\r\nnote: "Read @./AGENTS.md for rules."\r\n---\r\nUse pnpm.\r\n',
-            '---\n[ malformed yaml @AGENTS.md\n---\nUse pnpm.\n',
-        ]
-        result = self.invoke('console.log(JSON.stringify(' + json.dumps(positive + negative)
-                             + '.map(importsAgentsMd)));')
-        self.assertEqual(json.loads(result.stdout), [True] * len(positive) + [False] * len(negative))
-
-    def test_claude_target_keeps_an_agents_md_in_force(self):
-        # Claude Code reads AGENTS.md only where no CLAUDE.md exists, or through a CLAUDE.md that imports it.
-        # Prediction (phase B audit H10): in an AGENTS.md-only repo, -y --claude creates CLAUDE.md as the one
-        # line `@AGENTS.md`, and AGENTS.md keeps its rules and holds the one block; a CLAUDE.md that already
-        # imports AGENTS.md is left as it is; the Claude target alone gives a new importing CLAUDE.md the block
-        # while AGENTS.md lacks it; an import inside a code fence is not one; every reinstall changes nothing.
-        # Before: CLAUDE.md held only the block, so Claude Code no longer read the team rules.
-        rules = b'# Team rules\n\nAlways use pnpm, never npm.\n'
-        def files():
-            return {name: (self.project / name).read_bytes() for name in ('AGENTS.md', 'CLAUDE.md')}
-        def blocks():
-            return sum(data.count(b'devlyn:instructions:begin') for data in files().values())
-        (self.project / 'AGENTS.md').write_bytes(rules)
-        result = self.cli('-y', '--claude')
-        installed = files()
-        self.assertEqual(installed['CLAUDE.md'], b'@AGENTS.md\n')
-        self.assertIn(b'Created CLAUDE.md\n', result.stdout)
-        self.assertIn(b'CLAUDE.md imports AGENTS.md, which holds the devlyn block', result.stdout)
-        self.assertTrue(installed['AGENTS.md'].startswith(rules))
-        self.assertIn(CURRENT_DEFAULTS, installed['AGENTS.md'])
-        self.assertEqual(blocks(), 1)
-        for args in (['-y'], ['-y', '--claude']):
-            self.cli(*args)
-            self.assertEqual(files(), installed)
-        self.assertEqual(self.markers(self.project), {'.agents', '.claude'})
-        claude = b'@AGENTS.md\n\n# Claude only\n\nPrefer the Read tool.\n'
-        fenced = b'# Notes\n\n```md\n@AGENTS.md\n```\n'
-        frontmatter = b'---\nnote: "Read @AGENTS.md for rules."\n---\n\nUse pnpm.\n'
-        for case, before, install in (('imports', claude, lambda: self.cli('-y', '--claude')),
-                                      ('imports-relative', b'@./AGENTS.md\n', lambda: self.cli('-y', '--claude')),
-                                      ('imports-inline', b'Read @AGENTS.md for rules.\n', lambda: self.cli('-y', '--claude')),
-                                      ('imports-inline-relative', b'Read @./AGENTS.md for rules.\n', lambda: self.cli('-y', '--claude')),
-                                      ('imports-comment', b'<!-- Shared rules --> @AGENTS.md\n', lambda: self.cli('-y', '--claude')),
-                                      ('comment-only', b'<!-- @AGENTS.md --> <!-- @./AGENTS.md -->\n', lambda: self.cli('-y', '--claude')),
-                                      ('claude-alone', None, lambda: self.invoke('installClaudeCore();')),
-                                      ('frontmatter', frontmatter, lambda: self.cli('-y', '--claude')),
-                                      ('fenced', fenced, lambda: self.cli('-y', '--claude'))):
-            with self.subTest(case=case):
-                self.project = self.case / case; self.project.mkdir()
-                (self.project / 'AGENTS.md').write_bytes(rules)
-                if before is not None:
-                    (self.project / 'CLAUDE.md').write_bytes(before)
-                install()
-                installed = files()
-                install()
-                self.assertEqual(files(), installed)
-                if case.startswith('imports'):
-                    self.assertEqual(installed['CLAUDE.md'], before)
-                    self.assertEqual(blocks(), 1)
-                elif case == 'claude-alone':
-                    self.assertTrue(installed['CLAUDE.md'].startswith(b'@AGENTS.md\n'))
-                    self.assertIn(CURRENT_DEFAULTS, installed['CLAUDE.md'])
-                    self.assertEqual((installed['AGENTS.md'], blocks()), (rules, 1))
-                else:
-                    self.assertTrue(installed['CLAUDE.md'].startswith(before))
-                    self.assertIn(CURRENT_DEFAULTS, installed['CLAUDE.md'])
-        # The AGENTS.md target installs first even when the menu selected it last (toggled off and on again).
-        self.project = self.case / 'toggled'; (self.project / '.claude/skills').mkdir(parents=True)
-        (self.project / '.claude/skills/.devlyn-install.json').write_text(
-            '{"schemaVersion": 1, "package": "devlyn-cli", "version": "4.0.1"}', encoding='utf-8')
-        (self.project / 'AGENTS.md').write_bytes(rules)
-        self.interact([[' ', ' ', '\r'], ['\r'], ['\r']])
-        self.assertEqual((files()['CLAUDE.md'], blocks()), (b'@AGENTS.md\n', 1))
-
-    def test_claude_target_holds_no_copy_beside_the_block_it_imports(self):
-        # Prediction: installed alone in an AGENTS.md-only repo, the Claude target gives CLAUDE.md the block beside its
-        # `@AGENTS.md` import, since AGENTS.md lacks it; the update the installer suggests (-y, or the menu's defaults,
-        # which now select both targets) puts the block in AGENTS.md, so the Claude target removes CLAUDE.md's copy and
-        # keeps CLAUDE.md's own lines. A new CLAUDE.md then ends as -y --claude makes it directly, an importing one as it
-        # was, and later updates change nothing. Before (da682f47): CLAUDE.md kept its copy, so Claude Code loaded the block
-        # twice, after that update and every later one.
-        rules = b'# Team rules\n\nAlways use pnpm, never npm.\n'
-        claude = b'@AGENTS.md\n\n# Claude only\n\nPrefer the Read tool.\n'
-        def files():
-            return {name: (self.project / name).read_bytes() for name in ('AGENTS.md', 'CLAUDE.md')}
-        (self.project / 'AGENTS.md').write_bytes(rules)
-        self.cli('-y', '--claude')
-        direct = files()
-        for case, before, update in (('new', None, lambda: self.cli('-y')),
-                                     ('imports', claude, lambda: self.interact([['\r'], ['\r'], ['\r']])),
-                                     ('relative', b'@./AGENTS.md\n', lambda: self.cli('-y')),
-                                     ('comment-relative', b'<!-- Shared rules --> <!-- Team --> @./AGENTS.md\n', lambda: self.cli('-y')),
-                                     ('inline-relative', b'Read @./AGENTS.md for team rules.\n', lambda: self.cli('-y'))):
-            with self.subTest(case=case):
-                self.project = self.case / case; self.project.mkdir()
-                (self.project / 'AGENTS.md').write_bytes(rules)
-                if before is not None:
-                    (self.project / 'CLAUDE.md').write_bytes(before)
-                self.invoke('installClaudeCore();')
-                duplicated = files()['CLAUDE.md']
-                self.assertIn(CURRENT_DEFAULTS, duplicated)
-                result = update()
-                expected = {**direct, 'CLAUDE.md': duplicated.split(b'<!-- devlyn:instructions:begin', 1)[0]}
-                self.assertEqual(files(), expected)
-                self.assertIn(b'Removed Devlyn defaults from CLAUDE.md', result.stdout)
-                self.assertIn(duplicated, [p.read_bytes() for p in
-                              (self.project / '.devlyn/instructions').glob('CLAUDE.md.*.backup')])
-                for args in (['-y'], ['-y', '--claude']):
-                    self.cli(*args)
-                    self.assertEqual(files(), expected)
-        if os.name != 'nt':
-            # Where AGENTS.md links to CLAUDE.md, an `@AGENTS.md` line imports CLAUDE.md itself, whose block is the only
-            # one: every update keeps it. Without that exception, every second update removed it.
-            for case, before in (('exact', claude), ('relative', b'@./AGENTS.md\n'),
-                                 ('inline', b'Read @AGENTS.md for rules.\n')):
-                self.project = self.case / ('self-import-' + case); self.project.mkdir()
-                (self.project / 'CLAUDE.md').write_bytes(before); (self.project / 'AGENTS.md').symlink_to('CLAUDE.md')
-                for _ in range(3):
-                    self.cli('-y', '--claude')
-                    self.assertEqual((self.project / 'CLAUDE.md').read_bytes().count(b'devlyn:instructions:begin'), 1)
-
-    def test_claude_target_alone_leaves_agents_md_to_its_target(self):
-        # Prediction (final audit): beside an AGENTS.md holding the 4.1.0 block next to a 4.1.0 .agents/skills, a template a
-        # release before managed blocks copied in whole, or the 4.1.0 block twice, and no CLAUDE.md, the Claude target alone
-        # (AGENTS.md deselected in the menu) stops before any write and names the AGENTS.md choice. With both targets, AGENTS.md
-        # and .agents/skills come current together, AGENTS.md keeps the project text once and its exact backup, and CLAUDE.md is
-        # exactly `@AGENTS.md`; a Claude-only rerun and -y change nothing. Before (bc43d834): the Claude target alone rewrote
-        # AGENTS.md and left .agents/skills at 4.1.0, so Codex, omp, Pi and Grok loaded a contract their skills could not serve.
-        prefix, suffix = b'# Team rules\n\nUse pnpm.\n\n', b'\n# Local tail\n\nKeep me.\n'
-        fixtures = Path(__file__).resolve().parent / 'fixtures/instructions'
-        def tree():
-            return {str(p.relative_to(self.project)): p.read_bytes() if p.is_file() else None for p in self.project.rglob('*')}
-        for case, before in (('4.1.0', prefix + (fixtures / 'agents-4.1.0.md').read_bytes() + suffix),
-                             ('legacy-july', prefix + (fixtures / 'legacy-july-agents.md').read_bytes() + suffix),
-                             ('conflict', (fixtures / 'agents-4.1.0.md').read_bytes() * 2)):
-            with self.subTest(case=case):
-                self.project = self.case / case; self.project.mkdir()
-                (self.project / 'AGENTS.md').write_bytes(before)
-                if case == '4.1.0':
-                    self.seed_4_1(self.project / '.agents/skills')
-                planted = tree()
-                result = self.interact([[' ', '\x1b[B', ' ', '\r'], ['\r'], ['\r']], code=None)
-                self.assertNotEqual(result.returncode, 0)
-                self.assertIn(b'choose AGENTS.md as well (npx devlyn-cli -y --claude)', result.stderr)
-                self.assertEqual(tree(), planted)
-                if case == 'conflict':
-                    continue  # Its merge is the AGENTS.md target's.
-                result = self.interact([['\x1b[B', ' ', '\r'], ['\r'], ['\r']])
-                self.assertEqual(self.markers(self.project), {'.agents', '.claude'})
-                self.assertFalse((self.project / '.agents/skills/devlyn-resolve').exists())
-                installed = tree()
-                self.assertEqual(installed['CLAUDE.md'], b'@AGENTS.md\n')
-                # No retired resolve; one current block, and the project text once.
-                self.assertEqual([installed['AGENTS.md'].count(text) for text in (b'devlyn-resolve', b'devlyn:resolve',
-                                  b'devlyn:instructions:begin', CURRENT_DEFAULTS, prefix, suffix)], [0, 0, 1, 1, 1, 1])
-                self.assertIn(before, [p.read_bytes() for p in (self.project / '.devlyn/instructions').glob('AGENTS.md.*.backup')])
-                self.assertIn(b'Updated Devlyn defaults in AGENTS.md; project-specific instructions preserved', result.stdout)
-                for rerun in (lambda: self.interact([[' ', '\r'], ['\r'], ['\r']]), lambda: self.cli('-y')):
-                    rerun()
-                    self.assertEqual(tree(), installed)
-
     def test_interactive_what_and_where(self):
         up, down, enter, space = '\x1b[A', '\x1b[B', '\r', ' '
         mcp = b'Playwright MCP for browser testing'
@@ -1011,16 +771,16 @@ cp.spawnSync = (file, args, options) => {{
         # Up wraps to the last addon, which shows its description.
         result = self.interact([[enter], [enter], [up, enter]])
         self.assertNotIn(mcp, result.stdout)
-        self.assertEqual({p.name for p in self.project.iterdir()}, {'AGENTS.md', '.agents', '.gitignore'})
+        self.assertEqual({p.name for p in self.project.iterdir()}, {'.agents', '.gitignore'})
         self.assertEqual(self.markers(self.project), {'.agents'})
-        # A project with devlyn Claude skills preselects CLAUDE.md; an optional skill goes to both roots.
+        # A project with devlyn Claude skills preselects Claude Code; an optional skill goes to both roots.
         (self.project / '.claude/skills').mkdir(parents=True)
         (self.project / '.claude/skills/.devlyn-install.json').write_text(
             '{"schemaVersion": 1, "package": "devlyn-cli", "version": "4.0.1"}', encoding='utf-8')
         result = self.interact([[enter], [enter], [up, down, space, enter]])
         self.assertIn(mcp, result.stdout)
         self.assertEqual(self.markers(self.project), {'.agents', '.claude'})
-        self.assertTrue((self.project / 'CLAUDE.md').is_file())
+        self.assertFalse((self.project / 'CLAUDE.md').exists())
         for root in ('.agents', '.claude'):
             self.assertTrue((self.project / root / 'skills/asset-creator/SKILL.md').is_file())
         self.assertEqual(self.markers(self.home), set())
@@ -1085,11 +845,9 @@ cp.spawnSync = (file, args, options) => {{
             data = json.loads(marker.read_bytes()); data['version'] = '4.2.14'
             marker.write_text(json.dumps(data), encoding='utf-8')
             (root / 'user-skill').mkdir(); (root / 'user-skill/keep').write_bytes(b'mine\r\n')
-        instructions = {}
-        for name in ('AGENTS.md', 'CLAUDE.md'):
-            file = self.project / name
-            instructions[name] = b'# Team rules\r\n\r\n' + file.read_bytes() + b'\nKeep this tail.\r\n'
-            file.write_bytes(instructions[name])
+        instructions = {name: b'# Team rules\r\n\r\nKeep this tail.\r\n' for name in ('AGENTS.md', 'CLAUDE.md')}
+        for name, data in instructions.items():
+            (self.project / name).write_bytes(data)
         result = self.cli('update')
         self.assertNotIn(b'Global devlyn', result.stdout)
         self.assertEqual(result.stdout.count(b'Installing devlyn skills to'), 5)
@@ -1099,9 +857,7 @@ cp.spawnSync = (file, args, options) => {{
             self.assertEqual(json.loads((root / '.devlyn-install.json').read_bytes())['version'], version)
             self.assertEqual((root / 'user-skill/keep').read_bytes(), b'mine\r\n')
         for name, data in instructions.items():
-            block = rb'<!-- devlyn:instructions:begin[^\n]*\n.*?<!-- devlyn:instructions:end -->\r?\n'
-            self.assertEqual(re.sub(block, b'', (self.project / name).read_bytes(), flags=re.S),
-                             re.sub(block, b'', data, flags=re.S))
+            self.assertEqual((self.project / name).read_bytes(), data)
         for name in ('.codex', '.claude'):
             shutil.rmtree(self.home / name / 'skills')
         self.cli('update')
@@ -1507,11 +1263,8 @@ install(['agents', 'claude'], true, ['devlyn-reap']);
         for name in names:
             data = (self.project / name).read_bytes()
             outside = re.sub(rb'<!-- devlyn:instructions:begin[^\n]*\n.*?<!-- devlyn:instructions:end -->\r?\n', b'', data, flags=re.S)
-            if name in ['CLAUDE.md', 'AGENTS.md']:
-                self.assertEqual(outside, SHORT_PAYLOAD * 2 + b'\r\n\r\n')
-            else:
-                self.assertEqual(outside, SHORT_PAYLOAD * 2)
-                self.assertNotIn(b'devlyn:instructions:begin', data)
+            self.assertEqual(outside, SHORT_PAYLOAD * 2)
+            self.assertNotIn(b'devlyn:instructions:begin', data)
             backup = list((self.project / '.devlyn/instructions').glob('*.backup'))
             self.assertTrue(any(p.read_bytes() == SHORT_PAYLOAD + self.evaluator_block() + SHORT_PAYLOAD for p in backup))
 
@@ -2508,42 +2261,32 @@ console.log(JSON.stringify(Object.fromEntries(DEVLYN_CORE_SKILLS.map((name) =>
         self.assertIn(str(optional).encode(), result.stderr)
         self.assertEqual(self.snapshot(), before)
 
-    def test_instruction_custom_rules_survive_all_targets_and_reinstall(self):
-        custom = b'\xef\xbb\xbf# Team rules\r\nKeep our Korean labels and formatting.\r\n'
-        for name in ('AGENTS.md', 'CLAUDE.md'):
-            (self.project / name).write_bytes(custom)
-        self.invoke("installClaudeCore(); installAgentsProject();")
-        installed = {}
-        for name in ('AGENTS.md', 'CLAUDE.md'):
-            data = (self.project / name).read_bytes()
-            self.assertTrue(data.startswith(custom))
-            self.assertEqual(data.count(b'devlyn:instructions:begin'), 1)
-            self.assertIn(CURRENT_DEFAULTS, data)
-            self.assertIn(custom, [p.read_bytes() for p in (self.project / '.devlyn/instructions').glob(name + '*.backup')])
-            installed[name] = data
-        self.invoke("installClaudeCore(); installAgentsProject();")
-        for name, data in installed.items():
-            self.assertEqual((self.project / name).read_bytes(), data)
+    def managed(self, template=b'# Old\n'):
+        body = b'Project-specific instructions outside this managed block take precedence over these defaults.\n\n' + template
+        return b'<!-- devlyn:instructions:begin sha256=' + hashlib.sha256(body).hexdigest().encode() + b' -->\n' + body + b'<!-- devlyn:instructions:end -->\n'
 
-    def test_instruction_future_template_upgrade_preserves_outside_bytes(self):
-        copy = self.case / 'next-version'; shutil.copytree(self.package, copy)
-        prefix = b'\xef\xbb\xbf'
-        suffix = b'\r\n# Local additions\r\nDo not remove these.\r\n'
-        self.invoke("updateInstructions('AGENTS.md');")
+    def test_instruction_removal_leaves_exactly_the_owner_bytes(self):
+        # Prediction: for every historical block, either line ending, only the block goes.
+        prefix, suffix = b'# Team rules\n\nUse pnpm.\n\n', b'\n# Local tail\n\nKeep me.\n'
+        for name, version in (('AGENTS.md', '4.0.1'), ('AGENTS.md', '4.1.0'), ('AGENTS.md', '9ecbe51c'), ('AGENTS.md', 'd2d34e3e'),
+                              ('AGENTS.md', '415e2d14'), ('CLAUDE.md', '4.1.0'), ('CLAUDE.md', '9ecbe51c'), ('CLAUDE.md', 'd2d34e3e'),
+                              ('CLAUDE.md', '415e2d14')):
+            dest = self.project / name
+            block = (Path(__file__).resolve().parent / f'fixtures/instructions/{name[:-3].lower()}-{version}.md').read_bytes()
+            for eol in (b'\n', b'\r\n'):
+                with self.subTest(name=name, version=version, eol=eol):
+                    dest.write_bytes((prefix + block + suffix).replace(b'\n', eol))
+                    self.invoke(f"removeInstructions('{name}');")
+                    self.assertEqual(dest.read_bytes(), (prefix + suffix).replace(b'\n', eol))
+                    self.invoke(f"removeInstructions('{name}');")
+                    self.assertEqual(dest.read_bytes(), (prefix + suffix).replace(b'\n', eol))
         dest = self.project / 'AGENTS.md'
-        before = prefix + dest.read_bytes().replace(b'\n', b'\r\n') + suffix
-        dest.write_bytes(before)
-        source = copy / 'AGENTS.md'
-        source.write_bytes(source.read_bytes() + b'\nA new managed default for this regression.\n')
-        self.invoke("updateInstructions('AGENTS.md');", package=copy)
-        after = dest.read_bytes()
-        self.assertTrue(after.startswith(prefix)); self.assertTrue(after.endswith(suffix))
-        self.assertIn(b'A new managed default for this regression.', after)
-        self.assertIn(before, [p.read_bytes() for p in (self.project / '.devlyn/instructions').glob('AGENTS.md*.backup')])
-        self.invoke("updateInstructions('AGENTS.md');", package=copy)
-        self.assertEqual(dest.read_bytes(), after)
+        dest.write_bytes(b'\xef\xbb\xbf' + self.managed().replace(b'\n', b'\r\n') + b'\r\n# Keep\r\n')
+        removed = self.invoke("removeInstructions('AGENTS.md');").stdout
+        self.assertIn(b'Removed Devlyn defaults from AGENTS.md; project-specific instructions preserved', removed)
+        self.assertEqual(dest.read_bytes(), b'\xef\xbb\xbf\r\n# Keep\r\n')
 
-    def test_instruction_legacy_hash_migration_preserves_prefix_suffix(self):
+    def test_instruction_removal_of_an_unmarked_template_inside_owner_text(self):
         copy = self.case / 'legacy-package'; shutil.copytree(self.package, copy)
         manifest_path = copy / 'bin/instruction-templates.json'
         manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
@@ -2553,125 +2296,21 @@ console.log(JSON.stringify(Object.fromEntries(DEVLYN_CORE_SKILLS.map((name) =>
         manifest_path.write_text(json.dumps(manifest), encoding='utf-8')
         for eol in ('\n', '\r\n'):
             with self.subTest(eol=eol):
-                prefix, suffix = '\ufeff# My project\n\n', '\n# Keep\ncustom rule\n'
-                before = (prefix + old + suffix).replace('\n', eol).encode()
-                dest = self.project / 'AGENTS.md'; dest.write_bytes(before)
-                self.invoke("updateInstructions('AGENTS.md');", package=copy)
-                after = dest.read_bytes()
-                self.assertTrue(after.startswith(prefix.replace('\n', eol).encode()))
-                self.assertTrue(after.endswith(suffix.replace('\n', eol).encode()))
-                self.assertNotIn(b'installs old defaults', after)
-                self.assertIn(CURRENT_DEFAULTS, after)
-                self.invoke("updateInstructions('AGENTS.md');", package=copy)
-                self.assertEqual(dest.read_bytes(), after)
+                prefix, suffix = '﻿# My project\n\n', '\n# Keep\ncustom rule\n'
+                dest = self.project / 'AGENTS.md'; dest.write_bytes((prefix + old + suffix).replace('\n', eol).encode())
+                self.invoke("removeInstructions('AGENTS.md');", package=copy)
+                self.assertEqual(dest.read_bytes(), (prefix + suffix).replace('\n', eol).encode())
 
-    def test_instruction_legacy_preamble_edits_migrate_with_exact_body(self):
-        copy = self.case / 'legacy-package'; shutil.copytree(self.package, copy)
-        manifest_path = copy / 'bin/instruction-templates.json'
-        manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
-        header = '# Project Instructions\n\n'
-        preamble = header + 'devlyn-cli installs old defaults.\n\n'
-        body = '## North Star\n\nThis contract serves one goal: any capable engine, old defaults. 한글 😀\n'
-        def signature(text):
-            return {'length': len(text.encode('utf-16-le')) // 2,
-                    'sha256': hashlib.sha256(text.encode()).hexdigest()}
-        for intro in (preamble.replace('old defaults', 'another release'), preamble):
-            manifest['CLAUDE.md'].append({**signature(intro + body),
-                                          'preamble': intro, 'body': signature(body)})
-        manifest_path.write_text(json.dumps(manifest), encoding='utf-8')
-        custom = '사용자 규칙: resolve 금지. 배포는 사용자가 진행.\n\n'
-        for eol in ('\n', '\r\n'):
-            for intro in (header + custom, preamble + custom):
-                with self.subTest(eol=eol, intro=intro):
-                    prefix, suffix = '\ufeff# Team\n\n', '\n# Local tail\nKeep me.\n'
-                    before = (prefix + intro + body + suffix).replace('\n', eol).encode()
-                    dest = self.project / 'CLAUDE.md'; dest.write_bytes(before)
-                    self.invoke('installClaudeCore();', package=copy)
-                    after = dest.read_bytes()
-                    kept_intro = custom if intro.startswith(preamble) else intro
-                    self.assertTrue(after.startswith((prefix + kept_intro).replace('\n', eol).encode()))
-                    self.assertTrue(after.endswith(suffix.replace('\n', eol).encode()))
-                    self.assertNotIn(b'old defaults', after)
-                    self.assertEqual(after.count(b'devlyn:instructions:begin'), 1)
-                    self.assertIn(before, [p.read_bytes() for p in (self.project / '.devlyn/instructions').glob('CLAUDE.md*.backup')])
-                    self.invoke('installClaudeCore();', package=copy)
-                    self.assertEqual(dest.read_bytes(), after)
-        for before in (header + custom + body.replace('old defaults', 'edited body'),
-                       preamble + body + header + custom + body,
-                       preamble.replace('old defaults.', 'old defaults. Use pnpm.') + body,
-                       preamble.rstrip('\n') + '\n' + body,
-                       header + custom + body + body):
-            dest.write_bytes(before.encode('utf-8'))
-            original = dest.read_bytes()
-            self.invoke('installClaudeCore();', package=copy)
-            after = dest.read_bytes()
-            self.assertIn(original, [p.read_bytes() for p in (self.project / '.devlyn/instructions').glob('CLAUDE.md*.backup')])
-            self.assertEqual(after.count(b'devlyn:instructions:begin'), 1)
-            if custom in before:
-                self.assertIn(custom.encode(), after)
-            if 'Use pnpm.' in before:
-                self.assertIn(b'Use pnpm.', after)
-            self.invoke('installClaudeCore();', package=copy)
-            self.assertEqual(dest.read_bytes(), after)
+    def test_instruction_removal_deletes_only_a_file_left_empty(self):
+        dest = self.project / 'AGENTS.md'; dest.write_bytes(self.managed())
+        self.assertIn(b'AGENTS.md (removed)', self.invoke("removeInstructions('AGENTS.md');").stdout)
+        self.assertFalse(dest.exists())
 
-    def test_instruction_cli_conflict_guides_merge_and_retry_without_stack(self):
-        for name, args in [('CLAUDE.md', ['-y', '--claude']), ('AGENTS.md', ['-y'])]:
-            with self.subTest(name=name):
-                dest = self.project / name
-                original = (b'<!-- devlyn:instructions:begin sha256=' + b'0' * 64 + b' -->\n'
-                            + (self.package / name).read_bytes() + b'<!-- broken:end -->\n')
-                dest.write_bytes(original)
-                argv = ['node', '--require', self.preload, self.package / 'bin/devlyn.js', *args]
-                result = run(argv, cwd=self.project, env=self.env, code=1)
-                self.assertIn(b'needs merge', result.stderr)
-                self.assertIn(b'Original preserved', result.stderr)
-                self.assertNotIn(b'    at ', result.stderr)
-                self.assertNotIn(b'All done', result.stdout)
-                self.assertEqual(dest.read_bytes(), original)
-                recovery = self.project / '.devlyn/instructions'
-                backup, = recovery.glob(name + '*.backup')
-                incoming, = recovery.glob(name + '*.incoming')
-                guide, = recovery.glob(name + '*.merge.md')
-                self.assertEqual(backup.read_bytes(), original)
-                guide_text = guide.read_text(encoding='utf-8')
-                self.assertIn(str(backup), guide_text)
-                self.assertIn(str(incoming), guide_text)
-                self.assertIn('outside', guide_text)
-                self.assertIn('npx devlyn-cli', guide_text)
-                self.assertIn(str(guide).encode(), result.stderr)
-                files = {p.name: p.read_bytes() for p in recovery.iterdir()}
-                run(argv, cwd=self.project, env=self.env, code=1)
-                self.assertEqual({p.name: p.read_bytes() for p in recovery.iterdir()}, files)
-                custom = b'# Project rules\nKeep our custom contract.\n\n'
-                dest.write_bytes(custom + incoming.read_bytes())
-                run(argv, cwd=self.project, env=self.env)
-                self.assertTrue(dest.read_bytes().startswith(custom))
-
-    def test_instruction_conflicts_preserve_original_and_fail_visibly(self):
-        self.invoke("updateInstructions('AGENTS.md');")
-        dest = self.project / 'AGENTS.md'; good = dest.read_bytes()
-        cases = [good.replace(b'devlyn:instructions:end', b'broken:end'), good + good,
-                 b'\xffinvalid utf8']
-        for before in cases:
-            with self.subTest(before=before[:70]):
-                dest.write_bytes(before)
-                result = self.invoke("installAgentsProject();", code=None)
-                self.assertNotEqual(result.returncode, 0)
-                self.assertEqual(dest.read_bytes(), before)
-                self.assertFalse((self.project / '.agents').exists())
-        self.assertTrue(list((self.project / '.devlyn/instructions').glob('AGENTS.md*.incoming')))
-        claude = self.project / 'CLAUDE.md'; claude.write_bytes(good.replace(b'devlyn:instructions:end', b'broken:end'))
-        before = claude.read_bytes()
-        result = self.invoke('installClaudeCore();', code=None)
-        self.assertNotEqual(result.returncode, 0)
-        self.assertEqual(claude.read_bytes(), before)
-        self.assertFalse((self.project / '.claude').exists())
-
-    def test_instruction_write_failure_keeps_original_and_exact_backup(self):
+    def test_instruction_removal_write_failure_keeps_original_and_exact_backup(self):
         run(['git', 'init', '-q', self.project])
-        before = b'# Custom project rules\r\nKeep exact bytes.\r\n'
+        before = b'# Custom project rules\r\n\r\n' + self.managed()
         dest = self.project / 'AGENTS.md'; dest.write_bytes(before)
-        result = self.invoke("fs.renameSync = () => { throw new Error('injected rename failure'); }; updateInstructions('AGENTS.md');", code=None)
+        result = self.invoke("fs.renameSync = () => { throw new Error('injected rename failure'); }; removeInstructions('AGENTS.md');", code=None)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn(b'injected rename failure', result.stderr)
         self.assertEqual(dest.read_bytes(), before)
@@ -2680,323 +2319,67 @@ console.log(JSON.stringify(Object.fromEntries(DEVLYN_CORE_SKILLS.map((name) =>
         self.assertEqual(backup.read_bytes(), before)
         run(['git', 'check-ignore', str(backup)], cwd=self.project)
         backup.write_bytes(b'different recovery data')
-        result = self.invoke("updateInstructions('AGENTS.md');", code=None)
+        result = self.invoke("removeInstructions('AGENTS.md');", code=None)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn(b'Instruction recovery file differs', result.stderr)
         self.assertEqual(dest.read_bytes(), before)
         self.assertEqual(backup.read_bytes(), b'different recovery data')
 
-    def test_instruction_source_checkout_templates_are_not_wrapped(self):
-        originals = {name: (self.package / name).read_bytes() for name in ('AGENTS.md', 'CLAUDE.md')}
-        for package_name, has_bin in [('devlyn-cli', True), ('my-app', True), ('devlyn-cli', False)]:
-            for args in (['-y', '--claude'], ['-y']):
-                with self.subTest(package_name=package_name, has_bin=has_bin, args=args):
-                    self.project = Path(tempfile.mkdtemp(dir=self.case))
-                    (self.project / 'package.json').write_text(json.dumps({'name': package_name}), encoding='utf-8')
-                    if has_bin:
-                        (self.project / 'bin').mkdir()
-                        (self.project / 'bin/devlyn.js').write_bytes(b'// source entrypoint\n')
-                    for name, data in originals.items():
-                        (self.project / name).write_bytes(data)
-                    result = self.cli(*args)
-                    source_checkout = package_name == 'devlyn-cli' and has_bin
-                    for name, data in originals.items():
-                        if source_checkout:
-                            self.assertEqual((self.project / name).read_bytes(), data)
-                            self.assertIn(f'  → Skipping {name}; shipped instruction template in devlyn-cli source checkout'.encode(),
-                                          result.stdout)
-                        else:
-                            body = (b'Project-specific instructions outside this managed block take precedence over these defaults.\n\n'
-                                    + data.replace(b'\r\n', b'\n').rstrip(b'\n') + b'\n')
-                            block = (f'<!-- devlyn:instructions:begin sha256={hashlib.sha256(body).hexdigest()} -->\n'.encode()
-                                     + body + b'<!-- devlyn:instructions:end -->\n')
-                            eol = b'\r\n' if b'\r\n' in data else b'\n'
-                            self.assertEqual((self.project / name).read_bytes(), block.replace(b'\n', eol))
-                    if not source_checkout:
-                        self.assertNotIn(b'shipped instruction template in devlyn-cli source checkout', result.stdout)
-                    self.assertEqual(self.markers(self.project), {'.agents', '.claude'})
-                    for target in ('.agents', '.claude'):
-                        for skill in ('devlyn-ideate', 'devlyn-engines'):
-                            self.assertEqual((self.project / target / 'skills' / skill / 'SKILL.md').read_bytes(),
-                                             (self.package / 'config/skills' / skill / 'SKILL.md').read_bytes())
-                    settings = json.loads((self.project / '.claude/settings.json').read_bytes())
-                    self.assertEqual(settings['env']['ENABLE_PROMPT_CACHING_1H'], 'true')
-                    self.assertEqual(settings['env']['BASH_MAX_TIMEOUT_MS'], '3600000')
-                    self.assertEqual((self.project / '.gitignore').read_text(encoding='utf-8').splitlines(),
-                                     ['# devlyn-cli pipeline state', '.devlyn/'])
-
-    def test_instruction_source_templates_are_not_wrapped(self):
-        copy = self.case / 'source-package'; shutil.copytree(self.package, copy)
-        originals = {name: (copy / name).read_bytes() for name in ('AGENTS.md', 'CLAUDE.md')}
-        alias = self.case / 'source-alias'
-        run(['node', '-e', "require('fs').symlinkSync(process.argv[1], process.argv[2], 'junction')", copy, alias])
-        run(['node', '--preserve-symlinks', '--require', self.preload, self.invoker, alias / 'bin/devlyn.js',
-             "updateInstructions('AGENTS.md');"], cwd=copy, env=self.env)
-        run(['node', '--require', self.preload, self.invoker, copy / 'bin/devlyn.js',
-             "installClaudeCore(); installAgentsProject();"], cwd=copy, env=self.env)
-        for name, data in originals.items():
-            self.assertEqual((copy / name).read_bytes(), data)
-        self.invoke("installClaudeCore(); installAgentsProject();", package=copy)
-        self.invoke("installClaudeCore(); installAgentsProject();", package=copy)
-        (copy / 'AGENTS.md').write_bytes((self.project / 'AGENTS.md').read_bytes())
-        before = (self.project / 'AGENTS.md').read_bytes()
-        result = self.invoke("installAgentsProject();", package=copy, code=None)
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn(b'Packaged instruction template contains managed markers', result.stderr)
-        self.assertEqual((self.project / 'AGENTS.md').read_bytes(), before)
-
     @unittest.skipIf(os.name == 'nt', 'POSIX group permission bits are not supported on Windows')
-    def test_instruction_preserves_permissions_despite_umask(self):
-        dest = self.project / 'AGENTS.md'; dest.write_bytes(b'# Shared project rules\n')
+    def test_instruction_removal_preserves_permissions_despite_umask(self):
+        dest = self.project / 'AGENTS.md'; dest.write_bytes(b'# Shared project rules\n\n' + self.managed())
         dest.chmod(0o664)
-        self.invoke("process.umask(0o022); updateInstructions('AGENTS.md');")
+        self.invoke("process.umask(0o022); removeInstructions('AGENTS.md');")
+        self.assertEqual(dest.read_bytes(), b'# Shared project rules\n\n')
         self.assertEqual(dest.stat().st_mode & 0o777, 0o664)
 
-    def test_instruction_edited_unmarked_templates_preserve_edits_and_install(self):
-        for name, command in [('AGENTS.md', "installAgentsProject();"), ('CLAUDE.md', 'installClaudeCore();')]:
-            with self.subTest(name=name):
-                dest = self.project / name
-                before = (self.package / name).read_bytes().replace(b'This contract serves one goal:', b'Team changed this body sentence:', 1)
-                dest.write_bytes(before)
-                self.invoke(command)
-                after = dest.read_bytes()
-                custom, _ = after.split(b'<!-- devlyn:instructions:begin', 1)
-                self.assertIn(b'Team changed this body sentence:', custom)
-                self.assertIn(b'## North Star', custom)
-                self.assertNotIn(b'## Core principles', custom)
-                self.assertIn(before, [p.read_bytes() for p in (self.project / '.devlyn/instructions').glob(name + '*.backup')])
-                self.invoke(command)
-                self.assertEqual(dest.read_bytes(), after)
-
-    def test_instruction_mixed_legacy_versions_update_without_stale_defaults(self):
-        # Historical e2e720573 template + two later stock entry-policy paragraphs:
-        # the real combination that failed whole-template signature matching.
-        for name, command, fixture in [
-                ('AGENTS.md', "updateInstructions('AGENTS.md');", 'mixed-legacy-agents.md'),
-                ('AGENTS.md', "updateInstructions('AGENTS.md');", 'legacy-july-agents.md'),
-                ('CLAUDE.md', 'installClaudeCore();', 'legacy-claude.md')]:
-            original = (Path(__file__).resolve().parent / 'fixtures/instructions' / fixture).read_bytes()
-            for eol in (b'\n', b'\r\n'):
-                with self.subTest(name=name, fixture=fixture, eol=eol):
-                    dest = self.project / name
-                    user_rules = b'\xef\xbb\xbf# Local rules\n\nKeep our project workflow.\n\n'.replace(b'\n', eol)
-                    before = user_rules + original.replace(b'\n', eol)
-                    dest.write_bytes(before)
-                    self.invoke(command)
-                    after = dest.read_bytes()
-                    custom, block = after.split(b'<!-- devlyn:instructions:begin', 1)
-                    self.assertEqual(custom.strip(), user_rules.strip())
-                    self.assertNotIn(b'engine downgraded:', block)
-                    self.assertNotIn(b'Default to direct execution only for clear, local', block)
-                    self.assertIn(CURRENT_DEFAULTS, block)
-                    self.assertIn(before, [p.read_bytes() for p in (self.project / '.devlyn/instructions').glob(name + '*.backup')])
-                    self.invoke(command)
-                    self.assertEqual(dest.read_bytes(), after)
-
-    def test_instruction_merged_branch_paragraphs_migrate_and_preserve_custom_text(self):
-        # 7e2eef0a's Delivery paragraph is reachable from HEAD but absent from first-parent history.
-        # Reuse the edited managed-block fixture with that paragraph and a unique custom rule.
-        # origin/main already retains that key; add 26f40e5e's missing CLAUDE.md paragraph too.
-        # Prediction: migration removes the historical stock text for both files and LF/CRLF,
-        # preserves the custom rule and exact backup, and is unchanged on a second install.
-        delivery = ('- Delivery — direct work edits the current checkout. Only when the user asks to ship it (commit, PR or merge),'
-                    ' follow `_shared/task-completion.md` in `.claude/skills/` or `.agents/skills/` (project, else `~`).'
-                    ' An ideate drain delivers every task. Local-only/no-push instructions win.\n').encode()
-        claude_entry = ('### Conversational entry + full-route handoff\n\n'
-                        'Before writes, inspect requested files and relevant callers/tests. Default to direct execution only for clear,'
-                        ' local, reversible, low-risk work with a decisive existing or small task-specific acceptance check.'
-                        ' Preserve requested behavior, scope, explicit constraints and the executor pin; make scoped edits,'
-                        ' run required checks, review the final diff, and report changes with evidence. One concise route/check explanation'
-                        ' suffices; ordinary direct work needs no spec, pipeline state, phase workers or extra approval.'
-                        ' For direct/full/queue work, the outer owner follows `config/skills/devlyn:resolve/references/task-completion.md`:'
-                        ' prospective task-branch ownership (linked worktree optional), scoped commit acceptance, then PR/merge and recoverable'
-                        ' owned-resource cleanup after required archive/queue commits. Local-only/no-push wins;'
-                        ' delivery pending/failure stays separate from product verification.\n\n').encode()
-        custom_rule = b'Our release checklist requires an owner review.\n\n'
-        for name in ('AGENTS.md', 'CLAUDE.md'):
-            block = (Path(__file__).resolve().parent / f'fixtures/instructions/{name[:-3].lower()}-415e2d14.md').read_bytes()
-            old_delivery = next(line for line in block.splitlines(keepends=True) if line.startswith('- Delivery'.encode()))
-            block = block.replace(old_delivery, delivery).replace(b'## Quick Start\n\n', b'## Quick Start\n\n' + custom_rule)
-            if name == 'CLAUDE.md':
-                block = block.replace(b'<!-- devlyn:instructions:end -->', claude_entry + b'<!-- devlyn:instructions:end -->')
-            for eol in (b'\n', b'\r\n'):
-                with self.subTest(name=name, eol=eol):
-                    dest = self.project / name
-                    before = block.replace(b'\n', eol)
-                    dest.write_bytes(before)
-                    self.invoke(f"updateInstructions('{name}');")
-                    after = dest.read_bytes()
-                    custom, managed = after.split(b'<!-- devlyn:instructions:begin', 1)
-                    self.assertEqual(after.count(b'devlyn:instructions:begin'), 1)
-                    self.assertIn(custom_rule.replace(b'\n', eol), custom)
-                    self.assertEqual(after.count(custom_rule.replace(b'\n', eol)), 1)
-                    self.assertNotIn(b'Only when the user asks to ship it', after)
-                    self.assertNotIn(b'prospective task-branch ownership (linked worktree optional)', after)
-                    self.assertNotIn(b'1. **No workaround**', custom)
-                    self.assertIn(CURRENT_DEFAULTS, managed)
-                    self.assertEqual([managed.count(rule) for rule in CURRENT_RULES], [1, 1])
-                    self.assertIn(before, [p.read_bytes() for p in (self.project / '.devlyn/instructions').glob(name + '*.backup')])
-                    self.invoke(f"updateInstructions('{name}');")
-                    self.assertEqual(dest.read_bytes(), after)
-
-    def test_instruction_4_x_blocks_are_replaced_in_place(self):
-        # 4.1.0 renamed the AGENTS.md title and intro; design-ui, the queue skill and resolve were
-        # retired after it. A 4.0.1, 4.1.0 or main (9ecbe51c, d2d34e3e, 415e2d14) block is replaced, never stacked,
-        # and an edited one keeps only the edits: its stock paragraphs, the retired ones too, are
-        # registered fingerprints. Prediction (P4-1): no block keeps the delivery pointer that allocated a
-        # worktree for every direct task, or 415e2d14's delivery only on a ship request; the new block holds
-        # the default-delivery line and principle 2's cleanup sentence once each.
-        prefix, suffix = b'# Team rules\n\nUse pnpm.\n\n', b'\n# Local tail\n\nKeep me.\n'
-        for name, version in (('AGENTS.md', '4.0.1'), ('AGENTS.md', '4.1.0'), ('AGENTS.md', '9ecbe51c'), ('AGENTS.md', 'd2d34e3e'),
-                              ('AGENTS.md', '415e2d14'), ('CLAUDE.md', '4.1.0'), ('CLAUDE.md', '9ecbe51c'), ('CLAUDE.md', 'd2d34e3e'),
-                              ('CLAUDE.md', '415e2d14')):
-            dest = self.project / name
-            block = (Path(__file__).resolve().parent / f'fixtures/instructions/{name[:-3].lower()}-{version}.md').read_bytes()
-            for edited in (False, True):
-                for eol in (b'\n', b'\r\n'):
-                    with self.subTest(name=name, version=version, edited=edited, eol=eol):
-                        old = block.replace(b'This contract serves one goal:', b'Team changed this body sentence:') if edited else block
-                        dest.write_bytes((prefix + old + suffix).replace(b'\n', eol))
-                        self.invoke(f"updateInstructions('{name}');")
-                        after = dest.read_bytes()
-                        custom, managed = after.split(b'<!-- devlyn:instructions:begin', 1)
-                        self.assertEqual(after.count(b'devlyn:instructions:begin'), 1)
-                        self.assertTrue(after.endswith(suffix.replace(b'\n', eol)))
-                        self.assertIn(b'# Project Instructions' + eol, managed)
-                        self.assertIn(CURRENT_DEFAULTS, managed)
-                        self.assertEqual([managed.count(rule) for rule in CURRENT_RULES], [1, 1])
-                        self.assertEqual(after.count(b'2. **No overengineering**'), 1)
-                        for stale in (b'Codex CLI reads this file', b'design-ui', b'devlyn-queue', b'references/task-completion.md',
-                                      b'outer-loop.md', b'queue drains retain', b'--quick', b'--from-spec', b'per item: spec it',
-                                      b'devlyn-resolve', b'VERIFY', b'`/devlyn-', b'allocated before editing', b'asks to ship'):
-                            self.assertNotIn(stale, after)
-                        if edited:
-                            self.assertTrue(custom.startswith(prefix.replace(b'\n', eol)))
-                            self.assertIn(b'Team changed this body sentence:', custom)
-                            self.assertNotIn(b'unstructured idea', custom)
-                        else:
-                            self.assertEqual(custom, prefix.replace(b'\n', eol))
-                        self.invoke(f"updateInstructions('{name}');")
-                        self.assertEqual(dest.read_bytes(), after)
-
-    def test_instruction_custom_content_survives_legacy_and_edited_managed_blocks(self):
-        for name, command in [('AGENTS.md', "updateInstructions('AGENTS.md');"), ('CLAUDE.md', 'installClaudeCore();')]:
-            for managed in (False, True):
-                with self.subTest(name=name, managed=managed):
-                    dest = self.project / name
-                    # A CLAUDE.md created beside an AGENTS.md imports it instead of holding the block.
-                    for stale in (dest, self.project / 'AGENTS.md'):
-                        stale.unlink(missing_ok=True)
-                    self.invoke(command)
-                    stock = dest.read_bytes() if managed else (self.package / name).read_bytes()
-                    edited = '2. **No overengineering** — Team rule: keep our API stable.\n'.encode()
-                    # A changed list item, nested custom section, code fence and comment
-                    # must all retain their original bytes and heading ancestry.
-                    text = stock.decode('utf-8')
-                    old_item = next(line for line in text.splitlines(True) if line.startswith('2. **No overengineering**'))
-                    addition = ('\n### 배포 규칙\n\n승인 없이 배포 금지. 😀\n\n'
-                                '```md\n# Codex Project Instructions\n\ndevlyn-cli installs examples.\n'
-                                '## Core principles\n\nSeven rules govern every change. Cite them by name when a decision touches one.\n```\n\n'
-                                '<!-- custom\n\n## Quick Start\n\nKeep this comment.\n-->\n\n').encode()
-                    before = text.replace(old_item, edited.decode()).encode().replace(b'## Quick Start\n', addition + b'## Quick Start\n', 1)
-                    prefix = b'# Team rules\nUse pnpm.\n\n'
-                    suffix = b'\n# Outside\n\n## Core principles\n\nSeven rules govern every change. Cite them by name when a decision touches one.\n'
-                    before = (prefix + before + suffix).replace(b'\n', b'\r\n')
-                    dest.write_bytes(before)
-                    self.invoke(command)
-                    after = dest.read_bytes()
-                    self.assertTrue(after.startswith(prefix.replace(b'\n', b'\r\n')))
-                    self.assertIn(suffix.replace(b'\n', b'\r\n'), after)
-                    custom, _ = after.split(b'<!-- devlyn:instructions:begin', 1)
-                    self.assertIn(edited.replace(b'\n', b'\r\n'), custom)
-                    self.assertIn(addition.replace(b'\n', b'\r\n'), custom)
-                    self.assertIn(b'## Core principles\r\n', custom)
-                    self.assertNotIn(b'1. **No workaround**', custom)
-                    self.assertEqual(after.count(b'devlyn:instructions:begin'), 1)
-                    self.invoke(command)
-                    self.assertEqual(dest.read_bytes(), after)
-
-    def test_instruction_quoted_and_unknown_legacy_text_is_preserved(self):
-        examples = [b'# Codex Project Instructions\n\n```md\ndevlyn-cli installs examples.\n\n## Core principles\n\nSeven rules govern every change. Cite them by name when a decision touches one.\n```\n',
-                    b'# Devlyn Agent Instructions\nOld block\n# User addition\nKeep me\n',
-                    b'# Codex Project Instructions\n\ndevlyn-cli installs edited defaults.\n',
-                    b'# Codex Project Instructions\n\n<!-- devlyn-cli installs examples.\n\n## Core principles\n\nSeven rules govern every change. Cite them by name when a decision touches one.\n-->\n']
+    def test_instruction_text_that_is_not_a_proven_copy_is_preserved(self):
+        examples = [b'# Devlyn Agent Instructions\nOld block\n# User addition\nKeep me\n',
+                    b'# Codex Project Instructions\n\ndevlyn-cli installs edited defaults.\n']
         stock = (self.package / 'AGENTS.md').read_bytes()
         examples += [b'# Team rules\n\n```markdown\n' + stock + b'```\n',
                      b'# Team rules\n\n<!--\n' + stock + b'-->\n',
-                     b'# Team rules\n\n<details>\n<summary>Example</summary>\n\n' + stock + b'\n</details>\n',
-                     b'# Team rules\n\n<details>\n<details>Nested</details>\n\n' + stock + b'\n</details>\n',
-                     b'# Team rules\n\n<details>\n<!-- </details> -->\n\n' + stock + b'\n</details>\n',
-                     b'# Team rules\n\n<!-- first --> <!-- second\n\n' + stock + b'-->\n']
+                     b'# Team rules\n\n<details>\n<summary>Example</summary>\n\n' + stock + b'\n</details>\n']
         dest = self.project / 'AGENTS.md'
         for before in examples:
             with self.subTest(before=before):
                 dest.write_bytes(before)
-                self.invoke("updateInstructions('AGENTS.md');")
-                after = dest.read_bytes()
-                self.assertTrue(after.startswith(before))
-                self.invoke("updateInstructions('AGENTS.md');")
-                self.assertEqual(dest.read_bytes(), after)
+                self.invoke("removeInstructions('AGENTS.md');")
+                self.assertEqual(dest.read_bytes(), before)
 
-    @unittest.skipIf(os.name == 'nt', 'symlink creation requires native Windows privileges')
-    def test_instruction_symlink_is_preserved(self):
-        shared = self.case / 'shared.md'; shared.write_bytes(b'shared custom rules')
+    def test_instruction_markers_that_do_not_add_up_stop_with_the_file_unchanged(self):
+        dest = self.project / 'AGENTS.md'
+        before = self.managed() + self.managed()
+        dest.write_bytes(before)
+        result = self.invoke("removeInstructions('AGENTS.md');", code=None)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(b'preserved it', result.stdout + result.stderr)
+        self.assertEqual(dest.read_bytes(), before)
+
+    def test_instruction_link_is_preserved(self):
+        shared = self.case / 'shared.md'; shared.write_bytes(self.managed())
         dest = self.project / 'AGENTS.md'; dest.symlink_to(shared)
-        result = self.invoke("installAgentsProject();", code=None)
+        result = self.invoke("removeInstructions('AGENTS.md');", code=None)
         self.assertNotEqual(result.returncode, 0)
         self.assertTrue(dest.is_symlink())
-        self.assertEqual(shared.read_bytes(), b'shared custom rules')
+        self.assertEqual(shared.read_bytes(), self.managed())
 
-    @unittest.skipIf(os.name == 'nt', 'symlink creation requires native Windows privileges')
-    def test_instruction_recovery_directory_symlinks_are_preserved(self):
+    def test_instruction_recovery_path_that_is_not_a_real_directory_stops_the_removal(self):
         for component in ('.devlyn', '.devlyn/instructions'):
-            for kind in ('outside', 'inside', 'dangling'):
-                for conflict in (False, True):
-                    for name, command in [('AGENTS.md', "installAgentsProject();"), ('CLAUDE.md', 'installClaudeCore();')]:
-                        with self.subTest(component=component, kind=kind, conflict=conflict, name=name):
-                            with tempfile.TemporaryDirectory(dir=self.case) as temp:
-                                base = Path(temp); project = base / 'project'; project.mkdir()
-                                target = (project if kind == 'inside' else base) / 'target'
-                                if kind != 'dangling':
-                                    target.mkdir(); (target / 'keep').write_bytes(b'untouched target')
-                                entry = project / component; entry.parent.mkdir(exist_ok=True)
-                                entry.symlink_to(target, target_is_directory=True)
-                                before = b'<!-- devlyn:instructions:begin broken -->\n' if conflict else b'# Custom rules\r\n'
-                                dest = project / name; dest.write_bytes(before)
-                                result = self.invoke(f'process.chdir({json.dumps(str(project))}); {command}', code=None)
-                                self.assertNotEqual(result.returncode, 0)
-                                self.assertIn(str(entry).encode('utf-8'), result.stderr)
-                                self.assertIn(b'Move it aside', result.stderr)
-                                self.assertEqual(dest.read_bytes(), before)
-                                self.assertTrue(entry.is_symlink())
-                                self.assertEqual(entry.readlink(), target)
-                                if kind == 'dangling':
-                                    self.assertFalse(target.exists())
-                                else:
-                                    self.assertEqual(list(target.iterdir()), [target / 'keep'])
-                                    self.assertEqual((target / 'keep').read_bytes(), b'untouched target')
-                                self.assertFalse((project / '.claude').exists())
-                                self.assertFalse((project / '.agents').exists())
-
-    def test_instruction_recovery_non_directory_and_unused_path(self):
-        for component in ('.devlyn', '.devlyn/instructions'):
-            with self.subTest(component=component):
-                with tempfile.TemporaryDirectory(dir=self.case) as temp:
-                    project = Path(temp)
-                    entry = project / component; entry.parent.mkdir(exist_ok=True)
-                    entry.write_bytes(b'keep obstruction')
-                    dest = project / 'AGENTS.md'; dest.write_bytes(b'# Custom rules\n')
-                    body = f'process.chdir({json.dumps(str(project))}); updateInstructions("AGENTS.md");'
-                    result = self.invoke(body, code=None)
-                    self.assertNotEqual(result.returncode, 0)
-                    self.assertIn(str(entry).encode('utf-8'), result.stderr)
-                    self.assertEqual(dest.read_bytes(), b'# Custom rules\n')
-                    self.assertEqual(entry.read_bytes(), b'keep obstruction')
-                    dest.unlink()  # Fresh install and exact repeat do not use recovery.
-                    self.invoke(body); installed = dest.read_bytes()
-                    self.invoke(body)
-                    self.assertEqual(dest.read_bytes(), installed)
-                    self.assertEqual(entry.read_bytes(), b'keep obstruction')
+            for kind in ('link', 'file'):
+                with self.subTest(component=component, kind=kind):
+                    with tempfile.TemporaryDirectory(dir=self.case) as temp:
+                        base = Path(temp); project = base / 'project'; project.mkdir()
+                        entry = project / component; entry.parent.mkdir(exist_ok=True)
+                        if kind == 'link':
+                            (base / 'target').mkdir(); entry.symlink_to(base / 'target', target_is_directory=True)
+                        else:
+                            entry.write_bytes(b'keep obstruction')
+                        dest = project / 'AGENTS.md'; before = b'# Custom\n\n' + self.managed(); dest.write_bytes(before)
+                        result = self.invoke(f'process.chdir({json.dumps(str(project))}); removeInstructions("AGENTS.md");', code=None)
+                        self.assertNotEqual(result.returncode, 0)
+                        self.assertIn(str(entry).encode('utf-8'), result.stderr)
+                        self.assertEqual(dest.read_bytes(), before)
 
     def test_queue_add_captures_literal_rows_under_the_common_gitdir_lock(self):
         helper = self.package / 'config/skills/devlyn-ideate/scripts/queue.py'
@@ -3399,15 +2782,10 @@ console.log(JSON.stringify(Object.fromEntries(DEVLYN_CORE_SKILLS.map((name) =>
                 self.assertIn('CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS', notices[0])
                 for rule in allow: self.assertIn(rule, notices[0])
 
+                # The project's old principles stay for the one reviewed cleanup; upgrading never rewrites them.
                 for name in ('AGENTS.md', 'CLAUDE.md'):
                     data = (self.project / name).read_bytes()
                     self.assertTrue(data.startswith(prefix)); self.assertTrue(data.endswith(suffix))
-                    self.assertEqual(data.count(b'devlyn:instructions:begin'), 1)
-                    self.assertIn(CURRENT_DEFAULTS, data)
-                    new_block = data.split(b'<!-- devlyn:instructions:begin')[1]
-                    self.assertEqual([new_block.count(rule) for rule in CURRENT_RULES], [1, 1])
-                    for stale in (b'devlyn-resolve', b'asks to ship', b'allocated before editing'):
-                        self.assertNotIn(stale, data)
                 # Upgrading again changes nothing.
                 tree = {p: p.read_bytes() if p.is_file() else None for base in (self.project, self.home) for p in base.rglob('*')}
                 self.cli('-y'); self.cli('-y', '--global', '--claude')

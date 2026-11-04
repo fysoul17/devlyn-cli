@@ -1,7 +1,6 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { Lexer } = require('marked');
 const legacyTemplates = require('./instruction-templates.json');
 const cleanupHistory = require('./cleanup-history.json');
 
@@ -130,31 +129,6 @@ function instructionParagraphs(text) {
   return paragraphs;
 }
 
-// Recognize direct adjacent imports in Markdown text, including inline imports.
-// Leaf tokens keep code, escapes and ordinary HTML from removing our only block.
-function importsAgentsMd(text) {
-  // Match the complete native path token before dropping its optional fragment.
-  const matchesImport = (value) => [...value.matchAll(/(?:^|\s)@((?:[^\s\\]|\\ )+)/g)].some((match) => {
-    const file = match[1].split('#', 1)[0];
-    return file === 'AGENTS.md' || file === './AGENTS.md';
-  });
-  const containsImport = (tokens) => tokens.some((token) => {
-    if (['code', 'codespan'].includes(token.type)) return false;
-    if (token.type === 'html') {
-      const raw = token.raw || '';
-      // Native Claude scans text left after complete comments in a comment-shaped HTML token.
-      return raw.trimStart().startsWith('<!--') && raw.includes('-->')
-        && matchesImport(raw.replace(/<!--[\s\S]*?-->/g, ''));
-    }
-    if (token.tokens) return containsImport(token.tokens);
-    if (token.items) return containsImport(token.items);
-    return token.type === 'text' && matchesImport(token.text);
-  });
-  // Claude strips this bounded frontmatter prefix before expanding imports.
-  const body = text.replace(/^\uFEFF/, '').replace(/^---\s*\n([\s\S]*?)---\s*\n?/, '');
-  return containsImport(new Lexer({ gfm: false }).lex(body));
-}
-
 function customInstructions(text, name, template, managed = false) {
   const known = new Set([
     ...(legacyTemplates.paragraphs[name] || []),
@@ -201,6 +175,19 @@ function holdsDevlynDefaults(name, text) {
   return text.includes(BEGIN) || customInstructions(text, name, '') !== text;
 }
 
+// Whether `text` holds one whole Devlyn template without managed markers, inside owner text or alone.
+function unmarkedCopy(name, text, template) {
+  const normalized = normalize(template);
+  const bodyStart = normalized.indexOf('## North Star\n');
+  const ranges = legacyRanges(text, [
+    { length: normalized.length, sha256: digest(normalized), ...(bodyStart > 0 ? {
+      preamble: normalized.slice(0, bodyStart),
+      body: { length: normalized.length - bodyStart, sha256: digest(normalized.slice(bodyStart)) } } : {}) },
+    ...(legacyTemplates[name] || []),
+  ]);
+  return ranges.length === 1 && !LEGACY.test(text.slice(0, ranges[0].start) + ranges[0].custom + text.slice(ranges[0].end));
+}
+
 function retainFile(file, bytes) {
   for (const directory of [path.dirname(path.dirname(file)), path.dirname(file)]) {
     const stat = fs.lstatSync(directory, { throwIfNoEntry: false });
@@ -220,9 +207,9 @@ function retainFile(file, bytes) {
   }
 }
 
-// `withBlock` false removes the devlyn defaults the file holds, keeping everything else. `write` false writes nothing
-// and returns whether the file needs an update, a merge included.
-function updateInstructions(name, initial = '', withBlock = true, write = true, directory = process.cwd(), evaluatorOnly = false) {
+// Removes the devlyn defaults the file holds, keeping everything else. `write` false writes nothing and returns
+// whether the file needs the removal. `evaluatorOnly` removes only appended evaluator blocks.
+function removeInstructions(name, write = true, directory = process.cwd(), evaluatorOnly = false) {
   const projectPackage = path.join(directory, 'package.json');
   if (fs.existsSync(path.join(directory, 'bin', 'devlyn.js')) && fs.existsSync(projectPackage)
       && JSON.parse(fs.readFileSync(projectPackage, 'utf8'))?.name === 'devlyn-cli') {
@@ -248,7 +235,7 @@ function updateInstructions(name, initial = '', withBlock = true, write = true, 
     throw new InstructionError(`Instruction file must be a regular file; preserved: ${dest}. Move it aside and rerun, then merge your shared rules outside the managed block.`);
   }
   const before = exists ? fs.readFileSync(dest) : Buffer.alloc(0);
-  let current = initial;
+  let current = '';
   try {
     if (exists) current = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(before);
   } catch (cause) {
@@ -256,28 +243,10 @@ function updateInstructions(name, initial = '', withBlock = true, write = true, 
   }
   current = removeEvaluatorBlocks(current);
   const eol = current.match(/\r?\n/)?.[0] || '\n';
-  const block = managedBlock(template, eol);
-  const inserted = withBlock ? block : '';
   const recovery = path.join(directory, '.devlyn', 'instructions');
   const conflict = (reason) => {
     if (!write) return true;
-    const incoming = path.join(recovery, `${encodeURIComponent(name)}.${digest(block)}.incoming`);
-    const backup = path.join(recovery, `${encodeURIComponent(name)}.${digest(before)}.backup`);
-    const guide = path.join(recovery, `${encodeURIComponent(name)}.${digest(before)}.${digest(block)}.merge.md`);
-    retainFile(backup, before);
-    retainFile(incoming, Buffer.from(block));
-    retainFile(guide, Buffer.from(`# Merge ${name}\n\n`
-      + `Installation stopped: ${reason}. The original file is unchanged.\n\n`
-      + `- Backup before this install attempt: ${backup}\n- New Devlyn defaults: ${incoming}\n- File to update: ${dest}\n\n`
-      + `1. Compare the backup and new defaults side by side. Identify all project-specific additions and edits; do not discard them.\n`
-      + `2. Update ${name} with exactly one complete managed block from the new defaults. Keep project-specific rules outside that block; they take precedence. Resolve conflicting rules explicitly. Do not copy the new defaults over the whole file.\n`
-      + `3. Review the result, then rerun the same install command (for example, npx devlyn-cli). Other selected agents may still need installation.\n\n`
-      + `To undo this manual merge, restore that backup to ${dest}. Earlier backups are retained too.\n`));
-    throw new InstructionError(`${name} needs merge (${reason}).\n`
-      + `Original preserved: ${dest}\nBackup: ${backup}\nNew defaults: ${incoming}\n`
-      + `Merge instructions: ${guide}\n`
-      + `Keep custom rules outside the managed block, then rerun the same install command.\n`
-      + `Installation is incomplete; earlier selected agents may already have been updated.`);
+    throw new InstructionError(`${name} has ${reason}; preserved it. Remove the devlyn markers by hand, keeping your own text.`);
   };
   let content;
   if (evaluatorOnly) {
@@ -299,7 +268,7 @@ function updateInstructions(name, initial = '', withBlock = true, write = true, 
         'Project-specific instructions outside this managed block take precedence over these defaults.\n\n' + template, true);
     const after = current.slice(end.index + end[0].length);
     content = current.slice(0, start.index + (start[0].startsWith('\uFEFF') ? 1 : 0))
-      + custom + (custom ? eol : '') + inserted + after;
+      + custom + (custom ? eol : '') + after;
   } else {
     const normalized = normalize(template);
     const bodyStart = normalized.indexOf('## North Star\n');
@@ -313,10 +282,9 @@ function updateInstructions(name, initial = '', withBlock = true, write = true, 
     if (ranges.length === 1 && !LEGACY.test(current.slice(0, ranges[0].start)
         + ranges[0].custom + current.slice(ranges[0].end))) {
       const { start, end, custom } = ranges[0];
-      content = current.slice(0, start) + custom + inserted + current.slice(end);
+      content = current.slice(0, start) + custom + current.slice(end);
     } else {
-      const custom = customInstructions(current, templateName, template);
-      content = custom + (custom && inserted ? eol + eol : '') + inserted;
+      content = customInstructions(current, templateName, template);
     }
   }
   const bytes = Buffer.from(content);
@@ -334,15 +302,14 @@ function updateInstructions(name, initial = '', withBlock = true, write = true, 
     if (fs.existsSync(dest) !== exists || (exists && !fs.readFileSync(dest).equals(before))) {
       throw new InstructionError(`${name} changed during installation; preserved it. Rerun installation.`);
     }
-    if (!withBlock && content === '') fs.unlinkSync(dest);
+    if (content === '') fs.unlinkSync(dest);
     else fs.renameSync(temp, dest);
   } finally {
     if (fs.existsSync(temp)) fs.unlinkSync(temp);
   }
-  console.log(!withBlock && content === '' ? `  ✕ ${name} (removed)` : !exists ? `  → Created ${name}`
-    : `  → ${withBlock ? 'Updated Devlyn defaults in' : 'Removed Devlyn defaults from'} ${name}; project-specific instructions preserved`);
+  console.log(content === '' ? `  ✕ ${name} (removed)` : `  → Removed Devlyn defaults from ${name}; project-specific instructions preserved`);
   return true;
 }
 
-module.exports = { updateInstructions, InstructionError, instructionParagraphs, holdsDevlynDefaults, importsAgentsMd,
+module.exports = { removeInstructions, InstructionError, instructionParagraphs, holdsDevlynDefaults, unmarkedCopy,
   managedBody, managedBlock, sessionDefaults };

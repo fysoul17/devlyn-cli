@@ -3,7 +3,7 @@ name: devlyn-ideate
 description: Loop designer and intent queue. Turns an intent or a document into a validated loop package (a meta-prompt plus self-contained task contracts), queues its tasks, reports queue status, and drains the queue serially with evidence-derived acceptance, recovery and delivery. Operations — plan, add, status, drain; a bare intent is planned and, when the request authorizes implementation, continues through add and drain; no arguments shows status. Use when the user wants an idea, goal or document planned into tasks, wants to stack work ("queue this", "큐에 넣어줘"), asks what is queued, or wants unattended execution ("drain the queue", "큐 드레인 시작", "밤새 돌려줘").
 ---
 
-Ideate owns planning and durable serial execution. Each task runs under the installed methodology, the CLAUDE.md/AGENTS.md instruction block; ideate adds no phase graph, reviewer quota, engine router or restart cycle.
+Ideate owns planning and durable serial execution. Each task runs under the installed methodology, the Devlyn defaults and project instructions; ideate adds no phase graph, reviewer quota, engine router or restart cycle.
 
 <ideate_args>
 $ARGUMENTS

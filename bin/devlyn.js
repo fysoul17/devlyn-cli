@@ -10,7 +10,7 @@ const { parseTree, findNodeAtLocation, applyEdits } = require('jsonc-parser');
 const CONFIG_SOURCE = path.join(__dirname, '..', 'config');
 const OPTIONAL_SKILLS_SOURCE = path.join(__dirname, '..', 'optional-skills');
 const PKG = require('../package.json');
-const { updateInstructions, InstructionError, holdsDevlynDefaults, importsAgentsMd } = require('./instructions');
+const { removeInstructions, InstructionError, holdsDevlynDefaults, unmarkedCopy } = require('./instructions');
 const { contentHash, fingerprint, gitEnvironment, isIgnoredEntry, trackedPaths } = require('./skill-ownership');
 const SKILL_HISTORY = require('./skill-history.json');
 const CLEANUP_HISTORY = require('./cleanup-history.json');
@@ -105,18 +105,13 @@ function hasDevlynInstall(root) {
 }
 
 // A devlyn Claude install in this scope. Globally only the marker a `--global --claude` run
-// writes counts; in a project also a devlyn skill (0.6.0 and later), command (0.2-0.5) or
-// CLAUDE.md with devlyn defaults, held or imported from AGENTS.md, which a team may commit
-// while ignoring .claude/. An optional devlyn skill is not one: 4.0.1 put those into
-// .claude/skills without the Claude target. A CLAUDE.md link (often to AGENTS.md) is not the
-// Claude target's file: updateInstructions refuses links.
+// writes counts; in a project also a devlyn skill (0.6.0 and later) or command (0.2-0.5). An
+// optional devlyn skill is not one: 4.0.1 put those into .claude/skills without the Claude target.
 function hasDevlynClaude(global) {
   const claudeDir = path.dirname(skillRoots('claude', global)[0]);
   if (global) return fs.existsSync(path.join(claudeDir, 'skills', DEVLYN_INSTALL_MARKER));
   const names = (dir) => (fs.existsSync(dir) ? fs.readdirSync(dir) : []);
   const optional = new Set(OPTIONAL_ADDONS.map((addon) => addon.name));
-  const instructions = path.join(path.dirname(claudeDir), 'CLAUDE.md');
-  const claude = fs.lstatSync(instructions, { throwIfNoEntry: false })?.isFile() ? fs.readFileSync(instructions, 'utf8') : '';
   const root = path.join(claudeDir, 'skills');
   const deprecated = new Set([...deprecatedSkillPaths(root)].map((full) => path.basename(full).toLowerCase()));
   return names(root).some((name) => {
@@ -124,8 +119,7 @@ function hasDevlynClaude(global) {
     return name === DEVLYN_INSTALL_MARKER
       || (name.startsWith('devlyn') && !optional.has(name.replace(/[:\uF03A]/g, '-')));
   })
-    || names(path.join(claudeDir, 'commands')).some((name) => name.startsWith('devlyn.'))
-    || holdsDevlynDefaults('CLAUDE.md', claude) || importsAgentsDefaults(claude);
+    || names(path.join(claudeDir, 'commands')).some((name) => name.startsWith('devlyn.'));
 }
 
 // Exact Devlyn command names removed by previous versions, in either scope.
@@ -764,67 +758,19 @@ function updateProjectGitignore(markerEntry) {
 
 // With the Claude target in the same run, an AGENTS.md that links to this project's CLAUDE.md (a
 // common Claude-first setup) gets its devlyn block through CLAUDE.md. Any other link is refused.
-// AGENTS.md that is this project's CLAUDE.md under another name: a symlink to it, or the plain
-// file Git for Windows checks out in a symlink's place when core.symlinks is off (its whole
-// content is the link target). Compared by real path: a link to another hard link of CLAUDE.md
-// would go stale once CLAUDE.md is replaced.
-function agentsMdIsClaudeMd() {
-  const agents = path.join(projectDir(), 'AGENTS.md');
-  const claude = path.join(projectDir(), 'CLAUDE.md');
-  const stat = fs.lstatSync(agents, { throwIfNoEntry: false });
-  if (!stat || !fs.lstatSync(claude, { throwIfNoEntry: false })?.isFile()) return false;
-  const target = stat.isSymbolicLink() ? agents
-    : stat.isFile() && stat.size < 256 ? path.resolve(projectDir(), fs.readFileSync(agents, 'utf8'))
-      : null;
-  return target !== null && fs.existsSync(target) && fs.realpathSync.native(target) === fs.realpathSync.native(claude);
-}
-
-function installAgentsProject(withClaude, installedSkills = new Map()) {
-  if (!agentsMdIsClaudeMd()) {
-    updateInstructions('AGENTS.md');
-  } else if (withClaude) {
-    log('  → AGENTS.md is CLAUDE.md here, so it gets the devlyn block written there', 'dim');
-  } else {
-    throw new InstructionError('AGENTS.md is CLAUDE.md under another name here. Choose CLAUDE.md as well '
-      + '(npx devlyn-cli -y --claude) so the devlyn block is written once, into CLAUDE.md.');
-  }
+function installAgentsProject(installedSkills = new Map()) {
   installCoreSkills(skillRoots('agents', false)[0], installedSkills);
   updateProjectGitignore('.agents/skills/.devlyn-install.json');
 }
 
-// Whether Claude Code reads the devlyn defaults of AGENTS.md through an `@AGENTS.md` import in this CLAUDE.md text.
-// An AGENTS.md that is CLAUDE.md under another name holds CLAUDE.md's own defaults.
-function importsAgentsDefaults(claude) {
-  const agents = path.join(projectDir(), 'AGENTS.md');
-  return importsAgentsMd(claude) && !agentsMdIsClaudeMd() && fs.statSync(agents, { throwIfNoEntry: false })?.isFile() === true
-    && holdsDevlynDefaults('AGENTS.md', fs.readFileSync(agents, 'utf8'));
-}
-
-// Claude Code reads AGENTS.md only where no CLAUDE.md exists, or through a CLAUDE.md that imports it. So a new
-// CLAUDE.md imports an existing AGENTS.md, and a CLAUDE.md importing an AGENTS.md that holds devlyn defaults holds no
-// copy of its own, not even one it got while AGENTS.md lacked the block. Only the AGENTS.md target updates those defaults,
-// together with .agents/skills, so the Claude target stops while they need an update.
-function installClaudeInstructions() {
-  const file = path.join(projectDir(), 'CLAUDE.md');
-  const stat = fs.lstatSync(file, { throwIfNoEntry: false });
-  const initial = !stat && fs.statSync(path.join(projectDir(), 'AGENTS.md'), { throwIfNoEntry: false })?.isFile() ? '@AGENTS.md\n' : '';
-  const imported = importsAgentsDefaults(stat?.isFile() ? fs.readFileSync(file, 'utf8') : initial);
-  if (imported && updateInstructions('AGENTS.md', '', true, false)) {
-    throw new InstructionError('Claude Code reads AGENTS.md here, and its devlyn defaults need an update. Codex, omp, Pi and Grok '
-      + 'read them too, with .agents/skills, so choose AGENTS.md as well (npx devlyn-cli -y --claude) to update both together.');
-  }
-  updateInstructions('CLAUDE.md', initial, !imported);
-  if (imported) log('  → CLAUDE.md imports AGENTS.md, which holds the devlyn block', 'dim');
-}
-
-// Project CLAUDE.md and .claude/: skills and settings.
+// Project .claude/: skills and settings.
 function installClaudeCore(installedSkills = new Map()) {
   const skillsDir = skillRoots('claude', false)[0];
   const targetDir = path.dirname(skillsDir);
   // Read before any write, so settings this install cannot merge leave the Claude target as it was.
   const settingsPath = path.join(targetDir, 'settings.json');
   const unmergeable = (reason) => new InstructionError(`Cannot merge .claude/settings.json: ${reason}. `
-    + 'CLAUDE.md and .claude/ are unchanged; fix the file and rerun the same install command.');
+    + '.claude/ is unchanged; fix the file and rerun the same install command.');
   const settingsStat = fs.lstatSync(settingsPath, { throwIfNoEntry: false });
   if (settingsStat && !settingsStat.isFile()) throw unmergeable('not a regular file');
   let settings = {};
@@ -843,7 +789,6 @@ function installClaudeCore(installedSkills = new Map()) {
       && (!settings.env || typeof settings.env !== 'object' || Array.isArray(settings.env))) {
     throw unmergeable('env must be a JSON object');
   }
-  installClaudeInstructions();
   installCoreSkills(skillsDir, installedSkills);
   updateProjectGitignore('.claude/skills/.devlyn-install.json');
 
@@ -1073,34 +1018,32 @@ function install(targets, global, optionalNames = [], plan, afterInstall = () =>
   const home = fs.statSync(os.homedir(), { bigint: true, throwIfNoEntry: false });
   const here = fs.statSync(projectDir(), { bigint: true });
   if (!global && home?.dev === here.dev && home?.ino === here.ino) {
-    throw new InstructionError('This project is your home folder, so its CLAUDE.md, AGENTS.md and .claude/settings.json '
-      + 'would apply to every project. Run from a project folder, or use --global for skills only.');
+    throw new InstructionError('This project is your home folder, so its .claude/settings.json would apply to every project. '
+      + 'Run from a project folder, or use --global for skills only.');
   }
   const roots = targets.flatMap((target) => skillRoots(target, global));
   return withUserSkillLocks(global ? roots : [], () => {
     const installedSkills = new Map();
     if (!global) readProjectGitignore();
     plan ??= preflightSkills(roots, optionalNames);
-    // AGENTS.md first, whatever order the menu gave: a new CLAUDE.md holds the block only when AGENTS.md does not.
     for (const target of ['agents', 'claude'].filter((name) => targets.includes(name))) {
       if (global) skillRoots(target, true).forEach((root) => installCoreSkills(root, installedSkills));
-      else if (target === 'agents') installAgentsProject(targets.includes('claude'), installedSkills);
+      else if (target === 'agents') installAgentsProject(installedSkills);
       else installClaudeCore(installedSkills);
     }
     for (const name of optionalNames) installLocalSkill(name, roots, installedSkills);
     afterInstall();
     log(`\n✅ devlyn ${PKG.version} installed`, 'green');
-    if (global) log('The principles block installs per project: run npx devlyn-cli in the project without --global.');
+    log('The Devlyn app gives every session the principles; in a terminal, start with: npx devlyn-cli run <claude|codex|omp>');
     noticeGlobalDrift(roots);
-    cleanupScope(global ? os.homedir() : projectDir(), global,
-      global ? [] : targets.map((target) => target === 'agents' ? 'AGENTS.md' : 'CLAUDE.md'));
+    cleanupScope(global ? os.homedir() : projectDir(), global);
     if (!global) noticeIgnoredInstallFiles(installedSkills);
     return roots;
   });
 }
 
 // Cleanup visits existing paths in the command's scope; it never creates an install.
-function cleanupScope(base, global, activeInstructions = []) {
+function cleanupScope(base, global) {
   const warned = new Set();
   let found = false;
   const warning = (file, error) => {
@@ -1207,14 +1150,14 @@ function cleanupScope(base, global, activeInstructions = []) {
     }
   });
   const instructions = global ? [] : ['CLAUDE.md', 'AGENTS.md', 'GEMINI.md', '.cursorrules', '.windsurfrules', '.github/copilot-instructions.md'];
-  for (const name of instructions.filter((name) => !activeInstructions.includes(name))) {
+  for (const name of instructions) {
     const file = path.join(base, name);
     attempt(file, () => {
       if (!realParents(file) || !fs.lstatSync(file, { throwIfNoEntry: false })?.isFile()) return;
       const evaluatorOnly = ['CLAUDE.md', 'AGENTS.md'].includes(name);
-      if (!updateInstructions(name, '', false, false, base, evaluatorOnly)) return;
+      if (!removeInstructions(name, false, base, evaluatorOnly)) return;
       found = true;
-      updateInstructions(name, '', false, true, base, evaluatorOnly);
+      removeInstructions(name, true, base, evaluatorOnly);
     });
   }
   return found;
@@ -1360,7 +1303,7 @@ async function init({ yes, claude, global }) {
     install(targets, global);
     log('\n💡 Add optional addons later: run `npx devlyn-cli` without -y', 'dim');
     const hints = [
-      ...(targets.includes('claude') ? [] : [`${global ? '~/.claude/skills' : 'CLAUDE.md + .claude/'} for Claude Code: add --claude`]),
+      ...(targets.includes('claude') ? [] : [`${global ? '~/.claude/skills' : '.claude/'} for Claude Code: add --claude`]),
       ...(global ? [] : ['every project on this machine: add --global']),
     ];
     if (hints.length > 0) log(`   ${hints.join(' · ')}`, 'dim');
@@ -1370,8 +1313,8 @@ async function init({ yes, claude, global }) {
   }
 
   const targetOptions = [
-    { key: 'agents', name: 'AGENTS.md — Codex · omp · Pi · Grok', desc: 'AGENTS.md + .agents/skills' },
-    { key: 'claude', name: 'CLAUDE.md — Claude Code', desc: 'CLAUDE.md + .claude/ (skills, settings)' },
+    { key: 'agents', name: 'Codex · omp · Pi · Grok', desc: '.agents/skills' },
+    { key: 'claude', name: 'Claude Code', desc: '.claude/ (skills, settings)' },
   ];
   const preselected = claude || hasDevlynClaude(false) || (global && hasDevlynClaude(true)) ? [0, 1] : [0];
   const targets = (await multiSelect('What to install', targetOptions, preselected)).map((option) => option.key);
@@ -1405,10 +1348,10 @@ async function init({ yes, claude, global }) {
 function showHelp() {
   showLogo();
   log('Usage:', 'green');
-  log('  npx devlyn-cli               Install/update devlyn: choose what (AGENTS.md, CLAUDE.md) and where (this project or global)');
+  log('  npx devlyn-cli               Install/update devlyn skills: choose which agents and where (this project or global)');
   log('  npx devlyn-cli update        Update every devlyn install already here (this project and your global skill folders) to this version; installs nothing new');
-  log('  npx devlyn-cli -y            Without prompts: AGENTS.md + .agents/skills, plus CLAUDE.md + .claude/ if this project has them');
-  log('  npx devlyn-cli -y --claude   Also install CLAUDE.md + .claude/ for Claude Code');
+  log('  npx devlyn-cli -y            Without prompts: .agents/skills, plus .claude/ if this project has it');
+  log('  npx devlyn-cli -y --claude   Also install .claude/ for Claude Code');
   log('  npx devlyn-cli -y --global   Skills only, for every project on this machine (~/.agents/skills, ~/.codex/skills; ~/.claude/skills with --claude, or when it already has a devlyn install)');
   log('  npx devlyn-cli list          List available skills');
   log('  npx devlyn-cli run <engine>  Start claude, codex or omp in this terminal with the devlyn principles and skills');
@@ -1705,8 +1648,9 @@ function cleanupProjectFiles(base, includedHooks = new Set(), callerBase = base)
   return items;
 }
 
-// An intact managed block from an earlier release is brought up to date; owner text around it stays
-// byte-for-byte (updateInstructions). A current block is the team's principles and stays.
+// The release gives each session the principles (docs/harness-run.md), so an intact copy in a project
+// file is removed, owner text around it kept byte-for-byte (removeInstructions). A copy someone
+// edited stays exactly as it is: only recognized content is ever removed.
 function cleanupInstructions(base) {
   const { inspectInstruction } = require('./harness-status');
   const items = [];
@@ -1717,10 +1661,12 @@ function cleanupInstructions(base) {
     let text;
     try { text = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(fs.readFileSync(file)); }
     catch { continue; }
-    if (!/<!-- devlyn:instructions:begin sha256=/.test(text)) continue;
     const template = fs.readFileSync(path.join(CONFIG_SOURCE, '..', name), 'utf8');
-    if (inspectInstruction(text, template, name).ownership === 'outdated') {
-      items.push({ kind: 'instructions', path: file, base, action: 'edit', reasons: [] });
+    const { ownership } = inspectInstruction(text, template, name);
+    if (ownership === 'current' || ownership === 'outdated' || (ownership === 'unowned' && unmarkedCopy(name, text, template))) {
+      items.push({ kind: 'instructions', path: file, base, action: 'remove', reasons: [] });
+    } else if (ownership === 'modified' || holdsDevlynDefaults(name, text)) {
+      items.push({ kind: 'instructions', path: file, base, action: 'skip', reasons: [cleanupReason('modified-copy')] });
     }
   }
   return items;
@@ -2072,6 +2018,11 @@ function cleanupValidateItem(item) {
 function cleanupApplyItem(item) {
   const invalid = cleanupValidateItem(item);
   if (invalid) return invalid;
+  // Before the generic removal: only the proven copy goes, never the owner's file.
+  if (item.kind === 'instructions') {
+    removeInstructions(path.basename(item.path), true, path.dirname(item.path));
+    return null;
+  }
   if (cleanupAction(item) === 'remove') {
     if (item.kind === 'legacy-hook') {
       const { safe, settings } = cleanupReadSettings(item.base);
@@ -2086,10 +2037,6 @@ function cleanupApplyItem(item) {
     const after = cleanupSettingsText(text, settings, item.hookScripts);
     if (after === null) fs.unlinkSync(item.path);
     else if (after !== text) replaceFile(item.path, after);
-    return null;
-  }
-  if (item.kind === 'instructions') {
-    updateInstructions(path.basename(item.path), '', true, true, path.dirname(item.path));
     return null;
   }
   return cleanupReason('unknown-item');
@@ -2170,7 +2117,7 @@ function cleanupSupport(item) {
 }
 
 function cleanupCanInclude(item) {
-  return !cleanupSupport(item) && item.action === 'skip'
+  return !cleanupSupport(item) && item.kind !== 'instructions' && item.action === 'skip'
     && item.reasons.length === 1 && item.reasons[0].code === 'modified-copy';
 }
 
@@ -2392,7 +2339,7 @@ function cleanupDeliveryCommit(worktree, items, current, release, scope, base) {
   }
   const add = cleanupGit(worktree, ['add', '-u', '--', ...applied]);
   const commit = add.status === 0 && cleanupGit(worktree, ['-c', 'user.useConfigOnly=true', 'commit', '-q', '-m',
-    `chore(devlyn): remove legacy devlyn-cli copies\n\nDevlyn now delivers devlyn-cli ${PKG.version} to each session it starts, so the copies earlier\ninstalls committed here are no longer used. The managed principles block stays for teammates.`]);
+    `chore(devlyn): remove legacy devlyn-cli copies\n\nDevlyn now delivers devlyn-cli ${PKG.version} to each session it starts, so the copies earlier\ninstalls committed here, the principles block included, are no longer used.`]);
   if (!commit || commit.status !== 0) return release(cleanupReason('delivery-failed', { detail: (commit || add).stderr.trim() }));
   // This check must observe the committed delivery worktree, not project the still-unclean remote.
   const inputs = { machine: false, projects: [worktree], accountHomes: [] };

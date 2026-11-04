@@ -24,11 +24,11 @@ is non-interactive and times out after 30 seconds; failure does not fail the pla
 
 Removed: core skills byte-identical to a shipped copy and their renamed forms, retired
 skills and standard copies, the install marker and `_shared` only when no devlyn skill stays
-beside them, retired `.claude/commands` and files matching a shipped hash. Edited: the
-retired Stop hook in `.claude/settings.json`, and an intact managed instruction block from an
-earlier release, brought up to date with owner text around it kept byte-for-byte. A current
-block is the team's principles and stays. Skipped, with a reason: modified copies
-(`modified-copy`), optional add-ons (`optional-skill`), links out of the scope or through
+beside them, retired `.claude/commands`, files matching a shipped hash, and an intact copy of
+the principles in `CLAUDE.md` or `AGENTS.md`, with owner text around it kept byte-for-byte; a
+file that held only the copy is deleted. Edited: the retired Stop hook in
+`.claude/settings.json`. Skipped, with a reason: modified copies (`modified-copy`; an edited
+principle copy cannot be included), optional add-ons (`optional-skill`), links out of the scope or through
 another link (`outside-link`), occupied install locks (`occupied-lock`), roots a running process names
 (`in-use`), a project with active queue tasks (`legacy-queue`) or an unreadable queue
 (`queue-unreadable`), devlyn-cli's own repository (`source-repository`), the home folder as a

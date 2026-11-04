@@ -1,7 +1,7 @@
 {
   "name": "devlyn-cli",
   "version": "4.3.25",
-  "description": "Loop & harness engineering for AI coding agents (Claude Code, Codex, and any AGENTS.md-driven agent) — core engineering principles for CLAUDE.md/AGENTS.md and a loop designer that splits one intent into tasks agents drain hands-free",
+  "description": "Loop & harness engineering for AI coding agents (Claude Code, Codex, and any AGENTS.md-driven agent) — core engineering principles for every session and a loop designer that splits one intent into tasks agents drain hands-free",
   "homepage": "https://github.com/fysoul17/devlyn-cli#readme",
   "bin": {
     "devlyn": "bin/devlyn.js"
