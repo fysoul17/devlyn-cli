@@ -2351,6 +2351,9 @@ console.log(JSON.stringify(Object.fromEntries(DEVLYN_CORE_SKILLS.map((name) =>
                      b'\xef\xbb\xbf```markdown\n' + self.managed() + b'```\n',
                      b'<details\n open>\n\n' + self.managed() + b'\n</details>\n',
                      b'<div></div><details>\n\n' + self.managed() + b'\n</details>\n',
+                     b'```Use `npm install` for setup.```\n\n```\n' + self.managed() + b'```\n',
+                     b'<![CDATA[\n' + self.managed() + b']]>\n',
+                     b'<pre>\n\n' + self.managed() + b'</pre>\n',
                      re.sub(rb'^(# [^\n]+\n\n).*?\n\n', rb'\1Our project owns these instructions.\n\n', stock, count=1, flags=re.S)]
         dest = self.project / 'AGENTS.md'
         for before in examples:
@@ -2361,10 +2364,13 @@ console.log(JSON.stringify(Object.fromEntries(DEVLYN_CORE_SKILLS.map((name) =>
 
     def test_instruction_removal_is_not_stopped_by_closed_or_stray_markup_around_a_block(self):
         dest = self.project / 'AGENTS.md'
-        prefix, suffix = b'Run `make <target>` on <branch>.\n\n<details>\nNotes\n</details>\n\n', b'\n<kbd>K</kbd>\n'
-        dest.write_bytes(prefix + self.managed() + suffix)
-        self.invoke("removeInstructions('AGENTS.md');")
-        self.assertEqual(dest.read_bytes(), prefix + suffix)
+        section = b'<details>\nNotes\n</details>\n\n'
+        prefix = b'<img src="logo.png">\n\nRun `make <target>` on <branch>.\n\n' + section
+        for suffix in (b'\n' + section, b'\n<kbd>K</kbd>\n', b'\n</details>\n'):
+            with self.subTest(suffix=suffix):
+                dest.write_bytes(prefix + self.managed() + suffix)
+                self.invoke("removeInstructions('AGENTS.md');")
+                self.assertEqual(dest.read_bytes(), prefix + suffix)
 
     def test_instruction_markers_that_do_not_add_up_stay_as_they_are(self):
         dest = self.project / 'AGENTS.md'

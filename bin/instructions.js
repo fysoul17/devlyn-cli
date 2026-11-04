@@ -1,12 +1,14 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const { Lexer } = require('marked');
 const legacyTemplates = require('./instruction-templates.json');
 const cleanupHistory = require('./cleanup-history.json');
 
 const BEGIN = '<!-- devlyn:instructions:begin';
 const END = '<!-- devlyn:instructions:end -->';
 const LEGACY = /^devlyn-cli installs |^# Devlyn Agent Instructions\r?$|^This contract serves one goal: any capable engine|^Engine roles: orchestrator =/m;
+const VOID_ELEMENT = /^(?:area|base|br|col|embed|hr|img|input|link|meta|param|source|track|wbr)$/i;
 const normalize = (text) => text.replace(/\r\n/g, '\n');
 const digest = (text) => crypto.createHash('sha256').update(text).digest('hex');
 
@@ -56,10 +58,6 @@ function legacyRanges(text, templates) {
 // Matching includes the heading path, so the same words in another section
 // are not evidence that Devlyn owns them.
 function instructionParagraphs(text) {
-  return scanInstructions(text).paragraphs;
-}
-
-function scanInstructions(text) {
   const paragraphs = [];
   let pending = '', fence = null, comment = false, html = null, start = 0;
   const flush = () => {
@@ -87,7 +85,7 @@ function scanInstructions(text) {
       if (!comment) markup += line.slice(cursor);
       const opening = /^ {0,3}<([a-z][\w:-]*)\b[^>]*>/i.exec(markup);
       if (!html && opening && !/\/>$/.test(opening[0])
-          && !/^(?:area|base|br|col|embed|hr|img|input|link|meta|param|source|track|wbr)$/i.test(opening[1])) {
+          && !VOID_ELEMENT.test(opening[1])) {
         html = { tag: opening[1].toLowerCase(), depth: 0 };
       }
       if (html) {
@@ -112,7 +110,7 @@ function scanInstructions(text) {
     paragraph.key = digest(JSON.stringify([headings.map((h) => h.title), value]));
     if (heading) headings.push({ level: paragraph.level, title: value, index });
   }
-  return { paragraphs, quoting: Boolean(fence || comment || html) };
+  return paragraphs;
 }
 
 function customInstructions(text, name) {
@@ -158,12 +156,20 @@ function holdsDevlynDefaults(name, text) {
   return text.includes(BEGIN) || customInstructions(text, name) !== text;
 }
 
-// An example quotes a block: the text before it leaves a fence or comment open, or an element
-// opened before it closes after it. An owner's stray tag can only keep a block, never lose text.
-function quoted(before, after) {
-  if (scanInstructions(before.replace(/^\uFEFF/, '')).quoting) return true;
-  const opened = before.toLowerCase();
-  return [...after.matchAll(/<\/([a-z][\w:-]*)/gi)].some(([, tag]) => opened.includes(`<${tag.toLowerCase()}`));
+// An example quotes a block: Markdown reads its marker as part of something else, or an element
+// opened before it is still open. An owner's stray tag can only keep a block, never lose text.
+function quoted(text) {
+  const open = new Map();
+  for (const token of new Lexer({ gfm: false }).lex(normalize(text.replace(/^\uFEFF/, '')))) {
+    if (token.type !== 'html') continue;
+    if (token.raw.startsWith(BEGIN)) return [...open.values()].some((depth) => depth > 0);
+    for (const [tag, close, element] of token.raw.matchAll(/<(\/?)([a-z][\w:-]*)\b[^>]*>/gi)) {
+      if (tag.endsWith('/>') || VOID_ELEMENT.test(element)) continue;
+      const name = element.toLowerCase();
+      open.set(name, (open.get(name) || 0) + (close ? -1 : 1));
+    }
+  }
+  return true;
 }
 
 // The range a release provably wrote, or null: one block whose bytes still match its own digest
@@ -174,9 +180,9 @@ function devlynCopy(name, text, template) {
     const ends = [...text.matchAll(/^<!-- devlyn:instructions:end -->(?:\r?\n|$)/gm)];
     if (starts.length !== 1 || ends.length !== 1 || text.split(BEGIN).length !== 2 || text.split(END).length !== 2) return null;
     const [start] = starts, [end] = ends;
-    const body = start.index + start[0].length, first = start.index + start[1].length, last = end.index + end[0].length;
-    if (end.index < body || digest(normalize(text.slice(body, end.index))) !== start[2]) return null;
-    return quoted(text.slice(0, first), text.slice(last)) ? null : { start: first, end: last };
+    const body = start.index + start[0].length;
+    if (end.index < body || digest(normalize(text.slice(body, end.index))) !== start[2] || quoted(text)) return null;
+    return { start: start.index + start[1].length, end: end.index + end[0].length };
   }
   const normalized = normalize(template);
   const ranges = legacyRanges(text, [{ length: normalized.length, sha256: digest(normalized) }, ...(legacyTemplates[name] || [])]);
