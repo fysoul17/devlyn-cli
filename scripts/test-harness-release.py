@@ -447,18 +447,24 @@ assert.deepEqual(fs.readdirSync(path.join(store, 'devlyn-cli')), []);
             self.assertEqual((data['ownership'], data['committed']), (expected, False))
 
     def test_previous_managed_instructions_are_outdated_and_cleanup_preserves_owner_bytes(self):
-        # Prediction: intact 4.2.x/4.3.x blocks are outdated; cleanup replaces only their managed bytes.
-        repo = self.init_repo(self.case / 'repo')
-        home = self.case / 'home'
+        # Prediction: intact 4.2.0-4.3.20 and 4.3.21 blocks are outdated; cleanup replaces only their managed bytes.
+        for commit, digest in (('c903a9c8', '4823ba898cdf99ce24366a3d1983af63cdb14d2e1b95b5bdafea49097f457ff5'),
+                               ('f8597c46', '7d559f330bb426022b8166e0a0cbb77d25ca8d204d3ca6c1f4fbcb18c3963626')):
+            with self.subTest(commit=commit):
+                self.assert_previous_block_upgrades(self.case / commit, commit, digest)
+
+    def assert_previous_block_upgrades(self, case, commit, digest):
+        case.mkdir()
+        repo = self.init_repo(case / 'repo')
+        home = case / 'home'
         home.mkdir()
         env = {**environment(), 'HOME': str(home), 'USERPROFILE': str(home),
                'CODEX_HOME': str(home / '.codex')}
         prefix = '\ufeff# Owner rules\r\n\r\nKeep 한글 and spacing.  \r\n\r\n'.encode()
         suffix = b'\n# Local footer\nKeep this exact tail.  '
         for name in ('AGENTS.md', 'CLAUDE.md'):
-            template = run(['git', 'show', f'c903a9c8:{name}'], cwd=ROOT).stdout.replace(b'\r\n', b'\n')
-            self.assertEqual(hashlib.sha256(template).hexdigest(),
-                             '4823ba898cdf99ce24366a3d1983af63cdb14d2e1b95b5bdafea49097f457ff5')
+            template = run(['git', 'show', f'{commit}:{name}'], cwd=ROOT).stdout.replace(b'\r\n', b'\n')
+            self.assertEqual(hashlib.sha256(template).hexdigest(), digest)
             body = (b'Project-specific instructions outside this managed block take precedence over these defaults.\n\n'
                     + template.rstrip(b'\n') + b'\n')
             block = (b'<!-- devlyn:instructions:begin sha256=' + hashlib.sha256(body).hexdigest().encode()
@@ -470,7 +476,7 @@ assert.deepEqual(fs.readdirSync(path.join(store, 'devlyn-cli')), []);
         items = plan['scopes'][0]['items']
         self.assertEqual(sorted((item['relative'], item['action']) for item in items),
                          [('AGENTS.md', 'edit'), ('CLAUDE.md', 'edit')])
-        plan_file = self.case / 'plan.json'
+        plan_file = case / 'plan.json'
         plan_file.write_text(json.dumps(plan), encoding='utf-8')
         result = self.cli('cleanup', '--apply', '--plan-file', plan_file, '--digest', plan['digest'], env=env)
         self.assertEqual(result['state'], 'succeeded')
