@@ -51,6 +51,10 @@ intent  →  direct work under the installed principles, or an ideate loop  → 
 
 Non-Claude agents (Codex / omp / Pi / Grok): the AGENTS.md choice installs the skills for them. In Codex / omp / Pi, use `$devlyn-ideate`; in Grok, use `/devlyn-ideate`, the same slash-command form as Claude Code. A drain from Pi or Grok needs [a pinned executor](#executor--devlyn-engines).
 
+### Terminal sessions — `devlyn run`
+
+`devlyn run claude`, `devlyn run codex` or `devlyn run omp` starts the engine in this terminal with the same principles and skills the Devlyn app delivers, from the selected release. Arguments after the engine name go to the engine. See [docs/harness-run.md](docs/harness-run.md).
+
 ### Plan and drain loops — `/devlyn-ideate`
 
 Give ideate an intent or a document. It writes a loop package — a meta-prompt plus self-contained task contracts with mechanical acceptance — and agents drain the tasks one by one without you.

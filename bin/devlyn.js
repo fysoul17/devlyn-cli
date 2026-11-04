@@ -1411,6 +1411,7 @@ function showHelp() {
   log('  npx devlyn-cli -y --claude   Also install CLAUDE.md + .claude/ for Claude Code');
   log('  npx devlyn-cli -y --global   Skills only, for every project on this machine (~/.agents/skills, ~/.codex/skills; ~/.claude/skills with --claude, or when it already has a devlyn install)');
   log('  npx devlyn-cli list          List available skills');
+  log('  npx devlyn-cli run <engine>  Start claude, codex or omp in this terminal with the devlyn principles and skills');
   log('  npx devlyn-cli --help        Show this help\n');
   log('Optional skills (select during install):', 'green');
   OPTIONAL_ADDONS.filter((a) => a.type === 'local').forEach((skill) => {
@@ -2527,6 +2528,9 @@ async function main() {
 const command = args[0];
 
 switch (command) {
+  case 'run':
+    await require('./harness-run').runMain(args.slice(1));
+    break;
   case 'cleanup':
     require('./release').runJson(() => cleanupCommand(args.slice(1)));
     break;
