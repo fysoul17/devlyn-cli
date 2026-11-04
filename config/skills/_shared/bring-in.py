@@ -120,17 +120,18 @@ class Policy:
     sign: str | None = None
     log: list[str] = field(default_factory=list)
     options: list[str] = field(default_factory=list)
+    option_source: str = "branch.<name>.mergeOptions"
     strategies: list[tuple[str, str]] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
 
 
 def read_policy(git, branch, ff_only):
-    policy = Policy()
+    policy = Policy(option_source=f"branch.{branch}.mergeOptions")
     ff = git.config("merge.ff")
     policy.ff = "only" if ff == "only" else (git.config("merge.ff", "bool") or "true")
     policy.verify = git.config("merge.verifySignatures", "bool") == "true"
     policy.sign = "" if git.config("commit.gpgSign", "bool") == "true" else None
-    setting = f"branch.{branch}.mergeOptions"
+    setting = policy.option_source
     try:
         tokens = merge_tokens(git.config(setting) or "")
     except Refused as exc:
@@ -197,14 +198,28 @@ def merge_name(git, target, commit):
     raise Refused(f"Cannot reproduce Git's merge message for target {target!r}; use a branch or commit ID, or run the merge yourself.")
 
 
+def parse_git_version(version):
+    match = re.match(r"git version (\d+)\.(\d+)(?:\.\d+)?\b", version)
+    if not match:
+        raise Refused(f"Cannot determine Git version from {version!r}; update Git or merge it yourself.")
+    return tuple(map(int, match.groups()))
+
+
+def check_git_version(version):
+    if parse_git_version(version) < (2, 31):
+        raise Refused(f"Bringing in a branch needs Git 2.31 or newer (found {version}). Update Git, or merge it yourself.")
+
+
 def check_preparation(policy, version):
     if policy.errors:
         raise Refused("; ".join(policy.errors) + "; unset the setting or run the merge yourself.")
-    match = re.search(r"(\d+)\.(\d+)", version)
-    if not match or tuple(map(int, match.groups())) < (2, 43):
-        raise Refused(f"Preparing a merge requires Git >= 2.43; found {version}.")
+    number = parse_git_version(version)
+    if number < (2, 38):
+        raise Refused(f"Preparing a merge commit needs Git 2.38 or newer (found {version}). Update Git, or merge it yourself.")
+    if policy.options and number < (2, 43):
+        raise Refused(f"{policy.option_source}: -X needs Git 2.43 or newer (found {version}); update Git, or unset the setting.")
     for source, strategy in policy.strategies:
-        if strategy not in ("ort", "recursive") or (strategy == "recursive" and tuple(map(int, match.groups())) < (2, 50)):
+        if strategy not in ("ort", "recursive") or (strategy == "recursive" and number < (2, 50)):
             raise Refused(f"{source}: unsupported strategy {strategy!r} with {version}; unset the setting or run the merge yourself.")
 
 
@@ -265,6 +280,7 @@ def bring_in(args):
     git = Git(args.repo)
     before = None
     try:
+        check_git_version(git.text("--version"))
         if git.text("rev-parse", "--is-inside-work-tree") != "true":
             raise Refused(f"{git.repo} is not a work tree.")
         git.repo = Path(git.text("rev-parse", "--show-toplevel")).resolve()
@@ -366,7 +382,7 @@ class BringInTests(unittest.TestCase):
     def commit(self, name, content):
         path = self.repo / name
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(content, encoding="utf-8")
+        path.write_bytes(content.encode("utf-8"))
         self.g("add", "--", name)
         self.g("commit", "-qm", "add " + name)
 
@@ -396,7 +412,7 @@ class BringInTests(unittest.TestCase):
 
     def hook(self, name, body):
         path = self.repo / ".git/hooks" / name
-        path.write_text("#!/bin/sh\n" + body, encoding="utf-8", newline="\n")
+        path.write_bytes(("#!/bin/sh\n" + body).encode("utf-8"))
         path.chmod(0o755)
 
     def test_fast_forward_and_paths_with_spaces(self):
@@ -424,7 +440,7 @@ class BringInTests(unittest.TestCase):
     def test_fast_forward_collisions(self):
         for content in (b"owner bytes\n", b"delivered\n"):
             with self.subTest(content=content):
-                (self.repo / ".git/info/exclude").write_text("delivered\n", encoding="utf-8")
+                (self.repo / ".git/info/exclude").write_bytes(b"delivered\n")
                 (self.repo / "delivered").write_bytes(content)
                 result = self.refused()
                 self.assertIn(b"git merge failed", result.stderr)
@@ -434,7 +450,7 @@ class BringInTests(unittest.TestCase):
         self.diverge()
         for content in (b"owner bytes\n", b"delivered\n"):
             with self.subTest(content=content):
-                (self.repo / ".git/info/exclude").write_text("delivered\n", encoding="utf-8")
+                (self.repo / ".git/info/exclude").write_bytes(b"delivered\n")
                 (self.repo / "delivered").write_bytes(content)
                 self.refused()
                 self.assertEqual((self.repo / "delivered").read_bytes(), content)
@@ -447,7 +463,7 @@ class BringInTests(unittest.TestCase):
         self.commit("d", "delivered file\n")
         self.g("checkout", "-q", "main")
         self.diverge()
-        (self.repo / ".git/info/exclude").write_text("d/secret\n", encoding="utf-8")
+        (self.repo / ".git/info/exclude").write_bytes(b"d/secret\n")
         (self.repo / "d/secret").write_bytes(b"owner secret\x00")
         self.refused()
         self.assertEqual((self.repo / "d/secret").read_bytes(), b"owner secret\x00")
@@ -545,16 +561,20 @@ class BringInTests(unittest.TestCase):
                 self.refused(phrase=b"branch.main.mergeOptions")
 
     def test_strategy_option_and_quoting(self):
+        # Prediction: -X is honored from 2.43 onward and explicitly refused on older Git.
         self.g("checkout", "-q", "topic")
         self.commit("base", "base  \n")
         self.g("checkout", "-q", "main")
         self.commit("base", "owner change\n")
         self.g("config", "branch.main.mergeOptions", '-s ort -X "ignore-space-change"')
+        self.assertEqual(merge_tokens(r'''-X "a\b" 'c\d' a\ b'''), ["-X", "ab", "c\\d", "a b"])
+        if parse_git_version(self.g("--version").decode()) < (2, 43):
+            self.refused(phrase=b"branch.main.mergeOptions: -X needs Git 2.43 or newer")
+            return
         expected = self.native_message("topic")
         self.cli()
         self.assertEqual((self.repo / "base").read_bytes(), b"owner change\n")
         self.assertEqual(self.message(), expected)
-        self.assertEqual(merge_tokens(r'''-X "a\b" 'c\d' a\ b'''), ["-X", "ab", "c\\d", "a b"])
 
     def test_fast_forward_cannot_be_hijacked(self):
         for setting, value in (("pull.twohead", "ours"), ("branch.main.mergeOptions", "-s ours"),
@@ -564,7 +584,7 @@ class BringInTests(unittest.TestCase):
                 self.cli()
                 self.assertEqual(self.g("rev-parse", "HEAD").strip(), self.target)
                 self.g("reset", "--hard", self.base.decode())
-                (self.repo / ".git/info/exclude").write_text("delivered\n", encoding="utf-8")
+                (self.repo / ".git/info/exclude").write_bytes(b"delivered\n")
                 (self.repo / "delivered").write_bytes(b"owner\n")
                 self.refused()
                 self.assertEqual((self.repo / "delivered").read_bytes(), b"owner\n")
@@ -597,7 +617,7 @@ class BringInTests(unittest.TestCase):
     def test_signing_failure(self):
         self.diverge()
         program = self.root / "fail-sign"
-        program.write_text("#!/bin/sh\nexit 1\n", encoding="utf-8", newline="\n")
+        program.write_bytes(b"#!/bin/sh\nexit 1\n")
         program.chmod(0o755)
         self.g("config", "commit.gpgSign", "true")
         self.g("config", "gpg.program", str(program))
@@ -710,8 +730,8 @@ class BringInTests(unittest.TestCase):
                 self.assertEqual((self.repo / "delivered").read_bytes(), b"delivered\n")
                 self.g("reset", "--hard", self.base.decode())
 
-    def test_recursive_preparation_requires_git_250_and_preserves_243_floor(self):
-        # Prediction: recursive is ort only since 2.50; preparation still requires 2.43.
+    def test_recursive_preparation_requires_git_250(self):
+        # Prediction: recursive refuses before 2.50, when it became an alias for ort.
         for source in ("branch.main.mergeOptions", "pull.twohead"):
             self.g("config", source, "-s recursive" if source.startswith("branch.") else "recursive")
             policy = read_policy(Git(self.repo), "main", False)
@@ -723,9 +743,66 @@ class BringInTests(unittest.TestCase):
                     self.assertIn(version, str(refused.exception))
             check_preparation(policy, "git version 2.50.0")
             self.g("config", "--unset", source)
-        check_preparation(Policy(), "git version 2.43.0")
-        with self.assertRaisesRegex(Refused, "Git >= 2.43"):
-            check_preparation(Policy(), "git version 2.42.9")
+
+    def test_preparation_feature_floors(self):
+        # Prediction: plain preparation needs 2.38; only configured -X raises that to 2.43.
+        for ff in ("true", "false"):
+            with self.subTest(ff=ff):
+                with self.assertRaisesRegex(Refused, r"Preparing a merge commit needs Git 2.38 or newer \(found git version 2.37.0\)"):
+                    check_preparation(Policy(ff=ff), "git version 2.37.0")
+        check_preparation(Policy(), "git version 2.38.0")
+        check_preparation(Policy(), "git version 2.39.5")
+        policy = Policy(options=["-X", "ours"], option_source="branch.main.mergeOptions")
+        with self.assertRaisesRegex(Refused, r"branch.main.mergeOptions: -X needs Git 2.43 or newer \(found git version 2.39.5\)"):
+            check_preparation(policy, "git version 2.39.5")
+        check_preparation(policy, "git version 2.43.0")
+
+    def test_rename_settings_match_native_merge(self):
+        # Prediction: on the same Git, both fixtures conflict like native merge or land its tree.
+        for fixture in ("file", "directory"):
+            self.g("reset", "--hard", self.base.decode())
+            self.commit("original/file", "original content\n")
+            self.g("branch", "-f", "topic", "HEAD")
+            self.g("checkout", "-q", "topic")
+            self.g("mv", "original/file" if fixture == "file" else "original", "renamed")
+            self.g("commit", "-qm", "rename " + fixture)
+            self.g("checkout", "-q", "main")
+            self.commit("original/file" if fixture == "file" else "original/new", "owner content\n")
+            head = self.g("rev-parse", "HEAD").strip().decode()
+            for setting in ("merge.renames", "merge.directoryRenames"):
+                with self.subTest(fixture=fixture, setting=setting):
+                    self.g("reset", "--hard", head)
+                    self.g("config", setting, "false")
+                    with tempfile.TemporaryDirectory(prefix="native rename copy ", dir=self.root) as directory:
+                        twin = Path(directory) / "repo"
+                        shutil.copytree(self.repo, twin)
+                        native = subprocess.run(["git", "-C", str(twin), "merge", "--no-edit", "topic"],
+                                                env=self.env, capture_output=True)
+                        self.assertIn(native.returncode, (0, 1),
+                                      (native.stdout + native.stderr).decode("utf-8", errors="replace"))
+                        if native.returncode == 1:
+                            self.assertTrue(self.g("ls-files", "--unmerged", repo=twin))
+                            self.refused(phrase=b"Merge conflicts:")
+                        else:
+                            self.cli()
+                            self.assertEqual(self.g("rev-parse", "HEAD^{tree}"),
+                                             self.g("rev-parse", "HEAD^{tree}", repo=twin))
+                    self.g("config", "--unset", setting)
+
+    def test_git_version_suffixes_and_early_floor(self):
+        # Prediction: vendor suffixes parse; Git 2.30 refuses before any repository work.
+        for version, expected in (("git version 2.50.1 (Apple Git-155)", (2, 50)),
+                                  ("git version 2.47.1.windows.1", (2, 47)),
+                                  ("git version 2.31.0", (2, 31))):
+            with self.subTest(version=version):
+                self.assertEqual(parse_git_version(version), expected)
+                check_git_version(version)
+        with self.assertRaisesRegex(Refused, r"needs Git 2.31 or newer \(found git version 2.30.9\)"):
+            check_git_version("git version 2.30.9")
+        with patch.object(Git, "text", return_value="git version 2.30.9") as text, \
+                patch("sys.stderr"):
+            self.assertEqual(bring_in(argparse.Namespace(repo=self.repo)), 1)
+            text.assert_called_once_with("--version")
 
 
 if __name__ == "__main__":
