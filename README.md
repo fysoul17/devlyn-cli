@@ -29,13 +29,13 @@ npx devlyn-cli
 
 That's it. The installer asks:
 
-1. **What** — `AGENTS.md — Codex · omp · Pi · Grok` (checked) and `CLAUDE.md — Claude Code` (checked when this project already has a devlyn Claude install). Space toggles, Enter confirms.
+1. **What** — `Codex · omp · Pi · Grok` (checked) and `Claude Code` (checked when this project already has a devlyn Claude install). Space toggles, Enter confirms.
 2. **Where** — `This project` (default) or `Global — every project on this machine`.
-3. **Optional skills & packs** — none checked; see [Optional Add-ons](#optional-add-ons) below. MCP servers are offered only with CLAUDE.md.
+3. **Optional skills & packs** — none checked; see [Optional Add-ons](#optional-add-ons) below. MCP servers are offered only with Claude Code.
 
-In a project, AGENTS.md readers load the skills from `.agents/skills/`; Claude Code loads only `.claude/skills/` and reads AGENTS.md when the project has no CLAUDE.md; a CLAUDE.md the installer creates imports an existing AGENTS.md (`@AGENTS.md`). Global installs skills only: `~/.agents/skills/` (omp, Pi, Grok) and `~/.codex/skills/` (Codex), plus `~/.claude/skills/` for Claude Code. Every target gets the `devlyn-ideate` skill and the `devlyn-engines` utility. In Codex / omp / Pi, invoke them as skills (`$devlyn-ideate`); in Claude Code and Grok they're slash commands (`/devlyn-ideate`). Rerunning refreshes skills and the managed instruction block while preserving project rules outside it. See [Migration from earlier versions](#migration-from-earlier-versions) for legacy migration and merge recovery.
+In a project, Codex, omp, Pi and Grok load the skills from `.agents/skills/`; Claude Code loads only `.claude/skills/`. The installer never writes `CLAUDE.md` or `AGENTS.md`: those files stay yours. Global installs skills only: `~/.agents/skills/` (omp, Pi, Grok) and `~/.codex/skills/` (Codex), plus `~/.claude/skills/` for Claude Code. Every target gets the `devlyn-ideate` skill and the `devlyn-engines` utility. In Codex / omp / Pi, invoke them as skills (`$devlyn-ideate`); in Claude Code and Grok they're slash commands (`/devlyn-ideate`). Rerunning refreshes skills. See [Migration from earlier versions](#migration-from-earlier-versions) for projects that carry an earlier copy of the principles.
 
-Without prompts, `npx devlyn-cli -y` installs AGENTS.md + `.agents/skills/` plus every target this project already has; add `--claude` for Claude Code. With `--global` it installs for every project on this machine, plus `~/.claude/skills/` with `--claude` or when it already has a devlyn install. The installer leaves Git to you: it prints no commit guidance after a project install or update. When Git ignores some, but not all, files of an installed skill folder, it prints one line with their count and an example ignore rule.
+Without prompts, `npx devlyn-cli -y` installs `.agents/skills/` plus every target this project already has; add `--claude` for Claude Code. With `--global` it installs for every project on this machine, plus `~/.claude/skills/` with `--claude` or when it already has a devlyn install. The installer leaves Git to you: it prints no commit guidance after a project install or update. When Git ignores some, but not all, files of an installed skill folder, it prints one line with their count and an example ignore rule.
 
 `npx devlyn-cli update` — Update every devlyn install already here (this project and your global skill folders) to this version; installs nothing new.
 
@@ -43,13 +43,13 @@ Without prompts, `npx devlyn-cli -y` installs AGENTS.md + `.agents/skills/` plus
 
 ## How It Works — Principles and Loops
 
-The managed `CLAUDE.md` / `AGENTS.md` block carries the North Star, seven principles (no workaround, no overengineering, no guesswork, worldclass, best practice, optimized, production ready) and three discipline rules, plus short pointers to the skills. Agents do the work directly under it; for work that splits into tasks, ideate designs a loop and drains it:
+The Devlyn defaults carry the North Star, seven principles (no workaround, no overengineering, no guesswork, worldclass, best practice, optimized, production ready) and three discipline rules, plus short pointers to the skills. Each session gets them from the release, through the Devlyn app or `devlyn run`, so projects hold no copy and a new release reaches every project at once. A clone without either gets no Devlyn defaults. Agents do the work directly under them; for work that splits into tasks, ideate designs a loop and drains it:
 
 ```
 intent  →  direct work under the installed principles, or an ideate loop  →  ship
 ```
 
-Non-Claude agents (Codex / omp / Pi / Grok): the AGENTS.md choice installs the skills for them. In Codex / omp / Pi, use `$devlyn-ideate`; in Grok, use `/devlyn-ideate`, the same slash-command form as Claude Code. A drain from Pi or Grok needs [a pinned executor](#executor--devlyn-engines).
+Non-Claude agents (Codex / omp / Pi / Grok): the default choice installs the skills for them. In Codex / omp / Pi, use `$devlyn-ideate`; in Grok, use `/devlyn-ideate`, the same slash-command form as Claude Code. A drain from Pi or Grok needs [a pinned executor](#executor--devlyn-engines).
 
 ### Terminal sessions — `devlyn run`
 
@@ -66,7 +66,7 @@ Give ideate an intent or a document. It writes a loop package — a meta-prompt 
 | `/devlyn-ideate status` | Pending, active, accepted and failed counts; the next runnable task; delivery and recovery blockers. |
 | `/devlyn-ideate drain` | Runs the queue serially and hands-free. |
 
-A bare intent is planned and, when your request authorizes the work, added and drained without another confirmation; no arguments shows status. Questions come only when the answer changes behavior, scope, data semantics, acceptance or delivery, each with a recommended answer; `--autonomous` plans without questions, recording ordinary low-consequence, reversible defaults within the request, including user-visible details; material ambiguity in intended outcomes, persistent data or state semantics, or public surface beyond the request stops planning with a concrete question. Each task runs in its own worktree with the executor pinned by `/devlyn-engines` (default: the CLI you opened; Pi and Grok need a pin) under your installed CLAUDE.md/AGENTS.md instructions. Tasks start from committed state, the branch you added the loop on or the remote base for `auto`/`pr`, so a task's worktree holds only what is committed there. A task would run without installed CLAUDE.md/AGENTS.md that exist only in this checkout, so add stops while they differ from HEAD, and drain waits while they differ from the task's start commit. It is marked `[x]` only when its declared checks pass on its committed source and its required reviews cover it: the checks run through the drain's runner (a wholly clean run the executor lists for that source is reused; the drain runs any other check itself), and review coverage is attested by records the executor submits; a failed task becomes `[F]` with its reason and blocks only its dependents. An interrupted drain resumes without repeating accepted work. `--local-only` (or `--no-push`) keeps delivery local: each accepted task stays on its `devlyn/<loop-id>/<task-id>` branch in a retained worktree, nothing is merged or pushed, and the drain report's `Bring into` command brings the result into your branch, stopping if your files cannot be preserved.
+A bare intent is planned and, when your request authorizes the work, added and drained without another confirmation; no arguments shows status. Questions come only when the answer changes behavior, scope, data semantics, acceptance or delivery, each with a recommended answer; `--autonomous` plans without questions, recording ordinary low-consequence, reversible defaults within the request, including user-visible details; material ambiguity in intended outcomes, persistent data or state semantics, or public surface beyond the request stops planning with a concrete question. Each task runs in its own worktree with the executor pinned by `/devlyn-engines` (default: the CLI you opened; Pi and Grok need a pin) under the Devlyn defaults and your project's CLAUDE.md/AGENTS.md. Tasks start from committed state, the branch you added the loop on or the remote base for `auto`/`pr`, so a task's worktree holds only what is committed there. A task would run without installed CLAUDE.md/AGENTS.md that exist only in this checkout, so add stops while they differ from HEAD, and drain waits while they differ from the task's start commit. It is marked `[x]` only when its declared checks pass on its committed source and its required reviews cover it: the checks run through the drain's runner (a wholly clean run the executor lists for that source is reused; the drain runs any other check itself), and review coverage is attested by records the executor submits; a failed task becomes `[F]` with its reason and blocks only its dependents. An interrupted drain resumes without repeating accepted work. `--local-only` (or `--no-push`) keeps delivery local: each accepted task stays on its `devlyn/<loop-id>/<task-id>` branch in a retained worktree, nothing is merged or pushed, and the drain report's `Bring into` command brings the result into your branch, stopping if your files cannot be preserved.
 
 ### Delivery
 
@@ -111,29 +111,25 @@ An account server you never list remains available.
 
 ### Migration from earlier versions
 
-Reinstall with the new version to refresh instructions and skills for the selected
-targets. Claude uses `CLAUDE.md`; Codex, Grok, omp and Pi share `AGENTS.md`.
-Devlyn updates its checksum-marked instruction block and preserves project-specific
-rules outside it. Keep custom rules outside the block; they take precedence over
-its defaults. Exact pre-update backups are saved in `.devlyn/instructions/`.
-When recovery is needed, pre-existing symlinks or non-directory entries at `.devlyn/` or
-`.devlyn/instructions/` stop installation without replacing the instruction file.
+Reinstall with the new version to refresh skills for the selected targets. Install and
+update leave `CLAUDE.md` and `AGENTS.md` byte-identical.
 
-Older and mixed-version templates migrate automatically. Within recognizable
-Devlyn sections, exact historical paragraphs and list items are replaced;
-modified or unknown text and its headings are preserved outside the new block.
-Edits inside an existing managed block are preserved outside it too. Plain custom
-files and rules outside managed blocks retain their contents. Unknown old text
-is kept conservatively, even when it may contain obsolete defaults.
-Malformed or duplicate managed markers still stop with an exact `.backup`, new
-defaults in `.incoming`, and a `.merge.md` guide; the original remains unchanged.
+Earlier installs put the principles in those files, inside a checksum-marked block or as
+a whole template. [Cleanup](docs/harness-cleanup.md) removes an intact copy, keeps the text
+around it byte-for-byte and deletes a file that held only the copy; a `@AGENTS.md` import
+left without its file is harmless. Exact pre-removal backups are saved in
+`.devlyn/instructions/`; pre-existing symlinks or non-directory entries at `.devlyn/` or
+`.devlyn/instructions/` stop the removal without touching the file.
+
+A copy someone edited stays exactly as it is, as does any text Devlyn cannot prove it wrote:
+a quoted example, or malformed or duplicate markers. Devlyn's defaults replace a remaining
+block for each session.
 Portability refreshes the offline fingerprints from Git history using
 `node scripts/update-instruction-templates.js` before testing; publish ships that tested tarball.
 Installation needs no Git or network.
-Use 3.1.3 or newer consistently: older installers still overwrite `CLAUDE.md`.
 
 Upgrading to 4.1.0: `npx devlyn-cli -y` in a 4.x project keeps its Claude Code install
-current and adds `AGENTS.md` + `.agents/skills/`. Earlier releases put the Codex, omp, Pi
+current and adds `.agents/skills/`. Earlier releases put the Codex, omp, Pi
 and Grok skills in `~/.codex/skills`, `~/.agents/skills` and `~/.grok/skills`; a project
 install no longer refreshes them and names each one it finds. Refresh them with `--global`
 or delete them; global installs and `update` clean Devlyn’s retired `~/.grok/skills` entries automatically.
@@ -228,7 +224,7 @@ Selected during install. Run `npx devlyn-cli` again to add more.
 </details>
 
 <details>
-<summary><strong>MCP Servers</strong> — installed via <code>claude mcp add</code>, offered with the CLAUDE.md choice</summary>
+<summary><strong>MCP Servers</strong> — installed via <code>claude mcp add</code>, offered with the Claude Code choice</summary>
 
 | Server | Description |
 |---|---|
@@ -250,7 +246,7 @@ Only `__pycache__` directories containing exclusively regular `*.pyc` files coun
 
 - **Node.js 20 (20.17+), 22 (22.13+) or 23.5+** and npm
 - **Python 3.11+** available as `python3` for the harness, and **Git** for safe installation and the harness
-- **An agent CLI** installed and configured: Codex, omp, Pi or Grok (AGENTS.md), or [Claude Code](https://docs.anthropic.com/en/docs/claude-code) (CLAUDE.md)
+- **An agent CLI** installed and configured: Codex, omp, Pi or Grok, or [Claude Code](https://docs.anthropic.com/en/docs/claude-code)
 - **For `auto`/`pr` delivery**, an `origin` remote naming one GitHub repository and an authenticated [`gh`](https://cli.github.com/)
 
 On native Windows, use native Node/npm and Python plus Git for Windows Bash for the shipped shell wrapper. Run `npx devlyn-cli -y` in the project (add `--claude` for Claude Code). Skill folders follow the Agent Skills naming standard (for example `devlyn-ideate`), so a project that commits them checks out on Windows. Harness text is UTF-8 without requiring `PYTHONUTF8`.

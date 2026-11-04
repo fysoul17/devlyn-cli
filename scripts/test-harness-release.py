@@ -473,7 +473,7 @@ assert.deepEqual(fs.readdirSync(path.join(store, 'devlyn-cli')), []);
             self.assertEqual((data['ownership'], data['committed']), (expected, False))
 
     def test_previous_managed_instructions_are_outdated_and_cleanup_preserves_owner_bytes(self):
-        # Prediction: intact 4.2.0-4.3.20 and 4.3.21 blocks are outdated; cleanup replaces only their managed bytes.
+        # Prediction: intact 4.2.0-4.3.20 and 4.3.21 blocks are outdated; cleanup removes only their managed bytes.
         for commit, digest in (('c903a9c8', '4823ba898cdf99ce24366a3d1983af63cdb14d2e1b95b5bdafea49097f457ff5'),
                                ('f8597c46', '7d559f330bb426022b8166e0a0cbb77d25ca8d204d3ca6c1f4fbcb18c3963626')):
             with self.subTest(commit=commit):
@@ -501,16 +501,15 @@ assert.deepEqual(fs.readdirSync(path.join(store, 'devlyn-cli')), []);
         plan = self.cli('cleanup', '--plan', '--project', repo, env=env)
         items = plan['scopes'][0]['items']
         self.assertEqual(sorted((item['relative'], item['action']) for item in items),
-                         [('AGENTS.md', 'edit'), ('CLAUDE.md', 'edit')])
+                         [('AGENTS.md', 'remove'), ('CLAUDE.md', 'remove')])
         plan_file = case / 'plan.json'
         plan_file.write_text(json.dumps(plan), encoding='utf-8')
         result = self.cli('cleanup', '--apply', '--plan-file', plan_file, '--digest', plan['digest'], env=env)
         self.assertEqual(result['state'], 'succeeded')
         for name in ('AGENTS.md', 'CLAUDE.md'):
-            current = (self.package / 'harness' / name).read_bytes().replace(b'\n', b'\r\n')
-            self.assertEqual((repo / name).read_bytes(), prefix + current + suffix)
+            self.assertEqual((repo / name).read_bytes(), prefix + suffix)
         after = self.cli('status', '--project', repo, env=env)['instructions']
-        self.assertEqual([item['ownership'] for item in after], ['current', 'current'])
+        self.assertEqual([item['ownership'] for item in after], ['unowned', 'unowned'])
 
     def test_committed_compares_raw_instruction_bytes(self):
         repo = self.init_repo(self.case / 'repo')

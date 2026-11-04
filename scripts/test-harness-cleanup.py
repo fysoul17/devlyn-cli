@@ -605,13 +605,13 @@ for (const schedule of ['head-failure', 'nothing-present', 'storage-outage', 'pi
         again, _ = self.plan("--machine")
         self.assertEqual([item["action"] for item in again["scopes"][0]["items"]], ["skip"])
 
-    def test_project_copies_not_in_git_go_in_place_and_principles_stay(self):
-        # Prediction: an uncommitted project install is local: its skill copies and markers go in place; the current
-        # managed blocks in AGENTS.md and CLAUDE.md are not items and keep every byte, owner text included.
+    def test_project_copies_not_in_git_go_in_place(self):
+        # Prediction: an uncommitted project install is local: its skill copies and markers go in place;
+        # an instruction file holding only owner text is not an item and keeps every byte.
         repo = self.repo("plain")
         (repo / "AGENTS.md").write_text("# Team rules\n\nAlways write tests.\n", encoding="utf-8")
         self.install(repo, "--claude")
-        before = {name: (repo / name).read_bytes() for name in ("AGENTS.md", "CLAUDE.md")}
+        before = (repo / "AGENTS.md").read_bytes()
         plan, path = self.plan("--project", repo)
         [project] = plan["scopes"]
         self.assertTrue(all(item["route"] == "local" for item in project["items"]))
@@ -619,7 +619,97 @@ for (const schedule of ['head-failure', 'nothing-present', 'storage-outage', 'pi
         self.assertEqual(self.apply(plan, path)["state"], "succeeded")
         self.assertFalse((repo / ".agents/skills").exists())
         self.assertFalse((repo / ".claude/skills").exists())
-        self.assertEqual({name: (repo / name).read_bytes() for name in before}, before)
+        self.assertEqual((repo / "AGENTS.md").read_bytes(), before)
+
+    def managed_block(self, name="AGENTS.md"):
+        template = (ROOT / name).read_bytes().replace(b"\r\n", b"\n")
+        body = b"Project-specific instructions outside this managed block take precedence over these defaults.\n\n" + template
+        return b"<!-- devlyn:instructions:begin sha256=" + hashlib.sha256(body).hexdigest().encode() + b" -->\n" + body + b"<!-- devlyn:instructions:end -->\n"
+
+    def test_principle_copy_leaves_and_owner_text_stays(self):
+        # Prediction: a copy with owner text loses only the copy; a file that was only the copy disappears;
+        # the next plan holds no instruction item, so a later principle change asks nothing of this project.
+        repo = self.repo("principle-copy")
+        owner = b"# Team rules\n\nUse pnpm.\n"
+        (repo / "AGENTS.md").write_bytes(owner + self.managed_block("AGENTS.md"))
+        (repo / "CLAUDE.md").write_bytes(self.managed_block("CLAUDE.md"))
+        plan, path = self.plan("--project", repo)
+        items = [item for item in plan["scopes"][0]["items"] if item["kind"] == "instructions"]
+        self.assertEqual(sorted((i["relative"], i["action"], i["route"]) for i in items),
+                         [("AGENTS.md", "remove", "local"), ("CLAUDE.md", "remove", "local")])
+        self.assertEqual(self.apply(plan, path)["state"], "succeeded")
+        self.assertEqual((repo / "AGENTS.md").read_bytes(), owner)
+        self.assertFalse((repo / "CLAUDE.md").exists())
+        again, _ = self.plan("--project", repo)
+        self.assertFalse([item for item in again["scopes"][0]["items"] if item["kind"] == "instructions"])
+
+    def test_every_released_block_is_planned_for_removal(self):
+        # Prediction: a block whose bytes still match its own digest goes, whichever release wrote it,
+        # because the plan and the removal share one proof.
+        fixtures = ROOT / "scripts/fixtures/instructions"
+        for version in ("4.0.1", "4.1.0", "9ecbe51c", "d2d34e3e", "415e2d14"):
+            with self.subTest(version=version):
+                repo = self.repo("released-" + version)
+                names = [name for name in ("AGENTS.md", "CLAUDE.md")
+                         if (fixtures / f"{name[:-3].lower()}-{version}.md").exists()]
+                for name in names:
+                    (repo / name).write_bytes(b"# Team rules\n\n" + (fixtures / f"{name[:-3].lower()}-{version}.md").read_bytes())
+                plan, path = self.plan("--project", repo)
+                self.assertEqual(sorted((i["relative"], i["action"]) for i in plan["scopes"][0]["items"]),
+                                 [(name, "remove") for name in names])
+                self.assertEqual(self.apply(plan, path)["state"], "succeeded")
+                for name in names:
+                    self.assertEqual((repo / name).read_bytes(), b"# Team rules\n\n")
+
+    def test_evaluator_block_leaves_by_cleanup_and_not_by_install(self):
+        # Prediction: install keeps every byte of AGENTS.md; cleanup removes the old appended block only.
+        repo = self.repo("evaluator")
+        raw = (ROOT / "scripts/fixtures/instructions/evaluator-0.5.7.md").read_bytes()
+        owner = b"# Team rules\n"
+        before = owner + b"\n\n---\n\n# Devlyn Agent Instructions\n\n" + raw + b"\n"
+        (repo / "AGENTS.md").write_bytes(before)
+        self.install(repo)
+        self.assertEqual((repo / "AGENTS.md").read_bytes(), before)
+        plan, path = self.plan("--project", repo)
+        self.assertIn(("AGENTS.md", "remove"), [(i["relative"], i["action"]) for i in plan["scopes"][0]["items"]])
+        self.assertEqual(self.apply(plan, path)["state"], "succeeded")
+        self.assertEqual((repo / "AGENTS.md").read_bytes(), owner)
+
+    def test_edited_principle_copy_is_kept_and_cannot_be_chosen(self):
+        # Prediction: an edited copy is shown as kept; including it by hand is refused and no byte moves.
+        repo = self.repo("edited-copy")
+        edited = self.managed_block().replace(b"## North Star", b"## North Star\n\nOur own line.")
+        (repo / "AGENTS.md").write_bytes(edited)
+        plan, path = self.plan("--project", repo)
+        [item] = [item for item in plan["scopes"][0]["items"] if item["kind"] == "instructions"]
+        self.assertEqual((item["action"], item["reasons"][0]["code"]), ("skip", "modified-copy"))
+        self.assertEqual(self.apply(plan, path, code=2, include=[item["id"]])["code"], "invalid-arguments")
+        self.assertEqual((repo / "AGENTS.md").read_bytes(), edited)
+        self.apply(plan, path)
+        self.assertEqual((repo / "AGENTS.md").read_bytes(), edited)
+
+    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
+    def test_tracked_principle_copy_is_delivered_with_owner_text_kept(self):
+        # Prediction: the copy leaves through the project policy; remote main keeps the owner text, and a file
+        # that held only the copy is deleted there, and the checkout on main takes the merge.
+        repo = self.repo("delivered-copy")
+        owner = b"# Team rules\n"
+        (repo / "AGENTS.md").write_bytes(owner + self.managed_block("AGENTS.md"))
+        (repo / "CLAUDE.md").write_bytes(self.managed_block("CLAUDE.md"))
+        self.run_ok(["git", "add", "-A"], cwd=repo)
+        self.run_ok(["git", "commit", "-qm", "principles"], cwd=repo)
+        bare = self.fake_github(repo)
+        plan, path = self.plan("--project", repo)
+        self.assertEqual(sorted((i["relative"], i["action"], i["route"]) for i in plan["scopes"][0]["items"]),
+                         [("AGENTS.md", "remove", "delivery"), ("CLAUDE.md", "remove", "delivery")])
+        result = self.apply(plan, path)
+        [scope] = result["scopes"]
+        self.assertEqual((result["state"], scope["delivery"]["state"]), ("succeeded", "merged"), scope)
+        listed = self.run_ok(["git", "--git-dir", bare, "ls-tree", "-r", "--name-only", "main"]).stdout.split()
+        self.assertNotIn("CLAUDE.md", listed)
+        self.assertEqual(self.run_ok(["git", "--git-dir", bare, "show", "main:AGENTS.md"]).stdout.encode(), owner)
+        self.assertEqual((repo / "AGENTS.md").read_bytes(), owner)
+        self.assertEqual(self.run_ok(["git", "status", "--porcelain"], cwd=repo).stdout, "")
 
     def test_source_repository_and_linked_roots_are_left_as_they_are(self):
         # Prediction: the devlyn-cli source checkout is skipped whole; a skill root that is a link is skipped with its
@@ -1153,7 +1243,7 @@ for (const schedule of ['head-failure', 'nothing-present', 'storage-outage', 'pi
                 spare = repo / "spare/owner.txt"
                 spare.parent.mkdir()
                 spare.write_text("Owner contents stay outside the snapshot.\n")
-                self.run_ok(["git", "add", ".agents", "skills", "AGENTS.md", *(["spare"] if tracked else [])], cwd=repo)
+                self.run_ok(["git", "add", ".agents", "skills", *(["spare"] if tracked else [])], cwd=repo)
                 self.run_ok(["git", "commit", "-qm", "linked install"], cwd=repo)
                 self.fake_github(repo)
                 trace = self.root / f"link-hops-{tracked}.jsonl"
@@ -1244,7 +1334,7 @@ for (const schedule of ['head-failure', 'nothing-present', 'storage-outage', 'pi
     @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
     def test_tracked_copies_are_delivered_by_the_project_policy(self):
         # Prediction: committed copies are removed on a fresh branch from the remote base, committed once and merged by
-        # the default auto policy; the remote main loses the copies and keeps AGENTS.md's block and owner text, and the
+        # the default auto policy; the remote main loses the copies and keeps AGENTS.md's owner text, and the
         # checkout on main takes the merge, so its copies are gone too.
         repo = self.repo("delivered")
         (repo / "AGENTS.md").write_text("# Team rules\n", encoding="utf-8")
@@ -2068,7 +2158,7 @@ for (const schedule of ['head-failure', 'nothing-present', 'storage-outage', 'pi
                 shutil.rmtree(root / "devlyn-engines")
                 if case in ("new", "branch-only"):
                     shutil.rmtree(copy)
-                self.run_ok(["git", "add", ".agents/skills/_shared", ".agents/skills/.devlyn-install.json", "AGENTS.md"], cwd=repo)
+                self.run_ok(["git", "add", ".agents/skills/_shared", ".agents/skills/.devlyn-install.json"], cwd=repo)
                 self.run_ok(["git", "commit", "-qm", "tracked support"], cwd=repo)
                 bare = self.fake_github(repo)
                 plan, file = self.plan("--project", repo)
