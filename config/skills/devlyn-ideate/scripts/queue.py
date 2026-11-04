@@ -1484,13 +1484,18 @@ def bring_in(v, loop):
         return None
     receipt = tip["receipt"]
     if receipt.get("local_only"):
-        # It fast-forwards when it can and merges otherwise, so the commands of several local loops apply in any order.
-        return f"{v['records'][loop]['branch']}: git merge --ff {receipt['branch']}" if loop in v["records"] else None
-    if not delivered(receipt):
-        return None
-    # The anchor holds no loop commit, so after merge, squash or rebase delivery this fast-forwards unless the branch has commits
-    # of its own, and merges then; like the local form, the commands of several loops apply in any order.
-    return f"{receipt['base']}: git merge --ff {receipt['remote']}/{receipt['base']}"
+        if loop not in v["records"]:
+            return None
+        branch, target = v["records"][loop]["branch"], receipt["branch"]
+    else:
+        if not delivered(receipt):
+            return None
+        branch, target = receipt["base"], f"{receipt['remote']}/{receipt['base']}"
+    # Prepare any merge without touching the anchor, then land by protected fast-forward.
+    # Several loops still apply in either order, including after merge, squash or rebase delivery.
+    command = shlex.join(["python3", str(SKILLS / "_shared" / "bring-in.py"), "--repo", str(v["anchor"]),
+                          "--branch", branch, "--target", target])
+    return f"{branch}: {command}"
 
 
 def write_reports(v, status, reason, warnings):

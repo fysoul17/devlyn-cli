@@ -80,12 +80,12 @@ After remote delivery, fetch first. If the branch can fast-forward to the
 delivered result, recheck the copied edits' current ownership and contents,
 then remove them: `git restore --source=HEAD --staged --worktree -- <paths>`
 for tracked paths holding only your edits, and delete copied untracked files.
-Then use `git merge --ff-only <task branch>` for local delivery, or
-`git merge --ff-only <remote>/<base>` on the base branch after remote delivery;
+Then run `python3 "$DEVLYN_SHARED_DIR/bring-in.py" --repo . --branch <checked-out branch> --target <task branch> --ff-only`
+for local delivery, or the same command with `--target <remote>/<base>` on the base branch after remote delivery;
 a drain's `Bring into` command is its own. Once a local delivery is reconciled,
 remove its worktree and task branch (`git worktree remove <worktree>`,
 `git branch -d <task branch>`). Do not switch branches, create a reconciliation
-merge commit or discard WIP to force this step. If reconciliation is unsafe,
+merge commit, or discard WIP or ignored files to force this step. If reconciliation is unsafe,
 retain and report the edits, delivered result and remaining bring-in action.
 
 Save the returned receipt path under the common Gitdir. `reconciled` reports earlier accepted,

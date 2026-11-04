@@ -1,6 +1,10 @@
 # 0230 — develop the held 0225 bundle: steps 3–5 on the ported candidate
 
-2026-10-03/04. **Status: PR-3, PR-4 and PR-5 are merged into the bundle, and so are the whole-bundle review fixes (PR #164, `f71a17d3`). Next is the live-comparison registration.** Development only. Nothing ships, and no resolve run happens under this record.
+2026-10-03/04. **Status: CLOSED AS SUPERSEDED (2026-11-04).** PRs #157–#164 developed the held 0225 steps 2–5 bundle through `f71a17d3`; it was never adopted or shipped. The owner parked it on 2026-10-05, 0231 was superseded without running, and 0232 retired resolve. Do not resume the bundle or its comparison. Only R5's ignored-file protection carries forward, as a current-product fix: the shared bring-in helper (DECISIONS 2026-11-04). The PHASE 0 inventory and the MECHANICAL seal are not admitted (ideate acceptance already binds evidence to the committed source).
+
+**Archive:** the lineage branches are deleted from origin. Their tips are kept in the local git bundle `~/.local/share/nx01/archive/devlyn-cli-research-branches-2026-11-04.bundle`: the bundle head `f71a17d3`, v7 wave 1 `3eed3956`, and the parked wave-2 tips `fc7c1bbe` and `fa7d0e82` (unreviewed, untested, never adopted), with port/base provenance `0721ef7b` and `3afbb18e`. They are reference material, not a plan.
+
+The rest of this record is as of 2026-10-04. Development only. Nothing ships, and no resolve run happens under this record.
 
 **Owner direction (2026-10-03):** "묶음 개발 재개해 줘. astra ultra 와 나중에 검수/검증까지 확실하게" — after [0229](0229-verify-existing-behavior-rescreen.md) PASS readmitted 22616b57 + F + G + H, prepare 0225 steps 3–5, with a thorough Astra ultra review at the end. Per [0226](0226-verify-recall-screen.md):83, a live comparison of the bundle needs its own registration and the owner's approval to run resolve. Per [0225](0225-resolve-cost-cuts.md) "Release", steps 2–5 ship only as a bundle adopted in both configs.
 

@@ -45,7 +45,7 @@ this closed study launches no automatic successor or pair escalation. See
 - **0233–0236 closed without a new harness admission.** Their negative results remain evidence, not permission to rerun for a favorable outcome.
 - **0237 CF closed without admission.** Unsupported oracle assumptions and a no-init process failure invalidate that comparison; preserve raw results/costs and do not resume or regrade it.
 - **0239 closed without adoption.** d01 preserves source/delivery and safe child-lifetime evidence, but interrupted inference has unbound usage and whole cost is UNKNOWN. No d02 or favorable C rerun; the existing completion guide remains the admitted solo wording.
-- **Parked and superseded:** the 0230 bundle (`bundle/0225-steps-2-5`) is parked unmerged. The 0231 registration is superseded by 0232 and was never run.
+- **Closed as superseded (2026-11-04):** the 0230 bundle was never adopted. Only R5's ignored-file protection carries forward, enforced by the shared bring-in helper (DECISIONS 2026-11-04). The 0231 registration is superseded by 0232 and was never run.
 Priority: accuracy/completeness → verified-resolution speed → tokens; since 2026-10-05, harness mechanisms follow the per-success non-regression rule below.
 Tests carry no token budgets. The independent CLI core comes first; optional Pyx and
 OS/fleet are later. Historical gates, frozen results and current customer policy are not
