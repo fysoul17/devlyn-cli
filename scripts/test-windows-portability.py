@@ -204,7 +204,7 @@ init({options});
         self.assertEqual(settings['env']['ENABLE_PROMPT_CACHING_1H'], 'true')
 
     def test_yes_keeps_claude_where_this_project_has_it(self):
-        colon = '' if os.name == 'nt' else ':'
+        colon = '\uf03a' if os.name == 'nt' else ':'  # The name releases wrote where a colon cannot exist.
         body = b'# Old\n'
         version = json.loads((self.package / 'package.json').read_bytes())['version']
         stale = {'4.x': {'.claude/skills/devlyn-resolve/stale': body}, '3.x': {f'.claude/skills/devlyn{colon}resolve/SKILL.md': body},

@@ -784,13 +784,14 @@ class EnrollmentTests(unittest.TestCase):
         self.assertIn(str(receipt), line())
         (holder / 'storage-allocation.json').unlink()
         if os.name != 'nt':
-            receipt.write_text('{"allocation":"managed_pending"}')
-            receipt.chmod(0)
-            try:
-                self.assertIn('cannot be read', line())
-            finally:
-                receipt.chmod(0o600)
-                receipt.unlink()
+            if os.geteuid() != 0:  # Root reads a file whatever its mode.
+                receipt.write_text('{"allocation":"managed_pending"}')
+                receipt.chmod(0)
+                try:
+                    self.assertIn('cannot be read', line())
+                finally:
+                    receipt.chmod(0o600)
+                    receipt.unlink()
             receipt.symlink_to(file)
             self.assertIn('cannot be read', line())
             receipt.unlink()
@@ -2051,7 +2052,7 @@ class EnrollmentLifecycleTests(unittest.TestCase):
              patch.object(client, 'recovery_marker', return_value=True):
             line = client.queue_handoff(common, {'release': {'root': str(self.home), 'package': 'devlyn-cli',
                                          'version': '4.3.20', 'digest': 'a'*64}})
-        self.assertIn('recover-storage --receipt ' + str(receipt), line)
+        self.assertIn('recover-storage --receipt ' + shlex.quote(str(receipt)), line)
         self.assertIn('--operation-id ' + allocation, line)
         self.assertNotIn('--for-removal --receipt', line)
         helper = runpy.run_path(str(SHARED / 'task-complete.py'))
