@@ -169,8 +169,7 @@ Existing CLI-1 release/argument/operational error codes remain unchanged.
 
 The catalog names the verified release's `config/skills/_shared` absolutely and
 supersedes the defaults' installed-folder references. Claude's single per-run
-append file contains existing append text, immutable defaults (unless native
-project principles apply), and this catalog. OMP/Qwen/Grok merge owner append
+append file contains existing append text, immutable defaults, and this catalog. OMP/Qwen/Grok merge owner append
 text; OpenCode preserves inline keys/instruction entries.
 OpenCode merges known effective `skillsPaths` into inline `skills.paths`; absent/null keeps catalog fallback.
 Copilot appends a per-run apply-to-all instructions directory via `COPILOT_CUSTOM_INSTRUCTIONS_DIRS`.

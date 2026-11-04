@@ -24,7 +24,7 @@ function managedBlock(template, eol = '\n') {
 }
 
 function sessionDefaults(template) {
-  return 'The following Devlyn instructions are defaults for this session. Applicable explicit user instructions and native owner/project instructions take precedence, except a Devlyn managed block (devlyn:instructions markers), which these defaults replace. This applies only to the defaults below; other engine instructions and permissions are unchanged.\n\n'
+  return 'The following Devlyn instructions are defaults for this session. Explicit user and native owner/project instructions take precedence, except a Devlyn managed block (devlyn:instructions markers), which these replace. They change no other engine instructions or permissions.\n\n'
     + normalize(template);
 }
 

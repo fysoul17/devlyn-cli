@@ -165,14 +165,15 @@ class ActivationTests(unittest.TestCase):
     def test_per_engine_committed_block_still_receives_release_defaults(self):
         # Prediction: a committed project block (possibly an older release's) never suppresses the selected release text.
         for engine in VERSIONS:
-            with self.subTest(engine=engine):
-                ctx = self.context(engine)
-                ctx.update(initialPrompt={'text': 'owner task', 'transport': 'argv'})
-                expected = self.plan(ctx)
-                ctx['committedBlockApplies'] = True
-                plan = self.plan(ctx)
-                self.assertEqual(plan, expected)
-                self.assertIn('The following Devlyn instructions are defaults', json.dumps(plan))
+            for prompt in (None, {'text': 'owner task', 'transport': 'argv'}):
+                with self.subTest(engine=engine, prompt=prompt):
+                    ctx = self.context(engine)
+                    ctx.update(initialPrompt=prompt)
+                    expected = self.plan(ctx)
+                    ctx['committedBlockApplies'] = True
+                    self.assertEqual(self.plan(ctx), expected)
+                    if prompt:
+                        self.assertIn('The following Devlyn instructions are defaults', json.dumps(expected))
 
     def test_per_engine_resume_fork_uses_recorded_binding_even_when_none(self):
         for engine in VERSIONS:
@@ -384,6 +385,11 @@ class ActivationTests(unittest.TestCase):
         self.assertEqual(plan['envPatch']['COPILOT_CUSTOM_INSTRUCTIONS_DIRS'], '/owner,' + str(self.run_dir / 'copilot'))
         self.assertEqual(plan['channels']['principles'], {
             'state': 'configured', 'mechanism': 'COPILOT_CUSTOM_INSTRUCTIONS_DIRS', 'reasons': []})
+        ctx['runDir'] = str(self.case / 'run,comma')
+        plan = self.plan(ctx)
+        self.assertEqual(plan['files'], [])
+        self.assertEqual(plan['channels']['principles']['reasons'],
+                         [{'code': 'principles-unavailable', 'params': {'detail': 'comma-in-path'}}])
 
     def test_opencode_native_skills_merge(self):
         # Prediction: effective paths survive unchanged, duplicates collapse, inline urls remain, and invocation stays read-file.
