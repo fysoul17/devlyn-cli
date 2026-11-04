@@ -643,6 +643,38 @@ for (const schedule of ['head-failure', 'nothing-present', 'storage-outage', 'pi
         again, _ = self.plan("--project", repo)
         self.assertFalse([item for item in again["scopes"][0]["items"] if item["kind"] == "instructions"])
 
+    def test_every_released_block_is_planned_for_removal(self):
+        # Prediction: a block whose bytes still match its own digest goes, whichever release wrote it,
+        # because the plan and the removal share one proof.
+        fixtures = ROOT / "scripts/fixtures/instructions"
+        for version in ("4.0.1", "4.1.0", "9ecbe51c", "d2d34e3e", "415e2d14"):
+            with self.subTest(version=version):
+                repo = self.repo("released-" + version)
+                names = [name for name in ("AGENTS.md", "CLAUDE.md")
+                         if (fixtures / f"{name[:-3].lower()}-{version}.md").exists()]
+                for name in names:
+                    (repo / name).write_bytes(b"# Team rules\n\n" + (fixtures / f"{name[:-3].lower()}-{version}.md").read_bytes())
+                plan, path = self.plan("--project", repo)
+                self.assertEqual(sorted((i["relative"], i["action"]) for i in plan["scopes"][0]["items"]),
+                                 [(name, "remove") for name in names])
+                self.assertEqual(self.apply(plan, path)["state"], "succeeded")
+                for name in names:
+                    self.assertEqual((repo / name).read_bytes(), b"# Team rules\n\n")
+
+    def test_evaluator_block_leaves_by_cleanup_and_not_by_install(self):
+        # Prediction: install keeps every byte of AGENTS.md; cleanup removes the old appended block only.
+        repo = self.repo("evaluator")
+        raw = (ROOT / "scripts/fixtures/instructions/evaluator-0.5.7.md").read_bytes()
+        owner = b"# Team rules\n"
+        before = owner + b"\n\n---\n\n# Devlyn Agent Instructions\n\n" + raw + b"\n"
+        (repo / "AGENTS.md").write_bytes(before)
+        self.install(repo)
+        self.assertEqual((repo / "AGENTS.md").read_bytes(), before)
+        plan, path = self.plan("--project", repo)
+        self.assertIn(("AGENTS.md", "remove"), [(i["relative"], i["action"]) for i in plan["scopes"][0]["items"]])
+        self.assertEqual(self.apply(plan, path)["state"], "succeeded")
+        self.assertEqual((repo / "AGENTS.md").read_bytes(), owner)
+
     def test_edited_principle_copy_is_kept_and_cannot_be_chosen(self):
         # Prediction: an edited copy is shown as kept; including it by hand is refused and no byte moves.
         repo = self.repo("edited-copy")

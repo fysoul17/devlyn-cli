@@ -121,9 +121,9 @@ left without its file is harmless. Exact pre-removal backups are saved in
 `.devlyn/instructions/`; pre-existing symlinks or non-directory entries at `.devlyn/` or
 `.devlyn/instructions/` stop the removal without touching the file.
 
-A copy someone edited stays exactly as it is, as does any text Devlyn cannot prove it wrote,
-and Devlyn's defaults replace a remaining block for each session. Malformed or duplicate
-markers stop with the file unchanged: remove them by hand and keep your own text.
+A copy someone edited stays exactly as it is, as does any text Devlyn cannot prove it wrote:
+a quoted example, or malformed or duplicate markers. Devlyn's defaults replace a remaining
+block for each session.
 Portability refreshes the offline fingerprints from Git history using
 `node scripts/update-instruction-templates.js` before testing; publish ships that tested tarball.
 Installation needs no Git or network.

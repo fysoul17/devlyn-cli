@@ -1255,11 +1255,13 @@ install(['agents', 'claude'], true, ['devlyn-reap']);
         return b'\n\n---\n\n# Devlyn Agent Instructions\n\n' + raw + b'\n'
 
     def test_cleanup_instruction_owner_bytes_every_target(self):
-        names = ['CLAUDE.md', 'AGENTS.md', 'GEMINI.md', '.cursorrules', '.windsurfrules', '.github/copilot-instructions.md']
-        for name in names:
+        names = ['GEMINI.md', '.cursorrules', '.windsurfrules', '.github/copilot-instructions.md']
+        for name in names + ['CLAUDE.md', 'AGENTS.md']:
             file = self.project / name; file.parent.mkdir(parents=True, exist_ok=True)
             file.write_bytes(SHORT_PAYLOAD + self.evaluator_block() + SHORT_PAYLOAD)
         self.cli('-y', '--claude')
+        for name in ['CLAUDE.md', 'AGENTS.md']:
+            self.assertEqual((self.project / name).read_bytes(), SHORT_PAYLOAD + self.evaluator_block() + SHORT_PAYLOAD)
         for name in names:
             data = (self.project / name).read_bytes()
             outside = re.sub(rb'<!-- devlyn:instructions:begin[^\n]*\n.*?<!-- devlyn:instructions:end -->\r?\n', b'', data, flags=re.S)
@@ -1272,7 +1274,7 @@ install(['agents', 'claude'], true, ['devlyn-reap']);
         block = (Path(__file__).parent / 'fixtures/instructions/agents-4.1.0.md').read_bytes()
         paragraph = b'# Project Instructions\n\n' + block.split(b'# Project Instructions\n\n', 1)[1].split(b'\n\n', 1)[0] + b'\n\n'
         global_files = {}
-        for name in names + ['.claude/CLAUDE.md', '.codex/AGENTS.md']:
+        for name in names + ['CLAUDE.md', 'AGENTS.md', '.claude/CLAUDE.md', '.codex/AGENTS.md']:
             global_files[name] = SHORT_PAYLOAD + paragraph + block + self.evaluator_block() + SHORT_PAYLOAD
         raw = self.evaluator_block().split(b'# Devlyn Agent Instructions\n\n', 1)[1][:-1]
         for folder in ['.claude/agents', '.cursor/rules', '.github/copilot/agents', '.windsurf/rules']:
@@ -2302,9 +2304,12 @@ console.log(JSON.stringify(Object.fromEntries(DEVLYN_CORE_SKILLS.map((name) =>
                 self.assertEqual(dest.read_bytes(), (prefix + suffix).replace('\n', eol).encode())
 
     def test_instruction_removal_deletes_only_a_file_left_empty(self):
-        dest = self.project / 'AGENTS.md'; dest.write_bytes(self.managed())
-        self.assertIn(b'AGENTS.md (removed)', self.invoke("removeInstructions('AGENTS.md');").stdout)
-        self.assertFalse(dest.exists())
+        dest = self.project / 'AGENTS.md'
+        for before in (self.managed(), b'\xef\xbb\xbf' + self.managed(), (self.package / 'AGENTS.md').read_bytes()):
+            with self.subTest(before=before[:24]):
+                dest.write_bytes(before)
+                self.assertIn(b'AGENTS.md (removed)', self.invoke("removeInstructions('AGENTS.md');").stdout)
+                self.assertFalse(dest.exists())
 
     def test_instruction_removal_write_failure_keeps_original_and_exact_backup(self):
         run(['git', 'init', '-q', self.project])
@@ -2339,7 +2344,11 @@ console.log(JSON.stringify(Object.fromEntries(DEVLYN_CORE_SKILLS.map((name) =>
         stock = (self.package / 'AGENTS.md').read_bytes()
         examples += [b'# Team rules\n\n```markdown\n' + stock + b'```\n',
                      b'# Team rules\n\n<!--\n' + stock + b'-->\n',
-                     b'# Team rules\n\n<details>\n<summary>Example</summary>\n\n' + stock + b'\n</details>\n']
+                     b'# Team rules\n\n<details>\n<summary>Example</summary>\n\n' + stock + b'\n</details>\n',
+                     b'# Team rules\n\n```markdown\n' + self.managed() + b'```\n',
+                     b'# Team rules\n\n<!--\n' + self.managed() + b'-->\n',
+                     b'<details><summary>Example</summary>\n\n' + self.managed() + b'\n</details>\n',
+                     re.sub(rb'^(# [^\n]+\n\n).*?\n\n', rb'\1Our project owns these instructions.\n\n', stock, count=1, flags=re.S)]
         dest = self.project / 'AGENTS.md'
         for before in examples:
             with self.subTest(before=before):
@@ -2347,14 +2356,15 @@ console.log(JSON.stringify(Object.fromEntries(DEVLYN_CORE_SKILLS.map((name) =>
                 self.invoke("removeInstructions('AGENTS.md');")
                 self.assertEqual(dest.read_bytes(), before)
 
-    def test_instruction_markers_that_do_not_add_up_stop_with_the_file_unchanged(self):
+    def test_instruction_markers_that_do_not_add_up_stay_as_they_are(self):
         dest = self.project / 'AGENTS.md'
-        before = self.managed() + self.managed()
-        dest.write_bytes(before)
-        result = self.invoke("removeInstructions('AGENTS.md');", code=None)
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn(b'preserved it', result.stdout + result.stderr)
-        self.assertEqual(dest.read_bytes(), before)
+        begin, rest = self.managed().split(b'\n', 1)
+        for before in (self.managed() + self.managed(), begin + b'\n', rest,
+                       self.managed().replace(b'# Old', b'# Edited')):
+            with self.subTest(before=before[:24]):
+                dest.write_bytes(before)
+                self.invoke("removeInstructions('AGENTS.md');")
+                self.assertEqual(dest.read_bytes(), before)
 
     def test_instruction_link_is_preserved(self):
         shared = self.case / 'shared.md'; shared.write_bytes(self.managed())

@@ -10,7 +10,7 @@ const { parseTree, findNodeAtLocation, applyEdits } = require('jsonc-parser');
 const CONFIG_SOURCE = path.join(__dirname, '..', 'config');
 const OPTIONAL_SKILLS_SOURCE = path.join(__dirname, '..', 'optional-skills');
 const PKG = require('../package.json');
-const { removeInstructions, InstructionError, holdsDevlynDefaults, unmarkedCopy } = require('./instructions');
+const { removeInstructions, InstructionError, holdsDevlynDefaults } = require('./instructions');
 const { contentHash, fingerprint, gitEnvironment, isIgnoredEntry, trackedPaths } = require('./skill-ownership');
 const SKILL_HISTORY = require('./skill-history.json');
 const CLEANUP_HISTORY = require('./cleanup-history.json');
@@ -1149,15 +1149,15 @@ function cleanupScope(base, global) {
       log('  ✕ .claude/settings.json retired entries (removed)', 'dim');
     }
   });
-  const instructions = global ? [] : ['CLAUDE.md', 'AGENTS.md', 'GEMINI.md', '.cursorrules', '.windsurfrules', '.github/copilot-instructions.md'];
+  // CLAUDE.md and AGENTS.md stay as they are here: only a reviewed cleanup changes them.
+  const instructions = global ? [] : ['GEMINI.md', '.cursorrules', '.windsurfrules', '.github/copilot-instructions.md'];
   for (const name of instructions) {
     const file = path.join(base, name);
     attempt(file, () => {
       if (!realParents(file) || !fs.lstatSync(file, { throwIfNoEntry: false })?.isFile()) return;
-      const evaluatorOnly = ['CLAUDE.md', 'AGENTS.md'].includes(name);
-      if (!removeInstructions(name, false, base, evaluatorOnly)) return;
+      if (!removeInstructions(name, false, base)) return;
       found = true;
-      removeInstructions(name, true, base, evaluatorOnly);
+      removeInstructions(name, true, base);
     });
   }
   return found;
@@ -1652,7 +1652,6 @@ function cleanupProjectFiles(base, includedHooks = new Set(), callerBase = base)
 // file is removed, owner text around it kept byte-for-byte (removeInstructions). A copy someone
 // edited stays exactly as it is: only recognized content is ever removed.
 function cleanupInstructions(base) {
-  const { inspectInstruction } = require('./harness-status');
   const items = [];
   for (const name of ['CLAUDE.md', 'AGENTS.md']) {
     const file = path.join(base, name);
@@ -1661,11 +1660,9 @@ function cleanupInstructions(base) {
     let text;
     try { text = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(fs.readFileSync(file)); }
     catch { continue; }
-    const template = fs.readFileSync(path.join(CONFIG_SOURCE, '..', name), 'utf8');
-    const { ownership } = inspectInstruction(text, template, name);
-    if (ownership === 'current' || ownership === 'outdated' || (ownership === 'unowned' && unmarkedCopy(name, text, template))) {
+    if (removeInstructions(name, false, base)) {
       items.push({ kind: 'instructions', path: file, base, action: 'remove', reasons: [] });
-    } else if (ownership === 'modified' || holdsDevlynDefaults(name, text)) {
+    } else if (holdsDevlynDefaults(name, text)) {
       items.push({ kind: 'instructions', path: file, base, action: 'skip', reasons: [cleanupReason('modified-copy')] });
     }
   }
