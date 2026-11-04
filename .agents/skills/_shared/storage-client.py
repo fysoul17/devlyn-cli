@@ -759,12 +759,13 @@ def _evidence(path):
     return info
 
 
-def _same_file(left, right):
+def _same_file(left, right, handles=False):
     def identity(info):
-        if os.name == 'nt':
+        if os.name == 'nt' and not handles:
             # Windows path stat synthesizes executable bits from the extension, and its
             # st_ctime is the creation time while handle stat reports the change time
-            # (CPython 3.12, Windows Server 2025). Neither is comparable there.
+            # (CPython 3.12, Windows Server 2025). Neither compares across the two;
+            # two stats of one handle (`handles`) compare every field.
             return (info.st_dev, info.st_ino, stat.S_IFMT(info.st_mode), info.st_size, info.st_mtime_ns)
         return (info.st_dev, info.st_ino, info.st_mode, info.st_size, info.st_mtime_ns, info.st_ctime_ns)
     return right is not None and identity(left) == identity(right)
@@ -846,11 +847,12 @@ def regular_digest(path):
     require(before is not None and stat.S_ISREG(before.st_mode), "retained artifact is not a regular file")
     fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_BINARY", 0))
     with os.fdopen(fd, "rb") as stream:
-        require(_same_file(before, os.fstat(stream.fileno())), "retained artifact changed")
+        opened = os.fstat(stream.fileno())
+        require(_same_file(before, opened), "retained artifact changed")
         digest = hashlib.sha256()
         for chunk in iter(lambda: stream.read(1024*1024), b""):
             digest.update(chunk)
-        require(_same_file(before, os.fstat(stream.fileno())) and _same_file(before, _evidence(path)),
+        require(_same_file(opened, os.fstat(stream.fileno()), handles=True) and _same_file(before, _evidence(path)),
                 "retained artifact changed while hashing")
         return digest.hexdigest()
 

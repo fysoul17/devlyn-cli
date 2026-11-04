@@ -1809,9 +1809,32 @@ class EnrollmentLifecycleTests(unittest.TestCase):
         with patch.object(Path, 'lstat', named_stat), patch.object(client, 'Path', type(self.home)), patch.object(client.os, 'name', 'nt'):
             self.assertEqual([client.regular_digest(paths[0]), client.package_digest(paths[1].parent)], expected)
             before = named_stat(paths[0])
-            for field in ('st_ino', 'st_size', 'st_mtime_ns'):
+            for field in ('st_dev', 'st_ino', 'st_size', 'st_mtime_ns'):
                 changed = SimpleNamespace(**{**vars(before), field: getattr(before, field) + 1})
                 self.assertFalse(client._same_file(before, changed), field)
+
+    def test_windows_hashing_refuses_a_handle_change_time_advance(self):
+        path = self.home / 'devlynd.exe'
+        path.write_bytes(b'pinned artifact')
+        lstat, fstat = Path.lstat, os.fstat
+        def named_stat(path, *args, **kwargs):
+            info = lstat(path, *args, **kwargs)
+            values = {name: getattr(info, name) for name in ('st_dev', 'st_ino', 'st_size', 'st_mtime_ns')}
+            return SimpleNamespace(**values, st_mode=info.st_mode | 0o111, st_ctime_ns=info.st_ctime_ns - 1)
+        handle_stats = []
+        def handle_stat(fd):
+            info = fstat(fd)
+            handle_stats.append(info)
+            if len(handle_stats) == 1:
+                return info
+            # A same-size rewrite that restores mtime still advances the handle's change time.
+            values = {name: getattr(info, name) for name in ('st_dev', 'st_ino', 'st_mode', 'st_size', 'st_mtime_ns')}
+            return SimpleNamespace(**values, st_ctime_ns=info.st_ctime_ns + 1)
+        with patch.object(Path, 'lstat', named_stat), patch.object(client, 'Path', type(self.home)), \
+                patch.object(client.os, 'name', 'nt'), patch.object(client.os, 'fstat', handle_stat), \
+                self.assertRaises(REFUSAL) as raised:
+            client.regular_digest(path)
+        self.assertIn('while hashing', raised.exception.diagnostic)
 
     def test_lost_or_invalid_enrollment_evidence_never_selects_unmanaged(self):
         self.assertEqual(client.enrollment()['mode'], 'managed')
