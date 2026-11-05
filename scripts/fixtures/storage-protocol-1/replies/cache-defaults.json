@@ -44,7 +44,7 @@
     "reason": null,
     "retire_intent": false,
     "retirement_authorized_by": null,
-    "schema_version": 2,
+    "schema_version": 3,
     "state": "preparing",
     "supervisor": {
       "pid": 42,
