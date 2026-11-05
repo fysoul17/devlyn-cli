@@ -86,7 +86,7 @@ def load_cross_language_golden_vectors(directory=FIXTURES / "storage-protocol-1"
         digest = hashlib.sha256(sums).hexdigest()
         client.require(sums == (directory/'SHA256SUMS').read_bytes(), 'vector inventory or hashes changed', 'storage_unsupported')
         client.require((directory/'DIGEST').read_bytes() == (digest+'\n').encode()
-                       and digest == '451e5a2ab3db16fd0e29dbd6220142a7c15e1b9f7b75e84515f85af76ce07bc7',
+                       and digest == '715f7562a489c1976ba483549c41e6c915f124e746fc307ce8e3d32701b5ad3f',
                        'unverified protocol package', 'storage_unsupported')
         return json.loads((directory/'manifest.json').read_bytes())
     except OSError as exc:

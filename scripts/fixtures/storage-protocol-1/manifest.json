@@ -1088,7 +1088,7 @@
           "removal_id": null,
           "retire_intent": false,
           "retirement_authorized_by": null,
-          "schema_version": 2,
+          "schema_version": 3,
           "state": "preparing",
           "supervisor": {
             "pid": 42,
@@ -1152,7 +1152,7 @@
           "removal_id": null,
           "retire_intent": false,
           "retirement_authorized_by": null,
-          "schema_version": 2,
+          "schema_version": 3,
           "state": "preparing",
           "supervisor": {
             "pid": 42,
@@ -1216,7 +1216,7 @@
           "removal_id": null,
           "retire_intent": false,
           "retirement_authorized_by": null,
-          "schema_version": 2,
+          "schema_version": 3,
           "state": "preparing",
           "supervisor": {
             "pid": 42,
@@ -1280,7 +1280,7 @@
           "removal_id": null,
           "retire_intent": false,
           "retirement_authorized_by": null,
-          "schema_version": 2,
+          "schema_version": 3,
           "state": "preparing",
           "supervisor": {
             "pid": 42,
@@ -1344,7 +1344,7 @@
           "removal_id": null,
           "retire_intent": false,
           "retirement_authorized_by": null,
-          "schema_version": 2,
+          "schema_version": 3,
           "state": "preparing",
           "supervisor": {
             "pid": 42,
@@ -1408,7 +1408,7 @@
           "removal_id": null,
           "retire_intent": false,
           "retirement_authorized_by": null,
-          "schema_version": 2,
+          "schema_version": 3,
           "state": "preparing",
           "supervisor": {
             "pid": 42,
@@ -1472,7 +1472,7 @@
           "removal_id": null,
           "retire_intent": false,
           "retirement_authorized_by": null,
-          "schema_version": 2,
+          "schema_version": 3,
           "state": "preparing",
           "supervisor": {
             "pid": 42,
@@ -1536,7 +1536,7 @@
           "removal_id": null,
           "retire_intent": false,
           "retirement_authorized_by": null,
-          "schema_version": 2,
+          "schema_version": 3,
           "state": "preparing",
           "supervisor": {
             "pid": 42,
@@ -1600,7 +1600,7 @@
           "removal_id": null,
           "retire_intent": false,
           "retirement_authorized_by": null,
-          "schema_version": 2,
+          "schema_version": 3,
           "state": "preparing",
           "supervisor": {
             "pid": 42,
@@ -1664,7 +1664,7 @@
           "removal_id": null,
           "retire_intent": false,
           "retirement_authorized_by": null,
-          "schema_version": 2,
+          "schema_version": 3,
           "state": "preparing",
           "supervisor": {
             "pid": 42,
@@ -1728,7 +1728,7 @@
           "removal_id": null,
           "retire_intent": false,
           "retirement_authorized_by": null,
-          "schema_version": 2,
+          "schema_version": 3,
           "state": "preparing",
           "supervisor": {
             "pid": 42,
@@ -1749,7 +1749,7 @@
           "capabilities": [
             "reserve"
           ],
-          "schema": 2,
+          "schema": 3,
           "storage_protocol": 1
         }
       },
@@ -1766,7 +1766,7 @@
           "capabilities": [
             "reserve"
           ],
-          "schema": 2,
+          "schema": 3,
           "storage_protocol": 1
         }
       },
@@ -1827,7 +1827,7 @@
             "removal_id": null,
             "retire_intent": false,
             "retirement_authorized_by": null,
-            "schema_version": 2,
+            "schema_version": 3,
             "state": "preparing",
             "supervisor": {
               "pid": 42,
@@ -1907,7 +1907,7 @@
             "removal_id": null,
             "retire_intent": false,
             "retirement_authorized_by": null,
-            "schema_version": 2,
+            "schema_version": 3,
             "state": "preparing",
             "supervisor": {
               "pid": 42,
@@ -1987,7 +1987,7 @@
             "removal_id": null,
             "retire_intent": false,
             "retirement_authorized_by": null,
-            "schema_version": 2,
+            "schema_version": 3,
             "state": "preparing",
             "supervisor": {
               "pid": 42,
@@ -2067,7 +2067,7 @@
             "removal_id": null,
             "retire_intent": false,
             "retirement_authorized_by": null,
-            "schema_version": 2,
+            "schema_version": 3,
             "state": "preparing",
             "supervisor": {
               "pid": 42,
@@ -2147,7 +2147,7 @@
             "removal_id": null,
             "retire_intent": false,
             "retirement_authorized_by": null,
-            "schema_version": 2,
+            "schema_version": 3,
             "state": "preparing",
             "supervisor": {
               "pid": 42,
@@ -2227,7 +2227,7 @@
             "removal_id": null,
             "retire_intent": false,
             "retirement_authorized_by": null,
-            "schema_version": 2,
+            "schema_version": 3,
             "state": "preparing",
             "supervisor": {
               "pid": 42,
@@ -2307,7 +2307,7 @@
             "removal_id": null,
             "retire_intent": false,
             "retirement_authorized_by": null,
-            "schema_version": 2,
+            "schema_version": 3,
             "state": "preparing",
             "supervisor": {
               "pid": 42,
@@ -2387,7 +2387,7 @@
             "removal_id": null,
             "retire_intent": false,
             "retirement_authorized_by": null,
-            "schema_version": 2,
+            "schema_version": 3,
             "state": "preparing",
             "supervisor": {
               "pid": 42,
@@ -2467,7 +2467,7 @@
             "removal_id": null,
             "retire_intent": false,
             "retirement_authorized_by": null,
-            "schema_version": 2,
+            "schema_version": 3,
             "state": "preparing",
             "supervisor": {
               "pid": 42,
@@ -2547,7 +2547,7 @@
             "removal_id": null,
             "retire_intent": false,
             "retirement_authorized_by": null,
-            "schema_version": 2,
+            "schema_version": 3,
             "state": "preparing",
             "supervisor": {
               "pid": 42,
@@ -2627,7 +2627,7 @@
             "removal_id": null,
             "retire_intent": false,
             "retirement_authorized_by": null,
-            "schema_version": 2,
+            "schema_version": 3,
             "state": "preparing",
             "supervisor": {
               "pid": 42,
@@ -2707,7 +2707,7 @@
             "removal_id": null,
             "retire_intent": false,
             "retirement_authorized_by": null,
-            "schema_version": 2,
+            "schema_version": 3,
             "state": "preparing",
             "supervisor": {
               "pid": 42,
@@ -2787,7 +2787,7 @@
             "removal_id": null,
             "retire_intent": false,
             "retirement_authorized_by": null,
-            "schema_version": 2,
+            "schema_version": 3,
             "state": "preparing",
             "supervisor": {
               "pid": 42,
@@ -2867,7 +2867,7 @@
             "removal_id": null,
             "retire_intent": false,
             "retirement_authorized_by": null,
-            "schema_version": 2,
+            "schema_version": 3,
             "state": "preparing",
             "supervisor": {
               "pid": 42,
@@ -3981,7 +3981,7 @@
             "removal_id": null,
             "retire_intent": false,
             "retirement_authorized_by": null,
-            "schema_version": 2,
+            "schema_version": 3,
             "state": "preparing",
             "supervisor": {
               "pid": 42,
@@ -4063,7 +4063,7 @@
             "removal_id": null,
             "retire_intent": false,
             "retirement_authorized_by": null,
-            "schema_version": 2,
+            "schema_version": 3,
             "state": "preparing",
             "supervisor": {
               "pid": 42,
@@ -4145,7 +4145,7 @@
             "removal_id": null,
             "retire_intent": false,
             "retirement_authorized_by": null,
-            "schema_version": 2,
+            "schema_version": 3,
             "state": "preparing",
             "supervisor": {
               "pid": 42,
@@ -4227,7 +4227,7 @@
             "removal_id": null,
             "retire_intent": false,
             "retirement_authorized_by": null,
-            "schema_version": 2,
+            "schema_version": 3,
             "state": "preparing",
             "supervisor": {
               "pid": 42,
@@ -4309,7 +4309,7 @@
             "removal_id": null,
             "retire_intent": false,
             "retirement_authorized_by": null,
-            "schema_version": 2,
+            "schema_version": 3,
             "state": "preparing",
             "supervisor": {
               "pid": 42,
@@ -4391,7 +4391,7 @@
             "removal_id": null,
             "retire_intent": false,
             "retirement_authorized_by": null,
-            "schema_version": 2,
+            "schema_version": 3,
             "state": "preparing",
             "supervisor": {
               "pid": 42,
@@ -4473,7 +4473,7 @@
             "removal_id": null,
             "retire_intent": false,
             "retirement_authorized_by": null,
-            "schema_version": 2,
+            "schema_version": 3,
             "state": "preparing",
             "supervisor": {
               "pid": 42,
@@ -4555,7 +4555,7 @@
             "removal_id": null,
             "retire_intent": false,
             "retirement_authorized_by": null,
-            "schema_version": 2,
+            "schema_version": 3,
             "state": "preparing",
             "supervisor": {
               "pid": 42,
@@ -4637,7 +4637,7 @@
             "removal_id": null,
             "retire_intent": false,
             "retirement_authorized_by": null,
-            "schema_version": 2,
+            "schema_version": 3,
             "state": "preparing",
             "supervisor": {
               "pid": 42,
@@ -4719,7 +4719,7 @@
             "removal_id": null,
             "retire_intent": false,
             "retirement_authorized_by": null,
-            "schema_version": 2,
+            "schema_version": 3,
             "state": "preparing",
             "supervisor": {
               "pid": 42,
@@ -4801,7 +4801,7 @@
             "removal_id": null,
             "retire_intent": false,
             "retirement_authorized_by": null,
-            "schema_version": 2,
+            "schema_version": 3,
             "state": "preparing",
             "supervisor": {
               "pid": 42,
@@ -4883,7 +4883,7 @@
             "removal_id": null,
             "retire_intent": false,
             "retirement_authorized_by": null,
-            "schema_version": 2,
+            "schema_version": 3,
             "state": "preparing",
             "supervisor": {
               "pid": 42,
@@ -4965,7 +4965,7 @@
             "removal_id": null,
             "retire_intent": false,
             "retirement_authorized_by": null,
-            "schema_version": 2,
+            "schema_version": 3,
             "state": "preparing",
             "supervisor": {
               "pid": 42,
@@ -5047,7 +5047,7 @@
             "removal_id": null,
             "retire_intent": false,
             "retirement_authorized_by": null,
-            "schema_version": 2,
+            "schema_version": 3,
             "state": "preparing",
             "supervisor": {
               "pid": 42,
@@ -5128,7 +5128,7 @@
           "removal_id": null,
           "retire_intent": false,
           "retirement_authorized_by": null,
-          "schema_version": 2,
+          "schema_version": 3,
           "state": "preparing",
           "supervisor": {
             "pid": 42,
