@@ -211,15 +211,29 @@ class ActivationTests(unittest.TestCase):
                     self.assertEqual(disabled['channels']['overall'], 'disabled')
                     self.assertIsNone(disabled['release'])
 
-    def test_per_engine_legacy_resume_is_never_upgraded(self):
+    def test_per_engine_legacy_resume_fork_adopts_selected_release(self):
+        # Prediction: unbound continuations select like fresh launches, while Kimi still skips continuation delivery.
         for engine in VERSIONS:
-            with self.subTest(engine=engine):
-                ctx = self.context(engine)
-                ctx['launchMode'] = 'resume'
-                plan = self.plan(ctx)
-                self.assertIsNone(plan['release'])
-                self.assertEqual(plan['channels']['overall'], 'partial')
-                self.assertEqual(plan['envPatch'], {})
+            for mode in ('resume', 'fork'):
+                with self.subTest(engine=engine, mode=mode):
+                    ctx = self.context(engine)
+                    ctx['launchMode'] = mode
+                    plan = self.plan(ctx)
+                    self.assertEqual(plan['release'], self.release)
+                    if engine in ('claude', 'codex'):
+                        self.assertEqual(plan['channels']['overall'], 'configured')
+                    elif engine == 'kimi':
+                        self.assertEqual(plan['channels']['overall'], 'partial')
+                        self.assertEqual(plan['engineArgs'], [])
+                        recorded = self.plan({**ctx, 'recordedRelease': self.release})
+                        for name in ('principles', 'skills'):
+                            self.assertEqual(plan['channels'][name]['reasons'], [
+                                {'code': f'{name}-unavailable', 'params': {'launchMode': mode, 'ownerAgent': False}}])
+                            self.assertEqual(plan['channels'][name], recorded['channels'][name])
+                    ctx['projectChoice'] = 'none'
+                    disabled = self.plan(ctx)
+                    self.assertEqual(disabled['channels']['overall'], 'disabled')
+                    self.assertIsNone(disabled['release'])
 
     def test_resume_ignores_current_default_root(self):
         ctx = self.context()

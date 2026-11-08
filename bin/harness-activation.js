@@ -249,14 +249,10 @@ function planActivation(releaseRoot, input, env = process.env) {
   const plan = { schemaVersion: 1, release: null, engineArgs: [], envPatch: {}, prompt: null,
     files: [], machineSync: null, channels: status };
   const continuation = context.launchMode !== 'fresh';
-  if (continuation && context.recordedRelease === undefined) {
-    status.principles = channel('partial', null, [reason('principles-unavailable', { launchMode: context.launchMode, detail: 'recorded-binding-missing' })]);
-    status.skills = channel('partial', null, [reason('skills-unavailable', { launchMode: context.launchMode, detail: 'recorded-binding-missing' })]);
-    return finish(plan);
-  }
-  const off = continuation ? context.recordedRelease === null : context.projectChoice === 'none';
-  const release = verifyRelease(continuation && !off ? context.recordedRelease.root : releaseRoot).release;
-  if (continuation && !off && (release.digest !== context.recordedRelease.digest || release.version !== context.recordedRelease.version)) {
+  const recorded = continuation && context.recordedRelease !== undefined;
+  const off = recorded ? context.recordedRelease === null : context.projectChoice === 'none';
+  const release = verifyRelease(recorded && !off ? context.recordedRelease.root : releaseRoot).release;
+  if (recorded && !off && (release.digest !== context.recordedRelease.digest || release.version !== context.recordedRelease.version)) {
     fail('release-version-conflict', { version: context.recordedRelease.version }, 3);
   }
   const config = effectiveConfig(context);

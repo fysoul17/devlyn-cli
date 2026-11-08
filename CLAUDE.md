@@ -15,7 +15,7 @@ Seven rules govern every change. Cite them by name when a decision touches one.
 3. **No guesswork** — verify with the actual files, logs, diffs, and run output before forming conclusions. State the falsifiable prediction BEFORE the experiment; record raw results AFTER. Retroactive prediction edits are dishonest.
 4. **Worldclass** — zero CRITICAL, zero HIGH security/design findings on the shippable path. Any review is one pass in which every reviewer, including each one the user requires, reads the source the checks ran on; fix each finding or reject it with a reason, re-check the fixes and the invariants they touch, and repeat the full review only while a CRITICAL or HIGH finding remains.
 5. **Best practice** — idiomatic for the language and framework. Use standard primitives; do not hand-roll what the library already provides.
-6. **Optimized** — use efficient code and avoid unnecessary work without sacrificing correctness or the user's requirements.
+6. **Optimized** — efficient on the resource that matters (the user's time, tokens, attention, runtime) without weakening correctness or requirements. An extra check or process step must beat the simpler path.
 7. **Production ready** — error states are explicit and visible; behavior under failure is what the user expects, not silent corruption.
 
 Three discipline rules govern HOW the principles are applied:
