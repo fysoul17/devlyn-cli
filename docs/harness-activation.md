@@ -105,10 +105,13 @@ before launch, then splices `engineArgs` inside the monitored inner command and
 applies `envPatch` to that process. A sync conflict is not successful activation.
 No new task/model turn is created for an empty terminal.
 
-Fresh selection uses the supplied release root. On resume/fork, `recordedRelease`
-is mandatory: a reference selects and verifies that exact release (even if the
-project choice is now None); explicit null preserves a disabled session; omission
-returns partial legacy coverage without injecting anything. Whenever activation
+Fresh selection uses the supplied release root. On resume/fork, a `recordedRelease`
+reference selects and verifies that exact release (even if the project choice is
+now None) and explicit null preserves a disabled session. Omission means the
+conversation has no recorded binding: it is planned from the supplied release
+root and project choice, as a fresh launch is. The app records the result only
+when the plan names a release, so a null or failed plan leaves the binding absent
+for the next turn to retry. Whenever activation
 injects, it injects the selected release's principles: a committed project
 block, possibly from an older release, never replaces them, and the session
 defaults state that they supersede such a block. This contract
