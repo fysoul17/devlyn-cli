@@ -328,7 +328,7 @@ def storage_call(name, *args, adapter=False, receipt_path=None, resume=None, **k
         if resume:
             if resume not in message:
                 message += '; resume ' + resume
-        else:
+        elif exc.code != 'storage_unsupported':  # An update is that refusal's remedy, never a repair.
             message += '; repair Devlyn enrollment and retry'
         error = CompletionError(message)
         error.storage_error = exc.result(receipt=path, resume=resume)

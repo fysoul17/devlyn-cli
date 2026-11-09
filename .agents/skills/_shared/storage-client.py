@@ -1114,6 +1114,7 @@ def moved_operation(saved):
         pins = lifecycle_evidence(root, root / 'storage-client-recovery/pins.json', observed)
         if pins is None:
             return None  # No retained binding can establish a moved receipt.
+        require_known_pins(pins)
         validate(pins, {'schema': 'u32', 'enrollment': ENROLLMENT_SHAPE, 'runtime': ARTIFACT_SHAPE, 'node': 'str'}, exact=True)
         require(pins['schema'] == pins['enrollment']['schema'] == 1, 'unsupported recovery pins')
         if (all(saved.get(key) == pins['enrollment'][key] for key in ('control_directory', 'control_identity'))
@@ -1175,6 +1176,8 @@ def retirement_refusal(root=None):
         require(fence is not None, 'retirement fence missing')
         record = recovery_registration()
     except (StorageRefusal, OSError, ValueError, RuntimeError) as exc:
+        if isinstance(exc, StorageRefusal) and exc.code == 'storage_unsupported':
+            raise  # An update answers it; Devlyn can repair nothing a newer Devlyn wrote.
         detail = exc.diagnostic if isinstance(exc, StorageRefusal) else str(exc)
         repair = 'Open Devlyn to repair its storage registration'
         raise StorageRefusal('storage_unavailable', detail, phase='enrollment', message=repair, resume=repair) from exc
@@ -1189,6 +1192,22 @@ def retirement_refusal(root=None):
                          message='Finish this storage retirement; resume ' + resume + alternative, resume=resume)
 
 
+def require_known_pins(pins):
+    """Pins a newer Devlyn wrote refuse as unsupported, as the managed read's newer record does, never as pins to
+    repair: only that Devlyn may change them."""
+    enrollment = pins.get('enrollment') if type(pins) is dict else None
+    schemas = (pins.get('schema') if type(pins) is dict else None,
+               enrollment.get('schema') if type(enrollment) is dict else None)
+    require(not any(type(schema) is int and schema > 1 for schema in schemas),
+            'recovery pins from a newer Devlyn', 'storage_unsupported')
+
+
+def invalid_pins(exc):
+    detail = exc.diagnostic if isinstance(exc, StorageRefusal) else str(exc)
+    return StorageRefusal('storage_unavailable', f'recovery pins invalid: {detail}', phase='enrollment',
+                          message='Retain the workspace and receipt; repair Devlyn recovery pins and retry')
+
+
 def recovery_registration():
     """Current retained pins survive replacement of the app and unenrollment."""
     try:
@@ -1200,6 +1219,10 @@ def recovery_registration():
         require(info is not None and stat.S_ISDIR(info.st_mode), 'recovery pins directory missing/invalid')
         observed = [(marker, info)]
         pins = read_evidence_json(marker / 'pins.json', observed)
+    except (StorageRefusal, OSError, ValueError, RuntimeError) as exc:
+        raise invalid_pins(exc) from exc
+    require_known_pins(pins)
+    try:
         validate(pins, {'schema': 'u32', 'enrollment': ENROLLMENT_SHAPE,
                         'runtime': ARTIFACT_SHAPE, 'node': 'str'}, exact=True)
         record = pins['enrollment']
@@ -1217,9 +1240,7 @@ def recovery_registration():
             require(after is None if before is None else _same_file(before, after), f'recovery pins changed: {path}')
         return record
     except (StorageRefusal, OSError, ValueError, RuntimeError) as exc:
-        detail = exc.diagnostic if isinstance(exc, StorageRefusal) else str(exc)
-        raise StorageRefusal('storage_unavailable', f'recovery pins invalid: {detail}', phase='enrollment',
-                             message='Retain the workspace and receipt; repair Devlyn recovery pins and retry') from exc
+        raise invalid_pins(exc) from exc
 
 
 def windows_profile():
@@ -1481,7 +1502,9 @@ def queue_handoff(common, binding):
                             helper = runpy.run_path(str(Path(__file__).with_name('task-complete.py')))
                             text += ' resume ' + helper['receipt_resume']('recover-storage', receipt, saved)
                         holders.append(text)
-                except (StorageRefusal, OSError, ValueError, TypeError, AttributeError, KeyError):
+                except (StorageRefusal, OSError, ValueError, TypeError, AttributeError, KeyError) as exc:
+                    if isinstance(exc, StorageRefusal) and exc.code == 'storage_unsupported':
+                        return f'{receipt}: {exc}'  # Evidence a newer Devlyn wrote: update, never repair.
                     if adapter_marker:
                         holders.append(str(receipt))
                         continue

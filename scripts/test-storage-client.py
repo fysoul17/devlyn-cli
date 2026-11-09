@@ -853,6 +853,12 @@ class EnrollmentTests(unittest.TestCase):
                 helper['storage_call']('retirement_refusal')
             self.assertEqual(str(raised.exception), expected)
             self.assertEqual(raised.exception.storage_error['resume'], command)
+        # An unsupported refusal's remedy is an update, so no repair suffix follows it.
+        refusal = storage['StorageRefusal']('storage_unsupported', 'recovery pins from a newer Devlyn')
+        with patch.dict(storage, retirement_refusal=unittest.mock.Mock(side_effect=refusal)), \
+             self.assertRaises(helper['CompletionError']) as raised:
+            helper['storage_call']('retirement_refusal')
+        self.assertEqual(str(raised.exception), storage['REFUSAL_TEXT']['storage_unsupported'])
 
     def test_unset_home_platform_branches_and_json_contract(self):
         import io
@@ -1953,6 +1959,65 @@ class EnrollmentLifecycleTests(unittest.TestCase):
         (self.root / 'storage-client-unenroll.json').write_text(json.dumps(journal))
         (self.root / 'storage-client-fence.json').write_text(json.dumps({k: v for k, v in journal.items() if k not in {'archives', 'retired'}}))
         return journal, pins
+
+    def test_newer_recovery_pins_refuse_as_unsupported_never_as_repairable(self):
+        # Prediction: pins a newer Devlyn wrote (schema above 1 on the pins or their enrollment, with or without a
+        # field this CLI does not know) refuse as storage_unsupported with the update sentence, in recovery and in
+        # the moved-receipt check, and never ask to repair them; schema 0 stays an ordinary invalid pins refusal.
+        original = self.pins_path.read_text()
+        for name, change in (('pins', lambda pins: pins.update(schema=2)),
+                             ('pins and unknown field', lambda pins: pins.update(schema=2, later={'shape': 2})),
+                             ('enrollment', lambda pins: pins['enrollment'].update(schema=2))):
+            with self.subTest(change=name):
+                pins = json.loads(original)
+                change(pins)
+                self.pins_path.write_text(json.dumps(pins))
+                with self.assertRaises(REFUSAL) as raised:
+                    client.recovery_registration()
+                self.assertEqual(raised.exception.code, 'storage_unsupported')
+                self.assertEqual(str(raised.exception), client.REFUSAL_TEXT['storage_unsupported'])
+                self.assertNotIn('repair', str(raised.exception))
+        for schema in (0, True, '2'):
+            pins = json.loads(original)
+            pins['schema'] = schema
+            self.pins_path.write_text(json.dumps(pins))
+            with self.subTest(schema=schema), self.assertRaises(REFUSAL) as raised:
+                client.recovery_registration()
+            self.assertEqual(raised.exception.code, 'storage_unavailable')
+        journal, moved = self.moved_retirement()
+        for name, change in (('pins', lambda pins: pins.update(schema=2)),
+                             ('enrollment', lambda pins: pins['enrollment'].update(schema=2))):
+            newer = json.loads(json.dumps(moved))
+            change(newer)
+            self.pins_path.write_text(json.dumps(newer))
+            with self.subTest(moved=name), self.assertRaises(REFUSAL) as raised:
+                client.moved_operation(moved['enrollment'])
+            self.assertEqual(raised.exception.code, 'storage_unsupported')
+            self.assertEqual(str(raised.exception), client.REFUSAL_TEXT['storage_unsupported'])
+
+    def test_newer_pins_reach_retirement_and_the_queue_hold_as_an_update(self):
+        # Prediction: an unfinished retirement and a queue hold over a managed receipt both pass the newer pins'
+        # storage_unsupported refusal on unchanged, whether or not the receipt has an adapter marker.
+        journal, pins = self.moved_retirement(retired=False)
+        pins['schema'] = 2
+        self.pins_path.write_text(json.dumps(pins))
+        with self.assertRaises(REFUSAL) as raised:
+            client.retirement_refusal()
+        self.assertEqual(raised.exception.code, 'storage_unsupported')
+        common = self.home / 'common'
+        receipt = common / 'devlyn-completion/task/receipt.json'
+        receipt.parent.mkdir(parents=True)
+        binding = {key: pins['enrollment'][key] for key in ('control_directory', 'control_identity')}
+        receipt.write_text(json.dumps({'allocation': 'managed_pending', 'storage': {
+            'decision': {'registration': binding}, 'request': {'operation_id': client.operation_id()}}}))
+        reference = {'release': {'root': str(self.home), 'package': 'devlyn-cli', 'version': '4.3.20', 'digest': 'a'*64}}
+        for marker in (False, True):
+            if marker:
+                (receipt.parent / 'storage-allocation.json').touch()
+            with self.subTest(marker=marker), patch.object(client, 'operation_enrollment', return_value={'mode': 'standalone'}), \
+                 patch.object(client, 'recovery_marker', return_value=True):
+                self.assertEqual(client.queue_handoff(common, reference),
+                                 f"{receipt}: {client.REFUSAL_TEXT['storage_unsupported']}")
 
     def test_retired_moved_home_bootstraps_from_retained_bytes(self):
         journal, pins = self.moved_retirement()
