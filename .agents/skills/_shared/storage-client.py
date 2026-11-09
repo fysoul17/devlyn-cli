@@ -42,7 +42,6 @@ import uuid
 MAX_REQUEST = 128 * 1024
 MAX_REPLY = 4 * 1024 * 1024
 EXCHANGE_SECONDS = 15.0
-BUSY_SECONDS = 2.0
 MANAGED_PENDING = "managed_pending"
 MANAGED_OWNED = "managed_owned"
 MANAGED_STATES = frozenset({MANAGED_PENDING, MANAGED_OWNED})
@@ -726,7 +725,9 @@ class Client:
     def call(self, request):
         data = encode_request(request)  # Freeze validated bytes before retry.
         expected = REQUESTS[request["op"]][1]
-        busy_deadline, backoff = time.monotonic()+BUSY_SECONDS, 0.01
+        # Behind a busy worker, wait as long as one exchange may take, as devlynd's own clients
+        # do (EXCHANGE_BUDGET): one slow request must not fail the call.
+        busy_deadline, backoff = time.monotonic()+EXCHANGE_SECONDS, 0.01
         try:
             while True:
                 try:

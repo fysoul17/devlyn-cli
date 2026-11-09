@@ -488,7 +488,7 @@ class ClientTests(unittest.TestCase):
                 clock.now += seconds + wake_delay
             with self.subTest(wake_delay=wake_delay), \
                  patch.object(client, 'time', SimpleNamespace(monotonic=lambda: clock.now, sleep=sleep)), \
-                 patch.object(client.Client, '_exchange', side_effect=busy), patch.object(client, 'BUSY_SECONDS', budget):
+                 patch.object(client.Client, '_exchange', side_effect=busy), patch.object(client, 'EXCHANGE_SECONDS', budget):
                 with self.assertRaises(REFUSAL) as raised:
                     client.Client('unused').call({'op': 'hello'})
             self.assertEqual(raised.exception.code, 'storage_busy')
@@ -496,6 +496,31 @@ class ClientTests(unittest.TestCase):
             self.assertEqual(attempts[0], 0.0)
             if wake_delay:
                 self.assertEqual(len(attempts), 1, 'overslept wakeup retried')
+
+    def test_busy_is_waited_out_as_long_as_one_exchange(self):
+        # devlynd's own clients wait EXCHANGE_BUDGET (15 s) behind a busy worker; so does this one.
+        hello = {"storage_protocol": 1, "capabilities": ["reserve"]}
+        for busy_for, answered in ((2.5, True), (float('inf'), False)):
+            clock, attempts = SimpleNamespace(now=0.0), []
+            def exchange(*args, **kwargs):
+                attempts.append(clock.now)
+                if clock.now < busy_for:
+                    raise REFUSAL('busy')
+                return hello, 'server'
+            def sleep(seconds):
+                clock.now += seconds
+            with self.subTest(busy_for=busy_for), \
+                 patch.object(client, 'time', SimpleNamespace(monotonic=lambda: clock.now, sleep=sleep)), \
+                 patch.object(client.Client, '_exchange', side_effect=exchange):
+                if answered:
+                    self.assertEqual(client.Client('unused').call({'op': 'hello'}), hello)
+                    self.assertGreaterEqual(clock.now, busy_for)
+                else:
+                    with self.assertRaises(REFUSAL) as raised:
+                        client.Client('unused').call({'op': 'hello'})
+                    self.assertEqual(raised.exception.code, 'storage_busy')
+                    self.assertGreaterEqual(clock.now, client.EXCHANGE_SECONDS)
+                    self.assertLess(attempts[-1], client.EXCHANGE_SECONDS)
 
     def test_unknown_and_nonbusy_errors_are_never_retried(self):
         for code in ("storage_io", "storage_unavailable", "storage_not_found", "storage_expired", "new_code"):
