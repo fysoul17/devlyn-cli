@@ -635,6 +635,8 @@ class LoopFixture(unittest.TestCase):
         # Prediction: repository() failing before it returns an anchor still prints BLOCKED JSON with diagnostics,
         # without a traceback, for both status and drain.
         skill = self.skill_copy(self.root / "running skills", "1.0.0")
+        # Git's own message for the failed lookup, in whatever language Git speaks here.
+        lookup = subprocess.run(["git", "-C", str(self.root), "rev-parse", "--show-toplevel"], env=self.env, capture_output=True)
         for action in ("status", "drain"):
             with self.subTest(action=action):
                 argv = [sys.executable, str(self.queue_py), action, "--repo", str(self.root)]
@@ -645,7 +647,7 @@ class LoopFixture(unittest.TestCase):
                 self.assertNotIn("Traceback", result.stdout + result.stderr)
                 payload = json.loads(result.stdout)
                 self.assertEqual((payload["status"], payload["skill"], payload["warnings"]), ("BLOCKED", skill, []))
-                self.assertIn("not a git repository", payload["reason"])
+                self.assertEqual(payload["reason"], "git rev-parse --show-toplevel: " + lookup.stderr.decode("utf-8", "replace").strip())
 
     def test_skill_details_survive_blocked_outcomes(self):
         # Prediction: preflight, lock and authoritative-queue failures keep BLOCKED and their existing reason,
