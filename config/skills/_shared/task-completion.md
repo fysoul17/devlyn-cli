@@ -62,9 +62,6 @@ The repository comes from the remote's GitHub URL and the base from the reposito
 A non-default base is refused at allocation.
 Every delivery allocation owns a linked worktree; `--worktree` is required and
 must name an absent path.
-Cleanup removes empty parents through the exact per-repo root shown above or its legacy `.devlyn.noindex`/`.devlyn` root, keeping the shared `.devlyn-worktrees` container. Allocation also sweeps empty legacy roots for this repo.
-On Windows, allocation marks only a newly created shared container hidden and creates the worktree not content-indexed (content only; names stay indexed); files copied in keep their own attributes.
-A marking failure continues allocation and is reported in `warnings`.
 Remote allocation first cleans earlier merged deliveries, then allocation refuses with `BLOCKED:disk`
 without creating a receipt, branch or worktree when that filesystem has less than max(10 GiB, 2%) free; free space and allocate again.
 A publication allocation normally starts at the exact fetched remote base,
@@ -122,9 +119,7 @@ Git config `devlyn.warmBuildDirs` is true, or it is unset and the Cargo workspac
 Cargo.toml sets `[workspace.metadata.devlyn] warm-build-dirs = true`,
 allocation seeds that directory from a built checkout of the repository, so
 the first build does not rebuild every dependency; `build_dirs` in its result
-and receipt says what it did, and a skip means an ordinary cold build. The
-Git setting takes precedence on this machine: false disables and invalid values
-skip; global, system, include and per-worktree values are not consulted. Seeding
+and receipt says what it did, and a skip means an ordinary cold build. Seeding
 keeps dependency outputs that may hold the other checkout's paths, and those
 follow that checkout's later rebuilds. `warm-build-dirs.py <worktree>` does the same for a
 worktree made without allocation. A warmed directory leaves with the worktree
@@ -146,11 +141,7 @@ python3 "$DEVLYN_SHARED_DIR/task-complete.py" clean-scratch \
   --receipt '<returned receipt.json>' --writers-stopped
 ```
 
-This empties only the prospectively owned scratch, preserves its directory
-identity for interrupted cleanup and later builds, checks live users and reports
-the logical byte count separately from actual free disk space.
-Unknown historical roots, source/recovery data, shared caches and terminal
-history are never adopted or swept. A refused cleanup does not block source
+A refused cleanup does not block source
 delivery; it stays visible in the handoff with its receipt and retry command
 (`CLEANUP_PENDING` after delivered source). No task is described as cleaned
 while owned disposable files remain. On resumption, finish any pending scratch
@@ -257,9 +248,6 @@ are preserved beside it as `records.<digest>/.devlyn`, never rewriting earlier c
 Non-regular files or symlinks there, partial/corrupt custody, an unreadable
 earlier copy or a mismatched `records.<digest>` copy retain the tree for repair.
 
-Legacy in-place receipts retire refs only once their task branch is no longer
-checked out; their checkout is never modified. Local ref deletion is guarded by
-the expected SHA; remote deletion uses an exact force-with-lease solely as
-compare-and-delete, never for product publication. A changed remote branch is
+A changed remote branch is
 retained. Retry uses the external receipt/evidence after removal. Recovery
 refs/evidence have no automatic expiry.

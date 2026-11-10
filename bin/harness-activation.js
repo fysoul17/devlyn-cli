@@ -377,7 +377,7 @@ function skillCatalog(release, paths = path) {
   return ['Devlyn session skill catalog (read the absolute file to invoke):',
     ...SKILLS.map((name) => `${name}: ${paths.join(root, name, 'SKILL.md')}`),
     `This session's _shared folder is ${paths.join(root, '_shared')}.`,
-    'Use that absolute folder wherever the Devlyn defaults name _shared/, including the Quick Start references to .claude/skills/ or .agents/skills/.',
+    'Use that absolute folder wherever the Devlyn defaults name _shared/.',
   ].join('\n');
 }
 

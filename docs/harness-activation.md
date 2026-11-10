@@ -173,8 +173,7 @@ Channel reason codes: `principles-task-only`, `principles-unavailable`,
 `{engine}`; none of the channel codes describes an unqualified executor.
 Existing CLI-1 release/argument/operational error codes remain unchanged.
 
-The catalog names the verified release's `config/skills/_shared` absolutely and
-supersedes the defaults' installed-folder references. Claude's single per-run
+The catalog names the verified release's `config/skills/_shared` absolutely. Claude's single per-run
 append file contains existing append text, immutable defaults, and this catalog. OMP/Qwen/Grok merge owner append
 text; OpenCode preserves inline keys/instruction entries.
 pi gets the same three parts in that order in a per-run file passed by `--append-system-prompt`.
