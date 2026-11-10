@@ -8,6 +8,10 @@ const history = require('./skill-history.json');
 const { MARKER, marketplaceName, projectionPath, inspectProjection } = require('./codex-projection');
 
 const SKILLS = ['devlyn-ideate', 'devlyn-engines'];
+// The version an engine's run-folder channel was examined on; bin/engines.js keeps the engine's floor. An
+// older version, and Windows (channelGate), keep the plan they had before the channel: only a first task
+// carries the principles.
+const CHANNEL_MINIMUM = { antigravity: '1.5.4', cursor: '2026.11.05-86047df' };
 const object = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 const textValue = (value) => typeof value === 'string' && !value.includes('\0');
 const strings = (value) => Array.isArray(value) && value.every(textValue);
@@ -139,6 +143,10 @@ function discoveryRoots(context, env, config) {
   const roots = [...(context.skillRoots || [])];
   const add = (base, ...parts) => { if (base) roots.push(path.resolve(base, ...parts)); };
   const engine = context.engine;
+  // Antigravity and Cursor search the folders their examined version reads only where they get their run-folder
+  // channel; elsewhere they keep the folders searched before it.
+  const channelled = ['antigravity', 'cursor'].includes(engine) && !channelGate(context);
+  const antigravity = channelled && engine === 'antigravity';
   const native = {
     claude: [env.CLAUDE_CONFIG_DIR || path.join(home, '.claude'), '.claude'],
     codex: [context.accountHome || env.CODEX_HOME || path.join(home, '.codex'), '.agents'],
@@ -153,7 +161,9 @@ function discoveryRoots(context, env, config) {
   }[engine];
   if (engine !== 'codex') add(native[0], 'skills');
   const copilotDefaultHome = !env.COPILOT_HOME || path.resolve(env.COPILOT_HOME) === path.join(home, '.copilot');
-  if (!['claude', 'cursor'].includes(engine) && (engine !== 'copilot' || copilotDefaultHome)) add(engine === 'pi' ? pi.agentsHome : home, '.agents/skills');
+  if (!['claude', 'cursor'].includes(engine) && !antigravity && (engine !== 'copilot' || copilotDefaultHome)) add(engine === 'pi' ? pi.agentsHome : home, '.agents/skills');
+  // The examined Antigravity reads ~/.gemini/skills and its personal folder ~/.gemini/config instead.
+  if (antigravity) { add(home, '.gemini/skills'); add(home, '.gemini/config/skills'); }
   if (['omp', 'opencode', 'grok'].includes(engine)) add(home, '.claude/skills');
   if (engine === 'omp') {
     add(home, '.codex/skills'); add(home, '.agent/skills');
@@ -166,12 +176,24 @@ function discoveryRoots(context, env, config) {
   }
   if (engine === 'copilot') for (const dir of (config?.skillsDirs ?? env.COPILOT_SKILLS_DIRS ?? '').split(',').filter(Boolean)) add(context.cwd, dir);
   if (engine === 'pi') add(context.cwd, '.pi/skills');
+  const walk = [];
   for (let dir = path.resolve(context.cwd); ; dir = path.dirname(dir)) {
+    walk.push(dir);
+    if (fs.existsSync(path.join(dir, '.git'))) break;
+    // Outside any repository the examined Antigravity reads the working directory alone.
+    if (dir === path.dirname(dir)) { if (antigravity) walk.splice(1); break; }
+  }
+  // The examined Cursor also searches nested folders below the working directory, which the planner does not.
+  const cursorFolders = channelled && engine === 'cursor' ? ['.cursor', '.agents', '.claude', '.codex', '.grok'] : [];
+  for (const folder of cursorFolders) add(home, folder, 'skills');
+  if (cursorFolders.length) add(home, '.cursor/skills-cursor');
+  for (const dir of walk) {
+    for (const folder of cursorFolders) add(dir, folder, 'skills');
     if (native[1]) add(dir, native[1], 'skills');
     if (!['claude', 'cursor'].includes(engine)) add(dir, '.agents/skills');
     if (['grok', 'omp', 'opencode', 'copilot'].includes(engine)) add(dir, '.claude/skills');
     if (['omp', 'antigravity'].includes(engine)) add(dir, '.agent/skills');
-    if (fs.existsSync(path.join(dir, '.git')) || dir === path.dirname(dir)) break;
+    if (antigravity) { add(dir, '_agents/skills'); add(dir, '_agent/skills'); }
   }
   return [...new Set(roots)];
 }
@@ -381,6 +403,69 @@ function skillCatalog(release, paths = path) {
   ].join('\n');
 }
 
+// A skill entry of Antigravity's run folder: the release skill's own name and description lines as
+// written, then the release SKILL.md to follow. A copy cannot be planned (plan files are text and the
+// skills carry scripts), and since 1.5.2 Antigravity skips a link or a manifest entry that leads outside
+// the added folder. Each line must be one complete top-level entry, or the plan fails.
+function antigravitySkill(release, name) {
+  const dir = path.join(release.root, 'config/skills', name);
+  const file = path.join(dir, 'SKILL.md');
+  const text = fs.readFileSync(file, 'utf8').replace(/\r\n/g, '\n');
+  const end = text.startsWith('---\n') ? text.indexOf('\n---\n', 3) : -1;
+  const lines = end < 0 ? [] : text.slice(4, end).split('\n');
+  const header = ['name', 'description'].map((field) => {
+    const at = lines.flatMap((line, index) => (line.startsWith(`${field}:`) ? [index] : []));
+    if (at.length !== 1 || !lines[at[0]].slice(field.length + 1).trim() || /^\s/.test(lines[at[0] + 1] ?? '')) {
+      fail('config-unreadable', { path: file, field }, 1);
+    }
+    return lines[at[0]];
+  });
+  return `---\n${header.join('\n')}\n---\nRead ${file} and follow it as this skill. `
+    + `Its folder, ${dir}, is the skill's folder (DEVLYN_SKILL_DIR), not the folder of this file.\n`;
+}
+
+// The path with the links of its existing part resolved; parts that do not exist yet are kept as given.
+function physicalPath(target) {
+  let parent = path.resolve(target);
+  const missing = [];
+  while (!fs.existsSync(parent)) { missing.unshift(path.basename(parent)); parent = path.dirname(parent); }
+  return path.join(fs.realpathSync(parent), ...missing);
+}
+
+// The reasons for the principles and the skills when neither reaches the session.
+const withheld = (params) => [reason('principles-unavailable', params), reason('skills-unavailable', params)];
+
+// Why an engine keeps the plan it had before its run-folder channel, as the reasons for the principles and the
+// skills when no first task carries them, or null when it gets the channel. The channels were examined on macOS
+// and are not planned on Windows, whatever the version: it cannot show who owns a folder, and an argument that
+// misbehaves there would break a pane. Below the version a channel was examined on, updating the engine gets it.
+function channelGate(context) {
+  if (process.platform === 'win32') return withheld({ detail: 'platform-unexamined' });
+  const minimum = CHANNEL_MINIMUM[context.engine];
+  if (supportedVersion(context.engine, context.version, minimum)) return null;
+  const outdated = reason('engine-version-unsupported', { minimum });
+  return [outdated, outdated];
+}
+
+// The first directory that makes a run-folder channel's `folder`, inside a resolved run directory (physicalPath),
+// unsafe to hand an engine that loads what it finds there, or null. Every existing level from the folder up, the
+// folder included, must be a real directory (a link is not one) of this user or root that no one else can write:
+// another user could put a .git or a folder of their own there later. With `git`, no directory from the folder up
+// may hold a .git entry of any kind: Antigravity 1.5.4 loads the agents and hooks of a Git root above an added
+// folder with no trust check. A level that does not exist yet is skipped; a level lstat cannot read cannot be
+// shown safe. Access-control lists are not read.
+function unsafeRunDir(folder, git) {
+  const entry = (file) => {
+    try { return fs.lstatSync(file, { throwIfNoEntry: false }) ?? null; } catch { return false; }
+  };
+  for (let dir = folder; ; dir = path.dirname(dir)) {
+    const stats = entry(dir);
+    if (stats === false || (stats && (!stats.isDirectory() || ![process.getuid(), 0].includes(stats.uid) || stats.mode & 0o022))) return dir;
+    if (git && entry(path.join(dir, '.git')) !== null) return dir;
+    if (dir === path.dirname(dir)) return null;
+  }
+}
+
 function codexRegistrations(config, accountHome) {
   const owned = [], errors = [];
   for (const [key, plugin] of Object.entries(config.plugins || {})) {
@@ -478,11 +563,7 @@ function planActivation(releaseRoot, input, env = process.env) {
   const catalog = skillCatalog(release);
   const instructions = joinText(defaults, catalog);
   const file = (relativePath, utf8) => {
-    let parent = path.resolve(context.runDir);
-    const missing = [];
-    while (!fs.existsSync(parent)) { missing.unshift(path.basename(parent)); parent = path.dirname(parent); }
-    const physical = path.join(fs.realpathSync(parent), ...missing);
-    const relative = path.relative(release.root, physical);
+    const relative = path.relative(release.root, physicalPath(context.runDir));
     if (!relative || (!relative.startsWith(`..${path.sep}`) && relative !== '..' && !path.isAbsolute(relative))) {
       fail('invalid-arguments', { argument: 'runDir must be outside the release' }, 2);
     }
@@ -497,6 +578,19 @@ function planActivation(releaseRoot, input, env = process.env) {
     status.invocation = { kind: 'read-file', text: `Read ${path.join(release.root, 'config/skills/devlyn-ideate/SKILL.md')}` };
   };
   const native = (mechanism, kind, text) => { status.skills = channel('configured', mechanism); status.invocation = { kind, text }; };
+  // Where no run-folder channel is planned, only a first task carries the principles and the catalog, ahead
+  // of its text; without one nothing reaches the session and each channel gives its reason.
+  const firstTask = ([principlesReason, skillsReason]) => {
+    if (context.initialPrompt) {
+      status.principles = channel('partial', 'initial-task', [reason('principles-task-only')]);
+      plan.prompt = { ...context.initialPrompt, text: joinText(instructions, context.initialPrompt.text) };
+      fallback();
+    } else {
+      status.principles = channel('unavailable', null, [principlesReason]);
+      status.skills = channel('unavailable', null, [skillsReason]);
+    }
+  };
+  // A skill folder that cannot be inspected is also found, so every inspection error comes with a collision.
   const collisions = found.map((entry) => reason('name-collision', { name: entry.name, path: entry.path }));
   switch (context.engine) {
     case 'claude': {
@@ -645,18 +739,73 @@ function planActivation(releaseRoot, input, env = process.env) {
         } else fallback([...collisions, ...errors, ...kimi.errors]);
       }
       break;
-    case 'antigravity':
-    case 'cursor':
-      // Only a first task carries the principles and the catalog: without one nothing reaches the session.
-      if (context.initialPrompt) {
-        status.principles = channel('partial', 'initial-task', [reason('principles-task-only')]);
-        plan.prompt = { ...context.initialPrompt, text: joinText(instructions, context.initialPrompt.text) };
-        fallback();
+    case 'antigravity': {
+      // Antigravity reads AGENTS.md (always on) and .agents/skills in every workspace folder, and a folder given
+      // by --add-dir is one. A conversation keeps its added folders and reads them from disk again on every
+      // launch, so the plan is the same in every launch mode and a caller hands a resumed conversation the same
+      // runDir: with another, both folders apply while the old one exists. A folder removed later only stops
+      // applying. It truncates a rule file over 24,000 bytes.
+      const gate = channelGate(context);
+      if (gate) {
+        firstTask(gate);
+        break;
+      }
+      // The engine is given the resolved folder, the one the checks ran on.
+      const folder = path.join(physicalPath(context.runDir), 'antigravity');
+      const unsafe = unsafeRunDir(folder, true);
+      if (unsafe) {
+        firstTask(withheld({ detail: 'run-dir-unsafe', path: unsafe }));
+        break;
+      }
+      const bytes = Buffer.byteLength(instructions), maximum = 24000;
+      if (bytes > maximum) {
+        status.principles = channel('unavailable', null, [reason('principles-unavailable', { detail: 'too-large', bytes, maximum })]);
       } else {
-        status.principles = channel('unavailable', null, [reason('principles-unavailable', { detail: 'no-initial-task' })]);
-        status.skills = channel('unavailable', null, [reason('skills-unavailable', { detail: 'no-initial-task' })]);
+        file('antigravity/AGENTS.md', instructions);
+        principles('add-dir');
+      }
+      if (collisions.length) fallback([...collisions, ...errors], bytes <= maximum);
+      else {
+        for (const name of SKILLS) file(`antigravity/.agents/skills/${name}/SKILL.md`, antigravitySkill(release, name));
+        native('add-dir', 'slash', '/devlyn-ideate');
+      }
+      if (plan.files.length) plan.engineArgs.push('--add-dir', folder);
+      break;
+    }
+    case 'cursor': {
+      const gate = channelGate(context);
+      if (gate) {
+        firstTask(gate);
+        break;
+      }
+      // A --plugin-dir folder's sessionStart command hook runs when a session is created, and Cursor puts the
+      // additional_context it prints before the model as instructions, kept with the conversation (10,200
+      // characters were delivered whole). A resumed chat runs no hook and keeps what its first launch had
+      // (measured); a fork is treated the same way, because what it gets is not established. The hook is a
+      // command Cursor runs, so it is planned only in a safe run directory, by its resolved absolute path, quoted
+      // for the shell: no lookup through PATH or the working folder. The skills come from the release, whatever
+      // the run directory.
+      const hook = path.join(physicalPath(context.runDir), 'cursor');
+      const unsafe = unsafeRunDir(hook);
+      if (unsafe || !isFile('/bin/cat')) {
+        firstTask(withheld(unsafe ? { detail: 'run-dir-unsafe', path: unsafe } : { detail: 'platform-unexamined' }));
+      } else {
+        const command = `/bin/cat '${path.join(hook, 'context.json').replace(/'/g, "'\\''")}'`;
+        file('cursor/hooks/hooks.json', JSON.stringify({ version: 1, hooks: { sessionStart: [{ command }] } }) + '\n');
+        // Every non-ASCII character escaped, so no shell or code page can change the text.
+        file('cursor/context.json', JSON.stringify({ additional_context: instructions })
+          .replace(/[\u0080-\uffff]/g, (character) => `\\u${character.charCodeAt(0).toString(16).padStart(4, '0')}`) + '\n');
+        plan.engineArgs.push('--plugin-dir', hook);
+        status.principles = continuation ? channel('partial', 'session-start-hook', [reason('principles-session-start-only')])
+          : channel('configured', 'session-start-hook');
+      }
+      if (collisions.length) fallback([...collisions, ...errors], plan.files.length > 0 || plan.prompt !== null);
+      else {
+        plan.engineArgs.push('--plugin-dir', path.join(release.root, 'config'));
+        native('plugin-dir', 'slash', '/devlyn-ideate');
       }
       break;
+    }
   }
   if (plan.engineArgs.length || Object.keys(plan.envPatch).length || plan.prompt) plan.envPatch.DEVLYN_HARNESS_ROOT = release.root;
   return finish(plan);

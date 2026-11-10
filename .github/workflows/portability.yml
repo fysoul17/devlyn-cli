@@ -165,6 +165,10 @@ jobs:
           path: ${{ runner.temp }}/harness/package
       - name: Harness suites on the tested release
         shell: python
+        # The job runs as root and /root is private to it. /tmp is writable by every user and the runner's
+        # folders belong to the runner's user: under either the run-folder tests skip.
+        env:
+          TMPDIR: /root
         run: |
           import hashlib, json, os, pathlib, subprocess, sys
           root = pathlib.Path(os.environ['RUNNER_TEMP']) / 'harness'

@@ -27,12 +27,12 @@ function readableVersion(engine, version) {
     && (engine === 'cursor' ? /^\d{4}\.\d{2}\.\d{2}-[0-9a-f]+$/ : /^\d+\.\d+\.\d+$/).test(version);
 }
 
-function supportedVersion(engine, version) {
+// Whether `version` is at least `minimum`, the engine's floor unless a channel names a later examined one.
+function supportedVersion(engine, version, minimum = ENGINE_CAPABILITIES[engine].minimum) {
   if (!readableVersion(engine, version)) return false;
-  const capability = ENGINE_CAPABILITIES[engine];
-  if (engine === 'cursor') return version.slice(0, 10).replace(/\./g, '') >= capability.minimum.slice(0, 10).replace(/\./g, '');
+  if (engine === 'cursor') return version.slice(0, 10).replace(/\./g, '') >= minimum.slice(0, 10).replace(/\./g, '');
   const actual = version.split('.').map(Number);
-  const floor = capability.minimum.split('.').map(Number);
+  const floor = minimum.split('.').map(Number);
   for (let i = 0; i < 3; i++) {
     if (actual[i] !== floor[i]) return actual[i] > floor[i];
   }

@@ -106,6 +106,21 @@ before launch, then splices `engineArgs` inside the monitored inner command and
 applies `envPatch` to that process. A sync conflict is not successful activation.
 No new task/model turn is created for an empty terminal.
 
+A folder Antigravity or Cursor loads is planned in `runDir` only where it is safe. The
+planner resolves `runDir` (the real path of its deepest existing part, any missing rest
+appended), checks the engine's folder in that path (`antigravity/` or `cursor/`) and gives
+the engine that path. Every existing level from that folder up to the filesystem root, the
+folder included, must be a real directory (a link is not one) owned by the current user or
+root that grants no write to group or others, or another user could put a `.git` or a folder
+of their own there later; a level that does not exist yet is skipped, a level that cannot be
+read (`lstat` fails) refuses the folder, and access-control lists are not evaluated. For
+Antigravity no directory from its folder up to the root may hold a `.git` entry of any kind
+either: it loads the agents and hooks of a Git root above an added folder with no trust
+check, so a caller wanting that channel passes a `runDir` outside the project. A refusal
+names the directory that failed (`run-dir-unsafe`). On Windows neither engine gets anything
+new (`platform-unexamined`): both channels were examined on macOS, and Windows cannot show
+who owns a folder.
+
 Fresh selection uses the supplied release root. On resume/fork, a `recordedRelease`
 reference selects and verifies that exact release (even if the project choice is
 now None) and explicit null preserves a disabled session. Omission means the
@@ -163,11 +178,13 @@ Floors are the examined versions, not historical introduction claims. Any newer
 release, a new major included (a newer Cursor build), is taken as compatible: a
 version number is not evidence that a channel broke. A version below the floor is
 refused with `engine-version-unsupported` `{minimum}`; a missing or malformed
-version with `engine-version-unreadable`. Configured means prepared delivery,
+version with `engine-version-unreadable`. The version a run-folder channel was examined on
+(Antigravity, Cursor, below) refuses nothing: between the floor and that version an engine
+keeps the plan it had before the channel. Configured means prepared delivery,
 not a model obeyed instructions. Only the existing Claude/Codex executor adapters
 are supported. OMP explicitly declares `executor: no`.
 
-Channel reason codes: `principles-task-only`, `principles-unavailable`,
+Channel reason codes: `principles-task-only`, `principles-session-start-only`, `principles-unavailable`,
 `skills-catalog`, `skills-unavailable`, `engine-version-unsupported`, `engine-version-unreadable`,
 `name-collision`, `config-unreadable`. New code: **`executor-unqualified`** with
 `{engine}`; none of the channel codes describes an unqualified executor.
@@ -197,12 +214,47 @@ inspected keeps the catalog.
 OpenCode merges known effective `skillsPaths` into inline `skills.paths`; absent/null keeps catalog fallback.
 Copilot appends a per-run apply-to-all instructions directory via `COPILOT_CUSTOM_INSTRUCTIONS_DIRS`.
 Kimi uses `--skills-dir` with project roots before user roots and release skills last; owner agents and resumed profiles remain unchanged.
-Cursor/Antigravity get the principles and the catalog only in a first task, ahead of its text (principles
-partial with `principles-task-only`, skills through the catalog); without one nothing is delivered and both
-channels are unavailable (`no-initial-task`).
+Cursor builds before 2026.11.05, Antigravity below 1.5.4, both on Windows, and Antigravity with an unsafe
+run directory (above) get the principles and the catalog only in a first task, ahead of its text (principles
+partial with `principles-task-only`, skills through the catalog). Without one nothing is delivered: on Windows,
+whatever the version, both channels are unavailable (`platform-unexamined`); elsewhere, below the version its
+channel was examined on, both report `engine-version-unsupported` with that version as `{minimum}`, since
+updating the engine is all it takes, and with an unsafe run directory both are unavailable (`run-dir-unsafe`).
+From 2026.11.05-86047df, the build this was examined on, Cursor gets a per-run plugin folder, `cursor/`, by
+`--plugin-dir` in every launch mode, where the run directory is safe (above, the `.git` rule aside) and
+`/bin/cat` exists. Its `hooks/hooks.json` holds one `sessionStart` command hook,
+`/bin/cat '<resolved runDir>/cursor/context.json'` (quoted for the shell, so neither `PATH` nor the working
+folder is used), which Cursor runs when a session is created; it puts the printed `additional_context` (the
+defaults and the catalog, every non-ASCII character escaped) before the model as instructions and keeps it
+with the conversation. A text of 10,200 characters was delivered whole. A first task is left untouched. A
+resumed chat runs no hook and keeps what its first launch had (measured), so there principles are partial
+(`principles-session-start-only`); a fork is treated the same way, because what it gets is not established.
+Otherwise Cursor gets the principles as an older build does (`run-dir-unsafe`, or `platform-unexamined`
+without `/bin/cat`). Skills come natively from
+`--plugin-dir <release>/config` (`/devlyn-ideate`) whatever the run directory; a devlyn name in a folder Cursor
+reads (`.cursor`, `.agents`, `.claude`, `.codex` or `.grok` `skills` from the working directory up to its Git
+root and in the home folder, and `~/.cursor/skills-cursor`) keeps the catalog. Cursor also finds skills in
+folders nested below the working directory, which the planner does not search: a full tree scan on every
+launch is not worth it.
+Antigravity reads `AGENTS.md` and `.agents/skills` in every workspace folder, a folder added by `--add-dir`
+included. From 1.5.4, the version this was examined on (in print mode and in the interactive screen), it gets
+a per-run folder, `antigravity/`, that way in every launch mode where the run directory is safe: a
+conversation keeps its added folders and reads them from disk again on every launch, so a caller hands a
+resumed conversation the same `runDir` (with another, both folders apply while the old one exists); a folder
+removed later only stops applying. A resumed conversation reads whatever folder it remembers, so the caller
+removes the folder when the session is over. Its `AGENTS.md` holds the defaults and the catalog, with
+no frontmatter; over 24,000 bytes, where Antigravity truncates a rule file, it is not planned and principles
+are unavailable (`too-large`). Each skill gets `.agents/skills/<name>/SKILL.md`: the release skill's own `name` and
+`description` lines, then the release `SKILL.md` to follow with its folder as the skill's folder
+(`/devlyn-ideate`); a header that is not one complete line each fails the plan. A first task is left
+untouched. A devlyn name in a root Antigravity reads (`~/.gemini/antigravity-cli/skills`, `~/.gemini/skills`,
+`~/.gemini/config/skills`, and `.agents`, `.agent`, `_agents` or `_agent` `skills` from the working
+directory up to its Git root, or in the working directory alone outside a repository, whether or not the
+project is trusted yet) keeps the catalog.
 
 Tests: `python3 scripts/test-harness-activation.py --codex-probe` packs/extracts
-and tests the actual release. Set `TMPDIR` to the supplied scratch directory.
+and tests the actual release. Set `TMPDIR` to the supplied scratch directory, a private one: under a folder
+neither yours nor root's, or one others can write, the run-folder tests skip.
 The optional native probe uses only `codex debug prompt-input` under isolated
 HOME/CODEX_HOME. Windows path/TOML/argv fixtures also run on macOS; those results
 do not establish native Windows runtime qualification.
