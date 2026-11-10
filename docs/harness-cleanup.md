@@ -5,7 +5,7 @@ the copies earlier installs wrote are no longer read through that app. `cleanup`
 them and removes only what it can prove devlyn-cli wrote.
 
 ```sh
-devlyn cleanup --plan [--machine] [--project <abs>]… [--account-home <abs>]… --json
+devlyn cleanup --plan [--checkout-only] [--machine] [--project <abs>]… [--account-home <abs>]… --json
 devlyn cleanup --apply --plan-file <abs> --digest <sha256> [--include <item-id>]… [--events] --json
 ```
 
@@ -21,6 +21,11 @@ the same base-branch fast-forward described below. After all attempts, if any HE
 all scopes are planned again so the review covers the bytes delivery acts on. Anything else is planned
 as it stands, including another branch, a refused fast-forward or a failed fetch. The fetch
 is non-interactive and times out after 30 seconds; failure does not fail the plan.
+
+`--checkout-only` is for a caller that only needs a count, such as a status view: it plans the
+checkout as it stands, with no fetch, base snapshot or fast-forward, and no Git process it starts
+fetches missing objects or takes optional locks. Its plan carries `checkoutOnly: true` under the
+digest and cannot be applied: `--apply` refuses it as `checkout-only-plan` (exit 2) before any other work.
 
 Removed: core skills byte-identical to a shipped copy and their renamed forms, retired
 skills and standard copies, the install marker and `_shared` only when no devlyn skill stays
