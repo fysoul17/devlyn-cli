@@ -106,7 +106,7 @@ For read-only consumers, `python3 "$DEVLYN_SKILL_DIR/scripts/queue.py" inspect -
 
 `status`, `add` and `drain` write the repository's Git directory, and auto/pr delivery needs network access, so a sandboxed host runs them with escalation or full access.
 
-Follow [loop.md](references/loop.md). The executor is the configured route, the `.devlyn/engines.json` `executor` pin or else this CLI, checked per `_shared/engine-preflight.md`. Pass its argv after `--`. `<git dir>` is the output of `git rev-parse --path-format=absolute --git-common-dir`, where the executor commits and writes its submission; the drain fills `{worktree_git_dir}` with the task worktree's own Git directory, which Codex's sandbox keeps read-only unless that exact directory is listed:
+See [loop.md](references/loop.md) for an unclear result or `--worktree-root`. The executor is the configured route, the `.devlyn/engines.json` `executor` pin or else this CLI, checked per `_shared/engine-preflight.md`. Pass its argv after `--`. `<git dir>` is the output of `git rev-parse --path-format=absolute --git-common-dir`, where the executor commits and writes its submission; the drain fills `{worktree_git_dir}` with the task worktree's own Git directory, which Codex's sandbox keeps read-only unless that exact directory is listed:
 
 | Executor | argv |
 |---|---|
@@ -116,7 +116,7 @@ Follow [loop.md](references/loop.md). The executor is the configured route, the 
 Another engine needs an argv that starts one fresh non-interactive session able, without prompts, to edit, run commands and commit in its task worktree and to write the packet's submission file. `<prompt>` carries the absolute binding values, while `{packet}` stays literal for the drain to fill:
 
 ```text
-Execute the devlyn loop task packet {packet}: read its workerPrompt when present; read methodology.defaults.path when named and apply those verified defaults, with explicit user and native owner/project instructions taking precedence, except a Devlyn managed block (devlyn:instructions markers), which those defaults replace; work only in its owned worktree under the installed instructions; meet its obligations, then write its submission and any review records as "Executor exchange" and "Review records" in <DEVLYN_SKILL_DIR>/references/loop.md specify. Use the literal DEVLYN_SKILL_DIR and DEVLYN_SHARED_DIR bindings in workerPrompt when present; otherwise set DEVLYN_SKILL_DIR=<DEVLYN_SKILL_DIR> and DEVLYN_SHARED_DIR=<DEVLYN_SHARED_DIR> from these literal values. Never use inherited environment values. Never push, open a pull request or merge: the drain delivers.
+Execute the devlyn loop task packet {packet}: read its workerPrompt when present; read methodology.defaults.path when named and apply those verified defaults, with explicit user and native owner/project instructions taking precedence, except a Devlyn managed block (devlyn:instructions markers), which those defaults replace; work only in its owned worktree under the installed instructions; meet its obligations, then write its submission and any review records as <DEVLYN_SKILL_DIR>/references/executor.md specifies. Use the literal DEVLYN_SKILL_DIR and DEVLYN_SHARED_DIR bindings in workerPrompt when present; otherwise set DEVLYN_SKILL_DIR=<DEVLYN_SKILL_DIR> and DEVLYN_SHARED_DIR=<DEVLYN_SHARED_DIR> from these literal values. Never use inherited environment values. Never push, open a pull request or merge: the drain delivers.
 ```
 
 ```sh
