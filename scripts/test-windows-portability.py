@@ -3633,6 +3633,32 @@ else:
         self.assert_all_ceased()
         print('native target CREATE_BREAKAWAY_FROM_JOB refused with access denied', flush=True)
 
+    def test_command_line_streams_cwd_env_and_timeout_result(self):
+        # A command line reaches cmd.exe verbatim, quotes included; cwd, env and streams reach the target through the
+        # bootstrap; on_timeout replaces only the deadline's result, so a genuine exit 124 stays 124.
+        cwd, output = self.work / 'cwd', self.work / 'output'
+        cwd.mkdir()
+        line = f'"{os.environ["ComSpec"]}" /c "echo "%FIXTURE%">marker&echo done"'
+        with output.open('wb', buffering=0) as stream:
+            code = self.platform['run_process'](line, subprocess.DEVNULL, 20, on_timeout=None, cwd=cwd,
+                                                env={**os.environ, 'FIXTURE': 'a b'}, stdout=stream, stderr=stream)
+        self.assertEqual((code, (cwd / 'marker').read_bytes(), output.read_bytes()), (0, b'"a b"\r\n', b'done\r\n'))
+        sleep, exit124 = ([sys.executable, '-c', body] for body in ('import time; time.sleep(30)', 'raise SystemExit(124)'))
+        self.assertIsNone(self.platform['run_process'](sleep, subprocess.DEVNULL, 1, on_timeout=None))
+        self.assertEqual(self.platform['run_process'](exit124, subprocess.DEVNULL, 20, on_timeout=None), 124)
+        self.assert_all_ceased()
+        print('native command line verbatim with cwd, env and streams; timeout distinct from exit 124', flush=True)
+
+    def test_list_argv_is_quoted_once(self):
+        # 9,000 quotes take 18,000 characters quoted once and 36,000 quoted twice, past the 32,767-character command
+        # line: a list reaches the bootstrap element by element, never as one pre-joined command line.
+        quotes, output = '"' * 9000, self.work / 'quotes'
+        script = 'import pathlib, sys; pathlib.Path(sys.argv[1]).write_text(sys.argv[2], encoding="utf-8")'
+        self.assertEqual(self.platform['run_process']([sys.executable, '-c', script, str(output), quotes], subprocess.DEVNULL, 20), 0)
+        self.assertEqual(output.read_text(encoding='utf-8'), quotes)
+        self.assert_all_ceased()
+        print('native list argv of 9,000 quotes round-trips through the job bootstrap', flush=True)
+
     def test_error_after_native_launch_before_authorization(self):
         actual = subprocess.Popen
         owner = self

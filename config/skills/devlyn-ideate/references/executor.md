@@ -14,7 +14,7 @@ The packet (`<receipt dir>/packet.json`) carries everything a fresh executor nee
 | `shared_constraints` | The meta-prompt's `Constraints and exclusions`. |
 | `dependencies` | `{task, receipt, source_sha}` of each accepted prerequisite. |
 | `schema_version`, `harness` | New packets use version 2 and the bound release reference, or null for legacy unbound queues. Existing v1 packets execute unchanged. |
-| `methodology` | `projectInstructions`: `{path, sha256}` of instruction bytes at the inputs commit. `defaults`: `{source: "release", path, sha256}` from the verified binding; for an unbound queue `{source: "skill", path, sha256}` of the installation's own `_shared/runtime-principles.md`. A task whose executor would get no principles at all (no defaults and no committed CLAUDE.md/AGENTS.md) waits with that reason instead of running. Read the named defaults; explicit user and native owner/project instructions take precedence, except a Devlyn managed block (devlyn:instructions markers), which the defaults replace. No native engine applicability is inferred from filenames. |
+| `methodology` | `projectInstructions`: `{path, sha256}` of instruction bytes at the inputs commit. `defaults`: `{source: "release", path, sha256}` from the verified binding; for an unbound queue `{source: "skill", path, sha256}` of the installation's own `_shared/runtime-principles.md`. Read the named defaults; explicit user and native owner/project instructions take precedence, except a Devlyn managed block (devlyn:instructions markers), which the defaults replace. No native engine applicability is inferred from filenames. |
 | `workerPrompt` | `{path, sha256}` of the task’s worker instructions, or null for legacy unbound queues. Read it before working. |
 | `delivery` | `local-only`, `auto` or `pr`. |
 | `evidence_dir`, `runner` | Where loop evidence lives (`<worktree>/.devlyn/loop`, ignored by Git) and the runner argv. |
@@ -22,7 +22,7 @@ The packet (`<receipt dir>/packet.json`) carries everything a fresh executor nee
 
 Writable tool caches go under `scratch`, for example `npm_config_cache=<scratch>/npm`: Codex's sandbox keeps caches in HOME read-only.
 
-Build in the worktree's default build directory, never one redirected into `scratch` or shared with another checkout: drain re-runs the checks without your environment. Allocation may have warmed it (`build_dirs` in the receipt).
+Build in the worktree's default build directory, never one redirected into `scratch` or shared with another checkout: drain re-runs the checks without your environment.
 
 Run `runner` (`acceptance.py run --packet <packet>`) on the committed candidate before review. It prints `{"result": <path>, "passed": ..., "reasons": [...]}`; listing a wholly clean result (empty `reasons`) lets drain reuse its outcomes. Then write the submission:
 
@@ -38,7 +38,7 @@ Run `runner` (`acceptance.py run --packet <packet>`) on the committed candidate 
 }
 ```
 
-`schema_version`, `task` and `source_sha` are required. A blocker `{"kind": "failed" | "needs-review" | "blocked-infrastructure", "detail": "<concrete question or cause>"}` records `[F]` with that reason and runs no checks; material ambiguity becomes `needs-review`, never a weakened acceptance.
+`schema_version`, `task` and `source_sha` are required. A blocker `{"kind": "failed" | "needs-review", "detail": "<concrete question or cause>"}` records `[F]` with that reason and runs no checks; material ambiguity becomes `needs-review`, never a weakened acceptance. Only when all that stops the task is a cause a later run can clear (network, service, login, usage limit), write no submission: name it in your final message, and the next drain runs the task again; any other blocker is submitted.
 
 ## Review records
 

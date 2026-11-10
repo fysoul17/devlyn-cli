@@ -30,7 +30,8 @@ SKILLS = Path(__file__).resolve().parents[2]
 LOOP_DIR = ".devlyn/loop"
 QUEUE = "docs/specs/queue.md"
 SHA_RE = re.compile(r"[0-9a-f]{40}|[0-9a-f]{64}")
-BLOCKERS = ("failed", "needs-review", "blocked-infrastructure")
+BLOCKERS = ("failed", "needs-review")
+INFRASTRUCTURE = "blocked-infrastructure"  # Earlier instructions offered it; see infrastructure_causes.
 REVIEW_KEYS = {"schema_version", "kind", "task", "engine", "model", "source_sha", "contract_sha256",
                "expected_sha256", "requirements", "findings"}
 # findings, cleanup, handoff and summary are unread; allow them so earlier-template submissions validate.
@@ -178,27 +179,54 @@ def evaluate(command, outcome, combined):
 
 
 def execute(work, command, index, run_dir):
+    helper = shared("platform-support")
     timeout = shared("expected-contract")["verification_timeout_sec"](command)
     env = {**os.environ, "PYTHONDONTWRITEBYTECODE": "1"}  # A Python check would leave __pycache__/ in the source it checks.
+    paths = {name: run_dir / f"cmd-{index}.{name}" for name in ("stdout", "stderr")}
+    # The check writes live files; its evidence is a new copy made once its tree was ended. No process of the check
+    # holds an evidence file, so none that teardown could not end changes what is hashed.
+    live = {name: path.with_name(path.name + ".live") for name, path in paths.items()}
     try:
-        if "argv" in command:
-            proc = subprocess.run(shared("platform-support")["native_argv"](command["argv"], cwd=work), cwd=work,
-                                  capture_output=True, timeout=timeout, env=env)
-        else:
-            proc = subprocess.run(command["cmd"], cwd=work, shell=True, capture_output=True, timeout=timeout, env=env)
-        out, err = proc.stdout, proc.stderr
-        outcome = ({"kind": "exit", "exit_code": proc.returncode} if proc.returncode >= 0
-                   else {"kind": "signal", "signal": -proc.returncode})
-    except subprocess.TimeoutExpired as exc:
-        out, err, outcome = exc.stdout or b"", exc.stderr or b"", {"kind": "timeout", "timeout_sec": timeout}
-    except OSError as exc:
-        out, err, outcome = b"", str(exc).encode("utf-8"), {"kind": "spawn_error", "error": str(exc)}
+        with live["stdout"].open("xb", buffering=0) as out, live["stderr"].open("xb", buffering=0) as err:
+            try:
+                if "argv" in command:
+                    argv = helper["native_argv"](command["argv"], cwd=work)
+                elif os.name == "nt":  # cmd.exe as shell=True runs it, the command line passed verbatim.
+                    comspec = os.environ.get("ComSpec") or os.path.join(os.environ.get("SystemRoot", ""), "System32", "cmd.exe")
+                    if not os.path.isabs(comspec):  # A relative shell would resolve inside the worktree under check.
+                        raise FileNotFoundError("shell not found: neither %ComSpec% nor %SystemRoot% is set")
+                    argv = f'"{comspec}" /c "{command["cmd"]}"'
+                else:
+                    argv = ["/bin/sh", "-c", command["cmd"]]
+                # Its own session or job, ended whole before its output is copied: a process the check leaves behind
+                # could otherwise change the worktree under later checks.
+                code = helper["run_process"](argv, subprocess.DEVNULL, timeout, on_timeout=None, cwd=work, env=env, stdout=out, stderr=err)
+                outcome = ({"kind": "timeout", "timeout_sec": timeout} if code is None else {"kind": "exit", "exit_code": code}
+                           if code >= 0 else {"kind": "signal", "signal": -code})
+            except OSError as exc:
+                err.write(str(exc).encode("utf-8"))
+                outcome = {"kind": "spawn_error", "error": str(exc)}
+    except SystemExit:  # A signal ended the run: the live files go too, and one that cannot does not change its exit.
+        for path in live.values():
+            try:
+                path.unlink()
+            except OSError as exc:
+                print(f"cannot remove {path.name}: {exc}", file=sys.stderr)
+        raise
+    raw = {name: path.read_bytes() for name, path in live.items()}
+    for path in live.values():
+        try:
+            path.unlink()
+        except OSError as exc:  # On Windows, while a process still holds it open.
+            error = f"cannot remove {path.name}: {exc}"
+            raw["stderr"] += error.encode("utf-8")
+            outcome = {"kind": "spawn_error", "error": error}
     record = {"index": index, "outcome": outcome}
-    for name, raw in (("stdout", out), ("stderr", err)):
-        path = run_dir / f"cmd-{index}.{name}"
-        path.write_bytes(raw)
-        record[name] = {"path": relative(work, path), "sha256": sha256(raw), "bytes": len(raw)}
-    record["passed"], record["reason"] = evaluate(command, outcome, out + err)
+    for name, data in raw.items():
+        with paths[name].open("xb") as stream:
+            stream.write(data)
+        record[name] = {"path": relative(work, paths[name]), "sha256": sha256(data), "bytes": len(data)}
+    record["passed"], record["reason"] = evaluate(command, outcome, raw["stdout"] + raw["stderr"])
     return record
 
 
@@ -373,9 +401,25 @@ def check_submission(packet, submission):
             raise AcceptanceError(f"submission {key} must be a list of strings")
     blockers = submission.get("blockers", [])
     if not isinstance(blockers, list) or not all(
-            isinstance(b, dict) and {"kind", "detail"} <= set(b) and b["kind"] in BLOCKERS and isinstance(b["detail"], str) and b["detail"].strip()
-            for b in blockers):
+            isinstance(b, dict) and {"kind", "detail"} <= set(b) and b["kind"] in (*BLOCKERS, INFRASTRUCTURE)
+            and isinstance(b["detail"], str) and b["detail"].strip() for b in blockers):
         raise AcceptanceError(f"submission blockers must include {{kind, detail}} with kind in {sorted(BLOCKERS)}")
+
+
+def infrastructure_causes(packet, path):
+    """The details of an otherwise valid submission whose blockers are all infrastructure ones, else None. Its cause
+    is one a later run can clear, so the drain retires it once its writers have stopped and runs the task again; with any
+    other blocker it fails."""
+    try:
+        submission = read_json(path)
+        blockers = submission.get("blockers") if isinstance(submission, dict) else None
+        if not isinstance(blockers, list) or not blockers or not all(
+                isinstance(b, dict) and b.get("kind") == INFRASTRUCTURE for b in blockers):
+            return None
+        check_submission(packet, submission)
+    except AcceptanceError:
+        return None
+    return [b["detail"] for b in blockers]
 
 
 def result_shell(packet, kind, source):
@@ -557,6 +601,382 @@ class AcceptanceTests(unittest.TestCase):
         self.assertEqual([bool(r["reason"]) for r in result["commands"]], [True] * 5)
         self.assertIn("exit 3, expected 0", " ".join(result["reasons"]))
         self.assertTrue(all((self.work / r["stdout"]["path"]).is_file() for r in result["commands"]))
+
+    def writer_tree(self, name, *, ignore_term=False, escape=False):
+        """argv of a leader that starts a child writing ticks to a file and to its stdout (ignoring SIGTERM, or in a
+        session of its own, when asked) and returns once the first tick and a release file exist; the ticks and release
+        paths."""
+        ticks, release, stop = (self.root / f"{name}.{suffix}" for suffix in ("ticks", "release", "stop"))
+        child = ("import pathlib, signal, sys, time\n"
+                 + ("signal.signal(signal.SIGTERM, signal.SIG_IGN)\n" if ignore_term else "")
+                 + "ticks, stop = map(pathlib.Path, sys.argv[1:])\nwhile not stop.exists():\n"
+                 "    ticks.write_text(str(time.monotonic_ns()))\n    print('tick', flush=True)\n    time.sleep(0.02)\n")
+        leader = ("import pathlib, subprocess, sys, time\n"
+                  f"subprocess.Popen([sys.executable, '-c', *sys.argv[1:4]], start_new_session={escape})\n"
+                  "ticks, release = map(pathlib.Path, sys.argv[2:5:2])\n"
+                  "while not (ticks.exists() and release.exists()):\n    time.sleep(0.01)\n")
+        self.addCleanup(self.stop_tree, ticks, stop, release)
+        return [sys.executable, "-c", leader, child, str(ticks), str(stop), str(release)], ticks, release
+
+    def stop_tree(self, ticks, *files):
+        """End a tree a failed run left behind before the temporary directory goes: its leader returns on the release
+        file, its child on the stop file."""
+        import time
+        for path in files:
+            path.touch()
+        deadline = time.monotonic() + 5
+        while ticks.exists() and time.monotonic() < deadline:
+            before = ticks.read_bytes()
+            time.sleep(0.05)
+            if ticks.read_bytes() == before:
+                break
+
+    def assert_ended(self, ticks, record=None):
+        """The ticks have stopped and the stdout evidence, if any, still has its recorded hash."""
+        import time
+        before = ticks.read_bytes()
+        time.sleep(0.3)
+        self.assertEqual(ticks.read_bytes(), before, "a process the check started is still writing")
+        if record:
+            stdout = (self.work / record["stdout"]["path"]).read_bytes()
+            self.assertEqual((sha256(stdout), b"tick" in stdout), (record["stdout"]["sha256"], True))
+
+    @unittest.skipIf(os.name == "nt", "a POSIX session; test-windows-portability.py covers the Windows job")
+    def test_a_check_ends_with_every_process_it_started(self):
+        """C5. Prediction: a check whose leader leaves a child writing ticks to a file and to its stdout is recorded as it
+        ended (a timeout, or exit 0 for a leader that returns at once), and once execute returns the child is gone: the
+        ticks stop and the stdout evidence still has its recorded hash. The check's clock stands still until the first
+        tick, so a slow interpreter start cannot time it out before the child writes. `exit 124` is an exit with code
+        124. Before: a timeout killed only the leader and a normal exit nothing, so the child kept writing, and because
+        it held the pipes the leader's prompt exit 0 was recorded as a timeout."""
+        import time
+        from types import SimpleNamespace
+        from unittest import mock
+        scope = shared("platform-support")["run_process"].__globals__
+        run_dir = new_run_dir(self.work)
+        for index, (mode, seconds, outcome) in enumerate((("hang", 1, {"kind": "timeout", "timeout_sec": 1}),
+                                                           ("exit", 30, {"kind": "exit", "exit_code": 0}))):
+            with self.subTest(mode=mode):
+                argv, ticks, release = self.writer_tree(mode)
+                if mode == "exit":
+                    release.touch()
+                ready = []
+
+                def monotonic():
+                    if not ready and ticks.exists():
+                        ready.append(time.monotonic())
+                    return time.monotonic() - ready[0] if ready else 0.0
+                with mock.patch.dict(scope, time=SimpleNamespace(monotonic=monotonic, sleep=time.sleep)):
+                    record = execute(self.work, {"argv": argv, "timeout_sec": seconds}, index, run_dir)
+                self.assertEqual(record["outcome"], outcome)
+                self.assert_ended(ticks, record)
+        record = execute(self.work, {"cmd": "exit 124", "exit_code": 124}, 2, run_dir)
+        self.assertEqual((record["outcome"], record["passed"]), ({"kind": "exit", "exit_code": 124}, True))
+
+    @unittest.skipIf(os.name == "nt", "a POSIX session; test-windows-portability.py covers the Windows job")
+    def test_a_check_returns_once_a_writer_that_ignores_sigterm_is_gone(self):
+        """C5 review. Prediction: a leader that exits at once, leaving a child that ignores SIGTERM and keeps writing,
+        is recorded as exit 0 only once that child is gone (the 5 s grace, then SIGKILL): its ticks and the stdout
+        evidence are stable when execute returns, also when SIGKILL takes effect a moment after killpg returned (kill
+        only queues it; modelled here by sending it 0.5 s late). Before: execute returned as soon as SIGKILL was sent,
+        while the writer still ran."""
+        import contextlib
+        import signal
+        import threading
+        from unittest import mock
+        real, timers = os.killpg, []
+
+        def late_kill(pgid, sig):
+            if sig != signal.SIGKILL:
+                return real(pgid, sig)
+
+            def kill():
+                with contextlib.suppress(ProcessLookupError):
+                    real(pgid, sig)
+            timers.append(threading.Timer(0.5, kill))
+            timers[-1].start()
+        argv, ticks, release = self.writer_tree("survivor", ignore_term=True)
+        release.touch()
+        with mock.patch.object(os, "killpg", late_kill):
+            record = execute(self.work, {"argv": argv, "timeout_sec": 30}, 0, new_run_dir(self.work))
+        self.assertEqual(record["outcome"], {"kind": "exit", "exit_code": 0})
+        self.assert_ended(ticks, record)
+        for timer in timers:
+            timer.join()
+
+    @unittest.skipIf(os.name == "nt", "a POSIX session; a Windows job has no breakaway")
+    def test_a_process_that_left_the_session_cannot_change_the_evidence(self):
+        """C5 review 2. Prediction: a check whose child leaves the session by its own setsid and keeps writing to its
+        inherited stdout is recorded as exit 0; when execute returns, the stdout evidence has its recorded hash and keeps
+        it while that child still writes, and no live file is left. Before: the evidence was the file the check wrote
+        to, so the escaped child's writes landed in it after it was hashed."""
+        import time
+        argv, ticks, release = self.writer_tree("escaped", escape=True)
+        release.touch()
+        run_dir = new_run_dir(self.work)
+        record = execute(self.work, {"argv": argv, "timeout_sec": 30}, 0, run_dir)
+        self.assertEqual(record["outcome"], {"kind": "exit", "exit_code": 0})
+        evidence, written = self.work / record["stdout"]["path"], ticks.read_bytes()
+        self.assertEqual(sha256(evidence.read_bytes()), record["stdout"]["sha256"])
+        deadline = time.monotonic() + 30
+        while ticks.read_bytes() == written:
+            self.assertLess(time.monotonic(), deadline, "the escaped child stopped writing, so nothing was tested")
+            time.sleep(0.01)
+        self.assertEqual(sha256(evidence.read_bytes()), record["stdout"]["sha256"])
+        self.assertEqual(sorted(path.name for path in run_dir.iterdir()), ["cmd-0.stderr", "cmd-0.stdout"])
+
+    def test_a_live_file_that_cannot_be_removed_fails_its_check(self):
+        """C5 review 2. Prediction, with removal refused as Windows refuses a file a process still holds open: the check
+        fails with an error naming that live file, which its stderr evidence also carries. Before: the check wrote its
+        evidence directly, with no live file to leave behind."""
+        from unittest import mock
+        unlink = Path.unlink
+
+        def refuse(path, *args, **kwargs):
+            if path.name.endswith(".stdout.live"):
+                raise PermissionError(13, "fixture: in use by another process", str(path))
+            return unlink(path, *args, **kwargs)
+        with mock.patch.object(Path, "unlink", refuse):
+            record = execute(self.work, {"argv": [sys.executable, "-c", "print('ok')"]}, 0, new_run_dir(self.work))
+        self.assertEqual((record["outcome"]["kind"], record["passed"]), ("spawn_error", False))
+        self.assertIn("cannot remove cmd-0.stdout.live", record["outcome"]["error"])
+        self.assertIn(record["outcome"]["error"].encode("utf-8"), (self.work / record["stderr"]["path"]).read_bytes())
+
+    @unittest.skipIf(os.name == "nt", "test-windows-portability.py covers teardown errors of the Windows job")
+    def test_a_signal_ends_the_run_whatever_teardown_raises(self):
+        """C5 review 2. Prediction: SIGTERM during a check's run ends it with 143 even when teardown then raises OSError,
+        so execute returns no record and the run goes no further. Its live files are removed; one that cannot be is
+        named on stderr and the exit stays 143. Before: the teardown error replaced the exit, and execute recorded it as
+        a failed check and went on; then (review 2) both live files stayed in the run directory."""
+        import contextlib
+        import io
+        import signal
+        from unittest import mock
+        scope = shared("platform-support")["run_process"].__globals__
+        started, unlink = [], Path.unlink
+
+        class InterruptedRun(subprocess.Popen):
+            def wait(self, timeout=None):
+                if self not in started:
+                    started.append(self)
+                    signal.raise_signal(signal.SIGTERM)
+                return super().wait(timeout)
+
+        def failing_teardown(child, job=None):
+            raise OSError("fixture teardown failure")
+
+        def refuse(path, *args, **kwargs):
+            if path.name.endswith(".stdout.live"):
+                raise PermissionError(13, "fixture: in use by another process", str(path))
+            return unlink(path, *args, **kwargs)
+        self.addCleanup(lambda: [(process.kill(), process.wait()) for process in started])
+        for refused in (False, True):
+            with self.subTest(refused=refused):
+                run_dir, stderr = new_run_dir(self.work), io.StringIO()
+                with mock.patch.object(subprocess, "Popen", InterruptedRun), mock.patch.dict(scope, terminate_tree=failing_teardown), \
+                        mock.patch.object(Path, "unlink", refuse if refused else unlink), contextlib.redirect_stderr(stderr), \
+                        self.assertRaises(SystemExit) as stop:
+                    execute(self.work, {"argv": [sys.executable, "-c", "import time; time.sleep(30)"]}, 0, run_dir)
+                self.assertEqual(stop.exception.code, 143)
+                self.assertEqual(sorted(path.name for path in run_dir.iterdir()), ["cmd-0.stdout.live"] if refused else [])
+                self.assertEqual("cannot remove cmd-0.stdout.live" in stderr.getvalue(), refused, stderr.getvalue())
+
+    @unittest.skipIf(os.name == "nt", "POSIX signals; a Windows job ends its tree however the runner stops")
+    def test_a_runner_stopped_by_a_signal_ends_the_check_tree(self):
+        """C5 review. Prediction, with run_process driven in its own Python process: SIGHUP (a closed terminal) ends it
+        with 129 and the tree with it; SIGHUP inherited as ignored (nohup) stays ignored and the run completes with 0;
+        a second SIGTERM during the grace of a child that ignores SIGTERM waits for teardown, which still kills that
+        child, and the run ends with 143. Before: SIGHUP's default action killed the runner and the tree ran on, and a
+        second SIGTERM aborted teardown before SIGKILL."""
+        import signal
+        import time
+        # The runner touches a marker as teardown starts, so the second SIGTERM lands within the surviving child's grace.
+        runner = ("import pathlib, runpy, subprocess, sys\n"
+                  "run_process = runpy.run_path(sys.argv[1])['run_process']\n"
+                  "scope, marker = run_process.__globals__, pathlib.Path(sys.argv[2])\n"
+                  "def teardown(*args, real=scope['terminate_tree']):\n    marker.touch()\n    return real(*args)\n"
+                  "scope['terminate_tree'] = teardown\n"
+                  "sys.exit(run_process(sys.argv[3:], subprocess.DEVNULL, 60))\n")
+
+        def wait_for(path):
+            while not path.exists():
+                self.assertLess(time.monotonic(), deadline)
+                time.sleep(0.01)
+        for case in ("hangup", "ignored hangup", "second sigterm"):
+            with self.subTest(case=case):
+                argv, ticks, release = self.writer_tree(case.replace(" ", "-"), ignore_term=case == "second sigterm")
+                tearing = self.root / f"{case.replace(' ', '-')}.teardown"
+                previous = signal.signal(signal.SIGHUP, signal.SIG_IGN if case == "ignored hangup" else signal.SIG_DFL)
+                try:
+                    driver = subprocess.Popen([sys.executable, "-c", runner, str(SKILLS / "_shared/platform-support.py"), str(tearing),
+                                               *argv], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+                finally:
+                    signal.signal(signal.SIGHUP, previous)
+                self.addCleanup(lambda driver=driver: (driver.kill(), driver.wait()))
+                deadline = time.monotonic() + 30
+                wait_for(ticks)
+                if case == "second sigterm":
+                    driver.send_signal(signal.SIGTERM)
+                    wait_for(tearing)
+                    driver.send_signal(signal.SIGTERM)
+                    expected = 143
+                else:
+                    driver.send_signal(signal.SIGHUP)
+                    expected = 129
+                    if case == "ignored hangup":
+                        time.sleep(0.3)
+                        self.assertIsNone(driver.poll())
+                        release.touch()
+                        expected = 0
+                self.assertEqual(driver.wait(timeout=30), expected)
+                self.assert_ended(ticks)
+
+    @unittest.skipIf(os.name == "nt", "test-windows-portability.py covers a signal while the Windows job starts")
+    def test_a_signal_while_the_check_starts_ends_its_tree(self):
+        """C5 review. Prediction: SIGTERM raised after the fork, before Popen returns (where CPython closes the child's
+        pipe ends), waits until Popen is done, then ends the run with 143: a started session ends with it, and a child
+        whose exec failed is reaped by Popen itself. Before: the handler raised inside Popen, so the started session was
+        never ended and the failed child was left unreaped."""
+        import signal
+        from unittest import mock
+        argv, ticks, _ = self.writer_tree("start")
+        started = []
+
+        class InterruptedStart(subprocess.Popen):
+            def _close_pipe_fds(self, *args):
+                super()._close_pipe_fds(*args)
+                started.append(self)
+                signal.raise_signal(signal.SIGTERM)
+        self.addCleanup(lambda: [(process.kill(), process.wait()) for process in started])
+        for count, target in enumerate((argv, ["devlyn-missing-binary-for-test"]), 1):
+            with self.subTest(target=target[-1]):
+                with mock.patch.object(subprocess, "Popen", InterruptedStart), self.assertRaises(SystemExit) as stop:
+                    shared("platform-support")["run_process"](target, subprocess.DEVNULL, 60, stdout=subprocess.DEVNULL)
+                self.assertEqual((stop.exception.code, len(started)), (143, count))
+                self.assertIsNotNone(started[-1].returncode, "the started process was neither ended nor reaped")
+        if ticks.exists():
+            self.assert_ended(ticks)
+
+    def test_a_signal_as_its_handler_is_installed_restores_every_handler(self):
+        """C5 review 3. Prediction, with signal.signal delivering the signal right after it installs run_process's
+        handler: the run ends with 128 + that signal, and every handled signal has the handler it had before the call,
+        after the first installation and after a later one. Before: a handler was installed before its predecessor was
+        saved, so a signal in between left it installed."""
+        import signal
+        from unittest import mock
+        real = signal.signal
+        handled = [signal.SIGTERM, signal.SIGINT, *([signal.SIGHUP] if os.name != "nt" else [])]
+        before = {sig: signal.getsignal(sig) for sig in handled}
+        self.addCleanup(lambda: [real(sig, handler) for sig, handler in before.items()])
+        for target in (signal.SIGTERM, signal.SIGINT):
+            with self.subTest(signal=target.name):
+                delivered = []
+
+                def deliver(sig, handler):
+                    previous = real(sig, handler)
+                    if sig == target and not delivered:
+                        delivered.append(sig)
+                        handler(sig, None)
+                    return previous
+                with mock.patch.object(signal, "signal", deliver), self.assertRaises(SystemExit) as stop:
+                    shared("platform-support")["run_process"]([sys.executable, "-c", "pass"], subprocess.DEVNULL, 60)
+                self.assertEqual((stop.exception.code, delivered), (128 + target, [target]))
+                self.assertEqual({sig: signal.getsignal(sig) for sig in handled}, before)
+
+    @unittest.skipIf(os.name == "nt", "POSIX process groups")
+    def test_teardown_ends_once_the_group_is_gone_and_raises_only_for_a_leader_it_cannot_signal(self):
+        """C5 review. Prediction, with killpg and the clock mocked: a group gone after SIGTERM and two probes ends
+        teardown at once, with no SIGKILL and none of the grace used; EPERM while the leader is alive (a leader this
+        process may not signal) is raised; EPERM once the leader has exited leaves nothing to signal, so teardown ends
+        after one SIGTERM; a group that still answers signal 0 after SIGTERM's grace and SIGKILL (dead but unreaped, or
+        not signallable) gets about one more second, then teardown returns. Before: every EPERM read as gone, followed
+        by an unbounded wait for the leader, and teardown always slept the full grace (first C5 commit); then (review 1)
+        such a group raised OSError, failing a check whose processes were all dead."""
+        import errno
+        import signal
+        from types import SimpleNamespace
+        from unittest import mock
+        scope = shared("platform-support")["terminate_tree"].__globals__
+        clock, sent = [0.0], []
+
+        class Leader:
+            pid = 4242  # killpg is mocked: nothing is signalled.
+
+            def __init__(self, code):
+                self.code = code
+
+            def poll(self):
+                return self.code
+
+            def wait(self, timeout=None):  # The first C5 teardown waited for the leader.
+                return self.code
+
+        def teardown(refusal, code, answers=0):  # The group answers `answers` signals, then killpg raises `refusal`, if any.
+            def killpg(pgid, sig):
+                sent.append(sig)
+                if refusal and len(sent) > answers:
+                    raise refusal
+            sent.clear()
+            fake = SimpleNamespace(monotonic=lambda: clock[0], sleep=lambda seconds: clock.__setitem__(0, clock[0] + seconds))
+            with mock.patch.object(os, "killpg", killpg), mock.patch.dict(scope, time=fake):
+                scope["terminate_tree"](Leader(code))
+        teardown(ProcessLookupError(errno.ESRCH, "No such process"), 0, answers=3)
+        self.assertLess(clock[0], 0.1)
+        self.assertEqual(sent, [signal.SIGTERM, 0, 0, 0])
+        refused = PermissionError(errno.EPERM, "Operation not permitted")
+        with self.assertRaises(PermissionError):
+            teardown(refused, None)
+        teardown(refused, 0)
+        self.assertEqual(sent, [signal.SIGTERM])
+        start = clock[0]
+        teardown(None, 0)
+        self.assertEqual((sent[0], sent.count(signal.SIGKILL), set(sent)), (signal.SIGTERM, 1, {signal.SIGTERM, 0, signal.SIGKILL}))
+        self.assertAlmostEqual(clock[0] - start, 6, delta=0.1)
+
+    def test_windows_shell_commands_reach_cmd_verbatim(self):
+        """Windows mocked: a cmd check runs ComSpec, else SystemRoot's cmd.exe, as `/c "<cmd>"` with the command untouched,
+        the line shell=True builds, so its quotes reach cmd.exe as written; a shell that is not absolute is a spawn error,
+        never a search that could find one in the worktree."""
+        import ntpath
+        from types import SimpleNamespace
+        from unittest import mock
+        launched = []
+
+        def run_process(argv, stdin, seconds, **popen):
+            launched.append(argv)
+            return 0
+        cmd = 'echo "a b" & exit 0'
+        for environ, shell in (({"ComSpec": r"C:\Windows\system32\cmd.exe", "SystemRoot": r"D:\Other"}, r"C:\Windows\system32\cmd.exe"),
+                               ({"SystemRoot": r"C:\Windows"}, r"C:\Windows\System32\cmd.exe"), ({"ComSpec": "cmd.exe"}, None), ({}, None)):
+            with self.subTest(environ=environ), mock.patch.dict(shared("platform-support"), run_process=run_process), \
+                    mock.patch.dict(execute.__globals__, os=SimpleNamespace(name="nt", environ=environ, path=ntpath)):
+                launched.clear()
+                record = execute(self.work, {"cmd": cmd}, 0, new_run_dir(self.work))
+                if shell:
+                    self.assertEqual((launched, record["outcome"]), ([f'"{shell}" /c "{cmd}"'], {"kind": "exit", "exit_code": 0}))
+                else:
+                    self.assertEqual((launched, record["outcome"]["kind"]), ([], "spawn_error"))
+                    self.assertIn("shell not found", record["outcome"]["error"])
+
+    def test_only_infrastructure_blockers_wait_for_another_run(self):
+        """C5. Prediction: an otherwise valid submission blocked only by infrastructure yields its details, so the drain
+        retires it and runs the task again; with a product blocker as well, invalid fields or no readable file it yields
+        none, and the mixed one still fails with both reasons. Before: any infrastructure blocker failed the task for good."""
+        self.inputs()
+        source = self.product()
+        infrastructure = {"kind": "blocked-infrastructure", "detail": "registry unreachable"}
+        mixed = [infrastructure, {"kind": "failed", "detail": "broken"}]
+        path = self.root / "submission.json"
+
+        def causes(**fields):
+            path.write_text(json.dumps({"schema_version": 1, "task": "l.t", "source_sha": source, **fields}), encoding="utf-8")
+            return infrastructure_causes(self.packet, path)
+        self.assertEqual(causes(blockers=[infrastructure, dict(infrastructure, detail="login expired")]),
+                         ["registry unreachable", "login expired"])
+        self.assertEqual([causes(blockers=mixed), causes(blockers=[infrastructure], reviews="x"), causes(),
+                          infrastructure_causes(self.packet, self.root / "missing.json")], [None] * 4)
+        result = self.submit(source, blockers=mixed)
+        self.assertEqual((result["verdict"], result["reasons"]), ("FAILED", ["blocked-infrastructure: registry unreachable", "failed: broken"]))
 
     def test_source_and_contract_binding(self):
         self.inputs()
