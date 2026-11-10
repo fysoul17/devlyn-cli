@@ -8,6 +8,9 @@ const history = require('./skill-history.json');
 const { MARKER, marketplaceName, projectionPath, inspectProjection } = require('./codex-projection');
 
 const SKILLS = ['devlyn-ideate', 'devlyn-engines'];
+// The version an engine's run-folder channel was examined on; bin/engines.js keeps the engine's floor. An
+// older version keeps the plan it had before the channel: only a first task carries the principles.
+const CHANNEL_MINIMUM = { antigravity: '1.5.4' };
 const object = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 const textValue = (value) => typeof value === 'string' && !value.includes('\0');
 const strings = (value) => Array.isArray(value) && value.every(textValue);
@@ -411,6 +414,34 @@ function antigravitySkill(release, name) {
     + `Its folder, ${dir}, is the skill's folder (DEVLYN_SKILL_DIR), not the folder of this file.\n`;
 }
 
+// The path with the links of its existing part resolved; parts that do not exist yet are kept as given.
+function physicalPath(target) {
+  let parent = path.resolve(target);
+  const missing = [];
+  while (!fs.existsSync(parent)) { missing.unshift(path.basename(parent)); parent = path.dirname(parent); }
+  return path.join(fs.realpathSync(parent), ...missing);
+}
+
+// Antigravity (examined on 1.5.4) walks an added folder's parents up to a Git root, a .git folder or a linked
+// worktree's .git file, and loads that root's own agents and hooks with no trust check. So the folder is passed
+// only where no .git entry of any kind is at it or above it and, on POSIX, no directory above it is writable by
+// every user, who could put one there later. The given path and the one its links lead to are both walked.
+// Returns the first directory that fails, or null; a directory that cannot be read cannot be shown safe.
+function unsafeRunFolder(folder) {
+  for (const start of new Set([path.resolve(folder), physicalPath(folder)])) {
+    for (let dir = start; ; dir = path.dirname(dir)) {
+      try {
+        if (fs.lstatSync(path.join(dir, '.git'), { throwIfNoEntry: false })) return dir;
+        if (process.platform !== 'win32' && dir !== start && (fs.statSync(dir, { throwIfNoEntry: false })?.mode & 0o002)) return dir;
+      } catch {
+        return dir;
+      }
+      if (dir === path.dirname(dir)) break;
+    }
+  }
+  return null;
+}
+
 function codexRegistrations(config, accountHome) {
   const owned = [], errors = [];
   for (const [key, plugin] of Object.entries(config.plugins || {})) {
@@ -508,11 +539,7 @@ function planActivation(releaseRoot, input, env = process.env) {
   const catalog = skillCatalog(release);
   const instructions = joinText(defaults, catalog);
   const file = (relativePath, utf8) => {
-    let parent = path.resolve(context.runDir);
-    const missing = [];
-    while (!fs.existsSync(parent)) { missing.unshift(path.basename(parent)); parent = path.dirname(parent); }
-    const physical = path.join(fs.realpathSync(parent), ...missing);
-    const relative = path.relative(release.root, physical);
+    const relative = path.relative(release.root, physicalPath(context.runDir));
     if (!relative || (!relative.startsWith(`..${path.sep}`) && relative !== '..' && !path.isAbsolute(relative))) {
       fail('invalid-arguments', { argument: 'runDir must be outside the release' }, 2);
     }
@@ -527,6 +554,18 @@ function planActivation(releaseRoot, input, env = process.env) {
     status.invocation = { kind: 'read-file', text: `Read ${path.join(release.root, 'config/skills/devlyn-ideate/SKILL.md')}` };
   };
   const native = (mechanism, kind, text) => { status.skills = channel('configured', mechanism); status.invocation = { kind, text }; };
+  // An engine with no examined channel: only a first task carries the principles and the catalog, ahead of
+  // its text; without one nothing reaches the session and `params` says why.
+  const firstTask = (params) => {
+    if (context.initialPrompt) {
+      status.principles = channel('partial', 'initial-task', [reason('principles-task-only')]);
+      plan.prompt = { ...context.initialPrompt, text: joinText(instructions, context.initialPrompt.text) };
+      fallback();
+    } else {
+      status.principles = channel('unavailable', null, [reason('principles-unavailable', params)]);
+      status.skills = channel('unavailable', null, [reason('skills-unavailable', params)]);
+    }
+  };
   const collisions = found.map((entry) => reason('name-collision', { name: entry.name, path: entry.path }));
   switch (context.engine) {
     case 'claude': {
@@ -676,9 +715,20 @@ function planActivation(releaseRoot, input, env = process.env) {
       }
       break;
     case 'antigravity': {
-      // Antigravity reads AGENTS.md (always on) and .agents/skills in every workspace folder, and a folder
-      // given by --add-dir is one. A conversation does not remember its added folders, so every launch mode
-      // passes it again. It truncates a rule file over 24,000 bytes.
+      // Antigravity reads AGENTS.md (always on) and .agents/skills in every workspace folder, and a folder given
+      // by --add-dir is one. A conversation keeps its added folders and reads them from disk again on every
+      // launch, so the plan is the same in every launch mode and a caller hands a resumed conversation the same
+      // runDir: with another, both folders apply while the old one exists. A folder removed later only stops
+      // applying. It truncates a rule file over 24,000 bytes.
+      if (!supportedVersion(context.engine, context.version, CHANNEL_MINIMUM.antigravity)) {
+        firstTask({ detail: 'no-initial-task' });
+        break;
+      }
+      const unsafe = unsafeRunFolder(path.join(context.runDir, 'antigravity'));
+      if (unsafe) {
+        firstTask({ detail: 'run-dir-unsafe', path: unsafe });
+        break;
+      }
       const folder = 'antigravity', bytes = Buffer.byteLength(instructions), maximum = 24000;
       if (bytes > maximum) {
         status.principles = channel('unavailable', null, [reason('principles-unavailable', { detail: 'too-large', bytes, maximum })]);
@@ -695,15 +745,7 @@ function planActivation(releaseRoot, input, env = process.env) {
       break;
     }
     case 'cursor':
-      // Only a first task carries the principles and the catalog: without one nothing reaches the session.
-      if (context.initialPrompt) {
-        status.principles = channel('partial', 'initial-task', [reason('principles-task-only')]);
-        plan.prompt = { ...context.initialPrompt, text: joinText(instructions, context.initialPrompt.text) };
-        fallback();
-      } else {
-        status.principles = channel('unavailable', null, [reason('principles-unavailable', { detail: 'no-initial-task' })]);
-        status.skills = channel('unavailable', null, [reason('skills-unavailable', { detail: 'no-initial-task' })]);
-      }
+      firstTask({ detail: 'no-initial-task' });
       break;
   }
   if (plan.engineArgs.length || Object.keys(plan.envPatch).length || plan.prompt) plan.envPatch.DEVLYN_HARNESS_ROOT = release.root;

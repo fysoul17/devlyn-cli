@@ -165,6 +165,9 @@ jobs:
           path: ${{ runner.temp }}/harness/package
       - name: Harness suites on the tested release
         shell: python
+        # Not /tmp, which every user can write: there the Antigravity run-folder tests skip.
+        env:
+          TMPDIR: ${{ runner.temp }}
         run: |
           import hashlib, json, os, pathlib, subprocess, sys
           root = pathlib.Path(os.environ['RUNNER_TEMP']) / 'harness'

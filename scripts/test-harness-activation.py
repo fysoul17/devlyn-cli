@@ -28,6 +28,8 @@ CODEX = None
 VERSIONS = dict(claude='2.1.307', codex='0.163.0', grok='1.0.62', omp='16.5.0',
                 antigravity='1.4.4', cursor='2025.09.12-4852336', opencode='1.19.2',
                 kimi='2.3.0', copilot='1.0.98', qwen='0.26.0', pi='1.4.0')
+# The version a run-folder channel was examined on, where it is later than the engine's floor.
+CHANNEL_VERSIONS = dict(antigravity='1.5.4')
 
 
 class ActivationTests(unittest.TestCase):
@@ -109,10 +111,11 @@ class ActivationTests(unittest.TestCase):
                 for key, value in tomllib.loads(args[index + 1]).items()}
 
     def test_per_engine_fresh_fixture(self):
-        # Prediction: Copilot and Antigravity configure both session channels; other engine defaults stay unchanged.
+        # Prediction: Copilot configures both session channels; other engine defaults stay unchanged. At their
+        # floors Cursor and Antigravity have no first task to carry the principles, so nothing is delivered.
         # Every engine bin/engines.js names is tested here and has its own plan, never a silent 'disabled'.
         flags = dict(claude='--plugin-dir', codex='-c', grok='--rules', omp='--config',
-                     kimi='--agent-file', qwen='--append-system-prompt', pi='--skill', antigravity='--add-dir')
+                     kimi='--agent-file', qwen='--append-system-prompt', pi='--skill')
         self.assertEqual(list(VERSIONS), json.loads(run(['node', '-p', 'JSON.stringify(require(process.argv[1]).ENGINE_IDS)',
                                                          self.package / 'bin/engines.js']).stdout))
         for engine in VERSIONS:
@@ -124,10 +127,10 @@ class ActivationTests(unittest.TestCase):
                 self.assertEqual(plan['channels']['executor']['supported'], engine in ('claude', 'codex'))
                 if engine in flags:
                     self.assertIn(flags[engine], plan['engineArgs'])
-                if engine == 'cursor':
+                if engine in ('cursor', 'antigravity'):
                     self.assertEqual(plan['engineArgs'], [])
                     self.assertEqual(plan['channels']['overall'], 'unavailable')
-                if engine in ('copilot', 'antigravity'):
+                if engine == 'copilot':
                     self.assertEqual(plan['channels']['overall'], 'configured')
                 for file in plan['files']:
                     self.assertEqual(file['sha256'], hashlib.sha256(file['utf8'].encode()).hexdigest())
@@ -167,14 +170,15 @@ class ActivationTests(unittest.TestCase):
 
     def test_newer_releases_including_new_majors_are_taken(self):
         # Prediction: a newer patch, minor or major (and a newer Cursor build) plans exactly like the examined
-        # version: a version number is not evidence that a channel broke (omp 18 kept both flags devlyn uses).
+        # version: a version number is not evidence that a channel broke (omp 18 kept both flags devlyn uses). An
+        # engine whose channel was examined on a later version than its floor is compared with that version.
         newer = dict(claude=('2.1.308', '2.3.0', '3.0.0'), codex=('0.163.1', '0.171.2', '1.0.0'), grok=('1.4.0', '2.0.0'),
-                     omp=('16.9.1', '18.14.2'), antigravity=('1.6.0', '2.0.0'),
+                     omp=('16.9.1', '18.14.2'), antigravity=('1.5.5', '1.6.0', '2.0.0'),
                      cursor=('2026.01.05-abcdef1',), opencode=('1.25.0', '2.0.0'), kimi=('2.9.0', '3.0.0'),
                      copilot=('1.2.0', '2.0.0'), qwen=('0.31.0', '1.0.0'), pi=('1.4.1', '2.0.0'))
         for engine in VERSIONS:
             ctx = self.context(engine)
-            ctx['initialPrompt'] = {'text': 'owner task', 'transport': 'argv'}
+            ctx.update(version=CHANNEL_VERSIONS.get(engine, VERSIONS[engine]), initialPrompt={'text': 'owner task', 'transport': 'argv'})
             examined = self.plan(ctx)
             for version in newer[engine]:
                 with self.subTest(engine=engine, version=version):
@@ -310,7 +314,7 @@ class ActivationTests(unittest.TestCase):
                 ctx['skillRoots'] = [str(root)]
                 plan = self.plan(ctx)
                 self.assertEqual(plan['channels']['inheritedDevlyn'], [])
-                if engine in ('omp', 'copilot', 'pi', 'antigravity'):
+                if engine in ('omp', 'copilot', 'pi'):
                     self.assertEqual(plan['channels']['skills']['state'], 'partial')
                     self.assertEqual(plan['channels']['skills']['reasons'][0]['code'], 'name-collision')
                 if engine in ('claude', 'codex'):
@@ -1028,32 +1032,68 @@ process.stdout.write(JSON.stringify(JSON.parse(process.argv[2]).map(([cwd, env, 
             'reasons': [{'code': 'config-unreadable', 'params': {'path': str(project), 'detail': 'ELOOP'}}]})
         self.assertEqual(unreadable['channels']['skills']['mechanism'], 'skills.customDirectories')
 
+    def first_task_plan(self, ctx, params):
+        # The whole plan 4.3.29 made for Cursor and Antigravity: a first task carries the principles and the catalog
+        # ahead of the owner's text; without one nothing is injected, both channels are unavailable with `params`,
+        # and the release is still named.
+        prompt = ctx['initialPrompt']
+        channels = {'engine': ctx['engine'], 'version': ctx['version'], 'accountRef': 'fixture',
+                    'hide': {'state': 'disabled', 'mechanism': None, 'reasons': []},
+                    'executor': {'supported': False, 'reasons': [{'code': 'executor-unqualified', 'params': {'engine': ctx['engine']}}]},
+                    'inheritedDevlyn': []}
+        if prompt:
+            channels.update(overall='partial', invocation={'kind': 'read-file', 'text': 'Read ' + str(self.package / 'config/skills/devlyn-ideate/SKILL.md')},
+                            principles={'state': 'partial', 'mechanism': 'initial-task', 'reasons': [{'code': 'principles-task-only', 'params': {}}]},
+                            skills={'state': 'partial', 'mechanism': 'absolute-catalog', 'reasons': [{'code': 'skills-catalog', 'params': {}}]})
+        else:
+            channels.update(overall='unavailable', invocation=None, **{name: {'state': 'unavailable', 'mechanism': None,
+                'reasons': [{'code': f'{name}-unavailable', 'params': params}]} for name in ('principles', 'skills')})
+        return {'schemaVersion': 1, 'release': self.release, 'engineArgs': [],
+                'envPatch': {'DEVLYN_HARNESS_ROOT': str(self.package)} if prompt else {},
+                'prompt': {**prompt, 'text': self.instructions() + '\n\n' + prompt['text']} if prompt else None,
+                'files': [], 'machineSync': None, 'channels': channels}
+
     def test_initial_task_is_preserved_and_never_synthesized(self):
-        # Prediction: for Cursor, with no first task nothing is injected and both channels are unavailable, while the
-        # release is still named; a first task carries the principles and the catalog ahead of the owner's text.
-        ctx = self.context('cursor')
-        empty = self.plan(ctx)
-        self.assertEqual(empty['release'], self.release)
-        for key, value in [('engineArgs', []), ('envPatch', {}), ('files', []), ('prompt', None), ('machineSync', None)]:
-            self.assertEqual(empty[key], value)
-        for name in ('principles', 'skills'):
-            self.assertEqual(empty['channels'][name], {'state': 'unavailable', 'mechanism': None,
-                'reasons': [{'code': f'{name}-unavailable', 'params': {'detail': 'no-initial-task'}}]})
-        self.assertEqual((empty['channels']['overall'], empty['channels']['invocation']), ('unavailable', None))
-        for transport in ('argv', 'stdin'):
-            task = 'Task "quotes" \\ 한국어\n끝'
-            ctx['initialPrompt'] = {'text': task, 'transport': transport}
-            plan = self.plan(ctx)
-            self.assertEqual(plan['prompt'], {'text': self.instructions() + '\n\n' + task, 'transport': transport})
-            self.assertEqual((plan['engineArgs'], plan['files']), ([], []))
-            self.assertEqual(plan['envPatch'], {'DEVLYN_HARNESS_ROOT': str(self.package)})
-            self.assertEqual(plan['channels']['overall'], 'partial')
-            self.assertEqual(plan['channels']['principles'], {'state': 'partial', 'mechanism': 'initial-task',
-                                                              'reasons': [{'code': 'principles-task-only', 'params': {}}]})
-            self.assertEqual(plan['channels']['skills'], {'state': 'partial', 'mechanism': 'absolute-catalog',
-                                                          'reasons': [{'code': 'skills-catalog', 'params': {}}]})
-            self.assertEqual(plan['channels']['invocation'],
-                             {'kind': 'read-file', 'text': 'Read ' + str(self.package / 'config/skills/devlyn-ideate/SKILL.md')})
+        # Prediction: below the version its channel was examined on, Cursor and Antigravity (1.4.4 and 1.5.3) get the
+        # plan 4.3.29 made, whole: only a first task carries the principles and the catalog, in every launch mode.
+        for engine, version in [('cursor', VERSIONS['cursor']), ('antigravity', '1.4.4'), ('antigravity', '1.5.3')]:
+            for mode in ('fresh', 'resume', 'fork'):
+                for prompt in (None, *({'text': 'Task "quotes" \\ 한국어\n끝', 'transport': transport} for transport in ('argv', 'stdin'))):
+                    with self.subTest(engine=engine, version=version, mode=mode, prompt=prompt):
+                        ctx = {**self.context(engine), 'version': version, 'launchMode': mode, 'initialPrompt': prompt}
+                        self.assertEqual(self.plan(ctx), self.first_task_plan(ctx, {'detail': 'no-initial-task'}))
+
+    def agy(self, **changes):
+        # An Antigravity context on the version its run folder was examined on. The run folder is planned only when
+        # no directory above it can be written by every user, so a private temp folder is needed.
+        if os.name != 'nt' and any(folder.stat().st_mode & 0o002 for folder in (self.work, *self.work.parents)):
+            self.skipTest('the temp folder is under a folder everyone can write; set TMPDIR to a private one')
+        return {**self.context('antigravity'), 'version': CHANNEL_VERSIONS['antigravity'], **changes}
+
+    def test_antigravity_run_folder_only_where_no_git_root_can_be_above_it(self):
+        # Prediction: Antigravity 1.5.4 loads a Git root's own agents and hooks above an added folder with no trust
+        # check, so a run folder with a .git entry of any kind at it or above it (a folder, a linked worktree's file, a
+        # dangling link, one reached through a link into a repository) or, on POSIX, a directory above it that every
+        # user can write gets the 4.3.29 plan, with run-dir-unsafe and the failing directory when nothing is
+        # delivered. A safe run folder is planned in the same context.
+        self.assertEqual(self.plan(self.agy())['engineArgs'], ['--add-dir', str(self.run_dir / 'antigravity')])
+        linked, dangling, shared = (self.case / name for name in ('linked', 'dangling', 'shared'))
+        for folder in (linked, dangling, shared):
+            folder.mkdir()
+        (linked / '.git').write_text('gitdir: /elsewhere/.git/worktrees/linked\n')
+        (self.run_dir / '.git').mkdir()
+        cases = [(self.project / '.devlyn/runs/r1', self.project), (linked / 'run', linked), (self.run_dir, self.run_dir)]
+        if os.name != 'nt':
+            (dangling / '.git').symlink_to(self.case / 'missing')
+            (self.case / 'alias').symlink_to(self.project / 'sub', target_is_directory=True)
+            (self.project / 'sub').mkdir()
+            shared.chmod(0o777)
+            cases += [(dangling / 'run', dangling), (self.case / 'alias/run', self.project), (shared / 'run', shared)]
+        for run_dir, unsafe in cases:
+            for prompt in (None, {'text': 'owner task', 'transport': 'argv'}):
+                with self.subTest(run_dir=run_dir, prompt=prompt):
+                    ctx = self.agy(runDir=str(run_dir), initialPrompt=prompt)
+                    self.assertEqual(self.plan(ctx), self.first_task_plan(ctx, {'detail': 'run-dir-unsafe', 'path': str(unsafe)}))
 
     def antigravity_skill(self, root, name):
         # A skill entry of Antigravity's run folder: the release skill's own name and description lines, then the
@@ -1081,10 +1121,12 @@ process.stdout.write(JSON.stringify(JSON.parse(process.argv[2]).map(([cwd, env, 
         return root
 
     def test_antigravity_run_folder_by_add_dir_in_every_launch_mode(self):
-        # Prediction: every launch mode, with or without a first task, plans one run folder passed by --add-dir (a
-        # conversation does not remember its added folders): AGENTS.md holding the instructions other engines get,
+        # Prediction: on 1.5.4 in a safe run folder, every launch mode, with or without a first task, plans one run
+        # folder passed by --add-dir (a conversation keeps its added folders and reads them again on every launch, so a
+        # resumed one is handed the same folder): AGENTS.md holding the instructions other engines get,
         # with no frontmatter, and one entry per skill carrying the release skill's own name and description and its
         # absolute SKILL.md. A first task is left untouched; both channels are configured, invoked as /devlyn-ideate.
+        ctx = self.agy()
         expected = self.antigravity_files(self.package, self.instructions())
         self.assertTrue(expected[0]['utf8'].startswith('The following Devlyn instructions are defaults'))
         for name, file in zip(('devlyn-ideate', 'devlyn-engines'), expected[1:]):
@@ -1095,7 +1137,7 @@ process.stdout.write(JSON.stringify(JSON.parse(process.argv[2]).map(([cwd, env, 
         for mode, recorded in cases:
             for prompt in (None, {'text': 'owner task', 'transport': 'stdin'}):
                 with self.subTest(mode=mode, recorded=bool(recorded), prompt=prompt):
-                    plan = self.plan({**self.context('antigravity'), 'launchMode': mode, 'initialPrompt': prompt, **recorded})
+                    plan = self.plan({**ctx, 'launchMode': mode, 'initialPrompt': prompt, **recorded})
                     self.assertEqual(plan['release'], self.release)
                     self.assertEqual(plan['engineArgs'], ['--add-dir', str(self.run_dir / 'antigravity')])
                     self.assertEqual(plan['files'], expected)
@@ -1111,6 +1153,7 @@ process.stdout.write(JSON.stringify(JSON.parse(process.argv[2]).map(([cwd, env, 
         # planned as AGENTS.md; three bytes more (the same release one character deeper, named three times in the
         # catalog) plan no AGENTS.md and principles are unavailable with the size, while the skill entries and
         # --add-dir remain.
+        ctx = self.agy()
         defaults = (self.package / 'config/skills/_shared/runtime-principles.md').read_bytes()
         root = self.case / 'release'
         catalog = run(['node', '-e', 'process.stdout.write(require(process.argv[1]).skillCatalog({root: process.argv[2]}))',
@@ -1122,12 +1165,12 @@ process.stdout.write(JSON.stringify(JSON.parse(process.argv[2]).map(([cwd, env, 
                 (release / name).write_bytes((release / name).read_bytes() + b'x' * pad)
 
         self.rebuilt_release('release', grow)
-        fits = self.plan(self.context('antigravity'), release_root=root)
+        fits = self.plan(ctx, release_root=root)
         self.assertEqual(len(fits['files'][0]['utf8'].encode()), 24000)
         self.assertEqual(fits['files'][0]['relativePath'], 'antigravity/AGENTS.md')
         self.assertEqual(fits['channels']['principles']['state'], 'configured')
         deeper = root.rename(self.case / 'release1')
-        plan = self.plan(self.context('antigravity'), release_root=deeper)
+        plan = self.plan(ctx, release_root=deeper)
         self.assertEqual(plan['engineArgs'], ['--add-dir', str(self.run_dir / 'antigravity')])
         self.assertEqual(plan['files'], self.antigravity_files(deeper, None))
         self.assertEqual(plan['channels']['principles'], {'state': 'unavailable', 'mechanism': None, 'reasons': [
@@ -1138,13 +1181,15 @@ process.stdout.write(JSON.stringify(JSON.parse(process.argv[2]).map(([cwd, env, 
     def test_antigravity_skill_header_that_cannot_be_read_fails_the_plan(self):
         # Prediction: a release skill whose name or description is not one complete frontmatter line fails the plan
         # with the file and the field; nothing is planned from a guess.
+        ctx = self.agy()
+
         def fold(release):
             file = release / 'config/skills/devlyn-engines/SKILL.md'
             text = file.read_text(encoding='utf-8')
             file.write_text(text.replace('\ndescription: ', '\ndescription: >-\n  ', 1), encoding='utf-8')
 
         root = self.rebuilt_release('release', fold)
-        error = self.plan(self.context('antigravity'), code=1, release_root=root)
+        error = self.plan(ctx, code=1, release_root=root)
         self.assertEqual(error, {'code': 'config-unreadable', 'params': {
             'path': str(root / 'config/skills/devlyn-engines/SKILL.md'), 'field': 'description'}})
 
@@ -1156,6 +1201,7 @@ process.stdout.write(JSON.stringify(JSON.parse(process.argv[2]).map(([cwd, env, 
         # above a working directory outside any repository) leave skills native.
         nested = self.project / 'sub'
         nested.mkdir()
+        ctx = self.agy(cwd=str(nested))
         principles_only = self.antigravity_files(self.package, self.instructions())[:1]
         found = [self.home / '.gemini/antigravity-cli/skills', self.home / '.gemini/skills', self.home / '.gemini/config/skills',
                  nested / '.agents/skills', nested / '_agent/skills', self.project / '.agent/skills', self.project / '_agents/skills']
@@ -1163,7 +1209,7 @@ process.stdout.write(JSON.stringify(JSON.parse(process.argv[2]).map(([cwd, env, 
         for root in [*found, *ignored]:
             with self.subTest(root=root):
                 skill = self.write(root / 'devlyn-ideate/SKILL.md', '---\nname: devlyn-ideate\ndescription: owner\n---\nOwner')
-                plan = self.plan({**self.context('antigravity'), 'cwd': str(nested)})
+                plan = self.plan(ctx)
                 shutil.rmtree(skill.parent)
                 self.assertEqual(plan['engineArgs'], ['--add-dir', str(self.run_dir / 'antigravity')])
                 self.assertEqual(plan['channels']['principles'], {'state': 'configured', 'mechanism': 'add-dir', 'reasons': []})
@@ -1181,13 +1227,13 @@ process.stdout.write(JSON.stringify(JSON.parse(process.argv[2]).map(([cwd, env, 
         for root, collides in [(nested / '.agents/skills', True), (self.project / '.agents/skills', False)]:
             with self.subTest(root=root, repository=False):
                 skill = self.write(root / 'devlyn-ideate/SKILL.md', '---\nname: devlyn-ideate\ndescription: owner\n---\nOwner')
-                plan = self.plan({**self.context('antigravity'), 'cwd': str(nested)})
+                plan = self.plan(ctx)
                 shutil.rmtree(skill.parent)
                 self.assertEqual(plan['channels']['skills']['state'], 'partial' if collides else 'configured')
         # A copy of the release's own skill collides too and is reported as inherited.
         copy = self.project / '.agents/skills/devlyn-ideate'
         shutil.copytree(self.package / 'config/skills/devlyn-ideate', copy)
-        plan = self.plan(self.context('antigravity'))
+        plan = self.plan({**ctx, 'cwd': str(self.project)})
         self.assertEqual(plan['channels']['inheritedDevlyn'], [str(copy / 'SKILL.md')])
         self.assertEqual(plan['files'], principles_only)
         self.assertEqual(plan['channels']['skills']['reasons'][0],
