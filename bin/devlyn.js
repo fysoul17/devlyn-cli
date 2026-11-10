@@ -952,8 +952,8 @@ function cleanupSettingsText(text, settings, scripts) {
     const end = !previous && next ? next.offset : node.offset + node.length;
     text = applyEdits(text, [{ offset, length: end - offset, content: '' }]);
   }
-  const after = JSON.parse(text.replace(/^\uFEFF/, '')); // Refuse an invalid edit before changing any bytes.
-  return Object.keys(after).length === 0 ? null : text;
+  JSON.parse(text.replace(/^\uFEFF/, '')); // Refuse an invalid edit before changing any bytes.
+  return text;
 }
 
 // Shared user roots need one writer from ownership checks through the last addon write.
@@ -1168,8 +1168,8 @@ function cleanupScope(base, global) {
     const after = cleanupSettingsText(text, settings, []);
     if (after === text) return;
     found = true;
-    if (after === null) fs.unlinkSync(settingsFile);
-    else replaceFile(settingsFile, after);
+    // Even an emptied file stays: only the reviewed cleanup, which records it first, deletes it.
+    replaceFile(settingsFile, after);
     log('  ✕ .claude/settings.json retired entries (removed)', 'dim');
   });
   // CLAUDE.md and AGENTS.md stay as they are here: only a reviewed cleanup changes them.
@@ -2055,8 +2055,9 @@ function cleanupApplyItem(item) {
     const { safe, settings, text } = cleanupReadSettings(item.base);
     if (!safe || text === undefined) return cleanupReason('stale-plan');
     const after = cleanupSettingsText(text, settings, item.hookScripts);
-    if (after === null) fs.unlinkSync(item.path);
-    else if (after !== text) replaceFile(item.path, after);
+    if (after === text) return null;
+    if (Object.keys(JSON.parse(after.replace(/^\uFEFF/, ''))).length === 0) fs.unlinkSync(item.path);
+    else replaceFile(item.path, after);
     return null;
   }
   return cleanupReason('unknown-item');

@@ -1533,11 +1533,17 @@ update();
                     self.assertEqual(self.markers(self.home), set())
                 else:
                     self.assertEqual(paths[0].read_bytes(), raw)
-        # A file that held nothing but the retired hook goes, as the reviewed cleanup removes it.
-        for settings in paths:
-            settings.write_bytes(json.dumps({'hooks': {'Stop': [{'hooks': [retired]}]}}).encode())
-        self.cli('update')
-        self.assertEqual([settings.exists() for settings in paths], [False, False])
+        # A file that held nothing but the retired hook stays with its other bytes: only the reviewed cleanup,
+        # which records the file first, deletes it.
+        only = json.dumps({'hooks': {'Stop': [{'hooks': [retired]}]}}, indent=4).encode()
+        for bom in [b'', b'\xef\xbb\xbf']:
+            for eol in [b'\n', b'\r\n']:
+                with self.subTest(bom=bom, eol=eol):
+                    for settings in paths:
+                        settings.write_bytes(bom + only.replace(b'\n', eol) + eol)
+                    self.cli('update')
+                    for settings in paths:
+                        self.assertEqual(settings.read_bytes(), bom + b'{' + eol + b'    ' + eol + b'}' + eol)
 
     def test_cleanup_historical_optional_and_third_party_skills_survive(self):
         fixtures = Path(__file__).parent / 'fixtures/cleanup'
