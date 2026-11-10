@@ -186,25 +186,33 @@ def execute(work, command, index, run_dir):
     # The check writes live files; its evidence is a new copy made once its tree was ended. No process of the check
     # holds an evidence file, so none that teardown could not end changes what is hashed.
     live = {name: path.with_name(path.name + ".live") for name, path in paths.items()}
-    with live["stdout"].open("xb", buffering=0) as out, live["stderr"].open("xb", buffering=0) as err:
-        try:
-            if "argv" in command:
-                argv = helper["native_argv"](command["argv"], cwd=work)
-            elif os.name == "nt":  # cmd.exe as shell=True runs it, the command line passed verbatim.
-                comspec = os.environ.get("ComSpec") or os.path.join(os.environ.get("SystemRoot", ""), "System32", "cmd.exe")
-                if not os.path.isabs(comspec):  # A relative shell would resolve inside the worktree under check.
-                    raise FileNotFoundError("shell not found: neither %ComSpec% nor %SystemRoot% is set")
-                argv = f'"{comspec}" /c "{command["cmd"]}"'
-            else:
-                argv = ["/bin/sh", "-c", command["cmd"]]
-            # Its own session or job, ended whole before its output is copied: a process the check leaves behind could
-            # otherwise change the worktree under later checks.
-            code = helper["run_process"](argv, subprocess.DEVNULL, timeout, on_timeout=None, cwd=work, env=env, stdout=out, stderr=err)
-            outcome = ({"kind": "timeout", "timeout_sec": timeout} if code is None else {"kind": "exit", "exit_code": code}
-                       if code >= 0 else {"kind": "signal", "signal": -code})
-        except OSError as exc:
-            err.write(str(exc).encode("utf-8"))
-            outcome = {"kind": "spawn_error", "error": str(exc)}
+    try:
+        with live["stdout"].open("xb", buffering=0) as out, live["stderr"].open("xb", buffering=0) as err:
+            try:
+                if "argv" in command:
+                    argv = helper["native_argv"](command["argv"], cwd=work)
+                elif os.name == "nt":  # cmd.exe as shell=True runs it, the command line passed verbatim.
+                    comspec = os.environ.get("ComSpec") or os.path.join(os.environ.get("SystemRoot", ""), "System32", "cmd.exe")
+                    if not os.path.isabs(comspec):  # A relative shell would resolve inside the worktree under check.
+                        raise FileNotFoundError("shell not found: neither %ComSpec% nor %SystemRoot% is set")
+                    argv = f'"{comspec}" /c "{command["cmd"]}"'
+                else:
+                    argv = ["/bin/sh", "-c", command["cmd"]]
+                # Its own session or job, ended whole before its output is copied: a process the check leaves behind
+                # could otherwise change the worktree under later checks.
+                code = helper["run_process"](argv, subprocess.DEVNULL, timeout, on_timeout=None, cwd=work, env=env, stdout=out, stderr=err)
+                outcome = ({"kind": "timeout", "timeout_sec": timeout} if code is None else {"kind": "exit", "exit_code": code}
+                           if code >= 0 else {"kind": "signal", "signal": -code})
+            except OSError as exc:
+                err.write(str(exc).encode("utf-8"))
+                outcome = {"kind": "spawn_error", "error": str(exc)}
+    except SystemExit:  # A signal ended the run: the live files go too, and one that cannot does not change its exit.
+        for path in live.values():
+            try:
+                path.unlink()
+            except OSError as exc:
+                print(f"cannot remove {path.name}: {exc}", file=sys.stderr)
+        raise
     raw = {name: path.read_bytes() for name, path in live.items()}
     for path in live.values():
         try:
@@ -637,20 +645,14 @@ class AcceptanceTests(unittest.TestCase):
     def test_a_check_ends_with_every_process_it_started(self):
         """C5. Prediction: a check whose leader leaves a child writing ticks to a file and to its stdout is recorded as it
         ended (a timeout, or exit 0 for a leader that returns at once), and once execute returns the child is gone: the
-        ticks stop and the stdout evidence still has its recorded hash. A child that leaves on SIGTERM costs far less
-        than the 5 s grace: the teardown alone, timed without the interpreters' start, stays under 4 s. `exit 124` is an
-        exit with code 124. Before: a timeout killed only the leader and a normal exit nothing, so the child kept
-        writing, and because it held the pipes the leader's prompt exit 0 was recorded as a timeout; then (first C5
-        commit) teardown always slept the full grace."""
+        ticks stop and the stdout evidence still has its recorded hash. The check's clock stands still until the first
+        tick, so a slow interpreter start cannot time it out before the child writes. `exit 124` is an exit with code
+        124. Before: a timeout killed only the leader and a normal exit nothing, so the child kept writing, and because
+        it held the pipes the leader's prompt exit 0 was recorded as a timeout."""
         import time
+        from types import SimpleNamespace
         from unittest import mock
         scope = shared("platform-support")["run_process"].__globals__
-        teardown, durations = scope["terminate_tree"], []
-
-        def timed(child, job=None):
-            started = time.monotonic()
-            teardown(child, job)
-            durations.append(time.monotonic() - started)
         run_dir = new_run_dir(self.work)
         for index, (mode, seconds, outcome) in enumerate((("hang", 1, {"kind": "timeout", "timeout_sec": 1}),
                                                            ("exit", 30, {"kind": "exit", "exit_code": 0}))):
@@ -658,10 +660,14 @@ class AcceptanceTests(unittest.TestCase):
                 argv, ticks, release = self.writer_tree(mode)
                 if mode == "exit":
                     release.touch()
-                durations.clear()
-                with mock.patch.dict(scope, terminate_tree=timed):
+                ready = []
+
+                def monotonic():
+                    if not ready and ticks.exists():
+                        ready.append(time.monotonic())
+                    return time.monotonic() - ready[0] if ready else 0.0
+                with mock.patch.dict(scope, time=SimpleNamespace(monotonic=monotonic, sleep=time.sleep)):
                     record = execute(self.work, {"argv": argv, "timeout_sec": seconds}, index, run_dir)
-                self.assertLess(durations[0], 4)
                 self.assertEqual(record["outcome"], outcome)
                 self.assert_ended(ticks, record)
         record = execute(self.work, {"cmd": "exit 124", "exit_code": 124}, 2, run_dir)
@@ -712,8 +718,10 @@ class AcceptanceTests(unittest.TestCase):
         self.assertEqual(record["outcome"], {"kind": "exit", "exit_code": 0})
         evidence, written = self.work / record["stdout"]["path"], ticks.read_bytes()
         self.assertEqual(sha256(evidence.read_bytes()), record["stdout"]["sha256"])
-        time.sleep(0.3)
-        self.assertNotEqual(ticks.read_bytes(), written, "the escaped child stopped writing, so nothing was tested")
+        deadline = time.monotonic() + 30
+        while ticks.read_bytes() == written:
+            self.assertLess(time.monotonic(), deadline, "the escaped child stopped writing, so nothing was tested")
+            time.sleep(0.01)
         self.assertEqual(sha256(evidence.read_bytes()), record["stdout"]["sha256"])
         self.assertEqual(sorted(path.name for path in run_dir.iterdir()), ["cmd-0.stderr", "cmd-0.stdout"])
 
@@ -737,27 +745,41 @@ class AcceptanceTests(unittest.TestCase):
     @unittest.skipIf(os.name == "nt", "test-windows-portability.py covers teardown errors of the Windows job")
     def test_a_signal_ends_the_run_whatever_teardown_raises(self):
         """C5 review 2. Prediction: SIGTERM during a check's run ends it with 143 even when teardown then raises OSError,
-        so execute returns no record and the run goes no further. Before: the teardown error replaced the exit, and
-        execute recorded it as a failed check and went on."""
+        so execute returns no record and the run goes no further. Its live files are removed; one that cannot be is
+        named on stderr and the exit stays 143. Before: the teardown error replaced the exit, and execute recorded it as
+        a failed check and went on; then (review 2) both live files stayed in the run directory."""
+        import contextlib
+        import io
         import signal
         from unittest import mock
         scope = shared("platform-support")["run_process"].__globals__
-        started = []
+        started, unlink = [], Path.unlink
 
         class InterruptedRun(subprocess.Popen):
             def wait(self, timeout=None):
-                if not started:
+                if self not in started:
                     started.append(self)
                     signal.raise_signal(signal.SIGTERM)
                 return super().wait(timeout)
 
         def failing_teardown(child, job=None):
             raise OSError("fixture teardown failure")
+
+        def refuse(path, *args, **kwargs):
+            if path.name.endswith(".stdout.live"):
+                raise PermissionError(13, "fixture: in use by another process", str(path))
+            return unlink(path, *args, **kwargs)
         self.addCleanup(lambda: [(process.kill(), process.wait()) for process in started])
-        with mock.patch.object(subprocess, "Popen", InterruptedRun), mock.patch.dict(scope, terminate_tree=failing_teardown), \
-                self.assertRaises(SystemExit) as stop:
-            execute(self.work, {"argv": [sys.executable, "-c", "import time; time.sleep(30)"]}, 0, new_run_dir(self.work))
-        self.assertEqual(stop.exception.code, 143)
+        for refused in (False, True):
+            with self.subTest(refused=refused):
+                run_dir, stderr = new_run_dir(self.work), io.StringIO()
+                with mock.patch.object(subprocess, "Popen", InterruptedRun), mock.patch.dict(scope, terminate_tree=failing_teardown), \
+                        mock.patch.object(Path, "unlink", refuse if refused else unlink), contextlib.redirect_stderr(stderr), \
+                        self.assertRaises(SystemExit) as stop:
+                    execute(self.work, {"argv": [sys.executable, "-c", "import time; time.sleep(30)"]}, 0, run_dir)
+                self.assertEqual(stop.exception.code, 143)
+                self.assertEqual(sorted(path.name for path in run_dir.iterdir()), ["cmd-0.stdout.live"] if refused else [])
+                self.assertEqual("cannot remove cmd-0.stdout.live" in stderr.getvalue(), refused, stderr.getvalue())
 
     @unittest.skipIf(os.name == "nt", "POSIX signals; a Windows job ends its tree however the runner stops")
     def test_a_runner_stopped_by_a_signal_ends_the_check_tree(self):
@@ -835,14 +857,41 @@ class AcceptanceTests(unittest.TestCase):
         if ticks.exists():
             self.assert_ended(ticks)
 
+    def test_a_signal_as_its_handler_is_installed_restores_every_handler(self):
+        """C5 review 3. Prediction, with signal.signal delivering the signal right after it installs run_process's
+        handler: the run ends with 128 + that signal, and every handled signal has the handler it had before the call,
+        after the first installation and after a later one. Before: a handler was installed before its predecessor was
+        saved, so a signal in between left it installed."""
+        import signal
+        from unittest import mock
+        real = signal.signal
+        handled = [signal.SIGTERM, signal.SIGINT, *([signal.SIGHUP] if os.name != "nt" else [])]
+        before = {sig: signal.getsignal(sig) for sig in handled}
+        self.addCleanup(lambda: [real(sig, handler) for sig, handler in before.items()])
+        for target in (signal.SIGTERM, signal.SIGINT):
+            with self.subTest(signal=target.name):
+                delivered = []
+
+                def deliver(sig, handler):
+                    previous = real(sig, handler)
+                    if sig == target and not delivered:
+                        delivered.append(sig)
+                        handler(sig, None)
+                    return previous
+                with mock.patch.object(signal, "signal", deliver), self.assertRaises(SystemExit) as stop:
+                    shared("platform-support")["run_process"]([sys.executable, "-c", "pass"], subprocess.DEVNULL, 60)
+                self.assertEqual((stop.exception.code, delivered), (128 + target, [target]))
+                self.assertEqual({sig: signal.getsignal(sig) for sig in handled}, before)
+
     @unittest.skipIf(os.name == "nt", "POSIX process groups")
-    def test_teardown_raises_only_for_a_leader_it_cannot_signal(self):
-        """C5 review. Prediction, with killpg and the clock mocked: EPERM while the leader is alive (a leader this process
-        may not signal) is raised; EPERM once the leader has exited leaves nothing to signal, so teardown ends after one
-        SIGTERM; a group that still answers signal 0 after SIGTERM's grace and SIGKILL (dead but unreaped, or not
-        signallable) gets about one more second, then teardown returns. Before: every EPERM read as gone, followed by an
-        unbounded wait for the leader; then (review 1) such a group raised OSError, failing a check whose processes
-        were all dead."""
+    def test_teardown_ends_once_the_group_is_gone_and_raises_only_for_a_leader_it_cannot_signal(self):
+        """C5 review. Prediction, with killpg and the clock mocked: a group gone after SIGTERM and two probes ends
+        teardown at once, with no SIGKILL and none of the grace used; EPERM while the leader is alive (a leader this
+        process may not signal) is raised; EPERM once the leader has exited leaves nothing to signal, so teardown ends
+        after one SIGTERM; a group that still answers signal 0 after SIGTERM's grace and SIGKILL (dead but unreaped, or
+        not signallable) gets about one more second, then teardown returns. Before: every EPERM read as gone, followed
+        by an unbounded wait for the leader, and teardown always slept the full grace (first C5 commit); then (review 1)
+        such a group raised OSError, failing a check whose processes were all dead."""
         import errno
         import signal
         from types import SimpleNamespace
@@ -862,15 +911,18 @@ class AcceptanceTests(unittest.TestCase):
             def wait(self, timeout=None):  # The first C5 teardown waited for the leader.
                 return self.code
 
-        def teardown(refusal, code):
+        def teardown(refusal, code, answers=0):  # The group answers `answers` signals, then killpg raises `refusal`, if any.
             def killpg(pgid, sig):
                 sent.append(sig)
-                if refusal:
+                if refusal and len(sent) > answers:
                     raise refusal
             sent.clear()
             fake = SimpleNamespace(monotonic=lambda: clock[0], sleep=lambda seconds: clock.__setitem__(0, clock[0] + seconds))
             with mock.patch.object(os, "killpg", killpg), mock.patch.dict(scope, time=fake):
                 scope["terminate_tree"](Leader(code))
+        teardown(ProcessLookupError(errno.ESRCH, "No such process"), 0, answers=3)
+        self.assertLess(clock[0], 0.1)
+        self.assertEqual(sent, [signal.SIGTERM, 0, 0, 0])
         refused = PermissionError(errno.EPERM, "Operation not permitted")
         with self.assertRaises(PermissionError):
             teardown(refused, None)

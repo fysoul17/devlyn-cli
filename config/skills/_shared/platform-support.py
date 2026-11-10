@@ -506,7 +506,8 @@ def run_process(argv, stdin, seconds, *, heartbeat=0, on_timeout=124, **popen):
             # A closed terminal hangs up the runner, not the child's own session; an inherited ignore (nohup) stays.
             handled.append(signal.SIGHUP)
         for sig in handled:
-            previous[sig] = signal.signal(sig, interrupted)
+            previous[sig] = signal.getsignal(sig)  # Saved first: a signal right after installation finds it to restore.
+            signal.signal(sig, interrupted)
         if job is not None:
             child = job.start(argv, stdin, **popen)
         else:
