@@ -1313,17 +1313,19 @@ def retire_retryable(packet, submission):
     """Adopt a stopped executor's submission, unless only infrastructure blocks it (a kind earlier instructions offered):
     once its writers are observed to have stopped, that one is kept under a retired name, so no later drain adopts it,
     and the task waits for the next drain. While a writer is active it waits in place."""
-    causes = acceptance()["infrastructure_causes"](packet, submission)
-    if causes is None:
+    if acceptance()["infrastructure_causes"](packet, submission) is None:
         return None
     helper = shared("task-complete")
     try:
         helper["stopped_writers"](Path(packet["worktree"]))
     except helper["WriterActive"] as exc:
-        raise Waiting(f"executor reported a cause a later run can clear, but a writer is still active: {exc}; "
-                      "the next drain decides again") from exc
+        raise Waiting(f"executor reported a cause a later run can clear, but a writer is still active: {exc}; wait for or "
+                      "stop the named writer (an editor or shell open in the task worktree counts), then drain again") from exc
     except (helper["CompletionError"], OSError):
         return None  # Unobservable: another run could start beside a live writer, so the blocker fails the task.
+    causes = acceptance()["infrastructure_causes"](packet, submission)  # As it stands now: a writer may have replaced it.
+    if causes is None:
+        return None
     retired = next(path for number in itertools.count(1)
                    if not (path := submission.with_name(f"submission.retired-{number}.json")).exists())
     submission.rename(retired)
@@ -2247,6 +2249,25 @@ class QueueTests(unittest.TestCase):
                 self.assertEqual(Path(packet["submission"]).exists(), crash is crash_after_spawn)
                 if crash is crash_after_spawn:
                     self.assertEqual(read_json(Path(packet["submission"])), {"by": "executor"})
+
+    def test_a_submission_is_retired_only_as_it_stands_once_its_writers_stopped(self):
+        """C5 review 2. Prediction: a writer that replaces an infrastructure-only submission with one carrying a product
+        blocker and exits before the observation leaves that submission adopted (None) in place, so the task fails with
+        its blockers, and nothing is retired. Before: the reading from before the observation retired it and the task
+        ran again."""
+        from unittest import mock
+        submission = self.root / "submission.json"
+        infrastructure = {"kind": "blocked-infrastructure", "detail": "registry unreachable"}
+        product = {"kind": "failed", "detail": "notes format undecided"}
+
+        def write(*blockers):
+            submission.write_text(json.dumps({"schema_version": 1, "task": "l.t", "source_sha": "0" * 40, "blockers": blockers}),
+                                  encoding="utf-8")
+        write(infrastructure)
+        with mock.patch.dict(shared("task-complete"), stopped_writers=lambda worktree: write(infrastructure, product)):
+            self.assertIsNone(retire_retryable({"task": "l.t", "worktree": str(self.root)}, submission))
+        self.assertEqual((read_json(submission)["blockers"], [path.name for path in self.root.glob("submission*")]),
+                         ([infrastructure, product], ["submission.json"]))
 
 
 def main():

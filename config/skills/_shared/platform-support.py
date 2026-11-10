@@ -451,16 +451,14 @@ if os.name == "nt":
 
 
 def _signal_group(child, sig):
-    """Send `sig` to the child's process group; False once no member is left. An exited leader is reaped first: until
-    then it still counts as a member."""
+    """Send `sig` to the child's process group; False once it has no member this process may signal. An exited leader
+    is reaped first: until then it still counts as a member."""
     child.poll()
     try:
         os.killpg(child.pid, sig)
     except ProcessLookupError:
         return False
-    except PermissionError:
-        # EPERM: no member this process may signal. With the leader alive that is an error; with it exited, it is what
-        # macOS reports for a group that holds only that unreaped leader.
+    except PermissionError:  # EPERM: no member this process may signal; with the leader alive the run cannot be ended.
         if child.poll() is None:
             raise
         return False
@@ -471,10 +469,10 @@ def terminate_tree(child, job=None):
     if job is not None:
         job.terminate()
         return
-    # Members get SIGTERM and up to 5 s to leave, then SIGKILL; it returns only once the group is empty, since a member
-    # could still write what the caller reads next. A process that left the session by its own setsid is not owned:
-    # POSIX has no breakaway block.
-    for sig, seconds in ((signal.SIGTERM, 5), (signal.SIGKILL, 3)):
+    # SIGTERM and up to 5 s for the group to leave, then SIGKILL and about 1 s more; what still answers then is dead but
+    # unreaped or may not be signalled, which cannot be told apart. A member this process cannot signal, or one that left
+    # the session, is not owned; acceptance.py's evidence is safe from it because no check process holds an evidence file.
+    for sig, seconds in ((signal.SIGTERM, 5), (signal.SIGKILL, 1)):
         deadline = time.monotonic() + seconds
         alive = _signal_group(child, sig)
         while alive and time.monotonic() < deadline:
@@ -482,7 +480,6 @@ def terminate_tree(child, job=None):
             alive = _signal_group(child, 0)
         if not alive:
             return
-    raise OSError(f"process group {child.pid} still has members after SIGKILL")
 
 
 def run_process(argv, stdin, seconds, *, heartbeat=0, on_timeout=124, **popen):
@@ -492,17 +489,16 @@ def run_process(argv, stdin, seconds, *, heartbeat=0, on_timeout=124, **popen):
     child = None
     job = _WindowsJob() if os.name == "nt" else None
     previous = {}
-    deferred = None  # While a list, a signal waits in it: a POSIX child's creation and the teardown are not interrupted.
+    received = []  # Every handled signal; the first ends the run with 128 + it once the tree has ended.
+    deferring = False  # While set, a signal only waits: a POSIX child's creation and the teardown are not interrupted.
 
     def interrupted(signum, _frame):
+        received.append(signum)
         # CPython stores the native handle only after CreateProcess's finally block.
         if job is not None and job.creating:
             job.interrupted_signal = signum
-            return
-        if deferred is not None:
-            deferred.append(signum)
-            return
-        raise SystemExit(128 + signum)
+        elif not deferring:
+            raise SystemExit(128 + signum)
 
     try:
         handled = [signal.SIGTERM, signal.SIGINT]
@@ -514,11 +510,11 @@ def run_process(argv, stdin, seconds, *, heartbeat=0, on_timeout=124, **popen):
         if job is not None:
             child = job.start(argv, stdin, **popen)
         else:
-            deferred = []  # Raised inside Popen, a signal would leave the new session unowned.
+            deferring = True  # Raised inside Popen, a signal would leave the new session unowned.
             child = subprocess.Popen(argv, stdin=stdin, start_new_session=True, **popen)
-            pending, deferred = deferred, None
-            if pending:
-                raise SystemExit(128 + pending[0])
+            deferring = False
+            if received:
+                raise SystemExit(128 + received[0])
         started = time.monotonic()
         next_heartbeat = started + heartbeat
         if heartbeat:
@@ -536,16 +532,15 @@ def run_process(argv, stdin, seconds, *, heartbeat=0, on_timeout=124, **popen):
                     print(f"[codex-monitored] heartbeat: elapsed={int(now-started)}s", file=sys.stderr, flush=True)
                     next_heartbeat = now + heartbeat
     finally:
-        if deferred is None:  # Teardown runs to its end; a signal that came during a failed start is kept.
-            deferred = []
+        deferring = True  # Teardown runs to its end.
         try:
             if job is not None or child is not None:
                 terminate_tree(child, job)
         finally:
             for sig, handler in previous.items():
                 signal.signal(sig, handler)
-            if deferred:  # A signal during teardown still ends the run, once the tree has ended.
-                raise SystemExit(128 + deferred[0])
+            if received:  # Whenever it came and whatever teardown raised, a signal ends the run.
+                raise SystemExit(128 + received[0])
 
 
 if __name__ == "__main__" and os.name == "nt":

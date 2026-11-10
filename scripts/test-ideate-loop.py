@@ -89,12 +89,14 @@ if behavior.get("hold"):
         time.sleep(0.05)
     config_path.with_name("holder.pid").write_text(str(holder.pid))
 if behavior.get("linger"):  # a child that outlives the executor, holding a worktree file open until released
+    # Its cwd is outside the worktree, so once it closes that file nothing of it is left there; then it touches
+    # linger-ended, which a waiter reads instead of probing a process that may stay an unreaped zombie.
     held = work / ".devlyn" / "loop" / "lingering"
-    child = subprocess.Popen([sys.executable, "-c", "import pathlib, sys, time\nwith open(sys.argv[1], 'w'):\n"
-                              "    while not pathlib.Path(sys.argv[2]).exists():\n        time.sleep(0.05)\n",
-                              str(held), str(config_path.with_name("linger-release"))],
-                             stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
-    config_path.with_name("linger.pid").write_text(str(child.pid))
+    subprocess.Popen([sys.executable, "-c", "import pathlib, sys, time\nwith open(sys.argv[1], 'w'):\n"
+                      "    while not pathlib.Path(sys.argv[2]).exists():\n        time.sleep(0.05)\npathlib.Path(sys.argv[3]).touch()\n",
+                      str(held), str(config_path.with_name("linger-release")), str(config_path.with_name("linger-ended"))],
+                     cwd=config_path.parent, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                     start_new_session=True)
     while not held.exists():
         time.sleep(0.05)
 pathlib.Path(packet["submission"]).write_text(json.dumps(submission), encoding="utf-8")
@@ -2933,17 +2935,15 @@ class LoopFixture(unittest.TestCase):
         tasks = self.tasks(self.drain())
         submission = Path(json.loads((self.receipt_path("aa.t1").parent / "packet.json").read_text(encoding="utf-8"))["submission"])
         retired = submission.with_name("submission.retired-1.json")
-        waiting = "executor reported a cause a later run can clear, but a writer is still active: active process "
-        self.assertTrue(tasks["aa.t1"]["reason"].startswith(waiting), tasks["aa.t1"]["reason"])
+        reason = tasks["aa.t1"]["reason"]
+        self.assertTrue(reason.startswith("executor reported a cause a later run can clear, but a writer is still active: active process ")
+                        and reason.endswith("; wait for or stop the named writer (an editor or shell open in the task worktree counts), "
+                                            "then drain again"), reason)
         self.assertEqual((tasks["aa.t1"]["result"], tasks["aa.t2"]["result"], submission.exists(), retired.exists()),
                          ("active", "pending", True, False))
         release.touch()
-        lingering, deadline = int(self.config.with_name("linger.pid").read_text()), time.monotonic() + 30
-        while True:
-            try:
-                os.kill(lingering, 0)
-            except ProcessLookupError:
-                break
+        ended, deadline = self.config.with_name("linger-ended"), time.monotonic() + 30
+        while not ended.exists():
             self.assertLess(time.monotonic(), deadline)
             time.sleep(0.05)
         tasks = self.tasks(self.drain())
