@@ -27,7 +27,7 @@ PACKAGE_ROOT = None
 CODEX = None
 VERSIONS = dict(claude='2.1.307', codex='0.163.0', grok='1.0.62', omp='16.5.0',
                 antigravity='1.4.4', cursor='2025.09.12-4852336', opencode='1.19.2',
-                kimi='2.3.0', copilot='1.0.98', qwen='0.26.0')
+                kimi='2.3.0', copilot='1.0.98', qwen='0.26.0', pi='1.4.0')
 
 
 class ActivationTests(unittest.TestCase):
@@ -111,7 +111,7 @@ class ActivationTests(unittest.TestCase):
     def test_per_engine_fresh_fixture(self):
         # Prediction: Copilot configures both session channels; other engine defaults stay unchanged.
         flags = dict(claude='--plugin-dir', codex='-c', grok='--rules', omp='--config',
-                     kimi='--agent-file', qwen='--append-system-prompt')
+                     kimi='--agent-file', qwen='--append-system-prompt', pi='--skill')
         for engine in VERSIONS:
             with self.subTest(engine=engine):
                 plan = self.plan(self.context(engine), file=True)
@@ -167,7 +167,7 @@ class ActivationTests(unittest.TestCase):
         newer = dict(claude=('2.1.308', '2.3.0', '3.0.0'), codex=('0.163.1', '0.171.2', '1.0.0'), grok=('1.4.0', '2.0.0'),
                      omp=('16.9.1', '18.14.2'), antigravity=('1.6.0', '2.0.0'),
                      cursor=('2026.01.05-abcdef1',), opencode=('1.25.0', '2.0.0'), kimi=('2.9.0', '3.0.0'),
-                     copilot=('1.2.0', '2.0.0'), qwen=('0.31.0', '1.0.0'))
+                     copilot=('1.2.0', '2.0.0'), qwen=('0.31.0', '1.0.0'), pi=('1.4.1', '2.0.0'))
         for engine, versions in newer.items():
             ctx = self.context(engine)
             ctx['initialPrompt'] = {'text': 'owner task', 'transport': 'argv'}
@@ -306,7 +306,7 @@ class ActivationTests(unittest.TestCase):
                 ctx['skillRoots'] = [str(root)]
                 plan = self.plan(ctx)
                 self.assertEqual(plan['channels']['inheritedDevlyn'], [])
-                if engine in ('omp', 'copilot'):
+                if engine in ('omp', 'copilot', 'pi'):
                     self.assertEqual(plan['channels']['skills']['state'], 'partial')
                     self.assertEqual(plan['channels']['skills']['reasons'][0]['code'], 'name-collision')
                 if engine in ('claude', 'codex'):
@@ -339,7 +339,8 @@ class ActivationTests(unittest.TestCase):
         self.assertEqual(plan['channels']['skills']['state'], 'configured')
 
     def test_append_and_overlay_merges(self):
-        for engine, key in [('claude', 'appendSystemPrompt'), ('grok', 'rules'), ('qwen', 'appendSystemPrompt'), ('omp', 'appendSystemPrompt')]:
+        for engine, key in [('claude', 'appendSystemPrompt'), ('grok', 'rules'), ('qwen', 'appendSystemPrompt'), ('omp', 'appendSystemPrompt'),
+                            ('pi', 'appendSystemPrompt')]:
             with self.subTest(engine=engine):
                 ctx = self.context(engine)
                 ctx['effectiveConfig'][key] = 'Owner text\n"한글"'
@@ -680,6 +681,243 @@ class ActivationTests(unittest.TestCase):
         plan = self.plan(ctx)
         self.assertEqual(plan['files'], [])
         self.assertEqual(plan['engineArgs'], [])
+
+    def instructions(self):
+        # The release defaults, then the skill catalog: the text every engine's principles carry.
+        if not hasattr(self, '_instructions'):
+            defaults = (self.package / 'config/skills/_shared/runtime-principles.md').read_bytes().decode()
+            text = self.plan(self.context('opencode'))['files'][0]['utf8']
+            self.assertTrue(text.startswith(defaults + '\n\n'))
+            self.assertTrue(text[len(defaults) + 2:].startswith('Devlyn session skill catalog'))
+            self._instructions = text
+        return self._instructions
+
+    def pi_skills(self):
+        return [arg for name in ('devlyn-ideate', 'devlyn-engines') for arg in ('--skill', str(self.package / 'config/skills' / name))]
+
+    def assert_pi_configured(self, plan, owner):
+        content = '\n\n'.join(part for part in (owner, self.instructions()) if part)
+        self.assertEqual(plan['engineArgs'], ['--append-system-prompt', str(self.run_dir / 'devlyn-instructions.md'), *self.pi_skills()])
+        self.assertEqual(plan['files'], [{'relativePath': 'devlyn-instructions.md', 'utf8': content,
+                                          'sha256': hashlib.sha256(content.encode()).hexdigest()}])
+        self.assertEqual(plan['envPatch'], {'DEVLYN_HARNESS_ROOT': str(self.package)})
+        self.assertEqual(plan['channels']['principles'], {'state': 'configured', 'mechanism': 'append-system-prompt', 'reasons': []})
+        self.assertEqual(plan['channels']['skills'], {'state': 'configured', 'mechanism': '--skill', 'reasons': []})
+        self.assertEqual(plan['channels']['invocation'], {'kind': 'slash', 'text': '/skill:devlyn-ideate'})
+        self.assertEqual(plan['channels']['overall'], 'configured')
+
+    def write(self, file, text):
+        file.parent.mkdir(parents=True, exist_ok=True)
+        file.write_text(text, encoding='utf-8')
+        return file
+
+    def test_pi_configured_plan(self):
+        # Prediction: with no owner text anywhere, pi gets one per-run file (defaults, then catalog) by
+        # --append-system-prompt and both skills by --skill; both channels configured, no executor.
+        plan = self.plan(self.context('pi'))
+        self.assert_pi_configured(plan, None)
+        self.assertEqual((plan['prompt'], plan['machineSync']), (None, None))
+        self.assertEqual(plan['channels']['executor'],
+                         {'supported': False, 'reasons': [{'code': 'executor-unqualified', 'params': {'engine': 'pi'}}]})
+
+    def test_pi_supplied_append_text_wins_and_no_file_is_read(self):
+        # Prediction: supplied text, an empty string included, leads the file as is; neither APPEND_SYSTEM.md nor
+        # the trust record is read (a malformed record would make principles partial).
+        agent = self.home / '.pi/agent'
+        self.write(agent / 'APPEND_SYSTEM.md', 'AGENT FILE')
+        self.write(agent / 'trust.json', 'not json')
+        self.write(self.project / '.pi/APPEND_SYSTEM.md', 'PROJECT FILE')
+        for text in ('Supplied text\n"한글"', ''):
+            with self.subTest(text=text):
+                ctx = self.context('pi')
+                ctx['effectiveConfig'] = {'appendSystemPrompt': text}
+                self.assert_pi_configured(self.plan(ctx), text)
+
+    def test_pi_agent_dir_append_file(self):
+        # Prediction: with no project file, pi's agent dir supplies the owner text when none is supplied (key
+        # absent or null): PI_CODING_AGENT_DIR, whose leading ~ is the home folder, else ~/.pi/agent.
+        cases = [(None, self.home / '.pi/agent'), (str(self.case / 'custom agent'), self.case / 'custom agent'),
+                 ('~/tilde agent', self.home / 'tilde agent')]
+        for _, directory in cases:
+            self.write(directory / 'APPEND_SYSTEM.md', f'OWNER {directory.name}\n한글')
+        for variable, directory in cases:
+            for config in ({}, {'appendSystemPrompt': None}):
+                with self.subTest(variable=variable, config=config):
+                    self.env.pop('PI_CODING_AGENT_DIR', None)
+                    if variable:
+                        self.env['PI_CODING_AGENT_DIR'] = variable
+                    ctx = self.context('pi')
+                    ctx['effectiveConfig'] = config
+                    self.assert_pi_configured(self.plan(ctx), f'OWNER {directory.name}\n한글')
+
+    def test_pi_project_append_file_follows_saved_trust(self):
+        # Prediction: the project's .pi/APPEND_SYSTEM.md is read only when pi's saved trust for the folder, or for
+        # its nearest decided parent, is true; a saved false reads the agent dir's file instead.
+        agent = self.home / '.pi/agent'
+        self.write(agent / 'APPEND_SYSTEM.md', 'AGENT FILE')
+        self.write(self.project / '.pi/APPEND_SYSTEM.md', 'PROJECT FILE')
+        project, parent = os.path.realpath(self.project), os.path.realpath(self.case)
+        for saved, owner in [({project: True}, 'PROJECT FILE'), ({project: False}, 'AGENT FILE'),
+                             ({parent: True, project: None}, 'PROJECT FILE'), ({parent: True, project: False}, 'AGENT FILE')]:
+            with self.subTest(saved=saved):
+                self.write(agent / 'trust.json', '\ufeff' + json.dumps(saved))
+                self.assert_pi_configured(self.plan(self.context('pi')), owner)
+
+    def test_pi_undecided_or_unreadable_trust_leaves_the_flag_off(self):
+        # Prediction: with a project file and no saved decision, or a trust record pi cannot read, no
+        # --append-system-prompt is passed (pi's own lookup stays intact): principles partial with the reason,
+        # skills still native.
+        project_file = self.write(self.project / '.pi/APPEND_SYSTEM.md', 'PROJECT FILE')
+        trust = self.home / '.pi/agent/trust.json'
+        undecided = [{'code': 'principles-unavailable', 'params': {'detail': 'project-trust-undecided', 'path': str(project_file)}}]
+        for record in (None, '{}', json.dumps({os.path.realpath(self.project): None}), json.dumps({'/elsewhere': True}),
+                       'not json', '[]', '{"x": "yes"}'):
+            with self.subTest(record=record):
+                if record is None:
+                    trust.unlink(missing_ok=True)
+                else:
+                    self.write(trust, record)
+                plan = self.plan(self.context('pi'))
+                self.assertEqual(plan['engineArgs'], self.pi_skills())
+                self.assertEqual(plan['files'], [])
+                self.assertEqual(plan['envPatch'], {'DEVLYN_HARNESS_ROOT': str(self.package)})
+                principles = plan['channels']['principles']
+                self.assertEqual((principles['state'], principles['mechanism']), ('partial', None))
+                if record in ('not json', '[]', '{"x": "yes"}'):
+                    self.assertEqual([(r['code'], r['params']['path']) for r in principles['reasons']], [('config-unreadable', str(trust))])
+                else:
+                    self.assertEqual(principles['reasons'], undecided)
+                self.assertEqual(plan['channels']['skills'], {'state': 'configured', 'mechanism': '--skill', 'reasons': []})
+                self.assertEqual(plan['channels']['overall'], 'partial')
+
+    @unittest.skipIf(os.name == 'nt', 'symlink fixture needs POSIX privileges')
+    def test_pi_without_principles_a_collision_has_no_catalog(self):
+        # Prediction: an unreadable owner file also leaves the flag off; then a same-named skill leaves only the
+        # absolute invocation, since the catalog travels in the principles file.
+        owner = self.home / '.pi/agent/APPEND_SYSTEM.md'
+        owner.parent.mkdir(parents=True)
+        owner.symlink_to(owner.name)  # a link to itself cannot be read
+        skill = self.write(self.home / '.agents/skills/devlyn-ideate/SKILL.md', '---\nname: devlyn-ideate\ndescription: owner\n---\n')
+        plan = self.plan(self.context('pi'))
+        self.assertEqual((plan['engineArgs'], plan['files'], plan['envPatch']), ([], [], {}))
+        self.assertEqual(plan['channels']['principles'], {'state': 'partial', 'mechanism': None,
+            'reasons': [{'code': 'config-unreadable', 'params': {'path': str(owner), 'detail': 'ELOOP'}}]})
+        self.assertEqual(plan['channels']['skills'], {'state': 'partial', 'mechanism': None,
+            'reasons': [{'code': 'name-collision', 'params': {'name': 'devlyn-ideate', 'path': str(skill)}}]})
+        self.assertEqual(plan['channels']['invocation'],
+                         {'kind': 'read-file', 'text': 'Read ' + str(self.package / 'config/skills/devlyn-ideate/SKILL.md')})
+
+    def test_pi_same_named_skill_in_each_root_keeps_catalog(self):
+        # Prediction: a devlyn-ideate in any root pi discovers drops --skill for the catalog; roots pi never reads
+        # (.claude/skills, a parent's .pi/skills, .agents/skills above the Git root) leave skills native.
+        nested = self.project / 'sub'
+        nested.mkdir()
+        custom = self.case / 'custom agent'
+        found = [(self.home / '.pi/agent/skills', None), (custom / 'skills', str(custom)), (self.home / '.agents/skills', None),
+                 (nested / '.pi/skills', None), (nested / '.agents/skills', None), (self.project / '.agents/skills', None)]
+        ignored = [self.home / '.claude/skills', self.project / '.pi/skills', self.case / '.agents/skills']
+        for root, variable in [*found, *[(root, None) for root in ignored]]:
+            with self.subTest(root=root):
+                skill = self.write(root / 'devlyn-ideate/SKILL.md', '---\nname: devlyn-ideate\ndescription: owner\n---\nOwner')
+                self.env.pop('PI_CODING_AGENT_DIR', None)
+                if variable:
+                    self.env['PI_CODING_AGENT_DIR'] = variable
+                ctx = self.context('pi')
+                ctx['cwd'] = str(nested)
+                plan = self.plan(ctx)
+                if (root, variable) in found:
+                    self.assertEqual(plan['engineArgs'], ['--append-system-prompt', str(self.run_dir / 'devlyn-instructions.md')])
+                    self.assertEqual(plan['channels']['principles']['state'], 'configured')
+                    self.assertEqual(plan['channels']['skills'], {'state': 'partial', 'mechanism': 'absolute-catalog',
+                        'reasons': [{'code': 'name-collision', 'params': {'name': 'devlyn-ideate', 'path': str(skill)}},
+                                    {'code': 'skills-catalog', 'params': {}}]})
+                    self.assertEqual(plan['channels']['invocation']['kind'], 'read-file')
+                else:
+                    self.assert_pi_configured(plan, None)
+                shutil.rmtree(skill.parent)
+
+    def test_pi_settings_naming_skills_or_packages_keep_catalog(self):
+        # Prediction: a skill or package named in pi's user or project settings may shadow --skill, so the catalog
+        # is kept; an unreadable settings file says so; empty lists and other settings leave skills native.
+        user, project = self.home / '.pi/agent/settings.json', self.project / '.pi/settings.json'
+        for file, text, reasons in [(user, '{"skills": ["../owner-skills"]}', []), (user, '{"packages": ["npm:owner"]}', []),
+                                    (project, '{"skills": {"customDirectories": ["/owner"]}}', []),
+                                    (user, 'not json', ['config-unreadable']),
+                                    (user, '{"skills": [], "packages": [], "theme": "dark"}', None), (project, '', None)]:
+            with self.subTest(file=file, text=text):
+                self.write(file, text)
+                plan = self.plan(self.context('pi'))
+                if reasons is None:
+                    self.assert_pi_configured(plan, None)
+                else:
+                    self.assertEqual(plan['engineArgs'], ['--append-system-prompt', str(self.run_dir / 'devlyn-instructions.md')])
+                    self.assertEqual(plan['channels']['skills']['mechanism'], 'absolute-catalog')
+                    self.assertEqual([r['code'] for r in plan['channels']['skills']['reasons']], [*reasons, 'skills-catalog'])
+                    self.assertTrue(all(r['params']['path'] == str(file) for r in plan['channels']['skills']['reasons'][:-1]))
+                file.unlink()
+
+    def test_pi_version_floor_and_launch_modes(self):
+        # Prediction: a version below 1.4.0 or an unreadable one plans nothing. Resume and fork plan exactly as a
+        # fresh launch: pi rebuilds its system prompt from each launch's arguments, resumed sessions included.
+        for version, code, params in [('1.3.9', 'engine-version-unsupported', {'minimum': '1.4.0'}),
+                                      (None, 'engine-version-unreadable', {}), ('1.4', 'engine-version-unreadable', {})]:
+            with self.subTest(version=version):
+                ctx = self.context('pi')
+                ctx['version'] = version
+                plan = self.plan(ctx)
+                self.assertEqual((plan['engineArgs'], plan['files'], plan['envPatch']), ([], [], {}))
+                for name in ('principles', 'skills'):
+                    self.assertEqual(plan['channels'][name], {'state': 'unavailable', 'mechanism': None,
+                                                              'reasons': [{'code': code, 'params': params}]})
+        self.write(self.home / '.pi/agent/APPEND_SYSTEM.md', 'AGENT FILE')
+        fresh = self.plan(self.context('pi'))
+        self.assert_pi_configured(fresh, 'AGENT FILE')
+        for mode in ('resume', 'fork'):
+            for recorded in ({}, {'recordedRelease': self.release}):
+                with self.subTest(mode=mode, recorded=recorded):
+                    ctx = {**self.context('pi'), 'launchMode': mode, **recorded}
+                    self.assertEqual(self.plan(ctx), fresh)
+
+    def test_omp_reads_owner_append_file_only_when_none_is_supplied(self):
+        # Prediction: with no supplied text the planner reads the working directory's .omp/APPEND_SYSTEM.md, else
+        # ~/.omp/agent/APPEND_SYSTEM.md, as `devlyn run` does (PI_CODING_AGENT_DIR does not move it). Supplied
+        # text, an empty string included, wins and nothing is read; an unreadable file leaves the flag off.
+        instructions = self.instructions()
+        project = self.write(self.project / '.omp/APPEND_SYSTEM.md', 'OMP PROJECT')
+        user = self.write(self.home / '.omp/agent/APPEND_SYSTEM.md', 'OMP USER')
+        moved = self.case / 'moved agent'
+        self.write(moved / 'APPEND_SYSTEM.md', 'MOVED AGENT')
+        self.env['PI_CODING_AGENT_DIR'] = str(moved)
+        overlay = str(self.run_dir / 'devlyn-omp.json')
+
+        def plan(config):
+            ctx = self.context('omp')
+            ctx['effectiveConfig'] = config
+            return self.plan(ctx)
+
+        for config, text in [({}, 'OMP PROJECT\n\n' + instructions), ({'appendSystemPrompt': None}, 'OMP PROJECT\n\n' + instructions),
+                             ({'appendSystemPrompt': 'Supplied'}, 'Supplied\n\n' + instructions),
+                             ({'appendSystemPrompt': ''}, instructions)]:
+            with self.subTest(config=config):
+                result = plan(config)
+                self.assertEqual(result['engineArgs'], ['--config', overlay, '--append-system-prompt', text])
+                self.assertEqual(result['channels']['principles'], {'state': 'configured', 'mechanism': 'append-system-prompt', 'reasons': []})
+        project.unlink()
+        self.assertEqual(plan({})['engineArgs'], ['--config', overlay, '--append-system-prompt', 'OMP USER\n\n' + instructions])
+        project.mkdir()  # a folder is no file, as `devlyn run` reads it
+        self.assertEqual(plan({})['engineArgs'], ['--config', overlay, '--append-system-prompt', 'OMP USER\n\n' + instructions])
+        project.rmdir()
+        user.unlink()
+        self.assertEqual(plan({})['engineArgs'], ['--config', overlay, '--append-system-prompt', instructions])
+        if os.name == 'nt':
+            return
+        project.symlink_to(project.name)  # a link to itself cannot be read
+        self.assertEqual(plan({'appendSystemPrompt': 'Supplied'})['channels']['principles']['state'], 'configured')
+        unreadable = plan({})
+        self.assertEqual(unreadable['engineArgs'], ['--config', overlay])
+        self.assertEqual(unreadable['channels']['principles'], {'state': 'partial', 'mechanism': None,
+            'reasons': [{'code': 'config-unreadable', 'params': {'path': str(project), 'detail': 'ELOOP'}}]})
+        self.assertEqual(unreadable['channels']['skills']['mechanism'], 'skills.customDirectories')
 
     def test_initial_task_is_preserved_and_never_synthesized(self):
         for engine in ('antigravity', 'cursor'):

@@ -11,6 +11,7 @@ const SKILLS = ['devlyn-ideate', 'devlyn-engines'];
 const object = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 const textValue = (value) => typeof value === 'string' && !value.includes('\0');
 const strings = (value) => Array.isArray(value) && value.every(textValue);
+const isFile = (file) => fs.statSync(file, { throwIfNoEntry: false })?.isFile() === true;
 const reason = (code, params = {}) => ({ code, params });
 const channel = (state = 'disabled', mechanism = null, reasons = []) => ({ state, mechanism, reasons });
 const joinText = (...parts) => parts.filter((part) => part !== null && part !== undefined && part !== '').join('\n\n');
@@ -90,6 +91,7 @@ function effectiveConfig(context) {
     claude: ['appendSystemPrompt', 'pluginDirs'], codex: ['developer_instructions', 'skills', 'marketplaces', 'plugins'],
     grok: ['rules'], omp: ['appendSystemPrompt', 'skills'], antigravity: [], cursor: [],
     opencode: ['inlineConfig', 'skillsPaths'], kimi: ['ownerAgent'], copilot: ['skillsDirs', 'instructionsDirs'], qwen: ['appendSystemPrompt'],
+    pi: ['appendSystemPrompt'],
   }[context.engine];
   if (!object(config) || Object.keys(config).some((key) => !keys.includes(key))) return null;
   for (const field of ['appendSystemPrompt', 'developer_instructions', 'rules', 'inlineConfig', 'skillsDirs', 'instructionsDirs']) {
@@ -120,6 +122,14 @@ function effectiveConfig(context) {
   return config;
 }
 
+// pi's agent dir: PI_CODING_AGENT_DIR, whose leading ~ pi expands to the home folder, else ~/.pi/agent.
+function piAgentDir(context, env) {
+  const home = env.HOME || env.USERPROFILE || os.homedir();
+  const dir = env.PI_CODING_AGENT_DIR;
+  if (!dir) return path.join(home, '.pi/agent');
+  return path.resolve(context.cwd, dir.replace(process.platform === 'win32' ? /^~(?=$|[\\/])/ : /^~(?=$|\/)/, () => home));
+}
+
 function discoveryRoots(context, env, config) {
   const home = env.HOME || env.USERPROFILE || os.homedir();
   const roots = [...(context.skillRoots || [])];
@@ -135,6 +145,7 @@ function discoveryRoots(context, env, config) {
     kimi: [env.KIMI_CODE_HOME || path.join(home, '.kimi-code'), '.kimi-code'],
     copilot: [env.COPILOT_HOME || path.join(home, '.copilot'), '.github'],
     qwen: [env.QWEN_HOME || path.join(home, '.qwen'), '.qwen'],
+    pi: [piAgentDir(context, env), null],
   }[engine];
   if (engine !== 'codex') add(native[0], 'skills');
   const copilotDefaultHome = !env.COPILOT_HOME || path.resolve(env.COPILOT_HOME) === path.join(home, '.copilot');
@@ -150,6 +161,7 @@ function discoveryRoots(context, env, config) {
     for (const dir of config?.skillsPaths || []) add(context.cwd, dir);
   }
   if (engine === 'copilot') for (const dir of (config?.skillsDirs ?? env.COPILOT_SKILLS_DIRS ?? '').split(',').filter(Boolean)) add(context.cwd, dir);
+  if (engine === 'pi') add(context.cwd, '.pi/skills');
   for (let dir = path.resolve(context.cwd); ; dir = path.dirname(dir)) {
     if (native[1]) add(dir, native[1], 'skills');
     if (!['claude', 'cursor'].includes(engine)) add(dir, '.agents/skills');
@@ -185,6 +197,64 @@ function kimiSkillRoots(context, env) {
     }
   }
   return { roots: [...roots], errors };
+}
+
+// omp and pi read their own APPEND_SYSTEM.md only when no append text is passed, and the plan passes
+// some, so the owner's text leads it. Text the caller supplies wins, an explicit empty string included.
+// Only when it supplies none (the key absent, or null for unset) is the first existing file `lookup()`
+// names read, as `devlyn run` reads omp's (harness-context.js ompOwnerAppend). Returns {text}, or
+// {reason} when the owner's text cannot be known.
+function ownerAppend(config, lookup) {
+  if (config.appendSystemPrompt != null) return { text: config.appendSystemPrompt };
+  try {
+    const found = lookup();
+    if (found.reason) return found;
+    const file = found.files.find(isFile);
+    return { text: file === undefined ? null : fs.readFileSync(file, 'utf8') };
+  } catch (error) {
+    return { reason: reason('config-unreadable', { path: error.path, detail: error.code || error.message }) };
+  }
+}
+
+// pi reads a project's .pi/APPEND_SYSTEM.md only when it trusts the project, else its agent dir's
+// (resource-loader discoverAppendSystemPromptFile). Trust is pi's saved decision for the folder or its
+// nearest decided parent (trust.json); without one pi settles trust at launch, so which file it reads
+// cannot be known here. The planner never writes trust.
+function piAppendFiles(cwd, agentDir) {
+  const project = path.join(cwd, '.pi/APPEND_SYSTEM.md');
+  const user = path.join(agentDir, 'APPEND_SYSTEM.md');
+  if (!isFile(project)) return { files: [user] };
+  const store = path.join(agentDir, 'trust.json');
+  let trusted = null;
+  try {
+    const saved = fs.existsSync(store) ? JSON.parse(fs.readFileSync(store, 'utf8').replace(/^\uFEFF/, '')) : {};
+    if (!object(saved) || Object.values(saved).some((value) => ![true, false, null].includes(value))) throw new Error('not a trust record');
+    for (let dir = fs.realpathSync(cwd); trusted === null; dir = path.dirname(dir)) {
+      if (typeof saved[dir] === 'boolean') trusted = saved[dir];
+      else if (dir === path.dirname(dir)) break;
+    }
+  } catch (error) {
+    return { reason: reason('config-unreadable', { path: store, detail: error.code || error.message }) };
+  }
+  if (trusted === null) return { reason: reason('principles-unavailable', { detail: 'project-trust-undecided', path: project }) };
+  return { files: [trusted ? project : user] };
+}
+
+// Skills and packages named in pi's settings resolve through pi's own package manager, which the
+// planner does not repeat: any such entry may hold a same-named skill that would shadow --skill.
+function piSettingsSkills(cwd, agentDir) {
+  let named = false;
+  const errors = [];
+  for (const file of [path.join(agentDir, 'settings.json'), path.join(cwd, '.pi/settings.json')]) {
+    if (!fs.existsSync(file)) continue;
+    try {
+      const settings = JSON.parse(fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, '') || '{}');
+      named ||= ['skills', 'packages'].some((key) => settings?.[key] != null && settings[key].length !== 0);
+    } catch (error) {
+      errors.push(reason('config-unreadable', { path: file, detail: error.code || error.message }));
+    }
+  }
+  return { named, errors };
 }
 
 function inspectSkills(context, release, env, config, active) {
@@ -327,8 +397,10 @@ function planActivation(releaseRoot, input, env = process.env) {
     return path.join(context.runDir, relativePath);
   };
   const principles = (mechanism) => { status.principles = channel('configured', mechanism); };
-  const fallback = (reasons = []) => {
-    status.skills = channel('partial', 'absolute-catalog', [...reasons, reason('skills-catalog')]);
+  // The catalog travels in the principles text: without that text only the absolute invocation is left.
+  const fallback = (reasons = [], withCatalog = true) => {
+    status.skills = withCatalog ? channel('partial', 'absolute-catalog', [...reasons, reason('skills-catalog')])
+      : channel('partial', null, reasons);
     status.invocation = { kind: 'read-file', text: `Read ${path.join(release.root, 'config/skills/devlyn-ideate/SKILL.md')}` };
   };
   const native = (mechanism, kind, text) => { status.skills = channel('configured', mechanism); status.invocation = { kind, text }; };
@@ -381,11 +453,37 @@ function planActivation(releaseRoot, input, env = process.env) {
     case 'omp': {
       const skills = { ...config.skills,
         customDirectories: [...new Set([...(config.skills?.customDirectories || []), path.join(release.root, 'config/skills')])] };
-      plan.engineArgs.push('--config', file('devlyn-omp.json', JSON.stringify({ skills }, null, 2) + '\n'),
-        '--append-system-prompt', joinText(config.appendSystemPrompt, instructions));
-      principles('append-system-prompt');
-      if (collisions.length || errors.length || skills.enableSkillCommands === false || skills.ignoredSkills?.length) fallback([...collisions, ...errors]);
-      else native('skills.customDirectories', 'slash', '/skill:devlyn-ideate');
+      // The files in the order `devlyn run` reads them (harness-context.js ompOwnerAppend).
+      const owner = ownerAppend(config, () => ({ files: [path.join(context.cwd, '.omp/APPEND_SYSTEM.md'),
+        path.join(env.HOME || env.USERPROFILE || os.homedir(), '.omp/agent/APPEND_SYSTEM.md')] }));
+      plan.engineArgs.push('--config', file('devlyn-omp.json', JSON.stringify({ skills }, null, 2) + '\n'));
+      // Owner text that cannot be known leaves the flag off, so the engine's own lookup stays intact.
+      if (owner.reason) status.principles = channel('partial', null, [owner.reason]);
+      else {
+        plan.engineArgs.push('--append-system-prompt', joinText(owner.text, instructions));
+        principles('append-system-prompt');
+      }
+      if (collisions.length || errors.length || skills.enableSkillCommands === false || skills.ignoredSkills?.length) {
+        fallback([...collisions, ...errors], !owner.reason);
+      } else native('skills.customDirectories', 'slash', '/skill:devlyn-ideate');
+      break;
+    }
+    case 'pi': {
+      const agentDir = piAgentDir(context, env);
+      const owner = ownerAppend(config, () => piAppendFiles(context.cwd, agentDir));
+      if (owner.reason) status.principles = channel('partial', null, [owner.reason]);
+      else {
+        plan.engineArgs.push('--append-system-prompt', file('devlyn-instructions.md', joinText(owner.text, instructions)));
+        principles('append-system-prompt');
+      }
+      // A discovered or settings-named skill wins over a --skill of the same name.
+      const settings = piSettingsSkills(context.cwd, agentDir);
+      if (collisions.length || errors.length || settings.named || settings.errors.length) {
+        fallback([...collisions, ...errors, ...settings.errors], !owner.reason);
+      } else {
+        for (const name of SKILLS) plan.engineArgs.push('--skill', path.join(release.root, 'config/skills', name));
+        native('--skill', 'slash', '/skill:devlyn-ideate');
+      }
       break;
     }
     case 'grok':

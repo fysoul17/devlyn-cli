@@ -13,7 +13,7 @@ Partial/unavailable channel coverage is a successful plan, not a launch claim.
 
 ```ts
 type EngineId = "claude" | "codex" | "grok" | "omp" | "antigravity" | "cursor"
-  | "opencode" | "kimi" | "copilot" | "qwen";
+  | "opencode" | "kimi" | "copilot" | "qwen" | "pi";
 type Coverage = "configured" | "partial" | "unavailable" | "disabled";
 type ReleaseRef = {
   package: "devlyn-cli"; version: string; digest: string; root: string;
@@ -64,9 +64,10 @@ must exclude credentials from nested effective values too.
 
 ```ts
 type EffectiveConfig =
-  // claude, omp and qwen: read append files into text before planning.
+  // claude, omp, qwen and pi: read append files into text before planning. For omp and pi an absent
+  // or null value means none was supplied: the planner reads the file the engine itself would read.
   | { appendSystemPrompt?: string | null; pluginDirs?: string[] } // claude: effective enabled/launch plugin roots, absolute
-  | { appendSystemPrompt?: string | null } // qwen
+  | { appendSystemPrompt?: string | null } // qwen, pi
   | { // codex: values from config/read using final cwd, profile and owner overrides
       developer_instructions?: string | null;
       skills?: { config?: Array<{ path: string; enabled: boolean }> } | null;
@@ -176,6 +177,19 @@ The catalog names the verified release's `config/skills/_shared` absolutely and
 supersedes the defaults' installed-folder references. Claude's single per-run
 append file contains existing append text, immutable defaults, and this catalog. OMP/Qwen/Grok merge owner append
 text; OpenCode preserves inline keys/instruction entries.
+pi gets the same three parts in that order in a per-run file passed by `--append-system-prompt`.
+Given append text, omp and pi skip their own `APPEND_SYSTEM.md`, so when the caller supplies no
+append text (an empty string is text) the planner reads the file the engine would: for omp the
+working directory's `.omp/APPEND_SYSTEM.md`, then `~/.omp/agent/APPEND_SYSTEM.md`, as `devlyn run`
+does; for pi the agent dir's (`PI_CODING_AGENT_DIR`, else `~/.pi/agent`), or the project's
+`.pi/APPEND_SYSTEM.md` when pi's saved trust (`trust.json`) trusts the project. With a project file and
+no saved decision, or an unreadable trust record or owner file, the flag is left off so the engine's
+own lookup stays intact, and principles are partial. The planner never writes trust. The plan is the
+same for every launch mode: pi rebuilds the prompt from each launch's arguments, resumed sessions
+included.
+pi loads both skills by `--skill` (`/skill:devlyn-ideate`); a same-named skill in a root pi discovers
+(its agent dir's `skills`, `~/.agents/skills`, `<cwd>/.pi/skills`, `.agents/skills` up to the Git
+root), any skill or package named in pi's settings, or a root that cannot be inspected keeps the catalog.
 OpenCode merges known effective `skillsPaths` into inline `skills.paths`; absent/null keeps catalog fallback.
 Copilot appends a per-run apply-to-all instructions directory via `COPILOT_CUSTOM_INSTRUCTIONS_DIRS`.
 Kimi uses `--skills-dir` with project roots before user roots and release skills last; owner agents and resumed profiles remain unchanged.
