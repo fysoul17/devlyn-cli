@@ -56,13 +56,19 @@ def name(value, field):
     return value
 
 
+INELIGIBLE = re.compile(r"^executor: no\s*$", re.M)
+
+
+# Named `<engine>.adapter.md`: on a case-insensitive filesystem Claude Code loads `claude.md` as nested instructions.
 def adapter(engine, shared=SHARED):
     name(engine, "engine")
-    path = shared / "adapters" / f"{engine}.md"
+    path = shared / "adapters" / f"{engine}.adapter.md"
     if not path.is_file():
-        fail(f"no adapter for {engine}; valid: {', '.join(sorted(p.stem for p in (shared / 'adapters').glob('*.md')))}")
+        valid = sorted(p.name.removesuffix(".adapter.md") for p in path.parent.glob("*.adapter.md")
+                       if not INELIGIBLE.search(p.read_text(encoding="utf-8")))
+        fail(f"no adapter for {engine}; valid: {', '.join(valid)}")
     text = path.read_text(encoding="utf-8")
-    if re.search(r"^executor: no\s*$", text, re.M):
+    if INELIGIBLE.search(text):
         fail(f"{engine} is ineligible as executor")
     return text
 
@@ -178,15 +184,18 @@ def self_test():
         # Pins are validated before any byte changes.
         ineligible = work / "shared"
         (ineligible / "adapters").mkdir(parents=True)
-        (ineligible / "adapters/judge.md").write_text("## Role eligibility\n\nexecutor: no\n", encoding="utf-8")
-        (ineligible / "adapters/codex.md").write_text("# Codex adapter\n", encoding="utf-8")
+        (ineligible / "adapters/judge.adapter.md").write_text("## Role eligibility\n\nexecutor: no\n", encoding="utf-8")
+        (ineligible / "adapters/codex.adapter.md").write_text("# Codex adapter\n", encoding="utf-8")
         path.write_bytes(legacy)
-        for engine, shared, message in (("grok", SHARED, "no adapter for grok"), ("judge", ineligible, "ineligible as executor"),
+        # A refused name lists only the engines that can execute.
+        for engine, shared, message in (("grok", SHARED, "no adapter for grok; valid: claude, codex"),
+                                        ("grok", ineligible, "no adapter for grok; valid: codex"),
+                                        ("judge", ineligible, "ineligible as executor"),
                                         ("../codex", SHARED, "nonempty identifier")):
             try:
                 edit(work, engine, shared=shared)
             except ValueError as exc:
-                assert "BLOCKED:invalid-engine-config" in str(exc) and message in str(exc), exc
+                assert str(exc).startswith("BLOCKED:invalid-engine-config:") and str(exc).endswith(message), exc
             else:
                 raise AssertionError(f"{engine} was pinned")
             assert path.read_bytes() == legacy

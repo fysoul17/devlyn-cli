@@ -408,7 +408,7 @@ adapter_roots="-c 'sandbox_workspace_write.writable_roots=[\"<git dir>\",\"<work
 codex_network="-c 'sandbox_workspace_write.network_access=true'"
 if ! grep -Fq -- "$claude_argv" config/skills/devlyn-ideate/SKILL.md \
   || ! grep -Fq -- "--skip-git-repo-check -s workspace-write $codex_roots $codex_network \"<prompt>\"" config/skills/devlyn-ideate/SKILL.md \
-  || ! grep -Fq -- "$adapter_roots $codex_network" config/skills/_shared/adapters/codex.md; then
+  || ! grep -Fq -- "$adapter_roots $codex_network" config/skills/_shared/adapters/codex.adapter.md; then
   bad "ideate SKILL.md must give the exact Claude and Codex executor argv, and the Codex adapter the common and worktree Git directories as writable roots and network access"
 else
   ok "ideate gives the exact Claude and Codex executor argv; the Codex adapter makes the common and worktree Git directories writable and allows network"

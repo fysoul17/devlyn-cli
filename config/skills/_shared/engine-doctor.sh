@@ -29,7 +29,7 @@ check_binary() {
 
 check_adapter() {
   # $1 = target name
-  if [ -f "$ADAPTERS_DIR/$1.md" ]; then printf 'yes'; else printf 'no'; fi
+  if [ -f "$ADAPTERS_DIR/$1.adapter.md" ]; then printf 'yes'; else printf 'no'; fi
 }
 
 check_executor() {
@@ -47,7 +47,7 @@ for i in "${!TARGETS[@]}"; do
   kind="${KINDS[$i]}"
   binary="$(check_binary "${BINARIES[$i]}")"
   adapter="$(check_adapter "$target")"
-  executor="$(check_executor "$ADAPTERS_DIR/$target.md")"
+  executor="$(check_executor "$ADAPTERS_DIR/$target.adapter.md")"
 
   note='-'
   case "$kind" in

@@ -4,7 +4,7 @@ Used by `/devlyn-ideate` and `/devlyn-engines`: one rule for which engine execut
 
 ## Selection
 
-The executor is the `executor` pin in `.devlyn/engines.json` at the checkout root (set with `/devlyn-engines executor <name>`), else the CLI the user opened. A linked worktree or subdirectory has no pin unless one is set there. Pi and Grok have no executor adapter, so a drain from them needs a claude, codex or omp pin. Keys earlier releases wrote for retired pipeline roles (`pair_judge_priority`, `roles`) stay as written and select nothing: a worker profile never becomes the executor.
+The executor is the `executor` pin in `.devlyn/engines.json` at the checkout root (set with `/devlyn-engines executor <name>`), else the CLI the user opened. A linked worktree or subdirectory has no pin unless one is set there. Only Claude and Codex can execute, so a drain from any other CLI needs a claude or codex pin. Keys earlier releases wrote for retired pipeline roles (`pair_judge_priority`, `roles`) stay as written and select nothing: a worker profile never becomes the executor.
 
 Before dispatching to the executor, run:
 
@@ -16,7 +16,7 @@ A pin is a promise. When the pinned engine's CLI is unavailable, the command exi
 
 ## Engines
 
-An engine is pinnable when `_shared/adapters/<name>.md` exists and does not declare `executor: no` under `## Role eligibility`. Adapters ship with devlyn-cli releases, and a reinstall replaces `_shared`. An adapter's `## Invocation` says how to start it. On native Windows, use native Node/npm and Python (`python3` on PATH), with Git for Windows Bash for the shipped shell wrapper.
+An engine is pinnable when `_shared/adapters/<name>.adapter.md` exists and does not declare `executor: no`. Adapters ship with devlyn-cli releases, and a reinstall replaces `_shared`. An adapter's `## Invocation` says how to start it. On native Windows, use native Node/npm and Python (`python3` on PATH), with Git for Windows Bash for the shipped shell wrapper.
 
 ## Reporting a blocked engine
 

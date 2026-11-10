@@ -2887,7 +2887,7 @@ if sys.platform == 'win32':
     assert codecs.lookup(default_encoding).name == codecs.lookup(locale.getencoding()).name
 payload = '한국어 — “판정” …'
 role = runpy.run_path(shared / 'role-config.py')
-assert role['adapter']('codex').encode('utf-8') == (shared / 'adapters/codex.md').read_bytes()
+assert role['adapter']('codex').encode('utf-8') == (shared / 'adapters/codex.adapter.md').read_bytes()
 completion = runpy.run_path(shared / 'task-complete.py')
 p = work / '한국어.json'
 completion['atomic_json'](p, {'message':payload})
