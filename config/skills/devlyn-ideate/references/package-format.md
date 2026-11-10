@@ -107,7 +107,6 @@ Coverage proves that every obligation has evidence. Whether the checks express t
 - The only legal transition turns one pending row into `[x]` or `[F]` with every other byte unchanged, so a terminal commit changes one line of its loop's file. Terminal rows are never reinterpreted or rerun. The blank lines let transitions of adjacent rows merge, and loops never share a file.
 - Identities are unique; equal titles are fine.
 - `docs/specs/queue.md` is the legacy queue. Its raw rows are intents: readable, never executed, never written (a row there that fully matches this grammar is ignored). `add --materialize <line>` plans one pending legacy row as a loop whose `## Intent` reproduces it verbatim (whitespace may reflow); that loop's queue file starts with `<!-- replaces docs/specs/queue.md row (occurrence <n>): <row> -->`, the row's exact text and its occurrence among equal rows, line endings aside. Every checkout, a fresh clone included, then shows the loop's rows in that row's place. A claim matching no row replaces nothing; a row two loops claim (two clones each materializing it) is hidden, neither loop taking its place, so it is never planned again.
-- Status and drain read the legacy rows in file order, each replaced row as its loop's rows; then the other recorded loops in add order, from their captures; then loops without a record here, as in a fresh clone, from the checkout's tracked queue files in loop-id order.
 
 ## Commands
 

@@ -1,7 +1,5 @@
 # Shared — Executor Pre-flight
 
-Used by `/devlyn-ideate` and `/devlyn-engines`: one rule for which engine executes implementation work and what happens when it is missing.
-
 ## Selection
 
 The executor is the `executor` pin in `.devlyn/engines.json` at the checkout root (set with `/devlyn-engines executor <name>`), else the CLI the user opened. A linked worktree or subdirectory has no pin unless one is set there. Only Claude and Codex can execute, so a drain from any other CLI needs a claude or codex pin. Keys earlier releases wrote for retired pipeline roles (`pair_judge_priority`, `roles`) stay as written and select nothing: a worker profile never becomes the executor.
