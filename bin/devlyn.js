@@ -1995,17 +1995,18 @@ function cleanupScopes(inputs, current, includedHooks = new Set(), baseViews = n
   return scopes;
 }
 
-function cleanupPlan(inputs) {
+// A checkout-only plan is a count of the checkout as it stands: no fetch, base snapshot or checkout update.
+function cleanupPlan(inputs, checkoutOnly = false) {
   const current = cleanupCurrentFingerprints();
-  const baseViews = new Map();
+  const baseViews = checkoutOnly ? null : new Map();
   try {
     // The review covers the bytes delivery acts on, including scopes sharing a repository.
     const scopes = cleanupScopes(inputs, current, new Set(), baseViews);
-    const plan = { schemaVersion: 1, version: PKG.version, inputs, scopes };
+    const plan = { schemaVersion: 1, version: PKG.version, ...(checkoutOnly && { checkoutOnly }), inputs, scopes };
     return { ...plan, digest: cleanupDigest(plan) };
   } finally {
     const errors = [];
-    for (const view of baseViews.values()) {
+    for (const view of baseViews?.values() || []) {
       if (!view.snapshot) continue;
       try { cleanupRemoveSnapshot(view.root, view.snapshot); } catch (error) { errors.push(error); }
     }
@@ -2452,21 +2453,30 @@ function cleanupCommand(args) {
   const { options, fail } = require('./release');
   const opts = options(args, {
     plan: { type: 'boolean' }, apply: { type: 'boolean' }, machine: { type: 'boolean' }, events: { type: 'boolean' },
+    'checkout-only': { type: 'boolean' },
     project: { type: 'string', multiple: true }, 'account-home': { type: 'string', multiple: true },
     'plan-file': { type: 'string' }, digest: { type: 'string' }, include: { type: 'string', multiple: true },
   });
   if (opts.plan === opts.apply) fail('invalid-arguments', { argument: 'exactly one of --plan or --apply' }, 2);
   if (opts.plan && opts.include) fail('invalid-arguments', { argument: '--include requires --apply' }, 2);
+  if (opts.apply && opts['checkout-only']) fail('invalid-arguments', { argument: '--checkout-only requires --plan' }, 2);
   for (const dir of [...(opts.project || []), ...(opts['account-home'] || [])]) {
     if (!path.isAbsolute(dir)) fail('invalid-arguments', { argument: 'absolute paths required' }, 2);
   }
   // The installer's progress lines would corrupt this command's JSON on stdout.
   console.log = (...parts) => process.stderr.write(`${parts.join(' ')}\n`);
   if (opts.plan) {
-    return cleanupPlan({ machine: Boolean(opts.machine), projects: opts.project || [], accountHomes: opts['account-home'] || [] });
+    // Every process a passive count starts inherits this, so no Git process, the queue inspection's
+    // included, fetches missing objects or takes optional locks. Git before 2.45 ignores
+    // GIT_NO_LAZY_FETCH; every Git refuses all transports under GIT_ALLOW_PROTOCOL=none.
+    if (opts['checkout-only']) Object.assign(process.env, { GIT_NO_LAZY_FETCH: '1', GIT_ALLOW_PROTOCOL: 'none', GIT_OPTIONAL_LOCKS: '0' });
+    return cleanupPlan({ machine: Boolean(opts.machine), projects: opts.project || [], accountHomes: opts['account-home'] || [] },
+      Boolean(opts['checkout-only']));
   }
   if (!opts['plan-file'] || !opts.digest) fail('invalid-arguments', { argument: '--plan-file and --digest' }, 2);
   const plan = JSON.parse(fs.readFileSync(opts['plan-file'], 'utf8'));
+  // A checkout-only plan never reviewed the base that delivery acts on.
+  if (plan?.checkoutOnly !== undefined) fail('checkout-only-plan', {}, 2);
   const inputs = plan?.inputs;
   if (plan?.schemaVersion !== 1 || plan.digest !== opts.digest || cleanupDigest(plan) !== plan.digest
       || typeof inputs?.machine !== 'boolean' || !Array.isArray(inputs.projects) || !Array.isArray(inputs.accountHomes)

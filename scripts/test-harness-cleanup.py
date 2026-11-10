@@ -10,6 +10,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -1798,6 +1799,125 @@ for (const schedule of ['head-failure', 'nothing-present', 'storage-outage', 'pi
         [item] = [i for i in plan["scopes"][0]["items"] if i["route"] == "local"]
         self.assertEqual((item["path"], item["action"]), (str(local), "remove"))
         self.assertEqual(self.run_ok(["git", "for-each-ref", "refs/devlyn/cleanup/"], cwd=repo).stdout, "")
+
+    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
+    def test_checkout_only_plan_counts_the_checkout_without_reaching_origin(self):
+        # Prediction: with a behind checkout and an origin that never answers, --checkout-only finishes inside the
+        # 30 s fetch timeout, starts no fetch, snapshot, merge or ref update, gives every process it starts no lazy
+        # fetch, no transport and no optional locks, counts the tracked copies as the checkout holds them, and leaves refs,
+        # worktrees, HEAD, index and files as they were. Apply refuses its plan before starting anything, the digest
+        # covers the field, and --checkout-only with --apply is invalid. Once origin answers, an ordinary plan in the
+        # same repository still fetches and takes the base, and carries no new field.
+        repo, bare = self.installed_and_pushed("checkout-only")
+        self.rewritten_upstream(repo, bare)
+        expected = self.run_ok(
+            ["node", "-e", "const {fingerprint}=require(process.argv[1]);console.log(fingerprint(process.argv[2]))",
+             ROOT / "bin/skill-ownership.js", repo / ".agents/skills/devlyn-ideate"]).stdout.strip()
+        transport = self.root / "bin/git.py"
+        reachable = transport.read_text(encoding="utf-8")
+        transport.write_text("import time\ntime.sleep(600)\n", encoding="utf-8")
+        trace = self.root / "checkout-only.jsonl"
+        preload = self.root / "checkout-only.cjs"
+        preload.write_text("const cp = require('child_process'); const spawn = cp.spawnSync;\n"
+            "cp.spawnSync = (cmd, args, opts) => { const env = opts?.env || process.env;\n"
+            f"require('fs').appendFileSync({json.dumps(str(trace))}, JSON.stringify({{cmd, args, "
+            "lazy: env.GIT_NO_LAZY_FETCH, protocol: env.GIT_ALLOW_PROTOCOL, locks: env.GIT_OPTIONAL_LOCKS}) + '\\n');\n"
+            "return spawn(cmd, args, opts); };\n")
+        self.env["NODE_OPTIONS"] = "--require " + json.dumps(str(preload), ensure_ascii=False)
+        spawned = lambda: [json.loads(line) for line in trace.read_text(encoding="utf-8").splitlines()] if trace.exists() else []
+        state = lambda: (self.checkout_state(repo), self.run_ok(["git", "for-each-ref"], cwd=repo).stdout)
+        before = state()
+        started = time.monotonic()
+        plan, path = self.plan("--project", repo, "--checkout-only")
+        self.assertLess(time.monotonic() - started, 30)
+        # Origin answers again, so a regressed apply below fails on its result instead of waiting.
+        transport.write_text(reachable, encoding="utf-8")
+        self.assertEqual(state(), before)
+        calls = spawned()
+        self.assertTrue(any(call["cmd"] == "git" for call in calls))
+        self.assertEqual([call for call in calls if (call.get("lazy"), call.get("protocol"), call.get("locks")) != ("1", "none", "0")], [])
+        base_access = {"fetch", "worktree", "read-tree", "checkout-index", "merge", "update-ref"}
+        self.assertEqual([call for call in calls if call["cmd"] == "git" and base_access & set(call["args"])], [])
+        self.assertIs(plan["checkoutOnly"], True)
+        [scope] = plan["scopes"]
+        self.assertNotIn("reviewBase", scope)
+        self.assertEqual(len(scope["items"]), 4)
+        self.assertTrue(all(i["route"] == "delivery" and i["action"] == "remove" for i in scope["items"]), scope["items"])
+        item = next(i for i in scope["items"] if i["relative"] == ".agents/skills/devlyn-ideate")
+        self.assertEqual(item["before"], {"type": "directory", "sha256": expected})
+        trace.unlink()
+        self.assertEqual(self.apply(plan, path, code=2)["code"], "checkout-only-plan")
+        self.assertEqual(spawned(), [])
+        forged = {key: value for key, value in plan.items() if key != "checkoutOnly"}
+        forged_path = self.root / "checkout-only-forged.json"
+        forged_path.write_text(json.dumps(forged), encoding="utf-8")
+        self.assertEqual(self.apply(forged, forged_path, code=3)["code"], "stale-plan")
+        invalid = self.cli("cleanup", "--apply", "--checkout-only", "--plan-file", path, "--digest", plan["digest"], code=2)
+        self.assertEqual(invalid["code"], "invalid-arguments")
+        self.assertEqual(state(), before)
+        trace.unlink(missing_ok=True)
+        ordinary, _ = self.plan("--project", repo)
+        self.assertEqual(list(ordinary), ["schemaVersion", "version", "inputs", "scopes", "digest"])
+        self.assertTrue([call for call in spawned() if call["cmd"] == "git" and "fetch" in call["args"]])
+        base = self.run_ok(["git", "--git-dir", bare, "rev-parse", "main"]).stdout
+        self.assertEqual(ordinary["scopes"][0]["reviewBase"], base.strip())
+        self.assertEqual(self.run_ok(["git", "rev-parse", "HEAD"], cwd=repo).stdout, base)
+
+    @unittest.skipIf(os.name == "nt", "the stand-in for an older Git is a POSIX shell script")
+    def test_checkout_only_plan_fetches_nothing_into_a_partial_clone_on_any_git(self):
+        # Prediction (review MEDIUM): Git before 2.45 ignores GIT_NO_LAZY_FETCH, so a passive count reading a committed
+        # blob missing from a partial clone would fetch it from the promisor remote. GIT_ALLOW_PROTOCOL=none alone makes
+        # that read fail and adds no object. Under a git that drops GIT_NO_LAZY_FETCH, --checkout-only still ends with
+        # a plan: the missing HEAD:package.json reads as absent to the identity check, the scan reads only the index
+        # and working tree, and the four tracked copies are counted, skipped as no-remote because origin is not
+        # GitHub. No object is added; refs, index, files and worktrees stay as they were. The same stand-in without
+        # the guard does fetch, so the guard is what holds.
+        for key in ("GIT_NO_LAZY_FETCH", "GIT_ALLOW_PROTOCOL"):
+            self.env.pop(key, None)
+        source = self.repo("partial-source")
+        (source / "package.json").write_text('{"name": "project"}\n', encoding="utf-8")
+        self.install(source)
+        self.run_ok(["git", "add", "-A"], cwd=source)
+        self.run_ok(["git", "commit", "-qm", "install"], cwd=source)
+        missing = self.run_ok(["git", "rev-parse", "HEAD:package.json"], cwd=source).stdout.strip()
+        clone = self.root / "partial"
+        # Observed with Git 2.52 on macOS: under this fixture's non-ASCII root, upload-pack does not apply the
+        # source's own uploadpack.allowFilter, so it gets the setting on its command line.
+        self.run_ok(["git", "clone", "-q", "--filter=blob:none", "--no-checkout",
+                     "--upload-pack", "git -c uploadpack.allowFilter=true upload-pack", source.as_uri(), clone])
+        self.run_ok(["git", "sparse-checkout", "set", "--no-cone", "/*", "!/package.json"], cwd=clone)
+        self.run_ok(["git", "checkout", "-q", "main"], cwd=clone)
+        self.repos.append(clone)
+        git = lambda *args, **env: subprocess.run(["git", *args], cwd=clone, env={**self.env, "LC_ALL": "C", **env},
+                                                  capture_output=True, text=True)
+        # Listing local objects never fetches, on any Git.
+        local = lambda: set(git("cat-file", "--batch-all-objects", "--batch-check=%(objectname)").stdout.split())
+        objects = lambda: {str(p.relative_to(clone)): p.read_bytes() for p in (clone / ".git/objects").rglob("*") if p.is_file()}
+        self.assertNotIn(missing, local())
+        stored = objects()
+        refused = git("cat-file", "-p", missing, GIT_ALLOW_PROTOCOL="none")
+        self.assertNotEqual(refused.returncode, 0)
+        self.assertIn("transport 'file' not allowed", refused.stderr)
+        self.assertEqual(objects(), stored)
+        self.assertNotIn(missing, local())
+        older = self.root / "older-git"
+        older.mkdir()
+        (older / "git").write_text('#!/bin/sh\nunset GIT_NO_LAZY_FETCH\nexec "$REAL_GIT" "$@"\n', encoding="utf-8")
+        (older / "git").chmod(0o755)
+        self.env.update(PATH=str(older) + os.pathsep + self.env["PATH"], REAL_GIT=shutil.which("git"))
+        state = lambda: (self.checkout_state(clone), self.run_ok(["git", "for-each-ref"], cwd=clone).stdout, objects())
+        before = state()
+        plan, _ = self.plan("--project", clone, "--checkout-only")
+        self.assertEqual(state(), before)
+        self.assertNotIn(missing, local())
+        self.assertIs(plan["checkoutOnly"], True)
+        [scope] = plan["scopes"]
+        self.assertNotIn("reviewBase", scope)
+        self.assertEqual(sorted((i["relative"], i["route"], i["action"], i["reasons"][0]["code"]) for i in scope["items"]),
+                         [(f".agents/skills/{name}", "delivery", "skip", "no-remote")
+                          for name in (".devlyn-install.json", "_shared", "devlyn-engines", "devlyn-ideate")])
+        self.assertEqual(git("cat-file", "-e", missing, GIT_NO_LAZY_FETCH="1").returncode, 0)
+        self.assertNotEqual(objects(), stored)
 
     @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
     def test_the_checkout_update_is_a_fast_forward_whatever_the_branch_merge_options(self):
