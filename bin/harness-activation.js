@@ -226,7 +226,7 @@ function piSettings(cwd, agentDir) {
   const settings = { errors: [] };
   for (const [scope, file] of [['user', path.join(agentDir, 'settings.json')], ['project', path.join(cwd, '.pi/settings.json')]]) {
     try {
-      settings[scope] = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8').replace(/^﻿/, '') || '{}') : {};
+      settings[scope] = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, '') || '{}') : {};
     } catch (error) {
       settings[scope] = null;
       settings.errors.push(reason('config-unreadable', { path: file, detail: error.code || error.message }));
