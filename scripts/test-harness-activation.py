@@ -122,7 +122,7 @@ class ActivationTests(unittest.TestCase):
                     self.assertIn(flags[engine], plan['engineArgs'])
                 if engine in ('cursor', 'antigravity'):
                     self.assertEqual(plan['engineArgs'], [])
-                    self.assertEqual(plan['channels']['principles']['reasons'][0]['code'], 'principles-task-only')
+                    self.assertEqual(plan['channels']['overall'], 'unavailable')
                 if engine == 'copilot':
                     self.assertEqual(plan['channels']['overall'], 'configured')
                 for file in plan['files']:
@@ -1025,9 +1025,18 @@ process.stdout.write(JSON.stringify(JSON.parse(process.argv[2]).map(([cwd, env, 
         self.assertEqual(unreadable['channels']['skills']['mechanism'], 'skills.customDirectories')
 
     def test_initial_task_is_preserved_and_never_synthesized(self):
+        # Prediction: with no first task nothing is injected and both channels are unavailable, while the release is
+        # still named; a first task carries the principles and the catalog ahead of the owner's text.
         for engine in ('antigravity', 'cursor'):
             ctx = self.context(engine)
-            self.assertIsNone(self.plan(ctx)['prompt'])
+            empty = self.plan(ctx)
+            self.assertEqual(empty['release'], self.release)
+            for key, value in [('engineArgs', []), ('envPatch', {}), ('files', []), ('prompt', None), ('machineSync', None)]:
+                self.assertEqual(empty[key], value)
+            for name in ('principles', 'skills'):
+                self.assertEqual(empty['channels'][name], {'state': 'unavailable', 'mechanism': None,
+                    'reasons': [{'code': f'{name}-unavailable', 'params': {'detail': 'no-initial-task'}}]})
+            self.assertEqual((empty['channels']['overall'], empty['channels']['invocation']), ('unavailable', None))
             for transport in ('argv', 'stdin'):
                 task = 'Task "quotes" \\ 한국어\n끝'
                 ctx['initialPrompt'] = {'text': task, 'transport': transport}
@@ -1035,6 +1044,8 @@ process.stdout.write(JSON.stringify(JSON.parse(process.argv[2]).map(([cwd, env, 
                 self.assertTrue(plan['prompt']['text'].endswith('\n\n' + task))
                 self.assertEqual(plan['prompt']['transport'], transport)
                 self.assertEqual(plan['channels']['overall'], 'partial')
+                self.assertEqual(plan['channels']['principles'], {'state': 'partial', 'mechanism': 'initial-task',
+                                                                  'reasons': [{'code': 'principles-task-only', 'params': {}}]})
 
     def test_projection_regular_idempotent_and_marker(self):
         original = self.account / 'config.toml'
