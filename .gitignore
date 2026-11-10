@@ -51,6 +51,6 @@ __pycache__/
 benchmark/probes/judge-quality/results/
 benchmark/probes/judge-quality/results-*/
 
-# devlyn-cli pipeline state
-.agents/skills/.devlyn-install.json
+# devlyn-cli installer output: the skills' source is config/skills
+.agents/skills/
 .claude/skills/.devlyn-install.json

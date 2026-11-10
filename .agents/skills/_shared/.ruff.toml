@@ -1,2 +1,0 @@
-# Vendored devlyn helpers are checked by devlyn's own validation.
-exclude = ["*"]
