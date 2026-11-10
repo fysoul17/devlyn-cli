@@ -106,11 +106,18 @@ before launch, then splices `engineArgs` inside the monitored inner command and
 applies `envPatch` to that process. A sync conflict is not successful activation.
 No new task/model turn is created for an empty terminal.
 
-Antigravity's run folder is planned only when no directory from it up to the filesystem
-root holds a `.git` entry of any kind and, on POSIX, no directory above it is writable by
-every user (Windows is not checked): Antigravity loads the agents and hooks of a Git root
-above an added folder with no trust check, and anyone could put a `.git` in such a
-directory later. A caller wanting that channel passes a `runDir` outside the project.
+A folder Antigravity or Cursor loads is planned in `runDir` only where it is safe. The
+planner resolves `runDir` (the real path of its deepest existing part, any missing rest
+appended), checks that path and gives the engine that path. Every existing level from
+`runDir` up to the filesystem root must be a directory owned by the current user or root
+that grants no write to group or others, or another user could put a `.git` or a folder of
+their own there later; a level that does not exist yet is skipped, and access-control lists
+are not evaluated. For Antigravity no directory from its folder up to the root may hold a
+`.git` entry of any kind either: it loads the agents and hooks of a Git root above an added
+folder with no trust check, so a caller wanting that channel passes a `runDir` outside the
+project. A refusal names the directory that failed (`run-dir-unsafe`). On Windows neither
+engine gets anything new (`platform-unexamined`): both channels were examined on macOS,
+and Windows cannot show who owns a folder.
 
 Fresh selection uses the supplied release root. On resume/fork, a `recordedRelease`
 reference selects and verifies that exact release (even if the project choice is
@@ -203,31 +210,32 @@ inspected keeps the catalog.
 OpenCode merges known effective `skillsPaths` into inline `skills.paths`; absent/null keeps catalog fallback.
 Copilot appends a per-run apply-to-all instructions directory via `COPILOT_CUSTOM_INSTRUCTIONS_DIRS`.
 Kimi uses `--skills-dir` with project roots before user roots and release skills last; owner agents and resumed profiles remain unchanged.
-Cursor builds before 2026.11.05, and Antigravity below 1.5.4 or with an unsafe run folder (above), get the
-principles and the catalog only in a first task, ahead of its text (principles partial with
-`principles-task-only`, skills through the catalog); without one nothing is delivered and both channels are
-unavailable (`no-initial-task`, or `run-dir-unsafe` with the directory that failed).
+Cursor builds before 2026.11.05, Antigravity below 1.5.4, both on Windows, and Antigravity with an unsafe
+run directory (above) get the principles and the catalog only in a first task, ahead of its text (principles
+partial with `principles-task-only`, skills through the catalog); without one nothing is delivered and both
+channels are unavailable (`no-initial-task`, `platform-unexamined` or `run-dir-unsafe`).
 From 2026.11.05-86047df, the build this was examined on, Cursor gets a per-run plugin folder, `cursor/`, by
-`--plugin-dir` in every launch mode. Its `hooks/hooks.json` holds one `sessionStart` command hook,
-`cat context.json`, which Cursor runs in that folder when a session is created; it puts the printed
-`additional_context` (the defaults and the catalog, every non-ASCII character escaped) before the model as
-instructions and keeps it with the conversation. A first task is left untouched. Over 10,000 characters,
-which Cursor refuses, no hook is planned and principles are unavailable (`too-large`). A resumed or forked
-chat runs no hook and keeps what its first launch had, so there principles are partial
-(`principles-session-start-only`). On Windows no hook is planned (`platform-unexamined`): the bundle read
-(macOS, not run on Windows) compiles out how Windows runs a hook command, and picks the shell from `SHELL` and
-the shells on `PATH`, so no one command is known to print the file there. Skills come natively from
-`--plugin-dir <release>/config` (`/devlyn-ideate`); a devlyn name in a folder Cursor reads (`.cursor`,
-`.agents`, `.claude`, `.codex` or `.grok` `skills` from the working directory up to its Git root and in the
-home folder, and `~/.cursor/skills-cursor`) keeps the catalog. Cursor also finds skills in folders nested below
-the working directory, which the planner does not search: a full tree scan on every launch is not worth it. A
-team admin who turns local plugins off makes Cursor ignore `--plugin-dir`, so configured means prepared
-delivery.
+`--plugin-dir` in every launch mode, where the run directory is safe (above, the `.git` rule aside) and
+`/bin/cat` exists. Its `hooks/hooks.json` holds one `sessionStart` command hook,
+`/bin/cat '<resolved runDir>/cursor/context.json'` (quoted for the shell, so neither `PATH` nor the working
+folder is used), which Cursor runs when a session is created; it puts the printed `additional_context` (the
+defaults and the catalog, every non-ASCII character escaped) before the model as instructions and keeps it
+with the conversation. A text of 10,200 characters was delivered whole. A first task is left untouched. A
+resumed or forked chat runs no hook and keeps what its first launch had, so there principles are partial
+(`principles-session-start-only`). Otherwise Cursor gets the principles as an older build does
+(`run-dir-unsafe`, or `platform-unexamined` without `/bin/cat`). Skills come natively from
+`--plugin-dir <release>/config` (`/devlyn-ideate`) whatever the run directory; a devlyn name in a folder Cursor
+reads (`.cursor`, `.agents`, `.claude`, `.codex` or `.grok` `skills` from the working directory up to its Git
+root and in the home folder, and `~/.cursor/skills-cursor`) keeps the catalog. Cursor also finds skills in
+folders nested below the working directory, which the planner does not search: a full tree scan on every
+launch is not worth it.
 Antigravity reads `AGENTS.md` and `.agents/skills` in every workspace folder, a folder added by `--add-dir`
-included. From 1.5.4, the version this was examined on, it gets a per-run folder, `antigravity/`, that way in
-every launch mode: a conversation keeps its added folders and reads them from disk again on every launch, so a
-caller hands a resumed conversation the same `runDir` (with another, both folders apply while the old one
-exists); a folder removed later only stops applying. Its `AGENTS.md` holds the defaults and the catalog, with
+included. From 1.5.4, the version this was examined on (in print mode and in the interactive screen), it gets
+a per-run folder, `antigravity/`, that way in every launch mode where the run directory is safe: a
+conversation keeps its added folders and reads them from disk again on every launch, so a caller hands a
+resumed conversation the same `runDir` (with another, both folders apply while the old one exists); a folder
+removed later only stops applying. A resumed conversation reads whatever folder it remembers, so the caller
+removes the folder when the session is over. Its `AGENTS.md` holds the defaults and the catalog, with
 no frontmatter; over 24,000 bytes, where Antigravity truncates a rule file, it is not planned and principles
 are unavailable (`too-large`). Each skill gets `.agents/skills/<name>/SKILL.md`: the release skill's own `name` and
 `description` lines, then the release `SKILL.md` to follow with its folder as the skill's folder
@@ -239,7 +247,7 @@ project is trusted yet) keeps the catalog.
 
 Tests: `python3 scripts/test-harness-activation.py --codex-probe` packs/extracts
 and tests the actual release. Set `TMPDIR` to the supplied scratch directory, a private one: under a folder
-every user can write, Antigravity's run-folder tests skip.
+neither yours nor root's, or one others can write, the run-folder tests skip.
 The optional native probe uses only `codex debug prompt-input` under isolated
 HOME/CODEX_HOME. Windows path/TOML/argv fixtures also run on macOS; those results
 do not establish native Windows runtime qualification.

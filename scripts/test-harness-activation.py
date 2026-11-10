@@ -1065,32 +1065,68 @@ process.stdout.write(JSON.stringify(JSON.parse(process.argv[2]).map(([cwd, env, 
                         ctx = {**self.context(engine), 'version': version, 'launchMode': mode, 'initialPrompt': prompt}
                         self.assertEqual(self.plan(ctx), self.first_task_plan(ctx, {'detail': 'no-initial-task'}))
 
+    def private_run_dir(self):
+        # The run-folder channels are planned only off Windows, and only where every directory from the run directory
+        # up is the user's or root's and no one else can write it.
+        if os.name == 'nt':
+            self.skipTest('the run-folder channels are not planned on Windows')
+        if any(folder.stat().st_uid not in (os.getuid(), 0) or folder.stat().st_mode & 0o022
+               for folder in (self.run_dir, *self.run_dir.parents)):
+            self.skipTest("the temp folder is under a folder that is neither yours nor root's, or one others can write; "
+                          'set TMPDIR to a private one')
+
     def agy(self, **changes):
-        # An Antigravity context on the version its run folder was examined on. The run folder is planned only when
-        # no directory above it can be written by every user, so a private temp folder is needed.
-        if os.name != 'nt' and any(folder.stat().st_mode & 0o002 for folder in (self.work, *self.work.parents)):
-            self.skipTest('the temp folder is under a folder everyone can write; set TMPDIR to a private one')
+        # An Antigravity context on the version its run folder was examined on, in a private temp folder.
+        self.private_run_dir()
         return {**self.context('antigravity'), 'version': CHANNEL_VERSIONS['antigravity'], **changes}
 
-    def test_antigravity_run_folder_only_where_no_git_root_can_be_above_it(self):
+    def plan_in_node(self, ctx, patch):
+        # planActivation in a node process after `patch`, which stands in for a system this machine is not.
+        script = patch + '''
+const {planActivation} = require(process.argv[1]);
+process.stdout.write(JSON.stringify(planActivation(process.argv[2], JSON.parse(process.argv[3]))));'''
+        return json.loads(run(['node', '-e', script, self.package / 'bin/harness-activation.js', self.package,
+                               json.dumps(ctx)], env=self.env).stdout)
+
+    def test_run_folder_channels_are_not_planned_on_windows(self):
+        # Prediction: on win32, where both channels are unexamined and a folder's owner cannot be read, Antigravity and
+        # Cursor on their examined versions get the plan 4.3.29 made, whole, with platform-unexamined in place of
+        # no-initial-task.
+        for engine, version in CHANNEL_VERSIONS.items():
+            for prompt in (None, {'text': 'owner task', 'transport': 'argv'}):
+                with self.subTest(engine=engine, prompt=prompt):
+                    ctx = {**self.context(engine), 'version': version, 'initialPrompt': prompt}
+                    plan = self.plan_in_node(ctx, "Object.defineProperty(process, 'platform', {value: 'win32'});")
+                    self.assertEqual(plan, self.first_task_plan(ctx, {'detail': 'platform-unexamined'}))
+
+    def test_antigravity_run_folder_only_where_it_is_safe(self):
         # Prediction: Antigravity 1.5.4 loads a Git root's own agents and hooks above an added folder with no trust
-        # check, so a run folder with a .git entry of any kind at it or above it (a folder, a linked worktree's file, a
-        # dangling link, one reached through a link into a repository) or, on POSIX, a directory above it that every
-        # user can write gets the 4.3.29 plan, with run-dir-unsafe and the failing directory when nothing is
-        # delivered. A safe run folder is planned in the same context.
+        # check, and another user could put a .git or a folder of their own in a directory its group or everyone can
+        # write. So a run directory with a .git entry of any kind at its folder or above it (a folder, a linked
+        # worktree's file, a dangling link) or with a directory from it up that its group or everyone can write gets
+        # the 4.3.29 plan, with run-dir-unsafe and the failing directory when nothing is delivered. The resolved path
+        # decides: a link into a repository is refused, and a safe run directory, also one that does not exist yet, is
+        # planned with its resolved path.
         self.assertEqual(self.plan(self.agy())['engineArgs'], ['--add-dir', str(self.run_dir / 'antigravity')])
-        linked, dangling, shared = (self.case / name for name in ('linked', 'dangling', 'shared'))
-        for folder in (linked, dangling, shared):
+        real = self.case / 'real'
+        real.mkdir()
+        (self.case / 'link').symlink_to(real, target_is_directory=True)
+        for given, resolved in [(self.case / 'absent/run', self.case / 'absent/run'), (self.case / 'link/run', real / 'run')]:
+            with self.subTest(run_dir=given):
+                self.assertEqual(self.plan(self.agy(runDir=str(given)))['engineArgs'], ['--add-dir', str(resolved / 'antigravity')])
+        linked, dangling, group, shared = (self.case / name for name in ('linked', 'dangling', 'group', 'shared'))
+        for folder in (linked, dangling, group, shared):
             folder.mkdir()
         (linked / '.git').write_text('gitdir: /elsewhere/.git/worktrees/linked\n')
+        (dangling / '.git').symlink_to(self.case / 'missing')
+        (self.case / 'alias').symlink_to(self.project / 'sub', target_is_directory=True)
+        (self.project / 'sub').mkdir()
+        group.chmod(0o775)
+        shared.chmod(0o777)
         (self.run_dir / '.git').mkdir()
-        cases = [(self.project / '.devlyn/runs/r1', self.project), (linked / 'run', linked), (self.run_dir, self.run_dir)]
-        if os.name != 'nt':
-            (dangling / '.git').symlink_to(self.case / 'missing')
-            (self.case / 'alias').symlink_to(self.project / 'sub', target_is_directory=True)
-            (self.project / 'sub').mkdir()
-            shared.chmod(0o777)
-            cases += [(dangling / 'run', dangling), (self.case / 'alias/run', self.project), (shared / 'run', shared)]
+        cases = [(self.project / '.devlyn/runs/r1', self.project), (linked / 'run', linked), (self.run_dir, self.run_dir),
+                 (dangling / 'run', dangling), (self.case / 'alias/run', self.project), (group / 'run', group),
+                 (shared / 'run', shared)]
         for run_dir, unsafe in cases:
             for prompt in (None, {'text': 'owner task', 'transport': 'argv'}):
                 with self.subTest(run_dir=run_dir, prompt=prompt):
@@ -1242,21 +1278,28 @@ process.stdout.write(JSON.stringify(JSON.parse(process.argv[2]).map(([cwd, env, 
                          {'code': 'name-collision', 'params': {'name': 'devlyn-ideate', 'path': str(copy / 'SKILL.md')}})
 
     def cursor(self, **changes):
-        # A Cursor context on the build its plugin folder was examined on.
+        # A Cursor context on the build its plugin folder was examined on, in a private temp folder.
+        self.private_run_dir()
         return {**self.context('cursor'), 'version': CHANNEL_VERSIONS['cursor'], **changes}
 
-    def cursor_files(self, instructions):
-        # The plugin folder's session-start hook and the JSON it prints, every non-ASCII character escaped.
-        files = [('cursor/hooks/hooks.json', '{"version":1,"hooks":{"sessionStart":[{"command":"cat context.json"}]}}\n'),
+    def cursor_files(self, instructions, run_dir=None):
+        # The plugin folder's session-start hook, which prints the JSON beside it by its absolute path quoted for the
+        # shell, and that JSON, every non-ASCII character escaped.
+        context = str((run_dir or self.run_dir) / 'cursor/context.json').replace("'", "'\\''")
+        hooks = {'version': 1, 'hooks': {'sessionStart': [{'command': f"/bin/cat '{context}'"}]}}
+        files = [('cursor/hooks/hooks.json', json.dumps(hooks, separators=(',', ':'), ensure_ascii=False) + '\n'),
                  ('cursor/context.json', json.dumps({'additional_context': instructions}, separators=(',', ':')) + '\n')]
         return [{'relativePath': relative, 'utf8': text, 'sha256': hashlib.sha256(text.encode()).hexdigest()}
                 for relative, text in files]
 
     def test_cursor_plugin_folder_hook_and_release_skills(self):
         # Prediction: on 2026.11.05-86047df a fresh pane, with or without a first task, gets a run plugin folder whose
-        # sessionStart hook prints {"additional_context": <the instructions other engines get>} as pure ASCII, passed by
-        # --plugin-dir before the release's config folder; the first task is left untouched. Principles configured by
+        # sessionStart hook, /bin/cat with the resolved absolute path quoted for the shell, prints {"additional_context":
+        # <the instructions other engines get>} as pure ASCII from any working folder, even with a quote in the path;
+        # it is passed by --plugin-dir before the release's config folder, and a run directory reached through a link
+        # plans exactly as its resolved path. The first task is left untouched. Principles configured by
         # session-start-hook, skills by plugin-dir, invoked as /devlyn-ideate.
+        ctx = self.cursor()
         expected = self.cursor_files(self.instructions())
         context = expected[1]['utf8']
         self.assertTrue(context.isascii())
@@ -1264,7 +1307,7 @@ process.stdout.write(JSON.stringify(JSON.parse(process.argv[2]).map(([cwd, env, 
         self.assertEqual(json.loads(context), {'additional_context': self.instructions()})
         for prompt in (None, {'text': 'owner task', 'transport': 'argv'}):
             with self.subTest(prompt=prompt):
-                plan = self.plan(self.cursor(initialPrompt=prompt))
+                plan = self.plan({**ctx, 'initialPrompt': prompt})
                 self.assertEqual(plan['release'], self.release)
                 self.assertEqual(plan['files'], expected)
                 self.assertEqual(plan['engineArgs'], ['--plugin-dir', str(self.run_dir / 'cursor'),
@@ -1275,6 +1318,48 @@ process.stdout.write(JSON.stringify(JSON.parse(process.argv[2]).map(([cwd, env, 
                 self.assertEqual(plan['channels']['skills'], {'state': 'configured', 'mechanism': 'plugin-dir', 'reasons': []})
                 self.assertEqual(plan['channels']['invocation'], {'kind': 'slash', 'text': '/devlyn-ideate'})
                 self.assertEqual(plan['channels']['overall'], 'configured')
+        (self.case / 'link').symlink_to(self.run_dir, target_is_directory=True)
+        self.assertEqual(self.plan({**ctx, 'runDir': str(self.case / 'link')}), self.plan(ctx))
+        quoted = self.case / "owner's run"
+        plan = self.plan({**ctx, 'runDir': str(quoted)})
+        self.assertEqual(plan['files'], self.cursor_files(self.instructions(), quoted))
+        for file in plan['files']:
+            self.write(quoted / file['relativePath'], file['utf8'])
+        command = json.loads(plan['files'][0]['utf8'])['hooks']['sessionStart'][0]['command']
+        printed = subprocess.run(['/bin/sh', '-c', command], cwd=self.case, capture_output=True, check=True).stdout
+        self.assertEqual(json.loads(printed), {'additional_context': self.instructions()})
+
+    def test_cursor_hook_only_in_a_safe_run_directory(self):
+        # Prediction: the hook is a command Cursor runs, so with a directory from the run directory up that its group or
+        # everyone can write, or with no /bin/cat, no hook is planned and the principles reach Cursor exactly as on an
+        # older build (ahead of a first task with principles-task-only, or unavailable with run-dir-unsafe and the
+        # failing directory, or platform-unexamined); the skills still come natively from the release. A run directory
+        # inside a repository keeps the hook: Cursor does not walk up to a Git root.
+        examined = self.cursor()
+        group, shared = self.case / 'group', self.case / 'shared'
+        for folder, mode in ((group, 0o775), (shared, 0o777)):
+            folder.mkdir()
+            folder.chmod(mode)
+        no_cat = "const fs = require('fs'), stat = fs.statSync;\n" \
+                 "fs.statSync = (file, ...rest) => (file === '/bin/cat' ? undefined : stat(file, ...rest));"
+        cases = [(group / 'run', {'detail': 'run-dir-unsafe', 'path': str(group)}, None),
+                 (shared / 'run', {'detail': 'run-dir-unsafe', 'path': str(shared)}, None),
+                 (self.run_dir, {'detail': 'platform-unexamined'}, no_cat)]
+        for run_dir, params, patch in cases:
+            for prompt in (None, {'text': 'owner task', 'transport': 'argv'}):
+                with self.subTest(run_dir=run_dir, patch=bool(patch), prompt=prompt):
+                    ctx = {**examined, 'runDir': str(run_dir), 'initialPrompt': prompt}
+                    plan = self.plan_in_node(ctx, patch) if patch else self.plan(ctx)
+                    older = self.first_task_plan(ctx, params)
+                    self.assertEqual((plan['prompt'], plan['files'], plan['channels']['principles']),
+                                     (older['prompt'], [], older['channels']['principles']))
+                    self.assertEqual(plan['engineArgs'], ['--plugin-dir', str(self.package / 'config')])
+                    self.assertEqual(plan['channels']['skills'], {'state': 'configured', 'mechanism': 'plugin-dir', 'reasons': []})
+                    self.assertEqual(plan['channels']['invocation'], {'kind': 'slash', 'text': '/devlyn-ideate'})
+        in_repository = self.project / '.devlyn/runs/r1'
+        plan = self.plan({**examined, 'runDir': str(in_repository)})
+        self.assertEqual(plan['files'], self.cursor_files(self.instructions(), in_repository))
+        self.assertEqual(plan['channels']['principles'], {'state': 'configured', 'mechanism': 'session-start-hook', 'reasons': []})
 
     def test_cursor_resumed_or_forked_chat_keeps_what_it_began_with(self):
         # Prediction: resume and fork get the same files and arguments as a fresh pane, but a resumed chat runs no hook
@@ -1291,34 +1376,6 @@ process.stdout.write(JSON.stringify(JSON.parse(process.argv[2]).map(([cwd, env, 
                 self.assertEqual(plan['channels']['skills'], fresh['channels']['skills'])
                 self.assertEqual(plan['channels']['overall'], 'partial')
 
-    def test_cursor_refuses_a_session_context_it_would_reject(self):
-        # Prediction: Cursor refuses a hook context over 10,000 characters (string length, so é counts once).
-        # Instructions of exactly 10,000 characters are planned; the same release one character deeper (named three
-        # times in the catalog) plans no hook, and principles are unavailable with the size while skills stay native.
-        defaults = (self.package / 'config/skills/_shared/runtime-principles.md').read_text(encoding='utf-8')
-        root = self.case / 'release'
-        catalog = run(['node', '-e', 'process.stdout.write(require(process.argv[1]).skillCatalog({root: process.argv[2]}))',
-                       self.package / 'bin/harness-activation.js', root]).stdout.decode()
-        characters = lambda text: len(text.encode('utf-16-le')) // 2  # JavaScript's string length
-        pad = 10000 - characters(defaults + '\n\n' + catalog)
-
-        def grow(release):
-            for name in ('CLAUDE.md', 'AGENTS.md'):
-                (release / name).write_bytes((release / name).read_bytes() + b'x' * pad)
-
-        self.rebuilt_release('release', grow)
-        fits = self.plan(self.cursor(), release_root=root)
-        self.assertEqual(characters(json.loads(fits['files'][1]['utf8'])['additional_context']), 10000)
-        self.assertEqual(fits['channels']['principles']['state'], 'configured')
-        deeper = root.rename(self.case / 'release1')
-        plan = self.plan(self.cursor(), release_root=deeper)
-        self.assertEqual((plan['files'], plan['prompt']), ([], None))
-        self.assertEqual(plan['engineArgs'], ['--plugin-dir', str(deeper / 'config')])
-        self.assertEqual(plan['channels']['principles'], {'state': 'unavailable', 'mechanism': None, 'reasons': [
-            {'code': 'principles-unavailable', 'params': {'detail': 'too-large', 'characters': 10003, 'maximum': 10000}}]})
-        self.assertEqual(plan['channels']['skills'], {'state': 'configured', 'mechanism': 'plugin-dir', 'reasons': []})
-        self.assertEqual(plan['channels']['overall'], 'partial')
-
     def test_cursor_same_named_skill_in_a_folder_it_reads_keeps_the_catalog(self):
         # Prediction: on the examined build, a devlyn-named skill in a folder Cursor reads (.cursor, .agents, .claude,
         # .codex or .grok skills in the home folder and from the working directory up to its Git root, and
@@ -1327,6 +1384,7 @@ process.stdout.write(JSON.stringify(JSON.parse(process.argv[2]).map(([cwd, env, 
         # skill in one of these folders is not reported there.
         nested = self.project / 'sub'
         nested.mkdir()
+        ctx = self.cursor(cwd=str(nested))
         hook = self.cursor_files(self.instructions())
         folders = ['.cursor/skills', '.agents/skills', '.claude/skills', '.codex/skills', '.grok/skills']
         found = [*(self.home / folder for folder in folders), self.home / '.cursor/skills-cursor',
@@ -1334,7 +1392,7 @@ process.stdout.write(JSON.stringify(JSON.parse(process.argv[2]).map(([cwd, env, 
         for root in [*found, self.case / '.cursor/skills']:
             with self.subTest(root=root):
                 skill = self.write(root / 'devlyn-ideate/SKILL.md', '---\nname: devlyn-ideate\ndescription: owner\n---\nOwner')
-                plan = self.plan(self.cursor(cwd=str(nested)))
+                plan = self.plan(ctx)
                 shutil.rmtree(skill.parent)
                 self.assertEqual(plan['files'], hook)
                 self.assertEqual(plan['channels']['principles']['state'], 'configured')
@@ -1348,23 +1406,8 @@ process.stdout.write(JSON.stringify(JSON.parse(process.argv[2]).map(([cwd, env, 
                     self.assertEqual(plan['channels']['overall'], 'configured')
         copy = self.home / '.cursor/skills/devlyn-ideate'
         shutil.copytree(self.package / 'config/skills/devlyn-ideate', copy)
-        self.assertEqual(self.plan(self.cursor())['channels']['inheritedDevlyn'], [str(copy / 'SKILL.md')])
+        self.assertEqual(self.plan({**ctx, 'cwd': str(self.project)})['channels']['inheritedDevlyn'], [str(copy / 'SKILL.md')])
         self.assertEqual(self.plan(self.context('cursor'))['channels']['inheritedDevlyn'], [])
-
-    def test_cursor_plans_no_hook_on_windows(self):
-        # Prediction: on win32 no hook is planned (the bundle read compiles out how Windows runs a hook command):
-        # principles unavailable with platform-unexamined, skills still native from the release's config folder.
-        script = '''Object.defineProperty(process, 'platform', {value: 'win32'});
-const {planActivation} = require(process.argv[1]);
-process.stdout.write(JSON.stringify(planActivation(process.argv[2], JSON.parse(process.argv[3]))));'''
-        plan = json.loads(run(['node', '-e', script, self.package / 'bin/harness-activation.js', self.package,
-                               json.dumps(self.cursor())], env=self.env).stdout)
-        self.assertEqual((plan['files'], plan['prompt']), ([], None))
-        self.assertEqual(plan['engineArgs'], ['--plugin-dir', str(self.package / 'config')])
-        self.assertEqual(plan['channels']['principles'], {'state': 'unavailable', 'mechanism': None, 'reasons': [
-            {'code': 'principles-unavailable', 'params': {'detail': 'platform-unexamined'}}]})
-        self.assertEqual(plan['channels']['skills'], {'state': 'configured', 'mechanism': 'plugin-dir', 'reasons': []})
-        self.assertEqual(plan['channels']['overall'], 'partial')
 
     def test_projection_regular_idempotent_and_marker(self):
         original = self.account / 'config.toml'
