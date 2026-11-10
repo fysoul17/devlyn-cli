@@ -101,7 +101,10 @@ write config.toml. `prompt:null` leaves the original task untouched. A non-null
 prompt replaces the already requested task and retains its transport.
 
 The app writes each `files` entry exclusively under `runDir`, checks its SHA-256,
-and retains these bytes/hashes with session provenance. It performs `machineSync`
+and retains these bytes/hashes with session provenance. For Antigravity `runDir` must
+not be inside a Git repository: Antigravity reads an added folder's parents up to
+their repository root, so it would also load that repository's own `AGENTS.md`
+and `.agents`. It performs `machineSync`
 before launch, then splices `engineArgs` inside the monitored inner command and
 applies `envPatch` to that process. A sync conflict is not successful activation.
 No new task/model turn is created for an empty terminal.
@@ -197,9 +200,20 @@ inspected keeps the catalog.
 OpenCode merges known effective `skillsPaths` into inline `skills.paths`; absent/null keeps catalog fallback.
 Copilot appends a per-run apply-to-all instructions directory via `COPILOT_CUSTOM_INSTRUCTIONS_DIRS`.
 Kimi uses `--skills-dir` with project roots before user roots and release skills last; owner agents and resumed profiles remain unchanged.
-Cursor/Antigravity get the principles and the catalog only in a first task, ahead of its text (principles
+Cursor gets the principles and the catalog only in a first task, ahead of its text (principles
 partial with `principles-task-only`, skills through the catalog); without one nothing is delivered and both
 channels are unavailable (`no-initial-task`).
+Antigravity reads `AGENTS.md` and `.agents/skills` in every workspace folder, a folder added by `--add-dir`
+included, so it gets a per-run folder, `antigravity/`, that way in every launch mode (a conversation does not
+remember its added folders). Its `AGENTS.md` holds the defaults and the catalog, with no frontmatter; over
+24,000 bytes, where Antigravity truncates a rule file, it is not planned and principles are unavailable
+(`too-large`). Each skill gets `.agents/skills/<name>/SKILL.md`: the release skill's own `name` and
+`description` lines, then the release `SKILL.md` to follow with its folder as the skill's folder
+(`/devlyn-ideate`); a header that is not one complete line each fails the plan. A first task is left
+untouched. A devlyn name in a root Antigravity reads (`~/.gemini/antigravity-cli/skills`, `~/.gemini/skills`,
+`~/.gemini/config/skills`, and `.agents`, `.agent`, `_agents` or `_agent` `skills` from the working
+directory up to its Git root, or in the working directory alone outside a repository, whether or not the
+project is trusted yet) keeps the catalog.
 
 Tests: `python3 scripts/test-harness-activation.py --codex-probe` packs/extracts
 and tests the actual release. Set `TMPDIR` to the supplied scratch directory.

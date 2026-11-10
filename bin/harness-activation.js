@@ -153,7 +153,9 @@ function discoveryRoots(context, env, config) {
   }[engine];
   if (engine !== 'codex') add(native[0], 'skills');
   const copilotDefaultHome = !env.COPILOT_HOME || path.resolve(env.COPILOT_HOME) === path.join(home, '.copilot');
-  if (!['claude', 'cursor'].includes(engine) && (engine !== 'copilot' || copilotDefaultHome)) add(engine === 'pi' ? pi.agentsHome : home, '.agents/skills');
+  if (!['claude', 'cursor', 'antigravity'].includes(engine) && (engine !== 'copilot' || copilotDefaultHome)) add(engine === 'pi' ? pi.agentsHome : home, '.agents/skills');
+  // Antigravity's CLI also reads ~/.gemini/skills, and its personal folder ~/.gemini/config.
+  if (engine === 'antigravity') { add(home, '.gemini/skills'); add(home, '.gemini/config/skills'); }
   if (['omp', 'opencode', 'grok'].includes(engine)) add(home, '.claude/skills');
   if (engine === 'omp') {
     add(home, '.codex/skills'); add(home, '.agent/skills');
@@ -166,12 +168,19 @@ function discoveryRoots(context, env, config) {
   }
   if (engine === 'copilot') for (const dir of (config?.skillsDirs ?? env.COPILOT_SKILLS_DIRS ?? '').split(',').filter(Boolean)) add(context.cwd, dir);
   if (engine === 'pi') add(context.cwd, '.pi/skills');
+  const walk = [];
   for (let dir = path.resolve(context.cwd); ; dir = path.dirname(dir)) {
+    walk.push(dir);
+    if (fs.existsSync(path.join(dir, '.git'))) break;
+    // Outside any repository Antigravity reads the working directory alone.
+    if (dir === path.dirname(dir)) { if (engine === 'antigravity') walk.splice(1); break; }
+  }
+  for (const dir of walk) {
     if (native[1]) add(dir, native[1], 'skills');
     if (!['claude', 'cursor'].includes(engine)) add(dir, '.agents/skills');
     if (['grok', 'omp', 'opencode', 'copilot'].includes(engine)) add(dir, '.claude/skills');
     if (['omp', 'antigravity'].includes(engine)) add(dir, '.agent/skills');
-    if (fs.existsSync(path.join(dir, '.git')) || dir === path.dirname(dir)) break;
+    if (engine === 'antigravity') { add(dir, '_agents/skills'); add(dir, '_agent/skills'); }
   }
   return [...new Set(roots)];
 }
@@ -379,6 +388,27 @@ function skillCatalog(release, paths = path) {
     `This session's _shared folder is ${paths.join(root, '_shared')}.`,
     'Use that absolute folder wherever the Devlyn defaults name _shared/.',
   ].join('\n');
+}
+
+// A skill entry of Antigravity's run folder: the release skill's own name and description lines as
+// written, then the release SKILL.md to follow. A copy cannot be planned (plan files are text and the
+// skills carry scripts), and since 1.5.2 Antigravity skips a link or a manifest entry that leads outside
+// the added folder. Each line must be one complete top-level entry, or the plan fails.
+function antigravitySkill(release, name) {
+  const dir = path.join(release.root, 'config/skills', name);
+  const file = path.join(dir, 'SKILL.md');
+  const text = fs.readFileSync(file, 'utf8').replace(/\r\n/g, '\n');
+  const end = text.startsWith('---\n') ? text.indexOf('\n---\n', 3) : -1;
+  const lines = end < 0 ? [] : text.slice(4, end).split('\n');
+  const header = ['name', 'description'].map((field) => {
+    const at = lines.flatMap((line, index) => (line.startsWith(`${field}:`) ? [index] : []));
+    if (at.length !== 1 || !lines[at[0]].slice(field.length + 1).trim() || /^\s/.test(lines[at[0] + 1] ?? '')) {
+      fail('config-unreadable', { path: file, field }, 1);
+    }
+    return lines[at[0]];
+  });
+  return `---\n${header.join('\n')}\n---\nRead ${file} and follow it as this skill. `
+    + `Its folder, ${dir}, is the skill's folder (DEVLYN_SKILL_DIR), not the folder of this file.\n`;
 }
 
 function codexRegistrations(config, accountHome) {
@@ -645,7 +675,25 @@ function planActivation(releaseRoot, input, env = process.env) {
         } else fallback([...collisions, ...errors, ...kimi.errors]);
       }
       break;
-    case 'antigravity':
+    case 'antigravity': {
+      // Antigravity reads AGENTS.md (always on) and .agents/skills in every workspace folder, and a folder
+      // given by --add-dir is one. A conversation does not remember its added folders, so every launch mode
+      // passes it again. It truncates a rule file over 24,000 bytes.
+      const folder = 'antigravity', bytes = Buffer.byteLength(instructions), maximum = 24000;
+      if (bytes > maximum) {
+        status.principles = channel('unavailable', null, [reason('principles-unavailable', { detail: 'too-large', bytes, maximum })]);
+      } else {
+        file(`${folder}/AGENTS.md`, instructions);
+        principles('add-dir');
+      }
+      if (collisions.length || errors.length) fallback([...collisions, ...errors], bytes <= maximum);
+      else {
+        for (const name of SKILLS) file(`${folder}/.agents/skills/${name}/SKILL.md`, antigravitySkill(release, name));
+        native('add-dir', 'slash', '/devlyn-ideate');
+      }
+      if (plan.files.length) plan.engineArgs.push('--add-dir', path.join(context.runDir, folder));
+      break;
+    }
     case 'cursor':
       // Only a first task carries the principles and the catalog: without one nothing reaches the session.
       if (context.initialPrompt) {
