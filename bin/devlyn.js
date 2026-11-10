@@ -2443,8 +2443,9 @@ function cleanupCommand(args) {
   console.log = (...parts) => process.stderr.write(`${parts.join(' ')}\n`);
   if (opts.plan) {
     // Every process a passive count starts inherits this, so no Git process, the queue inspection's
-    // included, fetches missing objects or takes optional locks.
-    if (opts['checkout-only']) Object.assign(process.env, { GIT_NO_LAZY_FETCH: '1', GIT_OPTIONAL_LOCKS: '0' });
+    // included, fetches missing objects or takes optional locks. Git before 2.45 ignores
+    // GIT_NO_LAZY_FETCH; every Git refuses all transports under GIT_ALLOW_PROTOCOL=none.
+    if (opts['checkout-only']) Object.assign(process.env, { GIT_NO_LAZY_FETCH: '1', GIT_ALLOW_PROTOCOL: 'none', GIT_OPTIONAL_LOCKS: '0' });
     return cleanupPlan({ machine: Boolean(opts.machine), projects: opts.project || [], accountHomes: opts['account-home'] || [] },
       Boolean(opts['checkout-only']));
   }
