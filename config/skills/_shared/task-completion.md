@@ -119,7 +119,9 @@ Git config `devlyn.warmBuildDirs` is true, or it is unset and the Cargo workspac
 Cargo.toml sets `[workspace.metadata.devlyn] warm-build-dirs = true`,
 allocation seeds that directory from a built checkout of the repository, so
 the first build does not rebuild every dependency; `build_dirs` in its result
-and receipt says what it did, and a skip means an ordinary cold build. `warm-build-dirs.py <worktree>` does the same for a
+and receipt says what it did, and a skip means an ordinary cold build. Seeding
+keeps dependency outputs that may hold the other checkout's paths, and those
+follow that checkout's later rebuilds. `warm-build-dirs.py <worktree>` does the same for a
 worktree made without allocation. A warmed directory leaves with the worktree
 after merge, so a pending, failed or local-only task keeps it.
 
