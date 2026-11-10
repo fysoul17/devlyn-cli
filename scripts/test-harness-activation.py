@@ -30,6 +30,8 @@ VERSIONS = dict(claude='2.1.307', codex='0.163.0', grok='1.0.62', omp='16.5.0',
                 kimi='2.3.0', copilot='1.0.98', qwen='0.26.0', pi='1.4.0')
 # The version a run-folder channel was examined on, where it is later than the engine's floor.
 CHANNEL_VERSIONS = dict(antigravity='1.5.4', cursor='2026.11.05-86047df')
+# Stands in for Windows in plan_in_node.
+WINDOWS = "Object.defineProperty(process, 'platform', {value: 'win32'});"
 
 
 class ActivationTests(unittest.TestCase):
@@ -1032,10 +1034,10 @@ process.stdout.write(JSON.stringify(JSON.parse(process.argv[2]).map(([cwd, env, 
             'reasons': [{'code': 'config-unreadable', 'params': {'path': str(project), 'detail': 'ELOOP'}}]})
         self.assertEqual(unreadable['channels']['skills']['mechanism'], 'skills.customDirectories')
 
-    def first_task_plan(self, ctx, params):
+    def first_task_plan(self, ctx, params, code=None):
         # The whole plan 4.3.29 made for Cursor and Antigravity: a first task carries the principles and the catalog
-        # ahead of the owner's text; without one nothing is injected, both channels are unavailable with `params`,
-        # and the release is still named.
+        # ahead of the owner's text; without one nothing is injected, both channels are unavailable with `params`
+        # (and `code`, by default each channel's own), and the release is still named.
         prompt = ctx['initialPrompt']
         channels = {'engine': ctx['engine'], 'version': ctx['version'], 'accountRef': 'fixture',
                     'hide': {'state': 'disabled', 'mechanism': None, 'reasons': []},
@@ -1047,7 +1049,7 @@ process.stdout.write(JSON.stringify(JSON.parse(process.argv[2]).map(([cwd, env, 
                             skills={'state': 'partial', 'mechanism': 'absolute-catalog', 'reasons': [{'code': 'skills-catalog', 'params': {}}]})
         else:
             channels.update(overall='unavailable', invocation=None, **{name: {'state': 'unavailable', 'mechanism': None,
-                'reasons': [{'code': f'{name}-unavailable', 'params': params}]} for name in ('principles', 'skills')})
+                'reasons': [{'code': code or f'{name}-unavailable', 'params': params}]} for name in ('principles', 'skills')})
         return {'schemaVersion': 1, 'release': self.release, 'engineArgs': [],
                 'envPatch': {'DEVLYN_HARNESS_ROOT': str(self.package)} if prompt else {},
                 'prompt': {**prompt, 'text': self.instructions() + '\n\n' + prompt['text']} if prompt else None,
@@ -1055,15 +1057,17 @@ process.stdout.write(JSON.stringify(JSON.parse(process.argv[2]).map(([cwd, env, 
 
     def test_initial_task_is_preserved_and_never_synthesized(self):
         # Prediction: below the version its channel was examined on, Cursor (2025.09.12 and 2026.11.04) and Antigravity
-        # (1.4.4 and 1.5.3) get the plan 4.3.29 made, whole: only a first task carries the principles and the catalog,
-        # in every launch mode.
+        # (1.4.4 and 1.5.3) get the plan 4.3.29 made, whole, in every launch mode: only a first task carries the
+        # principles and the catalog. Without one both channels name that version as the minimum, since updating the
+        # engine is all it takes.
         for engine, version in [('cursor', VERSIONS['cursor']), ('cursor', '2026.11.04-abcdef1'), ('antigravity', '1.4.4'),
                                 ('antigravity', '1.5.3')]:
             for mode in ('fresh', 'resume', 'fork'):
                 for prompt in (None, *({'text': 'Task "quotes" \\ 한국어\n끝', 'transport': transport} for transport in ('argv', 'stdin'))):
                     with self.subTest(engine=engine, version=version, mode=mode, prompt=prompt):
                         ctx = {**self.context(engine), 'version': version, 'launchMode': mode, 'initialPrompt': prompt}
-                        self.assertEqual(self.plan(ctx), self.first_task_plan(ctx, {'detail': 'no-initial-task'}))
+                        self.assertEqual(self.plan(ctx), self.first_task_plan(
+                            ctx, {'minimum': CHANNEL_VERSIONS[engine]}, 'engine-version-unsupported'))
 
     def private_run_dir(self):
         # The run-folder channels are planned only off Windows, and only where every directory from the run directory
@@ -1090,14 +1094,15 @@ process.stdout.write(JSON.stringify(planActivation(process.argv[2], JSON.parse(p
 
     def test_run_folder_channels_are_not_planned_on_windows(self):
         # Prediction: on win32, where both channels are unexamined and a folder's owner cannot be read, Antigravity and
-        # Cursor on their examined versions get the plan 4.3.29 made, whole, with platform-unexamined in place of
-        # no-initial-task.
-        for engine, version in CHANNEL_VERSIONS.items():
-            for prompt in (None, {'text': 'owner task', 'transport': 'argv'}):
-                with self.subTest(engine=engine, prompt=prompt):
-                    ctx = {**self.context(engine), 'version': version, 'initialPrompt': prompt}
-                    plan = self.plan_in_node(ctx, "Object.defineProperty(process, 'platform', {value: 'win32'});")
-                    self.assertEqual(plan, self.first_task_plan(ctx, {'detail': 'platform-unexamined'}))
+        # Cursor at their floors and on their examined versions get the plan 4.3.29 made, whole, with
+        # platform-unexamined when nothing is delivered: updating the engine would not help there.
+        for engine in CHANNEL_VERSIONS:
+            for version in (VERSIONS[engine], CHANNEL_VERSIONS[engine]):
+                for prompt in (None, {'text': 'owner task', 'transport': 'argv'}):
+                    with self.subTest(engine=engine, version=version, prompt=prompt):
+                        ctx = {**self.context(engine), 'version': version, 'initialPrompt': prompt}
+                        plan = self.plan_in_node(ctx, WINDOWS)
+                        self.assertEqual(plan, self.first_task_plan(ctx, {'detail': 'platform-unexamined'}))
 
     def test_antigravity_run_folder_only_where_it_is_safe(self):
         # Prediction: Antigravity 1.5.4 loads a Git root's own agents and hooks above an added folder with no trust
@@ -1105,28 +1110,34 @@ process.stdout.write(JSON.stringify(planActivation(process.argv[2], JSON.parse(p
         # write. So a run directory with a .git entry of any kind at its folder or above it (a folder, a linked
         # worktree's file, a dangling link) or with a directory from it up that its group or everyone can write gets
         # the 4.3.29 plan, with run-dir-unsafe and the failing directory when nothing is delivered. The resolved path
-        # decides: a link into a repository is refused, and a safe run directory, also one that does not exist yet, is
-        # planned with its resolved path.
+        # decides: a link into a repository is refused, and a safe run directory, also one that does not exist yet or
+        # whose folder is already a directory of the user's, is planned with its resolved path. The folder itself is
+        # checked as it is, not through a link: as a link into a repository, or open to its group, it is refused.
         self.assertEqual(self.plan(self.agy())['engineArgs'], ['--add-dir', str(self.run_dir / 'antigravity')])
-        real = self.case / 'real'
+        real, mine = self.case / 'real', self.case / 'mine'
         real.mkdir()
+        (mine / 'antigravity').mkdir(parents=True)
         (self.case / 'link').symlink_to(real, target_is_directory=True)
-        for given, resolved in [(self.case / 'absent/run', self.case / 'absent/run'), (self.case / 'link/run', real / 'run')]:
+        for given, resolved in [(self.case / 'absent/run', self.case / 'absent/run'), (self.case / 'link/run', real / 'run'),
+                                (mine, mine)]:
             with self.subTest(run_dir=given):
                 self.assertEqual(self.plan(self.agy(runDir=str(given)))['engineArgs'], ['--add-dir', str(resolved / 'antigravity')])
-        linked, dangling, group, shared = (self.case / name for name in ('linked', 'dangling', 'group', 'shared'))
-        for folder in (linked, dangling, group, shared):
-            folder.mkdir()
+        linked, dangling, group, shared, aliased, opened = (self.case / name for name in (
+            'linked', 'dangling', 'group', 'shared', 'aliased', 'opened'))
+        for folder in (linked, dangling, group, shared, aliased, opened / 'antigravity'):
+            folder.mkdir(parents=True)
         (linked / '.git').write_text('gitdir: /elsewhere/.git/worktrees/linked\n')
         (dangling / '.git').symlink_to(self.case / 'missing')
         (self.case / 'alias').symlink_to(self.project / 'sub', target_is_directory=True)
+        (aliased / 'antigravity').symlink_to(self.project / 'sub', target_is_directory=True)
         (self.project / 'sub').mkdir()
         group.chmod(0o775)
         shared.chmod(0o777)
+        (opened / 'antigravity').chmod(0o775)
         (self.run_dir / '.git').mkdir()
         cases = [(self.project / '.devlyn/runs/r1', self.project), (linked / 'run', linked), (self.run_dir, self.run_dir),
                  (dangling / 'run', dangling), (self.case / 'alias/run', self.project), (group / 'run', group),
-                 (shared / 'run', shared)]
+                 (shared / 'run', shared), (aliased, aliased / 'antigravity'), (opened, opened / 'antigravity')]
         for run_dir, unsafe in cases:
             for prompt in (None, {'text': 'owner task', 'transport': 'argv'}):
                 with self.subTest(run_dir=run_dir, prompt=prompt):
@@ -1277,6 +1288,27 @@ process.stdout.write(JSON.stringify(planActivation(process.argv[2], JSON.parse(p
         self.assertEqual(plan['channels']['skills']['reasons'][0],
                          {'code': 'name-collision', 'params': {'name': 'devlyn-ideate', 'path': str(copy / 'SKILL.md')}})
 
+    def test_antigravity_without_its_run_folder_searches_the_skill_folders_4_3_29_searched(self):
+        # Prediction: the planner searches the skill folders Antigravity 1.5.4 reads only where Antigravity can get its
+        # run folder. Below 1.5.4 and on Windows it searches what 4.3.29 searched, and the plan is 4.3.29's whole: a copy
+        # of the release's own skill in ~/.agents/skills is inherited, one in ~/.gemini/skills is not. From 1.5.4 on, off
+        # Windows, the reverse.
+        agents, gemini = self.home / '.agents/skills/devlyn-ideate', self.home / '.gemini/skills/devlyn-ideate'
+        for copy in (agents, gemini):
+            shutil.copytree(self.package / 'config/skills/devlyn-ideate', copy)
+        hide = {'state': 'partial', 'mechanism': None, 'reasons': [{'code': 'skills-unavailable', 'params': {'channel': 'selective-hide'}}]}
+        older = {**self.context('antigravity'), 'version': '1.5.3', 'initialPrompt': {'text': 'owner task', 'transport': 'argv'}}
+        examined = {**older, 'version': CHANNEL_VERSIONS['antigravity']}
+        for label, ctx, plan in [('1.5.3', older, self.plan(older)), ('win32', examined, self.plan_in_node(examined, WINDOWS))]:
+            with self.subTest(label):
+                expected = self.first_task_plan(ctx, {})
+                expected['channels'].update(inheritedDevlyn=[str(agents / 'SKILL.md')], hide=hide)
+                self.assertEqual(plan, expected)
+        if os.name == 'nt':
+            return
+        channels = self.plan(examined)['channels']
+        self.assertEqual((channels['inheritedDevlyn'], channels['hide']), ([str(gemini / 'SKILL.md')], hide))
+
     def cursor(self, **changes):
         # A Cursor context on the build its plugin folder was examined on, in a private temp folder.
         self.private_run_dir()
@@ -1333,17 +1365,22 @@ process.stdout.write(JSON.stringify(planActivation(process.argv[2], JSON.parse(p
         # Prediction: the hook is a command Cursor runs, so with a directory from the run directory up that its group or
         # everyone can write, or with no /bin/cat, no hook is planned and the principles reach Cursor exactly as on an
         # older build (ahead of a first task with principles-task-only, or unavailable with run-dir-unsafe and the
-        # failing directory, or platform-unexamined); the skills still come natively from the release. A run directory
-        # inside a repository keeps the hook: Cursor does not walk up to a Git root.
+        # failing directory, or platform-unexamined); the skills still come natively from the release. The plugin folder
+        # is checked as it is: as a link, wherever it leads, it is refused, and as a directory of the user's it is
+        # planned. A run directory inside a repository keeps the hook: Cursor does not walk up to a Git root.
         examined = self.cursor()
-        group, shared = self.case / 'group', self.case / 'shared'
+        group, shared, aliased, elsewhere, mine = (self.case / name for name in ('group', 'shared', 'aliased', 'elsewhere', 'mine'))
         for folder, mode in ((group, 0o775), (shared, 0o777)):
             folder.mkdir()
             folder.chmod(mode)
+        for folder in (aliased, elsewhere, mine / 'cursor'):
+            folder.mkdir(parents=True)
+        (aliased / 'cursor').symlink_to(elsewhere, target_is_directory=True)
         no_cat = "const fs = require('fs'), stat = fs.statSync;\n" \
                  "fs.statSync = (file, ...rest) => (file === '/bin/cat' ? undefined : stat(file, ...rest));"
         cases = [(group / 'run', {'detail': 'run-dir-unsafe', 'path': str(group)}, None),
                  (shared / 'run', {'detail': 'run-dir-unsafe', 'path': str(shared)}, None),
+                 (aliased, {'detail': 'run-dir-unsafe', 'path': str(aliased / 'cursor')}, None),
                  (self.run_dir, {'detail': 'platform-unexamined'}, no_cat)]
         for run_dir, params, patch in cases:
             for prompt in (None, {'text': 'owner task', 'transport': 'argv'}):
@@ -1356,14 +1393,16 @@ process.stdout.write(JSON.stringify(planActivation(process.argv[2], JSON.parse(p
                     self.assertEqual(plan['engineArgs'], ['--plugin-dir', str(self.package / 'config')])
                     self.assertEqual(plan['channels']['skills'], {'state': 'configured', 'mechanism': 'plugin-dir', 'reasons': []})
                     self.assertEqual(plan['channels']['invocation'], {'kind': 'slash', 'text': '/devlyn-ideate'})
-        in_repository = self.project / '.devlyn/runs/r1'
-        plan = self.plan({**examined, 'runDir': str(in_repository)})
-        self.assertEqual(plan['files'], self.cursor_files(self.instructions(), in_repository))
-        self.assertEqual(plan['channels']['principles'], {'state': 'configured', 'mechanism': 'session-start-hook', 'reasons': []})
+        for run_dir in (mine, self.project / '.devlyn/runs/r1'):
+            with self.subTest(run_dir=run_dir):
+                plan = self.plan({**examined, 'runDir': str(run_dir)})
+                self.assertEqual(plan['files'], self.cursor_files(self.instructions(), run_dir))
+                self.assertEqual(plan['channels']['principles'], {'state': 'configured', 'mechanism': 'session-start-hook', 'reasons': []})
 
     def test_cursor_resumed_or_forked_chat_keeps_what_it_began_with(self):
         # Prediction: resume and fork get the same files and arguments as a fresh pane, but a resumed chat runs no hook
-        # and keeps the text its first launch had, so principles are partial with principles-session-start-only.
+        # and keeps the text its first launch had, so principles are partial with principles-session-start-only; a fork,
+        # whose delivery is not established, is reported the same way.
         fresh = self.plan(self.cursor())
         for mode, recorded in [('resume', {}), ('resume', {'recordedRelease': self.release}), ('fork', {}),
                                ('fork', {'recordedRelease': self.release})]:

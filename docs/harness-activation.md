@@ -108,16 +108,18 @@ No new task/model turn is created for an empty terminal.
 
 A folder Antigravity or Cursor loads is planned in `runDir` only where it is safe. The
 planner resolves `runDir` (the real path of its deepest existing part, any missing rest
-appended), checks that path and gives the engine that path. Every existing level from
-`runDir` up to the filesystem root must be a directory owned by the current user or root
-that grants no write to group or others, or another user could put a `.git` or a folder of
-their own there later; a level that does not exist yet is skipped, and access-control lists
-are not evaluated. For Antigravity no directory from its folder up to the root may hold a
-`.git` entry of any kind either: it loads the agents and hooks of a Git root above an added
-folder with no trust check, so a caller wanting that channel passes a `runDir` outside the
-project. A refusal names the directory that failed (`run-dir-unsafe`). On Windows neither
-engine gets anything new (`platform-unexamined`): both channels were examined on macOS,
-and Windows cannot show who owns a folder.
+appended), checks the engine's folder in that path (`antigravity/` or `cursor/`) and gives
+the engine that path. Every existing level from that folder up to the filesystem root, the
+folder included, must be a real directory (a link is not one) owned by the current user or
+root that grants no write to group or others, or another user could put a `.git` or a folder
+of their own there later; a level that does not exist yet is skipped, a level that cannot be
+read (`lstat` fails) refuses the folder, and access-control lists are not evaluated. For
+Antigravity no directory from its folder up to the root may hold a `.git` entry of any kind
+either: it loads the agents and hooks of a Git root above an added folder with no trust
+check, so a caller wanting that channel passes a `runDir` outside the project. A refusal
+names the directory that failed (`run-dir-unsafe`). On Windows neither engine gets anything
+new (`platform-unexamined`): both channels were examined on macOS, and Windows cannot show
+who owns a folder.
 
 Fresh selection uses the supplied release root. On resume/fork, a `recordedRelease`
 reference selects and verifies that exact release (even if the project choice is
@@ -176,7 +178,9 @@ Floors are the examined versions, not historical introduction claims. Any newer
 release, a new major included (a newer Cursor build), is taken as compatible: a
 version number is not evidence that a channel broke. A version below the floor is
 refused with `engine-version-unsupported` `{minimum}`; a missing or malformed
-version with `engine-version-unreadable`. Configured means prepared delivery,
+version with `engine-version-unreadable`. The version a run-folder channel was examined on
+(Antigravity, Cursor, below) refuses nothing: between the floor and that version an engine
+keeps the plan it had before the channel. Configured means prepared delivery,
 not a model obeyed instructions. Only the existing Claude/Codex executor adapters
 are supported. OMP explicitly declares `executor: no`.
 
@@ -212,8 +216,10 @@ Copilot appends a per-run apply-to-all instructions directory via `COPILOT_CUSTO
 Kimi uses `--skills-dir` with project roots before user roots and release skills last; owner agents and resumed profiles remain unchanged.
 Cursor builds before 2026.11.05, Antigravity below 1.5.4, both on Windows, and Antigravity with an unsafe
 run directory (above) get the principles and the catalog only in a first task, ahead of its text (principles
-partial with `principles-task-only`, skills through the catalog); without one nothing is delivered and both
-channels are unavailable (`no-initial-task`, `platform-unexamined` or `run-dir-unsafe`).
+partial with `principles-task-only`, skills through the catalog). Without one nothing is delivered: on Windows,
+whatever the version, both channels are unavailable (`platform-unexamined`); elsewhere, below the version its
+channel was examined on, both report `engine-version-unsupported` with that version as `{minimum}`, since
+updating the engine is all it takes, and with an unsafe run directory both are unavailable (`run-dir-unsafe`).
 From 2026.11.05-86047df, the build this was examined on, Cursor gets a per-run plugin folder, `cursor/`, by
 `--plugin-dir` in every launch mode, where the run directory is safe (above, the `.git` rule aside) and
 `/bin/cat` exists. Its `hooks/hooks.json` holds one `sessionStart` command hook,
@@ -221,9 +227,10 @@ From 2026.11.05-86047df, the build this was examined on, Cursor gets a per-run p
 folder is used), which Cursor runs when a session is created; it puts the printed `additional_context` (the
 defaults and the catalog, every non-ASCII character escaped) before the model as instructions and keeps it
 with the conversation. A text of 10,200 characters was delivered whole. A first task is left untouched. A
-resumed or forked chat runs no hook and keeps what its first launch had, so there principles are partial
-(`principles-session-start-only`). Otherwise Cursor gets the principles as an older build does
-(`run-dir-unsafe`, or `platform-unexamined` without `/bin/cat`). Skills come natively from
+resumed chat runs no hook and keeps what its first launch had (measured), so there principles are partial
+(`principles-session-start-only`); a fork is treated the same way, because what it gets is not established.
+Otherwise Cursor gets the principles as an older build does (`run-dir-unsafe`, or `platform-unexamined`
+without `/bin/cat`). Skills come natively from
 `--plugin-dir <release>/config` (`/devlyn-ideate`) whatever the run directory; a devlyn name in a folder Cursor
 reads (`.cursor`, `.agents`, `.claude`, `.codex` or `.grok` `skills` from the working directory up to its Git
 root and in the home folder, and `~/.cursor/skills-cursor`) keeps the catalog. Cursor also finds skills in
