@@ -348,10 +348,10 @@ if os.name == "nt":
                     os.set_handle_inheritable(handle, True)
                 startup = subprocess.STARTUPINFO()
                 startup.lpAttributeList = {"handle_list": inherited}
-                # The bootstrap starts its target from one command line, as Popen builds it from a list.
+                # A list travels element by element, a command line verbatim as one element; a mode word tells which.
                 command = [sys.executable, "-I", "-S", str(Path(__file__).resolve()), "--job-bootstrap",
                            str(inherited[0]), str(inherited[2]), str(inherited[1]),
-                           argv if isinstance(argv, str) else subprocess.list2cmdline(argv)]
+                           *(("line", argv) if isinstance(argv, str) else ("argv", *argv))]
                 # Retain the Popen object even if __init__ raises after native creation.
                 self.child = subprocess.Popen.__new__(subprocess.Popen)
                 self.creating = True
@@ -427,8 +427,12 @@ if os.name == "nt":
                                 raise OSError(f"WaitForSingleObject: unexpected result {result} for process {pid}")
 
     def _job_bootstrap(argv):
-        *ids, line = argv
-        job, allow, ready = map(int, ids)
+        job, allow, ready = map(int, argv[:3])
+        mode, command = argv[3], argv[4:]
+        if mode == "line":
+            command, = command
+        elif mode != "argv":
+            raise ValueError(f"unknown job target mode {mode!r}")
         with contextlib.ExitStack() as handles:
             allow_fd = msvcrt.open_osfhandle(allow, os.O_RDONLY | os.O_BINARY)
             handles.callback(os.close, allow_fd)
@@ -441,33 +445,44 @@ if os.name == "nt":
             os.write(ready_fd, b"R")
             if _read_control(allow_fd, 1) != b"G":
                 raise OSError("Windows job launch was not authorized")
-            with subprocess.Popen(line, stdin=sys.stdin.buffer, close_fds=True) as target:
+            with subprocess.Popen(command, stdin=sys.stdin.buffer, close_fds=True) as target:
                 os.write(ready_fd, target.pid.to_bytes(4, "little"))
                 return target.wait()
+
+
+def _signal_group(child, sig):
+    """Send `sig` to the child's process group; False once no member is left. An exited leader is reaped first: until
+    then it still counts as a member."""
+    child.poll()
+    try:
+        os.killpg(child.pid, sig)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        # EPERM: no member this process may signal. With the leader alive that is an error; with it exited, it is what
+        # macOS reports for a group that holds only that unreaped leader.
+        if child.poll() is None:
+            raise
+        return False
+    return True
 
 
 def terminate_tree(child, job=None):
     if job is not None:
         job.terminate()
         return
-    try:
-        os.killpg(child.pid, signal.SIGTERM)
-    except (ProcessLookupError, PermissionError):
-        # Gone, or only an unreaped leader remains (macOS reports EPERM for that group).
-        child.wait()
-        return
-    # Reap the leader and retain the grace period for its surviving descendants.
-    deadline = time.monotonic() + 5
-    try:
-        child.wait(timeout=5)
-    except subprocess.TimeoutExpired:
-        pass  # The leader also needs the final group KILL below.
-    time.sleep(max(0, deadline - time.monotonic()))
-    try:
-        os.killpg(child.pid, signal.SIGKILL)
-    except ProcessLookupError:
-        pass  # Every member already exited during the grace period.
-    child.wait()
+    # Members get SIGTERM and up to 5 s to leave, then SIGKILL; it returns only once the group is empty, since a member
+    # could still write what the caller reads next. A process that left the session by its own setsid is not owned:
+    # POSIX has no breakaway block.
+    for sig, seconds in ((signal.SIGTERM, 5), (signal.SIGKILL, 3)):
+        deadline = time.monotonic() + seconds
+        alive = _signal_group(child, sig)
+        while alive and time.monotonic() < deadline:
+            time.sleep(0.01)
+            alive = _signal_group(child, 0)
+        if not alive:
+            return
+    raise OSError(f"process group {child.pid} still has members after SIGKILL")
 
 
 def run_process(argv, stdin, seconds, *, heartbeat=0, on_timeout=124, **popen):
@@ -477,19 +492,33 @@ def run_process(argv, stdin, seconds, *, heartbeat=0, on_timeout=124, **popen):
     child = None
     job = _WindowsJob() if os.name == "nt" else None
     previous = {}
+    deferred = None  # While a list, a signal waits in it: a POSIX child's creation and the teardown are not interrupted.
 
     def interrupted(signum, _frame):
         # CPython stores the native handle only after CreateProcess's finally block.
         if job is not None and job.creating:
             job.interrupted_signal = signum
             return
+        if deferred is not None:
+            deferred.append(signum)
+            return
         raise SystemExit(128 + signum)
 
     try:
-        for sig in (signal.SIGTERM, signal.SIGINT):
+        handled = [signal.SIGTERM, signal.SIGINT]
+        if os.name != "nt" and signal.getsignal(signal.SIGHUP) is not signal.SIG_IGN:
+            # A closed terminal hangs up the runner, not the child's own session; an inherited ignore (nohup) stays.
+            handled.append(signal.SIGHUP)
+        for sig in handled:
             previous[sig] = signal.signal(sig, interrupted)
-        child = (job.start(argv, stdin, **popen) if job is not None
-                 else subprocess.Popen(argv, stdin=stdin, start_new_session=True, **popen))
+        if job is not None:
+            child = job.start(argv, stdin, **popen)
+        else:
+            deferred = []  # Raised inside Popen, a signal would leave the new session unowned.
+            child = subprocess.Popen(argv, stdin=stdin, start_new_session=True, **popen)
+            pending, deferred = deferred, None
+            if pending:
+                raise SystemExit(128 + pending[0])
         started = time.monotonic()
         next_heartbeat = started + heartbeat
         if heartbeat:
@@ -507,12 +536,16 @@ def run_process(argv, stdin, seconds, *, heartbeat=0, on_timeout=124, **popen):
                     print(f"[codex-monitored] heartbeat: elapsed={int(now-started)}s", file=sys.stderr, flush=True)
                     next_heartbeat = now + heartbeat
     finally:
+        if deferred is None:  # Teardown runs to its end; a signal that came during a failed start is kept.
+            deferred = []
         try:
             if job is not None or child is not None:
                 terminate_tree(child, job)
         finally:
             for sig, handler in previous.items():
                 signal.signal(sig, handler)
+            if deferred:  # A signal during teardown still ends the run, once the tree has ended.
+                raise SystemExit(128 + deferred[0])
 
 
 if __name__ == "__main__" and os.name == "nt":

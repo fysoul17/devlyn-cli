@@ -53,7 +53,7 @@ OBLIGATIONS = [
     "Work only in this worktree on its owned branch under the installed methodology; never edit the loop package or docs/specs/queue.md.",
     "Commit any source changes on the owned branch; when none are needed, use inputs_sha without creating an empty commit. Leave no uncommitted or untracked source and remove residue the change created.",
     "Run `runner` on the committed candidate; review records must bind engine, model, that source and both contract digests.",
-    "Write `submission` and exit; report a blocker instead of weakening acceptance.",
+    "Write `submission` as executor.md says and exit; never weaken acceptance.",
 ]
 
 
@@ -1221,8 +1221,8 @@ def ensure_packet(v, row, path, receipt):
         body = (f"Execute task packet {packet_path}. Work only in {worktree} on its owned branch.\n"
                 f"Read {binding['defaults']['path']} and apply it as defaults; explicit user and native owner/project instructions win, except a Devlyn managed block (devlyn:instructions markers), which these defaults replace.\n"
                 f"Set DEVLYN_SKILL_DIR={bound_skills / 'devlyn-ideate'} and DEVLYN_SHARED_DIR={bound_skills / '_shared'}.\n"
-                f"Follow {bound_skills / 'devlyn-ideate/references/executor.md'}.\n"
-                f"Meet the packet obligations, run its runner and write {packet['submission']}. Never push, open a pull request or merge.\n")
+                f"Follow {bound_skills / 'devlyn-ideate/references/executor.md'}: meet the packet obligations and write "
+                f"{packet['submission']} as it says. Never push, open a pull request or merge.\n")
         acceptance()["atomic_write"](prompt, body.encode("utf-8"))
         packet["workerPrompt"] = harness_call("file_identity", prompt)
     write_json(packet_path, packet)
@@ -1245,7 +1245,8 @@ def ensure_submission(identity, packet_path, packet, executor):
     An attempt's start is recorded before the spawn and its exit after the wait, so a start without an exit may have
     left a live executor: drain observes once and waits if it is active. Only established cessation permits adoption
     or another execution. Where writers cannot be observed the task fails as interrupted-unobservable. A submission
-    blocked only by infrastructure is retired once its writer has stopped, and the task waits to run again."""
+    blocked only by infrastructure is retired once its writers are observed to have stopped, and the task waits to run
+    again; where they cannot be observed, it fails the task with its blocker."""
     harness_call("verify_packet", packet, packet_path, SKILLS)
     submission = Path(packet["submission"])
     worktree = Path(packet["worktree"])
@@ -1310,10 +1311,19 @@ def ensure_submission(identity, packet_path, packet, executor):
 
 def retire_retryable(packet, submission):
     """Adopt a stopped executor's submission, unless only infrastructure blocks it (a kind earlier instructions offered):
-    that one is kept under a retired name, so no later drain adopts it, and the task waits for the next drain."""
+    once its writers are observed to have stopped, that one is kept under a retired name, so no later drain adopts it,
+    and the task waits for the next drain. While a writer is active it waits in place."""
     causes = acceptance()["infrastructure_causes"](packet, submission)
     if causes is None:
         return None
+    helper = shared("task-complete")
+    try:
+        helper["stopped_writers"](Path(packet["worktree"]))
+    except helper["WriterActive"] as exc:
+        raise Waiting(f"executor reported a cause a later run can clear, but a writer is still active: {exc}; "
+                      "the next drain decides again") from exc
+    except (helper["CompletionError"], OSError):
+        return None  # Unobservable: another run could start beside a live writer, so the blocker fails the task.
     retired = next(path for number in itertools.count(1)
                    if not (path := submission.with_name(f"submission.retired-{number}.json")).exists())
     submission.rename(retired)

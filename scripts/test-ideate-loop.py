@@ -88,6 +88,15 @@ if behavior.get("hold"):
     while not flag.exists():
         time.sleep(0.05)
     config_path.with_name("holder.pid").write_text(str(holder.pid))
+if behavior.get("linger"):  # a child that outlives the executor, holding a worktree file open until released
+    held = work / ".devlyn" / "loop" / "lingering"
+    child = subprocess.Popen([sys.executable, "-c", "import pathlib, sys, time\nwith open(sys.argv[1], 'w'):\n"
+                              "    while not pathlib.Path(sys.argv[2]).exists():\n        time.sleep(0.05)\n",
+                              str(held), str(config_path.with_name("linger-release"))],
+                             stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+    config_path.with_name("linger.pid").write_text(str(child.pid))
+    while not held.exists():
+        time.sleep(0.05)
 pathlib.Path(packet["submission"]).write_text(json.dumps(submission), encoding="utf-8")
 '''
 # Runs the driver where task-complete cannot observe writers, as on native Windows (a no-op there).
@@ -2907,34 +2916,66 @@ class LoopFixture(unittest.TestCase):
         self.assertEqual({identity: task["result"] for identity, task in tasks.items()}, {"aa.t1": "accepted", "aa.t2": "accepted", "bb.t1": "accepted"})
         self.assertEqual((self.calls("aa.t1"), self.calls("aa.t2"), self.calls("bb.t1")), (2, 1, 1))
 
-    def test_a_submission_blocked_only_by_infrastructure_waits_and_runs_again(self):
+    @unittest.skipIf(os.name == "nt", "writer observation requires POSIX")
+    def test_a_submission_blocked_only_by_infrastructure_waits_for_its_writers_and_runs_again(self):
         # Prediction (C5): an otherwise valid submission whose only blocker is the blocked-infrastructure kind earlier
-        # instructions offered leaves aa.t1 active, waiting with its cause and the retired file's path, with no terminal
-        # commit and its dependent pending; the file is kept under that name, the report names the cause, and the next drain
-        # runs the executor again instead of adopting it and accepts the loop. A submission that also carries a product
-        # blocker still fails bb.t1 with both reasons and never runs again. Before: aa.t1 became [F] blocked-infrastructure
-        # and aa.t2 blocked-prerequisite, and no drain ran either again.
+        # instructions offered, from an executor that exits while a child of it still holds a worktree file open, leaves
+        # aa.t1 active, waiting for that writer with the submission in place and its dependent pending. Once the child has
+        # ended, the next drain retires the submission without running the executor: aa.t1 waits with its cause and the
+        # retired file's path, kept under that name and named in the report, with no terminal commit. The drain after that
+        # runs the executor again and accepts the loop. Before: the first C5 commit retired the submission while the child
+        # could still write, and before C5 aa.t1 became [F] blocked-infrastructure and was never run again.
+        infrastructure = {"kind": "blocked-infrastructure", "detail": "package registry unreachable"}
+        self.plan("aa", CHAIN, {"aa.t1": {"check_only": True, "runner": False, "review": False, "blockers": [infrastructure],
+                                          "linger": True}, "aa.t2": {"product": "app"}})
+        release = self.config.with_name("linger-release")
+        self.addCleanup(release.touch)
+        tasks = self.tasks(self.drain())
+        submission = Path(json.loads((self.receipt_path("aa.t1").parent / "packet.json").read_text(encoding="utf-8"))["submission"])
+        retired = submission.with_name("submission.retired-1.json")
+        waiting = "executor reported a cause a later run can clear, but a writer is still active: active process "
+        self.assertTrue(tasks["aa.t1"]["reason"].startswith(waiting), tasks["aa.t1"]["reason"])
+        self.assertEqual((tasks["aa.t1"]["result"], tasks["aa.t2"]["result"], submission.exists(), retired.exists()),
+                         ("active", "pending", True, False))
+        release.touch()
+        lingering, deadline = int(self.config.with_name("linger.pid").read_text()), time.monotonic() + 30
+        while True:
+            try:
+                os.kill(lingering, 0)
+            except ProcessLookupError:
+                break
+            self.assertLess(time.monotonic(), deadline)
+            time.sleep(0.05)
+        tasks = self.tasks(self.drain())
+        reason = f"executor reported a cause a later run can clear: package registry unreachable (see {retired}); the next drain runs it again"
+        self.assertEqual({identity: (task["result"], task.get("reason")) for identity, task in tasks.items()}, {
+            "aa.t1": ("active", reason), "aa.t2": ("pending", "waiting for aa.t1 (active)")})
+        self.assertEqual((tasks["aa.t1"].get("terminal"), submission.exists(), json.loads(retired.read_text(encoding="utf-8"))["blockers"],
+                          self.calls("aa.t1")), (None, False, [infrastructure], 1))
+        self.assertIn(reason, self.report("aa"))
+        self.behaviors["aa.t1"] = {"product": "greeting"}
+        tasks = self.tasks(self.drain())
+        self.assertEqual({identity: task["result"] for identity, task in tasks.items()}, {"aa.t1": "accepted", "aa.t2": "accepted"})
+        self.assertEqual((self.calls("aa.t1"), self.calls("aa.t2"), retired.is_file()), (2, 1, True))
+
+    def test_where_writers_cannot_be_observed_an_infrastructure_blocker_fails_as_before(self):
+        # Prediction (C5 review): where writers cannot be observed, as on native Windows, a submission blocked only by the
+        # blocked-infrastructure kind fails aa.t1 with that blocker and blocks its dependent, as before C5, since another
+        # run could start beside a live writer; one that also carries a product blocker fails bb.t1 with both reasons.
+        # Before: the first C5 commit retired aa.t1's submission without observing its writers.
         infrastructure = {"kind": "blocked-infrastructure", "detail": "package registry unreachable"}
         blocked = {"check_only": True, "runner": False, "review": False}
         self.plan("aa", CHAIN, {"aa.t1": {**blocked, "blockers": [infrastructure]}, "aa.t2": {"product": "app"}})
         self.plan("bb", [("t1", [], "Notes", [NOTES_CHECK])],
                   {"bb.t1": {**blocked, "blockers": [infrastructure, {"kind": "failed", "detail": "notes format undecided"}]}})
-        tasks = self.tasks(self.drain())
-        submission = Path(json.loads((self.receipt_path("aa.t1").parent / "packet.json").read_text(encoding="utf-8"))["submission"])
-        retired = submission.with_name("submission.retired-1.json")
-        reason = f"executor reported a cause a later run can clear: package registry unreachable (see {retired}); the next drain runs it again"
-        self.assertEqual({identity: (task["result"], task.get("reason")) for identity, task in tasks.items()}, {
-            "aa.t1": ("active", reason), "aa.t2": ("pending", "waiting for aa.t1 (active)"),
+        tasks = self.tasks(self.drain(unobservable=True))
+        self.assertEqual({identity: (task["result"], task.get("reason")) for identity, task in tasks.items() if identity != "aa.t2"}, {
+            "aa.t1": ("failed", "blocked-infrastructure: package registry unreachable"),
             "bb.t1": ("failed", "blocked-infrastructure: package registry unreachable")})
-        self.assertEqual((tasks["aa.t1"].get("terminal"), submission.exists(), json.loads(retired.read_text(encoding="utf-8"))["blockers"]),
-                         (None, False, [infrastructure]))
-        self.assertIn(reason, self.report("aa"))
+        self.assertEqual(tasks["aa.t2"]["result"], "blocked")
         self.assertEqual(self.receipt("bb.t1")["acceptance"]["reasons"],
                          ["blocked-infrastructure: package registry unreachable", "failed: notes format undecided"])
-        self.behaviors["aa.t1"] = {"product": "greeting"}
-        tasks = self.tasks(self.drain())
-        self.assertEqual({identity: task["result"] for identity, task in tasks.items()}, {"aa.t1": "accepted", "aa.t2": "accepted", "bb.t1": "failed"})
-        self.assertEqual((self.calls("aa.t1"), self.calls("aa.t2"), self.calls("bb.t1"), retired.is_file()), (2, 1, 1, True))
+        self.assertEqual((self.calls("aa.t1"), self.calls("aa.t2"), self.calls("bb.t1")), (1, 0, 1))
 
     def test_unobservable_interrupted_execution_fails_only_that_task(self):
         self.plan("a", CHAIN, {"a.t1": {"product": "greeting", "hang": True}, "a.t2": {"product": "app"}})

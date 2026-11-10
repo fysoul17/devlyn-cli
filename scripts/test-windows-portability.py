@@ -3592,7 +3592,7 @@ else:
         # bootstrap; on_timeout replaces only the deadline's result, so a genuine exit 124 stays 124.
         cwd, output = self.work / 'cwd', self.work / 'output'
         cwd.mkdir()
-        line = f'"{os.environ["ComSpec"]}" /d /s /c "echo "%FIXTURE%">marker&echo done"'
+        line = f'"{os.environ["ComSpec"]}" /c "echo "%FIXTURE%">marker&echo done"'
         with output.open('wb', buffering=0) as stream:
             code = self.platform['run_process'](line, subprocess.DEVNULL, 20, on_timeout=None, cwd=cwd,
                                                 env={**os.environ, 'FIXTURE': 'a b'}, stdout=stream, stderr=stream)
@@ -3602,6 +3602,16 @@ else:
         self.assertEqual(self.platform['run_process'](exit124, subprocess.DEVNULL, 20, on_timeout=None), 124)
         self.assert_all_ceased()
         print('native command line verbatim with cwd, env and streams; timeout distinct from exit 124', flush=True)
+
+    def test_list_argv_is_quoted_once(self):
+        # 9,000 quotes take 18,000 characters quoted once and 36,000 quoted twice, past the 32,767-character command
+        # line: a list reaches the bootstrap element by element, never as one pre-joined command line.
+        quotes, output = '"' * 9000, self.work / 'quotes'
+        script = 'import pathlib, sys; pathlib.Path(sys.argv[1]).write_text(sys.argv[2], encoding="utf-8")'
+        self.assertEqual(self.platform['run_process']([sys.executable, '-c', script, str(output), quotes], subprocess.DEVNULL, 20), 0)
+        self.assertEqual(output.read_text(encoding='utf-8'), quotes)
+        self.assert_all_ceased()
+        print('native list argv of 9,000 quotes round-trips through the job bootstrap', flush=True)
 
     def test_error_after_native_launch_before_authorization(self):
         actual = subprocess.Popen
