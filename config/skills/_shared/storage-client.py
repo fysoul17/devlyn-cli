@@ -1515,7 +1515,7 @@ def queue_handoff(common, binding):
         return drain if managed else None
     return ('this queue waits for the tasks in progress here: ' + '; '.join(holders)
             + ". Finish each with this release, and follow any resume a refusal names; a moved task's resume releases it and keeps its files; "
-            + '`recover-storage --for-removal` removes one only when the owner says so (task-completion.md); '
+            + '`recover-storage --for-removal` removes one only when the owner says so (managed-storage.md); '
             + ('then start it with Drain in Devlyn' if managed else 'then run this again'))
 
 

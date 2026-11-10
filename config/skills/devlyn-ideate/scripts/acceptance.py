@@ -7,7 +7,8 @@ requires the owned committed source, reuses the intact outcomes of a wholly clea
 runner result for the same source and contract, executes the rest, evaluates
 file/diff guards, confirms the source is unchanged and checks review records. A
 malformed executor record fails acceptance with its reason. An executor's summary
-verdict is never evidence. Protocol: ../references/loop.md.
+verdict is never evidence. Protocol: ../references/loop.md; submission and review
+records: ../references/executor.md.
 """
 from __future__ import annotations
 
