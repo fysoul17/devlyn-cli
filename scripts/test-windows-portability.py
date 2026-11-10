@@ -3587,6 +3587,22 @@ else:
         self.assert_all_ceased()
         print('native target CREATE_BREAKAWAY_FROM_JOB refused with access denied', flush=True)
 
+    def test_command_line_streams_cwd_env_and_timeout_result(self):
+        # A command line reaches cmd.exe verbatim, quotes included; cwd, env and streams reach the target through the
+        # bootstrap; on_timeout replaces only the deadline's result, so a genuine exit 124 stays 124.
+        cwd, output = self.work / 'cwd', self.work / 'output'
+        cwd.mkdir()
+        line = f'"{os.environ["ComSpec"]}" /d /s /c "echo "%FIXTURE%">marker&echo done"'
+        with output.open('wb', buffering=0) as stream:
+            code = self.platform['run_process'](line, subprocess.DEVNULL, 20, on_timeout=None, cwd=cwd,
+                                                env={**os.environ, 'FIXTURE': 'a b'}, stdout=stream, stderr=stream)
+        self.assertEqual((code, (cwd / 'marker').read_bytes(), output.read_bytes()), (0, b'"a b"\r\n', b'done\r\n'))
+        sleep, exit124 = ([sys.executable, '-c', body] for body in ('import time; time.sleep(30)', 'raise SystemExit(124)'))
+        self.assertIsNone(self.platform['run_process'](sleep, subprocess.DEVNULL, 1, on_timeout=None))
+        self.assertEqual(self.platform['run_process'](exit124, subprocess.DEVNULL, 20, on_timeout=None), 124)
+        self.assert_all_ceased()
+        print('native command line verbatim with cwd, env and streams; timeout distinct from exit 124', flush=True)
+
     def test_error_after_native_launch_before_authorization(self):
         actual = subprocess.Popen
         owner = self

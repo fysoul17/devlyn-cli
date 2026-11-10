@@ -2888,22 +2888,53 @@ class LoopFixture(unittest.TestCase):
 
     def test_an_executor_that_exits_without_a_submission_leaves_its_task_waiting(self):
         # Prediction (H2): an executor that exits 1 without a submission, as on a usage limit, leaves aa.t1 active, waiting
-        # with "executor exited 1 without a submission (see <evidence_dir>/executor.stderr); the next drain runs it again",
-        # with no terminal commit and its dependent pending, while the independent loop bb is accepted; once the executor
-        # works, the next drain runs aa.t1 again and accepts the loop. Before: the drain wrote a stand-in submission, so aa.t1
-        # became [F] blocked-infrastructure, aa.t2 blocked-prerequisite, and no drain ran either again.
+        # with "executor exited 1 without a submission (see executor.stdout and executor.stderr in <evidence_dir>); the next
+        # drain runs it again", with no terminal commit and its dependent pending, while the independent loop bb is accepted;
+        # once the executor works, the next drain runs aa.t1 again and accepts the loop. Before: the drain wrote a stand-in
+        # submission, so aa.t1 became [F] blocked-infrastructure, aa.t2 blocked-prerequisite, and no drain ran either again.
         self.plan("aa", CHAIN, {"aa.t1": {"product": "greeting", "exit_now": 1}, "aa.t2": {"product": "app"}})
         self.plan("bb", [("t1", [], "Notes", [NOTES_CHECK])], {"bb.t1": {"product": "notes"}})
         tasks = self.tasks(self.drain())
-        stderr = Path(self.receipt("aa.t1")["worktree"]) / ".devlyn/loop/executor.stderr"
+        output = Path(self.receipt("aa.t1")["worktree"]) / ".devlyn/loop"
+        stderr = output / "executor.stderr"
         self.assertEqual({identity: (task["result"], task.get("reason")) for identity, task in tasks.items()}, {
-            "aa.t1": ("active", f"executor exited 1 without a submission (see {stderr}); the next drain runs it again"),
+            "aa.t1": ("active", f"executor exited 1 without a submission (see executor.stdout and executor.stderr in {output}); "
+                                "the next drain runs it again"),
             "aa.t2": ("pending", "waiting for aa.t1 (active)"), "bb.t1": ("accepted", None)})
         self.assertEqual((tasks["aa.t1"].get("terminal"), "429 usage limit" in stderr.read_text(encoding="utf-8")), (None, True))
         self.behaviors["aa.t1"] = {"product": "greeting"}
         tasks = self.tasks(self.drain())
         self.assertEqual({identity: task["result"] for identity, task in tasks.items()}, {"aa.t1": "accepted", "aa.t2": "accepted", "bb.t1": "accepted"})
         self.assertEqual((self.calls("aa.t1"), self.calls("aa.t2"), self.calls("bb.t1")), (2, 1, 1))
+
+    def test_a_submission_blocked_only_by_infrastructure_waits_and_runs_again(self):
+        # Prediction (C5): an otherwise valid submission whose only blocker is the blocked-infrastructure kind earlier
+        # instructions offered leaves aa.t1 active, waiting with its cause and the retired file's path, with no terminal
+        # commit and its dependent pending; the file is kept under that name, the report names the cause, and the next drain
+        # runs the executor again instead of adopting it and accepts the loop. A submission that also carries a product
+        # blocker still fails bb.t1 with both reasons and never runs again. Before: aa.t1 became [F] blocked-infrastructure
+        # and aa.t2 blocked-prerequisite, and no drain ran either again.
+        infrastructure = {"kind": "blocked-infrastructure", "detail": "package registry unreachable"}
+        blocked = {"check_only": True, "runner": False, "review": False}
+        self.plan("aa", CHAIN, {"aa.t1": {**blocked, "blockers": [infrastructure]}, "aa.t2": {"product": "app"}})
+        self.plan("bb", [("t1", [], "Notes", [NOTES_CHECK])],
+                  {"bb.t1": {**blocked, "blockers": [infrastructure, {"kind": "failed", "detail": "notes format undecided"}]}})
+        tasks = self.tasks(self.drain())
+        submission = Path(json.loads((self.receipt_path("aa.t1").parent / "packet.json").read_text(encoding="utf-8"))["submission"])
+        retired = submission.with_name("submission.retired-1.json")
+        reason = f"executor reported a cause a later run can clear: package registry unreachable (see {retired}); the next drain runs it again"
+        self.assertEqual({identity: (task["result"], task.get("reason")) for identity, task in tasks.items()}, {
+            "aa.t1": ("active", reason), "aa.t2": ("pending", "waiting for aa.t1 (active)"),
+            "bb.t1": ("failed", "blocked-infrastructure: package registry unreachable")})
+        self.assertEqual((tasks["aa.t1"].get("terminal"), submission.exists(), json.loads(retired.read_text(encoding="utf-8"))["blockers"]),
+                         (None, False, [infrastructure]))
+        self.assertIn(reason, self.report("aa"))
+        self.assertEqual(self.receipt("bb.t1")["acceptance"]["reasons"],
+                         ["blocked-infrastructure: package registry unreachable", "failed: notes format undecided"])
+        self.behaviors["aa.t1"] = {"product": "greeting"}
+        tasks = self.tasks(self.drain())
+        self.assertEqual({identity: task["result"] for identity, task in tasks.items()}, {"aa.t1": "accepted", "aa.t2": "accepted", "bb.t1": "failed"})
+        self.assertEqual((self.calls("aa.t1"), self.calls("aa.t2"), self.calls("bb.t1"), retired.is_file()), (2, 1, 1, True))
 
     def test_unobservable_interrupted_execution_fails_only_that_task(self):
         self.plan("a", CHAIN, {"a.t1": {"product": "greeting", "hang": True}, "a.t2": {"product": "app"}})

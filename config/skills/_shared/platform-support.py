@@ -327,7 +327,9 @@ if os.name == "nt":
             self.creating = False
             self.interrupted_signal = None
 
-        def start(self, argv, stdin):
+        def start(self, argv, stdin, **popen):
+            """Launch argv, a list or a command line passed verbatim, inside this job; `popen` passes cwd, env and
+            streams to the enclosed bootstrap, whose target inherits them."""
             self.handle = _kernel.CreateJobObjectW(None, None)
             limits = _ExtendedLimits()
             limits.BasicLimitInformation.LimitFlags = 0x2000  # KILL_ON_JOB_CLOSE; no breakaway.
@@ -346,13 +348,15 @@ if os.name == "nt":
                     os.set_handle_inheritable(handle, True)
                 startup = subprocess.STARTUPINFO()
                 startup.lpAttributeList = {"handle_list": inherited}
+                # The bootstrap starts its target from one command line, as Popen builds it from a list.
                 command = [sys.executable, "-I", "-S", str(Path(__file__).resolve()), "--job-bootstrap",
-                           str(inherited[0]), str(inherited[2]), str(inherited[1]), *argv]
+                           str(inherited[0]), str(inherited[2]), str(inherited[1]),
+                           argv if isinstance(argv, str) else subprocess.list2cmdline(argv)]
                 # Retain the Popen object even if __init__ raises after native creation.
                 self.child = subprocess.Popen.__new__(subprocess.Popen)
                 self.creating = True
                 try:
-                    self.child.__init__(command, stdin=stdin, startupinfo=startup, close_fds=True)
+                    self.child.__init__(command, stdin=stdin, startupinfo=startup, close_fds=True, **popen)
                 finally:
                     self.creating = False
                 if self.interrupted_signal is not None:
@@ -423,7 +427,8 @@ if os.name == "nt":
                                 raise OSError(f"WaitForSingleObject: unexpected result {result} for process {pid}")
 
     def _job_bootstrap(argv):
-        job, allow, ready = map(int, argv[:3])
+        *ids, line = argv
+        job, allow, ready = map(int, ids)
         with contextlib.ExitStack() as handles:
             allow_fd = msvcrt.open_osfhandle(allow, os.O_RDONLY | os.O_BINARY)
             handles.callback(os.close, allow_fd)
@@ -436,7 +441,7 @@ if os.name == "nt":
             os.write(ready_fd, b"R")
             if _read_control(allow_fd, 1) != b"G":
                 raise OSError("Windows job launch was not authorized")
-            with subprocess.Popen(argv[3:], stdin=sys.stdin.buffer, close_fds=True) as target:
+            with subprocess.Popen(line, stdin=sys.stdin.buffer, close_fds=True) as target:
                 os.write(ready_fd, target.pid.to_bytes(4, "little"))
                 return target.wait()
 
@@ -447,7 +452,8 @@ def terminate_tree(child, job=None):
         return
     try:
         os.killpg(child.pid, signal.SIGTERM)
-    except ProcessLookupError:
+    except (ProcessLookupError, PermissionError):
+        # Gone, or only an unreaped leader remains (macOS reports EPERM for that group).
         child.wait()
         return
     # Reap the leader and retain the grace period for its surviving descendants.
@@ -464,7 +470,10 @@ def terminate_tree(child, job=None):
     child.wait()
 
 
-def run_process(argv, stdin, seconds, *, heartbeat=0):
+def run_process(argv, stdin, seconds, *, heartbeat=0, on_timeout=124, **popen):
+    """Run argv as an owned tree (its own POSIX session or Windows job), ended whole however the run ends; `popen`
+    passes cwd, env and streams. Returns the exit status, or `on_timeout` once `seconds` pass. On Windows argv may be a
+    command line passed verbatim."""
     child = None
     job = _WindowsJob() if os.name == "nt" else None
     previous = {}
@@ -479,7 +488,8 @@ def run_process(argv, stdin, seconds, *, heartbeat=0):
     try:
         for sig in (signal.SIGTERM, signal.SIGINT):
             previous[sig] = signal.signal(sig, interrupted)
-        child = job.start(argv, stdin) if job is not None else subprocess.Popen(argv, stdin=stdin, start_new_session=True)
+        child = (job.start(argv, stdin, **popen) if job is not None
+                 else subprocess.Popen(argv, stdin=stdin, start_new_session=True, **popen))
         started = time.monotonic()
         next_heartbeat = started + heartbeat
         if heartbeat:
@@ -492,7 +502,7 @@ def run_process(argv, stdin, seconds, *, heartbeat=0):
                 if seconds and now - started >= seconds:
                     if heartbeat:
                         print(f"[codex-monitored] timeout: elapsed={int(now-started)}s limit={seconds}s", file=sys.stderr, flush=True)
-                    return 124
+                    return on_timeout
                 if heartbeat and now >= next_heartbeat:
                     print(f"[codex-monitored] heartbeat: elapsed={int(now-started)}s", file=sys.stderr, flush=True)
                     next_heartbeat = now + heartbeat

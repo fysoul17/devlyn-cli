@@ -30,7 +30,8 @@ SKILLS = Path(__file__).resolve().parents[2]
 LOOP_DIR = ".devlyn/loop"
 QUEUE = "docs/specs/queue.md"
 SHA_RE = re.compile(r"[0-9a-f]{40}|[0-9a-f]{64}")
-BLOCKERS = ("failed", "needs-review", "blocked-infrastructure")
+BLOCKERS = ("failed", "needs-review")
+INFRASTRUCTURE = "blocked-infrastructure"  # Earlier instructions offered it; see infrastructure_causes.
 REVIEW_KEYS = {"schema_version", "kind", "task", "engine", "model", "source_sha", "contract_sha256",
                "expected_sha256", "requirements", "findings"}
 # findings, cleanup, handoff and summary are unread; allow them so earlier-template submissions validate.
@@ -178,27 +179,34 @@ def evaluate(command, outcome, combined):
 
 
 def execute(work, command, index, run_dir):
+    helper = shared("platform-support")
     timeout = shared("expected-contract")["verification_timeout_sec"](command)
     env = {**os.environ, "PYTHONDONTWRITEBYTECODE": "1"}  # A Python check would leave __pycache__/ in the source it checks.
-    try:
-        if "argv" in command:
-            proc = subprocess.run(shared("platform-support")["native_argv"](command["argv"], cwd=work), cwd=work,
-                                  capture_output=True, timeout=timeout, env=env)
-        else:
-            proc = subprocess.run(command["cmd"], cwd=work, shell=True, capture_output=True, timeout=timeout, env=env)
-        out, err = proc.stdout, proc.stderr
-        outcome = ({"kind": "exit", "exit_code": proc.returncode} if proc.returncode >= 0
-                   else {"kind": "signal", "signal": -proc.returncode})
-    except subprocess.TimeoutExpired as exc:
-        out, err, outcome = exc.stdout or b"", exc.stderr or b"", {"kind": "timeout", "timeout_sec": timeout}
-    except OSError as exc:
-        out, err, outcome = b"", str(exc).encode("utf-8"), {"kind": "spawn_error", "error": str(exc)}
+    paths = {name: run_dir / f"cmd-{index}.{name}" for name in ("stdout", "stderr")}
+    with paths["stdout"].open("wb", buffering=0) as out, paths["stderr"].open("wb", buffering=0) as err:
+        try:
+            if "argv" in command:
+                argv = helper["native_argv"](command["argv"], cwd=work)
+            elif os.name == "nt":  # cmd.exe as shell=True runs it, the command line passed verbatim; /d skips AutoRun.
+                comspec = os.environ.get("ComSpec") or os.path.join(os.environ.get("SystemRoot", ""), "System32", "cmd.exe")
+                if not os.path.isabs(comspec):  # A relative shell would resolve inside the worktree under check.
+                    raise FileNotFoundError("shell not found: neither %ComSpec% nor %SystemRoot% is set")
+                argv = f'"{comspec}" /d /s /c "{command["cmd"]}"'
+            else:
+                argv = ["/bin/sh", "-c", command["cmd"]]
+            # Its own session or job, ended whole before the evidence is read: a process the check leaves behind could
+            # otherwise change its evidence or the worktree under later checks.
+            code = helper["run_process"](argv, subprocess.DEVNULL, timeout, on_timeout=None, cwd=work, env=env, stdout=out, stderr=err)
+            outcome = ({"kind": "timeout", "timeout_sec": timeout} if code is None else {"kind": "exit", "exit_code": code}
+                       if code >= 0 else {"kind": "signal", "signal": -code})
+        except OSError as exc:
+            err.write(str(exc).encode("utf-8"))
+            outcome = {"kind": "spawn_error", "error": str(exc)}
     record = {"index": index, "outcome": outcome}
-    for name, raw in (("stdout", out), ("stderr", err)):
-        path = run_dir / f"cmd-{index}.{name}"
-        path.write_bytes(raw)
-        record[name] = {"path": relative(work, path), "sha256": sha256(raw), "bytes": len(raw)}
-    record["passed"], record["reason"] = evaluate(command, outcome, out + err)
+    raw = {name: path.read_bytes() for name, path in paths.items()}
+    for name, data in raw.items():
+        record[name] = {"path": relative(work, paths[name]), "sha256": sha256(data), "bytes": len(data)}
+    record["passed"], record["reason"] = evaluate(command, outcome, raw["stdout"] + raw["stderr"])
     return record
 
 
@@ -373,9 +381,24 @@ def check_submission(packet, submission):
             raise AcceptanceError(f"submission {key} must be a list of strings")
     blockers = submission.get("blockers", [])
     if not isinstance(blockers, list) or not all(
-            isinstance(b, dict) and {"kind", "detail"} <= set(b) and b["kind"] in BLOCKERS and isinstance(b["detail"], str) and b["detail"].strip()
-            for b in blockers):
+            isinstance(b, dict) and {"kind", "detail"} <= set(b) and b["kind"] in (*BLOCKERS, INFRASTRUCTURE)
+            and isinstance(b["detail"], str) and b["detail"].strip() for b in blockers):
         raise AcceptanceError(f"submission blockers must include {{kind, detail}} with kind in {sorted(BLOCKERS)}")
+
+
+def infrastructure_causes(packet, path):
+    """The details of an otherwise valid submission whose blockers are all infrastructure ones, else None. Its cause
+    is one a later run can clear, so the drain retires it and runs the task again; with any other blocker it fails."""
+    try:
+        submission = read_json(path)
+        blockers = submission.get("blockers") if isinstance(submission, dict) else None
+        if not isinstance(blockers, list) or not blockers or not all(
+                isinstance(b, dict) and b.get("kind") == INFRASTRUCTURE for b in blockers):
+            return None
+        check_submission(packet, submission)
+    except AcceptanceError:
+        return None
+    return [b["detail"] for b in blockers]
 
 
 def result_shell(packet, kind, source):
@@ -557,6 +580,79 @@ class AcceptanceTests(unittest.TestCase):
         self.assertEqual([bool(r["reason"]) for r in result["commands"]], [True] * 5)
         self.assertIn("exit 3, expected 0", " ".join(result["reasons"]))
         self.assertTrue(all((self.work / r["stdout"]["path"]).is_file() for r in result["commands"]))
+
+    @unittest.skipIf(os.name == "nt", "a POSIX session; test-windows-portability.py covers the Windows job")
+    def test_a_check_ends_with_every_process_it_started(self):
+        """C5. Prediction: a check whose leader leaves a child writing ticks to a file and to its stdout is recorded as it
+        ended (a timeout, or exit 0 for a leader that returns at once), and once execute returns the child is gone: the
+        ticks stop and the stdout evidence still has its recorded hash. `exit 124` is an exit with code 124. Before: a
+        timeout killed only the leader and a normal exit nothing, so the child kept writing, and because it held the
+        pipes the leader's prompt exit 0 was recorded as a timeout."""
+        import time
+        ticks = self.root / "ticks"
+        child = (f"import pathlib, time\nwhile True:\n    pathlib.Path({str(ticks)!r}).write_text(str(time.monotonic_ns()))\n"
+                 "    print('tick', flush=True)\n    time.sleep(0.02)\n")
+        leader = (f"import pathlib, subprocess, sys, time\nsubprocess.Popen([sys.executable, '-c', {child!r}])\n"
+                  f"while not pathlib.Path({str(ticks)!r}).exists():\n    time.sleep(0.01)\n"
+                  "if sys.argv[1] == 'hang':\n    time.sleep(60)\n")
+        run_dir = new_run_dir(self.work)
+        for index, (mode, seconds, outcome) in enumerate((("hang", 1, {"kind": "timeout", "timeout_sec": 1}),
+                                                           ("exit", 30, {"kind": "exit", "exit_code": 0}))):
+            with self.subTest(mode=mode):
+                ticks.unlink(missing_ok=True)
+                record = execute(self.work, {"argv": [sys.executable, "-c", leader, mode], "timeout_sec": seconds}, index, run_dir)
+                self.assertEqual(record["outcome"], outcome)
+                before = ticks.read_bytes()
+                time.sleep(0.3)
+                stdout = (self.work / record["stdout"]["path"]).read_bytes()
+                self.assertEqual((ticks.read_bytes(), sha256(stdout), b"tick" in stdout), (before, record["stdout"]["sha256"], True))
+        record = execute(self.work, {"cmd": "exit 124", "exit_code": 124}, 2, run_dir)
+        self.assertEqual((record["outcome"], record["passed"]), ({"kind": "exit", "exit_code": 124}, True))
+
+    def test_windows_shell_commands_reach_cmd_verbatim(self):
+        """Windows mocked: a cmd check runs ComSpec, else SystemRoot's cmd.exe, as `/d /s /c "<cmd>"` with the command
+        untouched, so its quotes reach cmd.exe as written; a shell that is not absolute is a spawn error, never a search
+        that could find one in the worktree."""
+        import ntpath
+        from types import SimpleNamespace
+        from unittest import mock
+        launched = []
+
+        def run_process(argv, stdin, seconds, **popen):
+            launched.append(argv)
+            return 0
+        cmd = 'echo "a b" & exit 0'
+        for environ, shell in (({"ComSpec": r"C:\Windows\system32\cmd.exe", "SystemRoot": r"D:\Other"}, r"C:\Windows\system32\cmd.exe"),
+                               ({"SystemRoot": r"C:\Windows"}, r"C:\Windows\System32\cmd.exe"), ({"ComSpec": "cmd.exe"}, None), ({}, None)):
+            with self.subTest(environ=environ), mock.patch.dict(shared("platform-support"), run_process=run_process), \
+                    mock.patch.dict(execute.__globals__, os=SimpleNamespace(name="nt", environ=environ, path=ntpath)):
+                launched.clear()
+                record = execute(self.work, {"cmd": cmd}, 0, new_run_dir(self.work))
+                if shell:
+                    self.assertEqual((launched, record["outcome"]), ([f'"{shell}" /d /s /c "{cmd}"'], {"kind": "exit", "exit_code": 0}))
+                else:
+                    self.assertEqual((launched, record["outcome"]["kind"]), ([], "spawn_error"))
+                    self.assertIn("shell not found", record["outcome"]["error"])
+
+    def test_only_infrastructure_blockers_wait_for_another_run(self):
+        """C5. Prediction: an otherwise valid submission blocked only by infrastructure yields its details, so the drain
+        retires it and runs the task again; with a product blocker as well, invalid fields or no readable file it yields
+        none, and the mixed one still fails with both reasons. Before: any infrastructure blocker failed the task for good."""
+        self.inputs()
+        source = self.product()
+        infrastructure = {"kind": "blocked-infrastructure", "detail": "registry unreachable"}
+        mixed = [infrastructure, {"kind": "failed", "detail": "broken"}]
+        path = self.root / "submission.json"
+
+        def causes(**fields):
+            path.write_text(json.dumps({"schema_version": 1, "task": "l.t", "source_sha": source, **fields}), encoding="utf-8")
+            return infrastructure_causes(self.packet, path)
+        self.assertEqual(causes(blockers=[infrastructure, dict(infrastructure, detail="login expired")]),
+                         ["registry unreachable", "login expired"])
+        self.assertEqual([causes(blockers=mixed), causes(blockers=[infrastructure], reviews="x"), causes(),
+                          infrastructure_causes(self.packet, self.root / "missing.json")], [None] * 4)
+        result = self.submit(source, blockers=mixed)
+        self.assertEqual((result["verdict"], result["reasons"]), ("FAILED", ["blocked-infrastructure: registry unreachable", "failed: broken"]))
 
     def test_source_and_contract_binding(self):
         self.inputs()

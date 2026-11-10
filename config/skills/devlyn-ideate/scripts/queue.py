@@ -15,6 +15,7 @@ import datetime
 import errno
 import functools
 import hashlib
+import itertools
 import json
 import os
 from pathlib import Path
@@ -1243,7 +1244,8 @@ def ensure_submission(identity, packet_path, packet, executor):
 
     An attempt's start is recorded before the spawn and its exit after the wait, so a start without an exit may have
     left a live executor: drain observes once and waits if it is active. Only established cessation permits adoption
-    or another execution. Where writers cannot be observed the task fails as interrupted-unobservable."""
+    or another execution. Where writers cannot be observed the task fails as interrupted-unobservable. A submission
+    blocked only by infrastructure is retired once its writer has stopped, and the task waits to run again."""
     harness_call("verify_packet", packet, packet_path, SKILLS)
     submission = Path(packet["submission"])
     worktree = Path(packet["worktree"])
@@ -1263,7 +1265,7 @@ def ensure_submission(identity, packet_path, packet, executor):
         except (helper["CompletionError"], OSError) as exc:
             raise LoopError(f"cannot establish that an interrupted execution stopped: {exc}; repair writer observation, then drain again") from exc
     if submission.exists():
-        return None
+        return retire_retryable(packet, submission)
     defaults = packet["methodology"].get("defaults") if packet.get("schema_version") == 2 else None
     if packet.get("harness") is None and defaults and not Path(defaults["path"]).is_file():
         # An installation's own copy moves with its updates; only its absence matters, and only before a spawn.
@@ -1301,8 +1303,22 @@ def ensure_submission(identity, packet_path, packet, executor):
         code = child.wait()
     record(log, f"exit {code} (pid {child.pid})")
     if not submission.exists():
-        raise Waiting(f"executor exited {code} without a submission (see {output / 'executor.stderr'}); the next drain runs it again")
-    return None
+        raise Waiting(f"executor exited {code} without a submission (see executor.stdout and executor.stderr in {output}); "
+                      "the next drain runs it again")
+    return retire_retryable(packet, submission)
+
+
+def retire_retryable(packet, submission):
+    """Adopt a stopped executor's submission, unless only infrastructure blocks it (a kind earlier instructions offered):
+    that one is kept under a retired name, so no later drain adopts it, and the task waits for the next drain."""
+    causes = acceptance()["infrastructure_causes"](packet, submission)
+    if causes is None:
+        return None
+    retired = next(path for number in itertools.count(1)
+                   if not (path := submission.with_name(f"submission.retired-{number}.json")).exists())
+    submission.rename(retired)
+    raise Waiting(f"executor reported a cause a later run can clear: {'; '.join(map(one_line, causes))} (see {retired}); "
+                  "the next drain runs it again")
 
 
 def terminal_queue(cwd, receipt, identity):
@@ -2148,7 +2164,7 @@ class QueueTests(unittest.TestCase):
         """The attempt's start is durable before the spawn, so a resumed drain observes writers first: it waits while
         an executor lives and adopts its submission, runs the executor once when none did, and fails the task where
         writers cannot be observed. Prediction (H2): that one run exits 0 without writing a submission, so the task waits,
-        naming the exit code and executor.stderr, and no submission exists. Before: the drain wrote a stand-in submission
+        naming the exit code and both output files, and no submission exists. Before: the drain wrote a stand-in submission
         with a blocked-infrastructure blocker, which made the task [F]."""
         from unittest import mock
         helper = shared("task-complete")
@@ -2197,10 +2213,11 @@ class QueueTests(unittest.TestCase):
         def unobservable(count):
             raise helper["WritersUnobservable"]("writer observation unsupported on this platform; retain workspace")
 
-        stderr = Path(packet["evidence_dir"]) / "executor.stderr"
+        output = Path(packet["evidence_dir"])
         for crash, observe, outcome in ((crash_after_spawn, survivor, (1, 3, None)),
                                         (crash_before_spawn, lambda count: None,
-                                         (1, 1, f"executor exited 0 without a submission (see {stderr}); the next drain runs it again")),
+                                         (1, 1, f"executor exited 0 without a submission (see executor.stdout and executor.stderr in "
+                                                f"{output}); the next drain runs it again")),
                                         (crash_before_spawn, unobservable, (0, 1, "interrupted-unobservable"))):
             with self.subTest(crash=crash.__name__, observe=getattr(observe, "__name__", "nothing")):
                 spawns.clear()

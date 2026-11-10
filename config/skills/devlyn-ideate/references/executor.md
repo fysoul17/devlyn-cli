@@ -38,7 +38,7 @@ Run `runner` (`acceptance.py run --packet <packet>`) on the committed candidate 
 }
 ```
 
-`schema_version`, `task` and `source_sha` are required. A blocker `{"kind": "failed" | "needs-review" | "blocked-infrastructure", "detail": "<concrete question or cause>"}` records `[F]` with that reason and runs no checks; material ambiguity becomes `needs-review`, never a weakened acceptance.
+`schema_version`, `task` and `source_sha` are required. A blocker `{"kind": "failed" | "needs-review", "detail": "<concrete question or cause>"}` records `[F]` with that reason and runs no checks, while a cause a later run can clear (network, service, login, usage limit) gets no submission, only your final message naming it, so the next drain runs the task again; material ambiguity becomes `needs-review`, never a weakened acceptance.
 
 ## Review records
 
