@@ -17,8 +17,8 @@ stdout, stdin and the exit code or signal are the engine's; one status line goes
 3. Only when neither is recorded, this package, captured once into `~/.devlyn/cli/releases`.
 
 A recorded release that is unreadable, missing or changed stops the launch; it never yields to
-another release. The machine's or the repository's recorded choice applies: `none` starts the
-engine without activation and says so.
+another release, and its own code checks its files, as in the app and the queue. The machine's or
+the repository's recorded choice applies: `none` starts the engine without activation and says so.
 
 ## Scope
 
