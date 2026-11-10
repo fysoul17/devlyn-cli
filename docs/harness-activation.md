@@ -173,7 +173,7 @@ version with `engine-version-unreadable`. Configured means prepared delivery,
 not a model obeyed instructions. Only the existing Claude/Codex executor adapters
 are supported. OMP explicitly declares `executor: no`.
 
-Channel reason codes: `principles-task-only`, `principles-unavailable`,
+Channel reason codes: `principles-task-only`, `principles-session-start-only`, `principles-unavailable`,
 `skills-catalog`, `skills-unavailable`, `engine-version-unsupported`, `engine-version-unreadable`,
 `name-collision`, `config-unreadable`. New code: **`executor-unqualified`** with
 `{engine}`; none of the channel codes describes an unqualified executor.
@@ -203,10 +203,26 @@ inspected keeps the catalog.
 OpenCode merges known effective `skillsPaths` into inline `skills.paths`; absent/null keeps catalog fallback.
 Copilot appends a per-run apply-to-all instructions directory via `COPILOT_CUSTOM_INSTRUCTIONS_DIRS`.
 Kimi uses `--skills-dir` with project roots before user roots and release skills last; owner agents and resumed profiles remain unchanged.
-Cursor, and Antigravity below 1.5.4 or with an unsafe run folder (above), get the principles and the catalog
-only in a first task, ahead of its text (principles partial with `principles-task-only`, skills through the
-catalog); without one nothing is delivered and both channels are unavailable (`no-initial-task`, or
-`run-dir-unsafe` with the directory that failed).
+Cursor builds before 2026.11.05, and Antigravity below 1.5.4 or with an unsafe run folder (above), get the
+principles and the catalog only in a first task, ahead of its text (principles partial with
+`principles-task-only`, skills through the catalog); without one nothing is delivered and both channels are
+unavailable (`no-initial-task`, or `run-dir-unsafe` with the directory that failed).
+From 2026.11.05-86047df, the build this was examined on, Cursor gets a per-run plugin folder, `cursor/`, by
+`--plugin-dir` in every launch mode. Its `hooks/hooks.json` holds one `sessionStart` command hook,
+`cat context.json`, which Cursor runs in that folder when a session is created; it puts the printed
+`additional_context` (the defaults and the catalog, every non-ASCII character escaped) before the model as
+instructions and keeps it with the conversation. A first task is left untouched. Over 10,000 characters,
+which Cursor refuses, no hook is planned and principles are unavailable (`too-large`). A resumed or forked
+chat runs no hook and keeps what its first launch had, so there principles are partial
+(`principles-session-start-only`). On Windows no hook is planned (`platform-unexamined`): the bundle read
+(macOS, not run on Windows) compiles out how Windows runs a hook command, and picks the shell from `SHELL` and
+the shells on `PATH`, so no one command is known to print the file there. Skills come natively from
+`--plugin-dir <release>/config` (`/devlyn-ideate`); a devlyn name in a folder Cursor reads (`.cursor`,
+`.agents`, `.claude`, `.codex` or `.grok` `skills` from the working directory up to its Git root and in the
+home folder, and `~/.cursor/skills-cursor`) keeps the catalog. Cursor also finds skills in folders nested below
+the working directory, which the planner does not search: a full tree scan on every launch is not worth it. A
+team admin who turns local plugins off makes Cursor ignore `--plugin-dir`, so configured means prepared
+delivery.
 Antigravity reads `AGENTS.md` and `.agents/skills` in every workspace folder, a folder added by `--add-dir`
 included. From 1.5.4, the version this was examined on, it gets a per-run folder, `antigravity/`, that way in
 every launch mode: a conversation keeps its added folders and reads them from disk again on every launch, so a

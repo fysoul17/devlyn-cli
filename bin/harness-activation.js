@@ -10,7 +10,7 @@ const { MARKER, marketplaceName, projectionPath, inspectProjection } = require('
 const SKILLS = ['devlyn-ideate', 'devlyn-engines'];
 // The version an engine's run-folder channel was examined on; bin/engines.js keeps the engine's floor. An
 // older version keeps the plan it had before the channel: only a first task carries the principles.
-const CHANNEL_MINIMUM = { antigravity: '1.5.4' };
+const CHANNEL_MINIMUM = { antigravity: '1.5.4', cursor: '2026.11.05-86047df' };
 const object = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 const textValue = (value) => typeof value === 'string' && !value.includes('\0');
 const strings = (value) => Array.isArray(value) && value.every(textValue);
@@ -178,7 +178,14 @@ function discoveryRoots(context, env, config) {
     // Outside any repository Antigravity reads the working directory alone.
     if (dir === path.dirname(dir)) { if (engine === 'antigravity') walk.splice(1); break; }
   }
+  // Cursor, from the build its plugin folder was examined on; it also searches nested folders below the
+  // working directory, which the planner does not.
+  const cursorFolders = engine === 'cursor' && supportedVersion(engine, context.version, CHANNEL_MINIMUM.cursor)
+    ? ['.cursor', '.agents', '.claude', '.codex', '.grok'] : [];
+  for (const folder of cursorFolders) add(home, folder, 'skills');
+  if (cursorFolders.length) add(home, '.cursor/skills-cursor');
   for (const dir of walk) {
+    for (const folder of cursorFolders) add(dir, folder, 'skills');
     if (native[1]) add(dir, native[1], 'skills');
     if (!['claude', 'cursor'].includes(engine)) add(dir, '.agents/skills');
     if (['grok', 'omp', 'opencode', 'copilot'].includes(engine)) add(dir, '.claude/skills');
@@ -744,9 +751,37 @@ function planActivation(releaseRoot, input, env = process.env) {
       if (plan.files.length) plan.engineArgs.push('--add-dir', path.join(context.runDir, folder));
       break;
     }
-    case 'cursor':
-      firstTask({ detail: 'no-initial-task' });
+    case 'cursor': {
+      if (!supportedVersion(context.engine, context.version, CHANNEL_MINIMUM.cursor)) {
+        firstTask({ detail: 'no-initial-task' });
+        break;
+      }
+      // A --plugin-dir folder's sessionStart command hook runs in that folder when a session is created, and
+      // Cursor puts the additional_context it prints before the model as instructions, kept with the
+      // conversation. A resumed or forked chat runs no hook and keeps whatever its first launch had. The CLI
+      // refuses a context over 10,000 characters (string length). The bundle read (macOS) compiles out how
+      // Windows runs a hook command, so no hook is planned there.
+      const characters = instructions.length, maximum = 10000;
+      if (process.platform === 'win32') {
+        status.principles = channel('unavailable', null, [reason('principles-unavailable', { detail: 'platform-unexamined' })]);
+      } else if (characters > maximum) {
+        status.principles = channel('unavailable', null, [reason('principles-unavailable', { detail: 'too-large', characters, maximum })]);
+      } else {
+        file('cursor/hooks/hooks.json', JSON.stringify({ version: 1, hooks: { sessionStart: [{ command: 'cat context.json' }] } }) + '\n');
+        // Every non-ASCII character escaped, so no shell or code page can change the text.
+        file('cursor/context.json', JSON.stringify({ additional_context: instructions })
+          .replace(/[\u0080-\uffff]/g, (character) => `\\u${character.charCodeAt(0).toString(16).padStart(4, '0')}`) + '\n');
+        plan.engineArgs.push('--plugin-dir', path.join(context.runDir, 'cursor'));
+        status.principles = continuation ? channel('partial', 'session-start-hook', [reason('principles-session-start-only')])
+          : channel('configured', 'session-start-hook');
+      }
+      if (collisions.length || errors.length) fallback([...collisions, ...errors], plan.files.length > 0);
+      else {
+        plan.engineArgs.push('--plugin-dir', path.join(release.root, 'config'));
+        native('plugin-dir', 'slash', '/devlyn-ideate');
+      }
       break;
+    }
   }
   if (plan.engineArgs.length || Object.keys(plan.envPatch).length || plan.prompt) plan.envPatch.DEVLYN_HARNESS_ROOT = release.root;
   return finish(plan);

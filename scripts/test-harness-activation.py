@@ -29,7 +29,7 @@ VERSIONS = dict(claude='2.1.307', codex='0.163.0', grok='1.0.62', omp='16.5.0',
                 antigravity='1.4.4', cursor='2025.09.12-4852336', opencode='1.19.2',
                 kimi='2.3.0', copilot='1.0.98', qwen='0.26.0', pi='1.4.0')
 # The version a run-folder channel was examined on, where it is later than the engine's floor.
-CHANNEL_VERSIONS = dict(antigravity='1.5.4')
+CHANNEL_VERSIONS = dict(antigravity='1.5.4', cursor='2026.11.05-86047df')
 
 
 class ActivationTests(unittest.TestCase):
@@ -174,7 +174,7 @@ class ActivationTests(unittest.TestCase):
         # engine whose channel was examined on a later version than its floor is compared with that version.
         newer = dict(claude=('2.1.308', '2.3.0', '3.0.0'), codex=('0.163.1', '0.171.2', '1.0.0'), grok=('1.4.0', '2.0.0'),
                      omp=('16.9.1', '18.14.2'), antigravity=('1.5.5', '1.6.0', '2.0.0'),
-                     cursor=('2026.01.05-abcdef1',), opencode=('1.25.0', '2.0.0'), kimi=('2.9.0', '3.0.0'),
+                     cursor=('2026.11.06-abcdef1', '2027.01.05-abcdef1'), opencode=('1.25.0', '2.0.0'), kimi=('2.9.0', '3.0.0'),
                      copilot=('1.2.0', '2.0.0'), qwen=('0.31.0', '1.0.0'), pi=('1.4.1', '2.0.0'))
         for engine in VERSIONS:
             ctx = self.context(engine)
@@ -1054,9 +1054,11 @@ process.stdout.write(JSON.stringify(JSON.parse(process.argv[2]).map(([cwd, env, 
                 'files': [], 'machineSync': None, 'channels': channels}
 
     def test_initial_task_is_preserved_and_never_synthesized(self):
-        # Prediction: below the version its channel was examined on, Cursor and Antigravity (1.4.4 and 1.5.3) get the
-        # plan 4.3.29 made, whole: only a first task carries the principles and the catalog, in every launch mode.
-        for engine, version in [('cursor', VERSIONS['cursor']), ('antigravity', '1.4.4'), ('antigravity', '1.5.3')]:
+        # Prediction: below the version its channel was examined on, Cursor (2025.09.12 and 2026.11.04) and Antigravity
+        # (1.4.4 and 1.5.3) get the plan 4.3.29 made, whole: only a first task carries the principles and the catalog,
+        # in every launch mode.
+        for engine, version in [('cursor', VERSIONS['cursor']), ('cursor', '2026.11.04-abcdef1'), ('antigravity', '1.4.4'),
+                                ('antigravity', '1.5.3')]:
             for mode in ('fresh', 'resume', 'fork'):
                 for prompt in (None, *({'text': 'Task "quotes" \\ 한국어\n끝', 'transport': transport} for transport in ('argv', 'stdin'))):
                     with self.subTest(engine=engine, version=version, mode=mode, prompt=prompt):
@@ -1238,6 +1240,131 @@ process.stdout.write(JSON.stringify(JSON.parse(process.argv[2]).map(([cwd, env, 
         self.assertEqual(plan['files'], principles_only)
         self.assertEqual(plan['channels']['skills']['reasons'][0],
                          {'code': 'name-collision', 'params': {'name': 'devlyn-ideate', 'path': str(copy / 'SKILL.md')}})
+
+    def cursor(self, **changes):
+        # A Cursor context on the build its plugin folder was examined on.
+        return {**self.context('cursor'), 'version': CHANNEL_VERSIONS['cursor'], **changes}
+
+    def cursor_files(self, instructions):
+        # The plugin folder's session-start hook and the JSON it prints, every non-ASCII character escaped.
+        files = [('cursor/hooks/hooks.json', '{"version":1,"hooks":{"sessionStart":[{"command":"cat context.json"}]}}\n'),
+                 ('cursor/context.json', json.dumps({'additional_context': instructions}, separators=(',', ':')) + '\n')]
+        return [{'relativePath': relative, 'utf8': text, 'sha256': hashlib.sha256(text.encode()).hexdigest()}
+                for relative, text in files]
+
+    def test_cursor_plugin_folder_hook_and_release_skills(self):
+        # Prediction: on 2026.11.05-86047df a fresh pane, with or without a first task, gets a run plugin folder whose
+        # sessionStart hook prints {"additional_context": <the instructions other engines get>} as pure ASCII, passed by
+        # --plugin-dir before the release's config folder; the first task is left untouched. Principles configured by
+        # session-start-hook, skills by plugin-dir, invoked as /devlyn-ideate.
+        expected = self.cursor_files(self.instructions())
+        context = expected[1]['utf8']
+        self.assertTrue(context.isascii())
+        self.assertIn('\\u00e9', context)  # the defaults' é, escaped
+        self.assertEqual(json.loads(context), {'additional_context': self.instructions()})
+        for prompt in (None, {'text': 'owner task', 'transport': 'argv'}):
+            with self.subTest(prompt=prompt):
+                plan = self.plan(self.cursor(initialPrompt=prompt))
+                self.assertEqual(plan['release'], self.release)
+                self.assertEqual(plan['files'], expected)
+                self.assertEqual(plan['engineArgs'], ['--plugin-dir', str(self.run_dir / 'cursor'),
+                                                      '--plugin-dir', str(self.package / 'config')])
+                self.assertEqual(plan['envPatch'], {'DEVLYN_HARNESS_ROOT': str(self.package)})
+                self.assertEqual((plan['prompt'], plan['machineSync']), (None, None))
+                self.assertEqual(plan['channels']['principles'], {'state': 'configured', 'mechanism': 'session-start-hook', 'reasons': []})
+                self.assertEqual(plan['channels']['skills'], {'state': 'configured', 'mechanism': 'plugin-dir', 'reasons': []})
+                self.assertEqual(plan['channels']['invocation'], {'kind': 'slash', 'text': '/devlyn-ideate'})
+                self.assertEqual(plan['channels']['overall'], 'configured')
+
+    def test_cursor_resumed_or_forked_chat_keeps_what_it_began_with(self):
+        # Prediction: resume and fork get the same files and arguments as a fresh pane, but a resumed chat runs no hook
+        # and keeps the text its first launch had, so principles are partial with principles-session-start-only.
+        fresh = self.plan(self.cursor())
+        for mode, recorded in [('resume', {}), ('resume', {'recordedRelease': self.release}), ('fork', {}),
+                               ('fork', {'recordedRelease': self.release})]:
+            with self.subTest(mode=mode, recorded=bool(recorded)):
+                plan = self.plan(self.cursor(launchMode=mode, **recorded))
+                for key in ('release', 'files', 'engineArgs', 'envPatch', 'prompt'):
+                    self.assertEqual(plan[key], fresh[key])
+                self.assertEqual(plan['channels']['principles'], {'state': 'partial', 'mechanism': 'session-start-hook',
+                    'reasons': [{'code': 'principles-session-start-only', 'params': {}}]})
+                self.assertEqual(plan['channels']['skills'], fresh['channels']['skills'])
+                self.assertEqual(plan['channels']['overall'], 'partial')
+
+    def test_cursor_refuses_a_session_context_it_would_reject(self):
+        # Prediction: Cursor refuses a hook context over 10,000 characters (string length, so é counts once).
+        # Instructions of exactly 10,000 characters are planned; the same release one character deeper (named three
+        # times in the catalog) plans no hook, and principles are unavailable with the size while skills stay native.
+        defaults = (self.package / 'config/skills/_shared/runtime-principles.md').read_text(encoding='utf-8')
+        root = self.case / 'release'
+        catalog = run(['node', '-e', 'process.stdout.write(require(process.argv[1]).skillCatalog({root: process.argv[2]}))',
+                       self.package / 'bin/harness-activation.js', root]).stdout.decode()
+        characters = lambda text: len(text.encode('utf-16-le')) // 2  # JavaScript's string length
+        pad = 10000 - characters(defaults + '\n\n' + catalog)
+
+        def grow(release):
+            for name in ('CLAUDE.md', 'AGENTS.md'):
+                (release / name).write_bytes((release / name).read_bytes() + b'x' * pad)
+
+        self.rebuilt_release('release', grow)
+        fits = self.plan(self.cursor(), release_root=root)
+        self.assertEqual(characters(json.loads(fits['files'][1]['utf8'])['additional_context']), 10000)
+        self.assertEqual(fits['channels']['principles']['state'], 'configured')
+        deeper = root.rename(self.case / 'release1')
+        plan = self.plan(self.cursor(), release_root=deeper)
+        self.assertEqual((plan['files'], plan['prompt']), ([], None))
+        self.assertEqual(plan['engineArgs'], ['--plugin-dir', str(deeper / 'config')])
+        self.assertEqual(plan['channels']['principles'], {'state': 'unavailable', 'mechanism': None, 'reasons': [
+            {'code': 'principles-unavailable', 'params': {'detail': 'too-large', 'characters': 10003, 'maximum': 10000}}]})
+        self.assertEqual(plan['channels']['skills'], {'state': 'configured', 'mechanism': 'plugin-dir', 'reasons': []})
+        self.assertEqual(plan['channels']['overall'], 'partial')
+
+    def test_cursor_same_named_skill_in_a_folder_it_reads_keeps_the_catalog(self):
+        # Prediction: on the examined build, a devlyn-named skill in a folder Cursor reads (.cursor, .agents, .claude,
+        # .codex or .grok skills in the home folder and from the working directory up to its Git root, and
+        # ~/.cursor/skills-cursor) drops the release's --plugin-dir for the catalog with a name collision; the hook
+        # stays. Above the Git root nothing collides. An older build is given what it was: a copy of the release's own
+        # skill in one of these folders is not reported there.
+        nested = self.project / 'sub'
+        nested.mkdir()
+        hook = self.cursor_files(self.instructions())
+        folders = ['.cursor/skills', '.agents/skills', '.claude/skills', '.codex/skills', '.grok/skills']
+        found = [*(self.home / folder for folder in folders), self.home / '.cursor/skills-cursor',
+                 *(nested / folder for folder in folders), self.project / '.cursor/skills']
+        for root in [*found, self.case / '.cursor/skills']:
+            with self.subTest(root=root):
+                skill = self.write(root / 'devlyn-ideate/SKILL.md', '---\nname: devlyn-ideate\ndescription: owner\n---\nOwner')
+                plan = self.plan(self.cursor(cwd=str(nested)))
+                shutil.rmtree(skill.parent)
+                self.assertEqual(plan['files'], hook)
+                self.assertEqual(plan['channels']['principles']['state'], 'configured')
+                if root in found:
+                    self.assertEqual(plan['engineArgs'], ['--plugin-dir', str(self.run_dir / 'cursor')])
+                    self.assertEqual(plan['channels']['skills'], {'state': 'partial', 'mechanism': 'absolute-catalog', 'reasons': [
+                        {'code': 'name-collision', 'params': {'name': 'devlyn-ideate', 'path': str(skill)}},
+                        {'code': 'skills-catalog', 'params': {}}]})
+                    self.assertEqual(plan['channels']['invocation']['kind'], 'read-file')
+                else:
+                    self.assertEqual(plan['channels']['overall'], 'configured')
+        copy = self.home / '.cursor/skills/devlyn-ideate'
+        shutil.copytree(self.package / 'config/skills/devlyn-ideate', copy)
+        self.assertEqual(self.plan(self.cursor())['channels']['inheritedDevlyn'], [str(copy / 'SKILL.md')])
+        self.assertEqual(self.plan(self.context('cursor'))['channels']['inheritedDevlyn'], [])
+
+    def test_cursor_plans_no_hook_on_windows(self):
+        # Prediction: on win32 no hook is planned (the bundle read compiles out how Windows runs a hook command):
+        # principles unavailable with platform-unexamined, skills still native from the release's config folder.
+        script = '''Object.defineProperty(process, 'platform', {value: 'win32'});
+const {planActivation} = require(process.argv[1]);
+process.stdout.write(JSON.stringify(planActivation(process.argv[2], JSON.parse(process.argv[3]))));'''
+        plan = json.loads(run(['node', '-e', script, self.package / 'bin/harness-activation.js', self.package,
+                               json.dumps(self.cursor())], env=self.env).stdout)
+        self.assertEqual((plan['files'], plan['prompt']), ([], None))
+        self.assertEqual(plan['engineArgs'], ['--plugin-dir', str(self.package / 'config')])
+        self.assertEqual(plan['channels']['principles'], {'state': 'unavailable', 'mechanism': None, 'reasons': [
+            {'code': 'principles-unavailable', 'params': {'detail': 'platform-unexamined'}}]})
+        self.assertEqual(plan['channels']['skills'], {'state': 'configured', 'mechanism': 'plugin-dir', 'reasons': []})
+        self.assertEqual(plan['channels']['overall'], 'partial')
 
     def test_projection_regular_idempotent_and_marker(self):
         original = self.account / 'config.toml'
