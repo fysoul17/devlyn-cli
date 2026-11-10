@@ -110,13 +110,17 @@ class ActivationTests(unittest.TestCase):
 
     def test_per_engine_fresh_fixture(self):
         # Prediction: Copilot configures both session channels; other engine defaults stay unchanged.
+        # Every engine bin/engines.js names is tested here and has its own plan, never a silent 'disabled'.
         flags = dict(claude='--plugin-dir', codex='-c', grok='--rules', omp='--config',
                      kimi='--agent-file', qwen='--append-system-prompt', pi='--skill')
+        self.assertEqual(list(VERSIONS), json.loads(run(['node', '-p', 'JSON.stringify(require(process.argv[1]).ENGINE_IDS)',
+                                                         self.package / 'bin/engines.js']).stdout))
         for engine in VERSIONS:
             with self.subTest(engine=engine):
                 plan = self.plan(self.context(engine), file=True)
                 self.assertEqual(plan['release'], self.release)
                 self.assertEqual(plan['channels']['engine'], engine)
+                self.assertNotEqual(plan['channels']['overall'], 'disabled')
                 self.assertEqual(plan['channels']['executor']['supported'], engine in ('claude', 'codex'))
                 if engine in flags:
                     self.assertIn(flags[engine], plan['engineArgs'])
@@ -168,11 +172,11 @@ class ActivationTests(unittest.TestCase):
                      omp=('16.9.1', '18.14.2'), antigravity=('1.6.0', '2.0.0'),
                      cursor=('2026.01.05-abcdef1',), opencode=('1.25.0', '2.0.0'), kimi=('2.9.0', '3.0.0'),
                      copilot=('1.2.0', '2.0.0'), qwen=('0.31.0', '1.0.0'), pi=('1.4.1', '2.0.0'))
-        for engine, versions in newer.items():
+        for engine in VERSIONS:
             ctx = self.context(engine)
             ctx['initialPrompt'] = {'text': 'owner task', 'transport': 'argv'}
             examined = self.plan(ctx)
-            for version in versions:
+            for version in newer[engine]:
                 with self.subTest(engine=engine, version=version):
                     ctx['version'] = version
                     plan = self.plan(ctx)
