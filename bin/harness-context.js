@@ -8,7 +8,7 @@ const path = require('path');
 const crypto = require('crypto');
 const readline = require('readline');
 const { spawn, spawnSync } = require('child_process');
-const { verifyRelease, materializeRelease, fail } = require('./release');
+const { physicalRoot, materializeRelease, fail } = require('./release');
 
 const ENGINES = Object.freeze(['claude', 'codex', 'omp']);
 const READ_MS = 6000;
@@ -209,13 +209,13 @@ function appState(home, common) {
   return { defaultRelease: state.defaultRelease || null, choice };
 }
 
-// A release chosen by a record must verify as recorded; it never yields to another release.
+// A release chosen by a record must be the one recorded; its own planner verifies its files.
 function recorded(root, version, digest, source) {
-  let release;
-  try { release = verifyRelease(root).release; }
-  catch (error) { fail('release-unavailable', { source, version, detail: error.reason?.code || error.message }, 3); }
-  if (release.version !== version || release.digest !== digest) fail('release-version-conflict', { source, version }, 3);
-  return { release, source };
+  let manifest;
+  try { root = physicalRoot(root); manifest = JSON.parse(fs.readFileSync(path.join(root, 'release.json'), 'utf8')); }
+  catch (error) { fail('release-unavailable', { source, version, detail: error.reason?.code || error.code || 'unreadable' }, 3); }
+  if (manifest?.version !== version || manifest?.digest?.value !== digest) fail('release-version-conflict', { source, version }, 3);
+  return { release: { package: 'devlyn-cli', version, digest, root }, source };
 }
 
 // The release a terminal launch plans with: an unfinished queue's bound release in this repository,

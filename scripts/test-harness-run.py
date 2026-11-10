@@ -8,6 +8,7 @@ import json
 import os
 from pathlib import Path
 import runpy
+import shutil
 import signal
 import subprocess
 import sys
@@ -348,6 +349,43 @@ class RunTests(unittest.TestCase):
         self.out.unlink()
         result = self.devlyn('omp', '-p', 'a task')
         self.assertIn('release-version-conflict', result.stderr)
+        self.assertFalse(self.out.exists())
+
+    def test_a_recorded_release_is_checked_by_its_own_code(self):
+        # Prediction: a release whose own code derives its principles differently, as another CLI version's
+        # does, launches with its own planner's text; one changed skill byte then stops the launch with that
+        # release's own reason and no engine starts.
+        root = self.home / '.devlyn/harness/devlyn-cli' / self.release['version']
+        shutil.copytree(self.package, root)
+        other = 'These Devlyn instructions come from another release.'
+        instructions = root / 'bin/instructions.js'
+        instructions.write_text(instructions.read_text(encoding='utf-8').replace(PREFIX, other), encoding='utf-8')
+        reseal = r'''const fs = require('fs'), path = require('path'), root = process.argv[1];
+const { sessionDefaults } = require(path.join(root, 'bin/instructions.js'));
+const { sha256, manifestDigest } = require(path.join(root, 'bin/release.js'));
+const text = sessionDefaults(fs.readFileSync(path.join(root, 'CLAUDE.md'), 'utf8'));
+for (const dir of ['config', 'native/claude', 'native/codex/plugins/devlyn']) fs.writeFileSync(path.join(root, dir, 'skills/_shared/runtime-principles.md'), text);
+const manifest = JSON.parse(fs.readFileSync(path.join(root, 'release.json'), 'utf8'));
+for (const file of manifest.files) file.sha256 = sha256(fs.readFileSync(path.join(root, file.path)));
+manifest.digest.value = manifestDigest(manifest);
+fs.writeFileSync(path.join(root, 'release.json'), JSON.stringify(manifest, null, 2) + '\n');
+process.stdout.write(manifest.digest.value);'''
+        digest = run(['node', '-e', reseal, root]).stdout.decode()
+        self.state(defaultRelease={'version': self.release['version'], 'digest': digest})
+        result = self.devlyn('omp', '-p', 'a task')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('(app-default)', result.stderr)
+        launch = self.launch()
+        self.assertEqual(launch['env']['DEVLYN_HARNESS_ROOT'], str(root.resolve()))
+        self.assertTrue(launch['argv'][3].startswith(other), launch['argv'][3][:80])
+        skill = root / 'config/skills/devlyn-ideate/SKILL.md'
+        changed = bytearray(skill.read_bytes())
+        changed[0] ^= 1
+        skill.write_bytes(changed)
+        self.out.unlink()
+        result = self.devlyn('omp', '-p', 'a task')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('devlyn run: release-file-digest-mismatch {"path":"config/skills/devlyn-ideate/SKILL.md"}', result.stderr)
         self.assertFalse(self.out.exists())
 
     def test_this_package_is_captured_once_when_no_release_is_recorded(self):

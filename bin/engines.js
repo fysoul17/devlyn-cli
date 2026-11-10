@@ -1,10 +1,7 @@
 // Engine IDs in the order of devlyn-os-v1/packages/contracts/src/engines.ts. An ID joins only once its
-// channels are confirmed on the real CLI, with that examined version as its floor below; the planner
+// channels are confirmed on the real CLI, with that examined version as its floor; the planner
 // refuses every other ID. CLI binary names (for example agy) are not engine IDs.
-const ENGINE_IDS = Object.freeze([
-  'claude', 'codex', 'grok', 'omp', 'antigravity', 'cursor', 'opencode', 'kimi', 'copilot', 'qwen', 'pi',
-]);
-
+//
 // The versions each channel was examined on. Any newer release, a new major included, is taken as
 // compatible: a version number is not evidence that a channel broke (omp 18 kept both flags devlyn
 // uses), and refusing unexamined majors turned working engines off. Only a version below the examined
@@ -23,6 +20,7 @@ const ENGINE_CAPABILITIES = Object.freeze({
   qwen: { minimum: '0.26.0', executor: false },
   pi: { minimum: '1.4.0', executor: false },
 });
+const ENGINE_IDS = Object.freeze(Object.keys(ENGINE_CAPABILITIES));
 
 function readableVersion(engine, version) {
   return typeof version === 'string'
