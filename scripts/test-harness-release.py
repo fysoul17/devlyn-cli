@@ -489,7 +489,8 @@ assert.deepEqual(fs.readdirSync(path.join(store, 'devlyn-cli')), []);
         prefix = '\ufeff# Owner rules\r\n\r\nKeep 한글 and spacing.  \r\n\r\n'.encode()
         suffix = b'\n# Local footer\nKeep this exact tail.  '
         for name in ('AGENTS.md', 'CLAUDE.md'):
-            template = run(['git', 'show', f'{commit}:{name}'], cwd=ROOT).stdout.replace(b'\r\n', b'\n')
+            # The checkout is the caller's repository: read it with the caller's Git trust (CI trusts it by env).
+            template = run(['git', 'show', f'{commit}:{name}'], cwd=ROOT, env=os.environ).stdout.replace(b'\r\n', b'\n')
             self.assertEqual(hashlib.sha256(template).hexdigest(), digest)
             body = (b'Project-specific instructions outside this managed block take precedence over these defaults.\n\n'
                     + template.rstrip(b'\n') + b'\n')

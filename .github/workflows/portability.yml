@@ -3,11 +3,15 @@ name: Windows portability
 on:
   # Runner minutes are billed, so this runs per release, not per PR (owner,
   # 2026-10-07): publish.yml calls it on the release tag and publishes only
-  # after it passes. Before merging, run the POSIX half locally: npm ci &&
+  # after it passes. Before tagging a release, run this workflow by workflow_dispatch
+  # on the release commit, and make the tag only after that run passes.
+  # Before merging, run the POSIX half locally: npm ci &&
   # node scripts/update-cleanup-history.js && node scripts/update-instruction-templates.js &&
   # node scripts/update-skill-history.js &&
   # node --test scripts/test-installer-menu.cjs && bash scripts/lint-skills.sh &&
-  # python3 scripts/test-ideate-loop.py && python3 scripts/test-storage-client.py
+  # python3 scripts/test-ideate-loop.py && python3 scripts/test-storage-client.py &&
+  # python3 scripts/test-harness-release.py && python3 scripts/test-harness-activation.py &&
+  # python3 scripts/test-harness-run.py && python3 scripts/test-harness-cleanup.py
   # (then restore the generated bin/*.json files)
   workflow_call:
   workflow_dispatch:
@@ -123,6 +127,69 @@ jobs:
           name: posix-evidence
           path: ${{ runner.temp }}/portability/logs/
           if-no-files-found: error
+
+  harness:
+    needs: posix
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    # Root in a private PID namespace can observe every process used by cleanup tests.
+    container:
+      image: python:3.12-bookworm
+      options: --init
+    # The four suites take about 5 minutes here (run 42753390614) and 11 to 17 on a Mac.
+    timeout-minutes: 30
+    steps:
+      - name: Trust the container checkout for this job
+        shell: bash
+        run: |
+          printf 'GIT_CONFIG_COUNT=1\nGIT_CONFIG_KEY_0=safe.directory\nGIT_CONFIG_VALUE_0=%s\n' "$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
+      # The suites run from a full checkout of the tested SHA: they read earlier commits and release tags.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          set-safe-directory: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      # The cleanup suite installs from this checkout, with the manifests the package carries.
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Regenerate offline manifests
+        run: |
+          node scripts/update-cleanup-history.js
+          node scripts/update-instruction-templates.js
+          node scripts/update-skill-history.js
+      - uses: actions/download-artifact@v4
+        with:
+          name: npm-package
+          path: ${{ runner.temp }}/harness/package
+      - name: Harness suites on the tested release
+        shell: python
+        run: |
+          import hashlib, json, os, pathlib, subprocess, sys
+          root = pathlib.Path(os.environ['RUNNER_TEMP']) / 'harness'
+          identity = json.loads((root / 'package/identity.json').read_text(encoding='utf-8'))
+          assert identity['source_sha'] == os.environ['GITHUB_SHA'], identity
+          assert subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode().strip() == os.environ['GITHUB_SHA']
+          tarball, = (root / 'package').glob('*.tgz')
+          assert hashlib.sha256(tarball.read_bytes()).hexdigest() == identity['sha256'][tarball.name], tarball
+          installed = root / 'installed'
+          subprocess.run(['npm', 'install', '--prefix', str(installed), '--cache', str(root / 'npm-cache'),
+                          '--offline', '--ignore-scripts', '--no-audit', '--no-fund', str(tarball)], check=True)
+          # npm's .bin shims make the installed folder an install source, not a release: materialize it once,
+          # as the app installs a release, and test that root.
+          package = installed / 'node_modules/devlyn-cli'
+          made = subprocess.run(['node', str(package / 'bin/devlyn.js'), 'release', '--materialize', '--source', str(package),
+                                 '--store', str(root / 'store'), '--json'], stdout=subprocess.PIPE, check=True)
+          release = json.loads(made.stdout.decode('utf-8').strip().splitlines()[-1])['data']['release']['root']
+          print('Harness release root: ' + release, flush=True)
+          failed = []
+          for suite, args in (('release', ['--package-root', release]), ('activation', ['--package-root', release]),
+                              ('run', ['--package-root', release]), ('cleanup', [])):
+              if subprocess.run([sys.executable, f'scripts/test-harness-{suite}.py', *args], stdin=subprocess.DEVNULL).returncode:
+                  failed.append(suite)
+          if failed:
+              raise SystemExit('Harness suites failed: ' + ', '.join(failed))
 
   windows:
     needs: posix

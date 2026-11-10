@@ -7,7 +7,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  # The release publishes the same tarball tested by the POSIX and native Windows suites.
+  # The release publishes the same tarball tested by the POSIX, harness and native Windows jobs;
+  # publish-npm waits for every job in portability.yml.
   portability:
     uses: ./.github/workflows/portability.yml
 
