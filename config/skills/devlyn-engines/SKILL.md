@@ -56,7 +56,7 @@ Verify DEVLYN_SHARED_DIR/role-config.py and DEVLYN_SHARED_DIR/engine-doctor.sh b
 
 ## Subcommands
 
-- `executor <name>` — run the status command with `--set-executor <name>`. It refuses a name with no `_shared/adapters/<name>.adapter.md`, or whose adapter declares `executor: no`, and lists the valid names. An engine whose CLI is not available is still pinned, with a warning: pins are promises, and dispatch stops with `BLOCKED:<name>-unavailable` until it is installed.
+- `executor <name>` — run the status command with `--set-executor <name>`. It refuses a name with no `_shared/adapters/<name>.adapter.md`, or whose adapter declares `executor: no`, and lists the valid names. An engine whose CLI is unavailable is still pinned, with a warning: pins are promises, and dispatch stops with `BLOCKED:<name>-unavailable` until installed.
 - `clear` — run the status command with `--clear`: it removes the executor pin and the inactive keys, preserves unrelated keys, and deletes an empty file.
 - `pair` and `role` were removed with the retired pipeline roles: say so and change nothing.
 

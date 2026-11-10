@@ -53,7 +53,7 @@ Non-Claude agents (Codex / omp / Pi / Grok): the default choice installs the ski
 
 ### Terminal sessions — `devlyn run`
 
-`devlyn run claude`, `devlyn run codex` or `devlyn run omp` starts the engine in this terminal on macOS or Linux (not Windows) with the same principles and skills the Devlyn app delivers, from the selected release. Only engine arguments known not to change the session's freshness, directory or planned settings pass through; any other stops the launch. See [docs/harness-run.md](docs/harness-run.md).
+`devlyn run claude`, `devlyn run codex` or `devlyn run omp` starts the engine in this terminal on macOS or Linux (not Windows) with the same principles and skills the Devlyn app delivers, from the selected release. While the harness is on for the project, only engine arguments known not to change the session's freshness, directory or planned settings pass through, and any other stops the launch; with it off, every argument passes. See [docs/harness-run.md](docs/harness-run.md).
 
 ### Plan and drain loops — `/devlyn-ideate`
 
