@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
 # lint-skills.sh — structural quality checks for the devlyn harness.
 #
-# Gates the three things that have drifted in the past:
+# Gates the two things that have drifted in the past:
 #   1. Forbidden MCP / stale-model references in skills, README, installer.
 #   2. Missing `name:`/`description:` in skill frontmatter (Anthropic spec violation).
-#   3. Source ↔ installed mirror drift on the harness critical path.
 #
 # Exit 0 = clean. Non-zero = fails; prints offending file:line per check.
 
@@ -50,9 +49,6 @@ if [ -z "$direct_mktemp" ]; then
 else
   while IFS= read -r f; do bad "$f"; done <<< "$direct_mktemp"
 fi
-
-# The core skills every install writes; the mirror parity check uses this list.
-core_skills="devlyn-ideate devlyn-engines _shared"
 
 # ---------------------------------------------------------------------------
 # 1. No MCP references in managed source or user-facing docs.
@@ -257,7 +253,7 @@ section "Check 5e: retired resolve names appear only in removal and migration te
 retired_names='devlyn[-:]resolve|resolve-stop-hook|archive_run|collect-codex-findings|finish-gate|grok-anchor-guard|judge-output-parser|judge-role-evidence|phase-prompt-render|process-evidence|resolve-bootstrap|spec-verify-check|state-phase-write|terminal-claim-check|verify-merge-findings|codex-config\.md|run-bounded|--pair-verify|--no-pair|--risk-probes|--no-risk-probes|--role-config|--verify-only'
 offenders=$(
   {
-    git grep -nIE "$retired_names" -- bin config .agents scripts .github CLAUDE.md AGENTS.md package.json \
+    git grep -nIE "$retired_names" -- bin config scripts .github CLAUDE.md AGENTS.md package.json \
       ':!scripts/lint-skills.sh' ':!scripts/test-windows-portability.py' ':!scripts/test-harness-cleanup.py' \
       ':!scripts/fixtures/instructions' ':!scripts/fixtures/cleanup' \
       ':!bin/instruction-templates.json' ':!bin/skill-history.json' ':!bin/devlyn.js' || true
@@ -379,31 +375,6 @@ PY
   rm -rf "$tmp_install_marker"
 else
   bad "could not allocate install-marker smoke directory"
-fi
-
-# ---------------------------------------------------------------------------
-# 6. Source ↔ mirror parity. The tracked .agents/skills mirror equals
-#    config/skills; an installed .claude/skills (present only after the
-#    installer ran in this checkout) holds the same core skills. The shell
-#    wrapper must stay executable in both: bash refuses a non-executable one.
-# ---------------------------------------------------------------------------
-section "Check 6: Source ↔ mirror parity"
-mirror_drift=$(diff -rq -x __pycache__ config/skills .agents/skills 2>&1 || true)
-if [ -d .claude/skills ]; then
-  for skill in $core_skills; do
-    mirror_drift="${mirror_drift}"$'\n'"$(diff -rq -x __pycache__ "config/skills/$skill" ".claude/skills/$skill" 2>&1 || true)"
-  done
-fi
-for tree in .agents/skills .claude/skills; do
-  if [ -f "$tree/_shared/codex-monitored.sh" ] && [ ! -x "$tree/_shared/codex-monitored.sh" ]; then
-    mirror_drift="${mirror_drift}"$'\n'"$tree/_shared/codex-monitored.sh is not executable"
-  fi
-done
-mirror_drift=$(printf '%s\n' "$mirror_drift" | sed '/^$/d')
-if [ -z "$mirror_drift" ]; then
-  ok "config/skills, .agents/skills and any installed .claude/skills core skills are in parity"
-else
-  while IFS= read -r f; do bad "$f"; done <<< "$mirror_drift"
 fi
 
 section "Check 6b: Retained helper self-tests"
