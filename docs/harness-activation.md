@@ -192,8 +192,9 @@ every launch mode: pi rebuilds the prompt from each launch's arguments, resumed 
 pi loads both skills by `--skill` (`/skill:devlyn-ideate`). It names a skill by its frontmatter `name`,
 else its folder, wherever it sits below a root it discovers (its agent dir's `skills`,
 `~/.agents/skills` with `HOME` first on every platform, `<cwd>/.pi/skills`, `.agents/skills` up to the
-Git root). A devlyn name found that way, a name that is not one simple line, any skill or package named
-in pi's settings, or a root that cannot be inspected keeps the catalog.
+Git root). A devlyn name found that way on any `.md` file there (the planner reads no ignore files), a
+name that is not one simple line, any skill or package named in pi's settings, or a root that cannot be
+inspected keeps the catalog.
 OpenCode merges known effective `skillsPaths` into inline `skills.paths`; absent/null keeps catalog fallback.
 Copilot appends a per-run apply-to-all instructions directory via `COPILOT_CUSTOM_INSTRUCTIONS_DIRS`.
 Kimi uses `--skills-dir` with project roots before user roots and release skills last; owner agents and resumed profiles remain unchanged.

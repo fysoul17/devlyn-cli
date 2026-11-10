@@ -867,10 +867,11 @@ class ActivationTests(unittest.TestCase):
                 shutil.rmtree(skill.parent)
 
     def test_pi_skill_named_by_frontmatter_anywhere_below_a_root_keeps_catalog(self):
-        # Prediction: pi searches each root down to the first SKILL.md, takes root .md files of its own folders as
-        # skills, and names a skill by its frontmatter, else by its folder. A devlyn name found that way, or a name
-        # that is not one simple line, drops --skill for the catalog; other names, dot folders, node_modules and
-        # what sits below another skill leave skills native.
+        # Prediction: pi searches each root down to a SKILL.md, and past one an ignore file hides, takes .md files
+        # as skills, and names a skill by its frontmatter, else (also for an empty name) by its folder. The planner
+        # reads no ignore files, so a devlyn name on any .md file below a root, or a name that is not one simple
+        # line, drops --skill for the catalog; other names, plain documents, dot folders and node_modules leave
+        # skills native.
         pi_root, agents = self.home / '.pi/agent/skills', self.project / '.agents/skills'
 
         def skill(name_line):
@@ -881,6 +882,8 @@ class ActivationTests(unittest.TestCase):
                      (pi_root / 'owner.md', skill("name: 'devlyn-ideate'"), 'devlyn-ideate'),
                      (agents / 'pack/devlyn-engines/SKILL.md', '---\ndescription: owner\n---\n', 'devlyn-engines'),
                      (agents / 'pack/devlyn-ideate/SKILL.md', skill('name: null'), 'devlyn-ideate'),
+                     (agents / 'pack/devlyn-ideate/SKILL.md', skill("name: ''"), 'devlyn-ideate'),
+                     (agents / 'pack/devlyn-engines/SKILL.md', skill('name: ""'), 'devlyn-engines'),
                      (pi_root / 'owner/SKILL.md', skill('name: >-\n  devlyn-ideate'), None),
                      (pi_root / 'owner/SKILL.md', skill('name: &owner devlyn-ideate'), None),
                      (pi_root / 'owner/SKILL.md', skill('"name": devlyn-ideate'), None),
@@ -889,7 +892,7 @@ class ActivationTests(unittest.TestCase):
         native = [[(pi_root / 'owner/SKILL.md', skill('name: owner-skill'))], [(pi_root / 'README.md', 'devlyn-ideate')],
                   [(pi_root / 'other/SKILL.md', skill('name: null'))], [(pi_root / '.owner/SKILL.md', skill('name: devlyn-ideate'))],
                   [(agents / 'node_modules/owner/SKILL.md', skill('name: devlyn-ideate'))],
-                  [(pi_root / 'owner/SKILL.md', skill('name: owner')), (pi_root / 'owner/sub/SKILL.md', skill('name: devlyn-ideate'))]]
+                  [(pi_root / 'owner/SKILL.md', skill('name: owner')), (pi_root / 'owner/references/notes.md', 'devlyn-ideate')]]
 
         def planned(files):
             for root in (pi_root, agents):
@@ -906,6 +909,12 @@ class ActivationTests(unittest.TestCase):
                     {'code': 'name-collision', 'params': {**({'name': name} if name else {}), 'path': str(file)}},
                     {'code': 'skills-catalog', 'params': {}}]})
                 self.assertEqual(plan['channels']['invocation']['kind'], 'read-file')
+        # An ignore file can hide a folder's SKILL.md from pi, which then searches below it.
+        below = pi_root / 'owner/sub/SKILL.md'
+        plan = planned([(pi_root / 'owner/SKILL.md', skill('name: owner')), (below, skill('name: devlyn-ideate'))])
+        self.assertEqual(plan['channels']['skills']['reasons'][0],
+                         {'code': 'name-collision', 'params': {'name': 'devlyn-ideate', 'path': str(below)}})
+        self.assertNotIn('--skill', plan['engineArgs'])
         for files in native:
             with self.subTest(files=files):
                 self.assert_pi_configured(planned(files), None)

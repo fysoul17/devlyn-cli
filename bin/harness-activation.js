@@ -277,11 +277,11 @@ function piAppendFiles(cwd, agentDir, userSettings) {
   return { files: [trusted ? project : user] };
 }
 
-// The skill files pi finds below a root (package-manager.js collectSkillEntries): a folder holding
-// SKILL.md is one skill, searched no further; other folders are searched, and their .md files count too
-// (pi takes them at the root of its own folders and below it in .agents/skills; both are taken here).
-// Dot entries and node_modules are skipped as pi skips them; ignore files are not read, so at least what
-// pi finds is found.
+// The files pi may load as skills below a root (package-manager.js collectSkillEntries). pi stops at a
+// folder's SKILL.md unless an ignore file hides it, and takes other .md files at the root of its own
+// folders and below it in .agents/skills. Ignore files are not read here, so every .md file is taken and
+// every folder searched: at least what pi finds is found. Dot entries and node_modules are skipped as pi
+// skips them.
 function piSkillFiles(root) {
   const files = [], seen = new Set();
   const visit = (dir) => {
@@ -293,28 +293,23 @@ function piSkillFiles(root) {
       throw error;
     }
     seen.add(fs.realpathSync(dir));
-    // pi follows links and skips one it cannot follow.
-    const stat = (entry) => {
-      if (!entry.isSymbolicLink()) return entry;
-      try { return fs.statSync(path.join(dir, entry.name)); } catch { return null; }
-    };
-    if (entries.some((entry) => entry.name === 'SKILL.md' && stat(entry)?.isFile())) {
-      files.push(path.join(dir, 'SKILL.md'));
-      return;
-    }
     for (const entry of entries) {
       if (entry.name.startsWith('.') || entry.name === 'node_modules') continue;
-      const full = path.join(dir, entry.name), kind = stat(entry);
-      if (kind?.isDirectory()) { if (!seen.has(fs.realpathSync(full))) visit(full); }
-      else if (kind?.isFile() && entry.name.endsWith('.md')) files.push(full);
+      const full = path.join(dir, entry.name);
+      let kind = entry;
+      // pi follows links and skips one it cannot follow.
+      if (entry.isSymbolicLink()) { try { kind = fs.statSync(full); } catch { continue; } }
+      if (kind.isDirectory()) { if (!seen.has(fs.realpathSync(full))) visit(full); }
+      else if (kind.isFile() && entry.name.endsWith('.md')) files.push(full);
     }
   };
   visit(root);
   return files;
 }
 
-// The names pi may give a skill file (skills.js loadSkillFromFile): its frontmatter's string `name`, else
-// its folder's name. A plain scalar may be no string (null, a number), so the folder counts then too.
+// The names pi may give a skill file (skills.js loadSkillFromFile): its frontmatter's string `name`, else,
+// also for an empty one, its folder's name. A plain scalar may be no string (null, a number), so the
+// folder counts then too.
 // null when the name is not one simple line, which counts as a collision.
 function piSkillNames(file) {
   const text = fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n');
@@ -329,7 +324,7 @@ function piSkillNames(file) {
   if (!match) return null;
   const value = match[1].replace(/\s#.*$/, '').trim();
   const quoted = /^"([^"\\]*)"$|^'([^']*)'$/.exec(value);
-  if (quoted) return [quoted[1] ?? quoted[2]];
+  if (quoted) return [(quoted[1] ?? quoted[2]) || folder];
   const next = lines.slice(keys[0] + 1).find((line) => line.trim()) ?? '';
   if (!value || /^[-?:,[\]{}#&*!|>'"%@`]/.test(value) || /^\s/.test(next)) return null;
   return [value, folder];
