@@ -358,7 +358,7 @@ function refreshRenamedSkills(skillsDir, installedSkills) {
   for (const [oldName, newName] of Object.entries(RENAMED_SKILLS)) {
     const found = legacySkillPaths(skillsDir, oldName).filter((fullPath) => fs.existsSync(fullPath));
     if (found.length > 0 && optional.has(newName) && canRefreshRenamed(skillsDir, newName)) {
-      installOptionalSkillInto(skillsDir, newName, installedSkills);
+      installSkillInto(OPTIONAL_SKILLS_SOURCE, skillsDir, newName, installedSkills);
       refreshed.push(newName);
     } else if (isShippedCopy(path.join(skillsDir, newName), PRE_STANDARD_SKILL_MD_SHA256)) {
       refreshPreStandardCopy(skillsDir, newName);
@@ -610,21 +610,22 @@ function installLocalSkill(skillName, roots, installedSkills = new Map()) {
   }
   log(`\n🛠️  Installing ${skillName}...`, 'cyan');
   for (const root of roots) {
-    installOptionalSkillInto(root, skillName, installedSkills);
+    installSkillInto(OPTIONAL_SKILLS_SOURCE, root, skillName, installedSkills);
     writeInstallMarker(root, [skillName], readInstallManifest(root));
   }
   return true;
 }
 
-// One optional skill into one skill-loader directory, replacing any older copy of it. A
-// copy under its name before the 4.0.0 rename goes only once the new one is complete.
-function installOptionalSkillInto(target, skillName, installedSkills) {
+// One skill from `source` into one skill-loader directory. The copy is staged and checked first, so
+// a failed copy leaves any older copy of it in place for a plain rerun. A copy under its name
+// before the 4.0.0 rename goes only once the new one is complete.
+function installSkillInto(source, target, skillName, installedSkills) {
   const dest = path.join(target, skillName);
   const stage = fs.mkdtempSync(path.join(target, '.devlyn-skill-'));
   const stagedSkill = path.join(stage, skillName);
   try {
-    const files = copyRecursive(path.join(OPTIONAL_SKILLS_SOURCE, skillName), stagedSkill, stage);
-    assertCompleteSkillInstall(OPTIONAL_SKILLS_SOURCE, stage, [skillName]);
+    const files = copyRecursive(path.join(source, skillName), stagedSkill, stage);
+    assertCompleteSkillInstall(source, stage, [skillName]);
     fs.rmSync(dest, { recursive: true, force: true });
     fs.renameSync(stagedSkill, dest);
     installedSkills.set(dest, files.map((file) => path.join(dest, path.relative(stagedSkill, file))));
@@ -692,12 +693,7 @@ function installCoreSkills(skillsDir, installedSkills = new Map()) {
   const previous = readInstallManifest(skillsDir);
   clearInstallMarker(skillsDir);
   for (const skillName of DEVLYN_CORE_SKILLS) {
-    const src = path.join(sourceSkillsDir, skillName);
-    const dest = path.join(skillsDir, skillName);
-    if (!fs.existsSync(src)) continue;
-    // Full replace: copyRecursive is an overlay, so stale files would otherwise persist.
-    fs.rmSync(dest, { recursive: true, force: true });
-    installedSkills.set(dest, copyRecursive(src, dest, skillsDir));
+    if (fs.existsSync(path.join(sourceSkillsDir, skillName))) installSkillInto(sourceSkillsDir, skillsDir, skillName, installedSkills);
   }
   assertCompleteSkillInstall(sourceSkillsDir, skillsDir, DEVLYN_CORE_SKILLS);
   const refreshed = refreshRenamedSkills(skillsDir, installedSkills);
@@ -773,14 +769,14 @@ function installClaudeCore(installedSkills = new Map()) {
     + '.claude/ is unchanged; fix the file and rerun the same install command.');
   const settingsStat = fs.lstatSync(settingsPath, { throwIfNoEntry: false });
   if (settingsStat && !settingsStat.isFile()) throw unmergeable('not a regular file');
-  let settings = {};
-  if (fs.existsSync(settingsPath)) {
-    try {
-      // Claude Code accepts a leading byte order mark.
-      settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8').replace(/^\uFEFF/, ''));
-    } catch (error) {
-      throw unmergeable(error.message);
-    }
+  let text = '{}\n'; // A missing file starts as an empty object.
+  let settings;
+  try {
+    // Claude Code accepts a leading byte order mark; bytes that are not UTF-8 could not be written back as they are.
+    if (settingsStat) text = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(fs.readFileSync(settingsPath));
+    settings = JSON.parse(text.replace(/^\uFEFF/, ''));
+  } catch (error) {
+    throw unmergeable(error.message);
   }
   if (!settings || typeof settings !== 'object' || Array.isArray(settings)) {
     throw unmergeable('root must be a JSON object');
@@ -789,31 +785,24 @@ function installClaudeCore(installedSkills = new Map()) {
       && (!settings.env || typeof settings.env !== 'object' || Array.isArray(settings.env))) {
     throw unmergeable('env must be a JSON object');
   }
+  // The env edit finds the first env while JSON.parse keeps the last, so a repeated env has no single place to edit.
+  if (parseTree(text.replace(/^\uFEFF/, ' ')).children.filter((property) => property.children[0].value === 'env').length > 1) {
+    throw unmergeable('env appears more than once');
+  }
   installCoreSkills(skillsDir, installedSkills);
   updateProjectGitignore('.claude/skills/.devlyn-install.json');
 
   // One-hour foreground Bash calls and one-hour prompt caching serve a drain host that waits in the foreground.
-  let settingsChanged = false;
-  if (!Object.prototype.hasOwnProperty.call(settings, 'env')) {
-    settings.env = {};
-    settingsChanged = true;
-  }
-  if (!Object.prototype.hasOwnProperty.call(settings.env, 'ENABLE_PROMPT_CACHING_1H')) {
-    settings.env.ENABLE_PROMPT_CACHING_1H = 'true';
-    settingsChanged = true;
-  }
-  if (!Object.prototype.hasOwnProperty.call(settings.env, 'BASH_MAX_TIMEOUT_MS')) {
-    settings.env.BASH_MAX_TIMEOUT_MS = '3600000';
-    settingsChanged = true;
-  }
-  settingsChanged = cleanRetiredSettings(settings) || settingsChanged;
-  if (settingsChanged) {
-    replaceFile(settingsPath, JSON.stringify(settings, null, 2) + '\n');
+  const env = settings.env || {};
+  const missing = Object.entries({ ENABLE_PROMPT_CACHING_1H: 'true', BASH_MAX_TIMEOUT_MS: '3600000' })
+    .filter(([key]) => !Object.prototype.hasOwnProperty.call(env, key));
+  if (missing.length) {
+    replaceFile(settingsPath, insertSettingsEnv(text, missing));
     log('  → settings.json', 'dim');
   }
   // Their ownership cannot be established, so the other retired settings stay; name the ones present.
   const retired = [
-    ...RETIRED_ENV.filter((key) => Object.prototype.hasOwnProperty.call(settings.env, key)),
+    ...RETIRED_ENV.filter((key) => Object.prototype.hasOwnProperty.call(env, key)),
     ...RETIRED_PERMISSIONS.filter((rule) => Array.isArray(settings.permissions?.allow) && settings.permissions.allow.includes(rule)),
   ];
   if (retired.length > 0) {
@@ -833,7 +822,40 @@ function replaceFile(file, text) {
   }
 }
 
-function cleanRetiredSettings(settings, hookScripts = []) {
+// Adds the env entries as new text laid out like the members they join, so every existing byte stays: the byte
+// order mark, line endings, indentation, escapes and numbers beyond double precision. jsonc-parser's
+// formattingOptions would lay them out too, but by reformatting the neighbouring lines.
+function insertSettingsEnv(text, entries) {
+  const tree = () => parseTree(text.replace(/^\uFEFF/, ' '));
+  // The whitespace an object puts after its opening brace, before a later member and before its closing brace,
+  // and around its colons.
+  const layout = (object) => {
+    const first = object.children[0], last = object.children.at(-1), [key, value] = last.children;
+    const before = text.slice(0, last.offset);
+    return { open: text.slice(object.offset + 1, first.offset), lead: before.slice(before.trimEnd().length),
+      close: text.slice(last.offset + last.length, object.offset + object.length - 1),
+      colon: text.slice(key.offset + key.length, value.offset) };
+  };
+  const insert = (object, members, { open, lead, close }) => {
+    const last = object.children.at(-1);
+    text = applyEdits(text, [last
+      ? { offset: last.offset + last.length, length: 0, content: members.map((member) => `,${lead}${member}`).join('') }
+      : { offset: object.offset + 1, length: 0, content: open + members.join(`,${lead}`) + (object.length === 2 ? close : '') }]);
+  };
+  const root = tree();
+  const eol = text.includes('\r\n') ? '\r\n' : '\n';
+  const outer = root.children.length ? layout(root) : { open: `${eol}  `, lead: `${eol}  `, close: eol, colon: ': ' };
+  // A new or empty env is one level deeper: the root's indentation once more.
+  const unit = outer.lead.includes('\n') ? outer.lead.slice(outer.lead.lastIndexOf('\n') + 1) : '';
+  if (!findNodeAtLocation(root, ['env'])) insert(root, [`"env"${outer.colon}{}`], outer);
+  const env = findNodeAtLocation(tree(), ['env']);
+  const inner = env.children.length ? layout(env)
+    : { open: outer.open + unit, lead: outer.lead + unit, close: outer.close + unit, colon: outer.colon };
+  insert(env, entries.map(([key, value]) => `${JSON.stringify(key)}${inner.colon}${JSON.stringify(value)}`), inner);
+  return text;
+}
+
+function cleanRetiredSettings(settings, hookScripts) {
   let changed = cleanJarvisSettings(settings, hookScripts);
   // Remove exactly the retired Stop hook command, and its entry only when nothing else is left in it.
   const retiredHook = (hook) => hook?.type === 'command' && hook.command === RETIRED_STOP_HOOK;
@@ -930,8 +952,8 @@ function cleanupSettingsText(text, settings, scripts) {
     const end = !previous && next ? next.offset : node.offset + node.length;
     text = applyEdits(text, [{ offset, length: end - offset, content: '' }]);
   }
-  const after = JSON.parse(text.replace(/^\uFEFF/, '')); // Refuse an invalid edit before changing any bytes.
-  return Object.keys(after).length === 0 ? null : text;
+  JSON.parse(text.replace(/^\uFEFF/, '')); // Refuse an invalid edit before changing any bytes.
+  return text;
 }
 
 // Shared user roots need one writer from ownership checks through the last addon write.
@@ -1034,7 +1056,9 @@ function install(targets, global, optionalNames = [], plan, afterInstall = () =>
     for (const name of optionalNames) installLocalSkill(name, roots, installedSkills);
     afterInstall();
     log(`\n✅ devlyn ${PKG.version} installed`, 'green');
-    log('The Devlyn app gives every session the principles; in a terminal, start with: npx devlyn-cli run <claude|codex|omp>');
+    // `devlyn run` does not start on native Windows.
+    log(process.platform === 'win32' ? 'The Devlyn app gives every session the principles.'
+      : 'The Devlyn app gives every session the principles; in a terminal, start with: npx devlyn-cli run <claude|codex|omp>');
     noticeGlobalDrift(roots);
     cleanupScope(global ? os.homedir() : projectDir(), global);
     if (!global) noticeIgnoredInstallFiles(installedSkills);
@@ -1139,15 +1163,14 @@ function cleanupScope(base, global) {
   }
   const settingsFile = path.join(base, '.claude', 'settings.json');
   attempt(settingsFile, () => {
-    if (!realParents(settingsFile) || !fs.lstatSync(settingsFile, { throwIfNoEntry: false })?.isFile()) return;
-    let settings;
-    try { settings = JSON.parse(fs.readFileSync(settingsFile, 'utf8').replace(/^\uFEFF/, '')); }
-    catch (error) { if (error instanceof SyntaxError) return; throw error; }
-    if (settings && typeof settings === 'object' && cleanRetiredSettings(settings)) {
-      found = true;
-      replaceFile(settingsFile, JSON.stringify(settings, null, 2) + '\n');
-      log('  ✕ .claude/settings.json retired entries (removed)', 'dim');
-    }
+    const { safe, settings, text } = cleanupReadSettings(base);
+    if (!safe || text === undefined) return;
+    const after = cleanupSettingsText(text, settings, []);
+    if (after === text) return;
+    found = true;
+    // Even an emptied file stays: only the reviewed cleanup, which records it first, deletes it.
+    replaceFile(settingsFile, after);
+    log('  ✕ .claude/settings.json retired entries (removed)', 'dim');
   });
   // CLAUDE.md and AGENTS.md stay as they are here: only a reviewed cleanup changes them.
   const instructions = global ? [] : ['GEMINI.md', '.cursorrules', '.windsurfrules', '.github/copilot-instructions.md'];
@@ -2032,8 +2055,9 @@ function cleanupApplyItem(item) {
     const { safe, settings, text } = cleanupReadSettings(item.base);
     if (!safe || text === undefined) return cleanupReason('stale-plan');
     const after = cleanupSettingsText(text, settings, item.hookScripts);
-    if (after === null) fs.unlinkSync(item.path);
-    else if (after !== text) replaceFile(item.path, after);
+    if (after === text) return null;
+    if (Object.keys(JSON.parse(after.replace(/^\uFEFF/, ''))).length === 0) fs.unlinkSync(item.path);
+    else replaceFile(item.path, after);
     return null;
   }
   return cleanupReason('unknown-item');
