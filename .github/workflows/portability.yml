@@ -136,8 +136,8 @@ jobs:
     container:
       image: python:3.12-bookworm
       options: --init
-    # The four suites took 38 s, 106 s, 190 s and 713 s on a fast Mac; a hosted runner is slower.
-    timeout-minutes: 75
+    # The four suites take about 5 minutes here (run 42753390614) and 11 to 17 on a Mac.
+    timeout-minutes: 30
     steps:
       - name: Trust the container checkout for this job
         shell: bash
