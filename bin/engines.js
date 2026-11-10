@@ -1,7 +1,8 @@
-// Engine IDs from devlyn-os-v1/packages/contracts/src/engines.ts, in inventory order.
-// CLI binary names (for example agy) are not engine IDs.
+// Engine IDs in the order of devlyn-os-v1/packages/contracts/src/engines.ts. An ID joins only once its
+// channels are confirmed on the real CLI, with that examined version as its floor below; the planner
+// refuses every other ID. CLI binary names (for example agy) are not engine IDs.
 const ENGINE_IDS = Object.freeze([
-  'claude', 'codex', 'grok', 'omp', 'antigravity', 'cursor', 'opencode', 'kimi', 'copilot', 'qwen',
+  'claude', 'codex', 'grok', 'omp', 'antigravity', 'cursor', 'opencode', 'kimi', 'copilot', 'qwen', 'pi',
 ]);
 
 // The versions each channel was examined on. Any newer release, a new major included, is taken as
@@ -20,6 +21,7 @@ const ENGINE_CAPABILITIES = Object.freeze({
   kimi: { minimum: '2.3.0', executor: false },
   copilot: { minimum: '1.0.98', executor: false },
   qwen: { minimum: '0.26.0', executor: false },
+  pi: { minimum: '1.4.0', executor: false },
 });
 
 function readableVersion(engine, version) {
