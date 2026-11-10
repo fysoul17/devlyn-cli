@@ -264,31 +264,38 @@ init({options});
                     self.assertEqual(list(self.project.iterdir()), [])
 
     def test_claude_project_settings_merge_and_reinstall(self):
-        # A new install sets only what the drain host needs — one-hour foreground Bash calls and
-        # one-hour prompt caching — and keeps every other key as it was.
+        # A new install adds only what the drain host needs — one-hour foreground Bash calls and one-hour prompt
+        # caching — as new text laid out like its neighbours; every other byte stays, and a rerun changes none.
         dest = self.project / '.claude/settings.json'; dest.parent.mkdir()
-        for value in (None, {'custom': {'keep': [1, 2]}},
-                      {'env': {'BASH_MAX_TIMEOUT_MS': '600000', 'ENABLE_PROMPT_CACHING_1H': False}},
-                      {'env': {'BASH_MAX_TIMEOUT_MS': 'owner-value', 'ENABLE_PROMPT_CACHING_1H': ''}},
-                      {'custom': True, 'env': {'TEAM_VAR': 'keep', 'ENABLE_PROMPT_CACHING_1H': 'false',
-                                               'BASH_MAX_TIMEOUT_MS': '7200000'}}):
-            with self.subTest(value=value):
+        added = (b'"ENABLE_PROMPT_CACHING_1H": "true"', b'"BASH_MAX_TIMEOUT_MS": "3600000"')
+        for before, after in (
+                (None, b'{\n  "env": {\n    %s,\n    %s\n  }\n}\n' % added),
+                # A byte order mark, CRLF, an escape and an owner integer above 2^53.
+                (b'\xef\xbb\xbf{\r\n    "big": 12345678901234567890,\r\n    "env": {\r\n        "TEAM_VAR": "\\u00e9"\r\n    }\r\n}\r\n',
+                 b'\xef\xbb\xbf{\r\n    "big": 12345678901234567890,\r\n    "env": {\r\n        "TEAM_VAR": "\\u00e9",\r\n'
+                 b'        %s,\r\n        %s\r\n    }\r\n}\r\n' % added),
+                # Tabs, no env, a repeated owner key and no final newline.
+                (b'{\n\t"custom": {\n\t\t"keep": [1, 2]\n\t},\n\t"custom": 3\n}',
+                 b'{\n\t"custom": {\n\t\t"keep": [1, 2]\n\t},\n\t"custom": 3,\n\t"env": {\n\t\t%s,\n\t\t%s\n\t}\n}' % added),
+                (b'{\n  "env": {}\n}\n', b'{\n  "env": {\n    %s,\n    %s\n  }\n}\n' % added),
+                (b'{"env": {"TEAM_VAR": "keep", "BASH_MAX_TIMEOUT_MS": "owner-value"}}',
+                 b'{"env": {"TEAM_VAR": "keep", "BASH_MAX_TIMEOUT_MS": "owner-value", %s}}' % added[0]),
+                (b'{"env": {"BASH_MAX_TIMEOUT_MS": "600000", "ENABLE_PROMPT_CACHING_1H": false}}', None),
+                (b'{"custom": true, "env": {"ENABLE_PROMPT_CACHING_1H": "", "BASH_MAX_TIMEOUT_MS": "7200000"}}', None)):
+            with self.subTest(before=before):
                 dest.unlink(missing_ok=True)
-                if value is not None:
-                    dest.write_text(json.dumps(value), encoding='utf-8')
+                if before is not None:
+                    dest.write_bytes(before)
                 result = self.invoke('installClaudeCore();')
-                settings = json.loads(dest.read_bytes())
-                self.assertEqual(settings, {**(value or {}), 'env': {'ENABLE_PROMPT_CACHING_1H': 'true', 'BASH_MAX_TIMEOUT_MS': '3600000',
-                                                                     **(value or {}).get('env', {})}})
+                self.assertEqual(dest.read_bytes(), after or before)
                 self.assertNotIn(b'Retired devlyn settings', result.stdout)
-                first = dest.read_bytes()
                 self.invoke('installClaudeCore();')
-                self.assertEqual(dest.read_bytes(), first)
+                self.assertEqual(dest.read_bytes(), after or before)
         self.assertFalse((self.home / '.claude').exists())
 
     def test_claude_settings_are_read_before_any_claude_write(self):
-        # Settings the install cannot merge leave the Claude target as it was, with a clear message;
-        # a leading BOM, which Claude Code accepts, merges.
+        # Settings the install cannot merge (or edit in one place, or write back byte for byte) leave the Claude
+        # target as it was, with a clear message; a leading BOM, which Claude Code accepts, merges and stays.
         claude = self.project / '.claude'
         hook = claude / 'skills/_shared/resolve-stop-hook.py'
         self.seed_4_1(claude / 'skills')
@@ -297,7 +304,8 @@ init({options});
         retired = {'type': 'command', 'command': 'python3 "$CLAUDE_PROJECT_DIR/.claude/skills/_shared/resolve-stop-hook.py"'}
         def tree():
             return {p: p.read_bytes() if p.is_file() else None for p in [self.project / 'CLAUDE.md', *claude.rglob('*')]}
-        for invalid in (b'{"hooks": {"Stop": []},}\n', b'\xef\xbb\xbf[]', b'{"env": "x"}'):
+        for invalid in (b'{"hooks": {"Stop": []},}\n', b'\xef\xbb\xbf[]', b'{"env": "x"}', b'{"env": {"A": "1"}, "env": {}}',
+                        b'{"custom": "\xff"}'):
             with self.subTest(invalid=invalid):
                 settings.write_bytes(invalid)
                 before = tree()
@@ -307,8 +315,9 @@ init({options});
                 self.assertEqual(tree(), before)
         settings.write_bytes(b'\xef\xbb\xbf' + json.dumps({'custom': 1, 'hooks': {'Stop': [{'hooks': [retired]}]}}).encode())
         self.cli('-y', '--claude')
-        self.assertEqual(json.loads(settings.read_bytes()), {'custom': 1, 'hooks': {'Stop': []},
-                         'env': {'ENABLE_PROMPT_CACHING_1H': 'true', 'BASH_MAX_TIMEOUT_MS': '3600000'}})
+        # The install adds the keys; its cleanup removes the retired hook and the containers that removal emptied.
+        self.assertEqual(settings.read_bytes(), b'\xef\xbb\xbf{"custom": 1, "env": {"ENABLE_PROMPT_CACHING_1H": "true", '
+                                                b'"BASH_MAX_TIMEOUT_MS": "3600000"}}')
         self.assertFalse(hook.exists())
 
     def test_claude_install_ships_no_unreferenced_commit_conventions(self):
@@ -356,7 +365,7 @@ init({options});
                 self.home = self.case / f'home-{index}'; self.home.mkdir()
                 self.env['DEVLYN_TEST_HOME'] = str(self.home)
                 result = self.cli(*args)
-                self.assertEqual(result.stdout.count(b'in a terminal, start with: npx devlyn-cli run'), 1)
+                self.assertEqual(result.stdout.count(b'in a terminal, start with: npx devlyn-cli run'), 0 if os.name == 'nt' else 1)
                 if '--claude' not in args:
                     where = '~/.claude/skills' if '--global' in args else '.claude/'
                     self.assertIn(f'{where} for Claude Code: add --claude'.encode(), result.stdout)
@@ -369,6 +378,12 @@ init({options});
                     self.assertEqual(ignored[1:], ['.devlyn/'])
         self.cli('-y', '--bogus', code=1)
         self.cli('agents-all', code=1)
+
+    def test_windows_install_points_only_to_the_app(self):
+        # `devlyn run` does not start on native Windows, so the line after an install there names only the app.
+        result = self.invoke("Object.defineProperty(process, 'platform', { value: 'win32' }); install(['agents'], false);")
+        self.assertIn(b'The Devlyn app gives every session the principles.', result.stdout)
+        self.assertNotIn(b'devlyn-cli run', result.stdout)
 
     def test_project_upgrade_removes_only_selected_marker_ignore_lines(self):
         agents = b'.agents/skills/.devlyn-install.json'
@@ -1499,11 +1514,12 @@ update();
     def test_cleanup_bom_settings_only_exact_retired_hook(self):
         retired = {'type': 'command', 'command': 'python3 "$CLAUDE_PROJECT_DIR/.claude/skills/_shared/resolve-stop-hook.py"'}
         owner = {'type': 'command', 'command': SHORT_PAYLOAD.decode('utf-8')}
-        data = {'env': {'CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS': '1', 'OWNER': SHORT_PAYLOAD.decode('utf-8')},
+        data = {'big': 12345678901234567890, 'env': {'CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS': '1', 'OWNER': SHORT_PAYLOAD.decode('utf-8')},
                 'permissions': {'allow': ['Write(.devlyn/**)', 'Bash(git add *)', 'owner']},
                 'hooks': {'Stop': [{'hooks': [retired, owner]}]}}
-        raw = b'\xef\xbb\xbf' + (json.dumps(data, ensure_ascii=False, indent=4) + '\n\n').encode('utf-8')
-        expected = {**data, 'hooks': {'Stop': [{'hooks': [owner]}]}}
+        # A byte order mark, CRLF, an owner integer above 2^53: only the retired hook's bytes go.
+        dump = lambda value: b'\xef\xbb\xbf' + json.dumps(value, ensure_ascii=False, indent=4).replace('\n', '\r\n').encode('utf-8') + b'\r\n\r\n'
+        raw, expected = dump(data), dump({**data, 'hooks': {'Stop': [{'hooks': [owner]}]}})
         paths = [base / '.claude/settings.json' for base in [self.project, self.home]]
         for args in [('update',), ('-y', '--global')]:
             with self.subTest(args=args):
@@ -1511,18 +1527,17 @@ update();
                     settings.parent.mkdir(exist_ok=True); settings.write_bytes(raw)
                 self.cli(*args)
                 for settings in paths if args == ('update',) else paths[1:]:
-                    after = settings.read_bytes()
-                    self.assertFalse(after.startswith(b'\xef\xbb\xbf'))
-                    self.assertTrue(after.endswith(b'\n'))
-                    parsed = json.loads(after)
-                    self.assertEqual(parsed, expected)
-                    self.assertEqual(parsed['env']['OWNER'].encode('utf-8'), SHORT_PAYLOAD)
-                    self.assertEqual(parsed['hooks']['Stop'][0]['hooks'][0]['command'].encode('utf-8'), SHORT_PAYLOAD)
+                    self.assertEqual(settings.read_bytes(), expected)
                 if args == ('update',):
                     self.assertEqual(self.markers(self.project), set())
                     self.assertEqual(self.markers(self.home), set())
                 else:
                     self.assertEqual(paths[0].read_bytes(), raw)
+        # A file that held nothing but the retired hook goes, as the reviewed cleanup removes it.
+        for settings in paths:
+            settings.write_bytes(json.dumps({'hooks': {'Stop': [{'hooks': [retired]}]}}).encode())
+        self.cli('update')
+        self.assertEqual([settings.exists() for settings in paths], [False, False])
 
     def test_cleanup_historical_optional_and_third_party_skills_survive(self):
         fixtures = Path(__file__).parent / 'fixtures/cleanup'
@@ -2483,6 +2498,31 @@ console.log(JSON.stringify(Object.fromEntries(DEVLYN_CORE_SKILLS.map((name) =>
         self.assertNotEqual(result.returncode, 0)
         self.assertIn(b'Incomplete devlyn skill install', result.stderr)
         self.assertEqual(self.markers(self.home), set())
+
+    def test_failed_core_copy_keeps_the_previous_copy_for_a_plain_rerun(self):
+        # A core skill is copied and checked aside before it replaces the previous copy, so a copy that fails midway
+        # leaves that copy, still provably shipped, and a plain rerun installs.
+        root = self.project / '.agents/skills'
+        self.seed_4_1(root)
+        tree = lambda folder: {p.relative_to(folder): p.read_bytes() if p.is_file() else None for p in folder.rglob('*')}
+        previous = tree(root / '_shared')
+        result = self.invoke("""
+const copy = fs.copyFileSync;
+let shared = 0;
+fs.copyFileSync = (from, to, ...rest) => {
+  if (from.includes(path.join('skills', '_shared') + path.sep) && ++shared === 3) throw new Error('injected copy failure');
+  return copy(from, to, ...rest);
+};
+install(['agents'], false);
+""", code=None)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(b'injected copy failure', result.stderr)
+        self.assertEqual(tree(root / '_shared'), previous)
+        self.assertEqual(list(root.glob('.devlyn-skill-*')), [])
+        self.assertFalse((root / '.devlyn-install.json').exists())
+        self.cli('-y')
+        self.assertEqual(tree(root / '_shared'), tree(self.package / 'config/skills/_shared'))
+        self.assertTrue((root / '.devlyn-install.json').is_file())
 
     def test_unknown_pre_4_names_removed_in_every_selected_root(self):
         spellings = ['\uf03a'] if os.name == 'nt' else [':', '\uf03a']
