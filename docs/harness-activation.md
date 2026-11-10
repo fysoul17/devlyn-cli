@@ -198,7 +198,9 @@ inspected keeps the catalog.
 OpenCode merges known effective `skillsPaths` into inline `skills.paths`; absent/null keeps catalog fallback.
 Copilot appends a per-run apply-to-all instructions directory via `COPILOT_CUSTOM_INSTRUCTIONS_DIRS`.
 Kimi uses `--skills-dir` with project roots before user roots and release skills last; owner agents and resumed profiles remain unchanged.
-Cursor/Antigravity remain partial with task-only delivery.
+Cursor/Antigravity get the principles and the catalog only in a first task, ahead of its text (principles
+partial with `principles-task-only`, skills through the catalog); without one nothing is delivered and both
+channels are unavailable (`no-initial-task`).
 
 Tests: `python3 scripts/test-harness-activation.py --codex-probe` packs/extracts
 and tests the actual release. Set `TMPDIR` to the supplied scratch directory.

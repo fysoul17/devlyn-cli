@@ -647,11 +647,15 @@ function planActivation(releaseRoot, input, env = process.env) {
       break;
     case 'antigravity':
     case 'cursor':
-      status.principles = channel('partial', context.initialPrompt ? 'initial-task' : null, [reason('principles-task-only')]);
+      // Only a first task carries the principles and the catalog: without one nothing reaches the session.
       if (context.initialPrompt) {
+        status.principles = channel('partial', 'initial-task', [reason('principles-task-only')]);
         plan.prompt = { ...context.initialPrompt, text: joinText(instructions, context.initialPrompt.text) };
         fallback();
-      } else status.skills = channel('partial', null, [reason('skills-unavailable', { detail: 'no-initial-task' })]);
+      } else {
+        status.principles = channel('unavailable', null, [reason('principles-unavailable', { detail: 'no-initial-task' })]);
+        status.skills = channel('unavailable', null, [reason('skills-unavailable', { detail: 'no-initial-task' })]);
+      }
       break;
   }
   if (plan.engineArgs.length || Object.keys(plan.envPatch).length || plan.prompt) plan.envPatch.DEVLYN_HARNESS_ROOT = release.root;
