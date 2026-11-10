@@ -122,16 +122,20 @@ function effectiveConfig(context) {
   return config;
 }
 
-// pi's agent dir: PI_CODING_AGENT_DIR, whose leading ~ pi expands to the home folder, else ~/.pi/agent.
-function piAgentDir(context, env) {
-  const home = env.HOME || env.USERPROFILE || os.homedir();
+// pi's agent dir is PI_CODING_AGENT_DIR, else ~/.pi/agent. That ~, and a leading ~ pi expands in the
+// variable, is os.homedir(): USERPROFILE on Windows, HOME elsewhere (config.js getAgentDir). The home of
+// its user .agents/skills takes HOME first on every platform (package-manager.js getHomeDir).
+function piFolders(cwd, env, platform = process.platform) {
+  const paths = platform === 'win32' ? path.win32 : path.posix;
+  const home = (platform === 'win32' ? env.USERPROFILE : env.HOME) || os.homedir();
   const dir = env.PI_CODING_AGENT_DIR;
-  if (!dir) return path.join(home, '.pi/agent');
-  return path.resolve(context.cwd, dir.replace(process.platform === 'win32' ? /^~(?=$|[\\/])/ : /^~(?=$|\/)/, () => home));
+  const agentDir = dir ? dir.replace(platform === 'win32' ? /^~(?=$|[\\/])/ : /^~(?=$|\/)/, () => home) : paths.join(home, '.pi', 'agent');
+  return { agentDir: paths.resolve(cwd, agentDir), agentsHome: env.HOME || home };
 }
 
 function discoveryRoots(context, env, config) {
   const home = env.HOME || env.USERPROFILE || os.homedir();
+  const pi = piFolders(context.cwd, env);
   const roots = [...(context.skillRoots || [])];
   const add = (base, ...parts) => { if (base) roots.push(path.resolve(base, ...parts)); };
   const engine = context.engine;
@@ -145,11 +149,11 @@ function discoveryRoots(context, env, config) {
     kimi: [env.KIMI_CODE_HOME || path.join(home, '.kimi-code'), '.kimi-code'],
     copilot: [env.COPILOT_HOME || path.join(home, '.copilot'), '.github'],
     qwen: [env.QWEN_HOME || path.join(home, '.qwen'), '.qwen'],
-    pi: [piAgentDir(context, env), null],
+    pi: [pi.agentDir, null],
   }[engine];
   if (engine !== 'codex') add(native[0], 'skills');
   const copilotDefaultHome = !env.COPILOT_HOME || path.resolve(env.COPILOT_HOME) === path.join(home, '.copilot');
-  if (!['claude', 'cursor'].includes(engine) && (engine !== 'copilot' || copilotDefaultHome)) add(home, '.agents/skills');
+  if (!['claude', 'cursor'].includes(engine) && (engine !== 'copilot' || copilotDefaultHome)) add(engine === 'pi' ? pi.agentsHome : home, '.agents/skills');
   if (['omp', 'opencode', 'grok'].includes(engine)) add(home, '.claude/skills');
   if (engine === 'omp') {
     add(home, '.codex/skills'); add(home, '.agent/skills');
@@ -216,14 +220,47 @@ function ownerAppend(config, lookup) {
   }
 }
 
+// pi's user and project settings.json (settings-manager.js). Entries they name resolve through pi's own
+// package manager, which the planner does not repeat. A file that cannot be read is null and reported.
+function piSettings(cwd, agentDir) {
+  const settings = { errors: [] };
+  for (const [scope, file] of [['user', path.join(agentDir, 'settings.json')], ['project', path.join(cwd, '.pi/settings.json')]]) {
+    try {
+      settings[scope] = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8').replace(/^﻿/, '') || '{}') : {};
+    } catch (error) {
+      settings[scope] = null;
+      settings.errors.push(reason('config-unreadable', { path: file, detail: error.code || error.message }));
+    }
+  }
+  return settings;
+}
+const listed = (settings, ...keys) => keys.some((key) => settings?.[key] != null && settings[key].length !== 0);
+
+// Whether the agent dir's extensions folder holds anything pi could load; pi skips dot entries and
+// node_modules (package-manager.js collectAutoExtensionEntries).
+function piExtensionEntries(agentDir) {
+  try {
+    return fs.readdirSync(path.join(agentDir, 'extensions')).some((name) => !name.startsWith('.') && name !== 'node_modules');
+  } catch (error) {
+    if (error.code === 'ENOENT') return false;
+    throw error;
+  }
+}
+
 // pi reads a project's .pi/APPEND_SYSTEM.md only when it trusts the project, else its agent dir's
-// (resource-loader discoverAppendSystemPromptFile). Trust is pi's saved decision for the folder or its
-// nearest decided parent (trust.json); without one pi settles trust at launch, so which file it reads
-// cannot be known here. The planner never writes trust.
-function piAppendFiles(cwd, agentDir) {
+// (resource-loader discoverAppendSystemPromptFile). pi first asks the extensions it loads before trust,
+// and the first yes or no wins (project-trust.js resolveProjectTrusted). With project settings held
+// untrusted, those come only from the agent dir's extensions folder and the extensions or packages its
+// user settings name (resource-loader loadProjectTrustExtensions, package-manager resolve): the app
+// passes no -e, and pi's built-in extensions answer no trust question. With none, trust is pi's saved
+// decision for the folder or its nearest decided parent (trust.json). Otherwise pi settles trust at
+// launch, so which file it reads cannot be known here. The planner never writes trust.
+function piAppendFiles(cwd, agentDir, userSettings) {
   const project = path.join(cwd, '.pi/APPEND_SYSTEM.md');
   const user = path.join(agentDir, 'APPEND_SYSTEM.md');
   if (!isFile(project)) return { files: [user] };
+  const undecided = { reason: reason('principles-unavailable', { detail: 'project-trust-undecided', path: project }) };
+  if (userSettings === null || listed(userSettings, 'extensions', 'packages') || piExtensionEntries(agentDir)) return undecided;
   const store = path.join(agentDir, 'trust.json');
   let trusted = null;
   try {
@@ -236,25 +273,86 @@ function piAppendFiles(cwd, agentDir) {
   } catch (error) {
     return { reason: reason('config-unreadable', { path: store, detail: error.code || error.message }) };
   }
-  if (trusted === null) return { reason: reason('principles-unavailable', { detail: 'project-trust-undecided', path: project }) };
+  if (trusted === null) return undecided;
   return { files: [trusted ? project : user] };
 }
 
-// Skills and packages named in pi's settings resolve through pi's own package manager, which the
-// planner does not repeat: any such entry may hold a same-named skill that would shadow --skill.
-function piSettingsSkills(cwd, agentDir) {
-  let named = false;
-  const errors = [];
-  for (const file of [path.join(agentDir, 'settings.json'), path.join(cwd, '.pi/settings.json')]) {
-    if (!fs.existsSync(file)) continue;
+// The skill files pi finds below a root (package-manager.js collectSkillEntries): a folder holding
+// SKILL.md is one skill, searched no further; other folders are searched, and their .md files count too
+// (pi takes them at the root of its own folders and below it in .agents/skills; both are taken here).
+// Dot entries and node_modules are skipped as pi skips them; ignore files are not read, so at least what
+// pi finds is found.
+function piSkillFiles(root) {
+  const files = [], seen = new Set();
+  const visit = (dir) => {
+    let entries;
     try {
-      const settings = JSON.parse(fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, '') || '{}');
-      named ||= ['skills', 'packages'].some((key) => settings?.[key] != null && settings[key].length !== 0);
+      entries = fs.readdirSync(dir, { withFileTypes: true });
     } catch (error) {
-      errors.push(reason('config-unreadable', { path: file, detail: error.code || error.message }));
+      if (dir === root && error.code === 'ENOENT') return;
+      throw error;
+    }
+    seen.add(fs.realpathSync(dir));
+    // pi follows links and skips one it cannot follow.
+    const stat = (entry) => {
+      if (!entry.isSymbolicLink()) return entry;
+      try { return fs.statSync(path.join(dir, entry.name)); } catch { return null; }
+    };
+    if (entries.some((entry) => entry.name === 'SKILL.md' && stat(entry)?.isFile())) {
+      files.push(path.join(dir, 'SKILL.md'));
+      return;
+    }
+    for (const entry of entries) {
+      if (entry.name.startsWith('.') || entry.name === 'node_modules') continue;
+      const full = path.join(dir, entry.name), kind = stat(entry);
+      if (kind?.isDirectory()) { if (!seen.has(fs.realpathSync(full))) visit(full); }
+      else if (kind?.isFile() && entry.name.endsWith('.md')) files.push(full);
+    }
+  };
+  visit(root);
+  return files;
+}
+
+// The names pi may give a skill file (skills.js loadSkillFromFile): its frontmatter's string `name`, else
+// its folder's name. A plain scalar may be no string (null, a number), so the folder counts then too.
+// null when the name is not one simple line, which counts as a collision.
+function piSkillNames(file) {
+  const text = fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, '').replace(/\r\n?/g, '\n');
+  const folder = path.basename(path.dirname(file));
+  const end = text.startsWith('---') ? text.indexOf('\n---', 3) : -1;
+  const lines = end < 0 ? [] : text.slice(4, end).split('\n');
+  if (/^\s/.test(lines.find((line) => line.trim() && !line.trim().startsWith('#')) ?? '')) return null;
+  // Lines that are or may be a top-level name key: quoted or complex keys, merges, anchors, flow mappings.
+  const keys = lines.flatMap((line, index) => (/^(?:name[ \t]*:|["'?{[&*!]|<<)/.test(line) ? [index] : []));
+  if (!keys.length) return [folder];
+  const match = keys.length === 1 && /^name:(.*)$/.exec(lines[keys[0]]);
+  if (!match) return null;
+  const value = match[1].replace(/\s#.*$/, '').trim();
+  const quoted = /^"([^"\\]*)"$|^'([^']*)'$/.exec(value);
+  if (quoted) return [quoted[1] ?? quoted[2]];
+  const next = lines.slice(keys[0] + 1).find((line) => line.trim()) ?? '';
+  if (!value || /^[-?:,[\]{}#&*!|>'"%@`]/.test(value) || /^\s/.test(next)) return null;
+  return [value, folder];
+}
+
+// pi names a skill by its frontmatter wherever it sits below a root, and a found name wins over --skill.
+// Files `found` already reports are skipped.
+function piNameCollisions(roots, found) {
+  const collisions = [], errors = [], seen = new Set(found.map((entry) => entry.path));
+  for (const root of roots) {
+    try {
+      for (const file of piSkillFiles(root)) {
+        if (seen.has(file)) continue;
+        seen.add(file);
+        const names = piSkillNames(file);
+        if (names === null) collisions.push(reason('name-collision', { path: file }));
+        else for (const name of new Set(names)) if (SKILLS.includes(name)) collisions.push(reason('name-collision', { name, path: file }));
+      }
+    } catch (error) {
+      errors.push(reason('config-unreadable', { path: error.path || root, detail: error.code || error.message }));
     }
   }
-  return { named, errors };
+  return { collisions, errors };
 }
 
 function inspectSkills(context, release, env, config, active) {
@@ -469,17 +567,19 @@ function planActivation(releaseRoot, input, env = process.env) {
       break;
     }
     case 'pi': {
-      const agentDir = piAgentDir(context, env);
-      const owner = ownerAppend(config, () => piAppendFiles(context.cwd, agentDir));
+      const { agentDir } = piFolders(context.cwd, env);
+      const settings = piSettings(context.cwd, agentDir);
+      const owner = ownerAppend(config, () => piAppendFiles(context.cwd, agentDir, settings.user));
       if (owner.reason) status.principles = channel('partial', null, [owner.reason]);
       else {
         plan.engineArgs.push('--append-system-prompt', file('devlyn-instructions.md', joinText(owner.text, instructions)));
         principles('append-system-prompt');
       }
       // A discovered or settings-named skill wins over a --skill of the same name.
-      const settings = piSettingsSkills(context.cwd, agentDir);
-      if (collisions.length || errors.length || settings.named || settings.errors.length) {
-        fallback([...collisions, ...errors, ...settings.errors], !owner.reason);
+      const named = piNameCollisions(discoveryRoots(context, env, config), found);
+      const reasons = [...collisions, ...named.collisions, ...errors, ...named.errors, ...settings.errors];
+      if (reasons.length || [settings.user, settings.project].some((scope) => listed(scope, 'skills', 'packages'))) {
+        fallback(reasons, !owner.reason);
       } else {
         for (const name of SKILLS) plan.engineArgs.push('--skill', path.join(release.root, 'config/skills', name));
         native('--skill', 'slash', '/skill:devlyn-ideate');
@@ -571,4 +671,4 @@ function activationCommand(args) {
   return planActivation(opts['release-root'], readContext(opts['context-file']));
 }
 
-module.exports = { planActivation, activationCommand, readContext, toml, skillCatalog };
+module.exports = { planActivation, activationCommand, readContext, toml, skillCatalog, piFolders };

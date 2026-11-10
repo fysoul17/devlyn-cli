@@ -181,15 +181,19 @@ pi gets the same three parts in that order in a per-run file passed by `--append
 Given append text, omp and pi skip their own `APPEND_SYSTEM.md`, so when the caller supplies no
 append text (an empty string is text) the planner reads the file the engine would: for omp the
 working directory's `.omp/APPEND_SYSTEM.md`, then `~/.omp/agent/APPEND_SYSTEM.md`, as `devlyn run`
-does; for pi the agent dir's (`PI_CODING_AGENT_DIR`, else `~/.pi/agent`), or the project's
-`.pi/APPEND_SYSTEM.md` when pi's saved trust (`trust.json`) trusts the project. With a project file and
-no saved decision, or an unreadable trust record or owner file, the flag is left off so the engine's
-own lookup stays intact, and principles are partial. The planner never writes trust. The plan is the
-same for every launch mode: pi rebuilds the prompt from each launch's arguments, resumed sessions
-included.
-pi loads both skills by `--skill` (`/skill:devlyn-ideate`); a same-named skill in a root pi discovers
-(its agent dir's `skills`, `~/.agents/skills`, `<cwd>/.pi/skills`, `.agents/skills` up to the Git
-root), any skill or package named in pi's settings, or a root that cannot be inspected keeps the catalog.
+does; for pi the agent dir's (`PI_CODING_AGENT_DIR`, else `~/.pi/agent`, where `~` is
+`USERPROFILE` on Windows and `HOME` elsewhere), or the project's `.pi/APPEND_SYSTEM.md` when pi's saved
+trust (`trust.json`) trusts the project. pi asks the extensions it loads before trust first, so a saved
+decision counts only while none can exist: nothing in the agent dir's `extensions` folder and no
+extensions or packages named in its readable user settings. With a project file and no decision that
+counts, or an unreadable trust record or owner file, the flag is left off so the engine's own lookup
+stays intact, and principles are partial. The planner never writes trust. The plan is the same for
+every launch mode: pi rebuilds the prompt from each launch's arguments, resumed sessions included.
+pi loads both skills by `--skill` (`/skill:devlyn-ideate`). It names a skill by its frontmatter `name`,
+else its folder, wherever it sits below a root it discovers (its agent dir's `skills`,
+`~/.agents/skills` with `HOME` first on every platform, `<cwd>/.pi/skills`, `.agents/skills` up to the
+Git root). A devlyn name found that way, a name that is not one simple line, any skill or package named
+in pi's settings, or a root that cannot be inspected keeps the catalog.
 OpenCode merges known effective `skillsPaths` into inline `skills.paths`; absent/null keeps catalog fallback.
 Copilot appends a per-run apply-to-all instructions directory via `COPILOT_CUSTOM_INSTRUCTIONS_DIRS`.
 Kimi uses `--skills-dir` with project roots before user roots and release skills last; owner agents and resumed profiles remain unchanged.

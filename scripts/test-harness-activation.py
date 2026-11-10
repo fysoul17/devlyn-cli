@@ -790,6 +790,36 @@ class ActivationTests(unittest.TestCase):
                 self.assertEqual(plan['channels']['skills'], {'state': 'configured', 'mechanism': '--skill', 'reasons': []})
                 self.assertEqual(plan['channels']['overall'], 'partial')
 
+    def test_pi_extension_loaded_before_trust_leaves_the_flag_off(self):
+        # Prediction: pi asks the extensions it loads before trust first, so while one can exist (the agent dir's
+        # extensions folder, extensions or packages named by the user settings, or those settings unreadable) a
+        # saved decision, trusted or not, settles nothing: no --append-system-prompt, principles undecided. Dot
+        # entries and node_modules in that folder hold none, and the saved decision applies as before.
+        agent = self.home / '.pi/agent'
+        self.write(agent / 'APPEND_SYSTEM.md', 'AGENT FILE')
+        project_file = self.write(self.project / '.pi/APPEND_SYSTEM.md', 'PROJECT FILE')
+        undecided = {'state': 'partial', 'mechanism': None, 'reasons': [
+            {'code': 'principles-unavailable', 'params': {'detail': 'project-trust-undecided', 'path': str(project_file)}}]}
+        extensions, settings = agent / 'extensions', agent / 'settings.json'
+        sources = [(extensions / 'owner.ts', ''), (extensions / 'owner/index.ts', ''), (settings, '{"extensions": ["~/owner.ts"]}'),
+                   (settings, '{"packages": ["npm:owner"]}'), (settings, 'not json')]
+        inert = [(extensions / '.owner.ts', ''), (extensions / 'node_modules/owner/index.ts', ''),
+                 (settings, '{"extensions": [], "packages": []}')]
+        for saved, owner in [(True, 'PROJECT FILE'), (False, 'AGENT FILE')]:
+            self.write(agent / 'trust.json', json.dumps({os.path.realpath(self.project): saved}))
+            for file, text in [*sources, *inert]:
+                with self.subTest(saved=saved, file=file, text=text):
+                    shutil.rmtree(extensions, ignore_errors=True)
+                    settings.unlink(missing_ok=True)
+                    self.write(file, text)
+                    plan = self.plan(self.context('pi'))
+                    if (file, text) in inert:
+                        self.assert_pi_configured(plan, owner)
+                    else:
+                        self.assertNotIn('--append-system-prompt', plan['engineArgs'])
+                        self.assertEqual(plan['files'], [])
+                        self.assertEqual(plan['channels']['principles'], undecided)
+
     @unittest.skipIf(os.name == 'nt', 'symlink fixture needs POSIX privileges')
     def test_pi_without_principles_a_collision_has_no_catalog(self):
         # Prediction: an unreadable owner file also leaves the flag off; then a same-named skill leaves only the
@@ -835,6 +865,72 @@ class ActivationTests(unittest.TestCase):
                 else:
                     self.assert_pi_configured(plan, None)
                 shutil.rmtree(skill.parent)
+
+    def test_pi_skill_named_by_frontmatter_anywhere_below_a_root_keeps_catalog(self):
+        # Prediction: pi searches each root down to the first SKILL.md, takes root .md files of its own folders as
+        # skills, and names a skill by its frontmatter, else by its folder. A devlyn name found that way, or a name
+        # that is not one simple line, drops --skill for the catalog; other names, dot folders, node_modules and
+        # what sits below another skill leave skills native.
+        pi_root, agents = self.home / '.pi/agent/skills', self.project / '.agents/skills'
+
+        def skill(name_line):
+            return f'---\n{name_line}\ndescription: owner\n---\nOwner'
+
+        colliding = [(pi_root / 'owner/SKILL.md', skill('name: devlyn-ideate'), 'devlyn-ideate'),
+                     (agents / 'pack/deep/SKILL.md', skill('name: "devlyn-engines"  # quoted'), 'devlyn-engines'),
+                     (pi_root / 'owner.md', skill("name: 'devlyn-ideate'"), 'devlyn-ideate'),
+                     (agents / 'pack/devlyn-engines/SKILL.md', '---\ndescription: owner\n---\n', 'devlyn-engines'),
+                     (agents / 'pack/devlyn-ideate/SKILL.md', skill('name: null'), 'devlyn-ideate'),
+                     (pi_root / 'owner/SKILL.md', skill('name: >-\n  devlyn-ideate'), None),
+                     (pi_root / 'owner/SKILL.md', skill('name: &owner devlyn-ideate'), None),
+                     (pi_root / 'owner/SKILL.md', skill('"name": devlyn-ideate'), None),
+                     (pi_root / 'owner/SKILL.md', skill('name: owner\nname: devlyn-ideate'), None),
+                     (pi_root / 'owner/SKILL.md', '---\n  name: devlyn-ideate\n  description: owner\n---\n', None)]
+        native = [[(pi_root / 'owner/SKILL.md', skill('name: owner-skill'))], [(pi_root / 'README.md', 'devlyn-ideate')],
+                  [(pi_root / 'other/SKILL.md', skill('name: null'))], [(pi_root / '.owner/SKILL.md', skill('name: devlyn-ideate'))],
+                  [(agents / 'node_modules/owner/SKILL.md', skill('name: devlyn-ideate'))],
+                  [(pi_root / 'owner/SKILL.md', skill('name: owner')), (pi_root / 'owner/sub/SKILL.md', skill('name: devlyn-ideate'))]]
+
+        def planned(files):
+            for root in (pi_root, agents):
+                shutil.rmtree(root, ignore_errors=True)
+            for file, text in files:
+                self.write(file, text)
+            return self.plan(self.context('pi'))
+
+        for file, text, name in colliding:
+            with self.subTest(file=file, text=text):
+                plan = planned([(file, text)])
+                self.assertEqual(plan['engineArgs'], ['--append-system-prompt', str(self.run_dir / 'devlyn-instructions.md')])
+                self.assertEqual(plan['channels']['skills'], {'state': 'partial', 'mechanism': 'absolute-catalog', 'reasons': [
+                    {'code': 'name-collision', 'params': {**({'name': name} if name else {}), 'path': str(file)}},
+                    {'code': 'skills-catalog', 'params': {}}]})
+                self.assertEqual(plan['channels']['invocation']['kind'], 'read-file')
+        for files in native:
+            with self.subTest(files=files):
+                self.assert_pi_configured(planned(files), None)
+        if os.name != 'nt':
+            shutil.rmtree(pi_root)
+            pi_root.mkdir()
+            (pi_root / 'loop').symlink_to(pi_root)  # a folder that leads back to its root is searched once
+            self.assert_pi_configured(self.plan(self.context('pi')), None)
+
+    def test_pi_home_folders_per_platform(self):
+        # Prediction: pi's agent dir, and the ~ it expands in PI_CODING_AGENT_DIR, follow os.homedir(): USERPROFILE on
+        # Windows, HOME elsewhere. Its user .agents/skills takes HOME first on both.
+        windows = {'HOME': 'C:\\msys64\\home\\me', 'USERPROFILE': 'C:\\Users\\me'}
+        posix = {'HOME': '/home/me', 'USERPROFILE': '/mnt/c/Users/me'}
+        cases = [('C:\\work', windows, 'win32', 'C:\\Users\\me\\.pi\\agent', 'C:\\msys64\\home\\me'),
+                 ('C:\\work', {**windows, 'PI_CODING_AGENT_DIR': '~\\pi'}, 'win32', 'C:\\Users\\me\\pi', 'C:\\msys64\\home\\me'),
+                 ('C:\\work', {**windows, 'PI_CODING_AGENT_DIR': '~/pi'}, 'win32', 'C:\\Users\\me\\pi', 'C:\\msys64\\home\\me'),
+                 ('C:\\work', {'USERPROFILE': 'C:\\Users\\me'}, 'win32', 'C:\\Users\\me\\.pi\\agent', 'C:\\Users\\me'),
+                 ('/work', posix, 'linux', '/home/me/.pi/agent', '/home/me'),
+                 ('/work', {**posix, 'PI_CODING_AGENT_DIR': '~/pi'}, 'darwin', '/home/me/pi', '/home/me'),
+                 ('/work', {**posix, 'PI_CODING_AGENT_DIR': '~\\pi'}, 'linux', '/work/~\\pi', '/home/me')]
+        script = '''const {piFolders} = require(process.argv[1]);
+process.stdout.write(JSON.stringify(JSON.parse(process.argv[2]).map(([cwd, env, platform]) => piFolders(cwd, env, platform))));'''
+        result = run(['node', '-e', script, self.package / 'bin/harness-activation.js', json.dumps(cases)], env=self.env)
+        self.assertEqual(json.loads(result.stdout), [{'agentDir': agent, 'agentsHome': home} for *_, agent, home in cases])
 
     def test_pi_settings_naming_skills_or_packages_keep_catalog(self):
         # Prediction: a skill or package named in pi's user or project settings may shadow --skill, so the catalog
