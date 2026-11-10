@@ -43,17 +43,17 @@ Without prompts, `npx devlyn-cli -y` installs `.agents/skills/` plus every targe
 
 ## How It Works — Principles and Loops
 
-The Devlyn defaults carry the North Star, seven principles (no workaround, no overengineering, no guesswork, worldclass, best practice, optimized, production ready) and three discipline rules, plus short pointers to the skills. Each session gets them from the release, through the Devlyn app or `devlyn run`, so projects hold no copy and a new release reaches every project at once. A clone without either gets no Devlyn defaults. Agents do the work directly under them; for work that splits into tasks, ideate designs a loop and drains it:
+The Devlyn defaults carry the North Star, seven principles (no workaround, no overengineering, no guesswork, worldclass, best practice, optimized, production ready) and three discipline rules, plus short pointers to the skills. Each session gets them from the release, through the Devlyn app or `devlyn run`, so projects hold no copy and a new release reaches every project at once. A session started any other way, as with a plain `npx devlyn-cli` install, gets the skills but not the defaults; ideate still reads its installed copy for the loops it plans and drains. Agents do the work directly under them; for work that splits into tasks, ideate designs a loop and drains it:
 
 ```
-intent  →  direct work under the installed principles, or an ideate loop  →  ship
+intent  →  direct work under the Devlyn defaults, or an ideate loop  →  ship
 ```
 
-Non-Claude agents (Codex / omp / Pi / Grok): the default choice installs the skills for them. In Codex / omp / Pi, use `$devlyn-ideate`; in Grok, use `/devlyn-ideate`, the same slash-command form as Claude Code. A drain from Pi or Grok needs [a pinned executor](#executor--devlyn-engines).
+Non-Claude agents (Codex / omp / Pi / Grok): the default choice installs the skills for them. In Codex / omp / Pi, use `$devlyn-ideate`; in Grok, use `/devlyn-ideate`, the same slash-command form as Claude Code. A drain from any CLI other than Claude Code or Codex needs [a pinned executor](#executor--devlyn-engines).
 
 ### Terminal sessions — `devlyn run`
 
-`devlyn run claude`, `devlyn run codex` or `devlyn run omp` starts the engine in this terminal with the same principles and skills the Devlyn app delivers, from the selected release. Arguments after the engine name go to the engine. See [docs/harness-run.md](docs/harness-run.md).
+`devlyn run claude`, `devlyn run codex` or `devlyn run omp` starts the engine in this terminal on macOS or Linux (not Windows) with the same principles and skills the Devlyn app delivers, from the selected release. Only engine arguments known not to change the session's freshness, directory or planned settings pass through; any other stops the launch. See [docs/harness-run.md](docs/harness-run.md).
 
 ### Plan and drain loops — `/devlyn-ideate`
 
@@ -66,7 +66,7 @@ Give ideate an intent or a document. It writes a loop package — a meta-prompt 
 | `/devlyn-ideate status` | Pending, active, accepted and failed counts; the next runnable task; delivery and recovery blockers. |
 | `/devlyn-ideate drain` | Runs the queue serially and hands-free. |
 
-A bare intent is planned and, when your request authorizes the work, added and drained without another confirmation; no arguments shows status. Questions come only when the answer changes behavior, scope, data semantics, acceptance or delivery, each with a recommended answer; `--autonomous` plans without questions, recording ordinary low-consequence, reversible defaults within the request, including user-visible details; material ambiguity in intended outcomes, persistent data or state semantics, or public surface beyond the request stops planning with a concrete question. Each task runs in its own worktree with the executor pinned by `/devlyn-engines` (default: the CLI you opened; Pi and Grok need a pin) under the Devlyn defaults and your project's CLAUDE.md/AGENTS.md. Tasks start from committed state, the branch you added the loop on or the remote base for `auto`/`pr`, so a task's worktree holds only what is committed there. A task would run without installed CLAUDE.md/AGENTS.md that exist only in this checkout, so add stops while they differ from HEAD, and drain waits while they differ from the task's start commit. It is marked `[x]` only when its declared checks pass on its committed source and its required reviews cover it: the checks run through the drain's runner (a wholly clean run the executor lists for that source is reused; the drain runs any other check itself), and review coverage is attested by records the executor submits; a failed task becomes `[F]` with its reason and blocks only its dependents. An interrupted drain resumes without repeating accepted work. `--local-only` (or `--no-push`) keeps delivery local: each accepted task stays on its `devlyn/<loop-id>/<task-id>` branch in a retained worktree, nothing is merged or pushed, and the drain report's `Bring into` command brings the result into your branch, stopping if your files cannot be preserved.
+A bare intent is planned and, when your request authorizes the work, added and drained without another confirmation; no arguments shows status. Questions come only when the answer changes behavior, scope, data semantics, acceptance or delivery, each with a recommended answer; `--autonomous` plans without questions, recording ordinary low-consequence, reversible defaults within the request, including user-visible details; material ambiguity in intended outcomes, persistent data or state semantics, or public surface beyond the request stops planning with a concrete question. Each task runs in its own worktree with the executor pinned by `/devlyn-engines` (default: the CLI you opened; a CLI other than Claude Code or Codex needs a pin) under the Devlyn defaults and your project's CLAUDE.md/AGENTS.md. Tasks start from committed state, the branch you added the loop on or the remote base for `auto`/`pr`, so a task's worktree holds only what is committed there. A task would run without CLAUDE.md/AGENTS.md changes that exist only in this checkout, so add stops while they differ from HEAD, and drain waits while they differ from the task's start commit. It is marked `[x]` only when its declared checks pass on its committed source and its required reviews cover it: the checks run through the drain's runner (a wholly clean run the executor lists for that source is reused; the drain runs any other check itself), and review coverage is attested by records the executor submits; a failed task becomes `[F]` with its reason and blocks only its dependents. An interrupted drain resumes without repeating accepted work. `--local-only` (or `--no-push`) keeps delivery local: each accepted task stays on its `devlyn/<loop-id>/<task-id>` branch in a retained worktree, nothing is merged or pushed, and the drain report's `Bring into` command brings the result into your branch, stopping if your files cannot be preserved.
 
 ### Delivery
 
@@ -86,9 +86,9 @@ for allocation, acceptance, writer cessation and recovery.
 
 ### Executor — `/devlyn-engines`
 
-The orchestrator is the CLI you opened (Claude Code, Codex, omp, Pi or Grok); the contract is symmetric (`CLAUDE.md` ↔ `AGENTS.md`), so the loop's file artifacts carry over if you switch. The executor does the implementation work, direct or drained: the engine pinned in machine-local `.devlyn/engines.json`, else the CLI you opened. Pi and Grok have no executor adapter, so a drain from them needs `devlyn-engines executor <claude|codex|omp>`.
+The orchestrator is the CLI you opened (Claude Code, Codex, omp, Pi or Grok); the contract is symmetric (`CLAUDE.md` ↔ `AGENTS.md`), so the loop's file artifacts carry over if you switch. The executor does the implementation work, direct or drained: the engine pinned in machine-local `.devlyn/engines.json`, else the CLI you opened. Only Claude and Codex can execute, so a drain from any other CLI needs `devlyn-engines executor <claude|codex>`.
 
-`/devlyn-engines` with no arguments shows the executor and the engines detected on this machine; `executor <name>` pins one and `clear` removes the pin. A pin is a promise: an unavailable pinned engine stops dispatch with `BLOCKED:<engine>-unavailable`, and a name with no executor-eligible `_shared/adapters/<name>.md` stops with `BLOCKED:invalid-engine-config`. Adapters ship with devlyn-cli releases; a reinstall replaces `_shared`.
+`/devlyn-engines` with no arguments shows the executor and the engines detected on this machine; `executor <name>` pins one and `clear` removes the pin. A pin is a promise: an unavailable pinned engine stops dispatch with `BLOCKED:<engine>-unavailable`, and a name with no executor-eligible `_shared/adapters/<name>.adapter.md` stops with `BLOCKED:invalid-engine-config`. Adapters ship with devlyn-cli releases; a reinstall replaces `_shared`.
 
 Unattended children disable owner-desktop and account drivers: every monitored
 Codex child and every `claude` drain executor (including `.exe`/`.cmd`/`.bat`)
@@ -171,11 +171,11 @@ Earlier versions of devlyn-cli shipped 16+ slash commands. The iter-0034 Phase 4
 
 | Old command | Now use |
 |---|---|
-| `/devlyn:auto-resolve`, `/devlyn:preflight`, `/devlyn:evaluate`, `/devlyn:review`, `/devlyn:team-resolve`, `/devlyn:team-review`, `/devlyn:clean`, `/devlyn:update-docs`, `/devlyn:browser-validate`, `/devlyn:implement-ui` | Folded into resolve, now retired — work directly under the installed principles |
+| `/devlyn:auto-resolve`, `/devlyn:preflight`, `/devlyn:evaluate`, `/devlyn:review`, `/devlyn:team-resolve`, `/devlyn:team-review`, `/devlyn:clean`, `/devlyn:update-docs`, `/devlyn:browser-validate`, `/devlyn:implement-ui` | Folded into resolve, now retired — work directly under the Devlyn defaults |
 | `/devlyn:product-spec`, `/devlyn:feature-spec`, `/devlyn:recommend-features`, `/devlyn:discover-product` | `/devlyn-ideate` |
 | `/devlyn:design-system` | Removed 2026-05-14 — no replacement |
 | `/devlyn:ideate`, `/devlyn:engines`, `devlyn:pencil-pull`, `devlyn:pencil-push`, `devlyn:reap` (3.x and earlier) | `/devlyn-ideate`, `/devlyn-engines`, `devlyn-pencil-pull`, `devlyn-pencil-push`, `devlyn-reap` (4.0.0) |
-| `/devlyn:resolve` (3.x and earlier), `/devlyn-resolve` (4.0.0–4.1.0) | Retired — work directly under the installed principles; `/devlyn-ideate` plans and drains multi-task work |
+| `/devlyn:resolve` (3.x and earlier), `/devlyn-resolve` (4.0.0–4.1.0) | Retired — work directly under the Devlyn defaults; `/devlyn-ideate` plans and drains multi-task work |
 | `/devlyn:queue` (3.x and earlier), `/devlyn-queue` (4.0.0–4.1.0) | `/devlyn-ideate add`, `status` and `drain` |
 | `/devlyn-ideate --quick`, `--from-spec`, `--project` (4.1.0 and earlier) | `/devlyn-ideate plan`; `--autonomous` replaces `--quick` |
 | `/devlyn:team-design-ui`, `/devlyn:design-ui` (3.x and earlier), `/devlyn-design-ui` (4.0.0–4.1.0) | Retired — no replacement |
@@ -257,7 +257,7 @@ Windows completion preserves the workspace, owned refs and recovery receipt when
 
 ## Contributing
 
-- **Add a skill** — add it to `optional-skills/` and `OPTIONAL_ADDONS` in [`bin/devlyn.js`](bin/devlyn.js); the core skills are fixed by `DEVLYN_CORE_SKILLS` (lint Checks 5a and 6)
+- **Add a skill** — add it to `optional-skills/` and `OPTIONAL_ADDONS` in [`bin/devlyn.js`](bin/devlyn.js); the core skills are fixed by `DEVLYN_CORE_SKILLS` (lint Check 5a)
 - **Suggest a pack** — PR to the pack list
 
 ## Supercharge it — pair devlyn with persistent agent memory

@@ -1177,7 +1177,7 @@ process.stdout.write(JSON.stringify({values, toml: toml(values),
         self.assertTrue(data['projection'].startswith(values[1] + '\\plugins\\cache\\'))
 
     def test_omp_adapter_is_explicitly_ineligible(self):
-        adapter = (self.package / 'config/skills/_shared/adapters/omp.md').read_text()
+        adapter = (self.package / 'config/skills/_shared/adapters/omp.adapter.md').read_text()
         self.assertIn('\nexecutor: no\n', adapter)
 
     def test_codex_native_inactive_selected_inactive(self):
