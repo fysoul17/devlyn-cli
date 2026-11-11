@@ -34,7 +34,7 @@ it aside before repeating the step on another commit.
 15. When both rehearsal lanes have ended, stop the sampler: `touch $R/q8-done`
 16. Claude lane, **model**, in its own terminal: `caffeinate -dimsu python3 $X/driver.py $R/runtime-claude.json $X/cells.tsv`
 17. Codex lane, **model**, at the same time in another (after step 16 has ended when Q8's rule leaves under 1 GiB): `caffeinate -dimsu python3 $X/driver.py $R/runtime-codex.json $X/cells.tsv`
-18. After a latch the orchestrator has resolved in an amendment file, release it, then start the lane again with its command: `python3 $X/driver.py --clear-latch <amendment> $R/runtime-<lane>.json`
+18. After a latch the orchestrator has resolved in an amendment file, release it, then start the lane again with its command: `python3 $X/driver.py --clear-latch <amendment> $R/runtime-<lane>.json`. A lane that was killed inside a cell ran no cleanup: resolving its latch includes proving that cell's container and volume gone and removing `$R/scratch/credentials/<cell>` unread. After the last cell `$R/scratch/credentials` holds nothing
 19. After the last cell, with no cell running, the D3 witnesses (steps 19-21 may run at once): `NX01_0265_RUNTIME=$R/runtime-smoke.json python3 $X/results/operator/judge.py run-all D3`
 20. The D4 witnesses: `NX01_0265_RUNTIME=$R/runtime-smoke.json python3 $X/results/operator/judge.py run-all D4`
 21. The F10 witnesses: `NX01_0265_RUNTIME=$R/runtime-smoke.json python3 $X/results/operator/judge.py run-all F10`

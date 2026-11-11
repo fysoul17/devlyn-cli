@@ -365,7 +365,8 @@ the readings; UNSCORED when its cells are not final.
   native evidence and redispatched as before.
 - **Faults.** 0257's rules: quota from native limit evidence, archived and redispatched; an assessor fault regraded
   from preserved evidence; a proven Docker loss archived. A **B launch fault** (a `devlyn run: <code>` line on
-  stderr, no status line, no owner evidence) is archived with its code and redispatched; a second in a row latches.
+  stderr, no status line, no owner evidence) is archived with its code and redispatched once; a repeat on the same
+  slot is a STOP.
   A **memory kill** is an owner whose own process was killed for memory (the container reports an out-of-memory
   kill, the owner exited with 137 and the watchdog had not fired): an infrastructure fault, archived and
   redispatched once, then a STOP. An out-of-memory kill of some other process in a cell whose owner went on is that

@@ -166,15 +166,27 @@ orchestrator found while fixing them:
 
 ### Third re-check (commit `d9193ce6`)
 
-Astra: **SHIP**. No CRITICAL or HIGH finding remains; S1, S2 and S4 closed, S3 closed except for one write (T4).
-With no HIGH left the review is not repeated; the five lower findings were each fixed or rejected with a reason:
+Astra: **SHIP**, S1, S2 and S4 closed, S3 closed except for one write (T4), with five lower findings. Grok, on the
+same commit: REVISE, the same four closed and the same five findings, T3 among them rated HIGH. Each was fixed or
+rejected with a reason:
 
 | # | Severity | Finding | Disposition |
 |---|---|---|---|
 | T1 | MEDIUM | An operator's interrupt during the teardown could skip the removal of the credential copy | Fixed: the removal is in a `finally` around the whole teardown and the record's write. |
 | T2 | MEDIUM | When the first run record could not be written, an owner that had run was recorded as not run | Fixed: a container that was created and has no record is taken to have run its owner, so its evidence is required. |
-| T3 | MEDIUM | After a crash between the second B launch-fault verdict in a row and its latch, a restart allows a third attempt | Rejected: it costs at most one extra B attempt after a crash at one instant; that attempt is archived and counted (P7 counts every launch-fault attempt), no evidence is lost and no result changes. Not changed before the run. |
+| T3 | MEDIUM (Astra), HIGH (Grok) | After a crash between the second B launch-fault verdict in a row and its latch, a restart allows a third attempt | Fixed. First rejected (one more archived B attempt after a crash at one instant; Astra called that sound), then fixed because Grok rated it HIGH: a B launch fault is redispatched once per slot, as a memory kill and a shared account fault are, and a repeat on the slot is a STOP that is read from the slot's archive, so it holds at a restart. The count of faults in a row that the process kept is deleted, and DESIGN "Faults" states the rule. |
 | T4 | LOW | The control-change STOP was still written in place | Fixed: written whole like every verdict. |
 | T5 | LOW | The out-of-memory table can miss an event of an assessor STOP or an interrupted regrade | Rejected: a secondary table; the verdicts keep the flag, and the decision's lines and the cost do not read it. |
 
-Grok's re-checks of the same commits are recorded in registration.md.
+Astra read `fe271114` (T1, T2 and T4 fixed) and said SHIP with nothing new. The reviewers' reading of the commit that
+carries T3's fix is recorded in registration.md.
+
+### Grok's other findings
+
+Grok read the same commits as Astra (`eceeeeda`: SHIP; `4a227ec2`: SHIP; `d9193ce6`: REVISE, above). What it found
+that is not in the tables above:
+
+| Commit | Severity | Finding | Disposition |
+|---|---|---|---|
+| `4a227ec2` | MEDIUM | A lane killed inside a cell runs no cleanup, so that cell's credential copy stays in scratch | An operator step (README 18), not code: no code of a killed process can run. The slot's next start stops both lanes before anything else (S4), and resolving that stop includes removing the copy unread. |
+| `4a227ec2` | LOW | A lane whose own status file cannot be read ends without writing a latch | Rejected: the latch lives in that file. The other lane reads the same file at its next check, fails on it and ends through the handler that latches (the comment at the read says so), so both lanes stop. |

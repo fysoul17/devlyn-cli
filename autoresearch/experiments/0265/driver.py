@@ -34,7 +34,7 @@ LANES = (None, 'claude', 'codex')
 REGRADE = ('assessment failed', 'assessor produced', 'assessment held:')
 LAUNCH_FAULT, MEMORY_KILL = 'B launch fault: ', 'memory kill: '
 ACCOUNT_FAULT = 'shared account fault during execution: '  # a Codex refresh_token_reused among them (quota.py)
-ONCE = (MEMORY_KILL, ACCOUNT_FAULT)  # redispatched once per slot; a repeat on the slot stays a STOP
+ONCE = (LAUNCH_FAULT, MEMORY_KILL, ACCOUNT_FAULT)  # redispatched once per slot; a repeat on the slot stays a STOP
 GIB = 2**30
 # 4.3.30's delivery helper measures its target with shutil.disk_usage and refuses below max(10 GiB, 2% of the total).
 DISK_PROBE = "import json, shutil; print(json.dumps({p: shutil.disk_usage(p)._asdict() for p in ('/cell', '/tmp')}))"
@@ -236,7 +236,7 @@ class Driver:
         launched = bool(verdict.get('owner_status'))
         # A fault the driver redispatches can leave no model record (a launch refused, an owner killed, a login or
         # quota refused): its gap is no identity failure. A wrong model always is.
-        explained = str(verdict.get('reason', '')).startswith((LAUNCH_FAULT, *ONCE))
+        explained = str(verdict.get('reason', '')).startswith(ONCE)
         reason = None
         if identity == 'MISMATCH' or (
                 (identity == 'UNVERIFIED' or (identity == 'UNKNOWN' and launched)) and not explained):
@@ -415,9 +415,10 @@ class Driver:
         return json.loads(path.read_text()) if path.is_file() else None
 
     def redispatch(self, name, verdict):
-        """Whether a STOP is archived and its slot run again: a B launch fault, a proven Docker loss, and the slot's
-        first memory kill or shared account fault. Anything else, a repeat of either of those two on the slot among
-        it, stays a STOP, which the caller latches for both lanes."""
+        """Whether a STOP is archived and its slot run again: a proven Docker loss, and the slot's first B launch
+        fault, memory kill or shared account fault. Anything else, a repeat of one of those three on the slot among
+        it, stays a STOP, which the caller latches for both lanes. The repeat is read from the slot's archive, so it
+        is a STOP at a restart too."""
         reason = str(verdict.get('reason', ''))
         kind = next((prefix for prefix in ONCE if reason.startswith(prefix)), None)
         if kind and any(str(json.loads(path.read_text()).get('reason', '')).startswith(kind)
@@ -538,17 +539,7 @@ class Driver:
             self.event('first_smoke_dispatch', cell=name, started_at=first)
         rc = cell.run(self.runtime_path, name, task, arm, config, expected_account=self.approved_account)
         finished = self.verdict(name)
-        previous = None
-        if arm == 'B' and finished:  # B launch faults in a row in this lane; a B owner that launched ends a row
-            if str(finished.get('reason', '')).startswith(LAUNCH_FAULT):
-                previous = self.state.get('launch_fault')
-                self.state['launch_fault'] = dict(cell=name, reason=finished['reason'])
-            elif finished.get('owner_status'):
-                self.state.pop('launch_fault', None)
         self.event('run', cell=name, rc=rc)
-        if previous:
-            self.latch(name, f'second B launch fault in a row in lane {self.lane or "smoke"} '
-                             f'(after {previous["cell"]}): {finished["reason"]}')
         if task == 'SMOKE':
             if rc == 3 and not any(self.output.glob('smoke-*/run/started.json')):
                 self.state.pop('first_smoke_dispatch', None)

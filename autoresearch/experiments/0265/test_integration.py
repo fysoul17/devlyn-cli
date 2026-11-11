@@ -924,7 +924,7 @@ class Rehearsal(unittest.TestCase):
         self.assertEqual(readings['R1']['reading'], 'NOT_FINISHED')
         (self.out / 'probes.json').write_text(json.dumps(documents['probes.json']))
 
-        # 6. The latch across processes: a second B launch fault in a row latches the claude lane, and the codex
+        # 6. The latch across processes: a B launch fault repeated on its slot latches the claude lane, and the codex
         # lane, started afterwards, refuses to dispatch and names the lane that latched. --clear-latch (with the
         # orchestrator's amendment) releases both lanes.
         extra = self.fake / 'latch.tsv'
@@ -933,7 +933,7 @@ class Rehearsal(unittest.TestCase):
             (self.fake / f'launch-fault-x01-SMOKE-claude-B{suffix}').write_text('inject\n')
         code, stderr = self.finish(self.driver('claude', extra))
         self.assertNotEqual(code, 0)
-        self.assertIn('second B launch fault in a row in lane claude', stderr)
+        self.assertIn('x01-SMOKE-claude-B: STOP B launch fault: ', stderr)
         self.assertFalse((self.out / 'x02-SMOKE-claude-A').exists())
         other = self.fake / 'other.tsv'
         other.write_text('x03-SMOKE-codex-A\tSMOKE\tA\tcodex\t1\n')

@@ -578,7 +578,7 @@ class Faults(unittest.TestCase):
                 d.lock.close()  # the lane's process ends
         return d
 
-    def test_launch_fault_is_archived_and_redispatched_unless_second_in_a_row(self):
+    def test_a_launch_fault_is_archived_and_redispatched_once_per_slot(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             slots = [row(f'c00{i}-') for i in range(1, 5)]  # B5 then F10, AB on r1
@@ -593,23 +593,34 @@ class Faults(unittest.TestCase):
                 self.assertTrue((d.output / f'{name}.stop-1').is_dir())
                 self.assertEqual(d.verdict(name)['status'], 'COMPLETE')
             self.assertNotIn('harm_latch', d.state)
-            self.assertNotIn('launch_fault', d.state)
 
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             slots = [row('c002-')]
-            with self.assertRaisesRegex(RuntimeError, 'harm latch in lane claude'):
+            with self.assertRaisesRegex(driver.Stopped, 'STOP B launch fault: x'):
                 self.run_lane(root, 'claude', slots, {slots[0][0]: [LAUNCH, dict(LAUNCH, reason='B launch fault: x')]})
             name = slots[0][0]
             self.assertEqual(self.called, [name, name])
             latch = json.loads((root / 'output/driver-status-claude.json').read_text())['harm_latch']
             self.assertEqual(latch['cell'], name)
-            self.assertIn('second B launch fault in a row', latch['reason'])
+            self.assertEqual(latch['reason'], 'STOP B launch fault: x')
             self.assertEqual(json.loads((root / f'output/verdict-{name}.json').read_text())['reason'],
                              'B launch fault: x')
             self.assertTrue((root / f'output/verdict-{name}.stop-1.json').is_file())
             with self.assertRaisesRegex(RuntimeError, 'harm latch in lane claude'):
                 lane(root, 'codex').assert_active()
+
+        # Once per slot, not once in a row: a memory kill between the slot's two launch faults (its owner launched)
+        # is itself redispatched, and the launch fault after it is still the slot's repeat.
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            name = row('c002-')[0]
+            with self.assertRaisesRegex(driver.Stopped, 'STOP B launch fault: y'):
+                self.run_lane(root, 'claude', [row('c002-')],
+                              {name: [LAUNCH, MEMORY, dict(LAUNCH, reason='B launch fault: y')]})
+            self.assertEqual(self.called, [name, name, name])
+            self.assertEqual([json.loads((root / f'output/verdict-{name}.stop-{n}.json').read_text())['reason']
+                              for n in (1, 2)], [LAUNCH['reason'], MEMORY['reason']])
 
     def test_launch_fault_identity_and_teardown(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -839,6 +850,47 @@ class Faults(unittest.TestCase):
             root = Path(temp)
             with self.assertRaises(Held):  # a regradable STOP is not terminal: the lane goes on to its readiness wait
                 restart(root, dict(terminal, reason='assessment failed: timeout'))
+            self.mocks['ready'].assert_called_once()
+            self.assertIsNone(latched(root, 'claude'))
+
+    def test_a_second_launch_fault_met_at_a_restart_latches_both_lanes_before_any_wait(self):
+        """Third re-check (Grok, HIGH): the retried slot's second B launch fault was written and the process died
+        before the latch. Violating: at the restart that STOP must not be redispatched a third time; with the slot's
+        first fault in the archive it latches both lanes before any ready() wait. Allowed: a slot's first launch
+        fault met at a restart is still redispatched (it goes on to its readiness wait and sets no latch)."""
+        class Held(BaseException):
+            """Ends the wait loop: run() latches no BaseException that is not an Exception."""
+
+        def restart(root, archived):
+            seal(root)
+            b = next(r for r in CELLS if r[2] == 'B' and r[3] == 'claude')
+            d = lane(root, 'claude', [b])
+            (d.output / b[0]).mkdir()
+            (d.output / f'verdict-{b[0]}.json').write_text(json.dumps(LAUNCH))
+            if archived:
+                (d.output / f'verdict-{b[0]}.stop-1.json').write_text(json.dumps(LAUNCH))
+            with mock.patch.object(d, 'ready', side_effect=Held('ready() was reached')) as ready, \
+                    mock.patch.object(driver.cell, 'run') as run, mock.patch.object(driver.time, 'sleep'):
+                try:
+                    d.run()
+                finally:
+                    d.lock.close()
+                    self.mocks = dict(ready=ready, run=run)
+            return b[0]
+
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            with self.assertRaisesRegex(driver.Stopped, 'STOP B launch fault'):
+                restart(root, True)
+            self.mocks['ready'].assert_not_called()
+            self.mocks['run'].assert_not_called()
+            self.assertEqual(latched(root, 'claude')['reason'], 'STOP ' + LAUNCH['reason'])
+            with self.assertRaisesRegex(driver.Stopped, 'harm latch in lane claude'):
+                lane(root, 'codex').assert_active()
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            with self.assertRaises(Held):
+                restart(root, False)
             self.mocks['ready'].assert_called_once()
             self.assertIsNone(latched(root, 'claude'))
 
