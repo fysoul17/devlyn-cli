@@ -9,14 +9,19 @@ judge.py probe <cell>...          malformed-JSON probe, writes probes.json in ru
 judge.py probe-all                the probe on every F10 and F11 graded tree
 judge.py run <witness> <cell>...  run twice on each snapshot (a cell or an archived attempt <cell>.stop-N); writes
                                   witnesses.json
-judge.py run-all                  every witness of D3, D4 and F10 on every final and archived graded tree of its task,
-                                  twice, serially; a pair already in witnesses.json is skipped
-judge.py qualify <witness> <tree>...       two passes on copies of control trees (DESIGN Q5); prints, writes nothing
-judge.py qualify-probe <task> <tree>...    the probe on copies of control trees; prints, writes nothing
+judge.py run-all <task>           every witness of one task (D3, D4 or F10) on every final and archived graded tree of
+                                  that task, twice, serially; a pair already in witnesses.json is skipped. One process
+                                  per task may run at once: witnesses.json and probes.json are updated under an
+                                  exclusive lock on <file>.lock and replaced atomically
+judge.py controls                 DESIGN Q5: every control of CONTROLS through the same passes as run-all and probe-all,
+                                  on trees built in scratch (never in the output folder); writes
+                                  <runtime root>/q5-controls.json and prints the table
 
 A witness is a Node (.js) or Python (.py) script run from the snapshot root as /work. It exits 1 when the claimed
 defect reproduces on that tree, 0 when the tree behaves correctly, 2 for an unresolved witness, and 3 when its interface is not applicable.
 """
+import fcntl
+import importlib.util
 import json
 import hashlib
 import os
@@ -54,6 +59,67 @@ PROBE = ('f-malformed-json.js', '6bcba20346013972696cd856e99545df48334f7cb777e49
 # (0257's judge gave every witness 300 s) and d3-parseoptions-override exits at 10 s (0259's judge used 10 s).
 LIMITS = {'d3-regression-child-probe': 300, 'd3-parseoptions-override': 10}
 MARKERS = {0: 'P0258-WITNESS public', 1: 'P0258-WITNESS bypass'}  # 0259: parseOptions is valid only with its marker
+ARCHIVE = Path.home() / '.local/share/nx01/archive'
+# DESIGN Q5. (control id, witness stem or 'probe', expected result, tree, plant, note). A tree is ('archive', <cell folder
+# under ARCHIVE>), whose snapshot is copied (an F10/F11 snapshot gets the base tree's node_modules, which the archived
+# snapshots lack), or ('base', <task>), the task's base tree as prepare.source builds it, without .git. Archived trees
+# were chosen by their own run's record with the same witness bytes (0261), by 0257's record (stall: 0256's bytes, which
+# differ from 0261's only in reading an injection-free finish as not applicable), or by reading the code (named).
+CONTROLS = (
+    ('d4-death-reproduces', 'd4-writer-death', True, ('archive', 'reports-0261/d003-D4-claude-C-r2'), None, ''),
+    ('d4-death-does-not', 'd4-writer-death', False, ('archive', 'reports-0261/d001-D4-claude-B-r1'), None, ''),
+    ('d4-death-not-applicable', 'd4-writer-death', 'not_applicable', ('base', 'D4'), None, ''),
+    ('d4-stall-reproduces', 'd4-writer-stall', True, ('archive', 'reports-0256-0260/0257/d230-D4-claude-B-r15'), None,
+     'no 0261 tree reproduced stall; 0257 d230 did'),
+    ('d4-stall-does-not', 'd4-writer-stall', False, ('archive', 'reports-0261/d001-D4-claude-B-r1'), None, ''),
+    ('d4-stall-not-applicable', 'd4-writer-stall', 'not_applicable', ('base', 'D4'), None, ''),
+    ('d4-startup-reproduces', 'd4-writer-startup', True, ('archive', 'reports-0261/d003-D4-claude-C-r2'), None, ''),
+    ('d4-startup-does-not', 'd4-writer-startup', False, ('archive', 'reports-0261/d001-D4-claude-B-r1'), None, ''),
+    ('d4-startup-not-applicable', 'd4-writer-startup', 'not_applicable', ('base', 'D4'), None, ''),
+    ('d4-startup-d021', 'd4-writer-startup', True, ('archive', 'reports-0256-0260/0257/d021-D4-claude-B-r2'), None,
+     '0257 erratum 1: the first startup witness missed this tree'),
+    ('d4-death-no-pytest', 'd4-writer-death', 'unresolved', ('archive', 'reports-0261/d003-D4-claude-C-r2'),
+     'no-pytest', ''),
+    ('d4-stall-no-pytest', 'd4-writer-stall', 'unresolved', ('archive', 'reports-0261/d003-D4-claude-C-r2'),
+     'no-pytest', ''),
+    ('d4-startup-no-pytest', 'd4-writer-startup', 'unresolved', ('archive', 'reports-0261/d003-D4-claude-C-r2'),
+     'no-pytest', ''),
+    ('f10-two-apps-reproduces', 'f10-one-process-two-apps', True, ('archive', 'reports-0261/c004-F10-claude-B-r2'),
+     None, ''),
+    ('f10-two-apps-does-not', 'f10-one-process-two-apps', False, ('archive', 'reports-0261/c001-F10-claude-B-r1'),
+     None, ''),
+    ('f10-two-apps-not-applicable', 'f10-one-process-two-apps', 'not_applicable', ('base', 'F10'), None,
+     'the base exports app only, no createApp'),
+    ('f10-path-alias-reproduces', 'f10-one-process-path-alias', True, ('archive', 'reports-0261/c004-F10-claude-B-r2'),
+     None, ''),
+    ('f10-path-alias-does-not', 'f10-one-process-path-alias', False, ('archive', 'reports-0261/c001-F10-claude-B-r1'),
+     None, ''),
+    ('f10-path-alias-not-applicable', 'f10-one-process-path-alias', 'not_applicable', ('base', 'F10'), None,
+     'the base exports app only, no createApp'),
+    ('f10-nonobject-reproduces', 'f10-nonobject-items-file', True, ('archive', 'reports-0261/c001-F10-claude-B-r1'),
+     None, ''),
+    ('f10-nonobject-does-not', 'f10-nonobject-items-file', False, ('archive', 'reports-0256-0260/0257/c004-F10-codex-B-r1'),
+     None, 'no archived run recorded this witness passing; chosen by reading the code: express.json({strict: false}) '
+     'and `req.body || {}` give every non-object body 400 invalid_body name'),
+    ('f10-nonobject-not-applicable', 'f10-nonobject-items-file', 'not_applicable', ('base', 'F10'), 'no-exports', ''),
+    ('d3-delimiter-reproduces', 'd3-executable-delimiter', True, ('archive', 'reports-0256-0260/0257/d051-D3-codex-B-r4'),
+     None, ''),
+    ('d3-delimiter-does-not', 'd3-executable-delimiter', False, ('archive', 'reports-0256-0260/0257/d001-D3-claude-A-r1'),
+     None, ''),
+    ('d3-delimiter-no-interface', 'd3-executable-delimiter', 'unresolved', ('base', 'D3'), 'no-index',
+     'the frozen script has no not-applicable exit: a tree without index.js is a witness error (exit 2)'),
+    ('d3-child-probe-reproduces', 'd3-regression-child-probe', True,
+     ('archive', 'reports-0256-0260/0257/d051-D3-codex-B-r4'), None, ''),
+    ('d3-child-probe-does-not', 'd3-regression-child-probe', False, ('base', 'D3'), 'child-test-from-file',
+     'only d051 holds a test of that name, and it reproduces'),
+    ('d3-child-probe-no-interface', 'd3-regression-child-probe', False, ('base', 'D3'), None,
+     'the frozen script reads an absent test as exit 0 ("correct/not applicable"), never 3'),
+    ('probe-json-error-400', 'probe', 'json_error_400', ('archive', 'reports-0256-0260/0257/c001-F10-claude-A-r1'),
+     None, "0257's recorded class"),
+    ('probe-html-400', 'probe', 'html_400', ('archive', 'reports-0256-0260/0257/c002-F10-claude-B-r1'), None,
+     "0257's recorded class"),
+)
+CHILD_TEST = 'reports-0256-0260/0257/d051-D3-codex-B-r4/snapshot/tests'
 
 
 def frozen(witness):
@@ -79,6 +145,23 @@ def stage_witness(witness, temp):
     if hashlib.sha256(copied.read_bytes()).digest() != hashlib.sha256(witness.read_bytes()).digest():
         raise ValueError(f'witness copy differs from source: {witness}')
     return witness_dir
+
+
+def read(path):
+    return json.loads(path.read_text()) if path.is_file() else {}
+
+
+def update(path, change):
+    """One read-modify-write of a shared result file: under an exclusive lock on its sibling <name>.lock it is read
+    again, changed and replaced atomically, so run-all processes of different tasks never lose each other's entries."""
+    with open(path.with_name(path.name + '.lock'), 'a') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        result = read(path)
+        change(result)
+        temporary = path.with_name(f'.{path.name}.{os.getpid()}.tmp')
+        temporary.write_text(json.dumps(result, indent=2) + '\n')
+        os.replace(temporary, path)
+    return result
 
 
 def measured():
@@ -235,33 +318,46 @@ def outcome(attempts):
             if len(exits) == 2 and exits[0] == exits[1] and exits[0] in (0, 1, 3) else 'unresolved')
 
 
+def two_passes(witness, tree, name, attempts, record):
+    """A witness's two passes on one tree, as run-all makes them; each new pass is handed to record() as it ends."""
+    attempts = list(attempts)
+    for index in range(len(attempts), 2):
+        attempts.append(witness_pass(witness, tree, name, f'witness-{name}-{index}'))
+        record(attempts)
+    return {'attempts': attempts, 'result': outcome(attempts)}
+
+
 def run(witness, cells):
     witness = frozen(witness)
     witness_sha256 = hashlib.sha256(witness.read_bytes()).hexdigest()
     SCRATCH.mkdir(parents=True, exist_ok=True)
     path = OUT / 'witnesses.json'
-    result = json.loads(path.read_text()) if path.is_file() else {}
     label = witness.stem
-    result.setdefault(label, {})
+    stored = read(path).get(label, {})
     for cell in cells:
-        previous = result[label].get(cell)
+        previous = stored.get(cell)
         if previous is not None and previous.get('witness_sha256') != witness_sha256:
             raise ValueError(f'{cell}: witness differs from stored witness_sha256; use a new file name')
+    done = {}
     for cell in cells:
-        previous = result[label].get(cell)
-        attempts = list(previous['attempts']) if previous is not None else []
-        for index in range(len(attempts), 2):
-            attempts.append(witness_pass(witness, OUT / cell / 'snapshot', cell, f'witness-{cell}-{index}'))
-            result[label][cell] = {'attempts': attempts, 'result': outcome(attempts), 'witness_sha256': witness_sha256}
-            path.write_text(json.dumps(result, indent=2) + '\n')
-    return {cell: result[label][cell] for cell in cells}
+        def record(attempts, cell=cell):
+            entry = {'attempts': attempts, 'result': outcome(attempts), 'witness_sha256': witness_sha256}
+            update(path, lambda result: result.setdefault(label, {}).update({cell: entry}))
+        previous = stored.get(cell)
+        done[cell] = dict(two_passes(witness, OUT / cell / 'snapshot', cell, previous['attempts'] if previous else [],
+                                     record), witness_sha256=witness_sha256)
+    return done
 
 
-def run_all():
-    """Every witness of a task on every final and archived graded tree of that task; finished pairs are skipped."""
+def run_all(task):
+    """Every witness of one task on every final and archived graded tree of that task; finished pairs are skipped."""
+    if task not in {t for t, _ in WITNESSES.values()}:
+        raise SystemExit(f'run-all takes a witness task: {sorted({t for t, _ in WITNESSES.values()})}')
     done, skipped = {}, []
     rows = measured()
-    for label, (task, _) in WITNESSES.items():
+    for label, (witness_task, _) in WITNESSES.items():
+        if witness_task != task:
+            continue
         trees = []
         for name, cell_task, _ in rows:
             if cell_task == task:
@@ -321,27 +417,36 @@ def probe_once(tree, task, cell, container):
     return result
 
 
+def probe_attempts(tree, task, name, attempts, record):
+    """The probe on one tree, as probe-all makes it: one attempt, and one retry while it is unassessable; each new
+    attempt is handed to record() as it ends."""
+    attempts = list(attempts)
+    while not attempts or (attempts[-1]['class'] == 'unassessable' and len(attempts) < 2):
+        attempts.append(probe_once(tree, task, name, f'probe-{name}'))
+        record(attempts)
+    return dict(attempts=attempts, **attempts[-1])
+
+
 def probe(cells):
     SCRATCH.mkdir(parents=True, exist_ok=True)
-    results = json.loads((OUT / 'probes.json').read_text()) if (OUT / 'probes.json').is_file() else {}
+    path = OUT / 'probes.json'
+    stored = read(path)
     schedule = {line.split()[0]: line.split()[1] for line in CELLS.read_text().splitlines() if line}
+    done = {}
     for cell in cells:
         task = schedule[cell]
         if task not in ('F10', 'F11'):
             raise ValueError(f'{cell}: probe requires F10 or F11')
         if not (OUT / f'verdict-{cell}.json').is_file():
             raise ValueError(f'{cell}: verdict missing')
-        previous = results.get(cell)
-        attempts = list(previous.get('attempts', [previous])) if isinstance(previous, dict) else []
-        if not attempts:
-            attempts.append(probe_once(OUT / cell / 'snapshot', task, cell, f'probe-{cell}'))
-            results[cell] = dict(attempts=attempts, **attempts[-1])
-            (OUT / 'probes.json').write_text(json.dumps(results, indent=2) + '\n')
-        if attempts[-1]['class'] == 'unassessable' and len(attempts) < 2:
-            attempts.append(probe_once(OUT / cell / 'snapshot', task, cell, f'probe-{cell}'))
-            results[cell] = dict(attempts=attempts, **attempts[-1])
-            (OUT / 'probes.json').write_text(json.dumps(results, indent=2) + '\n')
-    return {cell: results[cell] for cell in cells}
+        previous = stored.get(cell)
+
+        def record(attempts, cell=cell):
+            update(path, lambda result: result.update({cell: dict(attempts=attempts, **attempts[-1])}))
+        done[cell] = probe_attempts(OUT / cell / 'snapshot', task, cell,
+                                    list(previous.get('attempts', [previous])) if isinstance(previous, dict) else [],
+                                    record)
+    return done
 
 
 def probe_all():
@@ -353,29 +458,108 @@ def probe_all():
     return {cell: entry['class'] for cell, entry in probe([c for c in cells if (OUT / c / 'snapshot').is_dir()]).items()}
 
 
-def qualify(witness, trees):
-    """DESIGN Q5 controls: two passes on scratch copies of trees outside the output folder; nothing is written."""
-    witness = frozen(witness)
-    SCRATCH.mkdir(parents=True, exist_ok=True)
-    results = {}
-    for index, tree in enumerate(trees):
-        attempts = [witness_pass(witness, Path(tree), str(tree), f'witness-qualify-{os.getpid()}-{index}-{n}')
-                    for n in range(2)]
-        results[str(tree)] = {'attempts': attempts, 'result': outcome(attempts)}
-    return results
+PLANTS = {
+    'no-pytest': 'a pytest.py at the tree root that raises "No module named pytest", so the tests cannot import pytest',
+    'no-exports': 'server/index.js exports neither app nor createApp',
+    'no-index': 'index.js removed',
+    'child-test-from-file': "0257 d051's tests/command.executableSubcommand.test.js and tests/fixtures/pm-literal.js, "
+                            'its parent program started from a file instead of node --eval',
+}
 
 
-def qualify_probe(task, trees):
-    if task not in ('F10', 'F11'):
-        raise ValueError('probe requires F10 or F11')
+def plant(kind, tree):
+    def replace(path, old, new):
+        text = path.read_text()
+        if text.count(old) != 1:
+            raise ValueError(f'{kind}: {path.name} no longer holds the planted text once')
+        path.write_text(text.replace(old, new))
+    if kind == 'no-pytest':
+        (tree / 'pytest.py').write_text("raise ModuleNotFoundError('No module named pytest')\n")
+    elif kind == 'no-exports':
+        replace(tree / 'server/index.js', 'module.exports = { app };', 'module.exports = {};')
+    elif kind == 'no-index':
+        (tree / 'index.js').unlink()
+    elif kind == 'child-test-from-file':
+        source, test = ARCHIVE / CHILD_TEST, tree / 'tests/command.executableSubcommand.test.js'
+        shutil.copy2(source / 'fixtures/pm-literal.js', tree / 'tests/fixtures/pm-literal.js')
+        shutil.copy2(source / test.name, test)
+        replace(test, "    [\n      '--input-type=module',\n      '--eval',\n      `", '    [\n      parentFile(`')
+        replace(test, "      `,\n    ],\n    { encoding: 'utf8', timeout: 10000 },",
+                "      `),\n    ],\n    { encoding: 'utf8', timeout: 10000 },")
+        replace(test, "import path from 'node:path';\n",
+                "import path from 'node:path';\nimport fs from 'node:fs';\nimport os from 'node:os';\n\n"
+                'function parentFile(code) {\n'
+                "  const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'parent-')), 'parent.mjs');\n"
+                '  fs.writeFileSync(file, code);\n  return file;\n}\n')
+    else:
+        raise ValueError(f'unknown plant {kind}')
+
+
+def control_trees(temp):
+    """Each control's tree, built under temp: base trees once per task (prepare.source, .git removed), archived
+    snapshots copied, an F10/F11 snapshot without node_modules given its base tree's."""
+    spec = importlib.util.spec_from_file_location('prepare0265j', Path(__file__).resolve().parents[2] / 'prepare.py')
+    prepare = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(prepare)
+    bases = {}
+
+    def base(task):
+        if task not in bases:
+            work = temp / f'base-{task}'
+            prepare.source(next(t for t in prepare.TASKS['tasks'] if t['id'] == task), CONFIG, work, prepare.base)
+            shutil.rmtree(work / '.git')
+            bases[task] = work
+        return bases[task]
+    trees = {}
+    for control, _, _, (kind, value), planted, _ in CONTROLS:
+        tree = temp / control
+        if kind == 'base':
+            shutil.copytree(base(value), tree, symlinks=True)
+        else:
+            shutil.copytree(ARCHIVE / value / 'snapshot', tree, symlinks=True)
+            task = Path(value).name.split('-')[1]
+            if task in ('F10', 'F11') and not (tree / 'node_modules').exists():
+                shutil.copytree(base(task) / 'node_modules', tree / 'node_modules', symlinks=True)
+        if planted:
+            plant(planted, tree)
+        trees[control] = tree
+    return trees
+
+
+def controls():
+    """DESIGN Q5: each control through the passes run-all and probe-all make, on scratch trees; the probe twice."""
     SCRATCH.mkdir(parents=True, exist_ok=True)
-    results = {}
-    for index, tree in enumerate(trees):
-        attempts = [probe_once(Path(tree), task, str(tree), f'probe-qualify-{os.getpid()}-{index}-0')]
-        if attempts[-1]['class'] == 'unassessable':
-            attempts.append(probe_once(Path(tree), task, str(tree), f'probe-qualify-{os.getpid()}-{index}-1'))
-        results[str(tree)] = dict(attempts=attempts, **attempts[-1])
-    return results
+    path = LIVE / 'q5-controls.json'
+    result = dict(schema=1, image=CONFIG['image'], witness_sha256={stem: pin for stem, (_, pin) in WITNESSES.items()},
+                  probe_sha256=PROBE[1], controls=[])
+    with tempfile.TemporaryDirectory(prefix='q5-controls-', dir=SCRATCH) as temp:
+        trees = control_trees(Path(temp))
+        for control, check, expected, (kind, value), planted, note in CONTROLS:
+            name = 'q5-' + control
+            if check == 'probe':
+                runs = [probe_attempts(trees[control], Path(value).name.split('-')[1], name, [], lambda _: None)
+                        for _ in range(2)]
+                found, attempts = [run['class'] for run in runs], [run['attempts'] for run in runs]
+                ok = found == [expected] * 2
+            else:
+                done = two_passes(frozen(check), trees[control], name, [], lambda _: None)
+                found, attempts = done['result'], done['attempts']
+                ok = found == expected
+            result['controls'].append(dict(id=control, check=check, tree=f'{kind} {value}', planted=PLANTS.get(planted),
+                                           note=note, expected=expected, result=found, ok=ok, attempts=attempts))
+            path.write_text(json.dumps(result, indent=2) + '\n')
+    result['result'] = 'PASS' if all(c['ok'] for c in result['controls']) else 'FAIL'
+    path.write_text(json.dumps(result, indent=2) + '\n')
+    return result
+
+
+def control_table(result):
+    shown = lambda value: str(value).lower() if isinstance(value, bool) else '/'.join(value) if isinstance(
+        value, list) else str(value)
+    lines = ['control\tcheck\ttree\texpected\tresult\tok']
+    lines += [f'{c["id"]}\t{c["check"]}\t{c["tree"]}{" + planted" if c["planted"] else ""}\t{shown(c["expected"])}'
+              f'\t{shown(c["result"])}\t{"ok" if c["ok"] else "MISS"}' for c in result['controls']]
+    return '\n'.join(lines + [result['result']])
 
 
 if __name__ == '__main__':
@@ -390,11 +574,9 @@ if __name__ == '__main__':
         print(json.dumps(probe_all(), indent=1))
     elif command == 'run':
         print(json.dumps(run(sys.argv[2], sys.argv[3:])))
-    elif command == 'run-all':
-        print(json.dumps(run_all(), indent=1))
-    elif command == 'qualify':
-        print(json.dumps(qualify(sys.argv[2], sys.argv[3:]), indent=1))
-    elif command == 'qualify-probe':
-        print(json.dumps(qualify_probe(sys.argv[2], sys.argv[3:]), indent=1))
+    elif command == 'run-all' and len(sys.argv) == 3:
+        print(json.dumps(run_all(sys.argv[2]), indent=1))
+    elif command == 'controls':
+        print(control_table(controls()))
     else:
         raise SystemExit(__doc__)

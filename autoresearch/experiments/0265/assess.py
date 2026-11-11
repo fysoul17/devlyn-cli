@@ -45,8 +45,8 @@ def reap(name):
     """Remove a named container and prove it is gone; any uncertainty is an evaluator STOP, never silence."""
     removed = subprocess.run(['docker', 'rm', '-f', name], capture_output=True, text=True, timeout=60)
     probe = subprocess.run(['docker', 'inspect', name], capture_output=True, text=True, timeout=60)
-    gone = probe.returncode != 0 and 'No such object' in probe.stderr
-    if not gone or (removed.returncode != 0 and 'No such container' not in removed.stderr):
+    gone = probe.returncode != 0 and 'no such object' in probe.stderr.lower()  # Docker 29 prints it in lower case
+    if not gone or (removed.returncode != 0 and 'no such container' not in removed.stderr.lower()):
         raise RuntimeError(f'cannot prove container {name} is gone: {removed.stderr.strip()} {probe.stderr.strip()}')
 
 

@@ -26,10 +26,16 @@ def generate():
     return {'cells.tsv': measured, 'smoke.tsv': smoke}
 
 
+def rehearsal():
+    """DESIGN Q8 (b): the SMOKE task once more in each lane, run by the two lane drivers at once. Outside every sum:
+    decide.py and the grading scripts read cells.tsv only, and the driver's SMOKE start reads smoke-* folders only."""
+    return [(f'rehearsal-{config}-{arm}', 'SMOKE', arm, config) for config in CONFIGS for arm in ARMS]
+
+
 def render(rows):
     return ''.join('\t'.join(map(str, row)) + '\n' for row in rows)
 
 
 if __name__ == '__main__':
-    for name, rows in generate().items():
+    for name, rows in dict(generate(), **{'rehearsal.tsv': rehearsal()}).items():
         (HERE / name).write_text(render(rows))

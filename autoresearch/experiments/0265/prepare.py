@@ -93,11 +93,14 @@ def override_tasks(path=None):
 
 
 def codex_config(owner):
-    """The Codex config.toml of both arms: 0222's for the route without `plugins = false` (devlyn run's session plugin
-    needs plugins on, and A gets the same file), with the trust entry moved to the cell's working tree (0237)."""
-    text = base.codex_toml(owner).replace('plugins = false\n', '')
-    if 'plugins = false' in text or 'plugins' in tomllib.loads(text).get('features', {}):
-        raise ValueError('Codex config still disables plugins')
+    """The Codex config.toml of both arms: 0222's for the route with `remote_plugin = false` in place of
+    `plugins = false` (devlyn run's session plugin needs plugins on; Codex's own curated remote plugins stay out of the
+    model input, DESIGN "Arms", O10), A getting the same file, and the trust entry moved to the cell's working tree
+    (0237)."""
+    text = base.codex_toml(owner).replace('plugins = false\n', 'remote_plugin = false\n')
+    features = tomllib.loads(text).get('features', {})
+    if 'plugins = false' in text or 'plugins' in features or features.get('remote_plugin') is not False:
+        raise ValueError('Codex config still disables plugins or leaves remote plugins on')
     inherited = '[projects."/work"]'
     if (text.count(inherited) != 1 or tomllib.loads(text).get('projects') !=
             {'/work': {'trust_level': 'trusted'}}):

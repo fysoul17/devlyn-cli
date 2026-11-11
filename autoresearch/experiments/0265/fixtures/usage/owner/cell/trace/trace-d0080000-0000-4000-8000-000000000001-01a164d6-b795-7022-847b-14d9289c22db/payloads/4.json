@@ -1,0 +1,12 @@
+{
+  "response_id": "resp_d0081",
+  "upstream_request_id": null,
+  "token_usage": {
+    "input_tokens": 12000,
+    "cached_input_tokens": 4480,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 310,
+    "reasoning_output_tokens": 70,
+    "total_tokens": 12310
+  }
+}

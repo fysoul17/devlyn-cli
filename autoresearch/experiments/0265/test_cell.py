@@ -1,4 +1,6 @@
-"""Offline tests of 0265's arms, cell, per-cell assertions and assessors. Fakes stand in for Docker and credentials."""
+"""Offline tests of 0265's arms, cell, launch probe, per-cell assertions and assessors. Fakes stand in for Docker and
+credentials; Codex's model input is real 0.164.0 output (fixtures/cell/prompt-input-*.json)."""
+import base64
 import copy
 import fcntl
 import hashlib
@@ -31,10 +33,10 @@ prepare, cell, run_cell, instructions, assess, strict = (
 SHAPES = json.loads((HERE / 'fixtures/cell/shapes.json').read_text())
 RELEASE = HERE / 'fixtures/cell/release.json'
 OWNER = {engine: prepare.TASKS['routes'][engine]['owner'] for engine in prepare.CONFIGS}
-TEXT = (instructions.PREAMBLE + ' Explicit user and native owner/project instructions take precedence.\n\n'
-        '# Project Instructions\n\nSeven rules.\n\nDevlyn session skill catalog (read the absolute file to invoke):\n'
-        f"This session's _shared folder is {instructions.RELEASE_ROOT}/config/skills/_shared.\n"
-        'Use that absolute folder wherever the Devlyn defaults name _shared/.')
+INPUT = {name: json.loads((HERE / f'fixtures/cell/prompt-input-{name}.json').read_text())
+         for name in ('A', 'B', 'control')}
+TEXT = INPUT['B'][2]['content'][0]['text']  # devlyn run 4.3.30's developer_instructions, where Codex 0.164.0 puts it
+DEVLYN_SKILLS = ['devlyn:devlyn-engines', 'devlyn:devlyn-ideate']
 CODEX_TOML = '''model = "gpt-6-astra"
 model_reasoning_effort = "high"
 approval_policy = "never"
@@ -43,6 +45,7 @@ web_search = "disabled"
 [features]
 rollout_budget = false
 apps = false
+remote_plugin = false
 hooks = false
 shell_snapshot = false
 [features.multi_agent_v2]
@@ -57,8 +60,42 @@ trust_level = "trusted"
 '''
 
 
-def message(role, text):
-    return {'type': 'message', 'role': role, 'content': [{'type': 'input_text', 'text': text}]}
+def request(items):
+    return {'model': 'gpt-6-astra', 'input': copy.deepcopy(items)}
+
+
+def a_request():
+    return request(INPUT['A'])
+
+
+def b_request(text=TEXT):
+    body = request(INPUT['B'])
+    body['input'][2]['content'][0]['text'] = text
+    return body
+
+
+CURATED_ROOT = f'{instructions.HOME}/.codex/plugins/cache/openai-curated-remote/github/1.0.0/skills'
+
+
+def with_plugin(body, root, skill):
+    """A request whose skills block lists one more plugin: its skill root and one skill under it."""
+    part = next(part for item in body['input'] for part in item.get('content', [])
+                if '<skills_instructions>' in part.get('text', ''))
+    part['text'] = part['text'].replace('### Available skills\n', f'- `r9` = `{root}`\n### Available skills\n').replace(
+        '\n</skills_instructions>', f'\n- {skill}: A plugin skill. (file: r9/x/SKILL.md)\n</skills_instructions>')
+    return body
+
+
+def moved_text():
+    body = b_request()
+    body['input'].append({'type': 'message', 'role': 'user', 'content': [body['input'][2]['content'].pop(0)]})
+    return body
+
+
+def b_without_devlyn_skills():
+    body = b_request()
+    body['input'][2]['content'][1]['text'] = INPUT['A'][2]['content'][0]['text']
+    return body
 
 
 def write_request(out, request, later=None):
@@ -74,12 +111,6 @@ def write_request(out, request, later=None):
         rows.append({'seq': seq, 'thread_id': 'owner', 'payload': {
             'type': 'inference_started', 'thread_id': 'owner', 'request_payload': {'path': f'payloads/{seq}.json'}}})
     (trace / 'trace.jsonl').write_text(''.join(json.dumps(row) + '\n' for row in rows) + '{"torn')
-
-
-def b_request(text=TEXT):
-    request = copy.deepcopy(SHAPES['codex_request'])
-    request['input'].insert(4, message('developer', text))
-    return request
 
 
 def make_cell(root, engine, arm):
@@ -103,8 +134,11 @@ def make_cell(root, engine, arm):
     else:
         (out / 'home/.codex/config.toml').write_text(prepare.codex_config(OWNER['codex']))
         (out / 'run/stdout').write_text(json.dumps({'type': 'thread.started', 'thread_id': 'owner'}) + '\n')
-        write_request(out, b_request() if arm == 'B' else SHAPES['codex_request'],
-                      later=SHAPES['codex_request'])
+        write_request(out, b_request() if arm == 'B' else a_request(), later=a_request())
+        for name in ('.tmp/plugins/plugins/x/.codex-plugin/plugin.json', '.tmp/plugins.sha',  # Codex's own caches (O10)
+                     'plugins/cache/openai-curated-remote/github/1.0.0/.codex-plugin/plugin.json'):
+            (out / 'home/.codex' / name).parent.mkdir(parents=True, exist_ok=True)
+            (out / 'home/.codex' / name).write_text('{}')
         if arm == 'B':
             folder = out / 'home/.codex' / instructions.PROJECTION
             (folder / '.codex-plugin').mkdir(parents=True)
@@ -115,13 +149,29 @@ def make_cell(root, engine, arm):
     return out, plan
 
 
-def pending_seal():
+def probe_seal(root):
+    """The launch probe's fields of a seal for the SMOKE and D3 trees, as `seal` writes them."""
+    launch = {}
+    for engine in prepare.CONFIGS:
+        out, _ = make_cell(Path(tempfile.mkdtemp(dir=root)), engine, 'B')
+        entry = dict(status_line=SHAPES['status_lines'][engine], release_digest=instructions.RELEASE_DIGEST)
+        if engine == 'claude':
+            entry['plugin_dir'] = SHAPES['devlyn_plugin']['path']
+        else:
+            entry.update(projection=dict(path=instructions.PROJECTION, files=instructions.projection(out)),
+                         model_input={arm: instructions.model_input(body, TEXT)
+                                      for arm, body in (('A', a_request()), ('B', b_request()))})
+        launch[engine] = {tree: copy.deepcopy(entry) for tree in ('SMOKE', 'D3')}
+    return dict(launch=launch, devlyn_skills=DEVLYN_SKILLS)
+
+
+def pending_seal(root):
     return dict(package=dict(version='4.3.30', release_digest=instructions.RELEASE_DIGEST), cli=instructions.CLI,
-                session_text=TEXT, forms={}, qualification=dict(status='PENDING'))
+                session_text=TEXT, **probe_seal(root), forms={}, qualification=dict(status='PENDING'))
 
 
 def sealed(root):
-    seal = pending_seal()
+    seal = pending_seal(root)
     seal['forms'] = {engine: instructions.observed_form(make_cell(root / 'seal', engine, 'B')[0], engine, seal)
                      for engine in prepare.CONFIGS}
     return seal
@@ -177,12 +227,16 @@ MUTATIONS = {
     'foreign_plugin_init': lambda out, engine: edit_init(out, lambda e: e['plugins'].append(FOREIGN)),
     'mcp': lambda out, engine: edit_init(out, lambda e: e.update(mcp_servers=[{'name': 'x', 'status': 'connected'}])),
     'no_init': lambda out, engine: (out / 'run/stdout').write_text(json.dumps({'type': 'result'}) + '\n'),
-    'no_text': lambda out, engine: write_request(out, SHAPES['codex_request']),
+    'no_text': lambda out, engine: write_request(out, a_request()),
     'text_twice': lambda out, engine: write_request(out, dict(b_request(), instructions=TEXT)),
     'text': lambda out, engine: write_request(out, b_request()),
     'preamble': lambda out, engine: write_request(out, b_request(instructions.PREAMBLE + ' another version')),
-    'moved_text': lambda out, engine: write_request(out, dict(
-        SHAPES['codex_request'], input=SHAPES['codex_request']['input'] + [message('user', TEXT)])),
+    'moved_text': lambda out, engine: write_request(out, moved_text()),
+    'no_devlyn_skills': lambda out, engine: write_request(out, b_without_devlyn_skills()),
+    'devlyn_skills': lambda out, engine: write_request(out, with_plugin(
+        a_request(), instructions.DEVLYN_ROOT, 'devlyn:devlyn-ideate')),
+    'foreign_skill': lambda out, engine: write_request(out, with_plugin(
+        b_request() if (out / 'home/.devlyn').exists() else a_request(), CURATED_ROOT, 'github:github')),
     'no_request': lambda out, engine: shutil.rmtree(out / 'cell/trace'),
     'foreign_plugin': lambda out, engine: (
         (out / 'home/.codex/plugins/cache/foreign/x/1.0/.codex-plugin').mkdir(parents=True),
@@ -192,6 +246,9 @@ MUTATIONS = {
         (out / 'home/.codex' / instructions.PROJECTION / '.devlyn-harness-projection.json').write_text('{}')),
     'marketplace': lambda out, engine: (out / 'home/.codex/config.toml').write_text(
         (out / 'home/.codex/config.toml').read_text() + '[marketplaces.x]\nsource_type = "local"\nsource = "/x"\n'),
+    'devlyn_marketplace': lambda out, engine: (out / 'home/.codex/config.toml').write_text(
+        (out / 'home/.codex/config.toml').read_text() + f'[marketplaces.{instructions.MARKET}]\nsource_type = "local"\n'
+        'source = "/x"\n'),
     'no_projection': lambda out, engine: shutil.rmtree(out / 'home/.codex/plugins'),
     'altered_projection': lambda out, engine: (
         out / 'home/.codex' / instructions.PROJECTION / '.codex-plugin/plugin.json').write_text('{"name": "x"}\n'),
@@ -214,10 +271,11 @@ CASES = [
     ('codex', 'B', 'no_text', 'codex-request'), ('codex', 'B', 'text_twice', 'codex-request'),
     ('codex', 'B', 'moved_text', 'codex-request'), ('codex', 'A', 'text', 'codex-request'),
     ('codex', 'A', 'preamble', 'codex-request'), ('codex', 'A', 'no_request', 'codex-request'),
-    ('codex', 'B', 'no_request', 'codex-request'),
-    ('codex', 'A', 'foreign_plugin', 'codex-home'), ('codex', 'A', 'devlyn_projection', 'codex-home'),
-    ('codex', 'A', 'marketplace', 'codex-home'), ('codex', 'B', 'no_projection', 'codex-home'),
-    ('codex', 'B', 'altered_projection', 'codex-home'),
+    ('codex', 'B', 'no_request', 'codex-request'), ('codex', 'B', 'no_devlyn_skills', 'codex-request'),
+    ('codex', 'A', 'devlyn_skills', 'codex-request'), ('codex', 'A', 'foreign_skill', 'codex-request'),
+    ('codex', 'B', 'foreign_skill', 'codex-request'),
+    ('codex', 'A', 'devlyn_projection', 'codex-home'), ('codex', 'A', 'devlyn_marketplace', 'codex-home'),
+    ('codex', 'B', 'no_projection', 'codex-home'), ('codex', 'B', 'altered_projection', 'codex-home'),
     *[(e, a, m, 'models') for e in prepare.CONFIGS for a in prepare.ARMS for m in ('mismatch', 'unverified')],
 ]
 
@@ -249,8 +307,48 @@ class Assertions(unittest.TestCase):
     def test_unsealed_forms_and_unknown_arm_fail(self):
         with tempfile.TemporaryDirectory() as temp:
             out, plan = make_cell(Path(temp), 'claude', 'B')
-            self.assertEqual(instructions.check(out, plan, pending_seal()), ['forms: claude form unsealed'])
+            self.assertEqual(instructions.check(out, plan, pending_seal(Path(temp))), ['forms: claude form unsealed'])
             self.assertTrue(instructions.check(out, dict(plan, arm='C'), sealed(Path(temp))))
+
+    def test_cells_are_tied_to_the_launch_probe_of_their_tree(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            seal = sealed(root)
+            changes = [  # (engine, arms, change to the D3 probe seal, the assertions it must fail)
+                ('claude', 'B', lambda p: p.update(status_line=p['status_line'].replace('2.1.322', '2.1.321')),
+                 {'status-line'}),
+                ('codex', 'B', lambda p: p.update(release_digest='0' * 64), {'devlyn-home'}),
+                ('codex', 'B', lambda p: p['projection']['files'].update({'skills/x/SKILL.md': '0' * 64}),
+                 {'codex-home'})]
+            for engine in prepare.CONFIGS:
+                for arm in prepare.ARMS:  # allowed: the cell's own tree's seal
+                    out, plan = make_cell(root / f'd3-{engine}-{arm}', engine, arm)
+                    self.assertEqual(instructions.check(out, dict(plan, task='D3'), seal), [], (engine, arm))
+                    self.assertEqual(instructions.check(out, dict(plan, task='F11'), seal),
+                                     [f'launch: no launch probe seal for {engine} F11'])
+            for number, (engine, arms, change, expected) in enumerate(changes):
+                other = copy.deepcopy(seal)
+                change(other['launch'][engine]['D3'])
+                for arm in arms:
+                    out, plan = make_cell(root / f'change-{number}-{arm}', engine, arm)
+                    violations = instructions.check(out, dict(plan, task='D3'), other)
+                    self.assertEqual({v.split(':', 1)[0] for v in violations}, expected, (number, arm, violations))
+                    self.assertEqual(instructions.check(out, plan, other), [], (number, arm))  # SMOKE's seal holds
+
+    def test_codex_own_plugin_files_pass_in_both_arms(self):
+        # O10: Codex downloads its own curated plugins into CODEX_HOME in both arms; only devlyn's files are read.
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            seal = sealed(root)
+            for arm in prepare.ARMS:
+                out, plan = make_cell(root / arm, 'codex', arm)
+                for mutation in ('foreign_plugin', 'marketplace'):
+                    MUTATIONS[mutation](out, 'codex')
+                self.assertEqual(instructions.check(out, plan, seal), [], arm)
+            home = root / 'A/smoke-codex-A/home/.codex'
+            self.assertEqual(instructions.devlyn_files(home), [])
+            (home / '.devlyn-harness-projection.json').write_text('{}')
+            self.assertEqual(instructions.devlyn_files(home), ['.devlyn-harness-projection.json'])
 
     def test_release_digest_port_matches_release_js(self):
         record = instructions.release_record(RELEASE)
@@ -265,8 +363,9 @@ class SealForms(unittest.TestCase):
         for engine in prepare.CONFIGS:
             for arm in prepare.ARMS:
                 out, _ = make_cell(output, engine, arm)
-                (output / f'verdict-{out.name}.json').write_text(json.dumps({'status': 'COMPLETE'}))
-        (root / 'instructions.seal.json').write_text(json.dumps(pending_seal()))
+                (output / f'verdict-{out.name}.json').write_text(json.dumps(
+                    {'status': 'COMPLETE', 'usage': 'COMPLETE', 'identity': {'owner_launched_sessions': []}}))
+        (root / 'instructions.seal.json').write_text(json.dumps(pending_seal(root)))
         runtime = root / 'runtime.json'
         runtime.write_text(json.dumps({'output': str(output)}))
         return output, runtime
@@ -309,6 +408,23 @@ class SealForms(unittest.TestCase):
             self.assert_refused(Path(temp), r"found it 0 time\(s\).*'role': 'developer'.*'starts_at': 25, "
                                             r"'first_difference': " + str(len(TEXT) - 1))
 
+    def test_smoke_forms_must_equal_the_launch_probe(self):
+        changes = [
+            (lambda launch: launch['claude']['SMOKE'].update(status_line=SHAPES['status_lines']['codex']),
+             r'smoke-claude-B: SMOKE differs from the launch probe.s SMOKE seal: status line or digest'),
+            (lambda launch: launch['claude']['SMOKE'].update(plugin_dir='/elsewhere'), r'plugin path, probe /elsewhere'),
+            (lambda launch: launch['codex']['SMOKE']['projection']['files'].update({'x': '0'}),
+             r'smoke-codex-B: SMOKE differs .*: projection'),
+            (lambda launch: launch['codex']['SMOKE']['model_input']['B']['location'].update(role='user'),
+             r"session text location .*'role': 'developer'.*probe .*'role': 'user'")]
+        for change, pattern in changes:
+            with self.subTest(pattern=pattern), tempfile.TemporaryDirectory() as temp:
+                self.smoke(Path(temp))
+                seal = json.loads((Path(temp) / 'instructions.seal.json').read_text())
+                change(seal['launch'])
+                (Path(temp) / 'instructions.seal.json').write_text(json.dumps(seal))
+                self.assert_refused(Path(temp), pattern)
+
     def test_a_violation_or_stop_verdict_refuses_qualification(self):
         with tempfile.TemporaryDirectory() as temp:
             output, _ = self.smoke(Path(temp))
@@ -318,6 +434,22 @@ class SealForms(unittest.TestCase):
             output, _ = self.smoke(Path(temp))
             (output / 'verdict-smoke-codex-A.json').write_text(json.dumps({'status': 'STOP', 'reason': 'locator: x'}))
             self.assert_refused(Path(temp), r'smoke-codex-A: verdict is STOP \(locator: x\)')
+
+    def test_codex_b_usage_must_be_the_owner_session_alone(self):
+        """DESIGN Q7: Codex B's usage COMPLETE, and no session besides the owner (the app-server read starts none);
+        the other SMOKE cells are not held to it."""
+        for verdict, pattern in (
+                (dict(usage='PARTIAL', identity=dict(owner_launched_sessions=[])), r"usage PARTIAL, sessions .* \[\]"),
+                (dict(usage='COMPLETE', identity=dict(owner_launched_sessions=[dict(engine='codex', session='s')])),
+                 r"smoke-codex-B: usage COMPLETE, sessions besides the owner \[\{'engine': 'codex'")):
+            with self.subTest(pattern=pattern), tempfile.TemporaryDirectory() as temp:
+                output, runtime = self.smoke(Path(temp))
+                (output / 'verdict-smoke-codex-B.json').write_text(json.dumps(dict(status='COMPLETE', **verdict)))
+                self.assert_refused(Path(temp), pattern)
+        with tempfile.TemporaryDirectory() as temp:
+            output, runtime = self.smoke(Path(temp))
+            (output / 'verdict-smoke-codex-A.json').write_text(json.dumps(dict(status='COMPLETE', usage='PARTIAL')))
+            instructions.seal_forms(runtime)
 
     def control(self, root, version='4.3.30', tarball=None):
         package = root / 'control/packages/B/package'
@@ -337,7 +469,11 @@ class SealForms(unittest.TestCase):
     def test_seal_records_package_identity_session_text_and_pending(self):
         with tempfile.TemporaryDirectory() as temp:
             _, runtime = self.control(Path(temp))
-            seal = json.loads(Path(instructions.seal(runtime)).read_text())
+            probed = dict(launch={'probe': 'fields'}, controls={}, devlyn_skills=[])
+            with mock.patch.object(instructions, 'launch_probe', return_value=probed) as probe:
+                seal = json.loads(Path(instructions.seal(runtime)).read_text())
+            self.assertEqual(probe.call_args.args[1], seal['session_text'])
+            self.assertEqual({key: seal[key] for key in probed}, probed)
             self.assertEqual(seal['package'], dict(tarball_sha256=instructions.TARBALL_SHA256,
                                                    integrity=instructions.INTEGRITY, version='4.3.30',
                                                    release_digest=instructions.RELEASE_DIGEST))
@@ -359,9 +495,279 @@ class SealForms(unittest.TestCase):
                                                 tarball='0' * 64 if case == 'tarball' else None)
                 if case == 'tree':
                     (package / 'config/skills/_shared/runtime-principles.md').write_text('edited\n')
-                with self.assertRaisesRegex(ValueError, 'tarball identity|differs from its tarball|B package is 4.3.29'):
+                with self.assertRaisesRegex(ValueError, 'tarball identity|differs from its tarball|B package is 4.3.29'), \
+                        mock.patch.object(instructions, 'launch_probe', side_effect=AssertionError('probe ran')):
                     instructions.seal(runtime)
                 self.assertFalse((Path(temp) / 'instructions.seal.json').exists())
+
+
+O = {engine: prepare.owner_argv(engine, OWNER[engine], 'do the task now') for engine in prepare.CONFIGS}
+RUN_FOLDER = '/tmp/devlyn-run-Ab12Cd'
+
+
+def planned(engine, text=TEXT):
+    """What devlyn run 4.3.30 hands the engine before O (the 2026-11-11 probe and the Q2 probe saw this)."""
+    if engine == 'claude':
+        return ['--plugin-dir', f'{instructions.RELEASE_ROOT}/native/claude', '--append-system-prompt-file',
+                f'{RUN_FOLDER}/devlyn-instructions.md']
+    market = instructions.MARKET
+    return ['-c', f'marketplaces={{"{market}"={{"source_type"="local","source"="{instructions.RELEASE_ROOT}/native/codex"}}}}',
+            '-c', f'plugins={{"devlyn@{market}"={{"enabled"=true}}}}',
+            '-c', 'developer_instructions=' + json.dumps(text, ensure_ascii=False)]
+
+
+def engine_call(engine, arm, text=TEXT, **change):
+    """One shim record: the engine's argv, environment and the files its argv names."""
+    argv = (planned(engine, text) if arm == 'B' else []) + O[engine]
+    files = {argv[3]: base64.b64encode(text.encode()).decode()} if engine == 'claude' and arm == 'B' else {}
+    env = dict(HOME=instructions.HOME, HOSTNAME=arm, **({'DEVLYN_NODE': '/usr/local/bin/node'} if arm == 'B' else {}))
+    return dict(dict(argv=argv, env=env, files=files), **change)
+
+
+class LaunchProbe(unittest.TestCase):
+    """DESIGN Q2's guards, each violating and allowed, on the shapes the 2026-11-11 probe saw."""
+
+    def cell(self, root, engine, arm):
+        out, _ = make_cell(root, engine, arm)
+        plan = dict(name=out.name, argv=(instructions.DEVLYN if arm == 'B' else []) + [engine, *O[engine]])
+        return out, plan
+
+    def test_b_launch_is_sealed_and_each_departure_refused(self):
+        with tempfile.TemporaryDirectory() as temp:
+            for engine in prepare.CONFIGS:
+                out, plan = self.cell(Path(temp) / engine, engine, 'B')
+                status = SHAPES['status_lines'][engine]
+                sealed = instructions.launch_b(engine, plan, out, (0, '', f'noise\n{status}\n', [engine_call(engine, 'B')]),
+                                               TEXT)
+                self.assertEqual(sealed['argv'], instructions.normalise(planned(engine)) + O[engine])
+                self.assertEqual(sealed['raw_argv'][-len(O[engine]):], O[engine])
+                self.assertEqual((sealed['status_line'], sealed['release_digest']), (status, instructions.RELEASE_DIGEST))
+                self.assertEqual(list(sealed['plan_files'].values()), [hashlib.sha256(TEXT.encode()).hexdigest()])
+                if engine == 'claude':
+                    self.assertEqual(list(sealed['plan_files']), ['/tmp/devlyn-run-*/devlyn-instructions.md'])
+                else:
+                    self.assertEqual(set(sealed['projection']['files']),
+                                     {'.codex-plugin/plugin.json', '.devlyn-harness-projection.json'})
+                call = engine_call(engine, 'B')
+                departures = [(1, f'{status}\n', [call]), (0, '', [call]), (0, f'{status}\n{status}\n', [call]),
+                              (0, f'{status}\n' + SHAPES['status_lines']['refused'] + '\n', [call]),
+                              (0, f'{status}\n', [call, call]), (0, f'{status}\n', []),
+                              (0, f'{status}\n', [dict(call, argv=call['argv'][:-1] + ['another prompt'])]),
+                              (0, f'{status}\n', [engine_call(engine, 'B', text=TEXT + ' ')])]
+                if engine == 'claude':
+                    departures.append((0, f'{status}\n', [dict(call, argv=['--plugin-dir', '/x'] + call['argv'][2:])]))
+                else:
+                    departures.append((0, f'{status}\n', [dict(call, argv=['-c', 'model="x"'] + call['argv'])]))
+                for number, (code, stderr, records) in enumerate(departures):
+                    with self.subTest(engine=engine, departure=number):
+                        with self.assertRaisesRegex(ValueError, f'^{plan["name"]}: '):
+                            instructions.launch_b(engine, plan, out, (code, '', stderr, records), TEXT)
+                rewrite_release(out, lambda m: m['files'][0].update(sha256='0' * 64), recompute=True)
+                with self.assertRaisesRegex(ValueError, 'HOME release'):
+                    instructions.launch_b(engine, plan, out, (0, '', f'{status}\n', [call]), TEXT)
+            (Path(temp) / 'codex/smoke-codex-B/home/.codex' / instructions.PROJECTION /
+             '.devlyn-harness-projection.json').unlink()
+            shutil.copyfile(RELEASE, next((Path(temp) / 'codex/smoke-codex-B/home/.devlyn').rglob('release.json')))
+            with self.assertRaisesRegex(ValueError, 'projection lacks'):
+                instructions.launch_b('codex', self.cell(Path(temp) / 'again', 'codex', 'B')[1],
+                                      Path(temp) / 'codex/smoke-codex-B',
+                                      (0, '', SHAPES['status_lines']['codex'] + '\n', [engine_call('codex', 'B')]), TEXT)
+
+    def test_a_is_handed_exactly_o_with_nothing_devlyn(self):
+        with tempfile.TemporaryDirectory() as temp:
+            for engine in prepare.CONFIGS:
+                out, plan = self.cell(Path(temp) / engine, engine, 'A')
+                sealed = instructions.launch_a(engine, plan, out, (0, '', '', [engine_call(engine, 'A')]))
+                self.assertEqual(sealed['argv'], O[engine])
+                call = engine_call(engine, 'A')
+                if engine == 'codex':
+                    MUTATIONS['devlyn_projection'](out, engine)
+                    with self.assertRaisesRegex(ValueError, 'devlyn in A'):
+                        instructions.launch_a(engine, plan, out, (0, '', '', [call]))
+                    shutil.rmtree(out / 'home/.codex/plugins/cache' / instructions.MARKET)
+                for run in ((0, '', '', [dict(call, argv=call['argv'] + ['--verbose'])]), (0, '', '', []),
+                            (0, '', SHAPES['status_lines'][engine] + '\n', [call]), (1, '', '', [call]),
+                            (0, '', '', [dict(call, env=dict(call['env'], DEVLYN_NODE='/usr/local/bin/node'))])):
+                    with self.subTest(engine=engine, run=run[1:3]), \
+                            self.assertRaisesRegex(ValueError, f'^{plan["name"]}: '):
+                        instructions.launch_a(engine, plan, out, run)
+                (out / 'home/.devlyn').mkdir()
+                with self.assertRaisesRegex(ValueError, 'devlyn in A'):
+                    instructions.launch_a(engine, plan, out, (0, '', '', [call]))
+
+    def test_strict_mcp_config_control(self):
+        for engine in prepare.CONFIGS:
+            refused = instructions.REFUSED.format(engine=engine)
+            self.assertEqual(json.loads(refused.split(' ', 3)[3]), {'engine': engine, 'argument': '--strict-mcp-config'})
+            self.assertEqual(instructions.refusal(engine, (2, '', refused + '\n', [])),
+                             dict(exit=2, stderr=[refused], engine_calls=0))
+            for run in ((0, '', '', [engine_call(engine, 'B')]), (2, '', refused + '\n', [engine_call(engine, 'B')]),
+                        (2, '', SHAPES['status_lines']['refused'] + '\n', []), (2, '', '', [])):
+                with self.subTest(engine=engine, run=run[0]), \
+                        self.assertRaisesRegex(ValueError, f'^{engine} --strict-mcp-config: '):
+                    instructions.refusal(engine, run)
+
+    def test_model_input_reader_on_real_codex_output(self):
+        found = {name: instructions.model_input(dict(input=items), TEXT) for name, items in INPUT.items()}
+        system = ['imagegen', 'openai-docs', 'skill-creator', 'skill-installer']
+        self.assertEqual(found['A'], dict(session_text=0, location=None, preamble=0, skills=system, plugin_skills=[],
+                                          skill_roots=[f'{instructions.HOME}/.codex/skills/.system'], agents_md=[]))
+        self.assertEqual((found['B']['session_text'], found['B']['plugin_skills'], found['B']['agents_md']),
+                         (1, DEVLYN_SKILLS, []))
+        self.assertEqual(found['B']['location'], dict(path='input/*/content/*/text', role='developer',
+                                                      type='input_text', whole=True))
+        self.assertEqual(found['B']['skill_roots'], sorted(found['A']['skill_roots'] + [
+            f'{instructions.HOME}/.codex/{instructions.PROJECTION}/skills']))
+        self.assertEqual((found['control']['plugin_skills'], len(found['control']['agents_md'])),
+                         (['other:foreign-skill'], 1))
+        self.assertEqual(instructions.plugin_roots(found['control']),
+                         [f'{instructions.HOME}/.codex/plugins/cache/foreign-market'])
+        a = found['A']
+        self.assertEqual(instructions.input_violations('A', a), [])  # the per-cell rule
+        self.assertEqual(instructions.input_violations('B', found['B']), [])
+        self.assertEqual(len(instructions.input_violations('A', found['control'])), 1)
+        self.assertEqual(len(instructions.input_violations('B', a)), 2)
+        self.assertEqual(len(instructions.input_violations('A', found['B'])), 2)
+        self.assertEqual(instructions.probe_violations('A', a, a, DEVLYN_SKILLS), [])  # Q2's reading
+        self.assertEqual(instructions.probe_violations('B', found['B'], a, DEVLYN_SKILLS), [])
+        self.assertEqual(len(instructions.probe_violations('A', found['control'], a, DEVLYN_SKILLS)), 3)
+        extra = dict(found['B'], plugin_skills=DEVLYN_SKILLS + ['devlyn:extra'])  # a skill the package does not have
+        self.assertEqual(len(instructions.probe_violations('B', extra, a, DEVLYN_SKILLS)), 1)
+
+    def test_reader_control_flags_each_plant_and_passes_the_clean_home(self):
+        with tempfile.TemporaryDirectory() as temp:
+            home = Path(temp)
+            (home / '.codex').mkdir()
+            (home / '.codex/config.toml').write_text(CODEX_TOML)
+            instructions.plant(home)
+            config = tomllib.loads((home / '.codex/config.toml').read_text())
+            self.assertEqual((config['marketplaces']['foreign-market']['source'], config['plugins']),
+                             (f'{instructions.HOME}/foreign-market', {'other@foreign-market': {'enabled': True}}))
+            self.assertTrue((home / '.codex/plugins/cache/foreign-market/other/1.0.0/.codex-plugin/plugin.json').is_file())
+            self.assertTrue((home / '.codex/AGENTS.md').is_file())
+        clean = instructions.model_input(dict(input=INPUT['A']), TEXT)
+        planted = instructions.model_input(dict(input=INPUT['control']), TEXT)  # Codex 0.164.0 on such a HOME
+        flags = instructions.reader_control(clean, planted, DEVLYN_SKILLS)
+        self.assertEqual(set(flags), {'foreign plugin', 'marketplace entry', 'AGENTS.md'})
+        self.assertTrue(all(flags.values()))
+        with self.assertRaisesRegex(ValueError, 'not every plant'):  # a reader blind to AGENTS.md
+            instructions.reader_control(clean, dict(planted, agents_md=[]), DEVLYN_SKILLS)
+        with self.assertRaisesRegex(ValueError, 'clean HOME is flagged'):
+            instructions.reader_control(planted, planted, DEVLYN_SKILLS)
+
+    def test_normalise_settings_and_environment_patch(self):
+        self.assertEqual(instructions.normalise([f'{RUN_FOLDER}/devlyn-instructions.md', '-p']),
+                         ['/tmp/devlyn-run-*/devlyn-instructions.md', '-p'])
+        self.assertEqual(instructions.codex_settings(planned('codex'))['developer_instructions'], TEXT)
+        for args in (['-c'], ['--config', 'a=1'], ['-c', 'a=1', 'exec']):
+            with self.assertRaisesRegex(ValueError, 'not -c pairs'):
+                instructions.codex_settings(args)
+        self.assertEqual(instructions.env_patch(dict(HOME='/h', HOSTNAME='b', DEVLYN_NODE='/n', GONE=None),
+                                                dict(HOME='/h', HOSTNAME='a', GONE='x')),
+                         dict(DEVLYN_NODE='/n', GONE=None))
+
+
+class LaunchProbeRun(unittest.TestCase):
+    """launch_probe's wiring with a fake container in place of Docker: every engine x tree x arm prepared and run, the
+    controls and Codex's model input read, scratch removed; any failure writes no seal."""
+
+    def fake(self, root, broken=None):
+        runs = []
+
+        def prepared(runtime, name, tree, arm, engine):
+            out = Path(runtime['output']) / name
+            (out / 'home/.codex').mkdir(parents=True)
+            (out / 'home/.claude').mkdir()
+            if engine == 'codex':
+                (out / 'home/.codex/config.toml').write_text(CODEX_TOML)
+            argv = (instructions.DEVLYN if arm == 'B' else []) + [engine, *O[engine]]
+            (out / 'plan.json').write_text(json.dumps(dict(name=name, task=tree, arm=arm, config=engine, argv=argv,
+                                                           home=str(out / 'home'), env=dict(HOME=instructions.HOME))))
+            return out
+
+        def materialize(home, codex):
+            release = home / '.devlyn/cli/releases/devlyn-cli/4.3.30'
+            release.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(RELEASE, release / 'release.json')
+            if codex:
+                folder = home / '.codex' / instructions.PROJECTION
+                (folder / '.codex-plugin').mkdir(parents=True, exist_ok=True)
+                (folder / '.codex-plugin/plugin.json').write_text('{}')
+                (folder / '.devlyn-harness-projection.json').write_text('{}')
+                (home / '.codex/.tmp').mkdir(exist_ok=True)
+                (home / '.codex/.tmp/plugins.sync.lock').write_text('')
+
+        def container(_cell, plan, command, binds=(), env=None, timeout=300):
+            home, engine, arm = Path(plan['home']), plan['config'], plan['arm']
+            runs.append((plan['name'], command[:6]))
+            records = next((Path(src) for src, dst, _ in binds if dst == '/q2/records'), None)
+            status = SHAPES['status_lines'][engine] + '\n'
+            if '--strict-mcp-config' in command and broken != f'strict {engine}':
+                return 2, '', instructions.REFUSED.format(engine=engine) + '\n'
+            if 'prompt-input' in command:
+                if arm == 'B':
+                    materialize(home, True)
+                planted = (home / '.codex/AGENTS.md').exists()
+                items = INPUT['control' if planted else 'A' if arm == 'A' or broken == f'debug {plan["task"]}' else 'B']
+                return 0, json.dumps(items), status if arm == 'B' else ''
+            call = engine_call(engine, arm)
+            if broken == f'A {engine} {plan["task"]}' and arm == 'A':
+                call['argv'] = call['argv'] + ['--extra']
+            if arm == 'B':
+                materialize(home, engine == 'codex')
+            (records / f'{engine}-1.json').write_text(json.dumps(call))
+            return 0, '', status if arm == 'B' else ''
+
+        cell = mock.Mock(docker=mock.Mock(return_value=json.dumps(['LANG=C', 'PATH=/usr/local/bin:/usr/bin'])))
+        modules = dict(prepare=mock.Mock(prepare=prepared), cell=cell)
+        package = root / 'control/packages/B/package/native/codex/plugins/devlyn/skills'
+        for skill in ('devlyn-engines', 'devlyn-ideate', '_shared'):
+            (package / skill).mkdir(parents=True, exist_ok=True)
+            if skill != '_shared':
+                (package / skill / 'SKILL.md').write_text('---\n')
+        (root / 'scratch').mkdir(exist_ok=True)
+        runtime = dict(output=str(root / 'output'), control=str(root / 'control'), scratch=str(root / 'scratch'),
+                       image='sha256:image')
+        return runtime, runs, [mock.patch.object(instructions, 'load', side_effect=lambda name: modules[name]),
+                               mock.patch.object(instructions, 'container', side_effect=container)]
+
+    def probe(self, root, broken=None):
+        runtime, runs, patches = self.fake(root, broken)
+        for patch in patches:
+            patch.start()
+        try:
+            return instructions.launch_probe(runtime, TEXT), runs
+        finally:
+            mock.patch.stopall()
+            self.assertEqual(list((root / 'scratch').iterdir()), [])
+
+    def test_every_engine_tree_and_arm_is_probed_and_sealed(self):
+        with tempfile.TemporaryDirectory() as temp:
+            sealed, runs = self.probe(Path(temp))
+        self.assertEqual(set(sealed), {'launch', 'controls', 'devlyn_skills'})
+        self.assertEqual({engine: list(trees) for engine, trees in sealed['launch'].items()},
+                         {engine: list(instructions.TREES) for engine in prepare.CONFIGS})
+        self.assertEqual(sealed['devlyn_skills'], DEVLYN_SKILLS)
+        self.assertEqual(set(sealed['controls']), {'claude --strict-mcp-config', 'codex --strict-mcp-config', 'reader'})
+        for engine in prepare.CONFIGS:
+            for tree, entry in sealed['launch'][engine].items():
+                self.assertEqual(entry['a']['argv'], O[engine])
+                self.assertEqual(entry['env_patch'], dict(DEVLYN_NODE='/usr/local/bin/node'))
+                self.assertEqual(entry['argv'][:len(planned(engine))], instructions.normalise(planned(engine)))
+                if engine == 'codex':
+                    self.assertEqual(entry['model_input']['B']['plugin_skills'], DEVLYN_SKILLS)
+                    self.assertEqual(entry['model_input']['A']['plugin_skills'], [])
+        kinds = [('strict' if '--strict-mcp-config' in command else 'debug' if 'prompt-input' in command else 'launch')
+                 for _, command in runs]
+        self.assertEqual({kind: kinds.count(kind) for kind in set(kinds)}, dict(launch=24, strict=2, debug=12 + 1))
+
+    def test_a_failed_expectation_raises_and_cleans_scratch(self):
+        for broken, pattern in (('A codex F11', 'q2-codex-F11-A: .*exactly O'),
+                                ('strict codex', 'codex --strict-mcp-config: exit 0, .*1 engine call'),
+                                ('debug D4', 'Codex model input, D4: B carries the session text 0')):
+            with self.subTest(broken=broken), tempfile.TemporaryDirectory() as temp:
+                with self.assertRaisesRegex(ValueError, pattern):
+                    self.probe(Path(temp), broken)
 
 
 class Arms(unittest.TestCase):
@@ -398,11 +804,14 @@ class Arms(unittest.TestCase):
         text = prepare.base.codex_toml(OWNER['codex'])
         for variant in (text.replace('plugins = false\n', 'plugins = false \n'),
                         text.replace('plugins = false\n', 'plugins = true\n'),
+                        text.replace('plugins = false\n', ''),  # O10: Codex's remote plugins would stay on
                         text.replace('[projects."/work"]', '[projects."/elsewhere"]')):
             with mock.patch.object(prepare.base, 'codex_toml', return_value=variant):
-                with self.assertRaisesRegex(ValueError, 'still disables plugins|inherited Codex project trust'):
+                with self.assertRaisesRegex(ValueError, 'still disables plugins or leaves remote plugins on|'
+                                                        'inherited Codex project trust'):
                     prepare.codex_config(OWNER['codex'])
         self.assertEqual(prepare.codex_config(OWNER['codex']), CODEX_TOML)
+        self.assertIs(tomllib.loads(CODEX_TOML)['features']['remote_plugin'], False)
 
     def test_other_tasks_arms_and_configs_are_refused_before_any_write(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -459,19 +868,31 @@ class Cell(unittest.TestCase):
                     mock.patch.object(cell, 'identity', return_value={'status': 'MATCH'}):
                 record = cell.run(out, dict(auth=str(root / 'auth'), scratch=str(root / 'scratch')))
             argv = json.loads((out / 'run/started.json').read_text())['create_argv']
-            return argv, json.loads((out / 'run/result.json').read_text()), str(root / 'control/packages/B'), record
+            return argv, json.loads((out / 'run/result.json').read_text()), str(root / 'control/packages/B'), record, plan
 
     def test_install_mount_only_for_b(self):
-        b, _, install, _ = self.owner('B', {'OOMKilled': False, 'ExitCode': 0})
-        a, _, _, _ = self.owner('A', {'OOMKilled': False, 'ExitCode': 0})
+        b, _, install, _, _ = self.owner('B', {'OOMKilled': False, 'ExitCode': 0})
+        a, _, _, _, _ = self.owner('A', {'OOMKilled': False, 'ExitCode': 0})
         self.assertIn(f'type=bind,src={install},dst=/install,readonly', b)
         self.assertEqual(b[b.index('sha256:image'):], ['sha256:image', 'claude', '-p', 'x'])
         self.assertFalse([value for value in a if '/install' in value])
         targets = lambda argv: [value.split('dst=')[1] for value in argv if 'dst=' in value]
         self.assertEqual(targets(b), targets(a) + ['/install,readonly'])
 
+    def test_the_probe_container_is_the_cell_container_without_credentials(self):
+        for arm in prepare.ARMS:
+            argv, _, _, _, plan = self.owner(arm, {'OOMKilled': False, 'ExitCode': 0})
+            volume = argv[argv.index('--mount') + 1].split('src=')[1].split(',')[0]
+            probe = cell.create_argv(plan, argv[argv.index('--name') + 1], volume, cell.mounts(plan), plan['env'],
+                                     plan['argv'])
+            secret = [i for i, value in enumerate(argv) if value == '--mount' and any(
+                f'dst={dst}' in argv[i + 1] for dst in ('/home/participant/.codex/auth.json',
+                                                        '/home/participant/.claude/.credentials.json'))]
+            self.assertEqual(len(secret), 2)
+            self.assertEqual(probe, [value for i, value in enumerate(argv) if i not in secret and i - 1 not in secret])
+
     def test_container_end_is_recorded(self):
-        _, result, _, record = self.owner('A', {'OOMKilled': True, 'ExitCode': 137}, status_code=137)
+        _, result, _, record, _ = self.owner('A', {'OOMKilled': True, 'ExitCode': 137}, status_code=137)
         self.assertEqual(result['container'], {'oom_killed': True, 'exit_code': 137})
         self.assertEqual((record['owner_status'], record['teardown']), ('EXITED_NONZERO', 'CLEAN'))
 
@@ -507,9 +928,13 @@ class Rules(unittest.TestCase):
                 self.assertEqual(run_cell.launch_fault(out, {'arm': arm}), fault, number)
 
     def test_memory_kill_rule(self):
-        cases = [({'oom_killed': True, 'exit_code': 0}, 'EXITED_0', True),
-                 ({'oom_killed': True, 'exit_code': 137}, 'HANG_TIMEOUT', True),
-                 ({'oom_killed': False, 'exit_code': 137}, 'EXITED_NONZERO', True),
+        # O3: the flag, the owner's 137 and no watchdog, all three; the flag alone or 137 alone is the cell's outcome.
+        cases = [({'oom_killed': True, 'exit_code': 137}, 'EXITED_NONZERO', True),
+                 ({'oom_killed': True, 'exit_code': 137}, 'HANG_TIMEOUT', False),
+                 ({'oom_killed': True, 'exit_code': 0}, 'EXITED_0', False),
+                 ({'oom_killed': True, 'exit_code': 1}, 'EXITED_NONZERO', False),
+                 ({'oom_killed': False, 'exit_code': 137}, 'EXITED_NONZERO', False),
+                 ({'oom_killed': None, 'exit_code': 137}, 'EXITED_NONZERO', False),
                  ({'oom_killed': False, 'exit_code': 137}, 'HANG_TIMEOUT', False),
                  ({'oom_killed': False, 'exit_code': 1}, 'EXITED_NONZERO', False),
                  ({'oom_killed': False, 'exit_code': 0}, 'EXITED_0', False),
@@ -654,6 +1079,18 @@ class RunFlow(unittest.TestCase):
             self.assertEqual(verdict['reason'], 'memory kill: OOMKilled=True exit_code=137 owner EXITED_0')
             self.assert_not_graded(mocks)
 
+    def test_an_oom_flag_whose_owner_went_on_is_graded_and_recorded(self):
+        for container, oom in (({'oom_killed': True, 'exit_code': 0}, True), ({'oom_killed': True, 'exit_code': 1}, True),
+                               ({'oom_killed': False, 'exit_code': 137}, False),
+                               ({'oom_killed': False, 'exit_code': 0}, False)):
+            with self.subTest(container=container), tempfile.TemporaryDirectory() as temp:
+                code, verdict, mocks, _, _ = self.run_cell(Path(temp), arm='A', container=container)
+                self.assertEqual((code, verdict['status'], verdict['oom_killed']), (0, 'COMPLETE', oom))
+                mocks['assess'].assert_called_once()
+        with tempfile.TemporaryDirectory() as temp:  # a memory kill records the flag on its STOP too
+            _, verdict, _, _, _ = self.run_cell(Path(temp), arm='A', container={'oom_killed': True, 'exit_code': 137})
+            self.assertEqual((verdict['status'], verdict['oom_killed']), ('STOP', True))
+
     def test_a_teardown_failure_outranks_a_launch_fault(self):
         with tempfile.TemporaryDirectory() as temp:
             _, verdict, _, _, _ = self.run_cell(Path(temp), teardown='FAILED',
@@ -673,11 +1110,14 @@ class RunFlow(unittest.TestCase):
             args = mocks['instructions'].call_args.args
             self.assertEqual((args[0], args[1]['arm'], args[2]['qualification']['status']), (out, 'B', 'PASS'))
             seal = json.loads((out / 'seal.json').read_text())
-            self.assertEqual({name: entry['path'] for name, entry in seal['modules'].items()}, {
-                'prepare': '0265/prepare.py', 'cell': '0265/cell.py', 'record_usage': '0256/record_usage.py',
-                'locate': '0233/locate.py', 'check': '0233/check.py', 'assess': '0265/assess.py',
-                'quota': '0265/quota.py', 'diagnostics': '0233/diagnostics.py',
-                'run_cell0222': '0222/run_cell.py', 'instructions': '0265/instructions.py'})
+            loaded = {name: next(f'{folder}/{name}.py' for folder in ('0265', '0256', '0233')  # run_cell.load's order
+                                 if (HERE.parent / folder / f'{name}.py').is_file())
+                      for name in ('prepare', 'cell', 'record_usage', 'locate', 'check', 'assess', 'quota',
+                                   'diagnostics', 'instructions')}
+            self.assertEqual({name: entry['path'] for name, entry in seal['modules'].items()},
+                             dict(loaded, run_cell0222='0222/run_cell.py'))
+            self.assertTrue(all(loaded[name].startswith('0265/') for name in ('prepare', 'cell', 'assess', 'quota',
+                                                                                'instructions')))
             self.assertEqual(seal['package_sha256'], 'package')
             self.assertNotIn('0237/cell-init-v1.py', seal['imported'])
             self.assertEqual(seal['endpoints_sha256'], run_cell.digest(HERE / 'endpoints.json'))
@@ -762,6 +1202,33 @@ class Assessors(unittest.TestCase):
             self.assertTrue(record['complete'])
             self.assertEqual(default, json.loads((out / f'assessment/{route["engine"]}/result.json').read_text()))
             self.assertEqual(sorted(p.name for p in (out / 'assessment').iterdir()), [route['engine']])
+
+
+class DockerAnswers(unittest.TestCase):
+    """O9: Docker 29 answers "error: no such object" in lower case. The check container's and an assessor's teardown
+    proofs read it in any letter case; any other inspect failure is still no proof."""
+
+    def answers(self, inspect, rm=''):
+        def run(argv, **kwargs):
+            if argv[1] == 'inspect':
+                return subprocess.CompletedProcess(argv, 1, '', inspect)
+            return subprocess.CompletedProcess(argv, 1 if argv[1] == 'rm' and rm else 0, 'ok', rm if argv[1] == 'rm' else '')
+        return mock.patch.object(subprocess, 'run', side_effect=run)
+
+    def test_check_container_teardown(self):
+        check, runtime = run_cell.check, {'control': '/control', 'image': 'sha256:image'}
+        for stderr in ('error: no such object: x', 'Error: No such object: x'):
+            with self.subTest(stderr=stderr), self.answers(stderr):
+                self.assertEqual(check.in_image(runtime, Path('/work'), ['true'])['exit_code'], 0)
+        with self.answers('permission denied'), self.assertRaisesRegex(check.NoVerdict, 'cannot verify'):
+            check.in_image(runtime, Path('/work'), ['true'])
+
+    def test_assessor_container_reaped(self):
+        for stderr in ('error: no such object: x', 'Error: No such object: x'):
+            with self.subTest(stderr=stderr), self.answers(stderr, 'Error response from daemon: no such container: x'):
+                assess.reap('x')
+        with self.answers('permission denied'), self.assertRaisesRegex(RuntimeError, 'cannot prove container x'):
+            assess.reap('x')
 
 
 class StrictConfig(unittest.TestCase):

@@ -1,5 +1,8 @@
 """0265 dispatcher: one serial process per lane, both lanes on one output folder. Run under caffeinate -dimsu:
-driver.py <runtime.json> <cells.tsv>[:prefix] ...  The runtime's lane (null, claude or codex) selects the rows it runs."""
+driver.py <runtime.json> <cells.tsv>[:prefix] ...  The runtime's lane (null, claude or codex) selects the rows it runs.
+A lane's process holds an exclusive lock on <output>/driver-<lane>.lock for its whole life (--clear-latch too), so a
+lane never runs twice. A STOP that is not redispatched sets the harm latch, which stops both lanes; a lane with a cell
+running lets it finish."""
 import datetime
 import fcntl
 import hashlib
@@ -26,10 +29,11 @@ def load(name):
 
 
 cell = load('run_cell')
-WINDOWS = ('seven_day', 'five_hour')
 LANES = (None, 'claude', 'codex')
 REGRADE = ('assessment failed', 'assessor produced', 'assessment held:')
 LAUNCH_FAULT, MEMORY_KILL = 'B launch fault: ', 'memory kill: '
+ACCOUNT_FAULT = 'shared account fault during execution: '  # a Codex refresh_token_reused among them (quota.py)
+ONCE = (MEMORY_KILL, ACCOUNT_FAULT)  # redispatched once per slot; a repeat on the slot stays a STOP
 GIB = 2**30
 # 4.3.30's delivery helper measures its target with shutil.disk_usage and refuses below max(10 GiB, 2% of the total).
 DISK_PROBE = "import json, shutil; print(json.dumps({p: shutil.disk_usage(p)._asdict() for p in ('/cell', '/tmp')}))"
@@ -78,8 +82,18 @@ def same_window(first, second):
         return False
 
 
-def fits(windows, caps):
-    return all(windows[window]['used'] < caps[window] for window in WINDOWS)
+def counted(windows):
+    """The usage windows a dispatch is held on (DESIGN Operations "Windows", O8): the seven-day window, and the
+    five-hour window and model-scoped weekly limits (seven_day_*) when the account reports them. The endpoint's other
+    entries (feature codenames, extra usage) are no window."""
+    return {name: value for name, value in windows.items()
+            if name in ('seven_day', 'five_hour') or name.startswith('seven_day_')}
+
+
+def exceeded(windows, caps):
+    """The counted windows at or above their cap, with their resets; a weekly limit takes the seven-day cap."""
+    return {name: value['resets'] for name, value in windows.items()
+            if value['used'] >= caps.get(name, caps['seven_day'])}
 
 
 def docker_fault(verdict):
@@ -125,14 +139,21 @@ class Driver:
         self.lane = self.runtime['lane']
         if self.lane not in LANES:
             raise ValueError('lane must be null, claude or codex')
+        label = self.lane or 'smoke'
+        self.lock = open(self.output / f'driver-{label}.lock', 'a')  # held until the process ends
+        try:
+            fcntl.flock(self.lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            self.lock.close()
+            raise RuntimeError(f'lane {label} already has a driver process: driver-{label}.lock is held') from None
         self.renewal_lock = Path(self.runtime['renewal_lock'])
         self.slots = [row for row in slots if self.lane in (None, row[3])]
         self.caps = self.runtime['caps']
         self.approved_account = None
         if self.caps != {'seven_day': 95, 'five_hour': 95}:
             raise ValueError('registration caps must be seven_day=95 and five_hour=95')
-        self.status_path = self.output / f'driver-status-{self.lane or "smoke"}.json'
-        self.log_path = self.output / f'driver-{self.lane or "smoke"}.log'
+        self.status_path = self.output / f'driver-status-{label}.json'
+        self.log_path = self.output / f'driver-{label}.log'
         self.state = json.loads(self.status_path.read_text()) if self.status_path.exists() else {
             'renewed_expiries': [], 'split_blocks': [], 'split_wait': {}}
         self.state.setdefault('split_wait', {})
@@ -199,9 +220,12 @@ class Driver:
             return
         identity = (verdict.get('identity') or {}).get('status')
         launched = bool(verdict.get('owner_status'))
-        explained = str(verdict.get('reason', '')).startswith((LAUNCH_FAULT, MEMORY_KILL))  # no owner evidence expected
+        # A fault the driver redispatches can leave no model record (a launch refused, an owner killed, a login or
+        # quota refused): its gap is no identity failure. A wrong model always is.
+        explained = str(verdict.get('reason', '')).startswith((LAUNCH_FAULT, *ONCE))
         reason = None
-        if identity in ('MISMATCH', 'UNVERIFIED') or (identity == 'UNKNOWN' and launched and not explained):
+        if identity == 'MISMATCH' or (
+                (identity == 'UNVERIFIED' or (identity == 'UNKNOWN' and launched)) and not explained):
             reason = f'identity {identity}'
         elif verdict.get('status') != 'STOP':
             if not isinstance(verdict.get('scope_violations'), list) or verdict['scope_violations']:
@@ -334,12 +358,12 @@ class Driver:
         if not self.image() or not self.cell_disk():  # local holds first: the usage endpoint is read once per dispatch
             return False
         try:
-            windows = cell.claude_limits(self.runtime, snapshot['access_token'])
+            windows = counted(cell.claude_limits(self.runtime, snapshot['access_token']))
         except (OSError, ValueError, KeyError) as exc:
             self.event('hold', reason=f'Claude window check failed: {exc}')
             return False
-        if any(window not in windows for window in WINDOWS):
-            self.event('hold', reason='Claude window evidence unavailable')
+        if 'seven_day' not in windows:  # a read without it is a failed read, never a pass
+            self.event('hold', reason='Claude window evidence unavailable: no seven-day window')
             return False
         waiting = self.state['split_wait'].get(slot, {}) if slot else {}
         if waiting and 'account' in waiting and waiting['account'] != snapshot['account']:
@@ -348,21 +372,19 @@ class Driver:
                        after=snapshot['account'])
             waiting = {}
         waits = waiting.get('resets', waiting)
-        if waiting and any(same_window(windows[window]['resets'], reset) for window, reset in waits.items()):
+        if waiting and any(same_window(windows.get(window, {}).get('resets'), reset) for window, reset in waits.items()):
             self.event('hold', reason='awaiting split window reset', cell=slot, waits=waits)
             return False
         if waiting:
             del self.state['split_wait'][slot]
-        if not fits(windows, self.caps):
+        over = exceeded(windows, self.caps)
+        if over:
             if slot:
-                exceeded = {window: windows[window]['resets'] for window in WINDOWS
-                            if windows[window]['used'] >= self.caps[window]}
-                self.state['split_wait'][slot] = {'account': snapshot['account'], 'resets': exceeded}
-                if exceeded:
-                    split = f'{previous}:{slot}'
-                    if split not in self.state['split_blocks']:
-                        self.state['split_blocks'].append(split)
-                        self.event('split_block', block=split, waits=exceeded)
+                self.state['split_wait'][slot] = {'account': snapshot['account'], 'resets': over}
+                split = f'{previous}:{slot}'
+                if split not in self.state['split_blocks']:
+                    self.state['split_blocks'].append(split)
+                    self.event('split_block', block=split, waits=over)
             self.event('hold', reason='Claude window near exhaustion', windows=windows, caps=self.caps)
             return False
         self.approved_account = snapshot['account'].copy()
@@ -373,16 +395,17 @@ class Driver:
         return json.loads(path.read_text()) if path.is_file() else None
 
     def redispatch(self, name, verdict):
-        """Whether a STOP is archived and its slot run again: a quota fault, a proven Docker loss, a B launch fault,
-        or the slot's first memory kill. A second memory kill on one slot keeps its STOP and stops this lane."""
+        """Whether a STOP is archived and its slot run again: a B launch fault, a proven Docker loss, and the slot's
+        first memory kill or shared account fault. Anything else, a repeat of either of those two on the slot among
+        it, stays a STOP, which the caller latches for both lanes."""
         reason = str(verdict.get('reason', ''))
-        if reason.startswith(MEMORY_KILL) and any(
-                str(json.loads(path.read_text()).get('reason', '')).startswith(MEMORY_KILL)
-                for path in self.output.glob(f'verdict-{name}.stop-*.json')):
-            self.stop(f'{name}: second memory kill on this slot: {reason}')
+        kind = next((prefix for prefix in ONCE if reason.startswith(prefix)), None)
+        if kind and any(str(json.loads(path.read_text()).get('reason', '')).startswith(kind)
+                        for path in self.output.glob(f'verdict-{name}.stop-*.json')):
+            return False
         if reason.startswith((LAUNCH_FAULT, MEMORY_KILL)):
             return verdict.get('teardown') == 'CLEAN'
-        return reason.startswith('shared account fault during execution:') or docker_fault(verdict)
+        return reason.startswith(ACCOUNT_FAULT) or docker_fault(verdict)
 
     def prove_docker_teardown(self, name):
         """Remove the stopped containers and /tmp volume recorded for this attempt."""

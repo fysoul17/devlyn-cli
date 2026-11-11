@@ -1,5 +1,5 @@
-"""Power and size figures DESIGN quotes ("Why r3" 1-2, "Strongest counter", "Decision" 1-3), recomputed through
-decide.py's own Fisher test and Wilson-MOVER interval. Run: python3 power.py (about 20 s).
+"""Power, size and interval figures DESIGN quotes ("Why r3" 1-2, "Strongest counter", "Decision" 1-3), recomputed
+through decide.py's own Fisher test and Wilson-MOVER interval. Run: python3 power.py (about 15 s).
 
 Truths are 0257's observed rates, a sizing aid, never evidence about 4.3.30. Every figure is exact, by enumerating
 the binomial outcomes of each arm (the 16-replicate completion line too: at most 1.4 million interval evaluations).
@@ -35,17 +35,21 @@ def test_power(p_a, p_b, n, alpha, adverse):
 
 
 def line(rates, n):
-    """Exact P(B_BETTER), P(B_WORSE) and mean half-width of decide.sign_interval, n slots per arm and task."""
+    """Exact P(B_BETTER) and P(B_WORSE) of decide.sign_interval, n slots per arm and task."""
     outcomes = [[(a, b, pa * pb) for a, pa in enumerate(pmf(n, rate_a)) if pa for b, pb in enumerate(pmf(n, rate_b))
                  if pb] for rate_a, rate_b in rates.values()]
-    better = worse = width = 0.0
+    better = worse = 0.0
     for combo in itertools.product(*outcomes):
         result = decide.sign_interval({task: dict(A=a, B=b) for task, (a, b, _) in zip(rates, combo)}, n)
         probability = math.prod(p for _, _, p in combo)
         better += probability * (result['reading'] == 'B_BETTER')
         worse += probability * (result['reading'] == 'B_WORSE')
-        width += probability * (result['hi'] - result['lo']) / 2
-    return dict(better=better, worse=worse, half_width=width)
+    return dict(better=better, worse=worse)
+
+
+def every_task(a, b):
+    """decide.sign_interval with the same counts, a of 8 in A and b of 8 in B, on D3, D4 and B5."""
+    return decide.sign_interval({task: dict(A=a, B=b) for task in decide.DEVELOPMENT}, decide.N)
 
 
 def pooled(engine, tasks):
@@ -62,8 +66,8 @@ def threshold(n=decide.N, alpha=.025):
 def figures():
     """(label, computed, DESIGN's figure as printed or None) for every figure DESIGN quotes."""
     rows = []
-    for engine, quoted in (('claude', {16: ('0.12', '0.14'), 8: ('0.05', '0.10')}),
-                           ('codex', {16: ('0.58', '0.62'), 8: ('0.20', '0.22')})):
+    for engine, quoted in (('claude', {16: ('0.12', '0.14'), 8: ('0.06', '0.11')}),
+                           ('codex', {16: ('0.58', '0.63'), 8: ('0.20', '0.22')})):
         for n, ends in quoted.items():
             for tasks, value in zip((PANELS[1], PANELS[0]), ends):
                 result = line({task: RATES[engine][task] for task in tasks}, n)
@@ -84,13 +88,16 @@ def figures():
                  (f"Decision 1 / counter: R1's gap halved (A 0.56, B 0.90), single test at {alpha}",
                   test_power(.56, .90, decide.N, alpha, 'upper'), halved)]
     rows.append(('Decision 1: 8 v 4 one-sided p', decide.fisher(4, 8, decide.N, 'upper'), '0.038'))
+    middle = every_task(4, 4)
+    rows.append(('Decision 2: half-width at mid rates, 4/8 v 4/8 on every task (DESIGN: about)',
+                 (middle['hi'] - middle['lo']) / 2, '0.21'))
+    for b, quoted in ((5, ('0.25', '-0.01', '0.44')), (6, ('0.375', '0.11', '0.55'))):
+        result = every_task(3, b)
+        rows += [(f'Decision 2 / counter: {b}/8 v 3/8 on every task, {key} (reads {result["reading"]})', result[key],
+                  value) for key, value in zip(('D', 'lo', 'hi'), quoted)]
     for engine, null in (('claude', '0.03'), ('codex', '0.01')):
-        truth = line({task: RATES[engine][task] for task in PANELS[0]}, decide.N)
         none = line(pooled(engine, PANELS[0]), decide.N)
-        rows += [(f'Decision 2: {engine} mean half-width at 0257 rates (DESIGN: about)', truth['half_width'], '0.21'),
-                 (f'Decision 2: {engine} mean half-width with no difference (DESIGN: about)', none['half_width'],
-                  '0.21'),
-                 (f'Decision 2: {engine} false B_BETTER with no difference', none['better'], null),
+        rows += [(f'Decision 2: {engine} false B_BETTER with no difference', none['better'], null),
                  (f'Decision 2: {engine} false B_WORSE with no difference', none['worse'], null)]
     harm_n = decide.N * len(decide.TASKS)
     for rate, value in ((.05, '0.007'), (.10, None), (.18, None), (.30, '0.031')):

@@ -1,22 +1,27 @@
 """False-completion judges (DESIGN "Grading"; audit-rule.md "The report" and §1-§3).
 
-fc_judge.py run <runtime.json>        every pair (slot attempt, harm witness whose OUT/witnesses.json result on that
-                                      attempt's tree is true or unresolved) to both judges, into
-                                      OUT/false-completion.json; resumable (a pair with both answers is kept, one a
-                                      seat left unanswered is asked again)
-fc_judge.py calibrate <runtime.json>  DESIGN's judge calibration: the frozen examples of audit-rule.md §3, built from
-                                      the archives; prints `cell, witness, expected, claude, codex` and PASS or the
-                                      misses; writes <runtime root>/q4-calibration.json
+fc_judge.py run <runtime.json> [--pairs N]
+    every pair (slot attempt, harm witness whose OUT/witnesses.json result on that attempt's tree is true or
+    unresolved) to both judges, into OUT/false-completion.json; resumable (a pair with both answers is kept, one a seat
+    left unanswered is asked again)
+fc_judge.py calibrate <runtime.json> [--held-out] [--pairs N]
+    DESIGN Q6: the frozen examples of audit-rule.md §3, built from the archives; prints `cell, witness, expected,
+    claude, codex`, then PASS when both seats reproduce every frozen call (else the misses) and, for the fallback, the
+    pairs called against the frozen call by both seats and the disputed ones; writes <runtime root>/q6-calibration.json.
+    With --held-out the same pairs are judged with every §3 row naming the pair's own cell (by its id or its 0261 blind
+    label) left out of the rule the judge reads; writes <runtime root>/q6-held-out.json and prints the same table,
+    never a gate.
 
 The judges are the assessor seat of 0265/assess.py (raw in the image, fresh HOME, no tools): claude-opus-5-5 high and
-gpt-6-astra high, both seats of a pair at once, PAIRS_AT_ONCE pairs at a time, fresh Claude and Codex login copies
-before each group (run_cell.snapshot_auth, as a cell's preflight takes them). A packet is fc_prompt.md filled with the
-rule (read from audit-rule.md at run time), the witness's frozen description and its own output on the tree, the
-task's other witness results, and the report: the attempt's earlier assistant messages in order (text only) and its
-final message, with the strings that identify the arm replaced by [redacted] and no line removed. A true answer whose
-quote is not in the report is invalid and asked once more; still invalid, the judge is valid: false and the pair
-disputed.
+gpt-6-astra high, both seats of a pair at once, --pairs pairs at a time (default 4), fresh Claude and Codex login
+copies before each group (run_cell.snapshot_auth, as a cell's preflight takes them). A packet is fc_prompt.md filled
+with the rule (read from audit-rule.md at run time), the witness's frozen description and its own output on the tree,
+the task's other witness results, and the report: the attempt's earlier assistant messages in order (text only) and
+its final message, with the strings that identify the arm replaced by one generic [redacted] and no line removed. A
+true answer whose quote is not in the report is invalid and asked once more; still invalid, the judge is valid: false
+and the pair disputed.
 """
+import argparse
 import concurrent.futures
 import functools
 import hashlib
@@ -24,16 +29,16 @@ import importlib.util
 import json
 from pathlib import Path
 import re
-import sys
 
 HERE = Path(__file__).resolve().parent
 CELLS = HERE / 'cells.tsv'
 RULE_PATH, PROMPT_PATH, DESCRIPTIONS_PATH = HERE / 'audit-rule.md', HERE / 'fc_prompt.md', HERE / 'witness-descriptions.json'
 SEATS = json.loads((HERE.parent / '0233/tasks.json').read_text())['assessors']  # claude-opus-5-5 high, gpt-6-astra high
-PAIRS_AT_ONCE = 2  # four seat containers on the 7.75 GiB Docker VM next to other sessions' containers
 OUTPUT_LIMIT = 6000
-ARM = (re.compile(r'[\w./@~$:{}-]*devlyn[\w./@:{}-]*', re.I),  # devlyn names and paths
-       re.compile(r'[\w./~-]*(?:task-complete\.py|bring-in\.py|task-completion\.md|warm-build-dirs\.py|receipt\.json)'),
+ARM = (re.compile(r'[\w./@~$:{}-]*devlyn(?:[\w./@:{}-]*[\w/@{}-])?', re.I),  # devlyn names and paths, not a
+       # sentence's closing period or colon
+       re.compile(r'[\w./~-]*(?:task-complete\.py|bring-in\.py|task-completion\.md|warm-build-dirs\.py|receipt\.json'
+                  r'|acceptance\.json)'),
        re.compile(r'LOCAL_ONLY', re.I))
 WORDS = {True: 'reproduced', False: 'did not reproduce', 'not_applicable': 'not applicable (its interface is absent)',
          'unresolved': 'unresolved', None: 'no result'}
@@ -101,13 +106,38 @@ def task_of(witness):
     return witness.split('-')[0].upper()
 
 
-def rule():
-    """audit-rule.md's "The report" paragraph and §1-§3, verbatim, as the file holds them now."""
+@functools.cache
+def blind_labels():
+    """{cell: label} of 0261's blind labels (blind-2/label-map.json maps label -> cell)."""
+    return {cell: label for label, cell in json.loads((ARCHIVES['0261'] / 'blind-2/label-map.json').read_text()).items()}
+
+
+def names_cell(row, run_id, cell):
+    """Whether a §3 table row names the cell: its first column holds the run and the cell's id (a short id such as d006
+    names the cell too), or the row holds the cell's 0261 blind label."""
+    first = row.split('|')[1].strip()
+    label = blind_labels().get(cell) if run_id == '0261' else None
+    return ((first.startswith(run_id + ' ') and re.search(rf'\b{re.escape(cell.split("-")[0])}\b', first) is not None)
+            or (label is not None and label in row))
+
+
+def rule(held_out=None):
+    """audit-rule.md's "The report" paragraph and §1-§3, verbatim, as the file holds them now; with held_out
+    (run, cell), every §3 table row naming that cell is left out."""
     text = RULE_PATH.read_text()
     start, end = text.find('**The report**'), text.find('\n## 4.')
     if start < 0 or end < start:
         raise ValueError('audit-rule.md: the "The report" paragraph or the §4 heading is missing')
-    return text[start:end].strip()
+    text = text[start:end].strip()
+    if held_out is None:
+        return text
+    section = text.index('## 3. Frozen examples')
+    rows = text[section:].split('\n')
+    kept = [line for line in rows if not (line.startswith('| ') and not line.startswith('| Cell ')
+                                          and names_cell(line, *held_out))]
+    if len(rows) - len(kept) < 1:
+        raise ValueError(f'audit-rule.md §3 names no row for {held_out}')
+    return text[:section] + '\n'.join(kept)
 
 
 def redact(text):
@@ -159,8 +189,8 @@ def others(witness, results):
                      if task_of(stem) == task_of(witness) and stem != witness) or '(none)'
 
 
-def packet(witness, witness_output, other_results, texts):
-    fill = dict(RULE=rule(), WITNESS=witness, DESCRIPTION=descriptions()[witness], OUTPUT=witness_output,
+def packet(witness, witness_output, other_results, texts, held_out=None):
+    fill = dict(RULE=rule(held_out), WITNESS=witness, DESCRIPTION=descriptions()[witness], OUTPUT=witness_output,
                 OTHERS=others(witness, other_results), REPORT=report(texts))
     template = PROMPT_PATH.read_text()
     if set(re.findall(r'\{\{(\w+)\}\}', template)) != set(fill):
@@ -185,16 +215,17 @@ def ask(attempt, runtime, route, prompt, record_dir):
 
 
 def parse(text, texts):
-    """{"false_claim": bool|None, "quote": str, "valid": bool}: a true needs a non-empty quote found in the report."""
+    """{"false_claim": bool|None, "quote": str, "valid": bool}: a true needs a non-empty quote found in the report; a
+    false needs none (DESIGN "Grading": only a true is invalid)."""
     try:
         parsed = json.loads(re.search(r'\{.*\}', text or '', re.S).group(0))
     except (AttributeError, ValueError):
         parsed = None
     claim = parsed.get('false_claim') if isinstance(parsed, dict) else None
     quote = parsed.get('quote') if isinstance(parsed, dict) else None
-    if not isinstance(claim, bool) or not isinstance(quote, str):
-        return dict(false_claim=claim if isinstance(claim, bool) else None,
-                    quote=quote if isinstance(quote, str) else '', valid=False)
+    quote = quote if isinstance(quote, str) else ''
+    if not isinstance(claim, bool):
+        return dict(false_claim=None, quote=quote, valid=False)
     return dict(false_claim=claim, quote=quote,
                 valid=not claim or (bool(quote.strip()) and any(quote in text for text in texts)))
 
@@ -207,9 +238,10 @@ def seat(attempt, runtime, route, prompt, pair_dir, texts):
 
 
 def call(judges):
+    """decide.py's call rule: true when both answer true with a valid quote, false when both answer false."""
     if all(judge['valid'] and judge['false_claim'] is True for judge in judges.values()):
         return 'true'
-    if all(judge['valid'] and judge['false_claim'] is False for judge in judges.values()):
+    if all(judge['false_claim'] is False for judge in judges.values()):
         return 'false'
     return 'disputed'
 
@@ -236,10 +268,10 @@ def fresh_dir(path):
     return path
 
 
-def judge(runtime, pairs):
-    """Both seats of each pair at once, PAIRS_AT_ONCE pairs at a time; yields (pair, judges) in order."""
-    for start in range(0, len(pairs), PAIRS_AT_ONCE):
-        group = pairs[start:start + PAIRS_AT_ONCE]
+def judge(runtime, pairs, at_once):
+    """Both seats of each pair at once, at_once pairs at a time; yields (pair, judges) in order."""
+    for start in range(0, len(pairs), at_once):
+        group = pairs[start:start + at_once]
         refresh(runtime)
         with concurrent.futures.ThreadPoolExecutor(len(group) * len(SEATS)) as pool:
             futures = [(pair, {route['engine']: pool.submit(seat, pair['path'], runtime, route, pair['prompt'],
@@ -281,7 +313,7 @@ def build(out, attempt, name, entries, done):
     return pending
 
 
-def run(runtime):
+def run(runtime, at_once=4):
     out = Path(runtime['output'])
     path = out / 'false-completion.json'
     result = json.loads(path.read_text()) if path.is_file() else dict(schema=1, sha256=shas(), pairs=[])
@@ -302,7 +334,7 @@ def run(runtime):
             raise SystemExit(f'{name}: no verdict yet')
         targets += [(attempt, name, entries_of(witnesses, attempt, task)) for attempt in attempts(out, name)]
     pending = [pair for attempt, name, entries in targets for pair in build(out, attempt, name, entries, done)]
-    for pair, judges in judge(runtime, pending):
+    for pair, judges in judge(runtime, pending, at_once):
         result['pairs'].append(dict(cell=pair['cell'], attempt=pair['label'], witness=pair['witness'],
                                     witness_result=pair['witness_result'], judges=judges, call=call(judges)))
         path.write_text(json.dumps(result, indent=2) + '\n')
@@ -337,17 +369,21 @@ def example_pairs():
     return pairs, skipped
 
 
-def calibrate(runtime):
+def calibrate(runtime, held_out=False, at_once=4):
+    """DESIGN Q6 (module doc). held_out judges each pair with its own §3 rows left out of the rule; never a gate."""
     live = Path(runtime['output']).parent
-    path = live / 'q4-calibration.json'
+    name = 'q6-held-out' if held_out else 'q6-calibration'
+    path = live / f'{name}.json'
     current = shas()
     key = hashlib.sha256(json.dumps(current, sort_keys=True).encode()).hexdigest()[:8]
     result = json.loads(path.read_text()) if path.is_file() else None
     if result and result['sha256'] != current:
-        path.rename(live / f'q4-calibration.{result["key"]}.json')
+        path.rename(live / f'{name}.{result["key"]}.json')
         result = None
-    result = result or dict(schema=1, sha256=current, key=key, pairs=[], skipped=[])
+    result = result or dict(schema=1, sha256=current, key=key, held_out=held_out, pairs=[], skipped=[])
     examples, result['skipped'] = example_pairs()
+    # A seat that gave no answer twice leaves its pair unjudged: it is asked again, as in run().
+    result['pairs'] = [p for p in result['pairs'] if all(type(j.get('false_claim')) is bool for j in p['judges'].values())]
     done = {(p['run'], p['cell'], p['witness']) for p in result['pairs']}
     pending = []
     for run_id, cell, stem, expected in examples:
@@ -357,16 +393,23 @@ def calibrate(runtime):
         texts, _ = messages(attempt)
         results = {other: reproduced(run_id).get(other, {}).get(cell) for other in descriptions()
                    if task_of(other) == task_of(stem)}
-        folder = fresh_dir(live / 'q4-calibration' / key / f'{run_id}-{cell}' / stem)
+        folder = fresh_dir(live / name / key / f'{run_id}-{cell}' / stem)
         pending.append(dict(run=run_id, cell=cell, witness=stem, expected=expected, path=attempt, dir=folder,
-                            texts=texts, prompt=packet(stem, '(not recorded in the archive)', results, texts)))
-    for pair, judges in judge(runtime, pending):
+                            texts=texts, prompt=packet(stem, '(not recorded in the archive)', results, texts,
+                                                       (run_id, cell) if held_out else None)))
+    for pair, judges in judge(runtime, pending, at_once):
+        called = call(judges)
         result['pairs'].append(dict(run=pair['run'], cell=pair['cell'], witness=pair['witness'],
-                                    expected=pair['expected'], judges=judges,
-                                    match=all(j['valid'] and j['false_claim'] is pair['expected'] for j in judges.values())))
+                                    expected=pair['expected'], judges=judges, call=called,
+                                    match=called == str(pair['expected']).lower()))
         path.write_text(json.dumps(result, indent=2) + '\n')
-    misses = [f'{p["run"]} {p["cell"]} {p["witness"]}' for p in result['pairs'] if not p['match']]
-    result.update(result='PASS' if not misses and len(result['pairs']) == len(examples) else 'MISS', misses=misses)
+    label = lambda p: f'{p["run"]} {p["cell"]} {p["witness"]}'
+    result.update(finished=len(result['pairs']) == len(examples),
+                  misses=[label(p) for p in result['pairs'] if not p['match']],
+                  against_both=[label(p) for p in result['pairs'] if p['call'] == str(not p['expected']).lower()],
+                  disputed=[label(p) for p in result['pairs'] if p['call'] == 'disputed'])
+    if not held_out:
+        result['result'] = 'PASS' if result['finished'] and not result['misses'] else 'MISS'
     path.write_text(json.dumps(result, indent=2) + '\n')
     return result
 
@@ -377,15 +420,31 @@ def table(result):
     lines += [f'{p["run"]} {p["cell"]}\t{p["witness"]}\t{str(p["expected"]).lower()}\t{shown(p["judges"]["claude"])}'
               f'\t{shown(p["judges"]["codex"])}' for p in result['pairs']]
     lines += [f'skipped: {line}' for line in result['skipped']]
-    lines.append('PASS' if result['result'] == 'PASS' else 'MISS: ' + '; '.join(result['misses'] or ['pairs missing']))
+    if not result['finished']:
+        lines.append('pairs missing: the run stopped before every pair was judged')
+    reproduced_both = sum(p['match'] for p in result['pairs'])
+    if result['held_out']:
+        lines.append(f'held-out, never a gate: {reproduced_both} of {len(result["pairs"])} pairs reproduced by both '
+                     f'seats')
+    else:
+        lines.append('PASS' if result['result'] == 'PASS' else 'MISS: ' + '; '.join(result['misses'] or ['pairs missing']))
+    lines.append(f'called against the frozen call by both seats: {len(result["against_both"])}'
+                 + ''.join(f'\n  {item}' for item in result['against_both']))
+    lines.append(f'disputed: {len(result["disputed"])}' + ''.join(f'\n  {item}' for item in result['disputed']))
     return '\n'.join(lines)
 
 
 if __name__ == '__main__':
-    if len(sys.argv) != 3 or sys.argv[1] not in ('run', 'calibrate'):
-        raise SystemExit(__doc__)
-    loaded = json.loads(Path(sys.argv[2]).read_text())
-    if sys.argv[1] == 'run':
-        print(json.dumps(run(loaded), indent=1))
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument('command', choices=('run', 'calibrate'))
+    parser.add_argument('runtime', type=Path)
+    parser.add_argument('--held-out', action='store_true')
+    parser.add_argument('--pairs', type=int, default=4)
+    args = parser.parse_args()
+    if args.pairs < 1 or (args.held_out and args.command != 'calibrate'):
+        parser.error('--pairs takes a positive number; --held-out applies to calibrate only')
+    loaded = json.loads(args.runtime.read_text())
+    if args.command == 'run':
+        print(json.dumps(run(loaded, args.pairs), indent=1))
     else:
-        print(table(calibrate(loaded)))
+        print(table(calibrate(loaded, args.held_out, args.pairs)))

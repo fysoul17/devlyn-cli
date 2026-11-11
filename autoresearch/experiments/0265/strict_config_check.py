@@ -1,14 +1,24 @@
-"""DESIGN Q3, Codex config honoured: strict_config_check.py <runtime.json>. No model call.
+"""DESIGN Q3, Codex config honoured: strict_config_check.py [--run-exec] <runtime.json>.
 
 The 0265 config.toml (prepare.codex_config, the file both arms get) must load under the pinned Codex's
 --strict-config (allowed); the same file plus one unknown top-level key and one unknown [features] key must fail at
-config load (violating). Both run raw in the cell image as `codex --strict-config debug prompt-input "Reply OK."`,
-offline and with no credential. When that form does not take the flag, or accepts the violating file, nothing is
-concluded: the two `codex exec --strict-config` commands (one model call each, the orchestrator's decision) are
-printed with their config homes kept, and are not run.
+config load (violating).
+
+Without --run-exec, no model call: both run raw in the cell image as `codex --strict-config debug prompt-input
+"Reply OK."`, offline and with no credential. Codex 0.164.0 refuses the flag for `codex debug` (DESIGN O1), so this
+ends undecided and prints the two `codex exec --strict-config` commands with their config homes kept, not run.
+
+With --run-exec (one model call, the allowed one; the orchestrator runs it): the credential snapshot is taken as a
+cell's preflight takes it (run_cell.snapshot_auth, never printed), both `codex exec --strict-config` commands run, and
+the violating one must exit non-zero naming an unknown key, with no session event (thread, turn, item) on its stdout
+and no file in its trace root or sessions folder (no model request), while the allowed one exits 0.
+<root>/q3-strict-config.json records the exit codes, the event types and the config error text (no credential); it
+is written once, and every strict-config-exec-* config home in scratch is removed.
 
 Exit 0 PASS, 1 FAIL, 3 undecided.
 """
+import argparse
+import functools
 import importlib.util
 import json
 from pathlib import Path
@@ -27,6 +37,8 @@ _spec.loader.exec_module(prepare)
 UNKNOWN = ('zz_unknown_top_0265', 'zz_unknown_feature_0265')
 PROMPT = 'Reply OK.'
 SMOKE_TREE = HERE.parents[2] / 'autoresearch/experiments/0222/smoke/repo'
+LABELS = ('allowed', 'violating')
+TRACE = '/home/probe/trace'
 
 
 def configs():
@@ -80,20 +92,29 @@ def decide(allowed, violating):
     return 'PASS', f'the 0265 file loads; the violating file fails at config load naming {named}'
 
 
+def exec_home(folder, text, runtime):
+    """A config home for one `codex exec` run: the config, the models cache, the login's mount target, a trace root."""
+    home = codex_home(folder, text, runtime.get('models_cache'))
+    (home / '.codex/auth.json').touch()  # mount target only; the login is bind-mounted read-only
+    (home / 'trace').mkdir()
+    return home
+
+
+def exec_argv(runtime, home, name):
+    """The model-call command: the cell's login mount, the 0222 smoke tree, the trace root a cell's owner gets."""
+    return docker_argv(runtime['image'], home, name,
+                       ['codex', 'exec', '--strict-config', '--json', '--skip-git-repo-check', PROMPT],
+                       ['--network', 'bridge', '--env', f'CODEX_ROLLOUT_TRACE_ROOT={TRACE}',
+                        '--mount', f'type=bind,src={Path(runtime["auth"]) / "codex.json"},'
+                        f'dst=/home/probe/.codex/auth.json,readonly',
+                        '--mount', f'type=bind,src={SMOKE_TREE},dst=/cell/work,readonly', '-w', '/cell/work'])
+
+
 def exec_commands(runtime, texts):
-    """The two model-call commands an orchestrator may run instead; their config homes are kept for it."""
+    """The two model-call commands --run-exec runs; their config homes are kept for an operator who runs them."""
     keep = Path(tempfile.mkdtemp(prefix='strict-config-exec-', dir=runtime['scratch']))
-    commands = []
-    for label, text in zip(('allowed', 'violating'), texts):
-        home = codex_home(keep / label, text, runtime.get('models_cache'))
-        (home / '.codex/auth.json').touch()  # mount target only; the login is bind-mounted read-only
-        commands.append(shlex.join(docker_argv(
-            runtime['image'], home, f'devlyn-0265-strict-{label}-<uuid>',
-            ['codex', 'exec', '--strict-config', '--json', '--skip-git-repo-check', PROMPT],
-            ['--network', 'bridge', '--mount', f'type=bind,src={Path(runtime["auth"]) / "codex.json"},'
-             f'dst=/home/probe/.codex/auth.json,readonly',
-             '--mount', f'type=bind,src={SMOKE_TREE},dst=/cell/work,readonly', '-w', '/cell/work'])))
-    return commands
+    return [shlex.join(exec_argv(runtime, exec_home(keep / label, text, runtime), f'devlyn-0265-strict-{label}-<uuid>'))
+            for label, text in zip(LABELS, texts)]
 
 
 def main(runtime_path, runner=run):
@@ -101,7 +122,7 @@ def main(runtime_path, runner=run):
     texts = configs()
     results = []
     with tempfile.TemporaryDirectory(prefix='strict-config-', dir=runtime['scratch']) as temp:
-        for label, text in zip(('allowed', 'violating'), texts):
+        for label, text in zip(LABELS, texts):
             home = codex_home(Path(temp) / label, text, runtime.get('models_cache'))
             name = 'devlyn-0265-strict-' + uuid.uuid4().hex
             result = runner(docker_argv(runtime['image'], home, name,
@@ -119,5 +140,86 @@ def main(runtime_path, runner=run):
     return {'PASS': 0, 'FAIL': 1, 'UNDECIDED': 3}[status]
 
 
+@functools.cache
+def run_cell():
+    spec = importlib.util.spec_from_file_location('run_cell0265s', HERE / 'run_cell.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def evidence(code, stdout, stderr, home):
+    """One exec run as recorded: no credential, only exit code, event types, files written, and the error text."""
+    events = []
+    for line in stdout.splitlines():
+        try:
+            event = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(event, dict) and 'type' in event:
+            events.append(str(event['type']))
+    written = sorted(str(p.relative_to(home)) for folder in (home / 'trace', home / '.codex/sessions')
+                     for p in folder.rglob('*') if p.is_file())
+    return dict(exit_code=code, events=events, trace_and_session_files=written,
+                named_keys=[key for key in UNKNOWN if key in stdout + stderr], error_text=stderr.strip()[-2000:])
+
+
+def judge(allowed, violating):
+    """The exec runs' evidence -> (PASS | FAIL, why). A thread, turn or item event, or a trace or session file, means a
+    session started and a model request could follow; an error event alone does not."""
+    session = [e for e in violating['events'] if e.split('.')[0] in ('thread', 'turn', 'item')]
+    if violating['exit_code'] in (0, None):
+        return 'FAIL', f'the violating file did not fail at config load (exit {violating["exit_code"]})'
+    if session or violating['trace_and_session_files']:
+        return 'FAIL', 'the violating run got past config load: ' + ', '.join(
+            session[:5] + violating['trace_and_session_files'][:5])
+    if not violating['named_keys']:
+        return 'FAIL', f'the violating file failed for another reason (exit {violating["exit_code"]})'
+    if allowed['exit_code'] != 0:
+        return 'FAIL', f'the 0265 config.toml run did not exit 0 (exit {allowed["exit_code"]})'
+    return 'PASS', (f'the 0265 file loads and its run exits 0; the violating file fails at config load naming '
+                    f'{violating["named_keys"]} with no model request')
+
+
+def run_exec(runtime_path, runner=run, snapshot=None):
+    runtime = json.loads(Path(runtime_path).read_text())
+    target = Path(runtime['output']).parent / 'q3-strict-config.json'
+    if target.exists():  # before any credential or model call
+        print(f'{target} exists: Q3 is recorded once; move it aside to run again', file=sys.stderr)
+        return 3
+    try:
+        _, blocked = (snapshot or run_cell().snapshot_auth)(runtime)
+    except (OSError, ValueError, KeyError, subprocess.SubprocessError) as exc:
+        blocked = f'credential snapshot failed: {type(exc).__name__}: {exc}'  # paths and keys, never contents
+    if blocked:
+        print(f'UNDECIDED: not run: {blocked}')
+        return 3
+    keep = Path(tempfile.mkdtemp(prefix='strict-config-exec-', dir=runtime['scratch']))
+    try:
+        runs = {}
+        for label, text in zip(LABELS, configs()):
+            home, name = exec_home(keep / label, text, runtime), f'devlyn-0265-strict-{label}-{uuid.uuid4().hex}'
+            code, stdout, stderr = runner(exec_argv(runtime, home, name))
+            if code is None:
+                runner(['docker', 'rm', '-f', name])
+            runs[label] = evidence(code, stdout, stderr, home)
+        if runs['allowed']['exit_code'] == 0:  # its stderr is the session's own log, not a config error
+            del runs['allowed']['error_text']
+        status, why = judge(runs['allowed'], runs['violating'])
+        with target.open('x') as stream:
+            stream.write(json.dumps(dict(schema=1, status=status, why=why, image=runtime['image'],
+                                         command=['codex', 'exec', '--strict-config', '--json', '--skip-git-repo-check',
+                                                  PROMPT], unknown_keys=list(UNKNOWN), runs=runs), indent=2) + '\n')
+    finally:
+        for folder in Path(runtime['scratch']).glob('strict-config-exec-*'):
+            shutil.rmtree(folder)
+    print(f'{status}: {why}\n{target}')
+    return {'PASS': 0, 'FAIL': 1}[status]
+
+
 if __name__ == '__main__':
-    sys.exit(main(sys.argv[1]))
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument('--run-exec', action='store_true', help='run both exec commands (one model call)')
+    parser.add_argument('runtime')
+    args = parser.parse_args()
+    sys.exit(run_exec(args.runtime) if args.run_exec else main(args.runtime))

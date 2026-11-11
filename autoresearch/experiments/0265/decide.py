@@ -4,12 +4,17 @@ CLI: decide.py <runtime.json> [--out <file>]. Reads cells.tsv beside this file a
 verdict-<name>.json with its archived attempts verdict-<name>.stop-N.json, <name>/checks.json, the lanes'
 driver-<lane>.log and the grading outputs: witnesses.json and probes.json (0261 judge.py formats),
 timing-recheck.json, harm.json and false-completion.json. Writes decision.json (or --out), prints the readings, the
-lines and the predictions, then the token.
+lines, the predictions and the harm check's implemented and not implemented tests, then the token. Rows outside
+cells.tsv (SMOKE, the lane rehearsal) share the folder and are never read.
 
-A slot is final when its verdict is COMPLETE or PRODUCT_INCOMPLETE; a STOP is not. An owner HANG_TIMEOUT is neither
-COMPLETE nor check-complete. A reading or line missing a slot or a grading input is NOT_FINISHED and lists what is
-missing; the reported tables count what exists. Fisher, Holm, COMPLETE, the row results and the 0256 cost sums are
-0257's decide.py; the witness and probe readers are 0261's.
+A slot is final when its verdict is COMPLETE or PRODUCT_INCOMPLETE; a STOP is not. DESIGN "Details every count
+uses": an owner HANG_TIMEOUT is neither COMPLETE nor check-complete; a slot's completion, checks and witnesses are its
+final attempt's, its harm covers every attempt, its cost sums every attempt in which an owner ran (a B launch fault
+started none; an assessor fault's archived verdict is the regraded owner run itself) with a hang charged 2,700 s.
+The completion line reads the inline checks and is also computed with every TIMING_SUSPECT check passed; when the two
+readings differ it is marked TIMING_SENSITIVE and both are printed, the inline one standing. A reading or line missing
+a slot or a grading input is NOT_FINISHED and lists what is missing; the reported tables count what exists. Fisher,
+Holm, COMPLETE, the row results and the 0256 cost sums are 0257's decide.py; the witness and probe readers are 0261's.
 """
 import argparse
 import importlib.util
@@ -39,7 +44,9 @@ CONFIGS, ARMS, N, HANG = ('claude', 'codex'), ('A', 'B'), 8, 2700
 READINGS = {'R1': ('codex', 'B5', 'B'), 'R2': ('claude', 'F10', 'A')}  # engine, task, the arm that is higher
 PROBE_CLASSES = ('json_error_400', 'html_400', 'other')
 LAUNCH_FAULT, MEMORY_KILL = 'B launch fault:', 'memory kill:'
-GRADING = ('witnesses.json', 'probes.json', 'timing-recheck.json', 'harm.json', 'false-completion.json')
+REGRADE = ('assessment failed', 'assessor produced', 'assessment held:')  # driver.py: regraded, never redispatched
+RERUN = ('D3', 'D4')  # tasks whose failed checks recheck.py reruns
+GRADING =('witnesses.json', 'probes.json', 'timing-recheck.json', 'harm.json', 'false-completion.json')
 
 
 def schedule(path=HERE / 'cells.tsv'):
@@ -66,12 +73,17 @@ def attempt_cost(record):
 
 
 def charged(record):
-    """An archived attempt whose owner run is charged: 0257's quota fault and Docker loss, and a memory kill. A B
-    launch fault started no owner; a regrade repeats none."""
-    reason = str(record.get('reason', ''))
-    return reason.startswith(('shared account fault during execution:', MEMORY_KILL)) or (
-        record.get('teardown') == 'FAILED' and 'Cannot connect to the Docker daemon' in
-        str(record.get('teardown_error', '')) + reason)
+    """An archived attempt is charged when an owner ran in it: every redispatched attempt (a quota or shared account
+    fault, a Docker loss, a memory kill) but a B launch fault, which started no owner. An assessor fault's archived
+    verdict is the owner run the regraded verdict carries, so it is not charged twice."""
+    return bool(record.get('owner_status')) and not str(record.get('reason', '')).startswith((LAUNCH_FAULT,) + REGRADE)
+
+
+def oom(record, attempt):
+    """The attempt's row of the out-of-memory table when its verdict records `oom_killed: true` (absent is false). An
+    assessor fault's archive repeats the owner run of the regraded verdict, so it is listed once, as that verdict."""
+    return [dict(attempt=attempt, **{key: record.get(key) for key in ('status', 'reason', 'owner_status')})] if (
+        record.get('oom_killed') is True and not str(record.get('reason', '')).startswith(REGRADE)) else []
 
 
 def stop_number(path):
@@ -79,18 +91,20 @@ def stop_number(path):
 
 
 def load(out, cells):
-    """One record per slot: the final verdict's outcome, every attempt's scope and reason, the charged costs."""
+    """One record per slot: the final verdict's outcome, every attempt's scope, reason and out-of-memory flag, the
+    charged costs."""
     rows = {}
     for name, task, arm, config, replicate in cells:
         row = rows[name] = dict(name=name, task=task, arm=arm, config=config, replicate=int(replicate), final=False,
                                 gap=None, reason=None, verdicts=0, complete=False, check_complete=False, hang=False,
                                 rows={}, failed=[], verdict_scope=False, scope=False, assessments=[], archived={},
-                                attempts=[])
+                                attempts=[], oom=[])
         try:
             for path in sorted(out.glob(f'verdict-{name}.stop-*.json'), key=stop_number):
-                old = json.loads(path.read_text())
-                row['archived'][f'stop-{stop_number(path)}'] = str(old.get('reason', ''))
+                old, attempt = json.loads(path.read_text()), f'stop-{stop_number(path)}'
+                row['archived'][attempt] = str(old.get('reason', ''))
                 row['scope'] |= bool(old.get('scope_violations'))
+                row['oom'] += oom(old, attempt)
                 if charged(old):
                     row['attempts'].append(attempt_cost(old))
             row['verdicts'] = len(row['archived'])
@@ -100,6 +114,7 @@ def load(out, cells):
                 continue
             verdict = json.loads(path.read_text())
             row.update(verdicts=row['verdicts'] + 1, reason=verdict.get('reason'))
+            row['oom'] += oom(verdict, 'final')
             if verdict['status'] not in ('COMPLETE', 'PRODUCT_INCOMPLETE'):
                 row['gap'] = ' '.join(str(part) for part in (verdict['status'], verdict.get('reason')) if part)
                 continue
@@ -267,14 +282,21 @@ def sign_interval(counts, n):
     return dict(D=d, lo=lo, hi=hi, reading=reading)
 
 
-def completion(rows, config):
-    """D3 over D3, D4, B5 of COMPLETE slots, 8 per arm."""
+def completion(rows, config, timed):
+    """D3 over D3, D4, B5 of COMPLETE slots, 8 per arm, from the inline checks, and again with every TIMING_SUSPECT
+    check passed (DESIGN Decision 2). The inline reading stands; when the two readings differ the line is
+    TIMING_SENSITIVE. Without its slots' rerun records it is NOT_FINISHED."""
     slots = [r for r in rows.values() if r['config'] == config and r['task'] in DEVELOPMENT]
-    counts = {task: {arm: sum(r['complete'] for r in slots if r['task'] == task and r['arm'] == arm)
-                     for arm in ARMS} for task in DEVELOPMENT}
-    missing = [f'{r["name"]}: {r["gap"]}' for r in slots if not r['final']]
-    return dict(counts=counts, missing=missing,
-                **(sign_interval(counts, N) if not missing else dict(reading='NOT_FINISHED')))
+    ways = {way: {task: {arm: sum(pick(r)['complete'] for r in slots if r['task'] == task and r['arm'] == arm)
+                         for arm in ARMS} for task in DEVELOPMENT}
+            for way, pick in (('inline', lambda r: r),
+                              ('with_reruns', lambda r: timed['recomputed'].get(r['name'], r)))}
+    missing = [f'{r["name"]}: {r["gap"]}' for r in slots if not r['final']] + timed['missing'][config]
+    if missing:
+        return dict(counts=ways['inline'], missing=missing, reading='NOT_FINISHED')
+    line = dict(counts=ways['inline'], missing=missing, **sign_interval(ways['inline'], N),
+                with_reruns=dict(counts=ways['with_reruns'], **sign_interval(ways['with_reruns'], N)))
+    return dict(line, timing_sensitive=line['with_reruns']['reading'] != line['reading'])
 
 
 def harm_line(rows, config, grading, pairs, pair_gaps):
@@ -328,13 +350,14 @@ def harm_line(rows, config, grading, pairs, pair_gaps):
 
 
 def timing(rows, recheck):
-    """TIMING_SUSPECT checks (failed inline, both reruns passed) and those slots' outcomes recomputed with them
-    passing. Readings keep the inline result."""
+    """TIMING_SUSPECT checks (failed inline, both reruns passed), those slots' outcomes recomputed with them passing,
+    and the rerun records missing, by engine. Readings keep the inline result."""
     cells = recheck.get('cells') if isinstance(recheck, dict) and recheck.get('schema') == 1 else None
     suspects, recomputed = [], {}
-    missing = [] if isinstance(cells, dict) else ['timing-recheck.json missing or not schema 1 with cells']
+    missing = {config: [] if isinstance(cells, dict) else ['timing-recheck.json missing or not schema 1 with cells']
+               for config in CONFIGS}
     for row in rows.values():
-        if not (row['final'] and row['task'] in ('D3', 'D4') and row['failed'] and isinstance(cells, dict)):
+        if not (row['final'] and row['task'] in RERUN and row['failed'] and isinstance(cells, dict)):
             continue
         after = dict(row['rows'])
         for check in row['failed']:
@@ -342,7 +365,7 @@ def timing(rows, recheck):
             reruns = entry.get('reruns') if isinstance(entry, dict) else None
             if not (isinstance(reruns, list) and len(reruns) == 2 and set(reruns) <= {'PASS', 'FAIL'}
                     and entry.get('inline') == 'FAIL' and entry.get('timing_suspect') is (reruns == ['PASS', 'PASS'])):
-                missing.append(f'{row["name"]}: {check} has no valid rerun record')
+                missing[row['config']].append(f'{row["name"]}: {check} has no valid rerun record')
             elif entry['timing_suspect']:
                 suspects.append(dict(cell=row['name'], check=check, reruns=reruns))
                 after.update({key: True for key in after if not key.startswith('public:')}
@@ -389,9 +412,9 @@ def tables(rows, grading, recomputed):
                                                   PROBE_CLASSES + ('unassessable', 'missing'))
                 if 'd3-parseoptions-override' in endpoints['witnesses']:
                     table['parseOptions'] = table['witnesses']['d3-parseoptions-override']['true']
-                if any(r['name'] in recomputed for r in final):
+                if task in RERUN:  # check-complete both ways: inline above, every TIMING_SUSPECT check passed here
                     after = [recomputed.get(r['name'], r) for r in final]
-                    table['timing_recomputed'] = dict(
+                    table['with_reruns'] = dict(
                         complete=sum(r['complete'] for r in after),
                         check_complete=sum(r['check_complete'] for r in after),
                         rows={key: sum(r['rows'][key] for r in after) for key in endpoints['rows']})
@@ -468,7 +491,8 @@ def predictions(readings, lines, rows, costs):
     input_higher = []
     for config in CONFIGS:
         a, b = (costs[config][arm]['development'] for arm in ARMS)
-        input_higher.append(None if lines[config]['completion']['missing'] or not all(
+        input_higher.append(None if any(not r['final'] for r in rows.values() if r['config'] == config
+                                        and r['task'] in DEVELOPMENT) or not all(
             g['input_complete'] and g['check_complete'] for g in (a, b))
             else b['per_success']['input'] > a['per_success']['input'])
     fc = claude['harm']['false_completion']['D4']
@@ -479,9 +503,9 @@ def predictions(readings, lines, rows, costs):
     clean = all(lines[c]['harm'][key][arm] == 0 for c in CONFIGS for key in ('scope', 'findings') for arm in ARMS)
     b_slots = [r for r in rows.values() if r['arm'] == 'B']
     p2 = {counts['A'] >= 7 and 1 <= counts['B'] <= 5 for counts in r2.get('count_versions', [r2['counts']])}
-    values = {
+    values = {  # P2 counts its own 16 slots, whatever the Holm partner; P1 needs R1's reading
         'P1': None if r1['reading'] == 'NOT_FINISHED' else r1['reading'] == 'REPLICATED' and r1['counts']['B'] >= 7,
-        'P2': None if r2['reading'] == 'NOT_FINISHED' or len(p2) != 1 else p2.pop(),
+        'P2': None if r2['missing'] or len(p2) != 1 else p2.pop(),
         'P3': None if claude['completion']['missing'] else claude['completion']['D'] <= 0,
         'P4': None if codex['completion']['missing'] else codex['completion']['D'] >= 0,
         'P5': None if None in input_higher else all(input_higher),
@@ -501,9 +525,15 @@ def token(readings, lines):
         return f'{rid}:NOT_FINISHED' + ('(' + '|'.join(f'{v["counts"]["A"]}v{v["counts"]["B"]}={v["reading"]}'
                                                        for v in r['versions']) + ')' if 'versions' in r else '')
 
+    def interval(line):
+        return f'{line["reading"]}({line["D"]:.6g}[{line["lo"]:.6g},{line["hi"]:.6g}])'
+
     def completion_segment(line):
-        return (f'D3:{line["reading"]}({line["D"]:.6g}[{line["lo"]:.6g},{line["hi"]:.6g}])' if 'D' in line
-                else 'D3:NOT_FINISHED')
+        if 'D' not in line:
+            return 'D3:NOT_FINISHED'
+        if line['timing_sensitive']:  # both readings, the inline one first: it stands
+            return f'D3:TIMING_SENSITIVE(inline={interval(line)}|reruns={interval(line["with_reruns"])})'
+        return 'D3:' + interval(line)
 
     def harm_segment(line):
         if 'extremes' not in line:
@@ -539,12 +569,13 @@ def evaluate(out, cells):
     for row in rows.values():
         row.update(slot_harm(row, pairs, entries))
     readings = replications(rows, grading['probes.json'])
-    lines = {config: dict(completion=completion(rows, config), harm=harm_line(rows, config, grading, pairs, pair_gaps))
-             for config in CONFIGS}
     costs, timed = cost(rows), timing(rows, grading['timing-recheck.json'])
-    witnesses = grading['witnesses.json']
+    lines = {config: dict(completion=completion(rows, config, timed),
+                          harm=harm_line(rows, config, grading, pairs, pair_gaps)) for config in CONFIGS}
+    witnesses, harm = grading['witnesses.json'], grading['harm.json']
     reported = dict(
         groups=tables(rows, grading, timed['recomputed']), cost=costs, faults=faults(rows), timing=timed,
+        oom_killed=[dict(cell=r['name'], **entry) for r in rows.values() for entry in r['oom']],
         severe=[dict(cell=r['name'], findings={a['engine']: a['severe'] for a in r['assessments'] if a['severe']},
                      reproducing=[w for w in WITNESSES[r['task']] if witness_state(witnesses, w, r['name']) == 'true'])
                 for r in rows.values() if r['final'] and any(a['severe'] for a in r['assessments'])],
@@ -556,7 +587,10 @@ def evaluate(out, cells):
                                                  'archived')} for r in rows.values()}
     return dict(token=token(readings, lines), readings=readings, lines=lines,
                 predictions=predictions(readings, lines, rows, costs),
-                grading={name: grading[name] is not None for name in GRADING}, reported=reported, slots=slots)
+                grading={name: grading[name] is not None for name in GRADING},
+                harm_check={key: harm[key] for key in ('implemented', 'not_implemented')
+                            if isinstance(harm, dict) and key in harm},  # frozen at registration (DESIGN "Grading")
+                reported=reported, slots=slots)
 
 
 def main(argv=None):
@@ -567,7 +601,8 @@ def main(argv=None):
     out = Path(json.loads(Path(args.runtime).read_text())['output'])
     outcome = evaluate(out, schedule())
     (Path(args.out) if args.out else out / 'decision.json').write_text(json.dumps(outcome, indent=2) + '\n')
-    print(json.dumps({key: outcome[key] for key in ('readings', 'lines', 'predictions', 'grading')}, indent=2))
+    print(json.dumps({key: outcome[key] for key in ('readings', 'lines', 'predictions', 'grading', 'harm_check')},
+                     indent=2))
     print(outcome['token'])
     return outcome
 

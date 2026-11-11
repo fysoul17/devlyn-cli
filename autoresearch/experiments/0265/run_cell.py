@@ -2,8 +2,10 @@
 run_cell.py --regrade <runtime.json> <name> assesses the preserved cell again.
 
 Exit 0 = verdict recorded (any product outcome), 3 = not dispatched (preflight), 2 = STOP: a container survivor,
-a B launch fault, a memory kill, changed control or harness, model identity collapse, a shared account limit, a
-failed per-cell assertion, a locator defect, or an evaluator or assessor that produced no verdict.
+a B launch fault, a memory kill, changed control or harness, model identity collapse, a shared account fault, a
+failed per-cell assertion (instructions.check against the launch probe's and SMOKE's seal), a locator defect, or an
+evaluator or assessor that produced no verdict. Every verdict of a cell whose owner ran records oom_killed (Docker's
+flag for any process in the owner container).
 """
 import datetime
 import fcntl
@@ -175,10 +177,13 @@ def launch_fault(out, plan):
 
 
 def memory_kill(owner):
-    """The owner container ended for memory: Docker's OOMKilled, or SIGKILL's 137 when the watchdog did not fire."""
+    """The owner's own process was killed for memory (DESIGN Operations "Faults", O3): Docker reports an out-of-memory
+    kill, the owner exited 137, and the watchdog had not fired. Docker's flag alone names any process in the container,
+    so a cell whose owner went on is graded as it stands (its verdict records oom_killed); 137 alone is 0257's owner
+    outcome."""
     state = owner.get('container') or {}
-    if state.get('oom_killed') is True or (state.get('exit_code') == 137 and owner['owner_status'] != 'HANG_TIMEOUT'):
-        return f'OOMKilled={state.get("oom_killed")} exit_code={state.get("exit_code")} owner {owner["owner_status"]}'
+    if state.get('oom_killed') is True and state.get('exit_code') == 137 and owner['owner_status'] != 'HANG_TIMEOUT':
+        return f'OOMKilled=True exit_code=137 owner {owner["owner_status"]}'
     return None
 
 
@@ -260,6 +265,7 @@ def run(runtime_path, name, task, arm, config, *, expected_account=None):
         control_manifest_sha256=digest(runtime['control'] + '.manifest.json')), indent=2))
     record = dict(cell=name, task=task, arm=arm, config=config, claude_account_before=venue['account'])
     owner = cell_run.run(out, runtime)
+    record['oom_killed'] = (owner.get('container') or {}).get('oom_killed') is True
     sealed, collection_failures = seal_after_teardown(out)
     if collection_failures:  # stop before any other reader touches evidence that could not be sealed
         record.update(owner_status=owner['owner_status'], teardown=owner['teardown'],

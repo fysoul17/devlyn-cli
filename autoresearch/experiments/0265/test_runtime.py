@@ -4,7 +4,6 @@ import hashlib
 import importlib.util
 import io
 import json
-import os
 from pathlib import Path
 import subprocess
 import tarfile
@@ -306,9 +305,49 @@ class PinMismatch(Fixture):
         self.assert_refused('auth-claude has mode 755, expected 700')
 
 
+rehearse = load('rehearse_memory')
+GIB, MIB = 2 ** 30, 2 ** 20
+OWNER_1, OWNER_2, ASSESSOR = 'devlyn-0231-' + 'a' * 32, 'devlyn-0231-' + 'b' * 32, 'devlyn-0231-assess-' + 'c' * 32
+
+
+class FakeSamplerDocker:
+    """`docker` for the sampler: per `docker stats` call, the containers it lists (None: the call fails) and the VM's
+    MemAvailable in bytes; the until-file appears during the call `stop_at` (1-based), or `interrupt_at` raises."""
+
+    def __init__(self, until, ticks, stop_at=None, interrupt_at=None):
+        self.until, self.ticks, self.stop_at, self.interrupt_at = until, ticks, stop_at, interrupt_at
+        self.calls, self.sampler, self.stats_calls = [], None, 0
+
+    def __call__(self, argv, **kwargs):
+        argv = list(argv)
+        self.calls.append(argv)
+        done = lambda out='': subprocess.CompletedProcess(argv, 0, out, '')  # noqa: E731
+        if argv[:2] == ['docker', 'info']:
+            return done('8319369216\n')
+        if argv[:3] == ['docker', 'run', '-d']:
+            self.sampler = argv[argv.index('--name') + 1]
+            return done('cid\n')
+        if argv[:2] == ['docker', 'stats']:
+            self.stats_calls += 1
+            if self.stats_calls == self.interrupt_at:
+                raise KeyboardInterrupt
+            if self.stats_calls == self.stop_at:
+                self.until.touch()
+            listed = self.ticks[self.stats_calls - 1][0]
+            if listed is None:
+                raise subprocess.CalledProcessError(1, argv, '', 'Cannot connect to the Docker daemon')
+            return done('\n'.join(json.dumps(dict(Name=name, MemUsage=f'{used / MIB:.1f}MiB / 7.748GiB'))
+                                  for name, used in (listed | {self.sampler: MIB}).items()) + '\n')
+        if argv[:2] == ['docker', 'exec']:
+            available = self.ticks[self.stats_calls - 1][1]
+            return done(f'MemTotal:        8124384 kB\nMemAvailable:   {available // 1024} kB\n')
+        if argv[:3] == ['docker', 'rm', '-f']:
+            return done()
+        raise AssertionError(f'unexpected command {argv}')
+
+
 class RehearsalParsing(unittest.TestCase):
     def test_memory_sizes_and_step_markers(self):
-        rehearse = load('rehearse_memory')
         self.assertEqual(rehearse.size('1.5GiB / 4GiB'), 3 * 2 ** 29)
         self.assertEqual(rehearse.size('837.2MiB / 7.748GiB'), round(837.2 * 2 ** 20))
         self.assertEqual(rehearse.size('0B / 0B'), 0)
@@ -318,6 +357,212 @@ class RehearsalParsing(unittest.TestCase):
             dict(command='a', exit_code=0, seconds=4), dict(command='b', exit_code=1, seconds=6),
             dict(command='c', exit_code=None, seconds=None)])
         self.assertIn("sh -c 'a b'; code=$?; echo \"Q6-STEP 0 $code", rehearse.script(['a b']))
+        self.assertEqual([rehearse.prefix(n) for n in (OWNER_1, ASSESSOR, 'a9-mysql', 'devlyn-0231-abc')],
+                         ['devlyn-0231', 'devlyn-0231-assess', 'a9-mysql', 'devlyn-0231-abc'])
+
+
+class MemorySampler(unittest.TestCase):
+    """DESIGN Q8 (b): rehearse_memory.py sample, with a fake docker."""
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.root = Path(self.temp.name)
+        (self.root / 'runtime-smoke.json').write_text(json.dumps(dict(image=IMAGE_ID)))
+        self.out, self.until = self.root / 'q8-sample.json', self.root / 'rehearsal.done'
+
+    def tearDown(self):
+        self.temp.cleanup()
+
+    def watch(self, fake):
+        with mock.patch.object(rehearse.subprocess, 'run', side_effect=fake), \
+                mock.patch.object(rehearse.time, 'sleep') as sleep:
+            result = rehearse.watch(self.root, self.out, self.until, interval=2)
+        self.assertEqual(sleep.call_count, len(result['samples']))
+        return result
+
+    def test_samples_until_the_file_appears_then_summarises(self):
+        ticks = [({OWNER_1: GIB, ASSESSOR: 300 * MIB, 'a9-mysql': 500 * MIB}, 3 * GIB),
+                 ({OWNER_1: 1200 * MIB, OWNER_2: 800 * MIB, 'a9-mysql': 500 * MIB}, 2 * GIB),
+                 (None, 5 * GIB // 2)]  # a failed `docker stats` is a recorded gap, not the end
+        fake = FakeSamplerDocker(self.until, ticks, stop_at=3)
+        result = self.watch(fake)
+        self.assertEqual(json.loads(self.out.read_text()), result)
+        self.assertEqual((result['sample_count'], result['samples_without_stats'], result['samples_without_available']),
+                         (3, 1, 0))
+        self.assertEqual(result['stopped'], 'until-file')
+        self.assertEqual(result['min_vm_available'], 2 * GIB)
+        self.assertEqual(result['running_at_min'], ticks[1][0] | {fake.sampler: MIB})
+        self.assertEqual(result['peak_by_prefix'], {
+            'a9-mysql': dict(peak=500 * MIB, largest=500 * MIB),
+            'devlyn-0231': dict(peak=2000 * MIB, largest=1200 * MIB),  # both lanes' owners in one sample
+            'devlyn-0231-assess': dict(peak=300 * MIB, largest=300 * MIB),
+            'devlyn-0265-q8-sampler': dict(peak=MIB, largest=MIB)})
+        self.assertIn('Cannot connect', ''.join(s.get('stats_error', '') for s in result['samples']))
+        # The sampler is ours, small, offline and removed; memory is read only inside it, never another container.
+        run = next(c for c in fake.calls if c[:3] == ['docker', 'run', '-d'])
+        for flag, value in (('--network', 'none'), ('--memory', '64m'), ('--label', 'devlyn.task=0265-q8')):
+            self.assertEqual(run[run.index(flag) + 1], value)
+        self.assertEqual(run[-3:], [IMAGE_ID, 'sleep', 'infinity'])
+        self.assertEqual({c[2] for c in fake.calls if c[:2] == ['docker', 'exec']}, {fake.sampler})
+        self.assertEqual(fake.calls[-1], ['docker', 'rm', '-f', fake.sampler])
+        self.assertFalse([c for c in fake.calls if c[:2] in (['docker', 'kill'], ['docker', 'stop'])
+                          or (c[:2] == ['docker', 'rm'] and fake.sampler not in c)])
+
+    def test_an_interrupted_run_keeps_its_samples_and_removes_the_sampler(self):
+        fake = FakeSamplerDocker(self.until, [({OWNER_1: GIB}, 3 * GIB)] * 3, interrupt_at=2)
+        with mock.patch.object(rehearse.subprocess, 'run', side_effect=fake), \
+                mock.patch.object(rehearse.time, 'sleep'), self.assertRaises(KeyboardInterrupt):
+            rehearse.watch(self.root, self.out, self.until)
+        record = json.loads(self.out.read_text())
+        self.assertEqual((record['sample_count'], record['stopped']), (1, 'KeyboardInterrupt: '))
+        self.assertEqual(fake.calls[-1], ['docker', 'rm', '-f', fake.sampler])
+
+    def test_refuses_to_overwrite_or_to_start_already_stopped(self):
+        fake = FakeSamplerDocker(self.until, [({}, GIB)], stop_at=1)
+        self.watch(fake)  # allowed: a new file, written once
+        calls = len(fake.calls)
+        with mock.patch.object(rehearse.subprocess, 'run', side_effect=fake), self.assertRaises(FileExistsError):
+            rehearse.watch(self.root, self.out, self.root / 'other.done')
+        self.out.unlink()
+        with mock.patch.object(rehearse.subprocess, 'run', side_effect=fake), self.assertRaises(FileExistsError):
+            rehearse.watch(self.root, self.out, self.until)  # the until-file is already there
+        self.assertEqual(len(fake.calls), calls)  # neither refusal touched docker
+        self.assertFalse(self.out.exists())
+
+
+class Rehearsal(unittest.TestCase):
+    """DESIGN Q8 (b): rehearsal.tsv, the SMOKE task once more per lane, outside every sum."""
+
+    def test_rehearsal_rows(self):
+        generate = load('generate_cells')
+        rows = generate.rehearsal()
+        self.assertEqual(rows, [(f'rehearsal-{config}-{arm}', 'SMOKE', arm, config)
+                                for config in ('claude', 'codex') for arm in 'AB'])
+        self.assertEqual((HERE / 'rehearsal.tsv').read_text(), generate.render(rows))
+        others = {row[0] for name in ('cells.tsv', 'smoke.tsv') for row in generate.generate()[name]}
+        self.assertFalse(others & {row[0] for row in rows})
+        self.assertFalse([row for row in rows if row[0].startswith('smoke-')])  # the driver's SMOKE start glob
+        for config in ('claude', 'codex'):  # each lane driver runs its own two rows (row[3] is the config)
+            self.assertEqual([row[2] for row in rows if row[3] == config], ['A', 'B'])
+        cells = (HERE / 'cells.tsv').read_text()
+        self.assertNotIn('rehearsal', cells)  # decide.py and the grading scripts read cells.tsv only
+
+
+strict = load('strict_config_check')
+SECRET = 'fake-refresh-token-0265'
+
+
+class StrictConfigExec(unittest.TestCase):
+    """DESIGN Q3 (O1): strict_config_check.py --run-exec with a fake runner and a fake credential snapshot."""
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        root = self.root = Path(self.temp.name)
+        for folder in ('output', 'scratch/strict-config-exec-old1/allowed/.codex', 'scratch/strict-config-exec-old2',
+                       'auth-smoke'):
+            (root / folder).mkdir(parents=True)
+        (root / 'models.json').write_text('{}')
+        self.runtime = root / 'runtime-smoke.json'
+        self.runtime.write_text(json.dumps(dict(image=IMAGE_ID, output=str(root / 'output'),
+                                                scratch=str(root / 'scratch'), auth=str(root / 'auth-smoke'),
+                                                models_cache=str(root / 'models.json'))))
+        self.snapshots, self.calls = 0, []
+
+    def tearDown(self):
+        self.temp.cleanup()
+
+    def snapshot(self, runtime):
+        self.snapshots += 1
+        (Path(runtime['auth']) / 'codex.json').write_text(json.dumps(dict(tokens=dict(refresh_token=SECRET))))
+        return dict(account=['a', 'o'], token_seconds_left=7200), None
+
+    def runner(self, answers):
+        """answers: label -> (code, stdout, stderr, files written under the home)."""
+        def run(argv):
+            self.calls.append(argv)
+            if argv[:2] == ['docker', 'rm']:
+                return 0, '', ''
+            label = next(label for label in strict.LABELS if f'devlyn-0265-strict-{label}-' in ' '.join(argv))
+            home = Path(next(v for v in argv if v.endswith(',dst=/home/probe')).split('src=')[1].split(',dst=')[0])
+            code, stdout, stderr, files = answers[label]
+            for file in files:
+                (home / file).parent.mkdir(parents=True, exist_ok=True)
+                (home / file).write_text('x')
+            return code, stdout, stderr
+        return run
+
+    def run_exec(self, allowed=None, violating=None, snapshot=None):
+        answers = dict(allowed=allowed or (0, '{"type":"thread.started","thread_id":"t"}\n{"type":"turn.completed"}\n',
+                                           'session log', ['trace/t/1.jsonl', '.codex/sessions/2026/r.jsonl']),
+                       violating=violating or (1, '', 'Error: unknown field `zz_unknown_top_0265`', []))
+        with mock.patch('sys.stdout', new=io.StringIO()) as printed:
+            code = strict.run_exec(self.runtime, self.runner(answers), snapshot or self.snapshot)
+        target = self.root / 'q3-strict-config.json'
+        return code, json.loads(target.read_text()) if target.exists() else None, printed.getvalue()
+
+    def test_pass_records_no_credential_and_removes_every_config_home(self):
+        code, record, printed = self.run_exec()
+        self.assertEqual((code, record['status']), (0, 'PASS'))
+        self.assertTrue(printed.startswith('PASS'))
+        self.assertEqual(record['runs']['allowed'], dict(exit_code=0, events=['thread.started', 'turn.completed'],
+                                                          trace_and_session_files=['.codex/sessions/2026/r.jsonl',
+                                                                                   'trace/t/1.jsonl'], named_keys=[]))
+        self.assertEqual(record['runs']['violating'], dict(exit_code=1, events=[], trace_and_session_files=[],
+                                                            named_keys=['zz_unknown_top_0265'],
+                                                            error_text='Error: unknown field `zz_unknown_top_0265`'))
+        self.assertNotIn(SECRET, (self.root / 'q3-strict-config.json').read_text())
+        self.assertEqual(list((self.root / 'scratch').iterdir()), [])  # its own homes and the two earlier ones
+        self.assertEqual(self.snapshots, 1)
+        self.assertEqual(len(self.calls), 2)
+        for argv, text in zip(self.calls, strict.configs()):
+            self.assertEqual(argv[-6:], ['codex', 'exec', '--strict-config', '--json', '--skip-git-repo-check',
+                                         'Reply OK.'])
+            self.assertEqual(argv[argv.index('--network') + 1], 'bridge')
+            self.assertIn(f'type=bind,src={self.root / "auth-smoke/codex.json"},dst=/home/probe/.codex/auth.json,'
+                          'readonly', argv)
+            self.assertIn('CODEX_ROLLOUT_TRACE_ROOT=/home/probe/trace', argv)
+
+    def test_violating_run_must_fail_at_config_load_without_a_model_request(self):
+        for violating, why in (
+                ((0, '{"type":"turn.completed"}\n', '', []), 'did not fail at config load'),
+                ((1, '{"type":"thread.started","thread_id":"t"}\n', 'zz_unknown_top_0265 later', []),
+                 'past config load'),
+                ((1, '', 'Error: unknown field `zz_unknown_top_0265`', ['trace/t/1.jsonl']), 'past config load'),
+                ((1, '', 'error sending request: network unreachable', []), 'for another reason'),
+                ((None, '', 'timed out after 180 s', []), 'did not fail at config load')):
+            with self.subTest(why=why, violating=violating[:2]):
+                (self.root / 'q3-strict-config.json').unlink(missing_ok=True)
+                code, record, _ = self.run_exec(violating=violating)
+                self.assertEqual((code, record['status']), (1, 'FAIL'))
+                self.assertIn(why, record['why'])
+        self.assertEqual(self.calls[-1][:3], ['docker', 'rm', '-f'])  # the timed-out run is removed
+
+    def test_an_error_event_alone_is_not_a_session(self):
+        code, record, _ = self.run_exec(violating=(1, '{"type":"error","message":"unknown field `zz_unknown_top_0265`"}'
+                                                      '\n', '', []))
+        self.assertEqual((code, record['status'], record['runs']['violating']['events']), (0, 'PASS', ['error']))
+
+    def test_allowed_run_must_exit_0(self):
+        code, record, _ = self.run_exec(allowed=(1, '', 'Error: unknown field `rollout_budget`', []))
+        self.assertEqual((code, record['status']), (1, 'FAIL'))
+        self.assertIn('did not exit 0', record['why'])
+        self.assertEqual(record['runs']['allowed']['error_text'], 'Error: unknown field `rollout_budget`')
+
+    def test_nothing_runs_without_a_fresh_snapshot_or_over_a_record(self):
+        held = lambda runtime: (None, 'Claude login token expires in 1200s; refresh the host login first')  # noqa: E731
+
+        def broken(runtime):
+            raise subprocess.CalledProcessError(44, ['security', 'find-generic-password'])
+        for snapshot in (held, broken):
+            code, record, printed = self.run_exec(snapshot=snapshot)
+            self.assertEqual((code, record, self.calls), (3, None, []))
+            self.assertTrue(printed.startswith('UNDECIDED: not run'))
+        self.assertEqual(len(list((self.root / 'scratch').iterdir())), 2)  # nothing made, nothing removed yet
+        self.run_exec()
+        self.calls.clear()
+        with mock.patch('sys.stderr', new=io.StringIO()):
+            code, _, _ = self.run_exec()
+        self.assertEqual((code, self.snapshots, self.calls), (3, 1, []))  # Q3 is recorded once
 
 
 if __name__ == '__main__':

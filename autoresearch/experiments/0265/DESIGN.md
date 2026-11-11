@@ -50,7 +50,7 @@ Fable is never a test arm, an assessor or a judge. The harness is one object; no
 ## Arms
 
 A and B differ only in the launch wrapper. r2's "Arms" section stands (common image, container, fresh HOME,
-environment, `config.toml` without `plugins = false`, the strict flags removed from both arms), with three changes:
+environment, `config.toml` without `plugins = false`, the strict flags removed from both arms), with four changes:
 
 - **Package mount.** `control/packages/B`, which holds the unpacked registry tarball as `package/` (checked against
   npm integrity `sha512-1qehRZd7iA5mwf15rXzjfmAEX6MHjMwD1c52wN6eJgmg489WKnq57LQMCZRH/7LgixPeePIV/oy2fDq/sT6ISg==`),
@@ -59,6 +59,11 @@ environment, `config.toml` without `plugins = false`, the strict flags removed f
 - **CLIs.** Claude Code 2.1.322 and Codex 0.164.0 (linux-arm64), pinned by fetch sha256 `74da2ac1…ae5c` and
   `048a6273…5ce0`: this host's versions, both at or above the floors (2.1.307, 0.163.0). 0232's Dockerfile is
   unchanged; only `build.sh`'s two pins and the tag `devlyn-0265` change.
+- **Codex's own remote plugins off** in both arms: `[features] remote_plugin = false`. With `plugins = false` gone,
+  Codex 0.164.0 loads OpenAI's curated remote plugins (pages, sites, github and others) into a bare session's skill
+  roots (seen on the first real cells); with the switch off they stay out of the model input while `devlyn run`'s
+  session plugin still loads (seen on the next two). Codex still downloads their files into `CODEX_HOME` in both
+  arms; that cache is Codex's, not the harness's.
 - **Owner watchdog 2,700 s** instead of 5,400 s, in both arms. The longest owner run that did not hang was 1,367 s
   in 0257 and 2,371 s in 0261. A cell at the watchdog reads `HANG_TIMEOUT` and is not complete, as before. The
   watchdog sets the token guard (Operations), which was the largest wait.
@@ -113,8 +118,8 @@ a STOP and latches dispatch in both lanes.
 | Status line on stderr | none | exactly one line of its engine's sealed form (CLI version, `release 4.3.30@<digest8> (package)`, `principles=configured:…`, `skills=configured:…`) |
 | `~/.devlyn` in the cell HOME | absent | `cli/releases/**/release.json` whose digest equals the sealed digest |
 | Claude init event | no plugin besides Claude Code's own built-ins; `mcp_servers` empty | the devlyn plugin under `/home/participant/.devlyn/` and no other besides the built-ins; `mcp_servers` empty |
-| Codex `CODEX_HOME` after the run | no plugin, no marketplace | the devlyn projection folder sealed from SMOKE is present |
-| Codex first owner request | none of the sealed `developer_instructions` text | that text exactly once |
+| Codex `CODEX_HOME` after the run | no devlyn file | the sealed devlyn projection is present |
+| Codex first owner request | none of the sealed `developer_instructions` text; no plugin skill root | that text exactly once; no plugin skill root but devlyn's |
 | Models | Claude owner `claude-opus-5-5`; Codex owner `gpt-6-astra`, children `gpt-6-sol` (0233 identity) | same |
 
 Claude's plugin in the init event shows the skills arrived, not the principles: those travel in a file `devlyn run`
@@ -324,8 +329,10 @@ the readings; UNSCORED when its cells are not final.
   at ≤ 300 s, as in 0257. The renewal runs under a host lock and re-reads the credential inside it, so two lanes
   never spend one refresh token. Credentials are never edited by hand; the per-cell copies are deleted at teardown,
   as in every run since 0233.
-- **Windows.** A cell starts only while each Claude window (five-hour, seven-day) is below 95%; otherwise the lane
-  holds and re-reads every 60 s. The usage endpoint is read once per cell (0257 read it three times and lost 6 h to
+- **Windows.** A cell starts only while every usage window the Claude account reports is below 95%: the seven-day
+  window always, and a five-hour window or a model-scoped weekly limit when the account has one (the account used on
+  2026-11-11 reports no five-hour window). Otherwise the lane holds and re-reads every 60 s. A read that lacks the
+  seven-day window is a failed read, never a pass. The usage endpoint is read once per cell (0257 read it three times and lost 6 h to
   HTTP 429). The per-cell Codex limit probe, a model call that only refused at 100%, is removed, and preflight neither
   calls it nor holds for lack of Codex window evidence; a real Codex limit in a cell's own trace is classified from
   native evidence and redispatched as before.

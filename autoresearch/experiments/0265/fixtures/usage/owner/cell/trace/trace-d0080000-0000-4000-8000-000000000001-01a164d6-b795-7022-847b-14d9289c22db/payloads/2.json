@@ -1,0 +1,16 @@
+{
+  "type": "session_configured",
+  "session_id": "01a164d6-b795-7022-847b-14d9289c22db",
+  "thread_id": "01a164d6-b795-7022-847b-14d9289c22db",
+  "thread_source": "user",
+  "model": "gpt-6-astra",
+  "model_provider_id": "openai",
+  "approval_policy": "never",
+  "approvals_reviewer": "user",
+  "permission_profile": {
+    "type": "disabled"
+  },
+  "cwd": "/cell/work",
+  "reasoning_effort": "high",
+  "rollout_path": "/home/participant/.codex/sessions/2026/10/23/rollout-2026-10-23T03-19-15-01a164d6-b795-7022-847b-14d9289c22db.jsonl"
+}

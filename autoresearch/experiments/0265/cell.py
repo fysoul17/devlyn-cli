@@ -1,8 +1,10 @@
-"""0265 owner: 0237's v1 lifecycle (0233's with explicit Docker init), plus two things.
+"""0265 owner: 0237's v1 lifecycle (0233's with explicit Docker init), plus three things.
 
 A B cell's plan names the frozen package folder (plan['install']), mounted read-only at /install so `devlyn run` can
-start the engine; A has no such mount. And run/result.json records how the owner container ended (Docker's OOMKilled
-flag and exit code), so run_cell.py can tell a memory kill from an owner outcome.
+start the engine; A has no such mount. run/result.json records how the owner container ended (Docker's OOMKilled
+flag and exit code), so run_cell.py can tell a memory kill from an owner outcome. And identity() holds a Codex session
+that started before the owner to no model (DESIGN Q7). mounts() and create_argv() are the container a cell runs in;
+instructions.py's launch probe (DESIGN Q2) runs its probes in the same container, without credentials.
 """
 import hashlib
 import importlib.util
@@ -20,7 +22,59 @@ _spec.loader.exec_module(legacy)
 base = legacy.base
 evidence = legacy.evidence
 lines, docker = legacy.lines, legacy.docker
-identity, preserve_tmp = legacy.identity, legacy.preserve_tmp
+preserve_tmp = legacy.preserve_tmp
+
+
+def identity(out, plan):
+    """0233's identity plus one 0265 rule (DESIGN Q7). `devlyn run codex` reads its config through `codex app-server`
+    before it starts the owner, so in a Codex cell a traced session whose trace did not start at or after the owner's
+    first trace was not launched by the owner: holding a model seat or running an inference there is a violation. A
+    session the owner launches stays listed only, as 0233 lists it."""
+    result = legacy.identity(out, plan)
+    if plan['engine'] != 'codex':
+        return result
+    started = {}
+    for manifest in (out / 'cell/trace').glob('trace-*/manifest.json'):
+        try:
+            record = json.loads(manifest.read_text())
+        except ValueError:
+            continue  # 0232's trace reader already records an unreadable manifest as a gap
+        if isinstance(record, dict) and isinstance(record.get('started_at_unix_ms'), int):
+            started[record.get('rollout_id')] = record['started_at_unix_ms']
+    owner = min((started[thread] for thread, (seat, _, _) in result['codex_seats'].items()
+                 if seat == 'owner' and thread in started), default=None)
+    early = [s for s in result['owner_launched_sessions'] if s['engine'] == 'codex' and s['model']
+             and not (owner is not None and started.get(s['session'], owner - 1) >= owner)]
+    result['violations'] += [f'codex session {s["session"]} did not start after the owner and ran {s["model"]}'
+                             for s in early]
+    if early:
+        result['status'] = 'MISMATCH'
+    return result
+
+
+def mounts(plan, credentials=()):
+    """The owner container's bind mounts: the cell's folders, the given credential files and, for B, the package."""
+    found = [(Path(plan['cell']), '/cell', False), (Path(plan['home']), '/home/participant', False),
+             (Path(plan['control']), '/control', True), (Path(plan['harness']), '/harness', True), *credentials]
+    if plan.get('install'):
+        found.append((Path(plan['install']), '/install', True))
+    return found
+
+
+def create_argv(plan, name, volume, binds, env, command):
+    """`docker create` arguments for a cell's container: its limits, its /tmp volume, mounts, environment and command."""
+    argv = ['create', '--init', '--name', name, '--label', 'devlyn.task=0233', '--network', 'bridge', '--cap-drop', 'ALL',
+            '--security-opt', 'no-new-privileges', '--security-opt', 'seccomp=unconfined', '--read-only',
+            '--restart=no', '--pids-limit', '256', '--memory', '4g', '--cpus', '2',
+            # Codex keeps per-process helper links under CODEX_HOME/tmp/arg0; on the host bind mount a second codex
+            # process's janitor cannot see the live lock and deletes them (0224 Amendment 1).
+            '--tmpfs', '/home/participant/.codex/tmp:rw,nosuid,exec,uid=501,gid=501', '-w', '/cell/work',
+            '--mount', f'type=volume,src={volume},dst=/tmp']
+    for src, dst, readonly in binds:
+        argv += ['--mount', f'type=bind,src={src},dst={dst}' + (',readonly' if readonly else '')]
+    for key, value in env.items():
+        argv += ['--env', f'{key}={value}']
+    return argv + [plan['image'], *command]
 
 
 def run(out, runtime):
@@ -35,29 +89,14 @@ def run(out, runtime):
     home = Path(plan['home'])
     (home / '.claude/.credentials.json').touch()
     (home / '.codex/auth.json').touch()
-    mounts = [(Path(plan['cell']), '/cell', False), (home, '/home/participant', False),
-              (Path(plan['control']), '/control', True), (Path(plan['harness']), '/harness', True),
-              (auth / 'codex.json', '/home/participant/.codex/auth.json', True),
-              (secret / 'claude.json', '/home/participant/.claude/.credentials.json', False)]
-    if plan.get('install'):
-        mounts.append((Path(plan['install']), '/install', True))
+    credentials = [(auth / 'codex.json', '/home/participant/.codex/auth.json', True),
+                   (secret / 'claude.json', '/home/participant/.claude/.credentials.json', False)]
     name = 'devlyn-0231-' + uuid.uuid4().hex
     # /tmp is a per-cell Docker volume, copied to plan['tmp'] after teardown: Codex's Linux sandbox refuses to run any
     # command when /tmp is a host bind mount (0232 SMOKE), which would disable sandboxed Codex children.
     volume = 'devlyn-0233-tmp-' + uuid.uuid4().hex
     docker('volume', 'create', '--label', 'devlyn.task=0233', volume)
-    argv = ['create', '--init', '--name', name, '--label', 'devlyn.task=0233', '--network', 'bridge', '--cap-drop', 'ALL',
-            '--security-opt', 'no-new-privileges', '--security-opt', 'seccomp=unconfined', '--read-only',
-            '--restart=no', '--pids-limit', '256', '--memory', '4g', '--cpus', '2',
-            # Codex keeps per-process helper links under CODEX_HOME/tmp/arg0; on the host bind mount a second codex
-            # process's janitor cannot see the live lock and deletes them (0224 Amendment 1).
-            '--tmpfs', '/home/participant/.codex/tmp:rw,nosuid,exec,uid=501,gid=501', '-w', '/cell/work',
-            '--mount', f'type=volume,src={volume},dst=/tmp']
-    for src, dst, readonly in mounts:
-        argv += ['--mount', f'type=bind,src={src},dst={dst}' + (',readonly' if readonly else '')]
-    for key, value in plan['env'].items():
-        argv += ['--env', f'{key}={value}']
-    argv += [plan['image'], *plan['argv']]
+    argv = create_argv(plan, name, volume, mounts(plan, credentials), plan['env'], plan['argv'])
     record = dict(create_argv=argv, source_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
                   tmp_volume=volume, started_at=time.time())
     (record_dir / 'started.json').write_text(json.dumps(record, indent=2))

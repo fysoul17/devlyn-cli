@@ -81,3 +81,12 @@ Found while the apparatus was built; each is in DESIGN.md and is part of what th
 | O5 | Claude's "no plugin" means none besides Claude Code's built-ins | Every archived 0257 Claude cell, A included, lists two built-in entries (`agents-md@builtin`, `telemetry@builtin`). |
 | O6 | "Details every count uses" (Decision) | The decision code had to choose a reading for a hung cell and for the cost of archived attempts; the choices are 0257's and are now written down. |
 | O7 | Figures corrected from `power.py`'s exact values (0.06–0.11, 0.63, [0.11, 0.55]) | Exact enumeration through `decide.py`'s own functions. |
+| O8 | Usage windows: the seven-day window always, others when the account reports them (Operations, "Windows") | The usage endpoint now returns `five_hour: null` for the logged-in account; the first real cell held forever on "window evidence unavailable". |
+| O9 | A 0265 `check.py` and `assess.py` read Docker's "no such object" in any letter case | Docker 29 prints it in lower case; the modules up to 0261 matched "No such object", so every real cell stopped at "cannot verify check container teardown". Found on the first real cell. |
+| O10 | `[features] remote_plugin = false` in both arms; the Codex assertions read the model input and devlyn's own files (Arms; Per-cell assertions) | Bare Codex 0.164.0 without `plugins = false` loaded OpenAI's curated remote plugins into its skill roots; the switch keeps them out of the model input and leaves B's session plugin working (two real cells each way). Their cache files still appear in `CODEX_HOME` in both arms, so "no plugin file" cannot be the test. |
+
+O8–O10 come from a shakedown on 2026-11-11: the four SMOKE cells run with real engines on a frozen copy of the first
+build, in a separate folder that is never part of the run. After the two fixes all four ran to a verdict: teardown
+`CLEAN`, identity `MATCH`, usage COMPLETE in both arms of both engines (Codex B's app-server read left no session of
+its own), every other per-cell assertion passed as built, the graded tree was the anchor in all four (B did not use
+the delivery helper on this task), and the mechanical harm check had no finding.

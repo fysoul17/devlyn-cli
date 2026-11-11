@@ -32,7 +32,7 @@ shutil.copyfile(HERE / 'fixtures/driver/run_cell.py', Path(_COPY.name) / 'run_ce
 driver = load('driver', Path(_COPY.name) / 'driver.py')
 
 CELLS = driver.rows([str(HERE / 'cells.tsv')])
-WINDOWS = {name: {'used': 0, 'resets': '2026-11-12T00:00:00+00:00'} for name in driver.WINDOWS}
+WINDOWS = {name: {'used': 0, 'resets': '2026-11-12T00:00:00+00:00'} for name in ('seven_day', 'five_hour')}
 GIB = 2**30
 
 
@@ -83,8 +83,10 @@ COMPLETE = dict(status='COMPLETE', scope_violations=[], teardown='CLEAN', identi
                 owner_status='EXITED_0')
 LAUNCH = dict(status='STOP', reason='B launch fault: run-package-missing', teardown='CLEAN',
               identity={'status': 'UNKNOWN'}, owner_status='EXITED_1')
-MEMORY = dict(status='STOP', reason='memory kill: OOMKilled true, exit 137', teardown='CLEAN',
-              identity={'status': 'MATCH'}, owner_status='EXITED_137')
+MEMORY = dict(status='STOP', reason='memory kill: OOMKilled=True exit_code=137 owner EXITED_NONZERO', teardown='CLEAN',
+              identity={'status': 'MATCH'}, owner_status='EXITED_NONZERO')
+ACCOUNT = dict(status='STOP', reason='shared account fault during execution: codex authentication', teardown='CLEAN',
+               identity={'status': 'UNVERIFIED'}, owner_status='EXITED_NONZERO')  # a refresh_token_reused at the start
 
 
 def cells(output, outcomes):
@@ -175,7 +177,8 @@ class LaneControls(unittest.TestCase):
                 lane(root, name).event('fixture', lane=name)
             output = root / 'output'
             self.assertEqual(sorted(p.name for p in output.iterdir()),
-                             ['driver-claude.log', 'driver-codex.log', 'driver-smoke.log',
+                             ['driver-claude.lock', 'driver-claude.log', 'driver-codex.lock', 'driver-codex.log',
+                              'driver-smoke.lock', 'driver-smoke.log',
                               'driver-status-claude.json', 'driver-status-codex.json', 'driver-status-smoke.json'])
             for name, label in (('claude', 'claude'), ('codex', 'codex'), (None, 'smoke')):
                 self.assertEqual([e['lane'] for e in events(root, label)], [name])
@@ -225,6 +228,7 @@ class LaneControls(unittest.TestCase):
             (root / 'output/verdict-c001-B5-claude-A-r1.json').write_text(json.dumps(bad))
             claude.latch_for('c001-B5-claude-A-r1', bad)
             with mock.patch.object(driver.cell, 'run') as run:
+                codex.lock.close()  # the codex process ends; its restart sees the latch too
                 for d in (codex, lane(root, 'codex'), claude):
                     with self.assertRaisesRegex(RuntimeError, 'harm latch in lane claude'):
                         d.assert_active()
@@ -331,6 +335,7 @@ class Guards(unittest.TestCase):
                     if not ready:
                         self.assertEqual(events(root, 'claude')[-1]['reason'], 'awaiting renewal window')
             slots = [row('c001-'), row('c002-')]
+            d.lock.close()
             d = lane(root, 'claude', slots)
             (d.output / f'verdict-{slots[1][0]}.json').write_text(json.dumps(dict(
                 status='STOP', reason='assessment failed: timeout', identity={'status': 'MATCH'},
@@ -366,7 +371,7 @@ class Guards(unittest.TestCase):
             root = Path(temp)
             d = lane(root, 'codex')
             for used, ready in ((95, False), (94, True)):
-                windows = {name: {'used': used, 'resets': '2026-11-12T00:00:00+00:00'} for name in driver.WINDOWS}
+                windows = {name: {'used': used, 'resets': '2026-11-12T00:00:00+00:00'} for name in WINDOWS}
                 with self.subTest(used=used), \
                         mock.patch.object(driver, 'credential', return_value=snapshot(20000)), \
                         mock.patch.object(driver.cell, 'claude_limits', return_value=windows), \
@@ -374,6 +379,38 @@ class Guards(unittest.TestCase):
                     self.assertEqual(d.ready(), ready)
             self.assertEqual([e['reason'] for e in events(root, 'codex') if e['event'] == 'hold'],
                              ['Claude window near exhaustion'])
+
+    def test_the_windows_the_account_reports(self):
+        # O8: the seven-day window always; five-hour and model-scoped weekly windows when reported; nothing else.
+        week, five = {'used': 10, 'resets': '2026-11-15T00:00:00+00:00'}, {'used': 10, 'resets': '2026-11-11T20:00:00+00:00'}
+        cases = [({'seven_day': week}, True, None),  # the account of 2026-11-11 reports no five-hour window
+                 ({'seven_day': week, 'nimbus_quill': {'used': 100.0, 'resets': None}}, True, None),
+                 ({'seven_day': week, 'seven_day_opus': dict(week, used=94)}, True, None),
+                 ({'seven_day': week, 'seven_day_opus': dict(week, used=95)}, False, 'Claude window near exhaustion'),
+                 ({'seven_day': week, 'five_hour': dict(five, used=95)}, False, 'Claude window near exhaustion'),
+                 ({'five_hour': five}, False, 'Claude window evidence unavailable: no seven-day window'),
+                 ({}, False, 'Claude window evidence unavailable: no seven-day window')]
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            d = lane(root, 'claude')
+            for windows, ready, reason in cases:
+                with self.subTest(windows=sorted(windows)), \
+                        mock.patch.object(driver, 'credential', return_value=snapshot(20000)), \
+                        mock.patch.object(driver.cell, 'claude_limits', return_value=windows), host():
+                    self.assertEqual(d.ready(), ready)
+                    holds = [e for e in events(root, 'claude') if e['event'] == 'hold']
+                    self.assertEqual(holds[-1]['reason'] if not ready else None, reason)
+                    if reason == 'Claude window near exhaustion':
+                        self.assertNotIn('nimbus_quill', holds[-1]['windows'])
+            d.state['split_wait'] = {}
+            with mock.patch.object(driver, 'credential', return_value=snapshot(20000)), host(), \
+                    mock.patch.object(driver.cell, 'claude_limits',
+                                      return_value={'seven_day': week, 'seven_day_opus': dict(week, used=99)}):
+                self.assertFalse(d.ready(slot='c002', previous='c001'))  # a split block waits on the weekly limit
+            self.assertEqual(d.state['split_wait']['c002']['resets'], {'seven_day_opus': week['resets']})
+            with mock.patch.object(driver, 'credential', return_value=snapshot(20000)), host(), \
+                    mock.patch.object(driver.cell, 'claude_limits', return_value={'seven_day': week}):
+                self.assertTrue(d.ready(slot='c002', previous='c001'))  # the waited window is gone: no KeyError
 
     def test_disk_floor_16_gib_from_run_cell(self):
         self.assertEqual(driver.cell.HEADROOM_BYTES, 16 * GIB)
@@ -408,6 +445,7 @@ class Guards(unittest.TestCase):
                         d = lane(root, 'codex')
                         self.assertEqual(d.ready(), ready)
                         self.assertEqual(limits.call_count, int(ready))
+                        d.lock.close()
                         if not ready:  # a restart measures again and holds again
                             self.assertFalse(lane(root, 'codex').ready())
                     argv = docker.call_args.args[0]
@@ -472,6 +510,28 @@ class Guards(unittest.TestCase):
                             with self.assertRaisesRegex(RuntimeError, '7-day deadline reached'):
                                 d.assert_active()
                             self.assertEqual(events(root, name)[-1]['reason'], '7-day deadline reached')
+                        d.lock.close()
+
+    def test_a_lane_adopts_the_fixed_caps_and_refuses_any_other(self):
+        """G1: a fresh lane status adopts SMOKE's start with caps 95/95 (allowed); a runtime with 0257's 85/70 caps,
+        or a status file that registered them, is refused (violating)."""
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            started = root / 'output/smoke-codex-B/run/started.json'
+            started.parent.mkdir(parents=True)
+            started.write_text(json.dumps({'started_at': time.time() - 60}))
+            d = lane(root, 'claude')
+            self.assertEqual(d.state['registered_caps'], {'seven_day': 95, 'five_hour': 95})
+            d.lock.close()
+            path = runtime(root, 'codex')
+            path.write_text(json.dumps(dict(json.loads(path.read_text()), caps={'seven_day': 70, 'five_hour': 85})))
+            with self.assertRaisesRegex(ValueError, 'registration caps must be seven_day=95 and five_hour=95'):
+                driver.Driver(path, [])
+            status = root / 'output/driver-status-claude.json'
+            status.write_text(json.dumps(dict(json.loads(status.read_text()),
+                                              registered_caps={'seven_day': 70, 'five_hour': 85})))
+            with self.assertRaisesRegex(RuntimeError, 'registered caps differ from 95/95'):
+                lane(root, 'claude')
 
     def test_finished_verdict_is_skipped_on_restart(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -502,6 +562,7 @@ class Faults(unittest.TestCase):
                 d.run()
             finally:
                 self.called = called
+                d.lock.close()  # the lane's process ends
         return d
 
     def test_launch_fault_is_archived_and_redispatched_unless_second_in_a_row(self):
@@ -541,12 +602,17 @@ class Faults(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             d = lane(root, 'claude')
-            d.latch_for('slot', LAUNCH)
-            d.latch_for('slot', MEMORY)
-            d.latch_for('slot', dict(MEMORY, identity={'status': 'UNKNOWN'}))
+            for fault in (LAUNCH, MEMORY, ACCOUNT):  # a redispatched fault can leave no model record
+                for status in ('UNKNOWN', 'UNVERIFIED', 'MATCH'):
+                    d.latch_for('slot', dict(fault, identity={'status': status}))
             self.assertNotIn('harm_latch', d.state)
-            d.latch_for('slot', dict(LAUNCH, identity={'status': 'MISMATCH'}))
-            self.assertEqual(d.state['harm_latch']['reason'], 'identity MISMATCH')
+            for fault in (LAUNCH, ACCOUNT):  # a wrong model always latches
+                d.latch_for('slot', dict(fault, identity={'status': 'MISMATCH'}))
+                self.assertEqual(d.state.pop('harm_latch')['reason'], 'identity MISMATCH')
+            d.latch_for('slot', dict(ACCOUNT, reason='instruction assertion: x'))  # unexplained gaps latch as before
+            self.assertEqual(d.state.pop('harm_latch')['reason'], 'identity UNVERIFIED')
+            d.latch_for('slot', dict(ACCOUNT, reason='instruction assertion: x', identity={'status': 'UNKNOWN'}))
+            self.assertEqual(d.state['harm_latch']['reason'], 'identity UNKNOWN')
         for verdict in (LAUNCH, MEMORY):
             with self.subTest(reason=verdict['reason']), tempfile.TemporaryDirectory() as temp:
                 root = Path(temp)
@@ -561,31 +627,56 @@ class Faults(unittest.TestCase):
                     run.assert_not_called()
                 self.assertFalse((d.output / f'verdict-{name}.stop-1.json').exists())
 
-    def test_memory_kill_redispatched_once_then_the_lane_stops(self):
-        with tempfile.TemporaryDirectory() as temp:
-            root = Path(temp)
-            slots = [row('c081-'), row('c082-')]
-            d = self.run_lane(root, 'codex', slots, {slots[0][0]: [MEMORY, COMPLETE], slots[1][0]: [MEMORY, COMPLETE]})
-            self.assertEqual(self.called, [slots[0][0], slots[0][0], slots[1][0], slots[1][0]])
-            self.assertTrue(all(d.verdict(r[0])['status'] == 'COMPLETE' for r in slots))
+    def test_memory_kill_and_account_fault_redispatched_once_then_both_lanes_stop(self):
+        for fault in (MEMORY, ACCOUNT):
+            with self.subTest(fault=fault['reason']), tempfile.TemporaryDirectory() as temp:  # allowed: once per slot
+                root = Path(temp)
+                slots = [row('c081-'), row('c082-')]
+                d = self.run_lane(root, 'codex', slots, {slots[0][0]: [fault, COMPLETE], slots[1][0]: [fault, COMPLETE]})
+                self.assertEqual(self.called, [slots[0][0], slots[0][0], slots[1][0], slots[1][0]])
+                self.assertTrue(all(d.verdict(r[0])['status'] == 'COMPLETE' for r in slots))
+                self.assertNotIn('harm_latch', d.state)
 
-        with tempfile.TemporaryDirectory() as temp:
+            with self.subTest(fault=fault['reason'], repeat=True), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                name = row('c081-')[0]
+                with self.assertRaisesRegex(RuntimeError, f'{name}: STOP {fault["reason"]}'):
+                    self.run_lane(root, 'codex', [row('c081-')], {name: [fault, fault]})
+                self.assertEqual(self.called, [name, name])
+                self.assertEqual(json.loads((root / f'output/verdict-{name}.json').read_text())['reason'],
+                                 fault['reason'])
+                self.assertTrue((root / f'output/verdict-{name}.stop-1.json').is_file())
+                latch = json.loads((root / 'output/driver-status-codex.json').read_text())['harm_latch']
+                self.assertEqual((latch['cell'], latch['reason']), (name, f'STOP {fault["reason"]}'))
+                with self.assertRaisesRegex(RuntimeError, 'harm latch in lane codex'):  # the other lane stops too
+                    lane(root, 'claude').assert_active()
+                with mock.patch.object(driver.cell, 'run') as run:  # a restart keeps the STOP and the latch
+                    with self.assertRaisesRegex(RuntimeError, 'harm latch in lane codex'):
+                        lane(root, 'codex').dispatch(row('c081-'))
+                    run.assert_not_called()
+
+        with tempfile.TemporaryDirectory() as temp:  # each kind counts on its own: a memory kill, then an account fault
             root = Path(temp)
             name = row('c081-')[0]
-            with self.assertRaisesRegex(RuntimeError, 'second memory kill on this slot'):
-                self.run_lane(root, 'codex', [row('c081-')], {name: [MEMORY, MEMORY]})
-            self.assertEqual(self.called, [name, name])
-            self.assertEqual(json.loads((root / f'output/verdict-{name}.json').read_text())['reason'], MEMORY['reason'])
-            self.assertTrue((root / f'output/verdict-{name}.stop-1.json').is_file())
-            status = json.loads((root / 'output/driver-status-codex.json').read_text())
-            self.assertEqual(status['current']['event'], 'stop')
-            self.assertIn('second memory kill on this slot', status['current']['reason'])
-            self.assertNotIn('harm_latch', status)
-            lane(root, 'claude').assert_active()
-            with mock.patch.object(driver.cell, 'run') as run:  # a restart keeps the STOP
-                with self.assertRaisesRegex(RuntimeError, 'second memory kill on this slot'):
-                    lane(root, 'codex').dispatch(row('c081-'))
+            d = self.run_lane(root, 'codex', [row('c081-')], {name: [MEMORY, ACCOUNT, COMPLETE]})
+            self.assertEqual(self.called, [name] * 3)
+            self.assertEqual(d.verdict(name)['status'], 'COMPLETE')
+
+    def test_a_restart_finds_a_repeated_fault_and_latches(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            seal(root)
+            name = row('c001-')[0]
+            (root / 'output').mkdir()
+            (root / f'output/verdict-{name}.stop-1.json').write_text(json.dumps(dict(ACCOUNT, cell=name)))
+            (root / f'output/verdict-{name}.json').write_text(json.dumps(dict(ACCOUNT, cell=name)))
+            with mock.patch.object(driver.cell, 'run') as run:
+                with self.assertRaisesRegex(RuntimeError, f'{name}: STOP shared account fault'):
+                    lane(root, 'claude').dispatch(row('c001-'))
                 run.assert_not_called()
+            with self.assertRaisesRegex(RuntimeError, 'harm latch in lane claude'):
+                lane(root, 'codex').assert_active()
+
 
     def test_assertion_stop_latches_both_lanes(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -679,6 +770,43 @@ class Faults(unittest.TestCase):
             self.assertEqual(removed, [['rm', cid], ['volume', 'rm', volume]])
             self.assertEqual(called, [name])
             self.assertTrue((d.output / f'{name}.stop-1/run/started.json').is_file())
+
+
+class OneProcessPerLane(unittest.TestCase):
+    def test_a_lane_runs_once_and_other_lanes_are_free(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            first = lane(root, 'claude')
+            with self.assertRaisesRegex(RuntimeError, 'lane claude already has a driver process'):
+                lane(root, 'claude')
+            others = [lane(root, 'codex'), lane(root, None)]  # allowed: the other lanes
+            path = runtime(root, 'claude')
+            amendment = root / 'amendment.md'
+            amendment.write_text('x')
+            with self.assertRaisesRegex(RuntimeError, 'already has a driver process'):  # no latch clearing meanwhile
+                driver.Driver(path, []).clear_latch(amendment)
+            first.lock.close()
+            lane(root, 'claude')  # allowed: the first process ended
+            for other in others:
+                other.lock.close()
+
+    def test_the_lock_holds_across_processes_and_is_released_when_its_process_ends(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / 'output').mkdir()
+            holder = subprocess.Popen(['python3', '-c', (
+                'import fcntl, sys; lock = open(sys.argv[1], "a"); fcntl.flock(lock, fcntl.LOCK_EX); '
+                'print("held", flush=True); sys.stdin.read()'), str(root / 'output/driver-codex.lock')],
+                stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+            try:
+                self.assertEqual(holder.stdout.readline().strip(), 'held')
+                with self.assertRaisesRegex(RuntimeError, 'lane codex already has a driver process'):
+                    lane(root, 'codex')
+                self.assertFalse((root / 'output/driver-status-codex.json').exists())  # refused before any write
+            finally:
+                holder.stdin.close()
+                holder.wait(10)
+            lane(root, 'codex').event('started')
 
 
 class RunCellContract(unittest.TestCase):

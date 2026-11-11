@@ -1,5 +1,5 @@
 {
- "provenance": "Shapes for the per-cell assertions. claude_init: the system/init event of archived 0257 c002-F10-claude-B-r1 (Claude Code 2.1.281), lists trimmed, ids replaced; its plugins are the two built-ins every 0257 cell had. devlyn_plugin: ASSUMED entry for --plugin-dir (name from the package's native/claude/.claude-plugin/plugin.json, path the release root's native/claude); SMOKE B seals the real one. status_lines: the 2026-11-11 probe stderr (S/probe/out) and a refused launch (R-C section 4). codex_request: the structure of a real Codex first owner request (rp-d6 smoke-codex trace payload: additional_tools, developer messages, user messages), every text replaced; where developer_instructions lands is ASSUMED (a developer message of its own) and sealed from SMOKE B.",
+ "provenance": "Shapes for the per-cell assertions. claude_init: the system/init event of archived 0257 c002-F10-claude-B-r1 (Claude Code 2.1.281), lists trimmed, ids replaced; its plugins are the two built-ins every 0257 cell had. devlyn_plugin: ASSUMED entry for --plugin-dir (name from the package's native/claude/.claude-plugin/plugin.json, path the release root's native/claude, which the 2026-11-11 launch probe saw devlyn run hand Claude); SMOKE B seals the real one. status_lines: the 2026-11-11 probe stderr (S/probe/out) and a refused launch (R-C section 4). Codex's model input is not here: prompt-input-A.json, prompt-input-B.json and prompt-input-control.json are `codex debug prompt-input` 0.164.0 output in the image (raw in a fresh 0265 CODEX_HOME; through devlyn run 4.3.30; raw with a foreign plugin, a marketplace entry and ~/.codex/AGENTS.md planted), with ids and timestamps removed, Codex's base instructions replaced by their length and the tool list reduced to names.",
  "claude_init": {
   "type": "system",
   "subtype": "init",
@@ -55,83 +55,5 @@
   "claude": "devlyn: claude 2.1.322 | release 4.3.30@53a2f9f2 (package) | principles=configured:append-system-prompt-file | skills=configured:plugin-dir",
   "codex": "devlyn: codex 0.164.0 | release 4.3.30@53a2f9f2 (package) | principles=configured:developer_instructions | skills=configured:session-plugin",
   "refused": "devlyn run: run-argument-unsupported {\"engine\":\"codex\",\"argument\":\"-C\"}"
- },
- "codex_request": {
-  "client_metadata": {},
-  "include": [],
-  "model": "gpt-6-astra",
-  "parallel_tool_calls": true,
-  "prompt_cache_key": "00000000-0000-4000-8000-000000000003",
-  "reasoning": {
-   "effort": "high"
-  },
-  "store": false,
-  "stream": true,
-  "text": {},
-  "tool_choice": "auto",
-  "input": [
-   {
-    "type": "additional_tools",
-    "tools": []
-   },
-   {
-    "type": "message",
-    "role": "developer",
-    "content": [
-     {
-      "type": "input_text",
-      "text": "You are Codex. (base instructions)"
-     }
-    ]
-   },
-   {
-    "type": "message",
-    "role": "developer",
-    "content": [
-     {
-      "type": "input_text",
-      "text": "<skills_instructions>\n## Skills\n(skills)\n</skills_instructions>"
-     },
-     {
-      "type": "input_text",
-      "text": "<permissions instructions>\n(permissions)\n</permissions instructions>"
-     },
-     {
-      "type": "input_text",
-      "text": "<collaboration_mode># Collaboration Mode: Default\n(mode)</collaboration_mode>"
-     }
-    ]
-   },
-   {
-    "type": "message",
-    "role": "developer",
-    "content": [
-     {
-      "type": "input_text",
-      "text": "<multi_agent_role>(role)</multi_agent_role>"
-     }
-    ]
-   },
-   {
-    "type": "message",
-    "role": "user",
-    "content": [
-     {
-      "type": "input_text",
-      "text": "<environment_context>\n  <cwd>/cell/work</cwd>\n</environment_context>"
-     }
-    ]
-   },
-   {
-    "type": "message",
-    "role": "user",
-    "content": [
-     {
-      "type": "input_text",
-      "text": "Complete the development request in /harness/caller.json."
-     }
-    ]
-   }
-  ]
  }
 }
