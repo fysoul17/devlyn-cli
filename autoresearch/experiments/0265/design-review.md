@@ -1,0 +1,192 @@
+# 0265 r3 design review (2026-11-11)
+
+One pass by GPT Astra (ultra, read-only) and Grok 4.7 (read-only), both on DESIGN.md r3 and audit-rule.md at commit
+`d66a28f6`. Every finding, with what was done. "Fixed" means the text of DESIGN.md or audit-rule.md changed in the
+commit that adds this file, and the apparatus follows it.
+
+## Astra: REVISE (1 CRITICAL, 6 HIGH, 4 MEDIUM, 2 LOW)
+
+| # | Severity | Finding | Disposition |
+|---|---|---|---|
+| A1 | CRITICAL | The package mount and B's executable path disagreed (`control/packages/B/package` at `/install`, but B runs `/install/package/bin/devlyn.js`) | Fixed: `control/packages/B` is mounted at `/install` (Arms). |
+| A2 | HIGH | A replication reading could not be final when its own 16 cells finished: its Holm result depends on the other reading, and R2's probe runs only after the last cell | Fixed: every reading is read once, after the last cell and its grading. Core first only protects the readings' cells if the run stops early; a reading whose partner is NOT_FINISHED is read at 0.025 (Schedule; Decision 1). |
+| A3 | HIGH | Judge packets holding only `final.txt` would repeat 0257's d229 miss (the final message adopted an earlier completion message that made the claim) | Fixed: the report is the final message and the earlier assistant messages; an earlier claim counts only when the final message adopts it; d229 is a calibration example (Grading; audit-rule "The report", §3). |
+| A4 | HIGH | Removing whole lines that name the helper could remove B's claims or qualifications | Fixed: identifying strings are replaced with placeholders; no line is removed (Grading). |
+| A5 | HIGH | The harm line had no complete readiness rule, DESIGN and audit-rule disagreed on unresolved witnesses, and "not checked" harm tests were undefined | Fixed: pairs cover reproduced and unresolved witnesses in both files; the line lists what it needs and is NOT_FINISHED without it; open items and the two extreme assignments are defined; the harm check's implemented tests are a list frozen at registration and anything outside it is not part of the line (Grading; Decision 3). |
+| A6 | HIGH | A 16 GiB host floor says nothing about the filesystems inside the cell (0261 lost 4.6 h to a full Docker VM disk after a passing host check) | Fixed: r2's in-container check of `/cell` and a fresh `/tmp` volume before each dispatch is back (Operations, "Disk"). |
+| A7 | HIGH | The reduced assertions did not show that Claude B received the principles (the plugin in the init event shows only the skills) and dropped B's Codex projection check | Fixed: a no-model launch probe seals B's plan files per engine × tree, Claude's appended instructions among them, and a Codex `debug prompt-input` probe shows the model input of both arms with reader controls; the per-cell status line and digest tie a cell to that seal; B's Codex projection is checked per cell (Q2; Per-cell assertions). |
+| A8 | MEDIUM | The judge packet lacked what some frozen distinctions need (which call hung; whether another witness reproduced) | Fixed: the packet carries the witness's own output on the tree and the task's other witness results (Grading). |
+| A9 | MEDIUM | No witness or probe qualification on the new image, although 0257's d021 escaped a witness that never fired | Fixed: Q5 runs reproducing, non-reproducing, not-applicable and infrastructure controls through the final `judge.py`, d021 among them. |
+| A10 | MEDIUM | The memory rehearsal did not cover the workload two lanes can reach (four assessors without a memory limit) | Fixed: Q8 estimates the worst combination from the rehearsal and from SMOKE's measured owner and assessor containers. |
+| A11 | MEDIUM | "If each effect has halved" was computed for a gap of 0.50, not for R1's gap halved | Fixed: both figures are given under their real names (0.39–0.49 for a 0.50 gap; 0.14–0.25 for R1's gap halved). |
+| A12 | LOW | "0 of 64 in every engine × arm of 0256 and 0257" overstated the sample | Fixed: 0 of 2 and 0 of 16 per engine × arm, 0 of 72. |
+| A13 | LOW | "The lanes use different accounts" ignored the assessors both lanes share | Fixed (Operations; change table). |
+
+Astra's arithmetic agreed with every stated power and size figure except the 16-replicate claude D (about 0.122 exact
+against "0.13"): the text now says about 0.12–0.14.
+
+**Predictions (Astra).** P1, P3, P4 ok. P2 did not require a smaller gap and carried an unsupported causal clause:
+reworded (B between 1 and 5 of 8; clause removed). P5 could be unscoreable: reworded with its UNSCORED cases. P6's
+false-completion half was near-certain (about 0.99): replaced by "the two arms' counts differ by at most 2", which is
+what the orchestrator expects and can miss. P7: archived attempts counted explicitly.
+
+**Removable (Astra).** The early-reading machinery: removed. P2's causal clause: removed. "Token counts are
+unaffected by load": reworded (accounting is per cell; load can change what a session does).
+
+## Grok: REVISE (2 CRITICAL, 4 HIGH, 5 MEDIUM, 1 LOW)
+
+Grok read the file while Astra's fixes were going in, so some of its line numbers are the revised text's.
+
+| # | Severity | Finding | Disposition |
+|---|---|---|---|
+| G1 | CRITICAL | A measured lane's fresh status file would adopt 0257's 85/70 caps from the shared SMOKE starts and stop on any other value | Fixed: a lane adopts the shared SMOKE start and the fixed 95/95 caps, with no other registered value (Operations, "Lanes"); the two-process start is a driver test and is exercised by Q8's lane rehearsal. |
+| G2 | CRITICAL | With the Codex limit probe removed, the inherited preflight would hold every cell for lack of Codex window evidence | Fixed: preflight neither calls the probe nor holds for its absence (Operations, "Windows"); a unit test dispatches with no Codex window evidence. |
+| G3 | HIGH | "Sees gaps of about 0.2" was wrong: 5/8 against 3/8 on all three tasks gives 0.25 [−0.01, 0.44] | Fixed with the computed facts (Strongest counter; Decision 2). |
+| G4 | HIGH | Reading one replication reading at 0.025 when its twin is unfinished lets a stopped run choose what is read | Fixed: both are NOT_FINISHED until all 32 slots and R2's probe classes are final; an `unassessable` class is read both ways (Decision 1). This replaces the fix first made for A2. |
+| G5 | HIGH | 4.3.30's helper also binds `kind: loop` acceptances, which `0233/locate.py` rejects, and a locator STOP would stop one lane only | Fixed: Q4's fixtures cover both receipt kinds and a delivered commit whose worktree is still present, and a 0265 `locate.py` grades them; any STOP that is not redispatched stops both lanes (Operations, "Faults"). |
+| G6 | HIGH | audit-rule §1 said naming the app instance is coverage, while example c032 is a false completion that names it only in a restart-test description | Fixed: §1 now says a name counts only as the boundary of the protection or as an uncovered case; Q6 scores every pair-forming row, coverage rows included. |
+| G7 | MEDIUM | A timing failure that passes both reruns stays in the completion line | Rejected in part. Using the rerun would turn a flaky implementation (one that fails once in three runs) into a pass and would grade differently from 0257. The inline result stays authoritative; the line is also computed with the reruns and, where the two readings differ, both are printed and the line is marked `TIMING_SENSITIVE` (Decision 2), so a reading that depends on timing cannot pass silently. |
+| G8 | MEDIUM | Both lanes present one Codex login; a `refresh_token_reused` fault was not named | Fixed: it is a shared account fault, redispatched once, then a STOP that stops both lanes (Operations, "Faults"). |
+| G9 | MEDIUM | Codex B's app-server session could leave every such cell's usage short of COMPLETE, and r2's violating control was gone | Fixed: Q7 defines the owner session, requires COMPLETE usage equal to that session alone and carries the violating control built from Q2's real app-server evidence. |
+| G10 | MEDIUM | The memory rehearsal summed separate peaks instead of running the combination | Fixed: Q8 (b) runs both lanes on the SMOKE task at the same time, outside every sum, with the VM's free memory sampled; it also qualifies the two-lane path. |
+| G11 | MEDIUM | The interpretation limit said the harm line counts only reproduced pairs, while the rule reads unresolved ones both ways | Fixed (Interpretation limits). |
+| G12 | LOW | Two of the screened cells were saturated in 0257 (codex D4, claude F10 A) | Fixed: named in Question 2. |
+
+**Predictions (Grok).** P1, P2, P4, P5, P7 ok. P3 as a reading call was near-certain (about 0.90): replaced by the
+sign of the point estimate (≤ 0), which the orchestrator holds at about 0.6. P6: "all four engine × arm cells"
+replaced by "all 160 measured slots".
+
+**Removable (Grok).** P1's clause about principle 2: kept in one short form, since both versions were checked to
+carry the sentence (`git grep` at `v4.2.24` and `v4.3.30`). The power sentences in "Why r3" and "Strongest counter":
+the second now points to Decision instead of repeating figures; "Why r3" keeps the three that are the reason for r3.
+
+## What the review did not change
+
+Both reviewers agreed that R1 and R2 are the right counts for 0257's two signals, that the separate auth folders,
+status files and the locked renewal address the two-lane risks, and that the watchdog, the single usage read and
+the removed Codex probe do not disturb per-cell accounting. No full second review round follows: every CRITICAL and
+HIGH finding is a specified change to the text and the apparatus, and each is re-checked in the code review of the
+apparatus, which both reviewers read on the source the checks ran on.
+
+## Orchestrator amendments after the review, before the code review (2026-11-11)
+
+Found while the apparatus was built; each is in DESIGN.md and is part of what the code review reads.
+
+| # | Change | Why |
+|---|---|---|
+| O1 | Q3 runs as `codex exec --strict-config` calls, not `codex debug` | Codex 0.164.0 answers "`--strict-config` is not supported for `codex debug`" (run in the image, no model). |
+| O2 | Two changed trees with identical content are one result; only differing trees STOP (Q4) | 4.3.30 keeps the edits in the main checkout while a delivery is pending or refused, so a refused delivery leaves the same content twice; a STOP there would lose B slots for a reason that is the apparatus's. The rule cannot fire in A and does not choose between different contents. |
+| O3 | A memory kill is only an owner process killed for memory; another process's kill in a cell whose owner went on is graded as it stands (Operations) | Docker reports an out-of-memory kill for any process in the container. Redispatching a finished session because its own test runner was killed would redraw a valid cell on its behaviour. |
+| O4 | Q6: at most three prompt revisions, then a stated fallback gate; held-out agreement reported | The frozen examples are in the judges' prompt, so the gate shows that precedent is followed; the held-out score says how far the rule carries without it. A gate with no fallback could only be met by fitting the prompt to the examples. |
+| O5 | Claude's "no plugin" means none besides Claude Code's built-ins | Every archived 0257 Claude cell, A included, lists two built-in entries (`agents-md@builtin`, `telemetry@builtin`). |
+| O6 | "Details every count uses" (Decision) | The decision code had to choose a reading for a hung cell and for the cost of archived attempts; the choices are 0257's and are now written down. |
+| O7 | Figures corrected from `power.py`'s exact values (0.06–0.11, 0.63, [0.11, 0.55]) | Exact enumeration through `decide.py`'s own functions. |
+| O8 | Usage windows: the seven-day window always, others when the account reports them (Operations, "Windows") | The usage endpoint now returns `five_hour: null` for the logged-in account; the first real cell held forever on "window evidence unavailable". |
+| O9 | A 0265 `check.py` and `assess.py` read Docker's "no such object" in any letter case; the driver reads Docker 29's "failed to connect to the docker API" as a Docker loss, beside the older "Cannot connect to the Docker daemon" | Docker 29 prints it in lower case; the modules up to 0261 matched "No such object", so every real cell stopped at "cannot verify check container teardown". Found on the first real cell. Docker 29 also words an unreachable daemon differently (checked on this host against a socket that does not exist), so a proven Docker loss would have been a STOP that latches both lanes instead of being archived and redispatched. |
+| O10 | `[features] remote_plugin = false` in both arms; the Codex assertions read the model input and devlyn's own files (Arms; Per-cell assertions) | Bare Codex 0.164.0 without `plugins = false` loaded OpenAI's curated remote plugins into its skill roots; the switch keeps them out of the model input and leaves B's session plugin working (two real cells each way). Their cache files still appear in `CODEX_HOME` in both arms, so "no plugin file" cannot be the test. |
+| O11 | Codex identity: a traced Codex session with a model seat that is neither the owner nor its child and began before the owner is a violation; sessions the owner itself launches stay listed, as in 0233 (Per-cell assertions; Q7) | 0233's identity only lists extra sessions, so Q7's violating control could never read MISMATCH. The narrow form keeps 0233's treatment of what an owner does and catches only what the wrapper could add. Real app-server evidence (no model call) shows the config read writes no trace unless a thread is started. |
+| O12 | Codex's own plugin caches are removed from a cell's HOME after its verdict, with a record (Operations, "Disk") | They are 30–100 MB per Codex cell in both arms on a disk with about 20 GiB free; the manifest sealed before keeps their hashes. |
+| O13 | "Accounts" (Operations): the host's default login at dispatch; a change between cells is neither a stop nor a hold | r3 had dropped r2's account rule. On 2026-11-11 the logged-in account reached 90% of its weekly limit during preparation, preparation stopped at 15:41 KST, and the owner's app moved the default login to another account; the owner said to use whichever account has room. |
+| O14 | Q5: the two frozen D3 witnesses have no not-applicable reading | Found by the Q5 controls (29 of 30 as expected): `d3-executable-delimiter` reproduces on a tree without `index.js`. The scripts are frozen copies of 0257's, so the expectation was corrected, not the witness. |
+| O15 | "Codex login" (Operations): the runtime names the Codex login; a seven-day renewal guard; the Codex account's fingerprint in every verdict | Found before the run from the stored logins' own dates (no token read out): every Codex access token on this Mac expires ten days after its last renewal, and none had been renewed before its eighth day, so the host default login (7.6 days old on the evening of the run) would have been renewed inside a cell during the night, where the renewal cannot be saved. The default login also had about 10% of its week left, and the owner's app was about to switch it to an account whose token was already past eight days. The owner said to use whichever account has room; a registered account with a 2.8-day-old token and 41% of its week left is used through `codex_auth`, with no change to any login. From this Mac's own Codex session logs, one point of a weekly limit was about 3.6 M input tokens (mostly cached) with 21 k output tokens; the run's Codex side is estimated at 5–15 points. |
+
+O8–O10 come from a shakedown on 2026-11-11: the four SMOKE cells run with real engines on a frozen copy of the first
+build, in a separate folder that is never part of the run. After the two fixes all four ran to a verdict: teardown
+`CLEAN`, identity `MATCH`, usage COMPLETE in both arms of both engines (Codex B's app-server read left no session of
+its own), every other per-cell assertion passed as built, the graded tree was the anchor in all four (B did not use
+the delivery helper on this task), and the mechanical harm check had no finding.
+
+## Code review of the apparatus (2026-11-11)
+
+One pass by GPT Astra (ultra, read-only) and Grok 4.7 (read-only) on commit `43b32a85`, the source the 230 tests
+passed on. Every finding, with what was done.
+
+### Astra: REVISE (7 HIGH, 6 MEDIUM)
+
+| # | Severity | Finding | Disposition |
+|---|---|---|---|
+| CA1 | HIGH | Unassessable probe classes were moved together in both arms, which is not an extreme, so a replication reading and P2 could be wrong | Fixed: the two opposing assignments (Decision 1); P2 holds or misses only when every feasible pair of counts agrees. |
+| CA2 | HIGH | Archived attempts in which an owner ran could lose their scope and witness coverage while the harm line read as final | Fixed: "Attempts" (Decision): such an attempt keeps its graded tree and scope result even on a STOP, witnesses run on it, and the harm line is NOT_FINISHED while any of it is missing. An attempt whose owner did not exit normally has no final report and forms no judge pair. |
+| CA3 | HIGH | An assessor container whose teardown could not be proved was regraded like an assessor fault | Fixed: its own STOP, never regraded, so it stops both lanes. |
+| CA4 | HIGH | An error while a cell was being set up could leave its credential copy, volume or container behind, and a lane that ended in an error did not stop the other | Fixed: acquisition is inside the cleanup; a setup failure is a STOP verdict; a lane ending in an error sets the shared latch. |
+| CA5 | HIGH | Docker-loss recovery removed the attempt's `/tmp` volume without keeping its contents, and needed an owner container that normal cleanup may already have removed | Fixed: the volume is preserved first when it still exists; recovery works from `run/started.json` when the container is gone. |
+| CA6 | HIGH | The Git-configuration harm test exempted every key under a new branch name | Fixed: only `branch.<new>.remote` and `.merge` (audit-rule §4). |
+| CA7 | HIGH | "Identical trees" (O2) ignored the executable bit | Fixed: same type, executable bit and bytes (Q4). |
+| CA8 | MEDIUM | Judge packets for unresolved witnesses lacked the recorded output | Fixed: both passes' exit status, output and error text. |
+| CA9 | MEDIUM | Two leftover entry points could use a login copy without the renewal guards (`assess.py`'s command line, the strict-config fallback commands) | Fixed by deleting both. |
+| CA10 | MEDIUM | Cost tables left out owner-ran attempts of unfinished slots | Fixed (Decision, "Details"). |
+| CA11 | MEDIUM | The imported Fisher function printed p = 1 without computing when the effect was not in the tested direction | Fixed: a 0265 function computes the tail in every case; no reading changes, the printed p does. |
+| CA12 | MEDIUM | The pruning record was written after deletion and held no symbolic links | Fixed: written before, with the links, and marked when done. |
+| CA13 | MEDIUM | A cell at the watchdog could carry a COMPLETE verdict that the decision then overrode | Fixed: its verdict reads PRODUCT_INCOMPLETE. |
+
+Removed on Astra's list: the strict-config debug mode and its printed commands, `assess.py`'s command line, the
+E1/E2 entries of `check.py`, an unused token fallback and an unused parameter in `run_cell.py`, the inherited
+diagnostics call (no 0265 reader), the unused `account` field of the runtime files.
+
+### Grok: REVISE (1 HIGH, 3 MEDIUM)
+
+| # | Severity | Finding | Disposition |
+|---|---|---|---|
+| CG1 | HIGH | A failed `docker create` left the credential copy and the cell folder (so the slot could not be prepared again), and `stop()` ended a lane without stopping the other | Fixed with CA4: a setup failure is a STOP verdict the usual archive path handles; `stop()` sets the shared latch. |
+| CG2 | MEDIUM | The Git-configuration exemption was too wide | Fixed with CA6. |
+| CG3 | MEDIUM | A judge's quote was checked against the raw messages, so a quote copied with the packet's `[n] ` prefix was called invalid | Fixed: the quote is checked against the packet's report as the judge saw it. |
+| CG4 | MEDIUM | The Claude token guard was read only before `prepare`, which has no time limit | Fixed: read again after `prepare`; a cell with less than the watchdog plus 300 s left is not started (Operations, "Token guard"). |
+
+Asked about them in particular, neither reviewer reported a finding on: arm symmetry beyond the wrapper and the
+`/install` mount, the lane locks and separate login snapshots, the per-cell assertions and the launch probe, and
+the witness pins and exit semantics. Grok checked the Codex seven-day guard for a hole like CG4's and found none.
+
+### Re-check of the fixes (commit `eceeeeda`)
+
+Both reviewers read the fixes once more. Astra: REVISE, 13 of the 17 closed, CA2, CA3, CA4 and CA10 partly, two HIGH
+left. Grok: SHIP, all 17 closed, one MEDIUM and one LOW new. All seven were accepted and fixed in the next commit:
+
+| # | From | Severity | Finding | Fix |
+|---|---|---|---|---|
+| R1 | Astra | HIGH | A timeout or OS error while an assessor container was removed or inspected was still a retryable assessor fault | Every way the teardown proof can fail is `TeardownUnproved`. |
+| R2 | Astra | HIGH | A STOP that came back from a regrade and could not be regraded did not stop the lanes until after the next `ready()` wait | The same terminal handling runs after a regrade as after a cell. |
+| R3 | Astra | MEDIUM | Only the redispatched kinds of STOP kept the graded tree and scope result | Every STOP whose owner ran keeps them once its teardown is proved; an unproved teardown says so. |
+| R4 | Astra | MEDIUM | A lane that failed while it was being set up did not stop its peer | It sets the shared latch; a second start of a running lane is still refused without touching it. |
+| R5 | Astra | MEDIUM | An interrupted regrade could drop its owner run from the cost totals | Charged once from its archive. |
+| R6 | Grok | MEDIUM | The per-cell credential folder was made outside the cleanup, so a copy left by a killed run stayed in scratch | Made inside; a leftover ends the cell and is removed. |
+| R7 | Grok | LOW | The run record was written after the credential folder was removed, so a failed removal lost it | Written before; a failed removal is a failed teardown with its reason. |
+
+### Second re-check (commit `4a227ec2`)
+
+Astra: REVISE, six of the seven closed and R5 partly, with one HIGH and two MEDIUM, all about what a crash leaves
+behind. All were accepted and fixed in the next commit, together with one more case of the same kind that the
+orchestrator found while fixing them:
+
+| # | From | Severity | Finding | Fix |
+|---|---|---|---|---|
+| S1 | Astra | HIGH | After a crash between writing a terminal STOP and writing its latch, a restarted lane waited on `ready()` before it stopped the other lane | A STOP met at a restart that is neither regraded nor redispatched stops both lanes before any wait. |
+| S2 | Astra | MEDIUM | A run record that could not be written skipped the removal of the credential copy (introduced by R7) | The removal runs whatever the write did. |
+| S3 | Astra | MEDIUM | A truncated current verdict left by an interrupted regrade dropped the archived owner run's cost and scope | Verdicts are written whole (temp file, then replace); an unreadable current verdict counts as absent. |
+| S4 | orchestrator | same class as S1 | A lane restarted after it was killed inside a cell waited on `ready()` and then failed in `prepare` | An attempt with a folder and no verdict stops both lanes before any wait. |
+
+### Third re-check (commit `d9193ce6`)
+
+Astra: **SHIP**, S1, S2 and S4 closed, S3 closed except for one write (T4), with five lower findings. Grok, on the
+same commit: REVISE, the same four closed and the same five findings, T3 among them rated HIGH. Each was fixed or
+rejected with a reason:
+
+| # | Severity | Finding | Disposition |
+|---|---|---|---|
+| T1 | MEDIUM | An operator's interrupt during the teardown could skip the removal of the credential copy | Fixed: the removal is in a `finally` around the whole teardown and the record's write. |
+| T2 | MEDIUM | When the first run record could not be written, an owner that had run was recorded as not run | Fixed: a container that was created and has no record is taken to have run its owner, so its evidence is required. |
+| T3 | MEDIUM (Astra), HIGH (Grok) | After a crash between the second B launch-fault verdict in a row and its latch, a restart allows a third attempt | Fixed. First rejected (one more archived B attempt after a crash at one instant; Astra called that sound), then fixed because Grok rated it HIGH: a B launch fault is redispatched once per slot, as a memory kill and a shared account fault are, and a repeat on the slot is a STOP that is read from the slot's archive, so it holds at a restart. The count of faults in a row that the process kept is deleted, and DESIGN "Faults" states the rule. |
+| T4 | LOW | The control-change STOP was still written in place | Fixed: written whole like every verdict. |
+| T5 | LOW | The out-of-memory table can miss an event of an assessor STOP or an interrupted regrade | Rejected: a secondary table; the verdicts keep the flag, and the decision's lines and the cost do not read it. |
+
+Astra read `fe271114` (T1, T2 and T4 fixed) and said SHIP with nothing new. The reviewers' reading of the commit that
+carries T3's fix is recorded in registration.md.
+
+### Grok's other findings
+
+Grok read the same commits as Astra (`eceeeeda`: SHIP; `4a227ec2`: SHIP; `d9193ce6`: REVISE, above). What it found
+that is not in the tables above:
+
+| Commit | Severity | Finding | Disposition |
+|---|---|---|---|
+| `4a227ec2` | MEDIUM | A lane killed inside a cell runs no cleanup, so that cell's credential copy stays in scratch | An operator step (README 18), not code: no code of a killed process can run. The slot's next start stops both lanes before anything else (S4), and resolving that stop includes removing the copy unread. |
+| `4a227ec2` | LOW | A lane whose own status file cannot be read ends without writing a latch | Rejected: the latch lives in that file. The other lane reads the same file at its next check, fails on it and ends through the handler that latches (the comment at the read says so), so both lanes stop. |

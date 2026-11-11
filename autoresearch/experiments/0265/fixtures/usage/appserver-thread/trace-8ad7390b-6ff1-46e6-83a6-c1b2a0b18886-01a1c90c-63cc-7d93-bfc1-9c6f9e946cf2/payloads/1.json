@@ -1,0 +1,14 @@
+{
+  "thread_id": "01a1c90c-63cc-7d93-bfc1-9c6f9e946cf2",
+  "agent_path": "/root",
+  "task_name": null,
+  "nickname": null,
+  "agent_role": null,
+  "session_source": "vscode",
+  "cwd": "/cell/work",
+  "rollout_path": "/home/participant/.codex/sessions/2026/11/11/rollout-2026-11-11T05-19-54-01a1c90c-63cc-7d93-bfc1-9c6f9e946cf2.jsonl",
+  "model": "gpt-6-astra",
+  "provider_name": "openai",
+  "approval_policy": "never",
+  "sandbox_policy": "DangerFullAccess"
+}

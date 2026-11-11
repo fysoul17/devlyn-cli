@@ -1,0 +1,59 @@
+{
+ "provenance": "Shapes for the per-cell assertions. claude_init: the system/init event of archived 0257 c002-F10-claude-B-r1 (Claude Code 2.1.281), lists trimmed, ids replaced; its plugins are the two built-ins every 0257 cell had. devlyn_plugin: ASSUMED entry for --plugin-dir (name from the package's native/claude/.claude-plugin/plugin.json, path the release root's native/claude, which the 2026-11-11 launch probe saw devlyn run hand Claude); SMOKE B seals the real one. status_lines: the 2026-11-11 probe stderr (S/probe/out) and a refused launch (R-C section 4). Codex's model input is not here: prompt-input-A.json, prompt-input-B.json and prompt-input-control.json are `codex debug prompt-input` 0.164.0 output in the image (raw in a fresh 0265 CODEX_HOME; through devlyn run 4.3.30; raw with a foreign plugin, a marketplace entry and ~/.codex/AGENTS.md planted), with ids and timestamps removed, Codex's base instructions replaced by their length and the tool list reduced to names.",
+ "claude_init": {
+  "type": "system",
+  "subtype": "init",
+  "cwd": "/cell/work",
+  "mcp_servers": [],
+  "model": "claude-opus-5-5",
+  "permissionMode": "bypassPermissions",
+  "apiKeySource": "none",
+  "output_style": "default",
+  "plugins": [
+   {
+    "name": "agents-md",
+    "path": "builtin",
+    "source": "agents-md@builtin"
+   },
+   {
+    "name": "telemetry",
+    "path": "builtin",
+    "source": "telemetry@builtin"
+   }
+  ],
+  "session_id": "00000000-0000-4000-8000-000000000001",
+  "uuid": "00000000-0000-4000-8000-000000000002",
+  "tools": [
+   "Task",
+   "Bash",
+   "CronCreate",
+   "CronDelete"
+  ],
+  "claude_code_version": "2.1.322",
+  "slash_commands": [
+   "dataviz",
+   "verify"
+  ],
+  "skills": [
+   "dataviz",
+   "verify"
+  ],
+  "agents": [
+   "claude",
+   "Explore",
+   "general-purpose",
+   "Plan",
+   "statusline-setup"
+  ]
+ },
+ "devlyn_plugin": {
+  "name": "devlyn",
+  "path": "/home/participant/.devlyn/cli/releases/devlyn-cli/4.3.30/native/claude",
+  "source": "devlyn@inline"
+ },
+ "status_lines": {
+  "claude": "devlyn: claude 2.1.322 | release 4.3.30@53a2f9f2 (package) | principles=configured:append-system-prompt-file | skills=configured:plugin-dir",
+  "codex": "devlyn: codex 0.164.0 | release 4.3.30@53a2f9f2 (package) | principles=configured:developer_instructions | skills=configured:session-plugin",
+  "refused": "devlyn run: run-argument-unsupported {\"engine\":\"codex\",\"argument\":\"-C\"}"
+ }
+}

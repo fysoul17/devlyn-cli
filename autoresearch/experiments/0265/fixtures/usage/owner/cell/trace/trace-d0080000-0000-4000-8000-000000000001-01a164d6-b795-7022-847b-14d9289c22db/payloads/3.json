@@ -1,0 +1,7 @@
+{
+  "model": "gpt-6-astra",
+  "stream": true,
+  "reasoning": {
+    "effort": "high"
+  }
+}

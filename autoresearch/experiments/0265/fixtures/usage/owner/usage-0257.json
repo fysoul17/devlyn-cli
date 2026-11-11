@@ -1,0 +1,16 @@
+{
+  "completeness": "COMPLETE",
+  "input_tokens": 314325,
+  "output_tokens": 4822,
+  "gaps": [],
+  "codex": {
+    "gpt-6-astra": {
+      "input_tokens": 314325,
+      "cached_input_tokens": 271616,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 4822,
+      "reasoning_output_tokens": 1395
+    }
+  },
+  "claude": {}
+}

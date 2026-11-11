@@ -1,0 +1,5 @@
+{"type": "thread.started", "thread_id": "th1"}
+{"type": "item.completed", "item": {"id": "i1", "type": "agent_message", "text": "Working on the FIFO change."}}
+{"type": "item.completed", "item": {"id": "i2", "type": "command_execution", "command": "pytest", "aggregated_output": "ok", "exit_code": 0}}
+{"type": "item.completed", "item": {"id": "i3", "type": "agent_message", "text": "Implemented FIFO-aware lazy reads. Only allowed paths changed."}}
+{"type": "turn.completed", "usage": {"input_tokens": 1}}
