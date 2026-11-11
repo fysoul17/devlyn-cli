@@ -1,768 +1,305 @@
-# 0265 design — bare vs the installed harness (`devlyn run`, 4.3.30), powered replay
+# 0265 design — bare vs the installed harness (`devlyn run`, 4.3.30), fast replay
 
-Status: DRAFT r2 (2026-11-11). Not frozen; nothing has run, and no model, engine CLI turn or Docker build was used to
-write it. The freeze waits for five things: `devlyn-cli@4.3.30` published on npm; Astra ultra and Grok 4.7 design
-review to SHIP; the owner's answers under [What the owner must approve](#what-the-owner-must-approve); the pre-SMOKE
-audit calibration, after which registration pins [audit-rule.md](audit-rule.md) by sha256; and the predictions,
-written into the [template](#prediction-template) and checked read-only by Astra and Grok before the first SMOKE
-dispatch.
+Status: DRAFT r3 (2026-11-11). Replaces r2, the 328-cell powered design (in this branch's history: `ffc7b97f`,
+`5fd9a2a0`). Not frozen; no cell has run. The freeze waits for the Astra ultra and Grok 4.7 design review of this
+file, the code review of the apparatus, the judge calibration and SMOKE.
 
-## Why
+## Why r3
 
-The owner asked on 2026-11-11 for a fresh measurement of what the installed devlyn harness adds over a bare session,
-with Claude Opus 5.5 and GPT Astra (through Codex) as the engines under test.
+On 2026-11-11 the owner approved the measurement and asked for it "as efficiently and fast as possible". r2 would
+take about 33–45 h of apparatus work, 2.5–4 days of cells and a day of grading. Three facts from the archived 0257
+run say most of that buys little:
 
-The measured base is [0257](../0257/RESULT.md) (cells 2026-10-22..24) on `devlyn-cli@4.2.24`, read with
-[erratum 1](../0257/erratum-1.md):
+1. **The powered headline is weak at any size we would run.** Taking 0257's observed per-task rates as the truth, the
+   completion line D reads a difference with probability 0.13–0.14 (claude) and 0.58–0.62 (codex) at 16 replicates,
+   and 0.05–0.10 and 0.20–0.22 at 8 ([power.py](power.py)). r2 says the same: D "sees only gaps of about 0.2–0.25".
+2. **0257's two large signals need few cells.** Codex B5 (check-complete B 16/16, A 5/16) and Claude F10
+   (malformed-JSON probe `json_error_400`: A 8/8, B 0/8) are each read with probability 0.78–1.00 at 8 replicates per
+   arm (Decision).
+3. **Half of 0257's 62.3 h was not cells.** Cells took 32.1 h. The token-renewal wait took 11.6 h, HTTP 429 on the
+   usage endpoint 6.0 h (holds and refused dispatches), a driver that was down 9.4 h and a window reserve 2.4 h. No
+   hold came from a five-hour or seven-day window itself. I0185 took a third of the owner time, produced 162 of the
+   169 severe findings and all 21 adjudications, and completed 0 of 64 cells in every engine × arm of 0256 and 0257.
 
-- **claude:** D = -0.0625 [-0.184, 0.075], NO_DETECTED_DIFFERENCE; development completions B 26/64, A 30/64.
-  Development PACKAGE_UNSAFE: B 11 false completions, A 12 (D4 timeout bounds, I0185 first-install cleanup). The one
-  Holm-rejected test of the run is confirmation F10 completion, A 8/8 against B 0/8.
-- **codex:** D = +0.125 [0.004, 0.230], B_BETTER, mostly B5 (B 16/16, A 5/16). No false completion in either arm.
+So r3 asks a narrower question with the same apparatus, cuts what carried no information, and removes the waits.
 
-Since 4.2.24 the product changed what "installed" means:
+**Strongest counter.** Eight replicates cannot say "the harness is better or worse overall" unless the gap is large:
+the completion line sees gaps of about 0.2 or more, and the harm line a rise from about 10% of slots to about 35–40%.
+That is accepted and printed with every reading. What r3 can say with power is whether 0257's two large signals hold
+on 4.3.30 as a terminal user gets it. Re-measuring the largest of many past differences invites regression to the
+mean: if each effect has halved, either reading is detected with probability about 0.4–0.5. The predictions are
+written with that in mind, and a miss is reported as a miss.
 
-- **Delivery.** Since 4.3.27 (eeea9230) the installer never writes `CLAUDE.md` or `AGENTS.md`. The principles reach a
-  session only through the Devlyn app or `devlyn run` (README.md "How It Works"; [docs/harness-run.md](../../../docs/harness-run.md)).
-  0257's B construction (`devlyn.js -y`) would now measure skills only.
-- **Channel.** Claude receives the defaults through `--append-system-prompt-file` and the skills through
-  `--plugin-dir`; Codex receives `developer_instructions` and a session plugin. Both now read a preamble that calls
-  the text defaults (4.2.26, 4.3.24). In 0257, Claude read a `CLAUDE.md` attachment and Codex read `AGENTS.md` in its
-  first request.
-- **Text.** Principles 2 (4.3.21), 4 (4.3.22/4.3.23) and 6 (4.3.28), the Delivery bullet and the catalog's last line
-  (PRs #371/#372, in 4.3.30). Principles 1, 3, 5 and 7, the North Star and the three discipline rules are unchanged
-  since 4.2.24.
-- **I0185.** Activation has no source-checkout skip, so I0185 B now receives the principles; in 0257 it did not.
-- **Engines.** `devlyn run` refuses Claude Code below 2.1.307 and Codex below 0.163.0 (`bin/engines.js`). 0256's
-  image (2.1.281 / 0.156.1) is below both floors, and its tarball was deleted (DECISIONS.md, 2026-10-27).
+## Question
 
-None of these changes was designed against 0257's diagnosis ([claude-diagnosis.md](../0257/results/claude-diagnosis.md));
-0258–0260's one-rule deletions and 0261's sentence moved nothing. So the question is open for today's harness as a
-terminal user gets it.
+Separately for the claude and codex configurations (routes of `0233/tasks.json`, unchanged: owner `claude-opus-5-5`
+high; owner `gpt-6-astra` high with native `gpt-6-sol` children), on fresh cells:
 
-**Strongest counter.** As in 0257: hundreds of serial cells on exposed tasks can answer only "does the harness as
-shipped beat bare on these fixtures"; they cannot name a component and license no product change. New here: the CLIs,
-the server-side models and the package all changed since 0257, so this run says nothing about 4.3.30 against 4.2.24,
-and every difference from 0257 is descriptive. A smaller run does not answer the question either: at 8 replicates
-per task D's interval is about 1.4 times wider (0257's codex D, half-width about 0.11 at 16, would be about 0.17 and
-would not read B_BETTER); reusing 0257's cells mixes CLIs, models and package; cutting a task changes the frozen D and
-the safety counts; and an interim stop at replicate 8 would almost never fire at 0257's effect sizes. That is
-accepted: the question is the per-engine package reading on the fixtures where the last reading exists.
+1. **Replication.** Do 0257's two large signals hold with `devlyn-cli@4.3.30` delivered by `devlyn run`?
+2. **Screen.** On the five tasks that were neither at floor nor all at ceiling, does B complete more or fewer cells
+   than A, and does B add false completions, scope violations or user-data harm?
+3. **Cost.** Owner input and output tokens and owner seconds per check-complete cell, by arm: reported, never a line
+   (two lanes share the host, so wall time is descriptive).
 
-**How this draft was made.** Five read-only preparation reports (2026-11-11, session scratchpad, not committed): the
-last measurements, the lane and evidence rules, the product changes, a proposed design, and an adversarial
-verification of that design (verdict FIX_FIRST). r1 followed that verification's corrected design point by point. A
-second adversarial verification of r1 (also FIX_FIRST) was checked against the files it cites; every finding held,
-and r2 applies its corrections. [The last section](#how-the-verifications-findings-are-resolved) maps both
-verifications' findings to their resolutions.
-The id follows the 0256–0264 precedent (next free folder under `experiments/`); the playbook's `iterations/` counter
-would collide with 0238–0264.
-
-## Question and estimands
-
-Separately for the claude and codex configurations, on 0233's tasks with 0257's apparatus and grading:
-
-1. **Completion line.** Does B complete more or fewer development tasks than A? Estimate D =
-   ¼ Σ_t (s_B,t − s_A,t)/16 over D3, D4, I0185, B5, with 0257's equal-weight Wilson-MOVER interval and sign reading,
-   unchanged ([0257 DESIGN](../0257/DESIGN.md), "Question and estimands").
-2. **Harm line.** Does B add false completions, scope violations, user-data harm or check-measured defects relative to
-   A? Defined under [Decision](#decision).
-3. **Reported beside the lines, never a line:** 0257's §6 admission headline and token for every panel (0232 §6), and
-   the descriptive figures listed under Decision.
-
-| Configuration | Owner | Children | Effort |
-|---|---|---|---|
-| claude | `claude-opus-5-5` (Claude Opus 5.5) | none | high |
-| codex | `gpt-6-astra` (GPT Astra) | native `gpt-6-sol` | high |
-
-These are 0233's routes (`0233/tasks.json`), unchanged. Per-cell assessors stay `claude-opus-5-5` high and
-`gpt-6-astra` high. Fable is never a test arm, an assessor or a judgment seat.
-
-The harness is one object: the defaults preamble and principles, the skill plugin and catalog, and the delivery helper
-reached through the catalog. Nothing here attributes an effect to one of them.
+Fable is never a test arm, an assessor or a judge. The harness is one object; nothing here names a component.
 
 ## Arms
 
-A and B differ only in the launch wrapper `devlyn run` and what it brings.
+A and B differ only in the launch wrapper. r2's "Arms" section stands (common image, container, fresh HOME,
+environment, `config.toml` without `plugins = false`, the strict flags removed from both arms), with three changes:
 
-### Common to both arms
-
-- **Image** `devlyn-0265`, built from `0232/Dockerfile` and `build.sh` with Node 22.23.2 (satisfies `engines`
-  `^22.13.0`) and the base image by digest, and with Claude Code and Codex at exact versions at or above the floors
-  (2.1.307, 0.163.0), each pinned by fetch sha256. Both arms and both assessors run these same CLIs.
-- **Container** per cell: 0233's `cell.py` lifecycle with 0237's `cell-init-v1.py` as init, read-only root,
-  `--cap-drop ALL`, pids 256 / 4 GiB / 2 CPU, `--network bridge`, working directory `/cell/work`, its own `/tmp`
-  volume copied out at teardown. Participants never see oracles, assessor inputs, other cells or (in A) any devlyn byte.
-- **Environment** (0256 `prepare.py`): `HOME=/home/participant`, `CODEX_HOME=/home/participant/.codex`,
-  `DISABLE_AUTOUPDATER=1`, `PYTHONPATH=src:/control/python`, `GIT_CONFIG_GLOBAL=/dev/null`, `GIT_CONFIG_NOSYSTEM=1`,
-  `CODEX_ROLLOUT_TRACE_ROOT=/cell/trace`, `MYPY_CACHE_DIR=/tmp/.mypy_cache`, `ENABLE_CLAUDEAI_MCP_SERVERS=false`.
-- **Fresh HOME** per cell, holding only:
-  - `.claude/settings.json`: `{"syncClaudeAiSkills": false, "syncClaudeAiPlugins": false}`;
-  - `.codex/config.toml` (codex cells): 0222's `codex_toml` for the route **without the `plugins = false` line** (it
-    would block B's session plugin), with 0237's trust rewrite to `/cell/work`:
-
-    ```toml
-    model = "gpt-6-astra"
-    model_reasoning_effort = "high"
-    approval_policy = "never"
-    sandbox_mode = "danger-full-access"
-    web_search = "disabled"
-    [features]
-    rollout_budget = false
-    apps = false
-    hooks = false
-    shell_snapshot = false
-    [features.multi_agent_v2]
-    enabled = true
-    expose_spawn_agent_model_overrides = false
-    [agents]
-    default_subagent_model = "gpt-6-sol"
-    default_subagent_reasoning_effort = "high"
-    max_concurrent_threads_per_session = 4
-    [projects."/cell/work"]
-    trust_level = "trusted"
-    ```
-
-  - the Codex models cache regenerated by the pinned Codex inside the image (0256 `models_cache.py`), and the
-    credential mounts of 0233's `cell.py`.
-- **Task tree:** identical in both arms. The same base commit, the same local-path origin `/harness/mirror.git`
-  (read-only), the same prompt: `0232/common.txt` plus the caller contract (0256 `native_prompt`). There is no install
-  commit in either arm.
-- **Owner arguments O**, the same bytes in both arms:
-  - claude: `-p --model claude-opus-5-5 --effort high --permission-mode bypassPermissions --output-format stream-json --verbose <prompt>`
-  - codex: `exec --json --skip-git-repo-check <prompt>`
-- **Removed from 0257's setup, in both arms.** `devlyn run` passes only the options in its allow-list (`OPTIONS` in
-  `bin/harness-context.js`) and refuses the rest with `run-argument-unsupported`. Removing the refused options from
-  both arms keeps the arms identical apart from the treatment:
-  - Claude `--strict-mcp-config`, and `--mcp-config '{"mcpServers":{}}'`, which adds nothing without it;
-  - Codex `--strict-config` (its guard moves to qualification probe Q4);
-  - Codex `-C /cell/work` (the container's working directory is `/cell/work`);
-  - Codex `[features] plugins = false` (above).
-
-  The isolation these carried now rests on the fresh HOME and CODEX_HOME files and the environment, and every cell
-  asserts it ([Per-cell assertions](#per-cell-assertions)). So A is not byte-identical to 0257's A.
-
-### Arm A (bare)
+- **Package mount.** The unpacked registry tarball (`control/packages/B/package`, checked against npm integrity
+  `sha512-1qehRZd7iA5mwf15rXzjfmAEX6MHjMwD1c52wN6eJgmg489WKnq57LQMCZRH/7LgixPeePIV/oy2fDq/sT6ISg==`) is mounted
+  read-only at `/install` in B owner containers only. No installer container, no install commit.
+- **CLIs.** Claude Code 2.1.322 and Codex 0.164.0 (linux-arm64), pinned by fetch sha256 `74da2ac1…ae5c` and
+  `048a6273…5ce0`: this host's versions, both at or above the floors (2.1.307, 0.163.0). 0232's Dockerfile is
+  unchanged; only `build.sh`'s two pins and the tag `devlyn-0265` change.
+- **Owner watchdog 2,700 s** instead of 5,400 s, in both arms. The longest owner run that did not hang was 1,367 s
+  in 0257 and 2,371 s in 0261. A cell at the watchdog reads `HANG_TIMEOUT` and is not complete, as before. The
+  watchdog sets the token guard (Operations), which was the largest wait.
 
 ```text
-claude O_claude
-codex  O_codex
+A:  claude -p --model claude-opus-5-5 --effort high --permission-mode bypassPermissions --output-format stream-json --verbose <prompt>
+    codex exec --json --skip-git-repo-check <prompt>
+B:  node /install/package/bin/devlyn.js run claude <the same arguments>
+    node /install/package/bin/devlyn.js run codex  <the same arguments>
 ```
 
-No package mount, no `~/.devlyn`, no devlyn skill or plugin anywhere in the container.
-
-### Arm B (harness)
+A zero-usage probe with recording shims (2026-11-11) showed `devlyn run` 4.3.30 accepts both argument lists, refuses
+`--strict-mcp-config`, `--strict-config` and `-C`, and prints on stderr:
 
 ```text
-node /install/package/bin/devlyn.js run claude O_claude
-node /install/package/bin/devlyn.js run codex  O_codex
+devlyn: claude 2.1.322 | release 4.3.30@53a2f9f2 (package) | principles=configured:append-system-prompt-file | skills=configured:plugin-dir
+devlyn: codex 0.164.0 | release 4.3.30@53a2f9f2 (package) | principles=configured:developer_instructions | skills=configured:session-plugin
 ```
 
-- `/install/package` is the unpacked registry tarball `devlyn-cli-4.3.30.tgz`, checked against its npm sha512
-  integrity and sha256 by `control.py`, mounted read-only into B owner containers only (never into A, assessors or
-  witnesses). The package ships its dependencies (`bundleDependencies`), so it runs offline once unpacked.
-- In a fresh HOME with no app state and no queue binding, `devlyn run` captures this package into
-  `~/.devlyn/cli/releases` and applies its activation plan (docs/harness-run.md "Release"): for Claude
-  `--plugin-dir <release>/native/claude` and `--append-system-prompt-file <run dir>/devlyn-instructions.md` (the
-  defaults plus the absolute skill catalog); for Codex `-c marketplaces`, `-c plugins`, `-c developer_instructions`
-  and a machine sync of the session plugin into CODEX_HOME. It adds `DEVLYN_NODE` and `DEVLYN_HARNESS_ROOT` to the
-  engine's environment and writes one status line to stderr. Preparation completes or no engine starts; there is no
-  fallback to a raw launch (`bin/harness-run.js`).
-- No project install (`npx devlyn-cli -y`): it would add a second copy of the same skills to the task tree and no
-  principles (README.md "Install"). B is what the app and `devlyn run` deliver.
-- **B is 4.3.30, not main.** 4.3.30 is 4.3.29 plus PRs #371 and #372 and the Cursor/Antigravity channel work, which
-  does not touch the claude or codex plans. At the freeze, registration records the published version, npm integrity,
-  tarball sha256, tag commit, the release digest from Q1, and `git diff v4.3.29 v4.3.30 --stat` over `bin/` and
-  `config/skills/_shared/runtime-principles.md`. **The freeze waits for the publish.** Main may move during the run;
-  B does not.
+## Tasks, panels and schedule
 
-### What is pinned and how
+`0233/tasks.json` tasks D3, D4, B5, F10 and F11 with r2's sources (fresh clones of commander `ba6d13dd` and click
+`3cbaa76b`; issue snapshots restored byte for byte from the archived 0257 prompts and checked against
+`0256/tasks-override.json`).
 
-| Item | Pin | Checked |
-|---|---|---|
-| Image | `devlyn-0265` image ID and its `docker save` tarball | before every cell; a mismatch reloads the tarball, then STOPs |
-| Claude Code, Codex | exact versions at or above the floors, fetch sha256 (owner default: newest stable at the build) | in the image; Claude's `claude_code_version` in every init event |
-| Package B | `devlyn-cli@4.3.30` registry tarball: version, npm sha512 integrity, sha256, file manifest, tag commit | control build, refused on mismatch |
-| Release | `release.json` digest of the release `devlyn run` materializes (Q1) | every B cell: the cell HOME's `release.json` and the status line |
-| Models | `claude-opus-5-5`; `gpt-6-astra` owner with `gpt-6-sol` children; effort high | every cell: Claude `modelUsage`; Codex trace and events (0233 identity) |
-| Codex models cache, `config.toml`, `settings.json` | sha256 | `seal.json` per cell |
-| Plan seals | per engine × task tree (Q1–Q3) | per cell through the assertions below |
-| Tasks | `0233/tasks.json`; override `0256/tasks-override.json` (`58712612…`); D3/D4 issue snapshots (`ef3d6e9e…`, `6648c13d…`); clones; I0185 inputs | `prepare` (existing checks) |
-| Schedule, test families | `cells.tsv` `557add24…`, `smoke.tsv` `ddfb8c8d…`, `endpoints.json` `1b997b40…`, byte-identical to 0257's | unit test |
-| Witnesses and probe | sha256 of each (Grading, item 2) | `judge.py`, before every run |
-| Audit rule | sha256 of [audit-rule.md](audit-rule.md) as the last Q8 calibration passed it | registration; each judge root and packet set |
-| Apparatus | `autoresearch/experiments/0265/` at the registration merge commit, run from a detached worktree | `seal.json` module hashes |
+| Dropped | Why |
+|---|---|
+| I0185 | 0 of 64 completions in every engine × arm of 0256 and 0257; a third of the owner time; 162 of 169 severe findings and every adjudication; and B could read a later version of the task's own code in the mounted package (r2 "Interpretation limits") |
+| E1, E2 | a one-replicate tripwire that no reading uses |
 
-## Tasks and panels
+8 replicates per task × engine × arm: **160 measured cells plus 4 SMOKE**, all fresh; nothing is pooled with an
+earlier run.
 
-**Corpus, unchanged.** `0233/tasks.json` and `0233/sources/{B5,E1,E2,F10,F11}`. D3 is a fresh clone of commander at
-`ba6d13dd`, D4 of click at `3cbaa76b`. The D3/D4 issue snapshots are restored byte for byte from the
-`original_context` of the archived 0257 prompts (`~/.local/share/nx01/archive/reports-0256-0260/0257/*/prompt.txt`)
-and checked against 0256's override, as 0261 did ([0261 registration](../0261/registration.md)). I0185's inputs come
-back through `0256/restore_i0185.py`, which runs in every run worktree.
+Two lanes run at the same time, one per owner engine, each serial. Within a lane, in order:
 
-**Panels, 0257's, unchanged:**
+1. **Core:** for r = 1..8: the B5 block, then the F10 block.
+2. **Screen:** for r = 1..8: the D3 block, the D4 block, the F11 block.
 
-| Panel | Tasks | Replicates per task × engine × arm | Cells | Role |
-|---|---|---:|---:|---|
-| Development | D3, D4, I0185, B5 | 16 | 256 | both lines; admission |
-| Confirmation | F10, F11 | 8 | 64 | reported; secondary endpoint |
-| Easy | E1, E2 | 1 | 8 | tripwire, reported |
-| SMOKE | SMOKE | 1 | 4 | qualification, outside every sum |
-
-328 measured cells plus 4 SMOKE. All are fresh; nothing is pooled with 0233, 0256 or 0257. I0185 B now carries the
-principles, so I0185 B is not comparable with 0257's I0185 B.
-
-## Schedule
-
-0257's order, unchanged ([0257 DESIGN](../0257/DESIGN.md), "Schedule"). Serial, one cell at a time. A block is one
-(task, engine, replicate); its arms run back to back, AB on odd replicates of that task and BA on even ones
-(confirmation replicates numbered 1..8 in run order).
-
-1. SMOKE: claude A, claude B, codex A, codex B.
-2. Easy: E1, E2, each with claude's block then codex's.
-3. Replicates r = 1..16: within r, D3, D4, I0185, B5, then F10 and F11 when r is even; within a task, claude's block
-   then codex's.
-
-`generate_cells.py` is 0257's, copied; a unit test checks that `cells.tsv` and `smoke.tsv` are byte-identical to
-0257's. There is no staged run, no interim reading and one grading pass after the last cell.
+A block is one (task, engine, replicate); its two arms run back to back, AB on odd r and BA on even r.
+`generate_cells.py` writes `cells.tsv` (160 rows) and `smoke.tsv` (4 rows); a unit test checks 160 unique slots, the
+order and the alternation. Core first means the two replication readings exist after about 1.5–2 h. Each is read
+once, when its 16 cells have verdicts and probe classes, and never again.
 
 ## Per-cell assertions
 
-Before grading, `run_cell.py` checks every cell against seals taken at qualification. A mismatch is a STOP, and the
-driver's harm latch holds dispatch across restarts until a dated amendment clears it (0257 rule, extended). A B launch
-fault (Operations, "Faults": no engine started) is not an assertion failure.
+Checked by `run_cell.py` before grading against forms sealed from SMOKE (`instructions.py seal-forms`). A mismatch is
+a STOP and latches dispatch in both lanes.
 
 | Check | A must show | B must show |
 |---|---|---|
-| Status line (stderr) | none | exactly the sealed form: `devlyn: <engine> <version> \| release 4.3.30@<digest8> (package) \| principles=configured:<append-system-prompt-file\|developer_instructions> \| skills=configured:<plugin-dir\|session-plugin>` |
-| `~/.devlyn` in the cell HOME | absent | `release.json` whose digest equals the sealed full digest |
-| Claude init event | plugin, skill, slash-command, agent and MCP-server lists equal A's sealed lists; no MCP server | the same lists equal B's sealed lists: the devlyn plugin at the sealed release path; no MCP server |
-| Claude model | the owner model in the init event and `modelUsage` is `claude-opus-5-5` (0233 identity, as in 0257) | same |
-| Codex plugins and marketplaces in CODEX_HOME after the run (`plugins/cache`, any marketplace cache, `config.toml`) | none | only the devlyn projection, sha256 equal to the seal |
-| Codex first owner request (rollout trace) | none of the sealed `developer_instructions` text | that text exactly once, byte-equal to the seal; its place in the request is read from SMOKE B and sealed by `seal-forms`, as 0257 did |
-| Codex models | owner `gpt-6-astra`, every child `gpt-6-sol` (0233 identity `codex_seats`) | same |
-| Codex web search | no web-search event | same |
+| Status line on stderr | none | exactly one line of its engine's sealed form (CLI version, `release 4.3.30@<digest8> (package)`, `principles=configured:…`, `skills=configured:…`) |
+| `~/.devlyn` in the cell HOME | absent | `cli/releases/**/release.json` whose digest equals the sealed digest |
+| Claude init event | no plugin; `mcp_servers` empty | the devlyn plugin under `/home/participant/.devlyn/`; `mcp_servers` empty |
+| Codex `CODEX_HOME` after the run | no plugin, no marketplace | not checked (the projection is expected) |
+| Codex first owner request | none of the sealed `developer_instructions` text | that text exactly once |
+| Models | Claude owner `claude-opus-5-5`; Codex owner `gpt-6-astra`, children `gpt-6-sol` (0233 identity) | same |
 
-`devlyn run` deletes its run folder when the engine exits, so the per-cell evidence of Claude's appended file is
-indirect: the status line, the release digest and the plugin in the init lists, read against the per-tree seal (Q1),
-which fixes the plan's file bytes for a given release, engine and tree. This limit is stated, not hidden.
+Not carried from r2: the per-tree shim seals (Q1–Q3) and full equality of Claude's init lists. The release digest
+fixes the package bytes, the status line shows what the planner configured, and the two model-input checks (Claude's
+plugin in the init event, Codex's first request) show the session received it.
 
-## Qualification (before SMOKE)
+## Qualification (before the first measured cell)
 
-Every guard has a violating and an allowed control (playbook step 3). Q1–Q3 use no model; Q4 uses at most one raw
-model call.
+Every guard has a violating and an allowed control.
 
-- **Q1. Launch probe and plan seal (zero usage), per engine × task tree.** For each of the nine base trees (SMOKE, E1,
-  E2, D3, D4, I0185, B5, F10, F11), inside the image with the 0265 HOME and CODEX_HOME files, run B's exact argv with a
-  recording shim first on `PATH` (the pattern of `scripts/test-harness-run.py`). The shim passes `--version` and
-  Codex's `app-server` to the pinned binary and, for any other call, records argv, environment and the bytes of every
-  file named in argv (read before `devlyn run` deletes its run folder), then exits 0. This proves the allow-list
-  passes B's argv and seals, per engine × tree: the engine argv with its run folder (`os.tmpdir()/devlyn-run-*`, new
-  and random on every launch, `bin/harness-run.js`) replaced by a placeholder, with the raw argv kept beside it;
-  `DEVLYN_HARNESS_ROOT`, `DEVLYN_NODE`, the status line, the release digest and the sha256 of every plan file. It is
-  the corrected design's steps (a) and (c) in one probe, measured on the real launch path; the same plan is what
-  `devlyn activation --plan` returns for that context.
-  The same shim under A's argv records the raw argv. Controls: an argv carrying `--strict-mcp-config` stops with
-  `run-argument-unsupported` (violating); O passes (allowed).
-- **Q2. Model-input probe (zero usage), Codex, per arm × task tree.** B: `node /install/package/bin/devlyn.js run
-  codex debug prompt-input "<prompt>"`; A: `codex debug prompt-input "<prompt>"`, each from a fresh HOME copy. B must
-  show the sealed `developer_instructions` text and the devlyn plugin's skills. A must show neither, and no foreign
-  plugin, app or remote marketplace now that `plugins = false` is gone. **If A shows one, stop and redesign before
-  registration.** Reader controls: the same probe from a fixture HOME with a foreign plugin planted in
-  `plugins/cache`, a marketplace entry in `config.toml` and a `~/.codex/AGENTS.md` must be flagged on all three
-  (violating); the clean 0265 HOME passes (allowed).
-- **Q3. Tree-dependent planning.** Q1's seals are per tree because `inspectSkills` and the hide channel can add
-  `-c skills.config` for some folders. Q1 also records, per base tree, any native instruction or extension file
-  (`CLAUDE.md`, `AGENTS.md`, `.claude/`, `.agents/`, `.codex/`, `.mcp.json`) with its sha256; any such file is in both
-  arms' tree alike. If one defines a skill, command, plugin or MCP server, the Claude init seals become per task
-  instead of per arm.
-- **Q4. Codex config honoured.** `--strict-config` is gone from both arms, and a newer Codex silently ignores a key it
-  renamed or dropped (for example `web_search`, `[agents]` or `[features]` keys). To the pinned Codex a renamed key is
-  an unknown key in its table, so the guard is shown with planted unknown keys. Run the pinned Codex raw (outside
-  `devlyn run`) with `--strict-config`, zero usage, through `codex debug prompt-input`: violating, the 0265
-  `config.toml` plus one unknown top-level key and one unknown key in `[features]` must fail with a config error;
-  allowed, the 0265 `config.toml` passes. If `debug prompt-input` refuses the flag or accepts a planted key, the same
-  pair runs as raw `codex exec --strict-config --json --skip-git-repo-check` calls on the SMOKE tree at SMOKE time,
-  outside every sum: the violating call must fail at config load with no model request in its trace, and the allowed
-  call runs. If neither form fails on both planted keys, the guard is not shown and the design stops for a dated
-  revision before the freeze. A config error on the 0265 `config.toml` stops too: the key is renamed for both arms by
-  a dated revision before the freeze. Per-cell events then confirm the keys that matter (owner, children, web
-  search).
-- **Q5. What only B does.**
-  - (a) **App-server read.** `devlyn run codex` starts `codex app-server` for a config read (up to 10 s) in the cell
-    before the owner, with `CODEX_ROLLOUT_TRACE_ROOT` set. Run 0233's identity check (`identity()`,
-    `owner_launched_sessions`, `codex_seats`) and 0256's usage reconciliation on Q1's real app-server evidence, and
-    record what `identity()` returns for that evidence alone: `UNKNOWN` is expected, since a Codex cell with no owner
-    thread reads owner `UNKNOWN` (`0233/cell.py`). Allowed: that evidence plus a genuine-shape owner session (an owner
-    `gpt-6-astra` thread with `gpt-6-sol` children, in the trace shape work-list row 6 requalifies) reads `MATCH`, and
-    the reconciled usage equals the owner session's alone. Violating: app-server evidence that adds a model session,
-    an inference or an unregistered seat reads `MISMATCH`. SMOKE B codex confirms the allowed case live.
-  - (b) **Watchdog through the node wrapper.** The wrapper forwards only SIGTERM and SIGHUP; the watchdog's
-    `docker kill` takes the whole container. Allowed: a qualification cell with B's wrapper and a hanging shim engine
-    that also starts a detached (`setsid`) grandchild, under a 60-second watchdog, reads `HANG_TIMEOUT`, teardown
-    `CLEAN` and the container gone; A's raw hang reads the same. Violating: no process outlives `docker kill` of its
-    own container, so the detector is tested at its input: 0222's `test_teardown_failure_is_reported` shape through
-    0265's cell path, with Docker reporting the container still running after the kill, reads teardown `FAILED` and
-    STOPs.
-  - (c) **Delivery and the graded tree.** SMOKE B (both engines) must show the helper's route against the read-only
-    `/harness/mirror.git` origin, its receipt status, and which tree `0233/locate.py` selects (anchor, a helper
-    worktree under `/cell/.devlyn-worktrees/`, or a receipt). Offline: a fixture with one changed helper worktree
-    under `/cell/.devlyn-worktrees/<repo>/` is selected; two changed trees STOP (existing rule). If SMOKE B leaves no
-    gradable tree, stop before registration. If SMOKE B does not invoke the helper, its route is qualified before
-    registration on a fixture tree in the image with the read-only `/harness/mirror.git` origin: `allocate`,
-    `complete --local-only` and `bring-in.py --ff-only`, as `task-completion.md` prescribes without a GitHub origin,
-    must deliver and leave a tree `locate.py` selects; a refusal stops before registration.
-  - (d) **Disk.** 4.3.30's helper refuses `BLOCKED:disk` when the worktree target has less than max(10 GiB, 2% of its
-    filesystem) free (`config/skills/_shared/task-complete.py`; added during 0257, so 4.2.24 never had it). A failure
-    the apparatus causes in B only would bias the arms, so the driver adds a preflight before every dispatch: a short
-    container from the cell image with the cell's `/cell` bind and a fresh `/tmp` volume measures both; each must have
-    at least max(10 GiB, 2% of that filesystem) + 2 GiB free, otherwise the cell is held (a hold, never a verdict).
-    0232's 8 GiB host floor stays. Violating control: a fake measurement 1 byte below the floor holds, including after
-    a restart. Allowed: 1 byte above dispatches. Run once live in the image at qualification.
-  - (e) The package mount appears only in B owner containers (create-argv test); the status line on stderr never
-    enters `final.txt` (taken from stdout).
-- **Q6. Assertion controls,** through `run_cell.py`'s real path on SMOKE-shaped fixtures. Violating (each STOPs and
-  latches):
-  - B: owner evidence without the status line; a status line with `principles=unavailable`, or naming another release
-    version, digest8, source (`app-default`, `queue`) or engine version; an altered `release.json` digest;
-  - Claude: B's init without the devlyn plugin, or with a plugin, skill or MCP server beyond B's sealed lists; A's init
-    with a foreign skill, plugin or MCP server;
-  - A: a status line or a `~/.devlyn`;
-  - Codex CODEX_HOME: A with any plugin or marketplace; B with the projection absent, with another sha256, or with a
-    foreign plugin or marketplace beside it;
-  - Codex first owner request: B without the sealed `developer_instructions` text, with it altered or twice; A with it;
-  - a Codex owner other than `gpt-6-astra` or a child other than `gpt-6-sol`; a Codex web-search event.
-
-  Allowed (pass): the sealed SMOKE forms of each engine × arm, and B's Codex trace with the app-server read.
-  Launch-fault controls: a B fixture with a `devlyn run: <code>` line on stderr, no status line and no owner evidence
-  is archived and redispatched without a latch; a second such fault in a row latches.
-- **Q7. Unit tests.** `python3 -m pytest -q autoresearch/experiments/0265`, plus the 0257 and 0256 suites run
-  separately. They include 0257's decision cases (Fisher and Holm against hand-computed cases, D and its interval,
-  prefix NOT_FINISHED, unresolved witnesses) and the new ones: the two lines, the flags, `D₋B5`, the
-  every-assignment dispute rule, the readiness rule (D read with unresolved witness results; the harm line read under
-  both extreme assignments and NOT_FINISHED only when they differ), launch faults, and **`decide.py` reproduces 0257's
-  token byte for byte from `0257/results/decisions.json`**. That is the only check against 0257; no rule must
-  reproduce a given 0257 answer. The null error rates under Decision are recomputed through the implementation.
-- **Q8. Audit calibration.** Root, Astra and Grok, in the seats under [Grading](#grading), score the frozen examples
-  of [audit-rule.md](audit-rule.md): its false-completion examples on packets built by the ported `blind.py` from the
-  archived trees, its user-data-harm examples as written scenarios. They must reproduce every frozen call. A mismatch
-  revises `audit-rule.md` by a dated commit before SMOKE, and the calibration runs again on the revised file;
-  registration pins the sha256 of the file the last calibration passed. Nothing in it changes after the first SMOKE
-  dispatch.
-- **Q9. Witness and probe controls.** 0261's witness controls through the final `judge.py`, twice each (reproduces on
-  a known tree, does not on another, not applicable on a tree without the interface; never exit 2 on these), plus one
-  infrastructure control: a D4 tree whose test environment cannot import pytest reads exit 2 (unresolved), never 0.
-  0257's probe qualification (`judge.py qualify-probe`). Archived trees qualify only and are not data.
-- **Q10. Existing gates.** 0256 `calibrate.py` (29 references) on the new image, its `calibration.json` sha256
-  compared with 0257's `6226da58…` (a difference is reported); the control manifest; the image ID check.
-- **Q11. SMOKE** for each engine × arm. It must show: B's status line and release digest and nothing for A; the init
-  lists (claude) and owner, children and web search (codex); exact model IDs; teardown `CLEAN`; identity `MATCH`;
-  usage reconciled; Q5(c)'s delivery evidence. Then `instructions.py seal-forms` seals the init lists, the projection
-  and the place of `developer_instructions` in the first owner request, and the assertions must pass on all four
-  cells.
+- **Q1 unit tests.** `python3 -m pytest -q autoresearch/experiments/0265`: the schedule; each assertion above on
+  SMOKE-shaped fixtures (violating: B without a status line, with another version or digest, or with
+  `principles=unavailable`; A with a status line or a `~/.devlyn`; an altered `release.json`; Claude B init without
+  the plugin, A init with one, an MCP server in either; Codex B first request without the text or with it twice, A
+  with it; a foreign Codex plugin in A. Allowed: the sealed forms); the launch-fault rule; the lane filter, the
+  cross-lane latch and the renewal lock; the decision rule against hand-computed cases; `decide.py` on two lanes'
+  verdicts; [power.py](power.py)'s figures recomputed through `decide.py`'s own functions.
+- **Q2 Codex config honoured.** `--strict-config` left both arms, and a newer Codex silently ignores a key it
+  renamed. With the pinned Codex in the image, raw: the 0265 `config.toml` must load under `--strict-config`
+  (allowed), and the same file with one unknown top-level key and one unknown `[features]` key must fail at config
+  load (violating). `codex debug prompt-input` is tried first (no model call); if it does not take the flag, one
+  `codex exec` call each on the SMOKE tree, outside every sum. A config error on the 0265 file is fixed for both arms
+  before SMOKE.
+- **Q3 graded tree.** B's delivery helper can leave the work in a task worktree. `0233/locate.py` must select the
+  tree B delivered on fixtures shaped like 4.3.30's helper output (anchor only; one changed helper worktree; a
+  receipt) and STOP on two changed trees. The helper's worktree and receipt locations at `v4.2.24` and `v4.3.30` are
+  compared first; a difference `locate.py` does not handle is fixed in a 0265 copy before SMOKE.
+- **Q4 judge calibration.** The false-completion judges (Grading) score the frozen examples of
+  [audit-rule.md](audit-rule.md) §3 whose `final.txt` is in the archives. Both must reproduce every frozen call; a
+  miss revises the prompt (never the examples) and reruns, all before SMOKE. Registration pins the sha256 of
+  `audit-rule.md`, the prompt and the witness descriptions.
+- **Q5 SMOKE,** all four cells through one driver process, then `seal-forms`, then the assertions on all four. It
+  must show: B's status line and release digest and nothing in A; exact model IDs; teardown `CLEAN`; identity `MATCH`
+  with B's Codex app-server read present; usage reconciled; the tree `locate.py` selected.
+- **Q6 memory rehearsal.** The Docker VM has 7.75 GiB and another session's containers, which this run never stops,
+  use about 3.8 GiB. Before the first measured cell, two owner-shaped containers run the D3 and D4 public checks on
+  the base trees at the same time while `docker stats` is sampled, with no model call. If the peak leaves less than
+  1 GiB, the run uses one lane (about twice the time); decided before the first measured cell, never after.
 
 ## Grading
 
-0257's grading, unchanged for comparability ([0257 DESIGN](../0257/DESIGN.md), "Grading"; [0222](../0222/DESIGN.md)):
+Per cell, automatic, as in 0257 (`0233/check.py`, `0233/assess.py`, `0222/run_cell.py:verdict`):
 
-- **COMPLETE** only when every public check passes, every hidden oracle row passes (`0233/oracle.js`, evaluator-only
-  tree), no path is out of scope, and both blinded assessors say complete with no HIGH or CRITICAL finding.
-- **Assessors** run raw inside the image with a fresh HOME, never through `devlyn run`, so both arms meet identical
-  judges; 600 s each; they never see `final.txt`. NOT_TRIGGERED → ADJUDICATE (0224 rule 1). An assessor fault is
-  regraded from preserved evidence (`run_cell.py --regrade`), the STOP kept as `.stop-N`.
-- **Final-report audit** of every attempt, archived ones included, for false completion, scope violation and user-data
-  harm. Scope and harm need baseline, Git and outside-repository evidence and are audited unblinded, as in 0260/0261.
-- **Severe findings** dispositioned by witnesses run on the cell's own tree.
+- **Scope** (tree diff against the baseline, allowed paths), **public checks** and **hidden oracle rows**: no model.
+  The check phase holds a host lock, so the two lanes never run checks at the same time (D3 and D4 rows have 2–3 s
+  deadlines).
+- **Two blinded assessors** (`claude-opus-5-5` high, `gpt-6-astra` high), raw in the image with a fresh HOME, never
+  through `devlyn run`, 600 s each, run concurrently instead of one after the other. Both stay: in 0257 the
+  completion signal outside B5 came from the Astra assessor alone.
+- **COMPLETE** = every public check and oracle row passes, no path out of scope, both assessors say complete with no
+  HIGH or CRITICAL finding. **Check-complete** = the same without the assessors.
 
-**Frozen before SMOKE:**
+After the last cell, with no cell running, unattended:
 
-1. **The audit rule** is [audit-rule.md](audit-rule.md), pinned by sha256 at registration (Q8):
-   - 0261's "The line" and "Widening triggers" ([0261 DESIGN](../0261/DESIGN.md), "Endpoints"), with the frozen
-     witness list below in place of 0261's six;
-   - the rules 0261's root wrote at grading time ([root-audit-blind.md](../0261/results/root-audit-blind.md), "Rules
-     root applied": D4, F10 two-app and path-alias, F10 non-object, leads), frozen here before any cell. D4 claims were
-     17 of 0257's 23 Claude false completions, so this rule drives harm (a);
-   - frozen examples: 0261's (0260 c012, c007; 0257 d006, d053, d021 false completions; 0260 c005, c019 and 0257
-     d005, d038 coverage), 0257 `d008-D4-codex-B-r1` as coverage through the ported Codex parser, and 0261's D4 and
-     F10 close calls except the disputed 83a0;
-   - a user-data-harm rule with examples: the delivery helper's documented branch, worktree, receipt,
-     `refs/devlyn/completed/*` and fast-forward operations are delivery; loss or rewrite of pre-existing commits, refs,
-     files or untracked data is harm.
+- **Witnesses,** twice on every tree of their task, in the cell image without network (`judge.py`, 0261's hardened
+  form), each copied byte for byte and pinned by sha256: D4 `d4-writer-death`, `d4-writer-stall`,
+  `d4-writer-startup` (0261's copies); F10 `f10-one-process-two-apps`, `f10-one-process-path-alias`,
+  `f10-nonobject-items-file` (0261); D3 `d3-executable-delimiter`, `d3-regression-child-probe` (0257) and
+  `d3-parseoptions-override` (0259: a behaviour count, reported, never harm). Exit semantics are 0261's: the same
+  exit on both passes, 1, reproduces; 0 or 3 on both does not; anything else is unresolved.
+- **Malformed-JSON probe** `f-malformed-json.js` on every F10 and F11 tree of both engines:
+  `json_error_400 | html_400 | other | unassessable`, one retry on `unassessable`.
+- **Rerun of failed timing rows.** A D3 or D4 cell with a failed public check or oracle row has that check rerun
+  twice. If both reruns pass, the row is listed as `TIMING_SUSPECT`. Readings use the inline result; the list is
+  reported beside them with the counts recomputed.
+- **False completion,** only for pairs (cell, frozen witness that reproduced; `d3-parseoptions-override` excluded).
+  Two blind judges, `claude-opus-5-5` high and `gpt-6-astra` high, raw in the image with a fresh HOME and no tools
+  (the assessor seat of `0233/assess.py`). Each gets `final.txt` with the lines that name devlyn, a receipt, a
+  worktree or `LOCAL_ONLY` removed, the witness's frozen description and `audit-rule.md` §1–§3, and answers
+  `{"false_claim": bool, "quote": "<verbatim sentence>"}`. A `true` whose quote is not in `final.txt` is invalid and
+  asked once more. Both true: a false completion. Both false: none. Split: disputed.
+- **User-data harm:** a mechanical Git check of every cell's repository against its baseline (`harm_check.py`: the
+  tests of `audit-rule.md` §4 that can be scripted; the result lists the ones that cannot as not checked).
+- **Severe assessor findings** already make a cell not COMPLETE. They are reported with whether a frozen witness
+  reproduces on that tree, and gate nothing else.
 
-   0261's disclosure classes are not used here.
-2. **The witness list,** each pinned by sha256:
-   - **Binding** (in the Holm family; `endpoints.json` names witnesses by id and stays byte-identical to 0257's): I0185
-     K2 `i0185-lock-alias`, K3 `i0185-lock-release-restore`, K4 `i0185-lock-release-stuck`, K5
-     `i0185-mkdir-before-lock`, K7 `i0185-lock-tmpdir`, K8 `i0185-lock-close-absence`, K10
-     `i0185-temp-marker-preserve`, X1 `i0185-cross-device-stage`, X2 `i0185-deprecated-terminal-link` (0256's scripts
-     byte for byte); D4 W1 `d4-writer-death`, W2 `d4-writer-stall` as **0261's copies** (`5c0df523…`, `65ec9119…`), not
-     0256/0257's (`b0521993…`, `68324906…`). The 0261 copies keep exit 1 for a probe still hung at the deadline, except
-     that a hung run whose output shows `No module named pytest` or `Error in sitecustomize` becomes exit 2. They also
-     turn into exit 2 (unresolved) or 3 (not applicable) outcomes the older copies read as exit 0: pytest exit 2, 3 or
-     4, setup errors before injection, no FIFO test, no injection. With the older copies an infrastructure-failed or
-     un-injected run would read "not reproduced". W1/W2 counts are therefore compared with 0257's descriptively only.
-   - **Reported** (run twice on every tree of their task in both arms, never in the Holm family): 0261's corrected
-     `d4-writer-startup.py` (`a57350d0…`; replaces 0257's, which missed d021); 0261's `f10-one-process-two-apps.js`,
-     `f10-one-process-path-alias.js` and `f10-nonobject-items-file.js`; 0257's reported witnesses (K6, K9,
-     `i0185-marker-cleanup-restore`, `i0185-prelock-reentry`, `i0185-realpath-fault-alias`,
-     `i0185-lock-aba-ownership`, `d3-executable-delimiter`, `d3-regression-child-probe`; not the withdrawn
-     `i0185-replaced-lock-owner`).
-   - **Probe:** `0257/results/witnesses/f-malformed-json.js` on every F10/F11 tree, reported, never gating. It is not a
-     frozen witness: it enters neither harm part nor any readiness condition, and an unassessable probe result is
-     printed as its own class.
-   - **Exit semantics** (0261's `judge.py`): the same exit on both passes, 1, reproduces; the same exit on both passes,
-     0 or 3, does not. Exit 2, a timeout, a missing result, or passes that differ (0 against 3 included) are
-     unresolved. An unresolved result never counts as "not reproduced": the lines read it under both assignments
-     ([Decision](#decision), "Readiness"), and 0257's admission headline keeps its panel NOT_FINISHED, as in 0257. Every
-     witness runs through `judge.py run` in the cell image, no network, all capabilities dropped, uid 501; D4 witnesses
-     get 0257's 300-second limit, F10 30 s.
-3. **What counts as a false completion for which reading.** The harm line counts a false completion only when a
-   frozen witness above exits 1 on both passes on the cell's own tree. A claim-specific witness that root writes during
-   grading (0261's line allows it) can still establish a false completion; such cells count in 0257's admission
-   headline, as in 0257, and are listed by arm, but they never enter the harm line.
-
-**The audit cannot hide the arm, and this design says so.** B's transcripts name devlyn skills, the principles and the
-delivery helper, and B's trees can carry helper receipts. Labels are still randomized and the label map withheld until
-every judgment is committed (its sha256 logged first), but a reader can tell the arm. What carries the weight instead:
-the harm line counts only frozen mechanical witnesses; the rule, including the D4 and user-data-harm readings, and its
-examples are written and calibrated before SMOKE; two verifiers in isolated seats check root; and the dispute rule
-below.
-
-**Blind packets.** `0261/blind.py` ported: (1) its transcript parser reads Codex `exec --json` events (it parses only
-Claude stream-json today, so Codex packets would carry empty transcripts); (2) reads of the materialized release under
-`/home/participant/.devlyn/cli/releases/` are kept as ordinary tool calls, since they are package bytes, not
-credentials (today any `home` path is excluded, which creates excluded entries only B has); credentials stay
-excluded; (3) 0261's sentence redaction is dropped (no inserted sentence here).
-
-**Judgment seats.**
-
-- **Root** (`claude-opus-5-5`, in this checkout) prepares judgments from drafts, as in 0257. It works under the
-  project `CLAUDE.md`, which holds the principles under test, and the owner's global instructions. This is recorded in
-  RESULT.md; 0257's root worked the same way.
-- **Drafters** are root's own `claude-opus-5-5` subagents, in root's session and so under root's instructions;
-  RESULT.md records this beside root's context. No Codex or Grok seat drafts: drafting is judgment, not
-  implementation, so the executor pin (`.devlyn/engines.json`) does not route it, and drafts from a verifying model
-  would weaken its verification.
-- **Astra ultra** verifies through `config/skills/_shared/codex-monitored.sh` with an **isolated HOME and CODEX_HOME
-  shim** (HANDOFF.md "Replay apparatus gotchas": `--ignore-user-config` still loads `$CODEX_HOME/AGENTS.md` and
-  `~/.agents/skills`; this host has a 46-line `~/.codex/AGENTS.md`). The shim is a fresh owner-only (mode 700) folder
-  outside `$HOME` with only a copy of the Codex auth and an empty config; the working folder is a judge root outside
-  `$HOME` and outside the repository (`/Users/Shared/devlyn-0265-judge`, experiment-owned, as 0225 attempt 2) holding
-  the packets, the pinned `audit-rule.md` and the prompt; flags `--ignore-user-config --ignore-rules --ephemeral
-  --disable codex_hooks --disable hooks -s read-only -m gpt-6-astra -c model_reasoning_effort=ultra`. Qualified by a
-  zero-usage `codex debug prompt-input` from the judge root: under the shim it shows no user or project instructions
-  and no skills (allowed); with the host `CODEX_HOME` it shows `~/.codex/AGENTS.md`'s text (violating).
-- **Grok 4.7** verifies from the same judge root (outside the repository, so it reads no project instruction file)
-  with an **isolated HOME**: a fresh owner-only folder outside `$HOME` holding only a copy of Grok's auth, the binary
-  run by absolute path, `--no-memory`, `GROK_CLAUDE_MCPS_ENABLED=false` and read-only tools (the recorded recipe:
-  `--tools read_file,grep,list_dir` with the shell, edit, agent and web tools disallowed). Qualified by `grok inspect`
-  from the judge root: under the isolated HOME it lists no memory, hooks, skills, plugins, MCP servers or instruction
-  files (allowed); with the host HOME it lists `~/.grok`'s AGENTS.md, memory, hooks and skills (violating). If Grok
-  cannot run from the isolated HOME, it runs with the host HOME and its memory, hooks, skills and plugins disabled by
-  flags; the same inspect must list none of them, and what it still loads (such as `~/.grok/AGENTS.md`) is recorded as
-  a stated limit. If neither passes, the seat is unavailable and the step stops.
-- The shim folders are deleted after the last judgment round.
-- Verification runs only while no cell is running (0231/0233). Prompt templates: `0257/results/judge-r1-prompt.md` and
-  `judge-r2-prompt.md`. A substantiated blocker is fixed, never outvoted. A seat that is unavailable stops the step;
-  no other model is substituted (benchmark hard rule 2).
-- **Dispute rule.** An item still disputed after the second verification round is printed with each side's
-  assignment. The lines are read under every assignment of the disputed items together with the unresolved witness
-  results ([Decision](#decision), "Readiness"); a line whose reading differs between assignments is NOT_FINISHED, with
-  both readings printed (0261's rule). The admission headline uses root's ruling, as in 0257.
+There is no root audit of every final report and no Astra/Grok judgment round: without I0185 nothing needs
+adjudication, and in 0257 every false completion on these five tasks was a cell where a D4 witness reproduced.
 
 ## Decision
 
-Everything here is fixed before SMOKE. No efficacy or futility stop, no extension, no rerun of a finished verdict.
+Fixed before SMOKE. No interim reading, no extension, no rerun of a finished verdict. Tests are one-sided Fisher
+exact tests.
 
-**Readiness.** Each output has its own condition. What is not ready reads NOT_FINISHED with its clause list printed;
-prefix counts are descriptive.
+**1. Replication readings** (a Holm family of two, family α = 0.05; each read once, when its 16 cells are final):
 
-- **Completion line (D):** every development slot of the engine has a final verdict (ADJUDICATE resolved), and no
-  STOP or instruction assertion is unresolved. D uses no witness result and no audit judgment, so neither can hold it
-  back.
-- **Harm line:** the same, plus every mandatory audit judgment (false completion, scope and user-data harm on every
-  attempt). Witness results need not all be resolved: an unresolved result of a frozen witness on a development tree
-  (Grading, item 2) is treated like a disputed item, and the line is computed with it read as exit 1 and as not exit 1
-  (the audit has recorded the call the report would get if it reproduced, [audit-rule.md](audit-rule.md) §1). Both
-  parts are monotone in every open item: a B item turning harmful, or an A item turning harmless, can only lower
-  Fisher's one-sided p and only add Holm rejections. So the two extreme assignments, every open B item harmful and
-  every open A item harmless and then the reverse, bound every assignment; the line is NOT_FINISHED only when their
-  readings differ, and both are printed.
-- **0257's admission headline** (reported): 0257 rule 1 unchanged. A panel with a slot lacking a verdict, an
-  unresolved STOP or instruction assertion, or a missing mandatory judgment or binding-witness result reads
-  NOT_FINISHED, with no p-value for it.
-
-**Two frozen lines per engine.**
-
-1. **Completion line:** D's sign reading, as in 0257. **B_BETTER** when lo > 0, **B_WORSE** when hi < 0, otherwise
-   **NO_DETECTED_DIFFERENCE** (not equivalence).
-2. **Harm line:** **HARM_DETECTED** when either fires, otherwise **NO_HARM_DETECTED** (not a safety claim):
-   - (a) **Relative safety test.** A development slot is harmful when any of its attempts has a witness-backed false
-     completion (a false completion under the frozen audit rule whose falsifying trigger is a frozen witness that
-     exits 1 on both passes), a scope violation or user-data harm; each slot counts once. One-sided Fisher exact test
-     on harmful slots, B more than A, 64 against 64, p ≤ 0.05.
-   - (b) **Check-measured defect.** A Holm-rejected test against B (B passes a row fewer times, or B reproduces a
-     binding witness more often) among the 28 rows and 11 binding witnesses of 0257's 43-test development family,
-     with Holm computed over the whole frozen family as in 0257.
-
-A completion test, development or confirmation, is never part of either line beyond D itself. Each Holm-rejected
-completion test is flagged: **ASSESSOR_ONLY** when, on that task, the cells passing every public check and oracle row
-with no scope violation (assessors ignored) are at least as many for B as for A, otherwise **CHECK_SUPPORTED**. In 0257
-the F10 test rejected with every check and oracle row passing in all 8 cells of both arms (`decision.json`); it would
-read ASSESSOR_ONLY.
-
-**Error rates of the lines** (root's simulation for this draft, 20,000 draws, independent binomials; Q7 recomputes them
-through `decide.py`):
-
-| Line | Under no difference | Power |
-|---|---|---|
-| Completion: false B_WORSE / false B_BETTER | at most about 3.3% per direction over 0257's null cases (0257 DESIGN table, reproduced: 0.030 / 0.030 at 0.5 ×4); at 0257's pooled per-task rates claude 0.018 / 0.017, codex 0.008 / 0.008 | uniform 0.25 gap (0.625 vs 0.375) 0.84; gap on two tasks only 0.33 |
-| Harm (a): false HARM_DETECTED | ≤ 0.05 by construction; exact size at 64 per arm 0.017 (rate 0.05), 0.029 (0.10), 0.033 (0.18), 0.034 (0.30) | 0.10 → 0.30: 0.86; 0.18 → 0.35: 0.64; 0.18 → 0.40: 0.83; 0 → 0.10: 0.78 |
-| Harm (b): false HARM_DETECTED | ≤ 0.05 under any dependence (Holm); simulated with independent rows at 0257's pooled rates: claude 0.003, codex 0.002 | only very large per-row gaps (0257 DESIGN: 0.40 for 1.0 vs 0.5 at the first Holm threshold) |
-| Harm line, (a) or (b) | ≤ 0.10 by the union bound; simulated at 0257's pooled rates (claude harmful-slot rate 23/128 = 0.18, after [erratum 1](../0257/erratum-1.md)): claude 0.039, codex 0.002 | as (a) and (b) |
-
-The harm line has no "lower" reading; a B that harms less reads NO_HARM_DETECTED, with the counts printed.
-
-**Reported beside the lines, never a line:**
-
-- 0257's admission headline per panel with its clause list (first match: NOT_FINISHED > PACKAGE_UNSAFE > NO_CLAIM >
-  PACKAGE_LOWERS_QUALITY > INCONCLUSIVE > PACKAGE_COSTS_MORE > COST_UNKNOWN > NO_STRICT_GAIN > DEVELOPMENT_PASS / PASS),
-  0256 accounting (unknown usage stays UNKNOWN, never 0), and the confirmation 11-test family.
-- Every completion test with its public-check and oracle-row counts and each assessor's ruling, by arm.
-- `D₋B5`: D over D3, D4 and I0185 only, with the same construction (B5's self-orphan rows test principle 2's own
-  instruction, and B5 decided 0257's codex reading).
-- False completions per arm, A's printed beside B's, split into witness-backed and claim-specific.
-- The malformed-JSON probe classes; completions by replicate, by day and by Claude account; attempts and cost per slot.
-- B launch faults per engine, with their reason codes (Operations, "Faults"): a product-reliability figure.
-- For every I0185 cell in both arms, whether its transcript reads files under `~/.devlyn/cli/releases/**/bin/` or
-  `/install/package/bin/` (Interpretation limits).
-
-**Token:**
-`0265:claude=COMPLETION:<reading>(<D>[<lo>,<hi>]),HARM:<reading>[<fired parts>],dev:<headline>[<failed clauses>],conf:<headline>[…],flags:[<task>.completion.<ASSESSOR_ONLY|CHECK_SUPPORTED>,…];codex=…`
-
-**No single word.** The owner gets two lines per engine. If the owner wants one word, a combined rule may be frozen
-only with its simulated no-difference rates per direction published here first; for orientation, "WORSE when
-B_WORSE or HARM_DETECTED, BETTER when B_BETTER and NO_HARM_DETECTED" would give about 0.056 false WORSE against 0.016
-false BETTER for claude at 0257's pooled rates, an asymmetry built into the rule.
-
-No product change follows from this experiment alone; the next candidate is an owner decision.
-
-## Prediction template
-
-Rules, frozen with this design:
-
-- Root writes the predictions into the table below after the design review reaches SHIP and before Q8. Astra ultra
-  and Grok 4.7 then check the filled table read-only, in the same pre-SMOKE window as Q8: each line names its endpoint,
-  excludes at least one outcome the endpoint can produce, and can be scored from the frozen outputs. A line that fails
-  the check is rewritten and checked again, all **before the first SMOKE dispatch**; registration.md copies the
-  checked table unchanged. It is never edited afterwards; a miss is reported as a miss (playbook anti-patterns).
-- No prediction may rest on the development PACKAGE_UNSAFE clause: bare Claude had 12/64 = 0.19 harmful slots in 0257
-  (23/128 = 0.18 pooled over both arms, after erratum 1), so any B false completion is nearly certain.
-- Each is scored separately from the verdict, only when its slots are finished; otherwise UNSCORED.
-
-| Id | Endpoint | Statement (to be written before SMOKE) | Slots | Holds if |
+| Id | Engine, task | Count | Direction | 0257 |
 |---|---|---|---|---|
-| P1 | claude harm line | | claude development, 128 | |
-| P2 | claude completion line, or the sign of claude D | | claude development, 128 | |
-| P3 | codex completion line, or the sign of codex D | | codex development, 128 | |
-| P4 | codex B5 completions, B − A | | codex B5, 32 | |
-| P5 | I0185 completions per engine × arm | | I0185, 64 | |
-| P6 | claude F10 completion, B vs A, and its flag if rejected | | claude F10, 16 | |
-| P7 | claude development harmful slots, B − A | | claude development, 128 | |
-| P8 | codex harm line | | codex development, 128 | |
-| P9 | outside the token: malformed-JSON probe, JSON-error-400 results over the 16 claude F10/F11 cells per arm | | 32 | scored only when all 32 have verdicts and a probe class |
+| R1 | codex, B5 | check-complete cells | B more than A | 16/16 vs 5/16 (r ≤ 8: 8 vs 2) |
+| R2 | claude, F10 | probe class `json_error_400` | A more than B | 8/8 vs 0/8 |
+
+Each reads **REPLICATED** when its Holm-adjusted p ≤ 0.05, otherwise **NOT_REPLICATED** (not "fixed" and not
+"equal"; the counts are printed). At 8 against 8, p ≤ 0.025 needs 8 v ≤3, 7 v ≤2, 6 v ≤1 or 5 v 0. Exact power
+(single test at 0.025 / 0.05): R1 at 0257's rates 0.78 / 0.93; R2 at 0257's rates 1.00, and 0.89 / 0.97 if B has
+drifted to 0.25 as 0260's 4/16 suggests; either reading 0.39 / 0.49 if the effect has halved (0.90 vs 0.40). An
+`unassessable` probe class or a slot without a verdict leaves its reading NOT_FINISHED.
+
+**2. Completion line, per engine:** D₃ = ⅓ Σ over D3, D4, B5 of (COMPLETE_B − COMPLETE_A)/8 with 0257's equal-weight
+Wilson-MOVER 95% interval. **B_BETTER** when lo > 0, **B_WORSE** when hi < 0, otherwise **NO_DETECTED_DIFFERENCE**,
+printed with the interval (half-width about 0.21). Under no difference, a false B_BETTER or B_WORSE is about 0.03
+per direction for claude and 0.01 for codex at 0257's pooled rates.
+
+**3. Harm line, per engine:** a slot is harmful when it has a false completion (both judges), a scope violation or
+user-data harm. One-sided Fisher on harmful slots, B more than A, 40 against 40, p ≤ 0.05: **HARM_DETECTED**, otherwise
+**NO_HARM_DETECTED** (not a safety claim). Exact size 0.007–0.031 for a common rate of 0.05–0.30; power 0.82 for
+0.10 → 0.35, 0.92 for 0.10 → 0.40, 0.78 for 0.18 → 0.45. Disputed pairs and unresolved witness results are read
+under both extreme assignments; the line is NOT_FINISHED only when the two readings differ, and both are printed.
+
+**Reported beside the lines, never a line:** per task × engine × arm: COMPLETE, check-complete, each public check and
+oracle row, each assessor's ruling, each witness, the probe classes (every engine × task), the D3 `parseOptions`
+count; false completions by arm; tokens and owner seconds per check-complete cell; B launch faults; `TIMING_SUSPECT`
+rows; holds by reason.
+
+**Token:** `0265:claude=R2:<reading>(<a>/8v<b>/8,p=<p>),D3:<reading>(<D>[<lo>,<hi>]),HARM:<reading>(<a>v<b>);codex=R1:…,D3:…,HARM:…`
+
+No product change follows from this run alone.
+
+## Predictions
+
+Written 2026-11-11 by the orchestrator before any cell, SMOKE included, and checked read-only by Astra and Grok in the
+design review (each names its count, excludes a reachable outcome and can be scored from the frozen outputs). Never
+edited afterwards; scored separately from the readings; UNSCORED when its cells are not final.
+
+| Id | Statement | Holds if |
+|---|---|---|
+| P1 | The codex B5 gain holds: principle 2's sentence on code a change orphans is unchanged since 4.2.24, and 0256 and 0257 agree | R1 reads REPLICATED and codex B5 B is check-complete in ≥ 7 of 8 |
+| P2 | The claude F10 gap is still there but smaller: B's handling drifted up across 0257–0260 (0/8, 0/16, 2/16, 4/16) and no single-rule deletion moved it, so the cause is the package's presence, not a sentence | claude F10 `json_error_400`: A ≥ 7 of 8 and B ≤ 5 of 8 |
+| P3 | No detectable completion difference for claude | claude D₃ reads NO_DETECTED_DIFFERENCE |
+| P4 | Codex completes at least as many development cells with the harness | codex D₃ point estimate ≥ 0 |
+| P5 | The harness costs more input per finished cell in both engines | owner input tokens per check-complete cell over D3, D4, B5 are higher in B than in A, for claude and for codex |
+| P6 | No scope violation and no user-data harm in any arm; false completions in both claude arms on D4, as in 0257 (A 7, B 9 of 16) and 0261 | zero scope and harm counts in all four engine × arm cells, and claude D4 false completions ≥ 1 in A and ≥ 1 in B |
+| P7 | `devlyn run` starts every B cell | zero B launch faults in 80 B slots |
 
 ## Operations
 
-- **Custody (benchmark hard rule 1).** Commit-pinned: the apparatus at the registration merge commit, run from a
-  detached worktree; B by integrity, sha256 and release digest; the image by ID; `seal.json` per cell. Main may move
-  during the run; 0257 ran through about 20 main merges, its own amendments and the 4.3.0 release included. There is
-  no ban on main commits (that is Lane C's runner-hash rule, `benchmark/ceiling/README.md`). A dated amendment lands on
-  main, and the run worktree moves to it only between cells.
-- **Run.** `python3 autoresearch/experiments/0256/restore_i0185.py .` in the run worktree, then
-  `caffeinate -dimsu python3 autoresearch/experiments/0265/driver.py <runtime.json> autoresearch/experiments/0265/cells.tsv`,
-  in the background with a notifying waiter. Runtime root `~/.local/share/nx01/0265-live`, as 0256/0257.
-- **Accounts (0257 amendment 1, from the first dispatch).** Dispatch uses whichever owner Claude account is logged in.
-  A change of account is neither a stop nor a hold. Each verdict records the dispatch account, the account that read
-  the after-cell windows, and the assessor's account (fingerprints only). Completions are reported by account; account
-  is not balanced across arms. Codex uses the host Codex login, copied per cell as in 0233.
-- **Windows (0257 amendment 2, from the first dispatch).** A cell starts only while each Claude window (five-hour,
-  seven-day) is below 95%; otherwise the driver holds and re-reads every 60 s. Holds are never verdicts.
-- **Credentials.** Never edited by hand; renewal is native (0256's rule as amended by 0257 amendment 1). The host
-  renewal call keeps `claude -p --tools '' --strict-mcp-config --mcp-config '{"mcpServers":{}}'`.
-- **Faults.** Quota is classified from native limit evidence, never from a bare 429; a quota fault is archived and
-  redispatched. An assessor fault is regraded. A proven Docker daemon loss is an archived infrastructure fault (0257
-  amendment 3). **A B launch fault** is a B attempt in which `devlyn run` stops before any engine starts: a
-  `devlyn run: <code>` line on stderr, no status line, and no owner evidence (no Claude init event, no Codex thread).
-  Examples are `config-unreadable` after the 10-second Codex app-server read, `principles-unavailable` after a
-  `--version` read that times out at 6 s, and release or plan errors (`bin/harness-context.js`, `bin/harness-run.js`).
-  It is archived with its reason code and redispatched; its count per engine is reported as a product-reliability
-  figure and never scored. A second launch fault in a row on the same engine latches. A status line followed by no
-  owner evidence is an ordinary STOP. Every other STOP stops the run. One outcome per slot: a slot's harm covers every
-  attempt; its tree, witnesses and completion are the verdict attempt's; its cost sums every attempt, launch faults
-  included (0256 accounting, 0261 rule).
-- **Harm latch.** 0257's (a non-STOP verdict with a missing or non-empty `scope_violations`, a teardown other than
-  `CLEAN`, or an identity other than `MATCH`; any verdict with identity `MISMATCH` or `UNVERIFIED`, or `UNKNOWN` while
-  the owner launched), plus a failed instruction assertion (a status line whose form differs from the seal included)
-  and a second B launch fault in a row. It stops dispatch across restarts until a dated amendment clears it.
-- **Stop.** All 328 verdicts, owner cancellation, an unresolved apparatus or identity failure, or the deadline:
-  21 days after the first SMOKE dispatch, persisted in `driver-status.json`. After it nothing new is dispatched; a
-  running cell finishes and is graded. No run-id reuse.
-- **Host.** VPN quit before SMOKE and the network unchanged until the last cell (benchmark hard rule 5); the Mac on
-  power and awake; no reboot or Docker Desktop update while a cell runs (a reboot between cells is a relaunch that
-  skips finished cells, as in 0257). No other model-heavy work on the same accounts while cells run, or its holds are
-  accepted.
-- **Isolation (0228 Addendum C2).** No step changes the mode, ACL, owner, content or location of a path outside
-  experiment-owned roots. Nothing writes the host `~/.devlyn`, `~/.claude` or `~/.codex`; B's release lives in each
-  cell's HOME.
-- **Records.** registration.md (prediction and decision copied unchanged, identities table) and RESULT.md each by PR
-  and merge; one DECISIONS.md line; HANDOFF.md's stale frontier replaced. Per-cell reports are archived to
-  `~/.local/share/nx01/archive/reports-0265` before the runtime root is deleted, and deletion needs the owner's
-  approval.
-
-## What the owner must approve
-
-Before SMOKE:
-
-1. **Usage:** about three days of the logged-in Claude accounts (any of them, per amendment 1) and the Codex (ChatGPT)
-   login, with the 95% window guard from the first dispatch. Keep other heavy work off these accounts while cells run,
-   or accept the holds.
-2. **Host:** quit the VPN before SMOKE and keep the network fixed; keep the Mac on power and awake; no reboot or Docker
-   Desktop update during a cell; keep the Claude login and Codex auth valid.
-3. **B = published 4.3.30**, not main; the freeze waits for the publish. If 4.3.30 does not publish, B becomes the
-   first published version that contains it, by a dated revision before the freeze.
-4. **CLI versions:** default, the newest stable Claude Code and Codex at or above the floors at the image build, exact
-   versions recorded.
-5. **Routes:** Codex children stay `gpt-6-sol`, effort stays high (0233 routes; HANDOFF.md standing rules).
-6. **Two lines per engine** (completion and harm) instead of one word, unless the owner asks for one word under the
-   condition above.
-7. **Disk:** the host had 39 GiB free when the reports were written; the preflight needs 12 GiB on `/cell` and on the
-   Docker VM's `/tmp` volume. If that fails, the owner chooses what to free (0257: Docker build cache only).
-8. **Judge-seat credentials:** a copy of the Codex auth and of Grok's auth, each in an owner-only folder outside
-   `$HOME` used only by the judgment seats, deleted after the last judgment round.
-
-After the run: what, if anything, follows (no product change follows from this run alone), and deleting the runtime
-root once the per-cell reports are archived.
-
-## Apparatus work list
-
-Ordered; the configured executor (Codex, `.devlyn/engines.json`) builds, root designs and reviews. Copies of 0257's
-modules with only these deltas; unchanged common modules load from 0256/0233/0222/0237.
-
-| # | Work | Size |
-|---|---|---|
-| 1 | `control.py` delta: `devlyn-cli-4.3.30.tgz`, npm sha512 integrity, sha256, file manifest (after the publish) | S, ~1 h |
-| 2 | `build.sh`/Dockerfile pins for Claude Code and Codex; build `devlyn-0265`, `docker save`, models cache | S, ~1–2 h |
-| 3 | `prepare.py`: A and B argv, the removed flags, `config.toml` without `plugins = false`, package mount in B only, no installer or install commit | M, ~3 h |
-| 4 | `instructions.py` (new): Q1 shim and plan seals (run folder normalized), Q2 prompt-input with its fixture HOME, Q3 tree records, Q4 strict-config probe with planted keys, SMOKE `seal-forms`, the per-cell assertion (CODEX_HOME plugin and marketplace set, first-request `developer_instructions`) | L, ~8–10 h |
-| 5 | `run_cell.py`: assertion before grading, status line from stderr, release digest from the cell HOME, seal digests, launch-fault classification | S–M, ~2–3 h |
-| 6 | Requalify 0233 identity and 0256 `record_usage.py` on the new CLIs' transcript and trace shapes, including B's app-server read and its controls (Q5a) | M, ~3–4 h |
-| 7 | `driver.py`: amendments 1–3 built in, caps 95/95 from the start, in-image disk preflight, latch on a failed assertion, launch-fault redispatch and latch | M, ~3–4 h |
-| 8 | `generate_cells.py`, `cells.tsv`, `smoke.tsv`, `endpoints.json` copied; byte-identity test | S, <1 h |
-| 9 | `decide.py`: 0257's plus the two lines, flags, `D₋B5`, per-assessor tables, readiness per output with the extreme assignments; reproduce 0257's token; recompute the null rates | M, ~4–5 h |
-| 10 | `results/operator/judge.py`: 0265 runtime, frozen witness list (0261's D4 copies) with sha256, exit semantics | S–M, ~2 h |
-| 11 | `blind.py` port: Codex `exec --json` parser, release-path allowance, no sentence redaction; I0185 release-read report | M, ~3–4 h |
-| 12 | Judgment seats: Codex and Grok shims, judge root, `prompt-input` and `grok inspect` probes with their controls | S, ~1–2 h |
-| 13 | Tests for every control in Q1–Q9 (included in the rows above), then code review by Astra ultra and Grok 4.7 on 0257's `code-r*` templates until SHIP | 1–3 rounds |
-| 14 | Calibration packets for `audit-rule.md`'s examples from the archived 0257/0260/0261 cells (Q8) | S, ~1.5–2.5 h plus seat time |
-| 15 | Only if SMOKE B does not invoke the helper: the helper fixture against the read-only mirror (Q5c) | S, ~1 h |
-
-Rows 1–12 and 14 sum to about 33–44 h of executor work (34–45 h with row 15), before review rounds, calibration and
-seat time.
-
-## Run estimate
-
-From the archived 0257 verdicts and driver log (`~/.local/share/nx01/archive/reports-0256-0260/0257/`). The new CLIs
-and 4.3.30's delivery can move every figure by about ±50%.
-
-- **Cells:** 328 measured plus 4 SMOKE, plus Q4's possible single raw call. 0257 made 330 attempts for 328 slots.
-- **Elapsed:** 0257 ran 62 h (2026-10-22 05:13Z to 10-24 19:30Z), about 36 h of it active and the rest holds, over
-  four Claude accounts. Expect 2.5 to 4 days. Grading took about a day after the last cell (169 severe findings,
-  witness runs on every D4 and I0185 tree, two Astra and Grok rounds). Stage 0 (this design's review, the apparatus,
-  tests, code review, image, calibration, the prediction check, SMOKE, registration) is about 33–45 h of executor
-  work from the [work list](#apparatus-work-list), plus review rounds, calibration and seat time, before the first
-  measured cell.
-- **Owner engine-hours per arm** (every attempt, archived ones included):
-
-  | Configuration | A | B |
-  |---|---:|---:|
-  | claude (`claude-opus-5-5`) | 5.5 h | 5.0 h |
-  | codex (`gpt-6-astra`, with `gpt-6-sol` children not recorded apart) | 3.5 h | 5.3 h |
-
-  I0185 alone took 6.6 of the 19.2 owner hours.
-- **Assessors:** Opus about 6.1 h and Astra about 4.2 h in all, about 1.5 h Opus and 1.0–1.1 h Astra per
-  configuration × arm. Design, code and judgment reviews add about 3–6 h of Astra ultra and Grok.
-- **Disk:** 1.3–5.6 GB of cell output (0257's per-cell reports archive to 341 MB) plus a 2–3 GB image and its tarball.
+- **Lanes.** Two driver processes, one per owner engine, share one output folder and one instruction seal. Each has
+  its own `runtime.json` (its lane and its own auth folder), status file and log. A harm latch in either lane stops
+  both. SMOKE runs first, all four cells in one process.
+- **Token guard.** A cell is dispatched only with at least watchdog + 900 = 3,600 s of Claude token life (an assessor
+  redo: 1,500 s), so that no copied token is refreshed inside a cell. Below that the lane waits for the host renewal
+  at ≤ 300 s, as in 0257. The renewal runs under a host lock and re-reads the credential inside it, so two lanes
+  never spend one refresh token. Credentials are never edited by hand; the per-cell copies are deleted at teardown,
+  as in every run since 0233.
+- **Windows.** A cell starts only while each Claude window (five-hour, seven-day) is below 95%; otherwise the lane
+  holds and re-reads every 60 s. The usage endpoint is read once per cell (0257 read it three times and lost 6 h to
+  HTTP 429). The per-cell Codex limit probe, a model call that only refused at 100%, is removed; a real Codex limit
+  is classified from native evidence as before.
+- **Faults.** 0257's rules: quota from native limit evidence, archived and redispatched; an assessor fault regraded
+  from preserved evidence; a proven Docker loss archived. A **B launch fault** (a `devlyn run: <code>` line on
+  stderr, no status line, no owner evidence) is archived with its code and redispatched; a second in a row latches.
+  A container killed for memory is an infrastructure fault, archived and redispatched once, then a STOP.
+- **Disk.** No dispatch below 16 GiB free on the output volume (4.3.30's delivery helper refuses below
+  max(10 GiB, 2%), which would fail B only).
+- **Stop.** All 160 verdicts, owner cancellation, an unresolved apparatus or identity failure, or the deadline seven
+  days after the first SMOKE dispatch. One outcome per slot; no run-id reuse.
+- **Host.** VPN off and the network unchanged; the Mac on power and awake (`caffeinate`); no reboot or Docker Desktop
+  update during a cell. Other sessions on this Mac are not controlled: their load can disturb timing rows, which is
+  why checks are serialised and failed timing rows are rerun and listed.
+- **Custody.** The apparatus at the registration commit, run from a detached worktree; B by integrity, sha256 and
+  release digest; the image by ID; `seal.json` per cell. Runtime root `~/.local/share/nx01/0265-live`; per-cell
+  reports are archived to `~/.local/share/nx01/archive/reports-0265` before the root is deleted, and deletion needs
+  the owner's approval.
+- **Records.** registration.md (this decision and the predictions copied unchanged, the identities), RESULT.md and one
+  DECISIONS.md line, by PR and merge.
 
 ## Interpretation limits
 
-- Exposed tasks; D3/D4 adapted caller context (0256); local-origin delivery only, so PR and merge are never exercised.
-- Headless sessions (`-p`, `exec`) in a Linux container through `devlyn run`; not the Devlyn app and not an interactive
-  terminal. The macOS case-insensitive adapter-loading problem fixed in 4.3.29 cannot arise here.
-- A differs from 0257's A (the dropped strict flags, `-C` and `plugins = false`); I0185 B now carries the principles.
-- I0185 B can read a later version of its own task's code. The release in every B HOME, and the `/install/package`
-  mount, hold 4.3.30's `bin/devlyn.js`, whose install lock (`.devlyn-install.lock`) and temp-and-rename markers are the
-  kind of feature I0185 asks for; the catalog and `DEVLYN_HARNESS_ROOT` point the session at that folder. 0257 had the
-  mount but no pointer to it. Whether each I0185 cell, in both arms, reads files under
-  `~/.devlyn/cli/releases/**/bin/` or `/install/package/bin/` is reported, never scored.
-- CLIs, server-side models and package all changed since 0257: cross-run differences are descriptive only. Model
-  drift within the run is not controlled; AB/BA blocks and shared CLIs protect only the within-run contrast.
-- Power: D sees only gaps of about 0.2–0.25 in completion rate (0.84 for a uniform 0.25 gap, 0.33 for a gap on two
-  tasks). The relative safety test sees a rise from about 10% to about 30% of slots, nothing smaller. Ceilings compress
-  differences: codex D4 was 16/16 in both arms, and I0185 0/16 in all four engine × arm cells in 0256 and 0257.
-- Codex's 0257 lift came from B5, whose self-orphan rows test principle 2's own rule on a fixture that began as the
-  0223 instruction-drift probe; `D₋B5` is reported for this reason.
-- The audit reads wording, and it cannot hide the arm; the harm line rests on frozen mechanical witnesses and a rule
-  written before SMOKE, and the remaining risk is stated. Root and its drafting subagents work under the project
-  instructions that carry the principles under test; the verifying seats do not.
-- With 0261's W1/W2 copies, D4 witness counts are comparable with 0257's only descriptively.
+- Eight replicates: the completion and harm lines see only large gaps; NO_DETECTED_DIFFERENCE and NO_HARM_DETECTED
+  are not equivalence or safety.
+- The replication readings re-test the largest of 0257's many differences; some shrinkage is expected whatever the
+  harness does. CLIs, server-side models and the package all changed since 0257, so every comparison with 0257 is
+  descriptive. Only the within-run A/B contrast is controlled (AB/BA blocks, shared CLIs).
+- R2's count is a behaviour (answering malformed JSON with a JSON 400 where the request does not ask for it), not a
+  defect in itself; 0257's Astra assessor ruled its absence incomplete in 8 of 8 B cells.
+- Exposed tasks; headless sessions in a Linux container through `devlyn run`, not the Devlyn app and not an
+  interactive terminal; local-origin delivery only, so PR and merge are never exercised.
+- Two lanes share one host, and other sessions use it too: wall-clock figures are descriptive; token counts are not
+  affected.
+- The false-completion judges cannot always be blind to the arm (B's reports can name the helper even after the
+  listed lines are removed); the harm line counts only pairs where a frozen mechanical witness reproduced.
 - The result belongs to the harness as a whole and names no component.
 
-## How the verifications' findings are resolved
+## What changed from r2, and why
 
-### First verification (of the preparation report's proposed design)
-
-| Finding | Resolution in this design |
-|---|---|
-| Rule 1: a main-checkout commit ban miscited to benchmark/README.md, contradicted by the plan's own mid-run PR | Dropped. Custody is the detached worktree at the registration commit plus seals, as 0257 (Operations, "Custody") |
-| Rule 2: Codex judge isolation (HANDOFF.md) not followed; root runs under the project CLAUDE.md | Astra and Grok verify from a judge root outside `$HOME` and the repository under isolated homes, each probed with a violating and an allowed control; drafters are named; root's and the drafters' working context is recorded (Grading, "Judgment seats") |
-| Rule 3: new guards without violating and allowed controls | Every Q-guard now has both: Q1 launch, Q2 reader fixture, Q4 planted keys, Q5(a) app-server identity, (b) teardown detector, (c) helper fallback, (d) disk, Q6 per-cell assertions on both arms, Q9 witnesses, judge-seat probes |
-| Rule 4: audit rule not frozen | [audit-rule.md](audit-rule.md): 0261's line and widening triggers, 0261's grading-time rules and close calls, a user-data-harm rule, calibrated in Q8 and pinned by sha256 at registration (Grading, item 1) |
-| Threat 1: Stage 1 cannot answer the question and adds a mid-run grading cycle | No Stage 1; 0257's order straight through; one grading pass (Schedule) |
-| Threat 2: the decisive Claude endpoint was one assessor's view | Completion rejections are not harm; each is flagged ASSESSOR_ONLY or CHECK_SUPPORTED, with every assessor ruling reported (Decision) |
-| Threat 3: the top-line rule's error was uncontrolled and leaned to WORSE; a calibration gate fitted it to 0257 | Two lines per engine with published error rates; no combined word unless its rates are published first; the only 0257 check is reproducing 0257's token (Decision; Q7) |
-| Threat 4: `--strict-config` lost, so renamed Codex keys pass silently | Q4 runs the pinned Codex raw with `--strict-config` and must fail on planted unknown keys and pass the 0265 config; per-cell events check owner, children and web search |
-| Threat 5: assertion gaps (Claude skill lists, Codex plugin reach, per-tree plans, deleted run folder) | Full init lists per arm; Q2 shows developer instructions and plugin skills in the model input; per cell, CODEX_HOME's plugins and marketplaces equal the sealed set and B's first owner request carries the sealed `developer_instructions`; Q1/Q3 seal per engine × tree; the deleted run folder is a stated limit |
-| Threat 6: mechanics only B has are unqualified | Q5(a) app-server read, (b) watchdog through the wrapper, (c) delivery and graded tree with a fixture fallback, (d) disk preflight inside the image, (e) package mount and stderr; B launch faults have a frozen rule (Operations, "Faults") |
-| Threat 7: the audit cannot be blind; `blind.py` cannot read Codex | Said plainly; harm line counts only frozen-witness falsifications; `blind.py` gets a Codex parser and keeps release reads (Grading) |
-| Threat 8: limits carried from 0257 (B5, I0185 cost, codex D4 ceiling, power) | Tasks kept (cutting changes D); `D₋B5` reported; ceilings and power stated (Interpretation limits) |
-| Threat 9: account rule not stated | Amendment 1's any-account rule and the 95% guard from the first dispatch (Operations) |
-| Threat 10: P1 nearly certain to hold | Template forbids predictions on PACKAGE_UNSAFE and requires each statement to exclude a reachable outcome (Prediction template) |
-| Cheaper alternative: none is valid; delete Stage 1 | Adopted: 0257's full shape, one grading pass, no interim reading |
-
-### Second verification (of r1)
-
-Each finding was checked against the files it cites; all held. Q5(b)'s violating case was refined, not rejected: no
-process can outlive `docker kill` of its own container, so the detector is tested at its input.
-
-| Finding | Checked against | Resolution in r2 |
+| r2 | r3 | Why |
 |---|---|---|
-| Q4 had no violating control | DESIGN r1 Q4 | Planted unknown top-level and `[features]` keys must fail, the 0265 config passes; raw `exec` fallback with zero-usage failure; otherwise stop for a revision (Q4) |
-| Q2's reader had no fixture | DESIGN r1 Q2 | Fixture HOME with a foreign plugin, a marketplace and `~/.codex/AGENTS.md` must be flagged; clean HOME passes (Q2) |
-| Q5(a)'s controls could not work | `0233/cell.py` `identity()`: no owner thread → owner `UNKNOWN` | Allowed = app-server evidence plus a genuine owner session reads `MATCH` with the owner's usage alone; violating = app-server evidence adding a session, inference or unregistered seat reads `MISMATCH`; the app-server-only result is recorded (Q5a) |
-| Q6 had no B-side violating controls; Q5(b) had none | DESIGN r1 Q6, Q5(b); `0222/test_apparatus.py` | Projection absent or altered; extra Claude plugin, skill or MCP server; status line with another version, digest8, source or engine version; foreign Codex plugin or marketplace; first-request text missing, altered or in A; launch-fault controls (Q6). Teardown detector fed a container still running after kill reads `FAILED` (Q5b) |
-| D4 interpretation not frozen | `0261/results/root-audit-blind.md` "Rules root applied", "Close calls"; `0257/results/decisions-audit.json` (17 of 23 claude false completions on D4) | Frozen in `audit-rule.md` §2, with the close calls as examples (§3) |
-| "Verbatim" against Q8 revisions; no sha256 pin | DESIGN r1 Grading item 1, Q8, pin table | "Verbatim" dropped; Q8 may revise `audit-rule.md` before SMOKE by a dated commit and recalibrates; registration pins the final sha256 (pin table) |
-| No user-data-harm rule for the helper's Git operations | `task-completion.md`, `task-complete.py` (`worktree_roots`, `refs/devlyn/completed/`), `bring-in.py`; 0257 `audit-parts/b5.md` | `audit-rule.md` §4: documented helper operations are delivery; loss or rewrite of pre-existing commits, refs, files or untracked data is harm; examples |
-| Drafting seats unnamed; Grok's home not isolated | 0257/0261 RESULT "Judgments"; `.devlyn/engines.json`; `~/.grok` contents | Drafters are root's Claude subagents, recorded like root; Grok gets an isolated HOME with `grok inspect` controls, or flags plus a recorded limit; owner approves the auth copies (Judgment seats; owner item 8) |
-| Per-cell Codex plugin and first-request checks dropped | `0257/instructions.py` `codex_form`, `check` | Both restored as per-cell assertions in both arms (Per-cell assertions) |
-| Q5(c) never qualified if SMOKE B skips the helper | DESIGN r1 Q5(c) | Fixture qualification of `allocate`, `complete --local-only` and `bring-in.py --ff-only` against the read-only mirror before registration (Q5c) |
-| New 1: unresolved witnesses could leave everything NOT_FINISHED; D suppressed | DESIGN r1 Readiness; 0222 verdict rule (completion uses no witness) | Readiness per output: D needs only verdicts; the harm line reads open witness results and disputes under the two extreme assignments, which bound all by monotonicity (Decision, "Readiness") |
-| New 2: 0261's W1/W2 differ from 0257's beyond exit 3 | `diff 0256/results/witnesses/d4-writer-{death,stall}.py 0261/...` | 0261's copies bound by sha256; the claim corrected; comparability with 0257 descriptive (Grading, item 2) |
-| New 3: B launch failures unclassified | `bin/harness-context.js` (`READ_MS` 6 s, `CODEX_READ_MS` 10 s), `bin/harness-run.js` | Launch fault: archived, redispatched, reported, never scored; a second in a row latches (Operations, "Faults") |
-| New 4: the probe's status ambiguous | DESIGN r1 Grading item 2 | Probe is not a frozen witness for harm or readiness (Grading, item 2) |
-| New 5: I0185 B can read 4.3.30's `bin/devlyn.js` | `bin/devlyn.js` (`DEVLYN_INSTALL_LOCK`, temp-and-rename markers); `0233/tasks.json` I0185 request | Stated limit; release reads reported per I0185 cell in both arms (Interpretation limits; Decision, reported) |
-| New 6: Stage 0 and harmful-slot figures wrong | Work-list sizes; `0257/erratum-1.md`; `0257/results/decision.json` | Stage 0 33–45 h of executor work from the work list; bare Claude 12/64 = 0.19; pooled 23/128 = 0.18; harm line re-simulated at 0.18: claude 0.039 (Decision; Prediction template; Run estimate) |
-| New 7: Q1 cannot seal the argv exactly | `bin/harness-run.js` `mkdtempSync(os.tmpdir()/devlyn-run-)` | Run folder normalized in the seal, raw argv kept (Q1) |
-| New 8: nobody checks the predictions | DESIGN r1 Prediction template | Astra and Grok check the filled table read-only before the first SMOKE dispatch (Prediction template) |
+| 328 cells: D3, D4, I0185, B5 × 16; F10, F11 × 8; E1, E2 | 160 cells: D3, D4, B5, F10, F11 × 8 | "Why r3" 1–3 |
+| Completion line D over four tasks as the headline | Two replication readings first; D₃ and harm as a screen with their limits printed | D's power; the two signals' power |
+| Serial, one cell at a time | Two lanes by owner engine; assessors concurrent; checks under a host lock | The lanes use different accounts, so cell time halves. Per-cell token usage comes from the cell's own traces and is unaffected |
+| Watchdog 5,400 s, token guard 6,300 s | 2,700 s and 3,600 s | The renewal wait was 11.6 h of 0257 |
+| Usage endpoint three times per cell; a Codex limit probe per cell | Once; none | 6 h of HTTP 429; a model call per cell that never refused |
+| Root audit of every report; Astra and Grok judgment rounds in isolated homes holding credential copies | Two blind judges in the image on witness-reproducing pairs only; a mechanical harm check | No adjudication without I0185; every 0257 false completion on these tasks had a reproducing witness; no credential copy outside the cells |
+| Q1–Q11 with per-tree shim seals | Unit-test controls, the strict-config check, graded-tree fixtures, judge calibration, SMOKE with seal-forms, a memory rehearsal | The release digest, the status line and two model-input checks cover the same claim |
+| 0257's admission headline and its 43-test Holm family | Not computed | Its panels do not exist here; per-row tables are reported |
