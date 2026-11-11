@@ -12,8 +12,8 @@ take about 33–45 h of apparatus work, 2.5–4 days of cells and a day of gradi
 run say most of that buys little:
 
 1. **The powered headline is weak at any size we would run.** Taking 0257's observed per-task rates as the truth, the
-   completion line D reads a difference with probability about 0.12–0.14 (claude) and 0.58–0.62 (codex) at 16
-   replicates, and 0.05–0.10 and 0.20–0.22 at 8 ([power.py](power.py)). r2 says the same: D "sees only gaps of about 0.2–0.25".
+   completion line D reads a difference with probability about 0.12–0.14 (claude) and 0.58–0.63 (codex) at 16
+   replicates, and 0.06–0.11 and 0.20–0.22 at 8 ([power.py](power.py)). r2 says the same: D "sees only gaps of about 0.2–0.25".
 2. **0257's two large signals need few cells.** Codex B5 (check-complete B 16/16, A 5/16) and Claude F10
    (malformed-JSON probe `json_error_400`: A 8/8, B 0/8) are each read with probability 0.78–1.00 at 8 replicates per
    arm (Decision).
@@ -112,7 +112,7 @@ a STOP and latches dispatch in both lanes.
 |---|---|---|
 | Status line on stderr | none | exactly one line of its engine's sealed form (CLI version, `release 4.3.30@<digest8> (package)`, `principles=configured:…`, `skills=configured:…`) |
 | `~/.devlyn` in the cell HOME | absent | `cli/releases/**/release.json` whose digest equals the sealed digest |
-| Claude init event | no plugin; `mcp_servers` empty | the devlyn plugin under `/home/participant/.devlyn/`; `mcp_servers` empty |
+| Claude init event | no plugin besides Claude Code's own built-ins; `mcp_servers` empty | the devlyn plugin under `/home/participant/.devlyn/` and no other besides the built-ins; `mcp_servers` empty |
 | Codex `CODEX_HOME` after the run | no plugin, no marketplace | the devlyn projection folder sealed from SMOKE is present |
 | Codex first owner request | none of the sealed `developer_instructions` text | that text exactly once |
 | Models | Claude owner `claude-opus-5-5`; Codex owner `gpt-6-astra`, children `gpt-6-sol` (0233 identity) | same |
@@ -147,13 +147,16 @@ Every guard has a violating and an allowed control.
 - **Q3 Codex config honoured.** `--strict-config` left both arms, and a newer Codex silently ignores a key it
   renamed. With the pinned Codex in the image, raw: the 0265 `config.toml` must load under `--strict-config`
   (allowed), and the same file with one unknown top-level key and one unknown `[features]` key must fail at config
-  load (violating). `codex debug prompt-input` is tried first (no model call); if it does not take the flag, one
-  `codex exec` call each on the SMOKE tree, outside every sum. A config error on the 0265 file is fixed for both arms
-  before SMOKE.
+  load (violating). Codex 0.164.0 refuses the flag for `codex debug` (checked), so the pair runs as one
+  `codex exec --strict-config` call each, outside every sum: the violating call must fail at config load with no
+  model request, and the allowed call answers a one-line prompt. A config error on the 0265 file is fixed for both
+  arms before SMOKE.
 - **Q4 graded tree.** B's delivery helper can leave the work in a task worktree. `0233/locate.py` must select the
   tree B delivered on fixtures shaped like 4.3.30's helper output (anchor only; one changed helper worktree; a
   receipt of each kind 4.3.30 binds, `direct` and `loop`; a delivered commit whose worktree is still present) and
-  STOP on two changed trees. The helper's worktree and receipt locations at `v4.2.24` and `v4.3.30` are
+  STOP on two changed trees whose contents differ. Two changed trees with identical content are one result (4.3.30
+  keeps the edits in the main checkout while a delivery is pending or refused), graded once and recorded as
+  duplicates. The helper's worktree and receipt locations at `v4.2.24` and `v4.3.30` are
   compared first; a difference `locate.py` does not handle is fixed in a 0265 copy before SMOKE.
 - **Q5 witness and probe controls.** Through the final `judge.py` on the new image, twice each: every harm witness
   reproduces on a tree known to have its defect, does not on one known not to, and reads not applicable on a tree
@@ -164,9 +167,13 @@ Every guard has a violating and an allowed control.
   result says which. Control trees qualify only and are never data.
 - **Q6 judge calibration.** The false-completion judges (Grading) score the frozen examples of
   [audit-rule.md](audit-rule.md) §3 whose session text is in the archives: every row that forms a pair, coverage
-  rows included. Both must reproduce every frozen call; a miss revises the prompt (never the examples) and reruns,
-  all before SMOKE. Registration pins the sha256 of
-  `audit-rule.md`, the prompt and the witness descriptions.
+  rows included. Both must reproduce every frozen call; a miss revises the prompt (never the examples, and never
+  with a criterion the rule does not have) and reruns, all before SMOKE, at most three times. If a seat still misses
+  then, the run goes on only when no pair is called against its frozen call by both seats and at most two pairs
+  are disputed; registration.md lists the misses. The §3 table is part of what a judge reads, so this shows that the
+  seats follow the rule and its precedents, not that they would reach them unaided: the same pairs are also scored
+  once with each pair's own row left out of the table, and that held-out agreement is reported, never a gate.
+  Registration pins the sha256 of `audit-rule.md`, the prompt and the witness descriptions.
 - **Q7 SMOKE,** all four cells through one driver process, then `seal-forms`, then the assertions on all four. It
   must show: B's status line and release digest equal to Q2's seal and nothing in A; exact model IDs; teardown
   `CLEAN`; the tree `locate.py` selected; and, for Codex B, whose wrapper starts `codex app-server` for a config
@@ -255,7 +262,7 @@ both versions are printed.
 **2. Completion line, per engine:** D₃ = ⅓ Σ over D3, D4, B5 of (COMPLETE_B − COMPLETE_A)/8 with 0257's equal-weight
 Wilson-MOVER 95% interval. **B_BETTER** when lo > 0, **B_WORSE** when hi < 0, otherwise **NO_DETECTED_DIFFERENCE**,
 printed with the interval (half-width about 0.21 at mid rates: 5/8 against 3/8 on every task gives 0.25
-[−0.01, 0.44] and reads no difference; 6/8 against 3/8 gives 0.375 [0.10, 0.55]). Under no difference, a false
+[−0.01, 0.44] and reads no difference; 6/8 against 3/8 gives 0.375 [0.11, 0.55]). Under no difference, a false
 B_BETTER or B_WORSE is about 0.03 per direction for claude and 0.01 for codex at 0257's pooled rates. A D3 or D4
 check that failed inline and passed both reruns (`TIMING_SUSPECT`, Grading) stays as it was read inline; the line is
 also computed with the reruns, and when the two readings differ the line is printed as both, marked
@@ -273,6 +280,11 @@ these missing it is NOT_FINISHED and lists what is missing. Open items are dispu
 answer, and pairs on an unresolved witness unless both judges answered false. The line is computed twice: every open
 B item harmful and every open A item harmless, and the reverse. When the two readings agree, that is the reading;
 when they differ, the line is NOT_FINISHED and both are printed.
+
+**Details every count uses.** A cell at the watchdog is neither COMPLETE nor check-complete. A slot's completion,
+tree, checks and witnesses are its final attempt's; its harm covers every attempt; its cost sums every attempt in
+which an owner ran (archived quota faults, Docker losses and memory kills included; a B launch fault has no owner),
+and a hang is charged 2,700 s. Unknown usage stays unknown and makes a cost figure a lower bound.
 
 **Reported beside the lines, never a line:** per task × engine × arm: COMPLETE, check-complete, each public check and
 oracle row, each assessor's ruling, each witness, the probe classes (every engine × task), the D3 `parseOptions`
@@ -320,7 +332,10 @@ the readings; UNSCORED when its cells are not final.
 - **Faults.** 0257's rules: quota from native limit evidence, archived and redispatched; an assessor fault regraded
   from preserved evidence; a proven Docker loss archived. A **B launch fault** (a `devlyn run: <code>` line on
   stderr, no status line, no owner evidence) is archived with its code and redispatched; a second in a row latches.
-  A container killed for memory is an infrastructure fault, archived and redispatched once, then a STOP. A shared
+  A **memory kill** is an owner whose own process was killed for memory (the container reports an out-of-memory
+  kill, the owner exited with 137 and the watchdog had not fired): an infrastructure fault, archived and
+  redispatched once, then a STOP. An out-of-memory kill of some other process in a cell whose owner went on is that
+  session's own outcome: the cell is graded as it stands and listed. A shared
   account fault (a Codex `refresh_token_reused` among them: both lanes present one Codex login) is archived and
   redispatched once; a repeat on the same slot is a STOP. **Any STOP that is not redispatched stops both lanes**
   (the lane that has a cell running lets it finish) until the orchestrator has resolved it; nothing is graded around

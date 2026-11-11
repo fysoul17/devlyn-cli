@@ -67,3 +67,17 @@ status files and the locked renewal address the two-lane risks, and that the wat
 the removed Codex probe do not disturb per-cell accounting. No full second review round follows: every CRITICAL and
 HIGH finding is a specified change to the text and the apparatus, and each is re-checked in the code review of the
 apparatus, which both reviewers read on the source the checks ran on.
+
+## Orchestrator amendments after the review, before the code review (2026-11-11)
+
+Found while the apparatus was built; each is in DESIGN.md and is part of what the code review reads.
+
+| # | Change | Why |
+|---|---|---|
+| O1 | Q3 runs as `codex exec --strict-config` calls, not `codex debug` | Codex 0.164.0 answers "`--strict-config` is not supported for `codex debug`" (run in the image, no model). |
+| O2 | Two changed trees with identical content are one result; only differing trees STOP (Q4) | 4.3.30 keeps the edits in the main checkout while a delivery is pending or refused, so a refused delivery leaves the same content twice; a STOP there would lose B slots for a reason that is the apparatus's. The rule cannot fire in A and does not choose between different contents. |
+| O3 | A memory kill is only an owner process killed for memory; another process's kill in a cell whose owner went on is graded as it stands (Operations) | Docker reports an out-of-memory kill for any process in the container. Redispatching a finished session because its own test runner was killed would redraw a valid cell on its behaviour. |
+| O4 | Q6: at most three prompt revisions, then a stated fallback gate; held-out agreement reported | The frozen examples are in the judges' prompt, so the gate shows that precedent is followed; the held-out score says how far the rule carries without it. A gate with no fallback could only be met by fitting the prompt to the examples. |
+| O5 | Claude's "no plugin" means none besides Claude Code's built-ins | Every archived 0257 Claude cell, A included, lists two built-in entries (`agents-md@builtin`, `telemetry@builtin`). |
+| O6 | "Details every count uses" (Decision) | The decision code had to choose a reading for a hung cell and for the cost of archived attempts; the choices are 0257's and are now written down. |
+| O7 | Figures corrected from `power.py`'s exact values (0.06–0.11, 0.63, [0.11, 0.55]) | Exact enumeration through `decide.py`'s own functions. |
