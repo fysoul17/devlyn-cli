@@ -117,27 +117,27 @@ def run(out, runtime):
             except subprocess.TimeoutExpired:
                 status = 'HANG_TIMEOUT'
     finally:
-        record.update(owner_status=status, seconds=time.monotonic() - start)
-        try:
-            if cid is None and (record_dir / 'started.json').is_file():  # `docker create` gave no answer, yet may
-                cid = docker('ps', '-aq', '--no-trunc', '--filter', f'name=^/{name}$') or None  # have made it
-            if cid is not None:
-                if json.loads(docker('inspect', cid))[0]['State']['Running']:
-                    docker('kill', cid)
-                state = json.loads(docker('inspect', cid))[0]['State']
-                record['container'] = dict(oom_killed=state.get('OOMKilled'), exit_code=state.get('ExitCode'))
-                if state['Running'] or state['Pid'] != 0:
-                    raise RuntimeError('container survived kill')
-                docker('rm', cid)
-            if 'tmp_volume' in record:
-                preserve_tmp(volume, Path(plan['tmp']), plan['image'])
-            record['teardown'] = 'CLEAN'
-        except (OSError, RuntimeError, ValueError, KeyError, IndexError, subprocess.SubprocessError) as exc:
-            stderr = getattr(exc, 'stderr', None)  # bytes on a timeout, even when the call asked for text
-            stderr = stderr.decode(errors='replace') if isinstance(stderr, bytes) else stderr
-            record.update(teardown='FAILED', teardown_error=' '.join(filter(None, (str(exc), stderr))))
-        try:  # the record first, so a failed removal never loses it; the removal whatever the record's write did
-            (record_dir / 'result.json').write_text(json.dumps(record, indent=2))
+        try:  # the credential copy is removed whatever the teardown and the record's write do, an interrupt included
+            record.update(owner_status=status, seconds=time.monotonic() - start)
+            try:
+                if cid is None and (record_dir / 'started.json').is_file():  # `docker create` gave no answer, yet
+                    cid = docker('ps', '-aq', '--no-trunc', '--filter', f'name=^/{name}$') or None  # may have made it
+                if cid is not None:
+                    if json.loads(docker('inspect', cid))[0]['State']['Running']:
+                        docker('kill', cid)
+                    state = json.loads(docker('inspect', cid))[0]['State']
+                    record['container'] = dict(oom_killed=state.get('OOMKilled'), exit_code=state.get('ExitCode'))
+                    if state['Running'] or state['Pid'] != 0:
+                        raise RuntimeError('container survived kill')
+                    docker('rm', cid)
+                if 'tmp_volume' in record:
+                    preserve_tmp(volume, Path(plan['tmp']), plan['image'])
+                record['teardown'] = 'CLEAN'
+            except (OSError, RuntimeError, ValueError, KeyError, IndexError, subprocess.SubprocessError) as exc:
+                stderr = getattr(exc, 'stderr', None)  # bytes on a timeout, even when the call asked for text
+                stderr = stderr.decode(errors='replace') if isinstance(stderr, bytes) else stderr
+                record.update(teardown='FAILED', teardown_error=' '.join(filter(None, (str(exc), stderr))))
+            (record_dir / 'result.json').write_text(json.dumps(record, indent=2))  # before the removal: never lost to it
         finally:
             try:
                 if secret.exists():

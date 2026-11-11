@@ -164,4 +164,17 @@ orchestrator found while fixing them:
 | S3 | Astra | MEDIUM | A truncated current verdict left by an interrupted regrade dropped the archived owner run's cost and scope | Verdicts are written whole (temp file, then replace); an unreadable current verdict counts as absent. |
 | S4 | orchestrator | same class as S1 | A lane restarted after it was killed inside a cell waited on `ready()` and then failed in `prepare` | An attempt with a folder and no verdict stops both lanes before any wait. |
 
-Grok's second re-check and a third re-check of S1–S4 are recorded in registration.md.
+### Third re-check (commit `d9193ce6`)
+
+Astra: **SHIP**. No CRITICAL or HIGH finding remains; S1, S2 and S4 closed, S3 closed except for one write (T4).
+With no HIGH left the review is not repeated; the five lower findings were each fixed or rejected with a reason:
+
+| # | Severity | Finding | Disposition |
+|---|---|---|---|
+| T1 | MEDIUM | An operator's interrupt during the teardown could skip the removal of the credential copy | Fixed: the removal is in a `finally` around the whole teardown and the record's write. |
+| T2 | MEDIUM | When the first run record could not be written, an owner that had run was recorded as not run | Fixed: a container that was created and has no record is taken to have run its owner, so its evidence is required. |
+| T3 | MEDIUM | After a crash between the second B launch-fault verdict in a row and its latch, a restart allows a third attempt | Rejected: it costs at most one extra B attempt after a crash at one instant; that attempt is archived and counted (P7 counts every launch-fault attempt), no evidence is lost and no result changes. Not changed before the run. |
+| T4 | LOW | The control-change STOP was still written in place | Fixed: written whole like every verdict. |
+| T5 | LOW | The out-of-memory table can miss an event of an assessor STOP or an interrupted regrade | Rejected: a secondary table; the verdicts keep the flag, and the decision's lines and the cost do not read it. |
+
+Grok's re-checks of the same commits are recorded in registration.md.

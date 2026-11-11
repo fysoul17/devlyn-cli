@@ -307,9 +307,7 @@ def run(runtime_path, name, task, arm, config, *, expected_account=None):
         (Path(runtime['output']) / f'not-dispatched-{name}.json').write_text(json.dumps(dict(reason=blocked), indent=2))
         return 3
     if not control_unchanged(runtime):
-        verdict_path.write_text(json.dumps(dict(cell=name, status='STOP', owner_ran=False, reason='control changed'),
-                                           indent=2))
-        return 2
+        return write_verdict(verdict_path, dict(cell=name, status='STOP', owner_ran=False, reason='control changed'))
     out = prepare.prepare(runtime, name, task, arm, config)
     control_manifest = json.loads(Path(runtime['control'] + '.manifest.json').read_text())
     imported = {str(p.relative_to(HERE.parent)): digest(p) for iteration in ('0222', '0232', '0233', '0256')
@@ -341,9 +339,10 @@ def run(runtime_path, name, task, arm, config, *, expected_account=None):
         owner = cell_run.run(out, runtime)
     except (OSError, subprocess.SubprocessError) as exc:  # DESIGN Faults: a container that could not be set up (or
         ended = out / 'run/result.json'  # recorded) is a STOP; cell.run has removed what it had made
-        ended = json.loads(ended.read_text()) if ended.is_file() else {}
+        unrecorded = not ended.is_file() and (out / 'run/started.json').is_file()  # created, and its end not written:
+        ended = json.loads(ended.read_text()) if ended.is_file() else {}  # the owner is taken to have run
         record.update({key: ended[key] for key in ('owner_status', 'teardown', 'teardown_error') if key in ended},
-                      owner_ran=ended.get('owner_status') is not None, status='STOP',
+                      owner_ran=ended.get('owner_status') is not None or unrecorded, status='STOP',
                       reason=f'cell setup failed: {type(exc).__name__}: {exc}')
         if record['owner_ran']:
             record = stop_evidence(out, record, proved=record.get('teardown') == 'CLEAN')

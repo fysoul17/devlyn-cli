@@ -985,6 +985,8 @@ class CellLifecycle(unittest.TestCase):
                 return ''
 
             def preserve(volume, dest, image):  # copies the volume into the cell, then removes it, as cell.py's does
+                if fail == 'interrupt':
+                    raise KeyboardInterrupt
                 volumes.discard(volume)
 
             def popen(argv, **_kwargs):
@@ -1010,7 +1012,7 @@ class CellLifecycle(unittest.TestCase):
                     mock.patch.object(cell, 'identity', return_value={'status': 'MATCH'}):
                 try:
                     cell.run(out, dict(auth=str(root / 'auth'), scratch=str(root / 'scratch')))
-                except (OSError, ValueError, subprocess.SubprocessError) as exc:
+                except (OSError, ValueError, subprocess.SubprocessError, KeyboardInterrupt) as exc:
                     raised = exc
             written = out / 'run/result.json'
             result = json.loads(written.read_text()) if written.is_file() else None
@@ -1042,6 +1044,14 @@ class CellLifecycle(unittest.TestCase):
         self.assertTrue(copy_left)
         self.assertEqual((result['teardown'], result['owner_status']), ('FAILED', 'EXITED_0'))
         self.assertIn('credential copy not removed: scratch is read-only', result['teardown_error'])
+
+    def test_an_interrupt_during_the_teardown_still_removes_the_credential_copy(self):
+        # Third re-check (MEDIUM): the removal sits in a finally around the whole teardown, so an operator's Ctrl-C
+        # while /tmp is being preserved ends the cell with that interrupt and leaves no copy in scratch. (The volume
+        # it was preserving is what the interrupt left; the driver's restart rule stops both lanes on this attempt.)
+        raised, result, held, copy_left = self.lifecycle('interrupt')
+        self.assertIsInstance(raised, KeyboardInterrupt)
+        self.assertEqual((result, copy_left, held[1]), (None, False, {}))
 
     def test_a_record_that_cannot_be_written_still_removes_the_credential_copy(self):
         # Second re-check (MEDIUM): the record is written first, but inside a try whose finally removes the copy, so a
@@ -1598,6 +1608,27 @@ class RunFlow(unittest.TestCase):
             self.assert_not_graded(mocks)
             driver = load('driver')  # neither regraded nor redispatched: the driver latches both lanes on it
             self.assertFalse(verdict['reason'].startswith(driver.REGRADE + driver.ONCE + (driver.LAUNCH_FAULT,)))
+
+    def test_a_created_container_without_its_record_is_taken_to_have_run(self):
+        """Third re-check (MEDIUM): cell.run raised and left no result.json. Violating (before): owner_ran was false
+        whatever had happened. Now a container that was created (run/started.json) is taken to have run its owner,
+        so its evidence is required (scope_error says the teardown is not proved); allowed: nothing was created, so
+        no owner ran."""
+        def created(out, _runtime):
+            (out / 'run/started.json').write_text('{}')
+            raise OSError(28, 'No space left on device')
+
+        def not_created(_out, _runtime):
+            raise OSError(28, 'No space left on device')
+        with tempfile.TemporaryDirectory() as temp:
+            code, verdict, mocks, _, _ = self.run_cell(Path(temp), ran=created)
+            self.assertEqual((code, verdict['status'], verdict['owner_ran'], verdict['scope_violations']),
+                             (2, 'STOP', True, None))
+            self.assertIn('teardown is not proved', verdict['scope_error'])
+        with tempfile.TemporaryDirectory() as temp:
+            code, verdict, mocks, _, _ = self.run_cell(Path(temp), ran=not_created)
+            self.assertEqual((code, verdict['status'], verdict['owner_ran']), (2, 'STOP', False))
+            self.assertNotIn('scope_error', verdict)
 
     def test_the_token_life_is_read_again_after_prepare(self):
         """CG4 (DESIGN "Token guard"): prepare has no time limit, so the Claude login copy the cell would mount is read
