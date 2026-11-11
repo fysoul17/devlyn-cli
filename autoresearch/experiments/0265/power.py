@@ -89,8 +89,8 @@ def figures():
                   test_power(.56, .90, decide.N, alpha, 'upper'), halved)]
     rows.append(('Decision 1: 8 v 4 one-sided p', decide.fisher(4, 8, decide.N, 'upper'), '0.038'))
     middle = every_task(4, 4)
-    rows.append(('Decision 2: half-width at mid rates, 4/8 v 4/8 on every task (DESIGN: about)',
-                 (middle['hi'] - middle['lo']) / 2, '0.21'))
+    rows.append(('Decision 2: half-width at mid rates, 4/8 v 4/8 on every task (DESIGN: about 0.22-0.23)',
+                 (middle['hi'] - middle['lo']) / 2, '0.23'))
     for b, quoted in ((5, ('0.25', '-0.01', '0.44')), (6, ('0.375', '0.11', '0.55'))):
         result = every_task(3, b)
         rows += [(f'Decision 2 / counter: {b}/8 v 3/8 on every task, {key} (reads {result["reading"]})', result[key],

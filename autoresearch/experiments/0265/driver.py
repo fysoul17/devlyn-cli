@@ -97,9 +97,12 @@ def exceeded(windows, caps):
 
 
 def docker_fault(verdict):
-    return (bool(verdict) and verdict.get('status') == 'STOP' and verdict.get('teardown') == 'FAILED'
-            and 'Cannot connect to the Docker daemon' in
-            str(verdict.get('teardown_error', '')) + str(verdict.get('reason', '')))
+    """A teardown that failed because the Docker daemon could not be reached: "Cannot connect to the Docker daemon" up
+    to 0261's Docker, "failed to connect to the docker API" from Docker 29 (read in any letter case, as O9)."""
+    if not verdict or verdict.get('status') != 'STOP' or verdict.get('teardown') != 'FAILED':
+        return False
+    text = (str(verdict.get('teardown_error', '')) + str(verdict.get('reason', ''))).lower()
+    return any(lost in text for lost in ('cannot connect to the docker daemon', 'failed to connect to the docker api'))
 
 
 def credential(runtime):

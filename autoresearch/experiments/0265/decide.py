@@ -98,7 +98,7 @@ def load(out, cells):
         row = rows[name] = dict(name=name, task=task, arm=arm, config=config, replicate=int(replicate), final=False,
                                 gap=None, reason=None, verdicts=0, complete=False, check_complete=False, hang=False,
                                 rows={}, failed=[], verdict_scope=False, scope=False, assessments=[], archived={},
-                                attempts=[], oom=[])
+                                attempts=[], oom=[], accounts=None)
         try:
             for path in sorted(out.glob(f'verdict-{name}.stop-*.json'), key=stop_number):
                 old, attempt = json.loads(path.read_text()), f'stop-{stop_number(path)}'
@@ -130,7 +130,9 @@ def load(out, cells):
                        + [r['id'] for r in verdict['oracle'] if r['status'] != 'PASS'],
                        assessments=[dict(engine=a['route']['engine'], complete=a['complete'] is True,
                                          severe=a['severe']) for a in verdict['assessments']],
-                       attempts=row['attempts'] + [attempt_cost(verdict)])
+                       attempts=row['attempts'] + [attempt_cost(verdict)],
+                       accounts=(tuple(verdict.get('claude_account_before') or ()) or None,
+                                 verdict.get('codex_account')))
             row['scope'] |= row['verdict_scope']
             row['final'] = True
         except (OSError, ValueError, KeyError, TypeError, AttributeError) as exc:
@@ -422,6 +424,20 @@ def tables(rows, grading, recomputed):
     return groups
 
 
+def by_account(rows):
+    """DESIGN Operations "Accounts" and "Codex login": the final slots (n) and their COMPLETE count per engine x arm x
+    the dispatching Claude account (account, organization) x Codex account, by the fingerprints each verdict records."""
+    counts = {}
+    for r in rows.values():
+        if r['final']:
+            key = (r['config'], r['arm'], *r['accounts'])
+            n, complete = counts.get(key, (0, 0))
+            counts[key] = (n + 1, complete + r['complete'])
+    return [dict(config=config, arm=arm, claude_account=list(claude) if claude else None, codex_account=codex, n=n,
+                 complete=complete)
+            for (config, arm, claude, codex), (n, complete) in sorted(counts.items(), key=str)]
+
+
 def cost(rows):
     """Owner tokens and seconds per check-complete slot by engine and arm, over D3, D4, B5 and over all five (0256
     accounting through 0257's sums and report): every charged attempt counts, a total with unknown usage is a
@@ -574,7 +590,8 @@ def evaluate(out, cells):
                           harm=harm_line(rows, config, grading, pairs, pair_gaps)) for config in CONFIGS}
     witnesses, harm = grading['witnesses.json'], grading['harm.json']
     reported = dict(
-        groups=tables(rows, grading, timed['recomputed']), cost=costs, faults=faults(rows), timing=timed,
+        groups=tables(rows, grading, timed['recomputed']), cells_by_account=by_account(rows), cost=costs,
+        faults=faults(rows), timing=timed,
         oom_killed=[dict(cell=r['name'], **entry) for r in rows.values() for entry in r['oom']],
         severe=[dict(cell=r['name'], findings={a['engine']: a['severe'] for a in r['assessments'] if a['severe']},
                      reproducing=[w for w in WITNESSES[r['task']] if witness_state(witnesses, w, r['name']) == 'true'])

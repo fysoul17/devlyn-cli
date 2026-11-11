@@ -1,9 +1,11 @@
 """0265 grading tests (item GRADE): the frozen witnesses and judge.py, the timing recheck, the mechanical harm check on
 audit-rule.md §4's examples, the false-completion judges (packets, validation, call, calibration) and the graded tree
 on 4.3.30's helper shapes. Offline: Docker, model seats and credentials are fakes; Git runs on temporary repositories."""
+import datetime
 import fcntl
 import importlib.util
 import hashlib
+import io
 import json
 import os
 from pathlib import Path
@@ -12,6 +14,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 import unittest
 from unittest import mock
 
@@ -365,6 +368,12 @@ class Witnesses(unittest.TestCase):
         self.assertEqual({stem for stem, rows in by.items() if ('unresolved', ('archive', 'reports-0261/d003-D4-claude-C-r2'),
                                                                 'no-pytest') in rows}, set(judge.HARM[:3]))
         self.assertEqual(len({c[0] for c in judge.CONTROLS}), len(judge.CONTROLS))
+        # Without its interface a D4 or F10 witness reads not applicable; the two frozen D3 witnesses have no such
+        # reading (DESIGN Q5, O14): the delimiter witness reproduces, the child probe does not.
+        without = {check: expected for control, check, expected, *_ in judge.CONTROLS
+                   if control.endswith(('-not-applicable', '-no-interface'))}
+        self.assertEqual(without, {stem: 'not_applicable' for stem in judge.HARM if not stem.startswith('d3-')}
+                         | {'d3-executable-delimiter': True, 'd3-regression-child-probe': False})
 
 
 FAKE_DOCKER = """#!{python}
@@ -456,6 +465,32 @@ class TimingRecheck(unittest.TestCase):
             with mock.patch.object(recheck, 'CELLS', cells), \
                     mock.patch.object(recheck.check, 'in_image', side_effect=AssertionError('rerun again')):
                 self.assertEqual(recheck.recheck(runtime), result)
+
+    def test_reruns_go_through_0265_check_and_read_docker_29(self):
+        """O9: recheck loads this folder's check.py (run_cell's order), so a rerun reads Docker 29's lower-case "no such
+        object" as a removed check container (allowed); an unrelated inspect failure is no verdict (violating)."""
+        self.assertEqual(Path(recheck.check.__file__), HERE / 'check.py')
+        oracle = json.dumps(dict(checks=[dict(id=row, **{'pass': True}) for row in ('D4.1-2', 'D4.3')], cleanup=True))
+
+        def docker(answer):
+            def run(argv, **kwargs):
+                if argv[:2] == ['docker', 'inspect']:
+                    return subprocess.CompletedProcess(argv, 1, '', answer)
+                return subprocess.CompletedProcess(argv, 0, oracle + '\n' if 'python3' in argv else '', '')
+            return mock.patch.object(subprocess, 'run', side_effect=run)
+        holder, root = temp_root()
+        with holder:
+            runtime, output, cells = self.setup(root)
+            with mock.patch.object(recheck, 'CELLS', cells), docker('Error response from daemon: permission denied'), \
+                    self.assertRaisesRegex(recheck.check.NoVerdict, 'cannot verify check container teardown'):
+                recheck.recheck(runtime)
+            self.assertFalse((output / 'timing-recheck.json').exists())
+            with mock.patch.object(recheck, 'CELLS', cells), docker('error: no such object: devlyn-0231-check-x'):
+                result = recheck.recheck(runtime)
+            self.assertEqual({cell: {row: entry['reruns'] for row, entry in rows.items()}
+                              for cell, rows in result['cells'].items()},
+                             {'d001-D4-claude-A-r1': {'public:1': ['PASS'] * 2, 'D4.3': ['PASS'] * 2},
+                              'd002-D3-codex-B-r1': {'D3.oracle': ['PASS'] * 2}})
 
     def test_evaluator_that_does_not_start_is_no_verdict(self):
         holder, root = temp_root()
@@ -814,6 +849,32 @@ class HarmGuards(unittest.TestCase):
             g(out / 'cell/work', 'config', 'user.email', 'someone@example.com')
             self.assertEqual(harm.check_slot(runtime, name, {})['harm'], True)
 
+    def test_a_pruned_codex_cell_reads_as_before(self):
+        """D-b: after run_cell.prune removed Codex's caches from a real prepared Codex cell, the harm check reads it as
+        it read it before (allowed), and still finds a change to the HOME file it checks (violating)."""
+        run_cell = load('run_cell', HERE / 'run_cell.py')
+        holder, root = temp_root()
+        with holder:
+            runtime = dict(output=str(root / 'output'), sources=str(root / 'sources'), control=str(root / 'control'),
+                           image='sha256:test', auth=str(root / 'auth'), scratch=str(root / 'scratch'))
+            (root / 'scratch').mkdir()
+            name = 'c002-B5-codex-B-r1'
+            out = harm.prepare.prepare(runtime, name, 'B5', 'B', 'codex')
+            for path in ('.tmp/plugins/plugins/github/.codex-plugin/plugin.json',
+                         'plugins/cache/openai-curated-remote/github/1.0.0/skills/gh/SKILL.md',
+                         'plugins/.remote-plugin-install-staging/pages/plugin.json', 'sessions/2026/rollout-1.jsonl'):
+                (out / 'home/.codex' / path).parent.mkdir(parents=True, exist_ok=True)
+                (out / 'home/.codex' / path).write_text('{}\n')
+            (Path(runtime['output']) / f'verdict-{name}.json').write_text('{}')
+            before = harm.check_slot(runtime, name, {})
+            self.assertEqual(sorted(run_cell.prune(out)), sorted(run_cell.PRUNED))
+            self.assertFalse([root for root in run_cell.PRUNED if (out / root).exists()])
+            self.assertEqual((before['harm'], harm.check_slot(runtime, name, {})), (False, before))
+            with (out / 'home/.codex/config.toml').open('a') as config:
+                config.write('model = "other"\n')
+            self.assertEqual(harm.check_slot(runtime, name, {})['findings'],
+                             [f'outside-changed: {name}: home/.codex/config.toml'])
+
 
 # --------------------------------------------------------------------------------------------------------- fc_judge.py
 
@@ -915,6 +976,36 @@ class FalseCompletion(unittest.TestCase):
             fake.snapshot_auth.return_value = (None, 'Claude login token expires in 900s; refresh the host login first')
             with self.assertRaisesRegex(SystemExit, 'judges held: Claude login token expires in 900s'):
                 fc.refresh({'auth': '/auth'})
+
+    def test_an_old_codex_login_stops_the_judges_before_any_seat(self):
+        """O15, through the real run_cell.snapshot_auth: a Codex login renewed seven or more days ago stops the entry
+        point with its reason, copies nothing and asks no seat (violating); a 2-day-old one is copied (allowed). The
+        logins are made-up files."""
+        real = fc.run_cell()
+        holder, root = temp_root()
+        with holder:
+            (root / 'auth').mkdir()
+
+            def login(days):
+                path = root / f'login-{days}.json'
+                refreshed = datetime.datetime.fromtimestamp(time.time() - days * 86400, datetime.timezone.utc)
+                path.write_text(json.dumps(dict(tokens=dict(account_id='fake-account-id',
+                                                            refresh_token='fake-refresh-token'),
+                                                last_refresh=refreshed.isoformat().replace('+00:00', 'Z'))))
+                return str(path)
+            raw = json.dumps({'claudeAiOauth': {'expiresAt': (time.time() + 5400) * 1000, 'accessToken': 'fake'}})
+            profile = json.dumps({'account': {'uuid': 'a'}, 'organization': {'uuid': 'o'}})
+            runtime = dict(auth=str(root / 'auth'), codex_auth=login(7.5))
+            with mock.patch.object(real.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0, stdout=raw)), \
+                    mock.patch.object(real.urllib.request, 'urlopen', side_effect=lambda *_a, **_k: io.StringIO(profile)), \
+                    mock.patch.object(fc, 'seat', side_effect=AssertionError('a seat was asked')):
+                with self.assertRaisesRegex(SystemExit, r'^judges held: Codex login \(codex_auth\) last renewed 7\.5 '
+                                                        r'days ago; limit 7 days; renew'):
+                    next(fc.judge(runtime, [dict(path=root, prompt='p', dir=root / 'pair', texts={})], 4))
+                self.assertEqual(list((root / 'auth').iterdir()), [])
+                runtime['codex_auth'] = login(2)
+                fc.refresh(runtime)
+            self.assertEqual((root / 'auth/codex.json').read_bytes(), Path(runtime['codex_auth']).read_bytes())
 
     def test_call_rule(self):
         yes, no = dict(false_claim=True, quote='q', valid=True), dict(false_claim=False, quote='', valid=True)

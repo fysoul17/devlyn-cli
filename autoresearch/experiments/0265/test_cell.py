@@ -1,7 +1,9 @@
 """Offline tests of 0265's arms, cell, launch probe, per-cell assertions and assessors. Fakes stand in for Docker and
 credentials; Codex's model input is real 0.164.0 output (fixtures/cell/prompt-input-*.json)."""
 import base64
+import contextlib
 import copy
+import datetime
 import fcntl
 import hashlib
 import importlib.util
@@ -75,6 +77,32 @@ def b_request(text=TEXT):
 
 
 CURATED_ROOT = f'{instructions.HOME}/.codex/plugins/cache/openai-curated-remote/github/1.0.0/skills'
+PROFILE = {'account': {'uuid': 'a'}, 'organization': {'uuid': 'o'}}
+SECRETS = ('fake-id-token', 'fake-access-token', 'fake-refresh-token', 'fake-claude-token')
+
+
+def codex_auth_file(path, days=2.0, account='fake-codex-account', **fields):
+    """A made-up Codex auth.json, last renewed `days` ago (None: no last_refresh), as Codex writes it (UTC, `Z`)."""
+    login = dict(OPENAI_API_KEY=None, tokens=dict(id_token='fake-id-token', access_token='fake-access-token',
+                                                  refresh_token='fake-refresh-token', account_id=account))
+    if days is not None:
+        login['last_refresh'] = datetime.datetime.fromtimestamp(
+            time.time() - days * 86400, datetime.timezone.utc).isoformat().replace('+00:00', 'Z')
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(login | fields))
+    return path
+
+
+def fake_logins(root):
+    """The keychain's Claude login (made-up, an hour and a half left), HOME at root/home and the profile endpoint."""
+    stack = contextlib.ExitStack()
+    raw = json.dumps({'claudeAiOauth': {'expiresAt': (time.time() + 5400) * 1000, 'accessToken': 'fake-claude-token'}})
+    stack.enter_context(mock.patch.object(run_cell.subprocess, 'run',
+                                          return_value=subprocess.CompletedProcess([], 0, stdout=raw)))
+    stack.enter_context(mock.patch.object(run_cell.Path, 'home', return_value=root / 'home'))
+    urlopen = stack.enter_context(mock.patch.object(run_cell.urllib.request, 'urlopen',
+                                                    side_effect=lambda *_a, **_k: io.StringIO(json.dumps(PROFILE))))
+    return stack, urlopen
 
 
 def with_plugin(body, root, skill):
@@ -972,10 +1000,9 @@ class Rules(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             (root / 'auth').mkdir()
-            (root / 'home/.codex').mkdir(parents=True)
-            (root / 'home/.codex/auth.json').write_text('{"fake": true}')
+            codex_auth_file(root / 'home/.codex/auth.json')
             runtime = {'output': str(root), 'auth': str(root / 'auth')}
-            profile = {'account': {'uuid': 'a'}, 'organization': {'uuid': 'o'}}
+            profile = PROFILE
             for left, blocked in ((3590, True), (3700, False)):
                 raw = json.dumps({'claudeAiOauth': {'expiresAt': (time.time() + left) * 1000, 'accessToken': 'fake'}})
                 with mock.patch.object(run_cell.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0, stdout=raw)), \
@@ -994,9 +1021,161 @@ class Rules(unittest.TestCase):
                 self.assertEqual(venue, None if blocked else identity)
 
 
+class CodexLogin(unittest.TestCase):
+    """DESIGN Operations "Codex login" (O15): the snapshot copies the login the runtime names (codex_auth), else the
+    host default, only while its last renewal is under seven days old, and records its account by fingerprint. Every
+    login here is a made-up file."""
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        self.auth = self.root / 'auth'
+        self.auth.mkdir()
+        self.default = codex_auth_file(self.root / 'home/.codex/auth.json', account='default-account-id')
+        self.named = codex_auth_file(self.root / 'registered/auth.json', account='named-account-id')
+        stack, self.urlopen = fake_logins(self.root)
+        self.enterContext(stack)
+
+    def runtime(self, codex_auth=None, **fields):
+        return dict(auth=str(self.auth), output=str(self.root / 'output'), codex_auth=codex_auth, **fields)
+
+    def copies(self):
+        return sorted(p.name for p in self.auth.iterdir())
+
+    def test_the_named_login_is_copied_and_the_default_is_not(self):
+        venue, blocked = run_cell.snapshot_auth(self.runtime(str(self.named)))
+        self.assertIsNone(blocked)
+        copy_ = self.auth / 'codex.json'
+        self.assertEqual(copy_.read_bytes(), self.named.read_bytes())
+        self.assertNotEqual(copy_.read_bytes(), self.default.read_bytes())
+        self.assertEqual(oct(copy_.stat().st_mode & 0o777), '0o600')  # umask 077, as before
+        self.assertEqual(venue['codex_account'], run_cell.base.fingerprint('named-account-id'))
+        self.assertFalse([value for value in ('named-account-id', *SECRETS) if value in json.dumps(venue)])
+
+    def test_the_default_is_used_when_the_field_is_null_or_absent(self):
+        for runtime in (self.runtime(None), dict(auth=str(self.auth))):
+            with self.subTest(runtime=runtime):
+                for path in self.auth.iterdir():
+                    path.unlink()
+                venue, blocked = run_cell.snapshot_auth(runtime)
+                self.assertIsNone(blocked)
+                self.assertEqual((self.auth / 'codex.json').read_bytes(), self.default.read_bytes())
+                self.assertEqual(venue['codex_account'], run_cell.base.fingerprint('default-account-id'))
+        codex_auth_file(self.default, account=None)  # a login without an account id: recorded as null
+        self.assertIsNone(run_cell.snapshot_auth(self.runtime())[0]['codex_account'])
+
+    def test_the_renewal_guard(self):
+        self.assertEqual(run_cell.CODEX_LOGIN_MAX_AGE_SECONDS, 7 * 86400)
+        literal = 'Codex login (codex_auth) '
+        prefix = re.escape(literal)
+        cases = (('2 days old', dict(days=2), None),
+                 ('a minute ahead of this clock', dict(days=-60 / 86400), None),
+                 ('7.5 days old', dict(days=7.5), prefix + r'last renewed 7\.5 days ago; limit 7 days'),
+                 ('no last_refresh', dict(days=None), prefix + 'has no last_refresh'),
+                 ('unparseable', dict(last_refresh='last tuesday'),
+                  prefix + 'last_refresh is not an ISO-8601 time with a time zone'),
+                 ('no time zone', dict(last_refresh='2026-11-09T10:00:00'),
+                  prefix + 'last_refresh is not an ISO-8601 time with a time zone'),
+                 ('a day in the future', dict(days=-1), prefix + r'last renewed 86\d{3} s in the future; limit 300 s'))
+        for label, fields, reason in cases:
+            with self.subTest(label):
+                for path in self.auth.iterdir():
+                    path.unlink()
+                self.urlopen.reset_mock()
+                login = codex_auth_file(self.root / f'{label}.json', **fields)
+                venue, blocked = run_cell.snapshot_auth(self.runtime(str(login)))
+                if reason is None:
+                    self.assertIsNone(blocked)
+                    self.assertEqual((self.auth / 'codex.json').read_bytes(), login.read_bytes())
+                else:
+                    self.assertIsNone(venue)
+                    self.assertRegex(blocked, '^' + reason + '$')
+                    self.assertEqual(self.copies(), [])  # blocked before either copy and the profile check
+                    self.urlopen.assert_not_called()
+        (self.root / 'not-json.json').write_text('not json')
+        for path, reason in ((self.root / 'absent.json', literal + 'unreadable: No such file or directory'),
+                             (self.root / 'not-json.json', literal + 'is not JSON')):
+            self.assertEqual(run_cell.snapshot_auth(self.runtime(str(path))), (None, reason))
+        self.assertEqual(self.copies(), [])
+
+    def test_a_blocked_snapshot_holds_the_driver_with_no_verdict(self):
+        """The real driver and run_cell: preflight's blocked path exits 3 (not dispatched, its reason on file), the
+        driver waits 60 s to try again, and nothing is prepared, recorded as a verdict or latched."""
+        driver = load('driver')  # loads this folder's run_cell, as the lanes do
+        old = codex_auth_file(self.root / 'registered-old/auth.json', days=7.6)
+        (self.root / 'instructions.seal.json').write_text(json.dumps(
+            {'forms': {'claude': {}, 'codex': {}}, 'qualification': {'status': 'PASS'}}))
+        runtime_path = self.root / 'runtime-codex.json'
+        runtime_path.write_text(json.dumps(self.runtime(
+            str(old), lane='codex', renewal_lock=str(self.root / 'renewal.lock'), check_lock=str(self.root / 'check.lock'),
+            caps={'seven_day': 95, 'five_hour': 95}, image='sha256:test', image_tarball=str(self.root / 'image.tar'))))
+        row = next(r for r in driver.rows([str(HERE / 'cells.tsv')]) if r[3] == 'codex')
+        lane = driver.Driver(runtime_path, [row])
+        self.addCleanup(lane.lock.close)
+
+        class Waited(Exception):
+            pass
+        with mock.patch.object(driver.Driver, 'ready', return_value=True), \
+                mock.patch.object(driver.cell, 'image_identity', return_value=True), \
+                mock.patch.object(driver.cell.shutil, 'disk_usage',
+                                  return_value=mock.Mock(free=driver.cell.HEADROOM_BYTES)), \
+                mock.patch.object(driver.time, 'sleep', side_effect=Waited) as sleep:
+            with self.assertRaises(Waited):
+                lane.run()
+        output = self.root / 'output'
+        self.assertEqual(sleep.call_args.args, (60,))
+        self.assertEqual(sorted(p.name for p in output.iterdir() if p.name.startswith('verdict-') or p.is_dir()), [])
+        self.assertEqual(json.loads((output / f'not-dispatched-{row[0]}.json').read_text()),
+                         {'reason': 'Codex login (codex_auth) last renewed 7.6 days ago; limit 7 days'})
+        log = [json.loads(line) for line in (output / 'driver-codex.log').read_text().splitlines()]
+        self.assertEqual([(e['event'], e.get('cell'), e.get('rc')) for e in log], [('run', row[0], 3)])
+        self.assertEqual(self.copies(), [])
+        self.urlopen.assert_not_called()
+
+    def test_an_assessment_takes_a_fresh_copy_under_the_same_guard(self):
+        """A regrade can come long after its cell's copy: the assessors' snapshot copies the login again, or holds."""
+        for name in ('claude.json', 'codex.json'):
+            (self.auth / name).write_text('earlier copy')
+        old = codex_auth_file(self.root / 'old.json', days=7.5)
+        self.assertEqual(run_cell.assessment_snapshot(self.runtime(str(old)), {}),
+                         (None, 'Codex login (codex_auth) last renewed 7.5 days ago; limit 7 days'))
+        self.assertEqual([(self.auth / n).read_text() for n in ('claude.json', 'codex.json')], ['earlier copy'] * 2)
+        fresh, blocked = run_cell.assessment_snapshot(self.runtime(str(self.named)), {})
+        self.assertIsNone(blocked)
+        self.assertEqual((self.auth / 'codex.json').read_bytes(), self.named.read_bytes())
+        self.assertEqual(fresh['codex_account'], run_cell.base.fingerprint('named-account-id'))
+
+
+CODEX_CACHES = {  # Codex's own caches as a real 0.164.0 session leaves them (Part D's evidence), run_cell.PRUNED's roots
+    'home/.codex/.tmp/plugins/plugins/github/.codex-plugin/plugin.json': '{"name": "github"}',
+    'home/.codex/.tmp/plugins.sync.lock': '',
+    'home/.codex/plugins/cache/openai-curated-remote/github/1.0.0/skills/gh/SKILL.md': '# gh\n',
+    'home/.codex/plugins/.remote-plugin-install-staging/pages/plugin.json': '{}'}
+CODEX_KEPT = {  # what a Codex cell's HOME holds besides them; none of it is pruned
+    f'home/.codex/{instructions.PROJECTION}/.codex-plugin/plugin.json': '{"name": "devlyn"}\n',
+    'home/.codex/sessions/2026/11/11/rollout-1.jsonl': '{}\n', 'home/.codex/state_5.sqlite': 'sqlite',
+    'home/.codex/skills/.system/imagegen/SKILL.md': '# imagegen\n', 'home/.codex/.tmpfile': 'not the .tmp root',
+    'home/.codex/plugins/cache/openai-curated-remote-other/x.json': '{}'}
+
+
+def write_codex_home(out):
+    for path, text in (CODEX_CACHES | CODEX_KEPT).items():
+        (out / path).parent.mkdir(parents=True, exist_ok=True)
+        (out / path).write_text(text)
+    (out / 'home/.codex/.tmp/plugins/current').symlink_to('plugins')  # a link is counted, never followed
+
+
+def tree_files(out):
+    return sorted(str(p.relative_to(out)) for p in out.rglob('*') if p.is_symlink() or not p.is_dir())
+
+
 class RunFlow(unittest.TestCase):
     def run_cell(self, root, *, task='D3', arm='B', config='claude', stderr='', stdout='', teardown='CLEAN',
-                 container=None, violations=()):
+                 container=None, violations=(), caches=False, assessed=None, snapshot=None, expected=None):
+        """run_cell.run with every outside effect faked. caches: the cell's HOME holds Codex's caches; assessed: the
+        assessors' side effect; snapshot: the cell's own credential read (preflight is then the real one); expected:
+        the account the driver's ready() approved (default the dispatching venue's)."""
         output = root / 'output'
         output.mkdir()
         runtime = dict(output=str(output), auth=str(root / 'auth'), control=str(root / 'control'), image='image',
@@ -1020,10 +1199,12 @@ class RunFlow(unittest.TestCase):
             (out / 'plan.json').write_text(json.dumps(dict(name=name, task=task_, arm=arm_, config=config_)))
             (out / 'run/stderr').write_text(stderr)
             (out / 'run/stdout').write_text(stdout)
+            if caches:
+                write_codex_home(out)
             return out
         owner = dict(owner_status='EXITED_0', seconds=1, teardown=teardown, teardown_error='survived',
                      identity={'status': 'MATCH'}, container=container or {'oom_killed': False, 'exit_code': 0})
-        venue = dict(account=['dispatch', 'org'], token_seconds_left=5000)
+        venue = dict(account=['dispatch', 'org'], token_seconds_left=5000, codex_account='codexaccount')
         checks = dict(product_check_pass=True, oracle={}, scope_violations=[], adjudication_needed=False)
         held = []
 
@@ -1037,10 +1218,15 @@ class RunFlow(unittest.TestCase):
         patches = dict(instructions=mock.patch.object(run_cell.instructions, 'check', return_value=list(violations)),
                        locate=mock.patch.object(run_cell.locate, 'locate', return_value={}),
                        check=mock.patch.object(run_cell.check, 'check', side_effect=locked_check),
-                       assess=mock.patch.object(run_cell.assess, 'assess', return_value=[]),
+                       assess=mock.patch.object(run_cell.assess, 'assess', return_value=[], side_effect=assessed),
                        limits=mock.patch.object(run_cell, 'claude_limits', side_effect=AssertionError('window read')))
+        if snapshot is None:
+            patches['preflight'] = mock.patch.object(run_cell, 'preflight', return_value=(venue, None))
+        else:
+            patches['preflight'] = mock.patch.object(run_cell, 'snapshot_auth', return_value=(snapshot, None))
+            patches['disk'] = mock.patch.object(run_cell.shutil, 'disk_usage',
+                                                return_value=mock.Mock(free=run_cell.HEADROOM_BYTES))
         with mock.patch.object(run_cell, 'image_identity', return_value=True), \
-                mock.patch.object(run_cell, 'preflight', return_value=(venue, None)), \
                 mock.patch.object(run_cell, 'control_unchanged', return_value=True), \
                 mock.patch.object(run_cell.prepare, 'prepare', side_effect=prepared), \
                 mock.patch.object(run_cell.subprocess, 'check_output', return_value='commit'), \
@@ -1054,10 +1240,12 @@ class RunFlow(unittest.TestCase):
                 mock.patch.object(run_cell, 'assessment_snapshot', return_value=(dict(account=['a', 'o']), None)):
             mocks = {name: patch.start() for name, patch in patches.items()}
             try:
-                code = run_cell.run(runtime_path, 'cell-1', task, arm, config, expected_account=venue['account'])
+                code = run_cell.run(runtime_path, 'cell-1', task, arm, config,
+                                    expected_account=expected or venue['account'])
             finally:
                 mock.patch.stopall()
-        verdict = json.loads((output / 'verdict-cell-1.json').read_text())
+        path = output / 'verdict-cell-1.json'
+        verdict = json.loads(path.read_text()) if path.is_file() else None
         return code, verdict, mocks, output / 'cell-1', held
 
     def assert_not_graded(self, mocks):
@@ -1105,7 +1293,8 @@ class RunFlow(unittest.TestCase):
             self.assertEqual((code, verdict['status']), (0, 'COMPLETE'))
             self.assertEqual(held, [True])
             self.assertFalse({key for key in verdict if key.startswith('claude_limits')})
-            self.assertEqual(verdict['claude_account_before'], ['dispatch', 'org'])
+            self.assertEqual((verdict['claude_account_before'], verdict['codex_account']),
+                             (['dispatch', 'org'], 'codexaccount'))
             mocks['limits'].assert_not_called()
             args = mocks['instructions'].call_args.args
             self.assertEqual((args[0], args[1]['arm'], args[2]['qualification']['status']), (out, 'B', 'PASS'))
@@ -1140,6 +1329,138 @@ class RunFlow(unittest.TestCase):
         for arm, config in (('C', 'claude'), ('A', 'grok')):
             with self.assertRaisesRegex(ValueError, 'arm A/B and config claude/codex'):
                 run_cell.run('/nonexistent/runtime.json', 'x', 'D3', arm, config)
+
+    def test_a_graded_cell_loses_codex_caches_only_and_records_them(self):
+        """D-b, allowed: once a measured cell's verdict is written and is not a STOP, exactly run_cell.PRUNED leaves
+        it, in both arms, and pruned.json records each root's files (a symlink counted, not followed) and bytes. The
+        same cell held at a STOP (violating) keeps every file."""
+        sizes = {root: sum(len(text) for path, text in CODEX_CACHES.items() if path.startswith(root + '/'))
+                 for root in run_cell.PRUNED}
+        expected = {run_cell.PRUNED[0]: dict(files=3, bytes=sizes[run_cell.PRUNED[0]] + len('plugins')),
+                    run_cell.PRUNED[1]: dict(files=1, bytes=sizes[run_cell.PRUNED[1]]),
+                    run_cell.PRUNED[2]: dict(files=1, bytes=sizes[run_cell.PRUNED[2]])}
+        for arm in prepare.ARMS:
+            with self.subTest(arm=arm), tempfile.TemporaryDirectory() as temp, \
+                    tempfile.TemporaryDirectory() as held:
+                code, verdict, _, stopped, _ = self.run_cell(Path(held), arm=arm, config='codex', caches=True,
+                                                             violations=['codex-home: x'])
+                self.assertEqual((code, verdict['status']), (2, 'STOP'))
+                before = tree_files(stopped)
+                self.assertFalse((stopped / 'pruned.json').exists())
+                code, verdict, _, out, _ = self.run_cell(Path(temp), arm=arm, config='codex', caches=True)
+                self.assertEqual((code, verdict['status']), (0, 'COMPLETE'))
+                self.assertEqual(json.loads((out / 'pruned.json').read_text()), expected)
+                self.assertEqual(tree_files(out), sorted(
+                    [p for p in before if not p.startswith(tuple(r + '/' for r in run_cell.PRUNED))] + ['pruned.json']))
+                for path, text in CODEX_KEPT.items():
+                    self.assertEqual((out / path).read_text(), text)
+                self.assertTrue((out / 'home/.codex/plugins/cache').is_dir())
+                self.assertEqual(run_cell.prune(out), expected)  # a second call changes nothing
+                self.assertEqual(json.loads((out / 'pruned.json').read_text()), expected)
+
+    def test_a_cell_without_codex_caches_and_a_smoke_task_cell(self):
+        """D-b: a Claude cell has none of the roots and gets an empty record (allowed, idempotent); a SMOKE-task cell
+        keeps its caches, since seal-forms asserts SMOKE's CODEX_HOME after the verdict."""
+        with tempfile.TemporaryDirectory() as temp:
+            code, _, _, out, _ = self.run_cell(Path(temp), arm='A', config='claude')
+            self.assertEqual((code, json.loads((out / 'pruned.json').read_text())), (0, {}))
+            files = tree_files(out)
+            self.assertEqual(run_cell.prune(out), {})
+            self.assertEqual(tree_files(out), files)
+        with tempfile.TemporaryDirectory() as temp:
+            code, _, _, out, _ = self.run_cell(Path(temp), task='SMOKE', arm='A', config='codex', caches=True)
+            self.assertEqual(code, 0)
+            self.assertFalse((out / 'pruned.json').exists())
+            self.assertTrue(all((out / path).exists() for path in CODEX_CACHES))
+
+    def test_prune_never_follows_a_link_and_records_what_it_could_not_remove(self):
+        """D-b, violating: a root reached through a symlinked folder (the session controls its HOME) is left with an
+        error, and so is a root that cannot be removed; the files outside the cell stay and nothing raises."""
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            outside = root / 'outside/cache/openai-curated-remote'
+            outside.mkdir(parents=True)
+            (outside / 'keep.txt').write_text('not the cell\'s')
+            out = root / 'cell-1'
+            (out / 'home/.codex/.tmp/locked').mkdir(parents=True)
+            (out / 'home/.codex/plugins').symlink_to(root / 'outside')
+            (out / 'home/.codex/.tmp/locked/file').write_text('x')
+            (out / 'home/.codex/.tmp/locked').chmod(0o500)
+            try:
+                with mock.patch('sys.stderr', io.StringIO()) as printed:
+                    record = run_cell.prune(out)
+            finally:
+                (out / 'home/.codex/.tmp/locked').chmod(0o700)
+            self.assertEqual(record[run_cell.PRUNED[1]], {'error': 'not removed: reached through a symbolic link'})
+            self.assertEqual(record[run_cell.PRUNED[0]]['files'], 1)
+            self.assertTrue(record[run_cell.PRUNED[0]]['error'].startswith('not removed: '))
+            self.assertEqual(sorted(record), sorted(run_cell.PRUNED[:2]))
+            self.assertTrue((outside / 'keep.txt').is_file())
+            self.assertEqual(len(printed.getvalue().splitlines()), 2)
+            self.assertEqual(json.loads((out / 'pruned.json').read_text()), record)
+
+    def test_assessor_stop_keeps_the_caches_and_its_regrade_prunes_and_reads_a_pruned_cell(self):
+        """D-b: an assessor STOP is not pruned; its regrade grades from the preserved evidence and then prunes, and a
+        regrade of a cell that was already pruned grades the same."""
+        for pruned_first in (False, True):
+            with self.subTest(pruned_first=pruned_first), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                code, verdict, _, out, _ = self.run_cell(root, arm='B', config='codex', caches=True,
+                                                         assessed=RuntimeError('seat timed out'))
+                self.assertEqual((code, verdict['reason']), (2, 'assessment failed: seat timed out'))
+                self.assertTrue(all((out / path).exists() for path in CODEX_CACHES))
+                (out / 'checks.json').write_text(json.dumps(dict(product_check_pass=True, oracle={},
+                                                                 scope_violations=[], adjudication_needed=False)))
+                if pruned_first:
+                    run_cell.prune(out)
+                recorded = (out / 'pruned.json').read_text() if pruned_first else None
+                with mock.patch.object(run_cell, 'assessment_snapshot', return_value=(dict(account=['a', 'o']), None)), \
+                        mock.patch.object(run_cell.assess, 'assess', return_value=[]) as assessed:
+                    code = run_cell.regrade(root / 'runtime.json', 'cell-1')
+                assessed.assert_called_once()
+                verdict = json.loads((root / 'output/verdict-cell-1.json').read_text())
+                self.assertEqual((code, verdict['status'], verdict['regraded']['after']), (0, 'COMPLETE', 'stop-1'))
+                self.assertFalse([path for path in CODEX_CACHES if (out / path).exists()])
+                self.assertEqual(sorted(json.loads((out / 'pruned.json').read_text())), sorted(run_cell.PRUNED))
+                if recorded:
+                    self.assertEqual((out / 'pruned.json').read_text(), recorded)
+
+    def test_a_login_changed_after_ready_is_not_dispatched_and_a_dispatch_records_its_account(self):
+        """D-c: the cell's own credential read finds another account than the driver's ready() approved (the owner's
+        app switched the login in between): no verdict, nothing prepared, exit 3 with the reason on file, so the
+        driver's next ready() approves the new login. With the approved account the verdict records it."""
+        with tempfile.TemporaryDirectory() as temp:
+            code, verdict, _, out, _ = self.run_cell(Path(temp), snapshot=dict(account=['other', 'org'],
+                                                                             token_seconds_left=5000,
+                                                                             codex_account='codexaccount'))
+            self.assertEqual((code, verdict), (3, None))
+            self.assertFalse(out.exists())
+            self.assertEqual(json.loads((Path(temp) / 'output/not-dispatched-cell-1.json').read_text()),
+                             {'reason': 'account changed after reserve check'})
+        with tempfile.TemporaryDirectory() as temp:
+            code, verdict, _, _, _ = self.run_cell(Path(temp), snapshot=dict(account=['dispatch', 'org'],
+                                                                           token_seconds_left=5000,
+                                                                           codex_account='codexaccount'))
+            self.assertEqual((code, verdict['claude_account_before'], verdict['assessor_account']),
+                             (0, ['dispatch', 'org'], ['a', 'o']))
+
+    def test_the_verdict_records_the_codex_fingerprint_and_no_account_id_or_token(self):
+        """O15: the dispatching snapshot's Codex account, by fingerprint, beside the Claude account; neither the
+        account id nor any token of either login reaches the verdict or the cell's seal."""
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            named = codex_auth_file(root / 'registered/auth.json', account='named-account-id')
+            (root / 'snapshot').mkdir()
+            stack, _ = fake_logins(root)
+            with stack:
+                venue, blocked = run_cell.snapshot_auth(dict(auth=str(root / 'snapshot'), codex_auth=str(named)))
+            self.assertIsNone(blocked)
+            code, verdict, _, out, _ = self.run_cell(root, arm='A', config='codex', snapshot=venue,
+                                                     expected=venue['account'])
+            self.assertEqual((code, verdict['claude_account_before'], verdict['codex_account']),
+                             (0, venue['account'], run_cell.base.fingerprint('named-account-id')))
+            for text in ((root / 'output/verdict-cell-1.json').read_text(), (out / 'seal.json').read_text()):
+                self.assertFalse([value for value in ('named-account-id', *SECRETS) if value in text])
 
 
 class Assessors(unittest.TestCase):
@@ -1215,19 +1536,36 @@ class DockerAnswers(unittest.TestCase):
             return subprocess.CompletedProcess(argv, 1 if argv[1] == 'rm' and rm else 0, 'ok', rm if argv[1] == 'rm' else '')
         return mock.patch.object(subprocess, 'run', side_effect=run)
 
+    def survives(self):
+        """Docker still answers for the container after its removal: inspect succeeds every time."""
+        return mock.patch.object(subprocess, 'run', side_effect=lambda argv, **kwargs: subprocess.CompletedProcess(
+            argv, 0, '[{"Id": "x"}]' if argv[1] == 'inspect' else 'ok', ''))
+
     def test_check_container_teardown(self):
         check, runtime = run_cell.check, {'control': '/control', 'image': 'sha256:image'}
+        self.assertEqual(Path(check.__file__), HERE / 'check.py')  # run_cell's load order picks 0265's copy
         for stderr in ('error: no such object: x', 'Error: No such object: x'):
             with self.subTest(stderr=stderr), self.answers(stderr):
                 self.assertEqual(check.in_image(runtime, Path('/work'), ['true'])['exit_code'], 0)
-        with self.answers('permission denied'), self.assertRaisesRegex(check.NoVerdict, 'cannot verify'):
+        for stderr in ('permission denied', 'Cannot connect to the Docker daemon at unix:///var/run/docker.sock'):
+            with self.subTest(stderr=stderr), self.answers(stderr), self.assertRaisesRegex(check.NoVerdict, 'cannot verify'):
+                check.in_image(runtime, Path('/work'), ['true'])
+        with self.survives(), self.assertRaisesRegex(check.NoVerdict, 'check container survived teardown'):
             check.in_image(runtime, Path('/work'), ['true'])
 
     def test_assessor_container_reaped(self):
+        self.assertEqual((Path(assess.__file__), Path(run_cell.assess.__file__)), (HERE / 'assess.py',) * 2)
         for stderr in ('error: no such object: x', 'Error: No such object: x'):
             with self.subTest(stderr=stderr), self.answers(stderr, 'Error response from daemon: no such container: x'):
                 assess.reap('x')
-        with self.answers('permission denied'), self.assertRaisesRegex(RuntimeError, 'cannot prove container x'):
+        for stderr in ('permission denied', 'Cannot connect to the Docker daemon at unix:///var/run/docker.sock'):
+            with self.subTest(stderr=stderr), self.answers(stderr), \
+                    self.assertRaisesRegex(RuntimeError, 'cannot prove container x'):
+                assess.reap('x')
+        with self.answers('error: no such object: x', 'permission denied'), \
+                self.assertRaisesRegex(RuntimeError, 'cannot prove container x'):  # the removal itself failed otherwise
+            assess.reap('x')
+        with self.survives(), self.assertRaisesRegex(RuntimeError, 'cannot prove container x'):
             assess.reap('x')
 
 

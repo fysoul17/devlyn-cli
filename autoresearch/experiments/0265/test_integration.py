@@ -4,7 +4,8 @@ Fakes: the `docker`, `security` and `claude` executables (this file run as `fake
 `fake-claude`) and, inside each driver process, the Anthropic profile and usage endpoints (this file run as `launch`,
 which then runs driver.py unchanged). The fake engines write what the real ones leave: the status line, the HOME
 release, Claude's stream and transcript, Codex's stream and rollout trace (its first request in Codex 0.164.0's real
-model-input shape, fixtures/cell/prompt-input-*.json), and one allowed product edit. The launch probe's containers
+model-input shape, fixtures/cell/prompt-input-*.json) and Codex's own caches in CODEX_HOME, and one allowed product
+edit. The launch probe's containers
 answer as the recording shims and `codex debug prompt-input` do. Everything else is the code a real run executes:
 driver.py, run_cell.py, prepare, cell (its identity), usage, quota, locate and check modules, assess, instructions
 seal (the launch probe) and seal-forms, then judge.py, recheck.py, harm_check.py, fc_judge.py and decide.py. The
@@ -15,6 +16,7 @@ Run: python3 -m pytest -q autoresearch/experiments/0265/test_integration.py (sev
 """
 import base64
 import copy
+import hashlib
 import io
 import json
 import os
@@ -38,6 +40,15 @@ CLAIM = 'The writer is safe in every case.'
 DEVLYN = ['node', '/install/package/bin/devlyn.js', 'run']
 COUNTERS = ('input_tokens', 'cached_input_tokens', 'cache_write_input_tokens', 'output_tokens',
             'reasoning_output_tokens')
+# What every Codex session leaves in CODEX_HOME, both arms (D-b): its own caches, pruned once a measured cell is
+# graded, and state that stays.
+CODEX_CACHES = {'home/.codex/.tmp': {'plugins.sync.lock': '', 'plugins/.git/HEAD': 'ref: refs/heads/main\n'},
+                'home/.codex/plugins/cache/openai-curated-remote': {
+                    'github/1.0.0/.codex-plugin/plugin.json': '{"name": "github"}\n'},
+                'home/.codex/plugins/.remote-plugin-install-staging': {'sites/plugin.json': '{"name": "sites"}\n'}}
+CODEX_KEPT = {'home/.codex/state_5.sqlite': 'state\n', 'home/.codex/skills/.system/imagegen/SKILL.md': '---\n'}
+ACCOUNT, ORGANIZATION = 'account-0265', 'org-0265'
+CODEX_ACCOUNT = 'codex-account-0265'
 
 
 # ---------------------------------------------------------------- fakes (run as separate processes)
@@ -179,13 +190,19 @@ def owner_engine(record):
     caller = json.loads((harness / 'caller.json').read_text())
     target = cell / 'work' / caller['allowed'][0]
     append(target, '\n# fake owner change\n' if target.suffix == '.py' else '\n// fake owner change\n')
-    if name in rules()['duplicate']:  # 4.3.30 keeps a refused delivery's edits in the anchor too: the same content
+    if name in rules()['duplicate'] + rules()['differ']:  # 4.3.30 keeps a refused delivery's edits in the anchor too
         tree = cell / '.devlyn-worktrees/work/x'
         subprocess.run(['git', '-C', str(cell / 'work'), 'worktree', 'add', '-q', '-b', 'task/x', str(tree)],
                        check=True, capture_output=True, env=dict(os.environ, GIT_CONFIG_GLOBAL='/dev/null',
                                                                  GIT_CONFIG_NOSYSTEM='1'))
         (cell / 'work/.git/worktrees/x/gitdir').write_text('/cell/.devlyn-worktrees/work/x/.git\n')  # container path
         shutil.copyfile(target, tree / caller['allowed'][0])
+        if name in rules()['differ']:  # the worktree's content differs from the anchor's
+            append(tree / caller['allowed'][0], '\n// another change\n')
+    if name in rules()['switch_login']:  # the owner's app switches the host's default login while this cell runs
+        (state() / 'account.txt').write_text(rules()['switch_login'][name])
+    if name in rules()['assessor_fault']:  # one seat of this cell's own assessment (same lane process) answers nothing
+        (state() / f'assessor-fault-{os.getppid()}').write_text('inject once\n')
     final = CLAIM if name in rules()['claim'] else 'Done. Every public check passes.'
     if engine == 'claude':
         session = str(uuid.uuid4())
@@ -203,6 +220,11 @@ def owner_engine(record):
             type='assistant', sessionId=session, message=dict(id='msg_1', model='claude-opus-5-5',
                                                               stop_reason='end_turn', usage=usage))) + '\n')
     else:
+        for root, files in CODEX_CACHES.items():
+            for path, body in files.items():
+                append(cell.parent / root / path, body)
+        for path, body in CODEX_KEPT.items():
+            append(cell.parent / path, body)
         thread = str(uuid.uuid4())
         trace = cell / 'trace' / f'trace-1-{thread}'
         (trace / 'payloads').mkdir(parents=True)
@@ -283,6 +305,8 @@ def check_container(args, command):
 def seat(command):
     """An assessor or false-completion judge: the answer for the prompt on stdin, in the engine's stream form."""
     prompt = sys.stdin.read()
+    if consume(f'assessor-fault-{os.getppid()}'):
+        return 0
     if '"false_claim"' in prompt:
         claimed = CLAIM in prompt
         answer = json.dumps(dict(false_claim=claimed, quote=CLAIM if claimed else ''))
@@ -403,17 +427,24 @@ class Endpoint(io.BytesIO):
 
 
 def endpoints(request, timeout=None):
-    """The profile and usage endpoints; FAKE_429_ONCE makes this process's first usage read an HTTP 429."""
+    """The profile and usage endpoints. The profile names the host's default login (account.txt, which the owner's app
+    may change; an `account-switch` marker changes it right after one read). FAKE_429_ONCE makes this process's first
+    usage read an HTTP 429; a `usage-no-seven-day` marker makes one read lack the seven-day window."""
     url = request.full_url if hasattr(request, 'full_url') else str(request)
     if url.endswith('/api/oauth/profile'):
-        return Endpoint(json.dumps({'account': {'uuid': 'account-0265'}, 'organization': {'uuid': 'org-0265'}}).encode())
+        login = state() / 'account.txt'
+        account = login.read_text() if login.is_file() else ACCOUNT
+        if consume('account-switch'):
+            login.write_text('account-second')
+        return Endpoint(json.dumps({'account': {'uuid': account}, 'organization': {'uuid': ORGANIZATION}}).encode())
     if url.endswith('/api/oauth/usage'):
         note('usage.jsonl', dict(pid=os.getpid()))
         if os.environ.pop('FAKE_429_ONCE', None):
             raise urllib.error.HTTPError(url, 429, 'Too Many Requests', {}, None)
         reset = '2026-11-12T00:00:00+00:00'  # the account's 2026-11-11 shape (O8): no five-hour window, a weekly
         # model limit, and entries that are no window (extra usage at its cap must not hold)
-        return Endpoint(json.dumps({'five_hour': None, 'seven_day': {'utilization': 20, 'resets_at': reset},
+        week = None if consume('usage-no-seven-day') else {'utilization': 20, 'resets_at': reset}
+        return Endpoint(json.dumps({'five_hour': None, 'seven_day': week,
                                     'seven_day_opus': {'utilization': 30, 'resets_at': reset},
                                     'extra_usage': {'utilization': 100, 'resets_at': None},
                                     'nimbus_quill': None}).encode())
@@ -488,7 +519,10 @@ class Rehearsal(unittest.TestCase):
             path = self.fake / 'bin' / name
             path.write_text(f'#!/bin/sh\nexec "{sys.executable}" -I -B "{Path(__file__).resolve()}" fake-{name} "$@"\n')
             path.chmod(0o755)
-        (self.fake / 'home/.codex/auth.json').write_text('{"fake": "codex login"}\n')
+        # The host's default Codex login (the runtime names none): made up, renewed two days ago (O15's guard).
+        refreshed = time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime(time.time() - 2 * 86400))
+        (self.fake / 'home/.codex/auth.json').write_text(json.dumps(dict(
+            tokens=dict(account_id=CODEX_ACCOUNT, refresh_token='fake-codex-refresh'), last_refresh=refreshed)) + '\n')
         self.env = dict(os.environ, PATH=f'{self.fake / "bin"}{os.pathsep}{os.environ["PATH"]}',
                         HOME=str(self.fake / 'home'), FAKE_STATE=str(self.fake), PYTHONDONTWRITEBYTECODE='1')
         self.env.pop('FAKE_429_ONCE', None)
@@ -516,10 +550,12 @@ class Rehearsal(unittest.TestCase):
         # all eight replicates below, the completion line then reads differently with the reruns (TIMING_SENSITIVE).
         self.timing = [named(rows, 'claude', task, 'A', r) for task in ('D3', 'D4') for r in (1, 2)]
         self.unresolved = named(rows, 'codex', 'D3', 'A', 1)
+        self.regraded = self.unresolved  # its pair is then judged on a regraded, pruned Codex cell
         self.unassessable = named(rows, 'codex', 'F10', 'B', 1)
         self.duplicate = named(rows, 'codex', 'B5', 'B', 2)
         (self.fake / 'rules.json').write_text(json.dumps(dict(
-            claim=[self.claim], fail_public='-B5-codex-A-', duplicate=[self.duplicate],
+            claim=[self.claim], fail_public='-B5-codex-A-', duplicate=[self.duplicate], differ=['x07-B5-codex-B'],
+            switch_login={'x06-SMOKE-claude-A': 'account-third'}, assessor_fault=[self.regraded],
             reproduces=[[self.claim, 'd4-writer-death']], unresolved=[[self.unresolved, 'd3-regression-child-probe']])))
         for marker in (f'launch-fault-{self.launch_fault}', *(f'timing-{name}' for name in self.timing),
                        f'probe-unassessable-{self.unassessable}'):
@@ -594,11 +630,13 @@ class Rehearsal(unittest.TestCase):
         self.assertEqual(set(seal['forms']), {'claude', 'codex'})
 
         # 2. Both lanes at once, in two real processes, over the r <= 2 slice; the host login at the 300 s mark, one
-        # injected B launch fault (claude lane), one injected HTTP 429 hold (codex lane) and one in-container disk
-        # reading below the delivery floor (whichever lane reads it first). A third process for the claude lane,
+        # injected B launch fault (claude lane), one injected HTTP 429 hold (codex lane), one assessor seat that
+        # answers nothing (codex lane), and, for whichever lane reads it first, one in-container disk reading below
+        # the delivery floor and one usage read without the seven-day window. A third process for the claude lane,
         # started while the first runs, is refused by the lane lock.
         keychain(time.time() + 200)
-        (self.fake / 'disk-low').write_text('inject once\n')
+        for marker in ('disk-low', 'usage-no-seven-day'):
+            (self.fake / marker).write_text('inject once\n')
         lanes = {'claude': self.driver('claude', self.fake / 'slice.tsv'),
                  'codex': self.driver('codex', self.fake / 'slice.tsv', FAKE_429_ONCE='1')}
         pids = {lane: process.pid for lane, process in lanes.items()}
@@ -622,8 +660,10 @@ class Rehearsal(unittest.TestCase):
                           for r in self.slice}, {r[0]: True for r in self.slice})
 
         # The launch fault was archived and redispatched without a latch; the 429 was a hold, never a verdict; the
-        # disk reading held one dispatch; a codex cell needs no Codex window evidence; the account's entries that are
-        # no window (extra usage at its cap) hold nothing.
+        # disk reading held one dispatch; a codex cell needs no Codex window evidence; a usage read without the
+        # five-hour window dispatches (every read here lacks it), one without the seven-day window holds (a weekly
+        # model limit does not stand in for it); the account's entries that are no window (extra usage at its cap)
+        # hold nothing.
         archived = json.loads((self.out / f'verdict-{self.launch_fault}.stop-1.json').read_text())
         self.assertTrue(archived['reason'].startswith('B launch fault: run-argument-unsupported'), archived['reason'])
         self.assertTrue((self.out / f'{self.launch_fault}.stop-1').is_dir())
@@ -633,8 +673,43 @@ class Rehearsal(unittest.TestCase):
         self.assertTrue(any(r.startswith('Claude window check failed: HTTP Error 429') for r in holds['codex']), holds)
         self.assertEqual(sum(r.startswith('cell disk below the delivery floor: /cell has')
                              for lane in lanes for r in holds[lane]), 1, holds)
+        self.assertEqual(sum(r == 'Claude window evidence unavailable: no seven-day window'
+                             for lane in lanes for r in holds[lane]), 1, holds)
         self.assertFalse([r for lane in lanes for r in holds[lane] if 'Codex' in r or 'near exhaustion' in r], holds)
-        self.assertFalse(any(self.out.glob('verdict-*-codex-*.stop-*.json')))
+
+        # The assessor fault was a STOP kept as .stop-1 and regraded from the preserved cell (no redispatch, no
+        # latch); it is the only archived codex verdict.
+        self.assertEqual(sorted(p.name for p in self.out.glob('verdict-*-codex-*.stop-*.json')),
+                         [f'verdict-{self.regraded}.stop-1.json'])
+        stopped = json.loads((self.out / f'verdict-{self.regraded}.stop-1.json').read_text())
+        self.assertTrue(stopped['reason'].startswith('assessor produced no verdict'), stopped['reason'])
+        self.assertEqual((self.verdict(self.regraded)['status'], self.verdict(self.regraded)['regraded']['after']),
+                         ('COMPLETE', 'stop-1'))
+        self.assertTrue((self.out / self.regraded / 'assessment.stop-1').is_dir())
+        self.assertFalse((self.out / f'{self.regraded}.stop-1').exists())
+        self.assertEqual(sum(e['event'] == 'run' and e['cell'] == self.regraded for e in self.log('codex')), 1)
+        self.assertEqual([e['rc'] for e in self.log('codex') if e['event'] == 'regrade'], [0])
+
+        # D-b: once graded, every measured Codex cell (the regraded one too) has lost Codex's own caches and nothing
+        # else; pruned.json counts each removed root, and the evidence manifest sealed before still lists their files.
+        # A Claude cell has nothing to prune.
+        pruned = {root: dict(files=len(files), bytes=sum(len(body.encode()) for body in files.values()))
+                  for root, files in CODEX_CACHES.items()}
+        for name, _, arm, config, _ in self.slice:
+            cell = self.out / name
+            self.assertFalse([root for root in CODEX_CACHES if os.path.lexists(cell / root)], name)
+            record = json.loads((cell / 'pruned.json').read_text()) if (cell / 'pruned.json').exists() else {}
+            if config == 'claude':
+                self.assertEqual(record, {}, name)
+                continue
+            self.assertEqual(record, pruned, name)
+            manifest = json.loads((cell / 'evidence.manifest.json').read_text())['files']
+            self.assertLessEqual({f'{root}/{path}' for root, files in CODEX_CACHES.items() for path in files},
+                                 set(manifest), name)
+            kept = [*CODEX_KEPT, 'home/.codex/config.toml', 'run/stdout', 'final.txt', 'checks.json', 'snapshot.json']
+            kept += [f'home/.codex/{instructions.PROJECTION}/.codex-plugin/plugin.json'] if arm == 'B' else []
+            self.assertEqual([path for path in kept if not (cell / path).is_file()], [], name)
+            self.assertTrue(any((cell / 'cell/trace').glob('trace-*/trace.jsonl')), name)
 
         # Two changed trees with the same content (the anchor and a helper worktree) are one result, graded once.
         snapshot = self.verdict(self.duplicate)['snapshot']
@@ -766,6 +841,8 @@ class Rehearsal(unittest.TestCase):
                                                       not_implemented=list(harm.NOT_IMPLEMENTED)))
         self.assertEqual(set(decision['slots']), {row[0] for row in schedule()})  # no SMOKE or rehearsal row
         self.assertEqual(decision['reported']['oom_killed'], [])
+        self.assertEqual((decision['slots'][self.regraded]['final'], decision['slots'][self.regraded]['archived']),
+                         (True, {'stop-1': stopped['reason']}))  # the regraded, pruned Codex cell is read
 
         # Both replication readings wait for one F10 slot without a probe class.
         f10 = [named(schedule(), 'claude', 'F10', 'B', r) for r in range(1, 9)]
@@ -845,6 +922,48 @@ class Rehearsal(unittest.TestCase):
         self.assertNotEqual(code, 0)
         self.assertIn('harm latch in lane codex', stderr)
         self.assertFalse((self.out / 'x06-SMOKE-claude-A').exists())
+
+        # 7. --clear-latch releases both lanes again. The claude lane then runs two cells while the host's default
+        # login changes twice (D-c): between ready()'s read and the cell's own credential snapshot, which leaves the
+        # cell undispatched (rc 3, "account changed after reserve check") until the next ready() reads the new
+        # account; and while a cell runs, which the next cell is simply dispatched under. Neither holds or stops the
+        # lane, and each verdict records the account that dispatched it.
+        code, stderr = self.finish(self.launch('--clear-latch', amendment, self.runtime['codex']))
+        self.assertEqual(code, 0, stderr[-3000:])
+        later.write_text('x06-SMOKE-claude-A\tSMOKE\tA\tclaude\t1\nx08-SMOKE-claude-B\tSMOKE\tB\tclaude\t1\n')
+        (self.fake / 'account-switch').write_text('inject once\n')
+        start = len(self.log('claude'))
+        code, stderr = self.finish(self.driver('claude', later))
+        self.assertEqual(code, 0, stderr[-3000:])
+        events = self.log('claude')[start:]
+        self.assertEqual([(e['cell'], e['rc']) for e in events if e['event'] == 'run'],
+                         [('x06-SMOKE-claude-A', 3), ('x06-SMOKE-claude-A', 0), ('x08-SMOKE-claude-B', 0)])
+        self.assertEqual(json.loads((self.out / 'not-dispatched-x06-SMOKE-claude-A.json').read_text()),
+                         dict(reason='account changed after reserve check'))
+        self.assertFalse([e for e in events if e['event'] in ('hold', 'stop', 'harm_latch')], events)
+        fingerprint = lambda value: hashlib.sha256(value.encode()).hexdigest()[:12]  # noqa: E731 (0222's)
+        self.assertEqual({name: (self.verdict(name)['status'], self.verdict(name)['claude_account_before'],
+                                 self.verdict(name)['codex_account'])
+                          for name in ('x06-SMOKE-claude-A', 'x08-SMOKE-claude-B')},
+                         {'x06-SMOKE-claude-A': ('COMPLETE', [fingerprint('account-second'), fingerprint(ORGANIZATION)],
+                                                 fingerprint(CODEX_ACCOUNT)),
+                          'x08-SMOKE-claude-B': ('COMPLETE', [fingerprint('account-third'), fingerprint(ORGANIZATION)],
+                                                 fingerprint(CODEX_ACCOUNT))})
+
+        # 8. Two changed trees whose contents differ (the anchor and a helper worktree) are a locator STOP: never
+        # graded, never pruned (its Codex caches stay), not redispatched, so it latches the lanes.
+        differ = self.fake / 'differ.tsv'
+        differ.write_text('x07-B5-codex-B\tB5\tB\tcodex\t9\n')
+        code, stderr = self.finish(self.driver('codex', differ))
+        self.assertNotEqual(code, 0)
+        self.assertIn('x07-B5-codex-B: STOP locator: more than one changed product tree: cell/work, '
+                      'cell/.devlyn-worktrees/work/x', stderr)
+        self.assertEqual((self.verdict('x07-B5-codex-B')['status'], 'snapshot' in self.verdict('x07-B5-codex-B')),
+                         ('STOP', False))
+        self.assertEqual(json.loads((self.out / 'driver-status-codex.json').read_text())['harm_latch']['cell'],
+                         'x07-B5-codex-B')
+        self.assertEqual([root for root in CODEX_CACHES if not (self.out / 'x07-B5-codex-B' / root).is_dir()], [])
+        self.assertFalse((self.out / 'x07-B5-codex-B/pruned.json').exists())
 
 
 if __name__ == '__main__':

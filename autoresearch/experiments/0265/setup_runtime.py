@@ -1,7 +1,9 @@
-"""Bring the 0265 runtime root to "ready for SMOKE": setup_runtime.py [--root DIR]. Never dispatches models.
+"""Bring the 0265 runtime root to "ready for SMOKE": setup_runtime.py [--root DIR] [--codex-auth PATH].
 
-Idempotent: each step prints one line with what it found or did, keeps what already matches its pin and refuses on
-anything that differs. It never reads a credential and never writes into the auth folders.
+Never dispatches models. Idempotent: each step prints one line with what it found or did, keeps what already matches its pin and refuses on
+anything that differs. It never reads a credential and never writes into the auth folders. --codex-auth names the
+Codex login the run uses (DESIGN Operations "Codex login"), an absolute path to an existing regular file, written as
+`codex_auth` into the three runtime files; without it the field is null and cells use the host's default login.
 """
 import argparse
 import hashlib
@@ -220,19 +222,27 @@ def models_cache(root, host=HOST_MODELS_CACHE):
     say('models_cache', f'{action}: client_version {CODEX_VERSION}, sha256 {sha256(target.read_bytes())}')
 
 
-def runtime_record(root, image, lane_file, lane):
+def runtime_record(root, image, lane_file, lane, codex_auth=None):
     return dict(output=str(root / 'output'), control=str(root / 'control'), sources=str(root / 'sources'),
                 scratch=str(root / 'scratch'), image=image, image_tarball=str(root / 'image.tar'),
                 models_cache=str(root / 'models_cache.json'), auth=str(root / f'auth-{lane_file}'),
                 renewal_command=RENEWAL, tasks_override=str(OVERRIDE.resolve()), caps=CAPS,
                 account=None,  # since 0257 amendment 1 any logged-in account; the driver reads it per dispatch
+                codex_auth=codex_auth,  # the Codex login run_cell.snapshot_auth copies; null: the host default
                 lane=lane, renewal_lock=str(root / 'renewal.lock'), check_lock=str(root / 'check.lock'))
 
 
-def runtime_files(root, image):
+def codex_auth_path(path):
+    """--codex-auth: an absolute path to an existing regular file, by its metadata only (never opened)."""
+    if path is not None and not (os.path.isabs(path) and Path(path).is_file()):
+        raise Refused(f'--codex-auth {path} is not an absolute path to an existing regular file')
+    return path
+
+
+def runtime_files(root, image, codex_auth=None):
     for lane_file, lane in LANES.items():
         path = root / f'runtime-{lane_file}.json'
-        record = runtime_record(root, image, lane_file, lane)
+        record = runtime_record(root, image, lane_file, lane, codex_auth)
         if path.exists():
             if json.loads(path.read_text()) != record:
                 raise Refused(f'{path} differs from the expected runtime')
@@ -243,8 +253,9 @@ def runtime_files(root, image):
             say('runtime', f'{path.name} written')
 
 
-def setup(root, archive=ARCHIVE, host_cache=HOST_MODELS_CACHE):
+def setup(root, archive=ARCHIVE, host_cache=HOST_MODELS_CACHE, codex_auth=None):
     root = Path(root).expanduser().resolve()
+    codex_auth = codex_auth_path(codex_auth)  # before any step: a wrong path refuses with nothing done
     folders(root)
     clones(root)
     issues(root, archive)
@@ -252,14 +263,16 @@ def setup(root, archive=ARCHIVE, host_cache=HOST_MODELS_CACHE):
     found = image(root)
     control_tree(root)
     models_cache(root, host_cache)
-    runtime_files(root, found)
+    runtime_files(root, found, codex_auth)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument('--root', default=str(ROOT))
+    parser.add_argument('--codex-auth', help="absolute path to the Codex login's auth.json the run uses")
     try:
-        setup(parser.parse_args().root)
+        args = parser.parse_args()
+        setup(args.root, codex_auth=args.codex_auth)
     except Refused as exc:
         print(f'REFUSED: {exc}', file=sys.stderr)
         sys.exit(1)

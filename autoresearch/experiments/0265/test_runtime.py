@@ -1,5 +1,6 @@
 """Offline tests for the 0265 runtime root: fakes for Docker, the registry and the control build; local Git only."""
 import base64
+import datetime
 import hashlib
 import importlib.util
 import io
@@ -8,6 +9,7 @@ from pathlib import Path
 import subprocess
 import tarfile
 import tempfile
+import time
 import unittest
 from unittest import mock
 
@@ -147,9 +149,9 @@ class Fixture(unittest.TestCase):
             patcher.stop()
         self.temp.cleanup()
 
-    def run_setup(self):
+    def run_setup(self, codex_auth=None):
         with mock.patch('builtins.print') as printed:
-            setup.setup(self.root, self.archive, self.host_cache)
+            setup.setup(self.root, self.archive, self.host_cache, codex_auth)
         return [call.args[0] for call in printed.call_args_list]
 
     def snapshot(self):
@@ -187,7 +189,7 @@ class IssueSnapshots(Fixture):
 
 class RuntimeFiles(Fixture):
     SHARED = ('output', 'control', 'sources', 'scratch', 'image', 'image_tarball', 'models_cache', 'renewal_command',
-              'tasks_override', 'caps', 'account', 'renewal_lock', 'check_lock')
+              'tasks_override', 'caps', 'account', 'codex_auth', 'renewal_lock', 'check_lock')
 
     def test_shared_and_per_lane_fields(self):
         self.run_setup()
@@ -200,6 +202,7 @@ class RuntimeFiles(Fixture):
             self.assertEqual(record['auth'], str(self.root.resolve() / f'auth-{lane}'))
             self.assertEqual(record['lane'], None if lane == 'smoke' else lane)
         smoke = records['smoke']
+        self.assertIsNone(smoke['codex_auth'])  # no --codex-auth: cells use the host's default Codex login
         self.assertEqual(smoke['caps'], {'five_hour': 95, 'seven_day': 95})
         self.assertEqual(smoke['image'], IMAGE_ID)
         self.assertEqual(smoke['renewal_lock'], str(self.root.resolve() / 'renewal.lock'))
@@ -216,6 +219,29 @@ class RuntimeFiles(Fixture):
             self.assertEqual(oct(auth.stat().st_mode & 0o777), '0o700')
             self.assertEqual(list(auth.iterdir()), [], 'setup never writes into an auth folder')
         self.assertEqual(oct((self.root / 'scratch').stat().st_mode & 0o777), '0o700')
+
+    def test_codex_auth_option(self):
+        """--codex-auth (O15): an absolute path to an existing regular file, by its metadata only, written into all
+        three runtime files and pinned like the rest. The login file here is made up."""
+        login = self.root.parent / 'registered/auth.json'
+        login.parent.mkdir()
+        login.write_text('{"made": "up"}')
+        for bad in ('registered/auth.json', str(login.parent), str(login.parent / 'absent.json')):
+            with self.subTest(bad=bad), self.assertRaisesRegex(setup.Refused, 'is not an absolute path to an existing '
+                                                                               'regular file'):
+                self.run_setup(bad)
+            self.assertFalse(self.root.joinpath('output').exists())  # refused before any step
+        self.run_setup(str(login))
+        self.assertEqual({lane: json.loads((self.root / f'runtime-{lane}.json').read_text())['codex_auth']
+                          for lane in ('smoke', 'claude', 'codex')}, dict.fromkeys(('smoke', 'claude', 'codex'),
+                                                                                   str(login)))
+        self.assertIn('runtime: runtime-codex.json present', self.run_setup(str(login)))
+        other = login.with_name('other.json')
+        other.write_text('{"made": "up"}')
+        for value in (str(other), None):  # another login, or none, than the files hold
+            with self.subTest(value=value), self.assertRaisesRegex(setup.Refused, 'runtime-smoke.json differs'):
+                self.run_setup(value)
+        self.assertEqual(json.loads((self.root / 'runtime-codex.json').read_text())['codex_auth'], str(login))
 
     def test_renewal_command_passes_the_0257_driver_check(self):
         driver = load('driver0257', HERE.parent / '0257/driver.py')
@@ -563,6 +589,36 @@ class StrictConfigExec(unittest.TestCase):
         with mock.patch('sys.stderr', new=io.StringIO()):
             code, _, _ = self.run_exec()
         self.assertEqual((code, self.snapshots, self.calls), (3, 1, []))  # Q3 is recorded once
+
+    def test_an_old_codex_login_holds_the_exec_runs(self):
+        """O15, through the real run_cell.snapshot_auth: a Codex login renewed 7.5 days ago leaves Q3 undecided with
+        the reason, no copy and no run (violating); a 2-day-old one is copied and both runs go (allowed). The logins
+        are made-up files."""
+        real = strict.run_cell()
+        raw = json.dumps({'claudeAiOauth': {'expiresAt': (time.time() + 5400) * 1000, 'accessToken': 'fake'}})
+        profile = json.dumps({'account': {'uuid': 'a'}, 'organization': {'uuid': 'o'}})
+        record = json.loads(self.runtime.read_text())
+        for days, held in ((7.5, True), (2, False)):
+            with self.subTest(days=days):
+                login = self.root / f'login-{days}.json'
+                refreshed = datetime.datetime.fromtimestamp(time.time() - days * 86400, datetime.timezone.utc)
+                login.write_text(json.dumps(dict(tokens=dict(account_id='fake-account-id', refresh_token=SECRET),
+                                                 last_refresh=refreshed.isoformat().replace('+00:00', 'Z'))))
+                self.runtime.write_text(json.dumps(dict(record, codex_auth=str(login))))
+                with mock.patch.object(real.subprocess, 'run',
+                                       return_value=subprocess.CompletedProcess([], 0, stdout=raw)), \
+                        mock.patch.object(real.urllib.request, 'urlopen', side_effect=lambda *_a, **_k: io.StringIO(profile)):
+                    code, result, printed = self.run_exec(snapshot=real.snapshot_auth)
+                copied = self.root / 'auth-smoke/codex.json'
+                if held:
+                    self.assertEqual((code, result, self.calls), (3, None, []))
+                    self.assertEqual(printed, 'UNDECIDED: not run: Codex login (codex_auth) last renewed 7.5 days ago; '
+                                              'limit 7 days\n')
+                    self.assertFalse(copied.exists())
+                else:
+                    self.assertEqual((code, result['status'], len(self.calls)), (0, 'PASS', 2))
+                    self.assertEqual(copied.read_bytes(), login.read_bytes())
+                    self.assertNotIn(SECRET, (self.root / 'q3-strict-config.json').read_text())
 
 
 if __name__ == '__main__':

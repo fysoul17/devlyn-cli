@@ -732,6 +732,20 @@ class Faults(unittest.TestCase):
                 run.assert_not_called()
             regraded.assert_called_once_with(d.runtime_path, name, expected_account=['account', 'org'])
 
+    def test_docker_29_daemon_loss_reads_as_a_docker_fault(self):
+        # Docker 29.9.2's own answer with the daemon unreachable (checked on this host with a dead DOCKER_HOST), and
+        # the form 0257-0261 met; any other teardown failure is not a Docker loss and stays a STOP.
+        lost = ('failed to connect to the docker API at unix:///Users/u/.docker/run/docker.sock; check if the path is '
+                'correct and if the daemon is running: dial unix /Users/u/.docker/run/docker.sock: connect: '
+                'connection refused', 'Cannot connect to the Docker daemon at unix:///var/run/docker.sock. '
+                'Is the docker daemon running?')
+        stop = dict(status='STOP', teardown='FAILED', reason='teardown failed: container survived kill')
+        for text in lost:
+            self.assertTrue(driver.docker_fault(dict(stop, teardown_error=text)), text)
+        for verdict in (stop, dict(stop, teardown_error='error: no such object: x'),
+                        dict(stop, teardown='CLEAN', teardown_error=lost[0]), dict(COMPLETE, teardown_error=lost[0]), None):
+            self.assertFalse(driver.docker_fault(verdict), verdict)
+
     def test_docker_loss_is_proven_archived_and_redispatched(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
@@ -745,7 +759,7 @@ class Faults(unittest.TestCase):
                 'tmp_volume': volume, 'started_at': time.time()}))
             (d.output / f'verdict-{name}.json').write_text(json.dumps(dict(
                 status='STOP', teardown='FAILED', identity={'status': 'MATCH'}, owner_status='EXITED_NONZERO',
-                reason='teardown failed: Cannot connect to the Docker daemon at unix:///docker.sock')))
+                reason='teardown failed: failed to connect to the docker API at unix:///docker.sock')))
             removed = []
             inspected = dict(Id=cid, Name='/' + container, Config={'Labels': {'devlyn.task': '0233'}},
                              Mounts=[{'Type': 'volume', 'Name': volume}],
@@ -770,6 +784,43 @@ class Faults(unittest.TestCase):
             self.assertEqual(removed, [['rm', cid], ['volume', 'rm', volume]])
             self.assertEqual(called, [name])
             self.assertTrue((d.output / f'{name}.stop-1/run/started.json').is_file())
+
+
+class Accounts(unittest.TestCase):
+    def test_the_login_changing_between_cells_neither_stops_nor_holds(self):
+        """D-c (DESIGN Operations "Accounts"): ready() takes whichever account is the host's default login. Cells on
+        two accounts dispatch with no hold and no latch, each with the account its own ready() approved; a cell whose
+        login changed after ready() (run_cell's preflight exits 3, test_cell checks that side) runs after one 60 s
+        wait on the next ready()'s account."""
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            seal(root)
+            d = lane(root, 'claude', [row('c001-'), row('c002-'), row('c003-')])
+            first, second = ['first', 'org'], ['second', 'org']
+            dispatched = []
+
+            def run(_runtime, name, *_args, expected_account=None):
+                dispatched.append((name, expected_account))
+                if len(dispatched) == 2:  # the login moved to `second` between ready() and the cell's own read
+                    return 3
+                (d.output / name).mkdir()
+                (d.output / f'verdict-{name}.json').write_text(json.dumps(dict(
+                    COMPLETE, cell=name, claude_account_before=expected_account)))
+                return 0
+            reads = [snapshot(20000, first), snapshot(20000, first), snapshot(20000, second), snapshot(20000, first)]
+            with mock.patch.object(driver, 'credential', side_effect=reads), \
+                    mock.patch.object(driver.cell, 'claude_limits', return_value=WINDOWS), \
+                    mock.patch.object(driver.cell, 'run', side_effect=run), \
+                    mock.patch.object(driver.time, 'sleep') as sleep, host():
+                d.run()
+            names = [r[0] for r in d.slots]
+            self.assertEqual(dispatched, [(names[0], first), (names[1], first), (names[1], second), (names[2], first)])
+            self.assertEqual([call.args for call in sleep.call_args_list], [(60,)])
+            log = events(root, 'claude')
+            self.assertFalse([e for e in log if e['event'] in ('hold', 'harm_latch', 'stop', 'split_block')])
+            self.assertEqual([(e['event'], e.get('rc')) for e in log if e['event'] in ('run', 'complete')],
+                             [('run', 0), ('run', 3), ('run', 0), ('run', 0), ('complete', None)])
+            self.assertEqual([d.verdict(name)['claude_account_before'] for name in names], [first, second, first])
 
 
 class OneProcessPerLane(unittest.TestCase):

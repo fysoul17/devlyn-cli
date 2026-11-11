@@ -693,6 +693,36 @@ class Accounting(Case):
         self.assertTrue(result['slots'][graded]['final'] and result['slots'][graded]['complete'])  # not a gap
         self.assertEqual(result['lines']['codex']['harm']['missing'], [])
 
+    def test_cells_by_account(self):
+        """DESIGN Operations "Accounts" and "Codex login": final slots and COMPLETE per engine x arm x the Claude and
+        Codex accounts each verdict records; a STOP is not counted, a verdict without the fields is its own row."""
+        def record(name, claude, codex):
+            path = self.run.out / f'verdict-{name}.json'
+            path.write_text(json.dumps(dict(json.loads(path.read_text()), claude_account_before=claude,
+                                            codex_account=codex)))
+        first, second = ['acct1', 'org'], ['acct2', 'org']
+        for config in decide.CONFIGS:
+            for task in decide.TASKS:
+                for arm in decide.ARMS:
+                    for rep in range(1, 9):
+                        record(self.run.name(config, task, arm, rep), first, 'codexA')
+        self.run.slot(self.run.name('claude', 'D3', 'A', 1), assessors=(True, False))  # PRODUCT_INCOMPLETE
+        record(self.run.name('claude', 'D3', 'A', 1), second, 'codexA')
+        record(self.run.name('claude', 'D3', 'A', 2), second, 'codexA')
+        record(self.run.name('codex', 'B5', 'B', 1), first, 'codexB')
+        self.run.stop(self.run.name('codex', 'B5', 'B', 2), 'harness changed', claude_account_before=first,
+                      codex_account='codexB')
+        self.run.slot(self.run.name('codex', 'F11', 'A', 1))  # written without the account fields
+        table = self.run.evaluate()['reported']['cells_by_account']
+        self.assertEqual(table, [
+            dict(config='claude', arm='A', claude_account=first, codex_account='codexA', n=38, complete=38),
+            dict(config='claude', arm='A', claude_account=second, codex_account='codexA', n=2, complete=1),
+            dict(config='claude', arm='B', claude_account=first, codex_account='codexA', n=40, complete=40),
+            dict(config='codex', arm='A', claude_account=first, codex_account='codexA', n=39, complete=39),
+            dict(config='codex', arm='A', claude_account=None, codex_account=None, n=1, complete=1),
+            dict(config='codex', arm='B', claude_account=first, codex_account='codexA', n=38, complete=38),
+            dict(config='codex', arm='B', claude_account=first, codex_account='codexB', n=1, complete=1)])
+
     def test_harm_check_lists_are_copied(self):
         self.assertEqual(self.run.evaluate()['harm_check'], {})  # an older harm.json without them
         implemented, absent = ['start-commit-unreachable', 'git-config-changed'], ['credential-printed']

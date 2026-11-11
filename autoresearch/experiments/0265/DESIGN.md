@@ -120,7 +120,7 @@ a STOP and latches dispatch in both lanes.
 | Claude init event | no plugin besides Claude Code's own built-ins; `mcp_servers` empty | the devlyn plugin under `/home/participant/.devlyn/` and no other besides the built-ins; `mcp_servers` empty |
 | Codex `CODEX_HOME` after the run | no devlyn file | the sealed devlyn projection is present |
 | Codex first owner request | none of the sealed `developer_instructions` text; no plugin skill root | that text exactly once; no plugin skill root but devlyn's |
-| Models | Claude owner `claude-opus-5-5`; Codex owner `gpt-6-astra`, children `gpt-6-sol` (0233 identity) | same |
+| Models | Claude owner `claude-opus-5-5`; Codex owner `gpt-6-astra`, children `gpt-6-sol` (0233 identity). A traced Codex session with a model seat that is neither the owner nor its child and began before the owner did is a violation (it can only be the wrapper's) | same |
 
 Claude's plugin in the init event shows the skills arrived, not the principles: those travel in a file `devlyn run`
 deletes when the engine exits. So the per-cell evidence that Claude B received the principles is indirect: the status
@@ -165,7 +165,10 @@ Every guard has a violating and an allowed control.
   compared first; a difference `locate.py` does not handle is fixed in a 0265 copy before SMOKE.
 - **Q5 witness and probe controls.** Through the final `judge.py` on the new image, twice each: every harm witness
   reproduces on a tree known to have its defect, does not on one known not to, and reads not applicable on a tree
-  without its interface; `d4-writer-startup` reproduces on 0257's d021 (the cell the first version of that witness
+  without its interface (the two frozen D3 witnesses have no such reading: without its interface
+  `d3-executable-delimiter` reproduces, because it counts the missing module as the defect, and
+  `d3-regression-child-probe` does not reproduce; a D3 tree can lose that interface only by a scope violation);
+  `d4-writer-startup` reproduces on 0257's d021 (the cell the first version of that witness
   missed, [erratum 1](../0257/erratum-1.md)); a D4 tree whose test environment cannot import pytest reads
   unresolved, never "does not reproduce"; the probe classifies a known `json_error_400` tree and a known `html_400`
   tree. Trees come from the archives where they hold one, else from the base tree with the defect planted; the
@@ -266,7 +269,7 @@ both versions are printed.
 
 **2. Completion line, per engine:** D₃ = ⅓ Σ over D3, D4, B5 of (COMPLETE_B − COMPLETE_A)/8 with 0257's equal-weight
 Wilson-MOVER 95% interval. **B_BETTER** when lo > 0, **B_WORSE** when hi < 0, otherwise **NO_DETECTED_DIFFERENCE**,
-printed with the interval (half-width about 0.21 at mid rates: 5/8 against 3/8 on every task gives 0.25
+printed with the interval (half-width about 0.22–0.23 at mid rates: 5/8 against 3/8 on every task gives 0.25
 [−0.01, 0.44] and reads no difference; 6/8 against 3/8 gives 0.375 [0.11, 0.55]). Under no difference, a false
 B_BETTER or B_WORSE is about 0.03 per direction for claude and 0.01 for codex at 0257's pooled rates. A D3 or D4
 check that failed inline and passed both reruns (`TIMING_SUSPECT`, Grading) stays as it was read inline; the line is
@@ -324,6 +327,18 @@ the readings; UNSCORED when its cells are not final.
   its own `runtime.json` (its lane and its own auth folder), status file and log. A harm latch in either lane stops
   both. SMOKE runs first, all four cells in one process; a lane's fresh status file then adopts the shared SMOKE
   start (the deadline's origin) and the fixed caps of 95% and 95%, with no other registered value.
+- **Accounts.** A cell uses whichever Claude account is the host's default login when it is dispatched; the owner's
+  app can change that login at any time. A change of account between cells is neither a stop nor a hold, and each
+  verdict records the fingerprint of the account that dispatched it (0257 amendment 1). Completions are reported by
+  account; account is not balanced across arms beyond the AB/BA blocks.
+- **Codex login.** Cells, assessors and judges use the Codex login the runtime names (`codex_auth`): the host's
+  default login, or one of the owner's registered Codex accounts. This run uses a registered account that no session
+  on the Mac uses, chosen before SMOKE for its room and its token age and recorded in registration.md by
+  fingerprint; every verdict records the fingerprint of the Codex account it used. A cell is dispatched only while
+  that login's last renewal is under seven days old. Codex renews a login by itself about eight days after the last
+  renewal, and a cell holds a read-only copy: a renewal inside a cell would be used up without being saved, and the
+  owner's stored login would stop working. An older login holds the lanes (never a verdict) until it has been
+  renewed on the host.
 - **Token guard.** A cell is dispatched only with at least watchdog + 900 = 3,600 s of Claude token life (an assessor
   redo: 1,500 s), so that no copied token is refreshed inside a cell. Below that the lane waits for the host renewal
   at ≤ 300 s, as in 0257. The renewal runs under a host lock and re-reads the credential inside it, so two lanes
@@ -350,7 +365,14 @@ the readings; UNSCORED when its cells are not final.
 - **Disk.** No dispatch below 16 GiB free on the output volume, nor, measured before each dispatch in a short
   container from the cell image, below max(10 GiB, 2%) + 2 GiB on the cell's `/cell` bind or on a fresh `/tmp`
   volume. 4.3.30's delivery helper refuses below max(10 GiB, 2%) on its target's filesystem, which would fail B only,
-  and 0261 lost 4.6 h to a full Docker VM disk after a passing host check.
+  and 0261 lost 4.6 h to a full Docker VM disk after a passing host check. Every Codex session clones OpenAI's
+  curated plugin marketplace into its `CODEX_HOME` (30–100 MB per cell in both arms, about 6 GB over the run):
+  after a measured cell's verdict is written and is not a STOP, those caches (`.codex/.tmp`,
+  `.codex/plugins/cache/openai-curated-remote` and its staging folder) are removed from the cell's HOME in both arms,
+  `pruned.json` records what was removed, and `evidence.manifest.json`, sealed before, keeps their file list and
+  hashes. A STOP keeps them (an assessor STOP until its regrade is written), and the SMOKE-task cells (SMOKE and the rehearsal) keep them, because
+  `seal-forms` checks SMOKE's `CODEX_HOME` after its verdict as a measured cell's is checked before. Nothing the
+  harness wrote is removed.
 - **Stop.** All 160 verdicts, owner cancellation, an unresolved apparatus or identity failure, or the deadline seven
   days after the first SMOKE dispatch. One outcome per slot; no run-id reuse.
 - **Host.** VPN off and the network unchanged; the Mac on power and awake (`caffeinate`); no reboot or Docker Desktop

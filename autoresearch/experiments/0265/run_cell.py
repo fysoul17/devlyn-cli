@@ -5,7 +5,8 @@ Exit 0 = verdict recorded (any product outcome), 3 = not dispatched (preflight),
 a B launch fault, a memory kill, changed control or harness, model identity collapse, a shared account fault, a
 failed per-cell assertion (instructions.check against the launch probe's and SMOKE's seal), a locator defect, or an
 evaluator or assessor that produced no verdict. Every verdict of a cell whose owner ran records oom_killed (Docker's
-flag for any process in the owner container).
+flag for any process in the owner container). Once a measured cell's verdict is written and is not a STOP, Codex's own
+caches are pruned from its HOME (prune()).
 """
 import datetime
 import fcntl
@@ -46,10 +47,50 @@ instructions = load('instructions')
 MIN_TOKEN_SECONDS = prepare.WALL_SECONDS + 900  # 3,600: no copied token is refreshed inside a cell
 # Free space on the output volume before a cell: two lanes' cells and traces (full request payloads) with margin.
 HEADROOM_BYTES = 16 * 2**30
+# DESIGN Operations "Disk": every Codex session clones OpenAI's curated plugin marketplace into CODEX_HOME (30-100 MB a
+# cell, both arms). These caches, and nothing else, leave a graded cell; evidence.manifest.json keeps their hashes.
+PRUNED = ('home/.codex/.tmp', 'home/.codex/plugins/cache/openai-curated-remote',
+          'home/.codex/plugins/.remote-plugin-install-staging')
+# DESIGN Operations "Codex login" (O15): Codex renews a login by itself about eight days after its last renewal, and a
+# renewal inside a cell, an assessor or a judge, which hold a copy, would be used up without being saved.
+CODEX_LOGIN_MAX_AGE_SECONDS = 7 * 86400
 
 
 def digest(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def codex_login(runtime):
+    """The Codex login the runtime names (`codex_auth`, an absolute path to an auth.json), else the host default:
+    (its bytes, the fingerprint of its account or None, None), or (None, None, why it is blocked). Of its fields only
+    last_refresh and tokens.account_id are read; the rest are secrets and are never parsed out, logged or returned.
+    Blocked while last_refresh is missing, unreadable, more than five minutes in the future or seven days old."""
+    which = 'codex_auth' if runtime.get('codex_auth') else 'host default'
+    source = Path(runtime.get('codex_auth') or Path.home() / '.codex/auth.json')
+    try:
+        data = source.read_bytes()
+        login = json.loads(data)
+    except OSError as exc:
+        return None, None, f'Codex login ({which}) unreadable: {exc.strerror}'
+    except ValueError:
+        return None, None, f'Codex login ({which}) is not JSON'
+    refreshed = login.get('last_refresh') if isinstance(login, dict) else None
+    if refreshed is None:
+        return None, None, f'Codex login ({which}) has no last_refresh'
+    try:
+        at = datetime.datetime.fromisoformat(refreshed) if isinstance(refreshed, str) else None
+    except ValueError:
+        at = None
+    if at is None or at.tzinfo is None:
+        return None, None, f'Codex login ({which}) last_refresh is not an ISO-8601 time with a time zone'
+    age = time.time() - at.timestamp()
+    if age < -300:
+        return None, None, f'Codex login ({which}) last renewed {-age:.0f} s in the future; limit 300 s'
+    if age >= CODEX_LOGIN_MAX_AGE_SECONDS:
+        return None, None, f'Codex login ({which}) last renewed {age / 86400:.1f} days ago; limit 7 days'
+    tokens = login.get('tokens')
+    account = tokens.get('account_id') if isinstance(tokens, dict) else None
+    return data, base.fingerprint(account) if isinstance(account, str) and account else None, None
 
 
 def snapshot_auth(runtime):
@@ -60,11 +101,14 @@ def snapshot_auth(runtime):
     remaining = oauth['expiresAt'] / 1000 - time.time()
     if remaining < MIN_TOKEN_SECONDS:
         return None, f'Claude login token expires in {int(remaining)}s; refresh the host login first'
+    codex, codex_account, blocked = codex_login(runtime)
+    if blocked:
+        return None, blocked
     auth = Path(runtime['auth'])
     old = os.umask(0o077)
     try:
         (auth / 'claude.json').write_text(raw)
-        (auth / 'codex.json').write_bytes((Path.home() / '.codex/auth.json').read_bytes())
+        (auth / 'codex.json').write_bytes(codex)
     finally:
         os.umask(old)
     request = urllib.request.Request('https://api.anthropic.com/api/oauth/profile', headers={
@@ -75,7 +119,7 @@ def snapshot_auth(runtime):
     except urllib.error.URLError as exc:
         return None, f'account check failed: {exc}'
     identity = [base.fingerprint(profile['account']['uuid']), base.fingerprint(profile['organization']['uuid'])]
-    return dict(account=identity, token_seconds_left=int(remaining)), None
+    return dict(account=identity, token_seconds_left=int(remaining), codex_account=codex_account), None
 
 
 def claude_limits(runtime, access_token=None):
@@ -117,20 +161,29 @@ def image_identity(runtime):
 
 
 def assessment_snapshot(runtime, venue):
-    """Fresh 1,500-second assessor credential from the current host login."""
+    """Fresh 1,500-second assessor credential from the current host login, and a fresh copy of the Codex login under
+    the same renewal guard as a cell's (a regrade can come long after its cell's copy was taken)."""
     raw = subprocess.run(['security', 'find-generic-password', '-s', 'Claude Code-credentials', '-w'],
                          capture_output=True, text=True, check=True).stdout
     oauth = json.loads(raw)['claudeAiOauth']
     remaining = oauth['expiresAt'] / 1000 - time.time()
     if remaining < 1500:
         return None, f'token expires in {int(remaining)}s'
+    codex, codex_account, blocked = codex_login(runtime)
+    if blocked:
+        return None, blocked
     request = urllib.request.Request('https://api.anthropic.com/api/oauth/profile', headers={
         'Authorization': 'Bearer ' + oauth['accessToken'], 'anthropic-beta': 'oauth-2025-04-20'})
     with urllib.request.urlopen(request, timeout=20) as response:
         profile = json.load(response)
     account = [base.fingerprint(profile['account']['uuid']), base.fingerprint(profile['organization']['uuid'])]
-    Path(runtime['auth'], 'claude.json').write_text(raw)
-    return dict(account=account, token_seconds_left=int(remaining)), None
+    old = os.umask(0o077)
+    try:
+        Path(runtime['auth'], 'claude.json').write_text(raw)
+        Path(runtime['auth'], 'codex.json').write_bytes(codex)
+    finally:
+        os.umask(old)
+    return dict(account=account, token_seconds_left=int(remaining), codex_account=codex_account), None
 
 
 def seal_after_teardown(out):
@@ -263,7 +316,8 @@ def run(runtime_path, name, task, arm, config, *, expected_account=None):
                                           'home/.claude/settings.json') +
               (('home/.codex/config.toml',) if config == 'codex' else ())},
         control_manifest_sha256=digest(runtime['control'] + '.manifest.json')), indent=2))
-    record = dict(cell=name, task=task, arm=arm, config=config, claude_account_before=venue['account'])
+    record = dict(cell=name, task=task, arm=arm, config=config, claude_account_before=venue['account'],
+                  codex_account=venue['codex_account'])
     owner = cell_run.run(out, runtime)
     record['oom_killed'] = (owner.get('container') or {}).get('oom_killed') is True
     sealed, collection_failures = seal_after_teardown(out)
@@ -316,7 +370,7 @@ def run(runtime_path, name, task, arm, config, *, expected_account=None):
     if stop:
         record.update(status='STOP', reason=stop)
         return write_verdict(verdict_path, record)
-    return write_verdict(verdict_path, grade(out, runtime, record, checks, venue))
+    return write_graded(out, verdict_path, grade(out, runtime, record, checks, venue))
 
 
 def grade(out, runtime, record, checks, venue, assessment_venue=None):
@@ -369,8 +423,8 @@ def regrade(runtime_path, name, *, expected_account=None):
     record = {k: v for k, v in record.items() if k not in ('status', 'reason')} | dict(
         regraded=dict(after=f'stop-{stop}', venue=venue, at=datetime.datetime.now(datetime.timezone.utc).isoformat()))
     record.setdefault('claude_account_before', venue['account'])
-    return write_verdict(verdict_path, grade(out, runtime, record, json.loads((out / 'checks.json').read_text()),
-                                             venue, assessment_venue=fresh))
+    return write_graded(out, verdict_path, grade(out, runtime, record, json.loads((out / 'checks.json').read_text()),
+                                                 venue, assessment_venue=fresh))
 
 
 def write_verdict(path, record):
@@ -381,6 +435,45 @@ def write_verdict(path, record):
         print(f'VERDICT_UNWRITTEN ({exc}): ' + json.dumps(dict(record, status='STOP')), file=sys.stderr)
         return 2
     return 2 if record['status'] == 'STOP' else 0
+
+
+def write_graded(out, path, record):
+    """write_verdict for a graded record; once that verdict is written and is not a STOP, prune the cell. A SMOKE-task
+    cell keeps its caches: `instructions.py seal-forms` asserts SMOKE's CODEX_HOME after the verdict, as run() asserts
+    a measured cell's before it, so both read the same evidence."""
+    code = write_verdict(path, record)
+    if code == 0 and record['task'] != 'SMOKE':
+        prune(out)
+    return code
+
+
+def prune(out):
+    """Remove PRUNED from a graded cell and record each removed root's file count and bytes in pruned.json. Nothing
+    else is touched: the devlyn projection, sessions, rollouts, sqlite state and skills/ stay. An absent root is
+    skipped, so a Claude cell or a second call leaves the record as it was. A root reached through a symbolic link is
+    never followed, and a root that cannot be removed is recorded with its error and printed; the verdict stands."""
+    path = out / 'pruned.json'
+    record = json.loads(path.read_text()) if path.is_file() else {}
+    for root in PRUNED:
+        target = out / root
+        if not os.path.lexists(target):
+            continue
+        if target.resolve() != out.resolve() / root:
+            record[root] = dict(error='not removed: reached through a symbolic link')
+        else:
+            files = size = 0
+            for folder, dirs, names in os.walk(target):
+                for name in names + [d for d in dirs if os.path.islink(os.path.join(folder, d))]:
+                    files, size = files + 1, size + os.lstat(os.path.join(folder, name)).st_size
+            record[root] = dict(files=files, bytes=size)
+            try:
+                shutil.rmtree(target)
+            except OSError as exc:
+                record[root]['error'] = f'not removed: {exc}'
+        if 'error' in record[root]:
+            print(f'{out.name}: {root} {record[root]["error"]}', file=sys.stderr)
+    path.write_text(json.dumps(record, indent=2, sort_keys=True))
+    return record
 
 
 if __name__ == '__main__':
