@@ -1,0 +1,531 @@
+"""0265 dispatcher: one serial process per lane, both lanes on one output folder. Run under caffeinate -dimsu:
+driver.py <runtime.json> <cells.tsv>[:prefix] ...  The runtime's lane (null, claude or codex) selects the rows it runs."""
+import datetime
+import fcntl
+import hashlib
+import json
+import os
+from pathlib import Path
+import shutil
+import subprocess
+import sys
+import tempfile
+import time
+import uuid
+
+import importlib.util
+
+HERE = Path(__file__).resolve().parent
+
+
+def load(name):
+    spec = importlib.util.spec_from_file_location('driver0265_' + name, HERE / (name + '.py'))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+cell = load('run_cell')
+WINDOWS = ('seven_day', 'five_hour')
+LANES = (None, 'claude', 'codex')
+REGRADE = ('assessment failed', 'assessor produced', 'assessment held:')
+LAUNCH_FAULT, MEMORY_KILL = 'B launch fault: ', 'memory kill: '
+GIB = 2**30
+# 4.3.30's delivery helper measures its target with shutil.disk_usage and refuses below max(10 GiB, 2% of the total).
+DISK_PROBE = "import json, shutil; print(json.dumps({p: shutil.disk_usage(p)._asdict() for p in ('/cell', '/tmp')}))"
+
+
+def digest(path):
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def replace(path, text):
+    """Write a whole file through a temp file in its folder and os.replace, so no reader sees part of it."""
+    fd, temp = tempfile.mkstemp(dir=path.parent, prefix=f'.{path.name}.')
+    try:
+        with os.fdopen(fd, 'w') as stream:
+            stream.write(text)
+        os.replace(temp, path)
+    except BaseException:
+        Path(temp).unlink(missing_ok=True)
+        raise
+
+
+def rows(args):
+    result = []
+    for arg in args:
+        file, separator, prefix = arg.partition(':')
+        for line in Path(file).read_text().splitlines():
+            if line and not line.startswith('#'):
+                row = line.split()
+                if len(row) not in (4, 5):
+                    raise ValueError(f'{file}: malformed cell row')
+                if not separator or row[0].startswith(prefix):
+                    result.append(row)
+    if len({row[0] for row in result}) != len(result):
+        raise ValueError('duplicate cell slot')
+    return result
+
+
+def same_window(first, second):
+    if not first or not second:
+        return False
+    try:
+        a = datetime.datetime.fromisoformat(first)
+        b = datetime.datetime.fromisoformat(second)
+        return abs((a - b).total_seconds()) < 600
+    except (TypeError, ValueError):
+        return False
+
+
+def fits(windows, caps):
+    return all(windows[window]['used'] < caps[window] for window in WINDOWS)
+
+
+def docker_fault(verdict):
+    return (bool(verdict) and verdict.get('status') == 'STOP' and verdict.get('teardown') == 'FAILED'
+            and 'Cannot connect to the Docker daemon' in
+            str(verdict.get('teardown_error', '')) + str(verdict.get('reason', '')))
+
+
+def credential(runtime):
+    raw = subprocess.run(['security', 'find-generic-password', '-s', 'Claude Code-credentials', '-w'],
+                         check=True, capture_output=True, text=True).stdout
+    oauth = json.loads(raw)['claudeAiOauth']
+    expiry = oauth['expiresAt'] / 1000
+    if expiry - time.time() <= 300:
+        return dict(expires=expiry, account=None, access_token=oauth['accessToken'])
+    request = cell.urllib.request.Request('https://api.anthropic.com/api/oauth/profile', headers={
+        'Authorization': 'Bearer ' + oauth['accessToken'], 'anthropic-beta': 'oauth-2025-04-20'})
+    with cell.urllib.request.urlopen(request, timeout=20) as response:
+        profile = json.load(response)
+    identity = [cell.base.fingerprint(profile['account']['uuid']),
+                cell.base.fingerprint(profile['organization']['uuid'])]
+    return dict(expires=expiry, account=identity, access_token=oauth['accessToken'])
+
+
+def renewal_command(runtime, help_text):
+    command = runtime['renewal_command']
+    if not isinstance(command, list) or not command or command[0] != 'claude' or not all(isinstance(x, str) for x in command):
+        raise ValueError('renewal_command must be a claude argv array')
+    for flag in ('-p', '--tools', '--strict-mcp-config', '--mcp-config'):
+        if flag not in command or flag not in help_text:
+            raise ValueError(f'renewal command/help missing {flag}')
+    if command[command.index('--tools') + 1] != '' or json.loads(command[command.index('--mcp-config') + 1]) != {'mcpServers': {}}:
+        raise ValueError('renewal command must disable tools and MCP servers')
+    return command
+
+
+class Driver:
+    def __init__(self, runtime_path, slots):
+        self.runtime_path = Path(runtime_path)
+        self.runtime = json.loads(self.runtime_path.read_text())
+        self.output = Path(self.runtime['output'])
+        self.output.mkdir(parents=True, exist_ok=True)
+        self.lane = self.runtime['lane']
+        if self.lane not in LANES:
+            raise ValueError('lane must be null, claude or codex')
+        self.renewal_lock = Path(self.runtime['renewal_lock'])
+        self.slots = [row for row in slots if self.lane in (None, row[3])]
+        self.caps = self.runtime['caps']
+        self.approved_account = None
+        if self.caps != {'seven_day': 95, 'five_hour': 95}:
+            raise ValueError('registration caps must be seven_day=95 and five_hour=95')
+        self.status_path = self.output / f'driver-status-{self.lane or "smoke"}.json'
+        self.log_path = self.output / f'driver-{self.lane or "smoke"}.log'
+        self.state = json.loads(self.status_path.read_text()) if self.status_path.exists() else {
+            'renewed_expiries': [], 'split_blocks': [], 'split_wait': {}}
+        self.state.setdefault('split_wait', {})
+        self.reconcile_smoke_starts()
+        if self.state.get('registered_caps') not in (None, self.caps):
+            self.stop('registered caps differ from 95/95')
+
+    def event(self, kind, **fields):
+        record = dict(at=datetime.datetime.now(datetime.timezone.utc).isoformat(), event=kind, **fields)
+        log = self.log_path.read_text() if self.log_path.exists() else ''
+        replace(self.log_path, log + json.dumps(record, sort_keys=True) + '\n')
+        self.state.update(current=record)
+        replace(self.status_path, json.dumps(self.state, indent=2) + '\n')
+
+    def stop(self, reason):
+        self.event('stop', reason=reason)
+        raise RuntimeError(reason)
+
+    def lanes(self):
+        """Every lane's state in the shared output folder: this lane's from memory, the others' from their files."""
+        states = {self.lane or 'smoke': self.state}
+        for path in sorted(self.output.glob('driver-status-*.json')):
+            states.setdefault(path.name[len('driver-status-'):-len('.json')], json.loads(path.read_text()))
+        return states
+
+    def clear_latch(self, amendment):
+        if not Path(amendment).is_file():
+            raise ValueError(f'amendment file does not exist: {amendment}')
+        latch = self.state.get('harm_latch')
+        if not latch:
+            raise ValueError('no harm latch to clear')
+        verdict = self.output / f'verdict-{latch["cell"]}.json'
+        if not verdict.is_file():
+            raise ValueError(f'latched verdict missing: {verdict}')
+        sha = digest(verdict)
+        if latch.get('verdict_sha256') and latch['verdict_sha256'] != sha:
+            raise ValueError('latched verdict changed before amendment')
+        cleared = dict(cell=latch['cell'], amendment=str(Path(amendment).resolve()), verdict_sha256=sha)
+        self.state.setdefault('cleared_latches', []).append(cleared)
+        del self.state['harm_latch']
+        self.event('latch_cleared', **cleared)
+
+    def reconcile_smoke_starts(self):
+        starts = []
+        for path in self.output.glob('smoke-*/run/started.json'):
+            try:
+                value = json.loads(path.read_text())['started_at']
+                if type(value) not in (int, float):
+                    raise ValueError('started_at must be numeric')
+                starts.append(datetime.datetime.fromtimestamp(value, datetime.timezone.utc))
+            except (OSError, ValueError, KeyError, OverflowError) as exc:
+                raise ValueError(f'{path}: malformed SMOKE start: {exc}') from exc
+        if self.state.get('first_smoke_dispatch'):
+            starts.append(datetime.datetime.fromisoformat(self.state['first_smoke_dispatch']))
+        if starts:
+            first = min(starts).isoformat()
+            if self.state.get('first_smoke_dispatch') != first:
+                self.state['first_smoke_dispatch'] = first
+                self.state.setdefault('registered_caps', self.caps.copy())
+                self.event('first_smoke_dispatch', started_at=first)
+
+    def latch_for(self, name, verdict):
+        if not verdict or self.state.get('harm_latch'):
+            return
+        identity = (verdict.get('identity') or {}).get('status')
+        launched = bool(verdict.get('owner_status'))
+        explained = str(verdict.get('reason', '')).startswith((LAUNCH_FAULT, MEMORY_KILL))  # no owner evidence expected
+        reason = None
+        if identity in ('MISMATCH', 'UNVERIFIED') or (identity == 'UNKNOWN' and launched and not explained):
+            reason = f'identity {identity}'
+        elif verdict.get('status') != 'STOP':
+            if not isinstance(verdict.get('scope_violations'), list) or verdict['scope_violations']:
+                reason = 'scope_violations missing or non-empty'
+            elif verdict.get('teardown') != 'CLEAN':
+                reason = f'teardown {verdict.get("teardown")}'
+            elif identity != 'MATCH':
+                reason = f'identity {identity}'
+        if reason:
+            self.latch(name, reason)
+
+    def latch(self, name, reason):
+        if self.state.get('harm_latch'):
+            return
+        path = self.output / f'verdict-{name}.json'
+        sha = digest(path) if path.is_file() else None
+        if any(item['cell'] == name and item['verdict_sha256'] == sha
+               for item in self.state.get('cleared_latches', ())):
+            return
+        self.state['harm_latch'] = dict(cell=name, reason=reason, verdict_sha256=sha)
+        self.event('harm_latch', cell=name, reason=reason)
+
+    def assert_active(self):
+        for lane, state in self.lanes().items():
+            if state.get('harm_latch'):
+                raise RuntimeError(f'harm latch in lane {lane}: {state["harm_latch"]}')
+        first = self.state.get('first_smoke_dispatch')
+        if first and datetime.datetime.now(datetime.timezone.utc) >= datetime.datetime.fromisoformat(first) + datetime.timedelta(days=7):
+            self.stop('7-day deadline reached')
+
+    def image(self):
+        if cell.image_identity(self.runtime):
+            return True
+        tarball = Path(self.runtime['image_tarball'])
+        if not tarball.is_file():
+            self.event('hold', reason='image tarball missing')
+            return False
+        try:
+            subprocess.run(['docker', 'load', '-i', str(tarball)], check=True,
+                           capture_output=True, text=True)
+        except subprocess.CalledProcessError as exc:
+            stderr = (exc.stderr or '').splitlines()
+            self.event('hold', reason=f'docker load failed: {stderr[0] if stderr else exc}')
+            return False
+        if not cell.image_identity(self.runtime):
+            raise RuntimeError('image identity mismatch after docker load')
+        self.event('image_loaded')
+        return True
+
+    def cell_disk(self):
+        """Free space as the cell image sees it on /cell (a bind of the output volume) and on a fresh /tmp volume:
+        each needs the delivery helper's floor plus 2 GiB, so the helper never refuses in B for want of disk."""
+        argv = ['docker', 'run', '--rm', '--name', 'devlyn-0265-disk-' + uuid.uuid4().hex, '--network', 'none',
+                '--read-only', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges',
+                '--mount', f'type=bind,src={self.output},dst=/cell,readonly', '--mount', 'type=volume,dst=/tmp',
+                self.runtime['image'], 'python3', '-c', DISK_PROBE]
+        try:
+            measured = json.loads(subprocess.run(argv, check=True, capture_output=True, text=True,
+                                                 timeout=120).stdout)
+            short = []
+            for path in ('/cell', '/tmp'):
+                floor = max(10 * GIB, (measured[path]['total'] + 49) // 50) + 2 * GIB
+                if measured[path]['free'] < floor:
+                    short.append(f'{path} has {measured[path]["free"]} bytes free, below {floor}')
+        except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError) as exc:
+            self.event('hold', reason=f'cell disk check failed: {exc}')
+            return False
+        if short:
+            self.event('hold', reason='cell disk below the delivery floor: ' + '; '.join(short))
+            return False
+        return True
+
+    def renew(self, expiry, min_token_seconds):
+        """The host renewal at <= 300 s, under the lock every lane shares: one renewal command per expiry."""
+        with open(self.renewal_lock, 'a') as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            try:
+                renewed = credential(self.runtime)
+            except (OSError, ValueError, KeyError, subprocess.CalledProcessError) as exc:
+                self.event('hold', reason=f'credential renewal check failed: {exc}')
+                return None
+            if renewed['expires'] > expiry:
+                self.event('renewal_skipped', expiry=expiry, renewed=renewed['expires'])
+            elif any(expiry in state.get('renewed_expiries', ()) for state in self.lanes().values()):
+                self.event('hold', reason='renewal needs owner', expiry=expiry)
+                return None
+            else:
+                help_text = subprocess.run(['claude', '--help'], check=True, capture_output=True, text=True).stdout
+                command = renewal_command(self.runtime, help_text)
+                self.state['renewed_expiries'].append(expiry)
+                self.event('renewal_attempt', expiry=expiry)
+                try:
+                    subprocess.run(command, capture_output=True, text=True, timeout=180)
+                except (subprocess.TimeoutExpired, OSError) as exc:
+                    self.event('renewal_command_error', expiry=expiry, reason=str(exc))
+                try:
+                    renewed = credential(self.runtime)
+                except (OSError, ValueError, KeyError, subprocess.CalledProcessError) as exc:
+                    self.event('hold', reason=f'credential renewal check failed: {exc}')
+                    return None
+                if renewed['expires'] <= expiry:
+                    self.event('hold', reason='renewal did not advance expiry', expiry=expiry)
+                    return None
+                self.event('renewed', expiry=renewed['expires'])
+        return renewed if renewed['expires'] - time.time() >= min_token_seconds else None
+
+    def ready(self, min_token_seconds=cell.MIN_TOKEN_SECONDS, slot=None, previous=None):
+        self.approved_account = None
+        free = shutil.disk_usage(self.output).free
+        if free < cell.HEADROOM_BYTES:
+            self.event('hold', reason=f'output volume has {free} bytes free, below {cell.HEADROOM_BYTES}')
+            return False
+        try:
+            snapshot = credential(self.runtime)
+        except (OSError, ValueError, KeyError, subprocess.CalledProcessError) as exc:
+            self.event('hold', reason=f'credential snapshot failed: {exc}')
+            return False
+        remaining = snapshot['expires'] - time.time()
+        if remaining < min_token_seconds:
+            expiry = snapshot['expires']
+            if expiry in self.state['renewed_expiries']:
+                self.event('hold', reason='renewal needs owner', expiry=expiry)
+                return False
+            if remaining > 300:
+                self.event('hold', reason='awaiting renewal window', expiry=expiry)
+                return False
+            snapshot = self.renew(expiry, min_token_seconds)
+            if not snapshot:
+                return False
+        if not self.image() or not self.cell_disk():  # local holds first: the usage endpoint is read once per dispatch
+            return False
+        try:
+            windows = cell.claude_limits(self.runtime, snapshot['access_token'])
+        except (OSError, ValueError, KeyError) as exc:
+            self.event('hold', reason=f'Claude window check failed: {exc}')
+            return False
+        if any(window not in windows for window in WINDOWS):
+            self.event('hold', reason='Claude window evidence unavailable')
+            return False
+        waiting = self.state['split_wait'].get(slot, {}) if slot else {}
+        if waiting and 'account' in waiting and waiting['account'] != snapshot['account']:
+            del self.state['split_wait'][slot]
+            self.event('split_wait_account_changed', cell=slot, before=waiting['account'],
+                       after=snapshot['account'])
+            waiting = {}
+        waits = waiting.get('resets', waiting)
+        if waiting and any(same_window(windows[window]['resets'], reset) for window, reset in waits.items()):
+            self.event('hold', reason='awaiting split window reset', cell=slot, waits=waits)
+            return False
+        if waiting:
+            del self.state['split_wait'][slot]
+        if not fits(windows, self.caps):
+            if slot:
+                exceeded = {window: windows[window]['resets'] for window in WINDOWS
+                            if windows[window]['used'] >= self.caps[window]}
+                self.state['split_wait'][slot] = {'account': snapshot['account'], 'resets': exceeded}
+                if exceeded:
+                    split = f'{previous}:{slot}'
+                    if split not in self.state['split_blocks']:
+                        self.state['split_blocks'].append(split)
+                        self.event('split_block', block=split, waits=exceeded)
+            self.event('hold', reason='Claude window near exhaustion', windows=windows, caps=self.caps)
+            return False
+        self.approved_account = snapshot['account'].copy()
+        return True
+
+    def verdict(self, name):
+        path = self.output / f'verdict-{name}.json'
+        return json.loads(path.read_text()) if path.is_file() else None
+
+    def redispatch(self, name, verdict):
+        """Whether a STOP is archived and its slot run again: a quota fault, a proven Docker loss, a B launch fault,
+        or the slot's first memory kill. A second memory kill on one slot keeps its STOP and stops this lane."""
+        reason = str(verdict.get('reason', ''))
+        if reason.startswith(MEMORY_KILL) and any(
+                str(json.loads(path.read_text()).get('reason', '')).startswith(MEMORY_KILL)
+                for path in self.output.glob(f'verdict-{name}.stop-*.json')):
+            self.stop(f'{name}: second memory kill on this slot: {reason}')
+        if reason.startswith((LAUNCH_FAULT, MEMORY_KILL)):
+            return verdict.get('teardown') == 'CLEAN'
+        return reason.startswith('shared account fault during execution:') or docker_fault(verdict)
+
+    def prove_docker_teardown(self, name):
+        """Remove the stopped containers and /tmp volume recorded for this attempt."""
+        try:
+            started = json.loads((self.output / name / 'run/started.json').read_text())
+            argv = started['create_argv']
+            volume = started['tmp_volume']
+            if (argv[0] != 'create' or argv.count('--name') != 1
+                    or f'type=volume,src={volume},dst=/tmp' not in argv):
+                raise ValueError('owner container identity is missing from started.json')
+            owner_name = argv[argv.index('--name') + 1]
+
+            def docker(*args):
+                return subprocess.run(['docker', *args], check=True, capture_output=True, text=True).stdout.strip()
+
+            ids = docker('ps', '-aq', '--no-trunc', '--filter', f'volume={volume}').splitlines()
+            owner = json.loads(docker('inspect', owner_name))[0]
+            if owner['Id'] not in ids or owner['Name'] != '/' + owner_name:
+                raise ValueError('recorded owner container was not found on its volume')
+            found = []
+            for cid in ids:
+                item = json.loads(docker('inspect', cid))[0]
+                if (item['Id'] != cid or item['Config']['Labels'].get('devlyn.task') != '0233'
+                        or not any(mount['Name'] == volume for mount in item['Mounts'] if mount['Type'] == 'volume')):
+                    raise ValueError(f'container {cid} does not match the attempt volume and label')
+                if item['State']['Running'] or item['State']['Pid'] != 0:
+                    raise ValueError(f'container {cid} is still running')
+                found.append(dict(id=cid, name=item['Name'], state=item['State']['Status']))
+            for item in found:
+                docker('rm', item['id'])
+            if (docker('ps', '-aq', '--no-trunc', '--filter', f'volume={volume}')
+                    or docker('ps', '-aq', '--no-trunc', '--filter', f'name=^/{owner_name}$')):
+                raise ValueError('container removal could not be verified')
+            docker('volume', 'rm', volume)
+            if docker('volume', 'ls', '-q', '--filter', f'name=^{volume}$'):
+                raise ValueError('volume removal could not be verified')
+        except (OSError, ValueError, KeyError, IndexError, TypeError, AttributeError,
+                subprocess.SubprocessError) as exc:
+            self.stop(f'{name}: Docker teardown proof failed: {exc}')
+        self.event('docker_teardown_proven', cell=name, source='run/started.json create_argv and tmp_volume',
+                   found=found, removed=[item['id'] for item in found], removed_volume=volume)
+
+    def dispatch(self, row):
+        name, task, arm, config = row[:4]
+        if arm not in ('A', 'B') or config not in ('claude', 'codex') or self.lane not in (None, config):
+            raise ValueError(f'{name}: 0265 requires arm A/B and config claude/codex in its own lane')
+        self.assert_active()
+        if task != 'SMOKE':
+            seal = self.output.parent / 'instructions.seal.json'
+            try:
+                qualified = json.loads(seal.read_text())['qualification']['status'] == 'PASS'
+            except (OSError, ValueError, KeyError, TypeError):
+                qualified = False
+            if not qualified:
+                raise RuntimeError('SMOKE qualification missing or failed')
+        verdict = self.verdict(name)
+        self.latch_for(name, verdict)
+        self.assert_active()
+        if verdict:
+            if verdict['status'] != 'STOP':
+                self.event('skip_finished', cell=name)
+                return True
+            reason = verdict.get('reason', '')
+            if reason.startswith(REGRADE):
+                rc = cell.regrade(self.runtime_path, name, expected_account=self.approved_account)
+                self.event('regrade', cell=name, rc=rc)
+                self.latch_for(name, self.verdict(name))
+                self.assert_active()
+                return rc == 0
+            infrastructure_fault = docker_fault(verdict)
+            if self.redispatch(name, verdict):
+                if infrastructure_fault:
+                    self.prove_docker_teardown(name)
+                number = 1
+                while (self.output / f'verdict-{name}.stop-{number}.json').exists():
+                    number += 1
+                (self.output / f'verdict-{name}.json').rename(self.output / f'verdict-{name}.stop-{number}.json')
+                (self.output / name).rename(self.output / f'{name}.stop-{number}')
+            else:
+                self.latch(name, f'STOP {reason}')  # any other STOP stops both lanes, as it stopped the one driver
+                raise RuntimeError(f'{name}: STOP {reason}')
+        if task == 'SMOKE' and not self.state.get('first_smoke_dispatch'):
+            first = datetime.datetime.now(datetime.timezone.utc).isoformat()
+            self.state['first_smoke_dispatch'] = first
+            self.state['registered_caps'] = self.caps.copy()
+            self.event('first_smoke_dispatch', cell=name, started_at=first)
+        rc = cell.run(self.runtime_path, name, task, arm, config, expected_account=self.approved_account)
+        finished = self.verdict(name)
+        previous = None
+        if arm == 'B' and finished:  # B launch faults in a row in this lane; a B owner that launched ends a row
+            if str(finished.get('reason', '')).startswith(LAUNCH_FAULT):
+                previous = self.state.get('launch_fault')
+                self.state['launch_fault'] = dict(cell=name, reason=finished['reason'])
+            elif finished.get('owner_status'):
+                self.state.pop('launch_fault', None)
+        self.event('run', cell=name, rc=rc)
+        if previous:
+            self.latch(name, f'second B launch fault in a row in lane {self.lane or "smoke"} '
+                             f'(after {previous["cell"]}): {finished["reason"]}')
+        if task == 'SMOKE':
+            if rc == 3 and not any(self.output.glob('smoke-*/run/started.json')):
+                self.state.pop('first_smoke_dispatch', None)
+                self.state.pop('registered_caps', None)
+                self.event('smoke_start_refused', cell=name)
+            self.reconcile_smoke_starts()
+        self.latch_for(name, finished)
+        self.assert_active()
+        if rc == 2:
+            verdict = self.verdict(name)
+            reason = verdict.get('reason', '') if verdict else 'no verdict'
+            if not (verdict and (reason.startswith(REGRADE) or self.redispatch(name, verdict))):
+                self.latch(name, f'STOP {reason}')
+                raise RuntimeError(f'{name}: STOP {reason}')
+        return rc == 0
+
+    def run(self):
+        i = 0
+        while i < len(self.slots):
+            self.assert_active()
+            row = self.slots[i]
+            name, task, arm, config = row[:4]
+            verdict = self.verdict(name)
+            self.latch_for(name, verdict)
+            self.assert_active()
+            if verdict and verdict['status'] != 'STOP':
+                self.event('skip_finished', cell=name)
+                i += 1
+                continue
+            second = i > 0 and self.slots[i - 1][1] == task and self.slots[i - 1][3] == config and self.slots[i - 1][-1] == row[-1]
+            assessment = bool(verdict and str(verdict.get('reason', '')).startswith(REGRADE))
+            if not self.ready(1500 if assessment else cell.MIN_TOKEN_SECONDS,
+                              name if second else None, self.slots[i - 1][0] if second else None):
+                time.sleep(60)
+                continue
+            if self.dispatch(row):
+                i += 1
+            else:
+                time.sleep(60)
+        self.event('complete', cells=len(self.slots))
+
+
+if __name__ == '__main__':
+    if len(sys.argv) >= 4 and sys.argv[1] == '--clear-latch':
+        Driver(sys.argv[3], []).clear_latch(sys.argv[2])
+    else:
+        Driver(sys.argv[1], rows(sys.argv[2:])).run()

@@ -1,0 +1,1830 @@
+{
+  "schemaVersion": 1,
+  "package": "devlyn-cli",
+  "version": "4.3.30",
+  "principles": {
+    "defaults": "config/skills/_shared/runtime-principles.md",
+    "memory": {
+      "claude": "harness/CLAUDE.md",
+      "agents": "harness/AGENTS.md"
+    },
+    "sourceBlockSha256": "eaf6d144bcb25ac8c5e628a134dc4422f5af7641f9c34ccdb8f06d1613718c48"
+  },
+  "skills": {
+    "root": "config/skills",
+    "names": [
+      "devlyn-ideate",
+      "devlyn-engines"
+    ],
+    "support": "_shared",
+    "claudePlugin": "native/claude",
+    "codexMarketplace": "native/codex"
+  },
+  "stateCompat": {
+    "loopManifest": {
+      "read": [
+        1,
+        1
+      ],
+      "write": 1
+    },
+    "addRecord": {
+      "read": [
+        1,
+        1
+      ],
+      "write": 1
+    },
+    "taskPacket": {
+      "inspect": [
+        1,
+        2
+      ],
+      "execute": [
+        1,
+        2
+      ],
+      "write": 2
+    },
+    "queueBinding": {
+      "read": [
+        1,
+        1
+      ],
+      "write": 1
+    },
+    "submission": {
+      "read": [
+        1,
+        1
+      ],
+      "write": 1
+    },
+    "review": {
+      "read": [
+        1,
+        1
+      ],
+      "write": 1
+    },
+    "acceptanceResult": {
+      "read": [
+        1,
+        1
+      ],
+      "write": 1
+    },
+    "invocationReceipt": {
+      "read": [
+        1,
+        1
+      ],
+      "write": 1
+    },
+    "legacyFormats": [
+      "completion-receipt-unversioned",
+      "direct-acceptance-unversioned",
+      "expected-contract-unversioned",
+      "engines-config-unversioned",
+      "queue-markdown-inspect-only"
+    ]
+  },
+  "requires": {
+    "node": "^20.17.0 || ^22.13.0 || >=23.5.0",
+    "python": ">=3.11",
+    "git": true,
+    "windowsGitBash": true,
+    "githubDelivery": "gh"
+  },
+  "files": [
+    {
+      "path": "AGENTS.md",
+      "sha256": "df67efd70f4760d2415c414eb96d4cc426277c20e18f17e401257f85b489eb59",
+      "executable": false
+    },
+    {
+      "path": "CLAUDE.md",
+      "sha256": "df67efd70f4760d2415c414eb96d4cc426277c20e18f17e401257f85b489eb59",
+      "executable": false
+    },
+    {
+      "path": "LICENSE",
+      "sha256": "ce7eb6efd00f74955f0d20451e39d182c7d9bcacc6b08440fa8fadad640aa897",
+      "executable": false
+    },
+    {
+      "path": "README.md",
+      "sha256": "fa6956e7d769d1b7731b804af07f0a0d30fb775e5be7cf53e3099257f71f7ac8",
+      "executable": false
+    },
+    {
+      "path": "bin/cleanup-history.json",
+      "sha256": "0cb91348003317f8a2ff01bc421ba76a57e1ef71ce4a0aeb6abd9377e814c1c1",
+      "executable": false
+    },
+    {
+      "path": "bin/codex-projection.js",
+      "sha256": "0df85d34e064ef4fb1819a4d9cec9a813ef7ef7f5c99cc8c9684460e2f06e935",
+      "executable": false
+    },
+    {
+      "path": "bin/devlyn.js",
+      "sha256": "d74e237346ffc0966867bbaf3a5c411b5a25888575b6c363f9347cd6a7c90b02",
+      "executable": true
+    },
+    {
+      "path": "bin/engines.js",
+      "sha256": "7c1910a2b399d61c4dd8e576244e6bfe91215581f599cb84fc763487a3bce743",
+      "executable": false
+    },
+    {
+      "path": "bin/harness-activation.js",
+      "sha256": "e5428bf6fb2dc40e0f7bebcc834b54573c0b8c648570fea8bd51774d5e865727",
+      "executable": false
+    },
+    {
+      "path": "bin/harness-context.js",
+      "sha256": "2d2cd812fec2db659b7bb8b40f22fa10acde1c754c16265b81994645a9bfc29f",
+      "executable": false
+    },
+    {
+      "path": "bin/harness-run.js",
+      "sha256": "c4dcd1f7776834e9c5af2a497f900f6de01b2e5e817335e0de48714de4885e55",
+      "executable": false
+    },
+    {
+      "path": "bin/harness-status.js",
+      "sha256": "7cc1bc83594952806142a7e3bda2430d21a583ae31a3b1800aa2811a645e0ad0",
+      "executable": false
+    },
+    {
+      "path": "bin/instruction-templates.json",
+      "sha256": "752cc4b023930ca696395fb071b93d17a6fabf34aec9e2b993e88f2d2d1673c9",
+      "executable": false
+    },
+    {
+      "path": "bin/instructions.js",
+      "sha256": "7f9c95fd5ec68b3c95c8cd0be0f3a65596a1ec5f4f264523622e304838c40a25",
+      "executable": false
+    },
+    {
+      "path": "bin/release.js",
+      "sha256": "c7e74876350e89dc09a435474d9c8b3832db216bd2d14d5482d9b5b8430332bf",
+      "executable": false
+    },
+    {
+      "path": "bin/skill-history.json",
+      "sha256": "de454d15a5d1e81f0f69f5d1d781ea02d8b19554695458a993d74596d5055146",
+      "executable": false
+    },
+    {
+      "path": "bin/skill-ownership.js",
+      "sha256": "f217789f43bcf0f4434fdc39aef04934722c640005fae0c591018ca9b7544405",
+      "executable": false
+    },
+    {
+      "path": "config/skills/_shared/.ruff.toml",
+      "sha256": "adec089c6c3bc0c63fb6a8d9acbf9d1dc3d8a287d1d32f086340d4b90ee9d9e1",
+      "executable": false
+    },
+    {
+      "path": "config/skills/_shared/adapters/claude.adapter.md",
+      "sha256": "8e9d6b99001c195c6608c8da117424d131ca3929adc738ee5f2bbdd14a47cc12",
+      "executable": false
+    },
+    {
+      "path": "config/skills/_shared/adapters/codex.adapter.md",
+      "sha256": "8fa200290caa7dd7b8d578157de3b233503d50ec1338d210279eb0ee7fa30e16",
+      "executable": false
+    },
+    {
+      "path": "config/skills/_shared/adapters/omp.adapter.md",
+      "sha256": "c0b6bef4f8980db166689c35fd50c22efbd8b0a859f52e1e8ac4e2c558ae0faa",
+      "executable": false
+    },
+    {
+      "path": "config/skills/_shared/bring-in.py",
+      "sha256": "754b3892ceb611c855f814e0aa54b645b53de4a67ddec44418f254cb36774527",
+      "executable": false
+    },
+    {
+      "path": "config/skills/_shared/codex-monitored.sh",
+      "sha256": "28a95e3b4ca9a36ed6d2138dd8800c2ae2d42ad577236bd30742c35098094434",
+      "executable": true
+    },
+    {
+      "path": "config/skills/_shared/engine-doctor.sh",
+      "sha256": "5f5222ddc0efea7007da3a1927cb32c9b87c0468ae2723e4d6d497d5ed839ded",
+      "executable": true
+    },
+    {
+      "path": "config/skills/_shared/engine-preflight.md",
+      "sha256": "d1cc430847a659fe0ea946ce09bfac30ec2596ce8707c5bf280e60f24a0771fb",
+      "executable": false
+    },
+    {
+      "path": "config/skills/_shared/expected-contract.py",
+      "sha256": "1a7dd6da07c3b4cd59e8f8135820ec808be695d763e3f0e265f069c12d0b59f0",
+      "executable": false
+    },
+    {
+      "path": "config/skills/_shared/expected.schema.json",
+      "sha256": "911c2f5f43ef70ee4ee3852a55b876d68b2ceb2b38e5799a58035c4d6b9bba2c",
+      "executable": false
+    },
+    {
+      "path": "config/skills/_shared/harness-store.py",
+      "sha256": "d66fcdc4832d0934f25a9066a63b83db803df1649e16bf2412c46e6cf37f8b61",
+      "executable": false
+    },
+    {
+      "path": "config/skills/_shared/invocation-receipt.py",
+      "sha256": "1ce372b84faf3f0afdd987b76f87c07e630c2ff2f9fc2e49654573d78a463855",
+      "executable": false
+    },
+    {
+      "path": "config/skills/_shared/managed-storage.md",
+      "sha256": "959fb0b524772a179b22cdc439908d9011b015409d0ea36d1504bb43cfab4cd5",
+      "executable": false
+    },
+    {
+      "path": "config/skills/_shared/platform-support.py",
+      "sha256": "bf28582adbe62252940165de12e78369bceff9538dfaf737302b414dcda4a573",
+      "executable": false
+    },
+    {
+      "path": "config/skills/_shared/role-config.py",
+      "sha256": "e076cee1ea2d629ae61d1e6bb979daa9976d95fe5db7d67ed185a43836ef4109",
+      "executable": false
+    },
+    {
+      "path": "config/skills/_shared/runtime-principles.md",
+      "sha256": "a8544f866db7b8e49617f14519908a601cbd8b92786cecb521cba5c28421a7f7",
+      "executable": false
+    },
+    {
+      "path": "config/skills/_shared/storage-checkout.py",
+      "sha256": "b12fb9f48c6e46b7544091bbd663cc9090389c92a16f32ac1ef8c51e0f90b77b",
+      "executable": false
+    },
+    {
+      "path": "config/skills/_shared/storage-client.py",
+      "sha256": "f0341cb0a0b6bee9fd12bf66311436572ac0f33d667c0064107a3139fddc7765",
+      "executable": false
+    },
+    {
+      "path": "config/skills/_shared/task-complete.py",
+      "sha256": "1f39a27e0dc70c727dc79d47c2b294e75bfd1efbc8df4f0492d68578a29405a2",
+      "executable": false
+    },
+    {
+      "path": "config/skills/_shared/task-completion.md",
+      "sha256": "3b75502d363ba5fa3b45c06a1f3e0de7c88e609d4f91c41d75287a0acccdd504",
+      "executable": false
+    },
+    {
+      "path": "config/skills/_shared/unattended-tools.py",
+      "sha256": "aac9d8cc8216ad1ece32e06df926c2d7b3099f59f43ff23bb98516efa16e8c58",
+      "executable": false
+    },
+    {
+      "path": "config/skills/_shared/warm-build-dirs.py",
+      "sha256": "ccc842227dfe8d531b06e0e32a13a580c127af9c354b086548da8c547af6c2b0",
+      "executable": false
+    },
+    {
+      "path": "config/skills/devlyn-engines/SKILL.md",
+      "sha256": "638d345f614b82a1bd745188684f1b7d007c8d75c790c757a4f26528999ffffc",
+      "executable": false
+    },
+    {
+      "path": "config/skills/devlyn-ideate/SKILL.md",
+      "sha256": "3083690ac28904ff3db8124d8af1db6942fea4ee4cea71cfd3ac6050910674b1",
+      "executable": false
+    },
+    {
+      "path": "config/skills/devlyn-ideate/references/elicitation.md",
+      "sha256": "b836f98710f82b973212fd4406575fb3b16a299cee5edc98e555e82b2fbcad47",
+      "executable": false
+    },
+    {
+      "path": "config/skills/devlyn-ideate/references/executor.md",
+      "sha256": "aa53076dffa1fcf49e2350206b5f0ba73306b92ccce3502160dca4f26113e4be",
+      "executable": false
+    },
+    {
+      "path": "config/skills/devlyn-ideate/references/loop.md",
+      "sha256": "ad64d90fb775b05ef774c2457fc9d994b062e17e017da07054be0d93d83e533f",
+      "executable": false
+    },
+    {
+      "path": "config/skills/devlyn-ideate/references/package-format.md",
+      "sha256": "0b7c780db5f8e3149f1da5802ad5d9def7d60b46d21699807c72c997fe2d67fc",
+      "executable": false
+    },
+    {
+      "path": "config/skills/devlyn-ideate/references/plan-add.md",
+      "sha256": "8e1f20f35bde3bd779c409e00eab89fe60b732191cf186543a5619cd6fd5232e",
+      "executable": false
+    },
+    {
+      "path": "config/skills/devlyn-ideate/scripts/acceptance.py",
+      "sha256": "5e25ce6fcbd1773e988a1146f0f4a681676936dad113c43c693fdb0925aa168a",
+      "executable": false
+    },
+    {
+      "path": "config/skills/devlyn-ideate/scripts/queue.py",
+      "sha256": "f8447d7f1a3d04332e9aefdd363e15a9351c46ce2b165d4e75cce45906f132cf",
+      "executable": false
+    },
+    {
+      "path": "config/storage-client-contract.json",
+      "sha256": "c8c2f4a0d3ac1201617c7989687145c418eef1e14fcd82ecb7ca592dd7cb5f17",
+      "executable": false
+    },
+    {
+      "path": "harness/AGENTS.md",
+      "sha256": "68c354a51eae0b77eaa909ec2a11b1ca498c62905e133375929c73085c638d10",
+      "executable": false
+    },
+    {
+      "path": "harness/CLAUDE.md",
+      "sha256": "68c354a51eae0b77eaa909ec2a11b1ca498c62905e133375929c73085c638d10",
+      "executable": false
+    },
+    {
+      "path": "native/claude/.claude-plugin/plugin.json",
+      "sha256": "1c66282653ed10919933b783dbff4353b9a315340d1ceb6d9edb9caf963a23e1",
+      "executable": false
+    },
+    {
+      "path": "native/claude/skills/_shared/.ruff.toml",
+      "sha256": "adec089c6c3bc0c63fb6a8d9acbf9d1dc3d8a287d1d32f086340d4b90ee9d9e1",
+      "executable": false
+    },
+    {
+      "path": "native/claude/skills/_shared/adapters/claude.adapter.md",
+      "sha256": "8e9d6b99001c195c6608c8da117424d131ca3929adc738ee5f2bbdd14a47cc12",
+      "executable": false
+    },
+    {
+      "path": "native/claude/skills/_shared/adapters/codex.adapter.md",
+      "sha256": "8fa200290caa7dd7b8d578157de3b233503d50ec1338d210279eb0ee7fa30e16",
+      "executable": false
+    },
+    {
+      "path": "native/claude/skills/_shared/adapters/omp.adapter.md",
+      "sha256": "c0b6bef4f8980db166689c35fd50c22efbd8b0a859f52e1e8ac4e2c558ae0faa",
+      "executable": false
+    },
+    {
+      "path": "native/claude/skills/_shared/bring-in.py",
+      "sha256": "754b3892ceb611c855f814e0aa54b645b53de4a67ddec44418f254cb36774527",
+      "executable": false
+    },
+    {
+      "path": "native/claude/skills/_shared/codex-monitored.sh",
+      "sha256": "28a95e3b4ca9a36ed6d2138dd8800c2ae2d42ad577236bd30742c35098094434",
+      "executable": true
+    },
+    {
+      "path": "native/claude/skills/_shared/engine-doctor.sh",
+      "sha256": "5f5222ddc0efea7007da3a1927cb32c9b87c0468ae2723e4d6d497d5ed839ded",
+      "executable": true
+    },
+    {
+      "path": "native/claude/skills/_shared/engine-preflight.md",
+      "sha256": "d1cc430847a659fe0ea946ce09bfac30ec2596ce8707c5bf280e60f24a0771fb",
+      "executable": false
+    },
+    {
+      "path": "native/claude/skills/_shared/expected-contract.py",
+      "sha256": "1a7dd6da07c3b4cd59e8f8135820ec808be695d763e3f0e265f069c12d0b59f0",
+      "executable": false
+    },
+    {
+      "path": "native/claude/skills/_shared/expected.schema.json",
+      "sha256": "911c2f5f43ef70ee4ee3852a55b876d68b2ceb2b38e5799a58035c4d6b9bba2c",
+      "executable": false
+    },
+    {
+      "path": "native/claude/skills/_shared/harness-store.py",
+      "sha256": "d66fcdc4832d0934f25a9066a63b83db803df1649e16bf2412c46e6cf37f8b61",
+      "executable": false
+    },
+    {
+      "path": "native/claude/skills/_shared/invocation-receipt.py",
+      "sha256": "1ce372b84faf3f0afdd987b76f87c07e630c2ff2f9fc2e49654573d78a463855",
+      "executable": false
+    },
+    {
+      "path": "native/claude/skills/_shared/managed-storage.md",
+      "sha256": "959fb0b524772a179b22cdc439908d9011b015409d0ea36d1504bb43cfab4cd5",
+      "executable": false
+    },
+    {
+      "path": "native/claude/skills/_shared/platform-support.py",
+      "sha256": "bf28582adbe62252940165de12e78369bceff9538dfaf737302b414dcda4a573",
+      "executable": false
+    },
+    {
+      "path": "native/claude/skills/_shared/role-config.py",
+      "sha256": "e076cee1ea2d629ae61d1e6bb979daa9976d95fe5db7d67ed185a43836ef4109",
+      "executable": false
+    },
+    {
+      "path": "native/claude/skills/_shared/runtime-principles.md",
+      "sha256": "a8544f866db7b8e49617f14519908a601cbd8b92786cecb521cba5c28421a7f7",
+      "executable": false
+    },
+    {
+      "path": "native/claude/skills/_shared/storage-checkout.py",
+      "sha256": "b12fb9f48c6e46b7544091bbd663cc9090389c92a16f32ac1ef8c51e0f90b77b",
+      "executable": false
+    },
+    {
+      "path": "native/claude/skills/_shared/storage-client.py",
+      "sha256": "f0341cb0a0b6bee9fd12bf66311436572ac0f33d667c0064107a3139fddc7765",
+      "executable": false
+    },
+    {
+      "path": "native/claude/skills/_shared/task-complete.py",
+      "sha256": "1f39a27e0dc70c727dc79d47c2b294e75bfd1efbc8df4f0492d68578a29405a2",
+      "executable": false
+    },
+    {
+      "path": "native/claude/skills/_shared/task-completion.md",
+      "sha256": "3b75502d363ba5fa3b45c06a1f3e0de7c88e609d4f91c41d75287a0acccdd504",
+      "executable": false
+    },
+    {
+      "path": "native/claude/skills/_shared/unattended-tools.py",
+      "sha256": "aac9d8cc8216ad1ece32e06df926c2d7b3099f59f43ff23bb98516efa16e8c58",
+      "executable": false
+    },
+    {
+      "path": "native/claude/skills/_shared/warm-build-dirs.py",
+      "sha256": "ccc842227dfe8d531b06e0e32a13a580c127af9c354b086548da8c547af6c2b0",
+      "executable": false
+    },
+    {
+      "path": "native/claude/skills/devlyn-engines/SKILL.md",
+      "sha256": "638d345f614b82a1bd745188684f1b7d007c8d75c790c757a4f26528999ffffc",
+      "executable": false
+    },
+    {
+      "path": "native/claude/skills/devlyn-ideate/SKILL.md",
+      "sha256": "3083690ac28904ff3db8124d8af1db6942fea4ee4cea71cfd3ac6050910674b1",
+      "executable": false
+    },
+    {
+      "path": "native/claude/skills/devlyn-ideate/references/elicitation.md",
+      "sha256": "b836f98710f82b973212fd4406575fb3b16a299cee5edc98e555e82b2fbcad47",
+      "executable": false
+    },
+    {
+      "path": "native/claude/skills/devlyn-ideate/references/executor.md",
+      "sha256": "aa53076dffa1fcf49e2350206b5f0ba73306b92ccce3502160dca4f26113e4be",
+      "executable": false
+    },
+    {
+      "path": "native/claude/skills/devlyn-ideate/references/loop.md",
+      "sha256": "ad64d90fb775b05ef774c2457fc9d994b062e17e017da07054be0d93d83e533f",
+      "executable": false
+    },
+    {
+      "path": "native/claude/skills/devlyn-ideate/references/package-format.md",
+      "sha256": "0b7c780db5f8e3149f1da5802ad5d9def7d60b46d21699807c72c997fe2d67fc",
+      "executable": false
+    },
+    {
+      "path": "native/claude/skills/devlyn-ideate/references/plan-add.md",
+      "sha256": "8e1f20f35bde3bd779c409e00eab89fe60b732191cf186543a5619cd6fd5232e",
+      "executable": false
+    },
+    {
+      "path": "native/claude/skills/devlyn-ideate/scripts/acceptance.py",
+      "sha256": "5e25ce6fcbd1773e988a1146f0f4a681676936dad113c43c693fdb0925aa168a",
+      "executable": false
+    },
+    {
+      "path": "native/claude/skills/devlyn-ideate/scripts/queue.py",
+      "sha256": "f8447d7f1a3d04332e9aefdd363e15a9351c46ce2b165d4e75cce45906f132cf",
+      "executable": false
+    },
+    {
+      "path": "native/codex/.agents/plugins/marketplace.json",
+      "sha256": "2b589b387dd262bbb68f68738c9da6315dd06595d0af0dc5c088151235a5a7c8",
+      "executable": false
+    },
+    {
+      "path": "native/codex/plugins/devlyn/.codex-plugin/plugin.json",
+      "sha256": "1c66282653ed10919933b783dbff4353b9a315340d1ceb6d9edb9caf963a23e1",
+      "executable": false
+    },
+    {
+      "path": "native/codex/plugins/devlyn/skills/_shared/.ruff.toml",
+      "sha256": "adec089c6c3bc0c63fb6a8d9acbf9d1dc3d8a287d1d32f086340d4b90ee9d9e1",
+      "executable": false
+    },
+    {
+      "path": "native/codex/plugins/devlyn/skills/_shared/adapters/claude.adapter.md",
+      "sha256": "8e9d6b99001c195c6608c8da117424d131ca3929adc738ee5f2bbdd14a47cc12",
+      "executable": false
+    },
+    {
+      "path": "native/codex/plugins/devlyn/skills/_shared/adapters/codex.adapter.md",
+      "sha256": "8fa200290caa7dd7b8d578157de3b233503d50ec1338d210279eb0ee7fa30e16",
+      "executable": false
+    },
+    {
+      "path": "native/codex/plugins/devlyn/skills/_shared/adapters/omp.adapter.md",
+      "sha256": "c0b6bef4f8980db166689c35fd50c22efbd8b0a859f52e1e8ac4e2c558ae0faa",
+      "executable": false
+    },
+    {
+      "path": "native/codex/plugins/devlyn/skills/_shared/bring-in.py",
+      "sha256": "754b3892ceb611c855f814e0aa54b645b53de4a67ddec44418f254cb36774527",
+      "executable": false
+    },
+    {
+      "path": "native/codex/plugins/devlyn/skills/_shared/codex-monitored.sh",
+      "sha256": "28a95e3b4ca9a36ed6d2138dd8800c2ae2d42ad577236bd30742c35098094434",
+      "executable": true
+    },
+    {
+      "path": "native/codex/plugins/devlyn/skills/_shared/engine-doctor.sh",
+      "sha256": "5f5222ddc0efea7007da3a1927cb32c9b87c0468ae2723e4d6d497d5ed839ded",
+      "executable": true
+    },
+    {
+      "path": "native/codex/plugins/devlyn/skills/_shared/engine-preflight.md",
+      "sha256": "d1cc430847a659fe0ea946ce09bfac30ec2596ce8707c5bf280e60f24a0771fb",
+      "executable": false
+    },
+    {
+      "path": "native/codex/plugins/devlyn/skills/_shared/expected-contract.py",
+      "sha256": "1a7dd6da07c3b4cd59e8f8135820ec808be695d763e3f0e265f069c12d0b59f0",
+      "executable": false
+    },
+    {
+      "path": "native/codex/plugins/devlyn/skills/_shared/expected.schema.json",
+      "sha256": "911c2f5f43ef70ee4ee3852a55b876d68b2ceb2b38e5799a58035c4d6b9bba2c",
+      "executable": false
+    },
+    {
+      "path": "native/codex/plugins/devlyn/skills/_shared/harness-store.py",
+      "sha256": "d66fcdc4832d0934f25a9066a63b83db803df1649e16bf2412c46e6cf37f8b61",
+      "executable": false
+    },
+    {
+      "path": "native/codex/plugins/devlyn/skills/_shared/invocation-receipt.py",
+      "sha256": "1ce372b84faf3f0afdd987b76f87c07e630c2ff2f9fc2e49654573d78a463855",
+      "executable": false
+    },
+    {
+      "path": "native/codex/plugins/devlyn/skills/_shared/managed-storage.md",
+      "sha256": "959fb0b524772a179b22cdc439908d9011b015409d0ea36d1504bb43cfab4cd5",
+      "executable": false
+    },
+    {
+      "path": "native/codex/plugins/devlyn/skills/_shared/platform-support.py",
+      "sha256": "bf28582adbe62252940165de12e78369bceff9538dfaf737302b414dcda4a573",
+      "executable": false
+    },
+    {
+      "path": "native/codex/plugins/devlyn/skills/_shared/role-config.py",
+      "sha256": "e076cee1ea2d629ae61d1e6bb979daa9976d95fe5db7d67ed185a43836ef4109",
+      "executable": false
+    },
+    {
+      "path": "native/codex/plugins/devlyn/skills/_shared/runtime-principles.md",
+      "sha256": "a8544f866db7b8e49617f14519908a601cbd8b92786cecb521cba5c28421a7f7",
+      "executable": false
+    },
+    {
+      "path": "native/codex/plugins/devlyn/skills/_shared/storage-checkout.py",
+      "sha256": "b12fb9f48c6e46b7544091bbd663cc9090389c92a16f32ac1ef8c51e0f90b77b",
+      "executable": false
+    },
+    {
+      "path": "native/codex/plugins/devlyn/skills/_shared/storage-client.py",
+      "sha256": "f0341cb0a0b6bee9fd12bf66311436572ac0f33d667c0064107a3139fddc7765",
+      "executable": false
+    },
+    {
+      "path": "native/codex/plugins/devlyn/skills/_shared/task-complete.py",
+      "sha256": "1f39a27e0dc70c727dc79d47c2b294e75bfd1efbc8df4f0492d68578a29405a2",
+      "executable": false
+    },
+    {
+      "path": "native/codex/plugins/devlyn/skills/_shared/task-completion.md",
+      "sha256": "3b75502d363ba5fa3b45c06a1f3e0de7c88e609d4f91c41d75287a0acccdd504",
+      "executable": false
+    },
+    {
+      "path": "native/codex/plugins/devlyn/skills/_shared/unattended-tools.py",
+      "sha256": "aac9d8cc8216ad1ece32e06df926c2d7b3099f59f43ff23bb98516efa16e8c58",
+      "executable": false
+    },
+    {
+      "path": "native/codex/plugins/devlyn/skills/_shared/warm-build-dirs.py",
+      "sha256": "ccc842227dfe8d531b06e0e32a13a580c127af9c354b086548da8c547af6c2b0",
+      "executable": false
+    },
+    {
+      "path": "native/codex/plugins/devlyn/skills/devlyn-engines/SKILL.md",
+      "sha256": "638d345f614b82a1bd745188684f1b7d007c8d75c790c757a4f26528999ffffc",
+      "executable": false
+    },
+    {
+      "path": "native/codex/plugins/devlyn/skills/devlyn-ideate/SKILL.md",
+      "sha256": "3083690ac28904ff3db8124d8af1db6942fea4ee4cea71cfd3ac6050910674b1",
+      "executable": false
+    },
+    {
+      "path": "native/codex/plugins/devlyn/skills/devlyn-ideate/references/elicitation.md",
+      "sha256": "b836f98710f82b973212fd4406575fb3b16a299cee5edc98e555e82b2fbcad47",
+      "executable": false
+    },
+    {
+      "path": "native/codex/plugins/devlyn/skills/devlyn-ideate/references/executor.md",
+      "sha256": "aa53076dffa1fcf49e2350206b5f0ba73306b92ccce3502160dca4f26113e4be",
+      "executable": false
+    },
+    {
+      "path": "native/codex/plugins/devlyn/skills/devlyn-ideate/references/loop.md",
+      "sha256": "ad64d90fb775b05ef774c2457fc9d994b062e17e017da07054be0d93d83e533f",
+      "executable": false
+    },
+    {
+      "path": "native/codex/plugins/devlyn/skills/devlyn-ideate/references/package-format.md",
+      "sha256": "0b7c780db5f8e3149f1da5802ad5d9def7d60b46d21699807c72c997fe2d67fc",
+      "executable": false
+    },
+    {
+      "path": "native/codex/plugins/devlyn/skills/devlyn-ideate/references/plan-add.md",
+      "sha256": "8e1f20f35bde3bd779c409e00eab89fe60b732191cf186543a5619cd6fd5232e",
+      "executable": false
+    },
+    {
+      "path": "native/codex/plugins/devlyn/skills/devlyn-ideate/scripts/acceptance.py",
+      "sha256": "5e25ce6fcbd1773e988a1146f0f4a681676936dad113c43c693fdb0925aa168a",
+      "executable": false
+    },
+    {
+      "path": "native/codex/plugins/devlyn/skills/devlyn-ideate/scripts/queue.py",
+      "sha256": "f8447d7f1a3d04332e9aefdd363e15a9351c46ce2b165d4e75cce45906f132cf",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/ansi/LICENSE",
+      "sha256": "85aca0b12ce5ade4ff76e9cbbe7e0d5a4cdde979e3930727c272e1fa04b8cc23",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/ansi/README.md",
+      "sha256": "acac7e39e8085c850d9d14b65ba2ff90ffaca5f487ce08e1eb922578994b20f5",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/ansi/dist/index.d.ts",
+      "sha256": "48bc69e9c25e4995e462c08b0d264f1e13b188694f12c8f38a6aefb3994d6ef4",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/ansi/dist/index.js",
+      "sha256": "adeb11d734b61dfe27f35860cdd9026cd1b10c4c0c5c63a9a12c5332e4b0ee19",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/ansi/package.json",
+      "sha256": "cab1c0b6189d6817ecf9cee0c087acaffebf8ebeccc2556026a5dd01ca36c191",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/checkbox/LICENSE",
+      "sha256": "85aca0b12ce5ade4ff76e9cbbe7e0d5a4cdde979e3930727c272e1fa04b8cc23",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/checkbox/README.md",
+      "sha256": "319b510c0ef22ba509306a94a8715635ce4070221047ce598af09378af27bbcc",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/checkbox/dist/index.d.ts",
+      "sha256": "a62624c7f04fc4566f8f8b96f6d39110125263e4f79c6b496cef28c51975ad0f",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/checkbox/dist/index.js",
+      "sha256": "d8318ce8bc4cb429f31556cd935acff9991e929d9dbc0f1d2e6a97de2cbfcf73",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/checkbox/package.json",
+      "sha256": "40417769237d48d389178653cda6bb07f895b57f6c47e8b02399c269be9bdd61",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/core/LICENSE",
+      "sha256": "85aca0b12ce5ade4ff76e9cbbe7e0d5a4cdde979e3930727c272e1fa04b8cc23",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/core/README.md",
+      "sha256": "3755b653465b536e1f5fedccc71985ce26c2b669f95f71028d46e0f1f338e2ca",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/core/dist/index.d.ts",
+      "sha256": "e1d6ddd0c300ba35bd166063d5b2456e9d84fe96bdb7c16ad9379e50dca5dcda",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/core/dist/index.js",
+      "sha256": "465298a818b5ba4332579195a2f9a93b648db2a87d0bdd9608e5804955106c29",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/core/dist/lib/Separator.d.ts",
+      "sha256": "ab37b1199441c7ecb602defe46f72099d3d4555f7911bd865f51657f419779ab",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/core/dist/lib/Separator.js",
+      "sha256": "f75aa2252ef60c62410bd604bf7c0688c678c947d446cfcef7946884db0a78e6",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/core/dist/lib/__probe/p1.d.ts",
+      "sha256": "708667d0be2b7c761d85d3fcd27ffd86af6d9b07285b844e4c89460dcd7a7136",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/core/dist/lib/__probe/p1.js",
+      "sha256": "b29c4a6673c41a76fbaf5a7dd4ee76ca1dc621713d35c6d1361c325e696415d5",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/core/dist/lib/__probe/p2.d.ts",
+      "sha256": "708667d0be2b7c761d85d3fcd27ffd86af6d9b07285b844e4c89460dcd7a7136",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/core/dist/lib/__probe/p2.js",
+      "sha256": "5664b041803cbeb6cd286c8fa242d5c5c6ebf7ad1f9c0c72613c84c07a3ee1a0",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/core/dist/lib/__probe/p3.d.ts",
+      "sha256": "708667d0be2b7c761d85d3fcd27ffd86af6d9b07285b844e4c89460dcd7a7136",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/core/dist/lib/__probe/p3.js",
+      "sha256": "08f8d9af8c032fa4db6c7b8dceb3f4365e99e6a369151ca33e8f6d0a992f30f1",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/core/dist/lib/create-prompt.d.ts",
+      "sha256": "673acd99a4a6296577959626d31fe5cabf5bb3441e973e3e8cea71ffece1ff81",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/core/dist/lib/create-prompt.js",
+      "sha256": "281fea27f5d664d26748c79b3c95442dbd7ffa4cb7e81671a2e7eeb20075284e",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/core/dist/lib/errors.d.ts",
+      "sha256": "cc2d9ba9d5434882cfb9bc2954fe433b5538fa78a40be504c9833a45d1a732ad",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/core/dist/lib/errors.js",
+      "sha256": "e853af7060009a0d0cc4634431c28d9b5ff43f0084982c1700b75b943b27a278",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/core/dist/lib/hook-engine.d.ts",
+      "sha256": "a93432b560099da85aadbb687183ac0d2e9d2719dff542a7db3d0cf296cdf0ac",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/core/dist/lib/hook-engine.js",
+      "sha256": "03abfab3475cb8f7d5feee2ce6bf7ca77327042d0e50bb1b362866c8667bd2b4",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/core/dist/lib/key.d.ts",
+      "sha256": "10043f2974346ba2baca701cd0a2bca1bda974d626a5d7eb92b741757a42443e",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/core/dist/lib/key.js",
+      "sha256": "23a8ce908654922f130da62b1b0146c2107dd939019d3ee67c69ef5bb56b336f",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/core/dist/lib/make-theme.d.ts",
+      "sha256": "5a7fe6ef136e88ee70d3cd0b1aa0d6875178b2682542ca340875a2711c81d779",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/core/dist/lib/make-theme.js",
+      "sha256": "434600c202a94ae6ba3b90ce9820e92aa7d629f894bfa4cdddde8fd0834cb870",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/core/dist/lib/pagination/use-pagination.d.ts",
+      "sha256": "6efe6725728024c1b6cf22b47fe1dcaecc951444e7cb6fe0037d96123bb75667",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/core/dist/lib/pagination/use-pagination.js",
+      "sha256": "0cbe099c4e7581198e6d18ea051cf9508b5d24c34b566ba45eae7a16286ff588",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/core/dist/lib/screen-manager.d.ts",
+      "sha256": "681cac7cfb615498ee2cf79c930d8b55e2da6c9a3c58971b3324205e218cf838",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/core/dist/lib/screen-manager.js",
+      "sha256": "39dc3d968f515138a35a46c89f0abea24c83ef0ebdad81eba482d605dbbf9499",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/core/dist/lib/theme.d.ts",
+      "sha256": "c8c43f3c6f59572906c077ddd96a1856fc5c6519c30f356d6c9c511b9dadc9c0",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/core/dist/lib/theme.js",
+      "sha256": "321d96b2968d279502f04d1e711e4b1de50dbc25daba2c78041a0560e2e7db73",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/core/dist/lib/use-effect.d.ts",
+      "sha256": "8da95d257be3f2d83c21c555dedda9c96869e5f855652523cf52dc98ca8c57de",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/core/dist/lib/use-effect.js",
+      "sha256": "001c995aba7c77aee1c0043516327b7f4a2aadf0c94a3d7f00dfe171dce052bf",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/core/dist/lib/use-keypress.d.ts",
+      "sha256": "ce6ada7f4eb4cda3ccfe28a0201608828fc6ee2d3204101976831100d9550d47",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/core/dist/lib/use-keypress.js",
+      "sha256": "943a6d1ad799f073cea21eb155c193990b0802640aa5210e4f20ef18485f25e3",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/core/dist/lib/use-memo.d.ts",
+      "sha256": "aa9494cb36743567c0f6ce385ce869358b59193c9b61612e0d70e4de500424c3",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/core/dist/lib/use-memo.js",
+      "sha256": "70a292e170d545a5d28c87f579dafbf1f1ec8389fcb12f598ccf3ca87d73a757",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/core/dist/lib/use-prefix.d.ts",
+      "sha256": "988be2b47c162ddfc4ac289de0bc50b52fd425d4408cb4bc40fcc9b81f4957c6",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/core/dist/lib/use-prefix.js",
+      "sha256": "9ace5f806e90dd13a21fbdaaae9678af60b31f2202985be983a8b082290ae6a6",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/core/dist/lib/use-ref.d.ts",
+      "sha256": "904964129f1ef4797282d4ea4411eaf26d4b22bb481b8b8ab3e920d4cfc79ecf",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/core/dist/lib/use-ref.js",
+      "sha256": "b76dccca2579a01f21b77a437bb0177aca843b56b6f4727eb62ee8b18d7da81a",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/core/dist/lib/use-state.d.ts",
+      "sha256": "bf2b86c4d2d7db6fdbb14098c247526ef334ee62e8f06e3d790891b5d0d10090",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/core/dist/lib/use-state.js",
+      "sha256": "0bd91dcc4ba24d7f1eb657a3c4aab35f264c3faf4e59b8159411c1a4f67b0fdc",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/core/dist/lib/utils.d.ts",
+      "sha256": "7c8e5a4aaee3a6e83251ac295ab33a9e0aa2891c97674b9844128a8335aadc6b",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/core/dist/lib/utils.js",
+      "sha256": "951d0b5bb378664a26890fdc30951c72795bcc3988c44f2668ded27cc7162eba",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/core/package.json",
+      "sha256": "d89bbfddc2f85ca72948ee68e76545516cf32176c30aaac6329452072c16c9d4",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/figures/LICENSE",
+      "sha256": "85aca0b12ce5ade4ff76e9cbbe7e0d5a4cdde979e3930727c272e1fa04b8cc23",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/figures/dist/index.d.ts",
+      "sha256": "816b8fa6e2e8c9a02d5fff5b3ac395da52f9fcf09cb5d6f971b66a018e87e059",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/figures/dist/index.js",
+      "sha256": "a9726aa6667509460fe6e64c05739b2dfa094dc621d5efbc35ba333b99e3d125",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/figures/package.json",
+      "sha256": "5445e0055b8bb76698640b4472b9d15c192fe385d1ead476e84973c4116c4487",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/select/LICENSE",
+      "sha256": "85aca0b12ce5ade4ff76e9cbbe7e0d5a4cdde979e3930727c272e1fa04b8cc23",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/select/README.md",
+      "sha256": "930c0e65f4a1ae8257a838c4f246ab3dcd49fccf946bd303b202d92eb28dcfaa",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/select/dist/index.d.ts",
+      "sha256": "a432730d0b21d8482d94d49853107fc26f01b97dcfea82accd3fbb80f3b108ad",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/select/dist/index.js",
+      "sha256": "4536a0168d00771ed9ac01f41659b70454262a9d5a7d47424d2a85af52697b00",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/select/package.json",
+      "sha256": "cf5bde03695203d341212b8daf812378ccaa31becb1b2dcb55aa37ff31875ca3",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/type/LICENSE",
+      "sha256": "85aca0b12ce5ade4ff76e9cbbe7e0d5a4cdde979e3930727c272e1fa04b8cc23",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/type/dist/index.d.ts",
+      "sha256": "4e3592aed54bd51d840e6d078794b45a8388d0accf38efa3267a16742ce88041",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/type/dist/index.js",
+      "sha256": "303e3ba5e5f2add2706ca909f4f5131cf712d39d7d3994bf259a9f4dcad60a26",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/type/dist/inquirer.d.ts",
+      "sha256": "f496804f1238bfdf19b67ac9ce7825d50920a958994fc29a80697b8a63eeed6d",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/type/dist/inquirer.js",
+      "sha256": "8e609bb71c20b858c77f0e9f90bb1319db8477b13f9f965f1a1e18524bf50881",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/type/dist/utils.d.ts",
+      "sha256": "1de74d27c48e696d95e2fcfcd116e868a5479d7b175180e628448d3e99413af7",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/type/dist/utils.js",
+      "sha256": "bc2c6130a24db301e539666e913eb8820811b91df01cf4a73fb1b7d6c83f0f5f",
+      "executable": false
+    },
+    {
+      "path": "node_modules/@inquirer/type/package.json",
+      "sha256": "f1480a8c6e0a37e38ed0650c56c376197ca3592120b46081bca38f6deab8108a",
+      "executable": false
+    },
+    {
+      "path": "node_modules/cli-width/LICENSE",
+      "sha256": "31493c14dc0b4eb1e06fe5d4bab3ca4e3b40f8749433455c713863238600cf1a",
+      "executable": false
+    },
+    {
+      "path": "node_modules/cli-width/README.md",
+      "sha256": "13b3d927e157b1f5428c2d025c804b202284ceae9268a149c3ded7efb52b633a",
+      "executable": false
+    },
+    {
+      "path": "node_modules/cli-width/index.d.ts",
+      "sha256": "465b5cc11c21f3fc08d7924d06b9fde39048be18df7eef3a4ad0b5e0fc3b5c64",
+      "executable": false
+    },
+    {
+      "path": "node_modules/cli-width/index.js",
+      "sha256": "2dab4c960425df4af8ac9fbdf784c86a1e0c64924b7e28dd65fc8faee6f92a7f",
+      "executable": false
+    },
+    {
+      "path": "node_modules/cli-width/package.json",
+      "sha256": "6fdfc702f4eb668937462fafc1ab3f8514baea43ce58fed9d545a4d40e214967",
+      "executable": false
+    },
+    {
+      "path": "node_modules/fast-string-truncated-width/dist/index.d.ts",
+      "sha256": "fdfc96d5bac6c14e6ac4fdcdd89f6a4d5e02cab2306999e80ab2fb147b0ab84e",
+      "executable": false
+    },
+    {
+      "path": "node_modules/fast-string-truncated-width/dist/index.js",
+      "sha256": "5e7ee74641239c2fff739890ecc9b019872d6dee7615afb0924893fa4956e9dc",
+      "executable": false
+    },
+    {
+      "path": "node_modules/fast-string-truncated-width/dist/types.d.ts",
+      "sha256": "6d3c8c054c221c49c4dbd5a4690425e35993684c2b075c92c753a86875daeddc",
+      "executable": false
+    },
+    {
+      "path": "node_modules/fast-string-truncated-width/dist/types.js",
+      "sha256": "d99f969d7455894d5b3ee7632c54f4ffb79d666c0dd8dc49dfa6e7815f74196c",
+      "executable": false
+    },
+    {
+      "path": "node_modules/fast-string-truncated-width/dist/utils.d.ts",
+      "sha256": "f468edeadf2ddaf71c7871248f28fe1713e753be8efa90edc9ee29d1c9ad8167",
+      "executable": false
+    },
+    {
+      "path": "node_modules/fast-string-truncated-width/dist/utils.js",
+      "sha256": "6909b1628b2aafa77427b5ac519307e1b30a9ea7b30d26d1c5622c8eb77b7acc",
+      "executable": false
+    },
+    {
+      "path": "node_modules/fast-string-truncated-width/license",
+      "sha256": "2547dead17a32b1e49a588e943d52420b4d75f1349d9afd9ecb567b2dc8911c0",
+      "executable": false
+    },
+    {
+      "path": "node_modules/fast-string-truncated-width/package.json",
+      "sha256": "68f98cd59ee3f050e88ad1924dd29dd6a3522199cb480e9ae08f95fd7f8c6f4a",
+      "executable": false
+    },
+    {
+      "path": "node_modules/fast-string-truncated-width/readme.md",
+      "sha256": "213b7c87c3609a0af4980d7c3d88877520af3bdf4849f166bf730cab8f7e9453",
+      "executable": false
+    },
+    {
+      "path": "node_modules/fast-string-width/dist/index.d.ts",
+      "sha256": "cab492f3f728526efe351794948a23ccbf4f1d2572a1eea95f4f9cebde42d345",
+      "executable": false
+    },
+    {
+      "path": "node_modules/fast-string-width/dist/index.js",
+      "sha256": "3f5556b4288f58e506ccf41b13a437d746c7945cdc88f0485e94ecd129c054b4",
+      "executable": false
+    },
+    {
+      "path": "node_modules/fast-string-width/license",
+      "sha256": "2547dead17a32b1e49a588e943d52420b4d75f1349d9afd9ecb567b2dc8911c0",
+      "executable": false
+    },
+    {
+      "path": "node_modules/fast-string-width/package.json",
+      "sha256": "2c49e010864a982bf0084dc4c7c267672f38462446e9911a64d0383e16e02712",
+      "executable": false
+    },
+    {
+      "path": "node_modules/fast-string-width/readme.md",
+      "sha256": "cb774a871c7b7f07531909b28a56191650cdc7c3043a50371e2eb300f57122fb",
+      "executable": false
+    },
+    {
+      "path": "node_modules/fast-wrap-ansi/LICENSE",
+      "sha256": "9235f5ebfd80d41920fae7a0317caa3914f2a9249837bc486d7706f73080e375",
+      "executable": false
+    },
+    {
+      "path": "node_modules/fast-wrap-ansi/README.md",
+      "sha256": "9640e741075331af785c50532ac8f2856d1f2dc009b56c553f7bbe73515ad302",
+      "executable": false
+    },
+    {
+      "path": "node_modules/fast-wrap-ansi/lib/main.d.ts",
+      "sha256": "ef10b1ba93c67f43ab63adb4033f79a2702e9bfaee8dc981f263876e10df2a45",
+      "executable": false
+    },
+    {
+      "path": "node_modules/fast-wrap-ansi/lib/main.js",
+      "sha256": "21e620e9d39cdd8a9cb64dee440b83ffa40c3cdb7b5dc242644ac6df73d7154b",
+      "executable": false
+    },
+    {
+      "path": "node_modules/fast-wrap-ansi/package.json",
+      "sha256": "faec2e80d1e1a395112ffaced479b858905ee233b5630d970a170666aa99c9fc",
+      "executable": false
+    },
+    {
+      "path": "node_modules/jsonc-parser/CHANGELOG.md",
+      "sha256": "e8e1c80842a20b52dc69cba3a92ab4822a12625dd242b45300c50164432b231e",
+      "executable": false
+    },
+    {
+      "path": "node_modules/jsonc-parser/LICENSE.md",
+      "sha256": "c3a24c02d678e5f0711623dcf3ab3f243b273c2633f638a1fa8e35fb7c7f8e4d",
+      "executable": false
+    },
+    {
+      "path": "node_modules/jsonc-parser/README.md",
+      "sha256": "dbd5441ae6226fb80684fd71dc400e27c65bfb6e74e78e1c66e9b620bd82cd82",
+      "executable": false
+    },
+    {
+      "path": "node_modules/jsonc-parser/SECURITY.md",
+      "sha256": "830e94b83c3b6f45ceee5609de6249b2125927f95532e68427f09c99eed5e663",
+      "executable": false
+    },
+    {
+      "path": "node_modules/jsonc-parser/lib/esm/impl/edit.js",
+      "sha256": "7e7bf98e740f560026df079056d3b0f5f34628124a8d34e2765fb101dde12911",
+      "executable": false
+    },
+    {
+      "path": "node_modules/jsonc-parser/lib/esm/impl/format.js",
+      "sha256": "e57dee56700a844b18dea11548f9ba42b17bc857bde5bcd39554af06ca95bb1f",
+      "executable": false
+    },
+    {
+      "path": "node_modules/jsonc-parser/lib/esm/impl/parser.js",
+      "sha256": "74fae1bbebf290a04e46c5457ac5d97988146a5503ea35d9f0c4c3768acd5a26",
+      "executable": false
+    },
+    {
+      "path": "node_modules/jsonc-parser/lib/esm/impl/scanner.js",
+      "sha256": "e737e1774f87ca88d85d73e3bafff688b78cac06b81c53b96c54da8b3ca86cd9",
+      "executable": false
+    },
+    {
+      "path": "node_modules/jsonc-parser/lib/esm/impl/string-intern.js",
+      "sha256": "3a0aad3f56c3e0728812c7584568c0ff200bce1ca58cf40e946f01fdb54c5752",
+      "executable": false
+    },
+    {
+      "path": "node_modules/jsonc-parser/lib/esm/main.d.ts",
+      "sha256": "f1d603af05e59e26aae3d9fa7bb0138e744bfbfc9f4793ddeaabe5c85da1d30f",
+      "executable": false
+    },
+    {
+      "path": "node_modules/jsonc-parser/lib/esm/main.js",
+      "sha256": "72ff182105e158a1505ca3ecbf3f30359abb138a3980edaef1db7f4010ffb7dc",
+      "executable": false
+    },
+    {
+      "path": "node_modules/jsonc-parser/lib/umd/impl/edit.js",
+      "sha256": "9ecd115039cf7a478f223e4a9649170c7f5e8fd8016df1b267723b57553f9483",
+      "executable": false
+    },
+    {
+      "path": "node_modules/jsonc-parser/lib/umd/impl/format.js",
+      "sha256": "f9e468e436bf1014a4395b1ac70374edb918739ba90b19e6e6a22ca0214564a9",
+      "executable": false
+    },
+    {
+      "path": "node_modules/jsonc-parser/lib/umd/impl/parser.js",
+      "sha256": "a35db1bfb9631dcba643fa42972e9ebe2a318b4de3cac239d29081577a43d688",
+      "executable": false
+    },
+    {
+      "path": "node_modules/jsonc-parser/lib/umd/impl/scanner.js",
+      "sha256": "581d82c4f1aa84b0605369c01f414fb0164ee462e03daa298cb960076a2a9e82",
+      "executable": false
+    },
+    {
+      "path": "node_modules/jsonc-parser/lib/umd/impl/string-intern.js",
+      "sha256": "e590d27909a7c132382fbf9b8c4668054ab425734c1e0789753063356826c30f",
+      "executable": false
+    },
+    {
+      "path": "node_modules/jsonc-parser/lib/umd/main.d.ts",
+      "sha256": "f1d603af05e59e26aae3d9fa7bb0138e744bfbfc9f4793ddeaabe5c85da1d30f",
+      "executable": false
+    },
+    {
+      "path": "node_modules/jsonc-parser/lib/umd/main.js",
+      "sha256": "6dc132e2e792a9616688ff93d10dd671c1fbcfa3301d76bff3e81193d049337d",
+      "executable": false
+    },
+    {
+      "path": "node_modules/jsonc-parser/package.json",
+      "sha256": "a7a9192caaac00d9330592f4fd572908bee037518128a0fc3db96d2cd652e2b5",
+      "executable": false
+    },
+    {
+      "path": "node_modules/marked/LICENSE.md",
+      "sha256": "8e3a3f82f59a60958f56ca08f445647c32a4733dc7ca6c2c46f6eb898471ab9c",
+      "executable": false
+    },
+    {
+      "path": "node_modules/marked/README.md",
+      "sha256": "e55052ba5aa47e7559f67494719cf46762c8c09205736483ff52593860d4f33c",
+      "executable": false
+    },
+    {
+      "path": "node_modules/marked/bin/main.js",
+      "sha256": "88b4b0eac09204ac6fcd343fe41d54329aff351bac71472716a0227dc7eacd46",
+      "executable": false
+    },
+    {
+      "path": "node_modules/marked/bin/marked.js",
+      "sha256": "e4ec45ee17631a5f3a837b98580f8ad47686181c7e4aaf24ecd9de7231357920",
+      "executable": true
+    },
+    {
+      "path": "node_modules/marked/lib/marked.cjs",
+      "sha256": "0a8051a2b02f5ef70b6e3e1f00baded1522cbbf48b975b6ac64a8f226a8a0965",
+      "executable": false
+    },
+    {
+      "path": "node_modules/marked/lib/marked.cjs.map",
+      "sha256": "796693c2d76e01b0f8065d5516e366de2b828812fb0f57bc2c78c9d761fba738",
+      "executable": false
+    },
+    {
+      "path": "node_modules/marked/lib/marked.d.cts",
+      "sha256": "2f9501a28443c63187a4a868f2e33807640191569144bc65c9127ed0a6ee9f3b",
+      "executable": false
+    },
+    {
+      "path": "node_modules/marked/lib/marked.d.ts",
+      "sha256": "2f9501a28443c63187a4a868f2e33807640191569144bc65c9127ed0a6ee9f3b",
+      "executable": false
+    },
+    {
+      "path": "node_modules/marked/lib/marked.esm.js",
+      "sha256": "29e25cdf1a06075c90e9885af06ddd23fb22a5424ed23a61dda986c73a8af641",
+      "executable": false
+    },
+    {
+      "path": "node_modules/marked/lib/marked.esm.js.map",
+      "sha256": "7c071e67c5460850d5b3065b2577c67e0090ec888e7c7a3f39887364ea9f3004",
+      "executable": false
+    },
+    {
+      "path": "node_modules/marked/lib/marked.umd.js",
+      "sha256": "d7931d1cd7bf727dd756c871637edcc9e0f8538003b927368400ec1ee47a9dd9",
+      "executable": false
+    },
+    {
+      "path": "node_modules/marked/lib/marked.umd.js.map",
+      "sha256": "796693c2d76e01b0f8065d5516e366de2b828812fb0f57bc2c78c9d761fba738",
+      "executable": false
+    },
+    {
+      "path": "node_modules/marked/man/marked.1",
+      "sha256": "a5a759fd23da964e6f7cafbf42d954c84987e2fb3b0f21650310efce945e2532",
+      "executable": false
+    },
+    {
+      "path": "node_modules/marked/man/marked.1.md",
+      "sha256": "356fded5d8067b9e2e4e0aa4deb6b612393b1cdb6dba53167fedd13c53bd4f1e",
+      "executable": false
+    },
+    {
+      "path": "node_modules/marked/marked.min.js",
+      "sha256": "3e7e7d7feb3e5d58cb6c804f68ab5c24cc7e5eb6270fd6e5cbb9124739217d0c",
+      "executable": false
+    },
+    {
+      "path": "node_modules/marked/package.json",
+      "sha256": "f568906109ceacc114fabf9dabcb3782d3bc0f2e2a6b2b8c7edc6878e3c3215b",
+      "executable": false
+    },
+    {
+      "path": "node_modules/mute-stream/LICENSE",
+      "sha256": "4ec3d4c66cd87f5c8d8ad911b10f99bf27cb00cdfcff82621956e379186b016b",
+      "executable": false
+    },
+    {
+      "path": "node_modules/mute-stream/README.md",
+      "sha256": "cd697c4cfbb68439d1423c2abccec8c8c17f919b13d9a284aea3ec6cbdf074bf",
+      "executable": false
+    },
+    {
+      "path": "node_modules/mute-stream/lib/index.js",
+      "sha256": "f64dddb569e875fe5f0cb0aa8ac824fdcad7717293fe15b9a58159a61f60921c",
+      "executable": false
+    },
+    {
+      "path": "node_modules/mute-stream/package.json",
+      "sha256": "6a6d1be985f01f39158d63da75c2350bbf095306ba5f7ffdfb22f5cfdc054506",
+      "executable": false
+    },
+    {
+      "path": "node_modules/signal-exit/LICENSE.txt",
+      "sha256": "b173e19b9a78df305577ace0e52ef45a4bcc915ea28b47b256dc3b68dcb1f7e7",
+      "executable": false
+    },
+    {
+      "path": "node_modules/signal-exit/README.md",
+      "sha256": "253e9122e9e5eaf8dc9b0fccb36d2011fc8e844d11c7249991edfec2be7fde71",
+      "executable": false
+    },
+    {
+      "path": "node_modules/signal-exit/dist/cjs/browser.d.ts",
+      "sha256": "7b023021bc8e493240cc8117d490d55b4f6b62e08854ddbe1f53a35dfd40e355",
+      "executable": false
+    },
+    {
+      "path": "node_modules/signal-exit/dist/cjs/browser.d.ts.map",
+      "sha256": "f46fc1cf3cae357be4e69317ae3c132f2597dc8ed31d208701053782fa03a09d",
+      "executable": false
+    },
+    {
+      "path": "node_modules/signal-exit/dist/cjs/browser.js",
+      "sha256": "aa5f9f7f969e92b30d2d3288e8927b47faf38663f626c8e9afc7f5a3b901c816",
+      "executable": false
+    },
+    {
+      "path": "node_modules/signal-exit/dist/cjs/browser.js.map",
+      "sha256": "cc48aa8c7132663b411f2bb14199e3e5ca7270399917f2640e1983614919d0ab",
+      "executable": false
+    },
+    {
+      "path": "node_modules/signal-exit/dist/cjs/index.d.ts",
+      "sha256": "1d63579e68cf6fc4b8a5ae13748efe38584f8eea7dddc320c276b30b1856d0b0",
+      "executable": false
+    },
+    {
+      "path": "node_modules/signal-exit/dist/cjs/index.d.ts.map",
+      "sha256": "1dde4dce41849712db4203f346ca85435af909777b0653baf3339440bb487e42",
+      "executable": false
+    },
+    {
+      "path": "node_modules/signal-exit/dist/cjs/index.js",
+      "sha256": "7dba9354040ed0ddea0e3029e6f4690b1ea5b0275491a217d9704737a9cebe35",
+      "executable": false
+    },
+    {
+      "path": "node_modules/signal-exit/dist/cjs/index.js.map",
+      "sha256": "5d1a773080f60ad15c0f442fa5d59070910e87c109f7939800b2a4fe6b866f77",
+      "executable": false
+    },
+    {
+      "path": "node_modules/signal-exit/dist/cjs/package.json",
+      "sha256": "8005a3491db7d92f36ac66369861589f9c47123d3a7c71e643fc2c06168cd45a",
+      "executable": false
+    },
+    {
+      "path": "node_modules/signal-exit/dist/cjs/signals.d.ts",
+      "sha256": "ed5b63eecb5ba65247f8c0a85602540a96fad19719005d59610c190c0ad59a9c",
+      "executable": false
+    },
+    {
+      "path": "node_modules/signal-exit/dist/cjs/signals.d.ts.map",
+      "sha256": "ac18b4636c5aa4f7bb383d3ca971cce3c659d68198a7c477411a8ee23a0944d8",
+      "executable": false
+    },
+    {
+      "path": "node_modules/signal-exit/dist/cjs/signals.js",
+      "sha256": "84f6f2218e3a5dd61e38c9498bcb5465fb90f3900afde73956b1855b1e46af09",
+      "executable": false
+    },
+    {
+      "path": "node_modules/signal-exit/dist/cjs/signals.js.map",
+      "sha256": "f4b1aad11f5b1da3469353c19ce29c9f159efc878cc2b885aa4977dd8b7e31bb",
+      "executable": false
+    },
+    {
+      "path": "node_modules/signal-exit/dist/mjs/browser.d.ts",
+      "sha256": "7b023021bc8e493240cc8117d490d55b4f6b62e08854ddbe1f53a35dfd40e355",
+      "executable": false
+    },
+    {
+      "path": "node_modules/signal-exit/dist/mjs/browser.d.ts.map",
+      "sha256": "f46fc1cf3cae357be4e69317ae3c132f2597dc8ed31d208701053782fa03a09d",
+      "executable": false
+    },
+    {
+      "path": "node_modules/signal-exit/dist/mjs/browser.js",
+      "sha256": "57498e3448998c32a94f884f500ac7a2c8b54872f648bebf1be1704303a5522c",
+      "executable": false
+    },
+    {
+      "path": "node_modules/signal-exit/dist/mjs/browser.js.map",
+      "sha256": "24ff3c6a566cf59691d542f15d7aa3ba4511909acd307db7e8a09a768b83e2b5",
+      "executable": false
+    },
+    {
+      "path": "node_modules/signal-exit/dist/mjs/index.d.ts",
+      "sha256": "1d63579e68cf6fc4b8a5ae13748efe38584f8eea7dddc320c276b30b1856d0b0",
+      "executable": false
+    },
+    {
+      "path": "node_modules/signal-exit/dist/mjs/index.d.ts.map",
+      "sha256": "1dde4dce41849712db4203f346ca85435af909777b0653baf3339440bb487e42",
+      "executable": false
+    },
+    {
+      "path": "node_modules/signal-exit/dist/mjs/index.js",
+      "sha256": "a2f8e19d69ab443b496c203c46c47853f885f3e852aca6daa248191bf3f1ccbb",
+      "executable": false
+    },
+    {
+      "path": "node_modules/signal-exit/dist/mjs/index.js.map",
+      "sha256": "fbaadc2cb63860ea1aa06746caa01490e4fa2d0458a94416503e77001c5f164b",
+      "executable": false
+    },
+    {
+      "path": "node_modules/signal-exit/dist/mjs/package.json",
+      "sha256": "3ca9d4afd21425087cf31893b8f9f63c81b0b8408db5e343ca76e5f8aa26ab9a",
+      "executable": false
+    },
+    {
+      "path": "node_modules/signal-exit/dist/mjs/signals.d.ts",
+      "sha256": "ed5b63eecb5ba65247f8c0a85602540a96fad19719005d59610c190c0ad59a9c",
+      "executable": false
+    },
+    {
+      "path": "node_modules/signal-exit/dist/mjs/signals.d.ts.map",
+      "sha256": "ac18b4636c5aa4f7bb383d3ca971cce3c659d68198a7c477411a8ee23a0944d8",
+      "executable": false
+    },
+    {
+      "path": "node_modules/signal-exit/dist/mjs/signals.js",
+      "sha256": "12044052d2037fbb19637c6fb216b1c80c28664134453b9a0fc32fa2fe352c27",
+      "executable": false
+    },
+    {
+      "path": "node_modules/signal-exit/dist/mjs/signals.js.map",
+      "sha256": "9ac7cde2118302bfce1fb14e0f0c04112a7f0ad6fa8a18d5d950ec530aa2654f",
+      "executable": false
+    },
+    {
+      "path": "node_modules/signal-exit/package.json",
+      "sha256": "cd1c6cfa95782e432dd2affaa88c3a6dda7f46c8088d91f3acc0fba79dce5075",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/asset-creator/CATALOG-SCHEMA.md",
+      "sha256": "59486626689b1e9b534133baf1d421548f23df83d231feae0bcf23d8e07b5732",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/asset-creator/SKILL.md",
+      "sha256": "42a8f0b9cbfeda03735f087c5ab887888fe098757a0eba4600f125e400cac9e9",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/asset-creator/STYLE-GUIDE.md",
+      "sha256": "a7a36a642e7c9f50cea02e7b06345984cbe236cce9db483f93a515ecbd89c021",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/better-auth-setup/SKILL.md",
+      "sha256": "eba825200ef7640e13678d2ecd74d67f908afdccee7431b7d73e4a9b60b41020",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/better-auth-setup/references/api-keys.md",
+      "sha256": "be3b931600a0bd6d926d7ba8148480f4e8effec7d424aa8a15d14ba274c0f181",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/better-auth-setup/references/config-and-entry.md",
+      "sha256": "228375ebcb993f3ff2e2bd76d9659e905e57b1205ffc6e954fc5f532eecb2c17",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/better-auth-setup/references/middleware.md",
+      "sha256": "666e7e9bcd909d56d51af450ff85b6d9ae8d4af731bd230c6d72d168c3daf7a1",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/better-auth-setup/references/proxy-gotchas.md",
+      "sha256": "9959cfa654c012289fac34b497e5d6d722c0dd9b19a3c0755c829aa193436a08",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/better-auth-setup/references/proxy-setup.md",
+      "sha256": "5ebf566c8b699beb1b259df6288fc364466549d24b5bb496a59cdfb007862087",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/better-auth-setup/references/schema.md",
+      "sha256": "9b80fd168b407f21ca3363b08b137be51ed7b076e10708e75b19598090f00c90",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/better-auth-setup/references/testing.md",
+      "sha256": "600dd99d2f18d76b7d06ac397790a3d467a104fd2326a925f5d4b5a13d90b705",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/cloudflare-nextjs-setup/SKILL.md",
+      "sha256": "610d75ce0008ed2a3d840be7628a33422d36d4ef038ae44d3650a673ee1a4604",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/code-health-standards/SKILL.md",
+      "sha256": "58e8c1e240f8a9c3c3a51935bf61a4fc70ca76049b50044e465f633da6b85fe6",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/code-review-standards/SKILL.md",
+      "sha256": "3f11f84adb7d3016c4d71bce743c40e35e682d09bc9376b03be957fc9c8d2b62",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/devlyn-pencil-pull/SKILL.md",
+      "sha256": "d619bcb503108dc8eb7d757d7e8cf1720742bb16c3b8ea8c01878cfdf1cdb0b8",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/devlyn-pencil-push/SKILL.md",
+      "sha256": "4571773e02846c2b2bc4ff4c1717b843ed5b7319ec9ee9d91ecab2a77d4af4c9",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/devlyn-reap/SKILL.md",
+      "sha256": "51ee3be1e1dccde90471331d60fbdd162773412819dbcd6a6ce86d2cec42198b",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/devlyn-reap/scripts/reap.sh",
+      "sha256": "ad06953be260e3bec10b6891c30337594bfbe5ff6db1d82e8c59c13ac102c89d",
+      "executable": true
+    },
+    {
+      "path": "optional-skills/devlyn-reap/scripts/scan.sh",
+      "sha256": "23eaa9655d9614e441c34637fee568a8ed737497559a2d2bf31e10472c02dda2",
+      "executable": true
+    },
+    {
+      "path": "optional-skills/dokkit/ANALYSIS.md",
+      "sha256": "7503acd8be895fb0adf6a55df2a65509932f74261460c2d10d15abb0a211e0d7",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/dokkit/COMMANDS.md",
+      "sha256": "2c0e1ef6f1016d34de42b002e13ddce7c5fff931c4a9c0dd27bf4808ee3b2bbd",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/dokkit/DOCX-XML.md",
+      "sha256": "d6737cca5d96ace034a62a106e776085154ebfdb2d443799866866522786d75c",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/dokkit/EXPORT.md",
+      "sha256": "c4429521a7a59547da922670d68e03aa77f074d0cb937f46ea8f84dfbe342e70",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/dokkit/FILLING.md",
+      "sha256": "7373c23c25bb6f3fd9b0c58de30d54daf787c4fabe87b6542fb1567e8e3e2631",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/dokkit/HWPX-XML.md",
+      "sha256": "1852b1dba9c2d6d54057726cb5ddfbac169c0c07a994f5f5cfafd24caba1455f",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/dokkit/IMAGE-SOURCING.md",
+      "sha256": "1a9e6e03b85b8e6bb0b53081648cff0428d5ec51ec73f3fa46586d94d42dd1a5",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/dokkit/INGESTION.md",
+      "sha256": "71db1451ae3e45e2152ba749e3bdd9455f21a8a6b2738203815b2c507f64fea1",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/dokkit/PIPELINE.md",
+      "sha256": "e9906861ee058a71e874b02affd47685c1738ef3d18473545a3f7a4b75467a56",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/dokkit/SKILL.md",
+      "sha256": "48d26f0db262df326145cfded42d1f2ea73a45393299209471555aea4d78995e",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/dokkit/STATE.md",
+      "sha256": "1be4d80ebc577a65e909f64291302473a95076a02dfce4ca39e70952d97da1e8",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/dokkit/references/docx-field-patterns.md",
+      "sha256": "e918d757edf90b91a86ac626892cb27db692f2131d5e1df0a2e6f2e326209fc8",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/dokkit/references/docx-section-range-detection.md",
+      "sha256": "ad6051bf8689b1e14af02e85c755828d710a2bcd209fa5a0ae171e27ea4ec91c",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/dokkit/references/docx-structure.md",
+      "sha256": "871d046768a3515efbb40767e2ff83c77487c8264c84e6b04cd4aae9a41812d0",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/dokkit/references/field-detection-patterns.md",
+      "sha256": "439ea29d4d4fba3c32dcfb71adf3843baab3dc163a18da62d30a9b95fe47ef89",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/dokkit/references/hwpx-field-patterns.md",
+      "sha256": "a3a15626119e06a6228c87be23ff3934114961b02fc051156c8ecf403b24086e",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/dokkit/references/hwpx-structure.md",
+      "sha256": "2d86188c398aa8ea559e13c9b1a2626eb748e8b86ada722829ce5075293da675",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/dokkit/references/image-opportunity-heuristics.md",
+      "sha256": "0131c59ff0351d150029df91268e35ad005e5a0780e2f382ebbb30a9178d7b6f",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/dokkit/references/image-xml-patterns.md",
+      "sha256": "a3100b3fb3134b85d8358dc46ef277d9be02dd22488efb347c46d7a369cbfa26",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/dokkit/references/section-image-interleaving.md",
+      "sha256": "a50c88ff57433125e9d51118e4b79280ac84a18e9e65abad86b6be6e4d6932cb",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/dokkit/references/section-range-detection.md",
+      "sha256": "06221fc657ab53ebce9c3d6412f6fbf138fc178927d223f3ce8619b87cdbc13f",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/dokkit/references/state-schema.md",
+      "sha256": "efa8901c7873a9ebdbf297b1dfe39906fa53ea0097d2d047af394008c36251fa",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/dokkit/references/supported-formats.md",
+      "sha256": "2bb08b28d8c2142bfe2535eaf6e9634ec5b5428531491a2d4795e1b39e697a11",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/dokkit/scripts/compile_hwpx.py",
+      "sha256": "3de0583e519eedd4b1f6c0c0a99a27cc27d24d73b6988032121d39ef31e89b0e",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/dokkit/scripts/detect_fields.py",
+      "sha256": "186d9684461c819dacf75aa03212f8b70a6bbe4a08a60dd16b050e964986b916",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/dokkit/scripts/detect_fields_hwpx.py",
+      "sha256": "40c4d4e1182e2ec6a9e24f6e705e739cd0b767244231af6c3cfea1371ba049e3",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/dokkit/scripts/export_pdf.py",
+      "sha256": "1257598d7dcfe1ca8f956f71800579abe3dacc7ae38f635d2200341a64ff5071",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/dokkit/scripts/fill_docx.py",
+      "sha256": "e8954636979ccb34aada17b902a8aea22c56aa03bdf92d76466b17b0c0b4f1e0",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/dokkit/scripts/parse_hwpx.py",
+      "sha256": "83ab2088f8b4cc534301d6eaa06b9cce83e7663046942b97a1083d02a33cb81e",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/dokkit/scripts/parse_image_with_gemini.py",
+      "sha256": "eaa54d17079e887b71e053ceead73692496ff00bc3879dedf253ed591ab95656",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/dokkit/scripts/parse_xlsx.py",
+      "sha256": "6e75ffb166314568ef2e2f4087aed490d219dbfef32f4c9289d6b53c76aa48e8",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/dokkit/scripts/source_images.py",
+      "sha256": "00f66bb3f0134e0dd1a84c709aa4d1ff830b1cceef76e5ca290d305b2ab413d9",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/dokkit/scripts/validate_docx.py",
+      "sha256": "56a3969646af27cc8838d70e272e6898d30e3fc32b0317801d8146743c4d731e",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/dokkit/scripts/validate_hwpx.py",
+      "sha256": "3e21ec8138c6ba0ffb85981980295614f4658aea6a81aa5f65b34bf14d2fbcea",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/dokkit/scripts/validate_state.py",
+      "sha256": "38b4de24aeac33aa64a9f4d5a4c02f8a1f0ed3987bd495f08b06341e647ba816",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/generate-skill/CHECKLIST.md",
+      "sha256": "3985853af6a01d9f4608527081835b44ee9dfb499ae5fc46c96d083de4d4046a",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/generate-skill/PROMPT-PATTERNS.md",
+      "sha256": "67f75dea52971a511fa25f3ae8b8c2f37d1d46f5ac0abf3819de144fa3773844",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/generate-skill/REFERENCE.md",
+      "sha256": "91a1322a1dac328804b9e82f10b75e7e09f1bd3f75f79e5226c5b373769665f3",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/generate-skill/SKILL.md",
+      "sha256": "d093e7f333c69ca12eed9f4bc0a5f1d507d42be28910c255475ed4d32492030d",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/polar-billing-setup/SKILL.md",
+      "sha256": "39b093c32e0aa48484c77e79152458e8f98498dd82682bc64f35356e74bb218d",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/polar-billing-setup/references/gotchas.md",
+      "sha256": "9ef050e813eadda4f478c7821976812d366f28f3268de4bad8c620ccb59d6702",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/polar-billing-setup/references/setup.md",
+      "sha256": "cbb43d6f7c49c6a0d5ddc96ef351ccd67ae43dc8940e529f8ecd302d64408ee1",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/polar-billing-setup/scripts/diagnose.mjs",
+      "sha256": "616ed10ddb6a56fafb75fa21f75e46bb2a78848b8581f6fa7988320f2140f24e",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/prompt-engineering/SKILL.md",
+      "sha256": "eb9c6f10d0f1b13ff80aa6bd9a4b558a4e044d2dc0239980766123aeadb824e2",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/pyx-scan/SKILL.md",
+      "sha256": "4db43fa0a694888cc7142c68e29a0ffd43b77eace4b6feacb953a9274bed5695",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/root-cause-analysis/SKILL.md",
+      "sha256": "bd3523d223284dee2ba43dd6bce2cef27b31b8212d6164e7e6b0ede504376cba",
+      "executable": false
+    },
+    {
+      "path": "optional-skills/ui-implementation-standards/SKILL.md",
+      "sha256": "2d8cadc8889dba1ae191cf66c87594379a48801d6a2b5bc4bfedf2e74d8fde39",
+      "executable": false
+    },
+    {
+      "path": "package.json",
+      "sha256": "e4f8b96ad2ca5dd7298d1db30e321e3e965f76d1fa0e4fc4a3e4e1012e124822",
+      "executable": false
+    }
+  ],
+  "digest": {
+    "algorithm": "sha256",
+    "value": "53a2f9f2d3d8cf8cf43391dd92224aa5190e331f0a993649d0a06256ca6a417d"
+  }
+}

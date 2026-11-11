@@ -1,0 +1,137 @@
+{
+ "provenance": "Shapes for the per-cell assertions. claude_init: the system/init event of archived 0257 c002-F10-claude-B-r1 (Claude Code 2.1.281), lists trimmed, ids replaced; its plugins are the two built-ins every 0257 cell had. devlyn_plugin: ASSUMED entry for --plugin-dir (name from the package's native/claude/.claude-plugin/plugin.json, path the release root's native/claude); SMOKE B seals the real one. status_lines: the 2026-11-11 probe stderr (S/probe/out) and a refused launch (R-C section 4). codex_request: the structure of a real Codex first owner request (rp-d6 smoke-codex trace payload: additional_tools, developer messages, user messages), every text replaced; where developer_instructions lands is ASSUMED (a developer message of its own) and sealed from SMOKE B.",
+ "claude_init": {
+  "type": "system",
+  "subtype": "init",
+  "cwd": "/cell/work",
+  "mcp_servers": [],
+  "model": "claude-opus-5-5",
+  "permissionMode": "bypassPermissions",
+  "apiKeySource": "none",
+  "output_style": "default",
+  "plugins": [
+   {
+    "name": "agents-md",
+    "path": "builtin",
+    "source": "agents-md@builtin"
+   },
+   {
+    "name": "telemetry",
+    "path": "builtin",
+    "source": "telemetry@builtin"
+   }
+  ],
+  "session_id": "00000000-0000-4000-8000-000000000001",
+  "uuid": "00000000-0000-4000-8000-000000000002",
+  "tools": [
+   "Task",
+   "Bash",
+   "CronCreate",
+   "CronDelete"
+  ],
+  "claude_code_version": "2.1.322",
+  "slash_commands": [
+   "dataviz",
+   "verify"
+  ],
+  "skills": [
+   "dataviz",
+   "verify"
+  ],
+  "agents": [
+   "claude",
+   "Explore",
+   "general-purpose",
+   "Plan",
+   "statusline-setup"
+  ]
+ },
+ "devlyn_plugin": {
+  "name": "devlyn",
+  "path": "/home/participant/.devlyn/cli/releases/devlyn-cli/4.3.30/native/claude",
+  "source": "devlyn@inline"
+ },
+ "status_lines": {
+  "claude": "devlyn: claude 2.1.322 | release 4.3.30@53a2f9f2 (package) | principles=configured:append-system-prompt-file | skills=configured:plugin-dir",
+  "codex": "devlyn: codex 0.164.0 | release 4.3.30@53a2f9f2 (package) | principles=configured:developer_instructions | skills=configured:session-plugin",
+  "refused": "devlyn run: run-argument-unsupported {\"engine\":\"codex\",\"argument\":\"-C\"}"
+ },
+ "codex_request": {
+  "client_metadata": {},
+  "include": [],
+  "model": "gpt-6-astra",
+  "parallel_tool_calls": true,
+  "prompt_cache_key": "00000000-0000-4000-8000-000000000003",
+  "reasoning": {
+   "effort": "high"
+  },
+  "store": false,
+  "stream": true,
+  "text": {},
+  "tool_choice": "auto",
+  "input": [
+   {
+    "type": "additional_tools",
+    "tools": []
+   },
+   {
+    "type": "message",
+    "role": "developer",
+    "content": [
+     {
+      "type": "input_text",
+      "text": "You are Codex. (base instructions)"
+     }
+    ]
+   },
+   {
+    "type": "message",
+    "role": "developer",
+    "content": [
+     {
+      "type": "input_text",
+      "text": "<skills_instructions>\n## Skills\n(skills)\n</skills_instructions>"
+     },
+     {
+      "type": "input_text",
+      "text": "<permissions instructions>\n(permissions)\n</permissions instructions>"
+     },
+     {
+      "type": "input_text",
+      "text": "<collaboration_mode># Collaboration Mode: Default\n(mode)</collaboration_mode>"
+     }
+    ]
+   },
+   {
+    "type": "message",
+    "role": "developer",
+    "content": [
+     {
+      "type": "input_text",
+      "text": "<multi_agent_role>(role)</multi_agent_role>"
+     }
+    ]
+   },
+   {
+    "type": "message",
+    "role": "user",
+    "content": [
+     {
+      "type": "input_text",
+      "text": "<environment_context>\n  <cwd>/cell/work</cwd>\n</environment_context>"
+     }
+    ]
+   },
+   {
+    "type": "message",
+    "role": "user",
+    "content": [
+     {
+      "type": "input_text",
+      "text": "Complete the development request in /harness/caller.json."
+     }
+    ]
+   }
+  ]
+ }
+}
