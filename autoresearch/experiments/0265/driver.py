@@ -586,6 +586,12 @@ class Driver:
                     self.event('skip_finished', cell=name)
                     i += 1
                     continue
+                if verdict:  # a STOP met at a restart (written, then the process died before its latch): one that is
+                    self.terminal(name, 2)  # neither regraded nor redispatched stops both lanes before any wait
+                elif (self.output / name).exists():  # an attempt the lane was interrupted in: its container may still
+                    reason = 'an attempt without a verdict (the lane was interrupted in it)'  # run, and prepare would
+                    self.latch(name, reason)  # refuse its folder only after a readiness wait
+                    raise Stopped(f'{name}: {reason}')
                 second = (i > 0 and self.slots[i - 1][1] == task and self.slots[i - 1][3] == config
                           and self.slots[i - 1][-1] == row[-1])
                 assessment = bool(verdict and str(verdict.get('reason', '')).startswith(REGRADE))

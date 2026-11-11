@@ -151,4 +151,17 @@ left. Grok: SHIP, all 17 closed, one MEDIUM and one LOW new. All seven were acce
 | R6 | Grok | MEDIUM | The per-cell credential folder was made outside the cleanup, so a copy left by a killed run stayed in scratch | Made inside; a leftover ends the cell and is removed. |
 | R7 | Grok | LOW | The run record was written after the credential folder was removed, so a failed removal lost it | Written before; a failed removal is a failed teardown with its reason. |
 
-A second re-check of these seven follows on the commit that holds them; its verdicts are in registration.md.
+### Second re-check (commit `4a227ec2`)
+
+Astra: REVISE, six of the seven closed and R5 partly, with one HIGH and two MEDIUM, all about what a crash leaves
+behind. All were accepted and fixed in the next commit, together with one more case of the same kind that the
+orchestrator found while fixing them:
+
+| # | From | Severity | Finding | Fix |
+|---|---|---|---|---|
+| S1 | Astra | HIGH | After a crash between writing a terminal STOP and writing its latch, a restarted lane waited on `ready()` before it stopped the other lane | A STOP met at a restart that is neither regraded nor redispatched stops both lanes before any wait. |
+| S2 | Astra | MEDIUM | A run record that could not be written skipped the removal of the credential copy (introduced by R7) | The removal runs whatever the write did. |
+| S3 | Astra | MEDIUM | A truncated current verdict left by an interrupted regrade dropped the archived owner run's cost and scope | Verdicts are written whole (temp file, then replace); an unreadable current verdict counts as absent. |
+| S4 | orchestrator | same class as S1 | A lane restarted after it was killed inside a cell waited on `ready()` and then failed in `prepare` | An attempt with a folder and no verdict stops both lanes before any wait. |
+
+Grok's second re-check and a third re-check of S1–S4 are recorded in registration.md.

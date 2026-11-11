@@ -136,15 +136,22 @@ def load(out, cells):
                     row['trees'][attempt] = evidence(old, f'{name}.{attempt}')
             row['verdicts'] = len(row['archived'])
             path = out / f'verdict-{name}.json'
-            if not path.is_file():
-                row['gap'] = 'no verdict'
+            try:
+                verdict = json.loads(path.read_text()) if path.is_file() else None
+                if verdict is not None and not isinstance(verdict.get('status'), str):
+                    raise ValueError('no status')
+            except (OSError, ValueError, AttributeError) as exc:  # written by an older, non-atomic writer, or damaged
+                verdict, unusable = None, f'unreadable verdict: {exc}'
+            else:
+                unusable = 'no verdict'
+            if verdict is None:
+                row['gap'] = unusable
                 # A regrade stopped after it archived the current verdict: the last archive, an assessor fault's, is
                 # then the only record of the owner run in OUT/<name>, so it is charged and kept once, as that run.
                 if old is not None and str(old.get('reason', '')).startswith(REGRADE) and owner_ran(old):
                     row['attempts'].append(attempt_cost(old))
                     row['trees']['final'] = evidence(old, name)
                 continue
-            verdict = json.loads(path.read_text())
             row.update(verdicts=row['verdicts'] + 1, reason=verdict.get('reason'))
             row['oom'] += oom(verdict, 'final')
             if owner_ran(verdict):  # a terminal STOP whose owner ran is charged and kept like an archived attempt

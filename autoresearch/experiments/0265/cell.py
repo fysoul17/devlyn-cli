@@ -136,14 +136,16 @@ def run(out, runtime):
             stderr = getattr(exc, 'stderr', None)  # bytes on a timeout, even when the call asked for text
             stderr = stderr.decode(errors='replace') if isinstance(stderr, bytes) else stderr
             record.update(teardown='FAILED', teardown_error=' '.join(filter(None, (str(exc), stderr))))
-        (record_dir / 'result.json').write_text(json.dumps(record, indent=2))  # before the removal: never lost to it
-        try:
-            if secret.exists():
-                shutil.rmtree(secret)
-        except OSError as exc:
-            record.update(teardown='FAILED', teardown_error=' '.join(filter(None, (
-                record.get('teardown_error'), f'credential copy not removed: {exc}'))))
+        try:  # the record first, so a failed removal never loses it; the removal whatever the record's write did
             (record_dir / 'result.json').write_text(json.dumps(record, indent=2))
+        finally:
+            try:
+                if secret.exists():
+                    shutil.rmtree(secret)
+            except OSError as exc:
+                record.update(teardown='FAILED', teardown_error=' '.join(filter(None, (
+                    record.get('teardown_error'), f'credential copy not removed: {exc}'))))
+                (record_dir / 'result.json').write_text(json.dumps(record, indent=2))
     try:
         record['identity'] = identity(out, plan)
     except (OSError, ValueError, KeyError, TypeError) as exc:  # an apparatus defect: stop, but with a record

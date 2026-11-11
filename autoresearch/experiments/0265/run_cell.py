@@ -489,9 +489,13 @@ def regrade(runtime_path, name, *, expected_account=None):
 
 
 def write_verdict(path, record):
-    """Write the cell's verdict; if storage refuses it, fail closed with the record on stderr and exit code 2."""
+    """Write the cell's verdict whole (a temp file in its folder, then os.replace, so neither a reader nor a restart
+    after a crash ever meets part of it); if storage refuses it, fail closed with the record on stderr and exit
+    code 2."""
+    temp = path.with_name(f'.{path.name}.{os.getpid()}')
     try:
-        path.write_text(json.dumps(record, indent=2))
+        temp.write_text(json.dumps(record, indent=2))
+        os.replace(temp, path)
     except OSError as exc:
         print(f'VERDICT_UNWRITTEN ({exc}): ' + json.dumps(dict(record, status='STOP')), file=sys.stderr)
         return 2

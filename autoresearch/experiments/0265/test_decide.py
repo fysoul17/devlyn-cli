@@ -888,6 +888,27 @@ class Accounting(Case):
         self.assertEqual((slot['final'], slot['gap'], slot['scope']), (False, 'no verdict', True))
         self.assertIn(f'{interrupted}: no verdict', result['lines']['codex']['harm']['missing'])
 
+    def test_a_truncated_current_verdict_is_no_usable_verdict(self):
+        # Second re-check (MEDIUM): a current verdict that cannot be read (an older writer's partial file) is treated
+        # as absent, so the assessor-fault archive behind it is still charged once and its scope still counts.
+        # Violating (before): the unreadable file bypassed the fallback and the owner run was charged nowhere.
+        # Allowed: the readable case is test_an_interrupted_regrade_charges_its_owner_run_once above.
+        for damaged in ('{"status": "COMP', '', '[]', '{"reason": "no status"}'):
+            with self.subTest(damaged=damaged):
+                temp = tempfile.TemporaryDirectory()
+                self.addCleanup(temp.cleanup)
+                run = Run(temp.name)
+                name = run.name('codex', 'D3', 'A', 1)
+                run.stop(name, 'assessment failed: x', number=1, owner_seconds=7.0, input_tokens=70,
+                         scope_violations=['notes.txt'])
+                (run.out / f'verdict-{name}.json').write_text(damaged)
+                result = run.evaluate()
+                group = result['reported']['cost']['codex']['A']['development']
+                self.assertEqual((group['wall'], group['input']), (23 * 100 + 7, 23 * 1000 + 70))
+                slot = result['slots'][name]
+                self.assertEqual((slot['final'], slot['scope']), (False, True))
+                self.assertTrue(slot['gap'].startswith('unreadable verdict'))
+
     def test_cost_sums_every_slot_final_or_not(self):
         # Review M3: the charged attempts of every slot count, a terminal STOP whose owner ran among them; the
         # denominator stays the final check-complete slots. (Before, a slot that was not final added nothing.)

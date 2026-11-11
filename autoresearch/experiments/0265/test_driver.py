@@ -799,6 +799,86 @@ class Faults(unittest.TestCase):
             self.assertEqual(d.verdict(row('c001-')[0])['status'], 'COMPLETE')
             self.assertIsNone(latched(root, 'claude'))
 
+    def test_a_terminal_stop_met_at_a_restart_latches_both_lanes_before_any_wait(self):
+        """Second re-check (HIGH): a STOP was written and the process died before its latch. Violating: at the
+        restart the lane meets a STOP that is neither regraded nor redispatched; it latches both lanes at once and
+        never calls ready(), which could hold for a long time while the other lane went on dispatching. Allowed: a
+        STOP that is regraded still waits on ready() first and sets no latch."""
+        terminal = dict(status='STOP', reason='assessor teardown unproved: cannot prove container x is gone',
+                        teardown='CLEAN', identity={'status': 'MATCH'}, owner_status='EXITED_0', owner_ran=True)
+
+        class Held(BaseException):
+            """Ends the wait loop: run() latches no BaseException that is not an Exception."""
+
+        def restart(root, verdict):
+            seal(root)
+            name = row('c001-')[0]
+            d = lane(root, 'claude', [row('c001-')])
+            (d.output / name).mkdir()
+            (d.output / f'verdict-{name}.json').write_text(json.dumps(verdict))
+            self.assertIsNone(latched(root, 'claude'))  # the process died before it wrote the latch
+            with mock.patch.object(d, 'ready', side_effect=Held('ready() was reached')) as ready, \
+                    mock.patch.object(driver.cell, 'run') as run, mock.patch.object(driver.cell, 'regrade') as regrade, \
+                    mock.patch.object(driver.time, 'sleep') as sleep:
+                try:
+                    d.run()
+                finally:
+                    d.lock.close()
+                    self.mocks = dict(ready=ready, run=run, regrade=regrade, sleep=sleep)
+
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            with self.assertRaisesRegex(driver.Stopped, f'{row("c001-")[0]}: STOP assessor teardown unproved'):
+                restart(root, terminal)
+            for called in self.mocks.values():
+                called.assert_not_called()
+            self.assertEqual(latched(root, 'claude')['reason'], 'STOP ' + terminal['reason'])
+            with self.assertRaisesRegex(driver.Stopped, 'harm latch in lane claude'):
+                lane(root, 'codex').assert_active()
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            with self.assertRaises(Held):  # a regradable STOP is not terminal: the lane goes on to its readiness wait
+                restart(root, dict(terminal, reason='assessment failed: timeout'))
+            self.mocks['ready'].assert_called_once()
+            self.assertIsNone(latched(root, 'claude'))
+
+    def test_an_attempt_without_a_verdict_met_at_a_restart_latches_both_lanes_before_any_wait(self):
+        """The lane was killed inside a cell: its folder is there and no verdict is. Violating: the restart must not
+        wait on ready() and then fail in prepare; it latches both lanes at once, since the interrupted attempt's
+        container may still run. Allowed: a slot with neither a folder nor a verdict goes on to its readiness wait."""
+        class Held(BaseException):
+            """Ends the wait loop: run() latches no BaseException that is not an Exception."""
+
+        def restart(root, interrupted):
+            seal(root)
+            name = row('c001-')[0]
+            d = lane(root, 'claude', [row('c001-')])
+            if interrupted:
+                (d.output / name / 'run').mkdir(parents=True)
+            with mock.patch.object(d, 'ready', side_effect=Held('ready() was reached')) as ready, \
+                    mock.patch.object(driver.cell, 'run') as run, mock.patch.object(driver.time, 'sleep'):
+                try:
+                    d.run()
+                finally:
+                    d.lock.close()
+                    self.mocks = dict(ready=ready, run=run)
+
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            with self.assertRaisesRegex(driver.Stopped, 'an attempt without a verdict'):
+                restart(root, True)
+            self.mocks['ready'].assert_not_called()
+            self.mocks['run'].assert_not_called()
+            self.assertIn('an attempt without a verdict', latched(root, 'claude')['reason'])
+            with self.assertRaisesRegex(driver.Stopped, 'harm latch in lane claude'):
+                lane(root, 'codex').assert_active()
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            with self.assertRaises(Held):
+                restart(root, False)
+            self.mocks['ready'].assert_called_once()
+            self.assertIsNone(latched(root, 'claude'))
+
     def test_quota_fault_archived_and_assessor_fault_regraded(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

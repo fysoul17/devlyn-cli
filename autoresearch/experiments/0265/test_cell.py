@@ -996,6 +996,14 @@ class CellLifecycle(unittest.TestCase):
             raised = None
             removal = mock.patch.object(cell.shutil, 'rmtree', side_effect=PermissionError('scratch is read-only')) \
                 if fail == 'removal' else contextlib.nullcontext()
+            if fail == 'record':  # the run folder cannot take result.json: its write raises, the removal still runs
+                real_write = Path.write_text
+
+                def write(path, *args, **kwargs):
+                    if path.name == 'result.json':
+                        raise OSError('no space left on device')
+                    return real_write(path, *args, **kwargs)
+                removal = mock.patch.object(Path, 'write_text', write)
             with mock.patch.object(cell, 'docker', side_effect=docker), argv, removal, \
                     mock.patch.object(cell.subprocess, 'Popen', side_effect=popen), \
                     mock.patch.object(cell, 'preserve_tmp', side_effect=preserve), \
@@ -1004,7 +1012,8 @@ class CellLifecycle(unittest.TestCase):
                     cell.run(out, dict(auth=str(root / 'auth'), scratch=str(root / 'scratch')))
                 except (OSError, ValueError, subprocess.SubprocessError) as exc:
                     raised = exc
-            result = json.loads((out / 'run/result.json').read_text())
+            written = out / 'run/result.json'
+            result = json.loads(written.read_text()) if written.is_file() else None
             return raised, result, (volumes, containers), (root / 'scratch/credentials/cell-1').exists()
 
     def test_nothing_survives_an_exception_at_any_step(self):
@@ -1034,12 +1043,40 @@ class CellLifecycle(unittest.TestCase):
         self.assertEqual((result['teardown'], result['owner_status']), ('FAILED', 'EXITED_0'))
         self.assertIn('credential copy not removed: scratch is read-only', result['teardown_error'])
 
+    def test_a_record_that_cannot_be_written_still_removes_the_credential_copy(self):
+        # Second re-check (MEDIUM): the record is written first, but inside a try whose finally removes the copy, so a
+        # failed write ends the cell with its error and leaves no copy. The allowed case is the clean run below.
+        raised, result, held, copy_left = self.lifecycle('record')
+        self.assertIsInstance(raised, OSError)
+        self.assertIn('no space left on device', str(raised))
+        self.assertEqual((result, held, copy_left), (None, (set(), {}), False))
+
     def test_a_cell_that_runs_is_torn_down_the_same_way(self):
         raised, result, held, copy_left = self.lifecycle()
         self.assertIsNone(raised)
         self.assertEqual((held, copy_left), ((set(), {}), False))
         self.assertEqual((result['teardown'], result['owner_status'], result['container']),
                          ('CLEAN', 'EXITED_0', {'oom_killed': False, 'exit_code': 0}))
+
+
+class VerdictWrite(unittest.TestCase):
+    def test_a_verdict_is_written_whole_or_not_at_all(self):
+        # Second re-check (MEDIUM): write_verdict goes through a temp file and os.replace. Violating: a write that
+        # dies half way leaves the earlier verdict intact, never a partial one, and reports a STOP. Allowed: a normal
+        # write replaces the verdict and leaves no temp file.
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / 'verdict-c001.json'
+            self.assertEqual(run_cell.write_verdict(path, dict(status='COMPLETE', n=1)), 0)
+            self.assertEqual(json.loads(path.read_text()), dict(status='COMPLETE', n=1))
+            with mock.patch.object(run_cell.os, 'replace', side_effect=OSError('disk full')), \
+                    contextlib.redirect_stderr(io.StringIO()) as err:
+                self.assertEqual(run_cell.write_verdict(path, dict(status='COMPLETE', n=2)), 2)
+            self.assertIn('VERDICT_UNWRITTEN', err.getvalue())
+            self.assertEqual(json.loads(path.read_text()), dict(status='COMPLETE', n=1))
+            self.assertEqual(run_cell.write_verdict(path, dict(status='STOP', reason='x')), 2)
+            self.assertEqual(json.loads(path.read_text())['status'], 'STOP')
+            self.assertEqual(sorted(p.name for p in Path(temp).iterdir() if not p.name.startswith('.')),
+                             ['verdict-c001.json'])
 
 
 class Rules(unittest.TestCase):
