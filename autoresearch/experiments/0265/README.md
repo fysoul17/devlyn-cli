@@ -1,6 +1,7 @@
 # 0265 — bare vs the installed harness (`devlyn run`, 4.3.30), fast replay
 
-[`DESIGN.md`](DESIGN.md) is the design: DRAFT r3 (2026-11-11), not frozen, no cell run. It measures, per engine
+[`DESIGN.md`](DESIGN.md) is the design (r3), registered 2026-11-11 in [`registration.md`](registration.md);
+[`design-review.md`](design-review.md) lists every review finding and what was done with it. It measures, per engine
 (Claude Opus 5.5; GPT Astra through Codex), what `devlyn run` with the published `devlyn-cli@4.3.30` adds over the
 same session started raw, on 0233's tasks D3, D4, B5, F10 and F11, 8 replicates per arm (160 cells), in two lanes.
 It reads whether 0257's two large signals replicate (codex B5, claude F10), then a completion line and a harm line

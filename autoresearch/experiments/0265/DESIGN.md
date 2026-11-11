@@ -1,9 +1,9 @@
 # 0265 design — bare vs the installed harness (`devlyn run`, 4.3.30), fast replay
 
-Status: DRAFT r3, revised after the design review (2026-11-11; the review's findings and what was done with each
-are in [design-review.md](design-review.md)). Replaces r2, the 328-cell powered design (in this branch's history:
-`ffc7b97f`, `5fd9a2a0`). Not frozen; no cell has run. The freeze waits for the code review of the apparatus, the
-qualification below and SMOKE.
+Status: r3, registered 2026-11-11 ([registration.md](registration.md)) after its design review, the orchestrator's
+amendments and the code review; every finding and what was done with it is in [design-review.md](design-review.md).
+Replaces r2, the 328-cell powered design (in this branch's history: `ffc7b97f`, `5fd9a2a0`). Frozen from the first
+measured dispatch: a change needs a dated amendment.
 
 ## Why r3
 
