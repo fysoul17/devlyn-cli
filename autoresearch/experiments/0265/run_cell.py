@@ -8,8 +8,9 @@ identity collapse, a shared account fault, a failed per-cell assertion (instruct
 and SMOKE's seal), a locator defect, an evaluator or assessor that produced no verdict, or an assessor container whose
 removal is unproved. Every verdict records owner_ran (DESIGN "The rule for attempts": false only before the cell and
 for a B launch fault), and every verdict of a cell whose container ran records oom_killed (Docker's flag for any
-process in the owner container). A memory kill or a shared account fault, which the driver redispatches, keeps its
-graded tree and scope (stop_evidence). An owner at the watchdog is never COMPLETE. Once a measured cell's verdict is
+process in the owner container). Every STOP whose owner ran keeps its graded tree and scope once its teardown is proved
+(stop_evidence; an assessor STOP keeps its full checks.json), and says why when it has none. An owner at the
+watchdog is never COMPLETE. Once a measured cell's verdict is
 written and is not a STOP, Codex's own caches are pruned from its HOME (prune()).
 """
 import datetime
@@ -59,8 +60,6 @@ PRUNED = ('home/.codex/.tmp', 'home/.codex/plugins/cache/openai-curated-remote',
 # DESIGN Operations "Codex login" (O15): Codex renews a login by itself about eight days after its last renewal, and a
 # renewal inside a cell, an assessor or a judge, which hold a copy, would be used up without being saved.
 CODEX_LOGIN_MAX_AGE_SECONDS = 7 * 86400
-# The STOPs after an owner ran that driver.py redispatches from run_cell's own verdict (a Docker loss is recovered there).
-REDISPATCHED = ('memory kill: ', 'shared account fault during execution: ')
 
 
 def digest(path):
@@ -346,14 +345,16 @@ def run(runtime_path, name, task, arm, config, *, expected_account=None):
         record.update({key: ended[key] for key in ('owner_status', 'teardown', 'teardown_error') if key in ended},
                       owner_ran=ended.get('owner_status') is not None, status='STOP',
                       reason=f'cell setup failed: {type(exc).__name__}: {exc}')
+        if record['owner_ran']:
+            record = stop_evidence(out, record, proved=record.get('teardown') == 'CLEAN')
         return write_verdict(verdict_path, record)
     record['oom_killed'] = (owner.get('container') or {}).get('oom_killed') is True
     sealed, collection_failures = seal_after_teardown(out)
-    if collection_failures:  # stop before any other reader touches evidence that could not be sealed; nothing shows
-        record.update(owner_status=owner['owner_status'], teardown=owner['teardown'],  # a launch fault, so the
-                      identity=owner['identity'], status='STOP', owner_ran=True,  # owner is taken to have run
+    if collection_failures:  # stop before reading usage, quota or launch evidence that could not be sealed; nothing
+        record.update(owner_status=owner['owner_status'], teardown=owner['teardown'],  # shows a launch fault, so
+                      identity=owner['identity'], status='STOP', owner_ran=True,  # the owner is taken to have run
                       reason='evidence collection failed: ' + '; '.join(collection_failures[:3]))
-        return write_verdict(verdict_path, record)
+        return write_verdict(verdict_path, stop_evidence(out, record, proved=owner['teardown'] == 'CLEAN'))
     try:
         recorded = usage.record(out)
     except (OSError, ValueError, KeyError, TypeError, AttributeError) as exc:  # usage is recorded, never a stop
@@ -377,8 +378,6 @@ def run(runtime_path, name, task, arm, config, *, expected_account=None):
             if limits['execution'] else
             'model identity ' + owner['identity']['status'].lower()
             if owner['identity']['status'] in ('MISMATCH', 'UNVERIFIED', 'UNKNOWN') else None)
-    if stop and stop.startswith(REDISPATCHED):
-        record = stop_evidence(out, record)
     if not stop and task != 'SMOKE':  # SMOKE is asserted by `instructions.py seal-forms`, once its forms exist
         try:
             assertion = instructions.check(out, plan, json.loads(instruction_seal.read_text()))
@@ -391,37 +390,52 @@ def run(runtime_path, name, task, arm, config, *, expected_account=None):
             record['snapshot'] = locate.locate(out)
             checks = checked(out, runtime)
         except locate.LocatorError as exc:
-            stop = 'locator: ' + str(exc)
+            stop, record = 'locator: ' + str(exc), unchosen(out, record, exc)
         except check.NoVerdict as exc:
             stop = 'evaluator produced no verdict: ' + str(exc)
     if stop:
         record.update(status='STOP', reason=stop)
+        if record['owner_ran'] and 'scope_violations' not in record:  # a locator STOP has its scope_error already
+            record = stop_evidence(out, record, proved=owner['teardown'] == 'CLEAN')
         return write_verdict(verdict_path, record)
     return write_graded(out, verdict_path, grade(out, runtime, record, checks))
 
 
-def stop_evidence(out, record):
-    """DESIGN "The rule for attempts": an attempt whose owner ran and that ends in a STOP the driver redispatches (a
-    memory kill, a shared account fault, a Docker loss once driver.py has recovered it) keeps its graded tree
-    (locate.locate: snapshot/ and snapshot.json) and its scope result (check.scope, the check phase's own reading of
-    tree against baseline and allowed paths), in the record and in a checks.json of those fields alone: nothing else
-    was checked. A tree locate cannot choose leaves scope_violations null, the reason in scope_error, and no snapshot (a
-    partial copy is moved to snapshot.partial). Returns the record."""
+def unchosen(out, record, exc):
+    """No graded tree: scope_violations null with the reason in scope_error, and no snapshot (a partial copy is moved
+    to snapshot.partial, out of the graders' way)."""
+    if (out / 'snapshot').exists():
+        (out / 'snapshot').rename(out / 'snapshot.partial')
+    return dict({key: value for key, value in record.items() if key != 'snapshot'}, scope_violations=None,
+                scope_error=str(exc))
+
+
+def stop_evidence(out, record, proved=True):
+    """DESIGN "Attempts": an attempt whose owner ran and that ends in a STOP keeps, once its teardown is proved, its
+    graded tree (locate.locate: snapshot/ and snapshot.json; an evaluator STOP keeps the one locate already chose) and
+    its scope result (check.scope, the check phase's own reading of tree against baseline and allowed paths), in the
+    record and in a checks.json of those fields alone: nothing else was checked. An assessor STOP never comes here: its
+    full checks.json stays and grade() records its scope. A teardown not proved (proved=False; driver.py's recover
+    proves a Docker loss and calls this again), a tree locate cannot choose or evidence that cannot be read leaves no
+    graded tree (unchosen) and says why in scope_error. Returns the record."""
+    record = {key: value for key, value in record.items() if key != 'scope_error'}
+    if not proved:
+        return unchosen(out, record, 'not taken: the teardown is not proved')
     try:
-        selection = locate.locate(out)
-    except locate.LocatorError as exc:
-        if (out / 'snapshot').exists():
-            (out / 'snapshot').rename(out / 'snapshot.partial')
-        return dict(record, scope_violations=None, scope_error=str(exc))
-    changed, violations = check.scope(out)
+        selection = record['snapshot'] if 'snapshot' in record else locate.locate(out)
+        changed, violations = check.scope(out)
+    except (locate.LocatorError, OSError, ValueError) as exc:
+        return unchosen(out, record, exc)
     (out / 'checks.json').write_text(json.dumps(dict(scope_violations=violations, changed=changed), indent=2))
     return dict(record, snapshot=selection, scope_violations=violations, changed=changed)
 
 
 def grade(out, runtime, record, checks, assessment_venue=None):
     """The assessors on the checked snapshot, then the arm's methodology record: the verdict record. An owner at the
-    watchdog is PRODUCT_INCOMPLETE whatever its checks and assessors say (DESIGN "Details every count uses")."""
+    watchdog is PRODUCT_INCOMPLETE whatever its checks and assessors say (DESIGN "Details every count uses"). The scope
+    result is recorded before any assessor runs, so an assessor STOP keeps it (DESIGN "Attempts")."""
     record.pop('assessor_account', None)
+    record['scope_violations'] = checks['scope_violations']
     try:
         fresh, blocked = assessment_snapshot(runtime) if assessment_venue is None else (assessment_venue, None)
         if blocked:
@@ -434,8 +448,7 @@ def grade(out, runtime, record, checks, assessment_venue=None):
     except (RuntimeError, OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError) as exc:
         record.update(status='STOP', reason=f'assessment failed: {exc}')
     else:
-        record.update(product_check_pass=checks['product_check_pass'], oracle=checks['oracle'],
-                      scope_violations=checks['scope_violations'], assessments=assessments,
+        record.update(product_check_pass=checks['product_check_pass'], oracle=checks['oracle'], assessments=assessments,
                       assessor_disagreement=len({a['complete'] for a in assessments}) > 1,
                       status='PRODUCT_INCOMPLETE' if record['owner_status'] == 'HANG_TIMEOUT'
                       else base.verdict(checks, assessments))

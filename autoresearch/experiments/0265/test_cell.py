@@ -953,6 +953,9 @@ class CellLifecycle(unittest.TestCase):
             if fail != 'copy':
                 (root / 'auth/claude.json').write_text('{"fake": true}')
             (root / 'auth/codex.json').write_text('{"fake": true}')
+            if fail == 'leftover':  # a credential copy a killed run of this cell left in scratch
+                (root / 'scratch/credentials/cell-1').mkdir(parents=True)
+                (root / 'scratch/credentials/cell-1/claude.json').write_text('{"stale": true}')
             plan = dict(name='cell-1', engine='claude', image='sha256:image', cell=str(out / 'cell'),
                         home=str(out / 'home'), control=str(root / 'control/public'), harness=str(out / 'harness'),
                         tmp=str(out / 'tmp'), env={}, argv=['claude', '-p', 'x'], wall_seconds=5, install=None)
@@ -991,7 +994,9 @@ class CellLifecycle(unittest.TestCase):
             argv = mock.patch.object(cell, 'create_argv', side_effect=ValueError('bad plan')) if fail == 'argv' else \
                 contextlib.nullcontext()
             raised = None
-            with mock.patch.object(cell, 'docker', side_effect=docker), argv, \
+            removal = mock.patch.object(cell.shutil, 'rmtree', side_effect=PermissionError('scratch is read-only')) \
+                if fail == 'removal' else contextlib.nullcontext()
+            with mock.patch.object(cell, 'docker', side_effect=docker), argv, removal, \
                     mock.patch.object(cell.subprocess, 'Popen', side_effect=popen), \
                     mock.patch.object(cell, 'preserve_tmp', side_effect=preserve), \
                     mock.patch.object(cell, 'identity', return_value={'status': 'MATCH'}):
@@ -1011,6 +1016,23 @@ class CellLifecycle(unittest.TestCase):
                 self.assertIsInstance(raised, kind)  # the exception still ends the cell
                 self.assertEqual((held, copy_left), ((set(), {}), False))
                 self.assertEqual((result['teardown'], result['owner_status']), ('CLEAN', None))
+
+    def test_a_copy_left_by_a_killed_run_is_removed_and_ends_the_cell(self):
+        # Re-check finding (Grok): the credential folder is made inside the lifecycle, so a leftover is an error the
+        # finally still cleans up; before, mkdir raised outside the try and the stale copy stayed in scratch.
+        raised, result, held, copy_left = self.lifecycle('leftover')
+        self.assertIsInstance(raised, FileExistsError)
+        self.assertEqual((held, copy_left), ((set(), {}), False))
+        self.assertEqual((result['teardown'], result['owner_status']), ('CLEAN', None))
+
+    def test_the_record_survives_a_credential_copy_that_cannot_be_removed(self):
+        # Re-check finding (Grok): result.json is written before the removal, and a failed removal is a failed
+        # teardown with its reason, never a lost record. The allowed case is the clean run below.
+        raised, result, held, copy_left = self.lifecycle('removal')
+        self.assertIsNone(raised)
+        self.assertTrue(copy_left)
+        self.assertEqual((result['teardown'], result['owner_status']), ('FAILED', 'EXITED_0'))
+        self.assertIn('credential copy not removed: scratch is read-only', result['teardown_error'])
 
     def test_a_cell_that_runs_is_torn_down_the_same_way(self):
         raised, result, held, copy_left = self.lifecycle()
@@ -1283,13 +1305,15 @@ def pruned_roots():
 class RunFlow(unittest.TestCase):
     def run_cell(self, root, *, task='D3', arm='B', config='claude', stderr='', stdout='', teardown='CLEAN',
                  container=None, violations=(), caches=False, assessed=None, snapshot=None, expected=None,
-                 owner_status='EXITED_0', execution=(), located=None, ran=None, token_left=5000):
+                 owner_status='EXITED_0', execution=(), located=None, ran=None, token_left=5000, identity='MATCH',
+                 patched=None):
         """run_cell.run with every outside effect faked. caches: the cell's HOME holds Codex's caches; assessed: the
         assessors' side effect; snapshot: the cell's own credential read (preflight is then the real one); expected:
         the account the driver's ready() approved (default the dispatching venue's); execution: quota.py's execution
         faults; located: locate.locate's side effect (default: it writes snapshot/ and snapshot.json); ran: cell.run's
         side effect in place of its record; token_left: seconds left on the made-up Claude login copy preflight left
-        in the auth folder."""
+        in the auth folder; identity: the owner's model identity status; patched: further patchers by name, started
+        over the defaults (a name of the defaults replaces that one)."""
         output = root / 'output'
         output.mkdir()
         runtime = dict(output=str(output), auth=str(root / 'auth'), control=str(root / 'control'), image='image',
@@ -1319,7 +1343,7 @@ class RunFlow(unittest.TestCase):
                 write_codex_home(out)
             return out
         owner = dict(owner_status=owner_status, seconds=1, teardown=teardown, teardown_error='survived',
-                     identity={'status': 'MATCH'}, container=container or {'oom_killed': False, 'exit_code': 0})
+                     identity={'status': identity}, container=container or {'oom_killed': False, 'exit_code': 0})
         venue = dict(account=['dispatch', 'org'], token_seconds_left=5000, codex_account='codexaccount')
         checks = dict(product_check_pass=True, oracle={}, scope_violations=[], adjudication_needed=False)
         held = []
@@ -1348,6 +1372,7 @@ class RunFlow(unittest.TestCase):
             patches['preflight'] = mock.patch.object(run_cell, 'snapshot_auth', return_value=(snapshot, None))
             patches['disk'] = mock.patch.object(run_cell.shutil, 'disk_usage',
                                                 return_value=mock.Mock(free=run_cell.HEADROOM_BYTES))
+        patches.update(patched or {})
         with mock.patch.object(run_cell, 'image_identity', return_value=True), \
                 mock.patch.object(run_cell, 'control_unchanged', return_value=True), \
                 mock.patch.object(run_cell.prepare, 'prepare', side_effect=prepared), \
@@ -1395,8 +1420,8 @@ class RunFlow(unittest.TestCase):
             self.assert_stop_evidence(verdict, out, mocks)
 
     def assert_stop_evidence(self, verdict, out, mocks):
-        """H2: a redispatched STOP whose owner ran keeps its graded tree and its scope (check.scope, no container), in
-        the verdict and in a checks.json of the scope fields alone."""
+        """H2: a STOP whose owner ran and whose teardown is proved keeps its graded tree and its scope (check.scope, no
+        container), in the verdict and in a checks.json of the scope fields alone."""
         self.assertEqual((verdict['status'], verdict['owner_ran']), ('STOP', True))
         self.assertEqual((verdict['snapshot'], verdict['changed'], verdict['scope_violations']),
                          (SELECTED, SCOPE[0], SCOPE[1]))
@@ -1434,17 +1459,77 @@ class RunFlow(unittest.TestCase):
                               (out / 'checks.json').exists()), (False, True, False))
             mocks['scope'].assert_not_called()
 
+    def test_every_stop_whose_owner_ran_keeps_its_tree_and_scope(self):
+        """Re-check MEDIUM 3 (DESIGN "Attempts"), allowed: once its teardown is proved, every STOP whose owner ran keeps
+        its graded tree and scope result, the STOPs the driver latches included. An evaluator STOP keeps the tree
+        locate already chose (locate runs once); an assessor STOP keeps the full checks.json and records the scope it
+        holds, with no scope-only rewrite."""
+        def owner_then_failure(out, _runtime):
+            (out / 'run/result.json').write_text(json.dumps(dict(owner_status='EXITED_0', teardown='CLEAN')))
+            raise OSError(5, 'Input/output error')
+        cases = {'harness changed': lambda: dict(patched={'harness': mock.patch.object(
+                     run_cell, 'harness_unchanged', return_value=False)}),
+                 'model identity mismatch': lambda: dict(identity='MISMATCH'),
+                 'instruction assertion: status-line: x': lambda: dict(violations=['status-line: x']),
+                 'evidence collection failed: home/x: unreadable': lambda: dict(patched={'seal': mock.patch.object(
+                     run_cell, 'seal_after_teardown', return_value=(None, ['home/x: unreadable']))}),
+                 'cell setup failed: OSError: [Errno 5] Input/output error': lambda: dict(ran=owner_then_failure),
+                 'evaluator produced no verdict: check container survived teardown': lambda: dict(patched={
+                     'check': mock.patch.object(run_cell.check, 'check',
+                                                side_effect=run_cell.check.NoVerdict('check container survived teardown'))})}
+        for reason, options in cases.items():
+            with self.subTest(reason=reason), tempfile.TemporaryDirectory() as temp:
+                code, verdict, mocks, out, _ = self.run_cell(Path(temp), **options())
+                self.assertEqual((code, verdict['reason']), (2, reason))
+                self.assert_stop_evidence(verdict, out, mocks)
+                mocks['locate'].assert_called_once()
+                mocks['assess'].assert_not_called()
+        with tempfile.TemporaryDirectory() as temp:
+            code, verdict, mocks, out, _ = self.run_cell(Path(temp), assessed=RuntimeError('seat timed out'))
+            self.assertEqual((code, verdict['reason'], verdict['scope_violations']),
+                             (2, 'assessment failed: seat timed out', []))
+            self.assertEqual(verdict['snapshot'], SELECTED)
+            self.assertNotIn('changed', verdict)
+            mocks['scope'].assert_not_called()
+
+    def test_a_stop_whose_teardown_is_not_proved_keeps_what_it_has_and_says_so(self):
+        """Re-check MEDIUM 3, violating: a teardown that failed proves nothing, so no tree is chosen (locate never
+        runs): scope_violations null and scope_error says why; driver.py's recovery of a Docker loss, once it has
+        proved the teardown, then takes the tree and scope and drops that scope_error. Evidence that cannot be read is
+        said the same way, and the STOP is still written."""
+        with tempfile.TemporaryDirectory() as temp:
+            code, verdict, mocks, out, _ = self.run_cell(Path(temp), teardown='FAILED')
+            self.assertEqual((code, verdict['reason'], verdict['owner_ran']), (2, 'teardown failed: survived', True))
+            self.assertEqual((verdict['scope_violations'], verdict['scope_error']),
+                             (None, 'not taken: the teardown is not proved'))
+            self.assertNotIn('snapshot', verdict)
+            self.assert_not_graded(mocks)
+
+            def chosen(out):
+                (out / 'snapshot').mkdir()
+                (out / 'snapshot.json').write_text(json.dumps(SELECTED))
+                return SELECTED
+            with mock.patch.object(run_cell.locate, 'locate', side_effect=chosen), \
+                    mock.patch.object(run_cell.check, 'scope', return_value=SCOPE) as scope:
+                self.assert_stop_evidence(run_cell.stop_evidence(out, verdict), out, dict(scope=scope))
+        with tempfile.TemporaryDirectory() as temp:
+            code, verdict, mocks, out, _ = self.run_cell(Path(temp), identity='MISMATCH',
+                                                         located=OSError(13, 'Permission denied'))
+            self.assertEqual((code, verdict['reason']), (2, 'model identity mismatch'))
+            self.assertEqual((verdict['scope_violations'], verdict['scope_error']), (None, '[Errno 13] Permission denied'))
+            self.assertNotIn('snapshot', verdict)
+
     def test_owner_ran_on_every_verdict(self):
-        """H2: false for a STOP before the cell, true for a final verdict and for a STOP after the owner ran (one the
-        driver latches keeps no extra evidence: nothing is graded around it)."""
+        """H2: false for a STOP before the cell, true for a final verdict and for a STOP after the owner ran. Rewritten
+        for re-check MEDIUM 3: a STOP the driver latches (here an instruction assertion) keeps its graded tree and
+        scope like any other once its teardown is proved; before, it kept neither."""
         with tempfile.TemporaryDirectory() as temp:
             code, verdict, _, out, _ = self.run_cell(Path(temp))
             self.assertEqual((code, verdict['status'], verdict['owner_ran']), (0, 'COMPLETE', True))
         with tempfile.TemporaryDirectory() as temp:
             code, verdict, mocks, out, _ = self.run_cell(Path(temp), violations=['status-line: x'])
             self.assertEqual((code, verdict['owner_ran']), (2, True))
-            self.assertFalse({'snapshot', 'scope_violations'} & set(verdict))
-            mocks['locate'].assert_not_called()
+            self.assert_stop_evidence(verdict, out, mocks)
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             (root / 'output').mkdir()
@@ -1586,11 +1671,14 @@ class RunFlow(unittest.TestCase):
             self.assertIsNone(json.loads((out / 'seal.json').read_text())['package_sha256'])
 
     def test_assertion_failure_stops_before_checks(self):
+        """Rewritten for re-check MEDIUM 3: no check or assessor runs after a failed assertion, but its graded tree is
+        chosen (locate, once) for its scope result; before, locate did not run either."""
         with tempfile.TemporaryDirectory() as temp:
             code, verdict, mocks, _, _ = self.run_cell(Path(temp), violations=['status-line: B stderr has []'])
             self.assertEqual((code, verdict['reason']), (2, 'instruction assertion: status-line: B stderr has []'))
-            for name in ('locate', 'check', 'assess'):
+            for name in ('check', 'assess'):
                 mocks[name].assert_not_called()
+            mocks['locate'].assert_called_once()
 
     def test_arms_and_configs_guard(self):
         for arm, config in (('C', 'claude'), ('A', 'grok')):
@@ -1613,9 +1701,10 @@ class RunFlow(unittest.TestCase):
                 code, verdict, _, out, _ = self.run_cell(Path(temp), arm=arm, config='codex', caches=True)
                 self.assertEqual((code, verdict['status']), (0, 'COMPLETE'))
                 self.assertEqual(json.loads((out / 'pruned.json').read_text()), expected)
-                self.assertEqual(tree_files(out), sorted(  # the graded cell also has its graded tree's record
-                    [p for p in before if not p.startswith(tuple(r + '/' for r in run_cell.PRUNED))]
-                    + ['pruned.json', 'snapshot.json']))
+                self.assertTrue({'snapshot.json', 'checks.json'} <= set(before))  # the STOP keeps its tree and scope
+                self.assertEqual(tree_files(out), sorted(  # the fake check.check writes no checks.json
+                    [p for p in before if not p.startswith(tuple(r + '/' for r in run_cell.PRUNED))
+                     and p != 'checks.json'] + ['pruned.json']))
                 for path, text in CODEX_KEPT.items():
                     self.assertEqual((out / path).read_text(), text)
                 self.assertTrue((out / 'home/.codex/plugins/cache').is_dir())
@@ -1904,6 +1993,55 @@ class DockerAnswers(unittest.TestCase):
             assess.reap('x')
         with self.survives(), self.assertRaisesRegex(assess.TeardownUnproved, 'cannot prove container x'):
             assess.reap('x')
+
+    def test_a_teardown_proof_that_raises_is_an_unproved_teardown(self):
+        """Re-check HIGH 1: both seats failed (their `docker run` could not be run), then the proof of each seat
+        container's removal raised. Violating: a timeout or an OS error from `docker rm` or from `docker inspect` is
+        the STOP `assessor teardown unproved: …`, which the driver never regrades. Allowed: a proved removal after the
+        same failed seats stays an ordinary assessor fault, which the driver regrades."""
+        driver = load('driver')
+        errors = {'timeout': lambda argv: subprocess.TimeoutExpired(argv, 60),
+                  'os error': lambda argv: OSError(5, 'Input/output error')}
+
+        def graded(call=None, error=None):
+            def docker(argv, **kwargs):
+                if argv[1] == 'run':
+                    raise OSError(2, 'No such file or directory', 'docker')
+                if argv[1] == call:
+                    raise error(argv)
+                if argv[1] == 'inspect':
+                    return subprocess.CompletedProcess(argv, 1, '', 'error: no such object: x')
+                return subprocess.CompletedProcess(argv, 0, '', '')
+            with tempfile.TemporaryDirectory() as temp:
+                out, auth = Path(temp) / 'cell', Path(temp) / 'auth'
+                out.mkdir()
+                auth.mkdir()
+                (out / 'checks.json').write_text('{}')
+                for name in ('claude.json', 'codex.json'):
+                    (auth / name).write_text('{"fake": true}')
+                runtime = dict(scratch=temp, auth=str(auth), image='sha256:image')
+
+                def tree(_out, scratch):
+                    (scratch / 'work').mkdir()
+                    return scratch / 'work'
+                with mock.patch.object(run_cell.assess, 'review_tree', side_effect=tree), \
+                        mock.patch.object(run_cell.assess.packet, 'packet', return_value=({}, 'PACKET')), \
+                        mock.patch.object(subprocess, 'run', side_effect=docker):
+                    return run_cell.grade(out, runtime, dict(owner_status='EXITED_0'), dict(scope_violations=[]),
+                                          assessment_venue=dict(account=['a', 'o']))
+        for call in ('rm', 'inspect'):
+            for label, error in errors.items():
+                with self.subTest(call=call, error=label):
+                    record = graded(call, error)
+                    self.assertEqual(record['status'], 'STOP')
+                    self.assertRegex(record['reason'], r'^assessor teardown unproved: cannot prove container '
+                                                       r'devlyn-0231-assess-[0-9a-f]{32} is gone: '
+                                                       r'(TimeoutExpired|OSError): ')
+                    self.assertFalse(record['reason'].startswith(driver.REGRADE))
+        record = graded()
+        self.assertEqual((record['status'], record['reason']),
+                         ('STOP', "assessment failed: [Errno 2] No such file or directory: 'docker'"))
+        self.assertTrue(record['reason'].startswith(driver.REGRADE))
 
 
 class StrictConfig(unittest.TestCase):

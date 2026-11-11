@@ -155,20 +155,27 @@ class Driver:
         except BlockingIOError:
             self.lock.close()
             raise RuntimeError(f'lane {label} already has a driver process: driver-{label}.lock is held') from None
-        self.renewal_lock = Path(self.runtime['renewal_lock'])
-        self.slots = [row for row in slots if self.lane in (None, row[3])]
-        self.caps = self.runtime['caps']
-        self.approved_account = None
-        if self.caps != {'seven_day': 95, 'five_hour': 95}:
-            raise ValueError('registration caps must be seven_day=95 and five_hour=95')
         self.status_path = self.output / f'driver-status-{label}.json'
         self.log_path = self.output / f'driver-{label}.log'
+        # A status file that cannot be read ends this lane here and the other at its next check, which reads it too.
         self.state = json.loads(self.status_path.read_text()) if self.status_path.exists() else {
             'renewed_expiries': [], 'split_blocks': [], 'split_wait': {}}
-        self.state.setdefault('split_wait', {})
-        self.reconcile_smoke_starts()
-        if self.state.get('registered_caps') not in (None, self.caps):
-            self.stop('registered caps differ from 95/95')
+        try:  # from here on a lane that fails while it is set up stops the other one too, as run() does
+            self.renewal_lock = Path(self.runtime['renewal_lock'])
+            self.slots = [row for row in slots if self.lane in (None, row[3])]
+            self.caps = self.runtime['caps']
+            self.approved_account = None
+            if self.caps != {'seven_day': 95, 'five_hour': 95}:
+                raise ValueError('registration caps must be seven_day=95 and five_hour=95')
+            self.state.setdefault('split_wait', {})
+            self.reconcile_smoke_starts()
+            if self.state.get('registered_caps') not in (None, self.caps):
+                self.stop('registered caps differ from 95/95')
+        except Stopped:
+            raise
+        except Exception as exc:
+            self.latch(None, f'lane {label} failed while it was set up: {type(exc).__name__}: {exc}')
+            raise
 
     def event(self, kind, **fields):
         record = dict(at=datetime.datetime.now(datetime.timezone.utc).isoformat(), event=kind, **fields)
@@ -510,6 +517,7 @@ class Driver:
                 self.event('regrade', cell=name, rc=rc)
                 self.latch_for(name, self.verdict(name))
                 self.assert_active()
+                self.terminal(name, rc)
                 return rc == 0
             infrastructure_fault = docker_fault(verdict)
             if self.redispatch(name, verdict):
@@ -549,13 +557,18 @@ class Driver:
             self.reconcile_smoke_starts()
         self.latch_for(name, finished)
         self.assert_active()
+        self.terminal(name, rc)
+        return rc == 0
+
+    def terminal(self, name, rc):
+        """A STOP that run_cell returned (rc 2), from a cell run or from a regrade, and that is neither regraded nor
+        redispatched stops both lanes now, before the lane waits on anything."""
         if rc == 2:
             verdict = self.verdict(name)
             reason = verdict.get('reason', '') if verdict else 'no verdict'
             if not (verdict and (reason.startswith(REGRADE) or self.redispatch(name, verdict))):
                 self.latch(name, f'STOP {reason}')
                 raise Stopped(f'{name}: STOP {reason}')
-        return rc == 0
 
     def run(self):
         """The lane's slots in order. Any exception but Stopped and an operator's interrupt sets the harm latch with

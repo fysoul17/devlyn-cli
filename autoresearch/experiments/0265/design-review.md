@@ -135,3 +135,20 @@ diagnostics call (no 0265 reader), the unused `account` field of the runtime fil
 Asked about them in particular, neither reviewer reported a finding on: arm symmetry beyond the wrapper and the
 `/install` mount, the lane locks and separate login snapshots, the per-cell assertions and the launch probe, and
 the witness pins and exit semantics. Grok checked the Codex seven-day guard for a hole like CG4's and found none.
+
+### Re-check of the fixes (commit `eceeeeda`)
+
+Both reviewers read the fixes once more. Astra: REVISE, 13 of the 17 closed, CA2, CA3, CA4 and CA10 partly, two HIGH
+left. Grok: SHIP, all 17 closed, one MEDIUM and one LOW new. All seven were accepted and fixed in the next commit:
+
+| # | From | Severity | Finding | Fix |
+|---|---|---|---|---|
+| R1 | Astra | HIGH | A timeout or OS error while an assessor container was removed or inspected was still a retryable assessor fault | Every way the teardown proof can fail is `TeardownUnproved`. |
+| R2 | Astra | HIGH | A STOP that came back from a regrade and could not be regraded did not stop the lanes until after the next `ready()` wait | The same terminal handling runs after a regrade as after a cell. |
+| R3 | Astra | MEDIUM | Only the redispatched kinds of STOP kept the graded tree and scope result | Every STOP whose owner ran keeps them once its teardown is proved; an unproved teardown says so. |
+| R4 | Astra | MEDIUM | A lane that failed while it was being set up did not stop its peer | It sets the shared latch; a second start of a running lane is still refused without touching it. |
+| R5 | Astra | MEDIUM | An interrupted regrade could drop its owner run from the cost totals | Charged once from its archive. |
+| R6 | Grok | MEDIUM | The per-cell credential folder was made outside the cleanup, so a copy left by a killed run stayed in scratch | Made inside; a leftover ends the cell and is removed. |
+| R7 | Grok | LOW | The run record was written after the credential folder was removed, so a failed removal lost it | Written before; a failed removal is a failed teardown with its reason. |
+
+A second re-check of these seven follows on the commit that holds them; its verdicts are in registration.md.

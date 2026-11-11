@@ -738,6 +738,67 @@ class Faults(unittest.TestCase):
             with self.assertRaisesRegex(driver.Stopped, 'harm latch in lane claude'):
                 lane(root, 'codex').assert_active()
 
+    def test_a_terminal_stop_from_a_regrade_latches_both_lanes_before_any_wait(self):
+        """Re-check HIGH 2: violating, a regrade that comes back `assessor teardown unproved` (neither regraded nor
+        redispatched) latches both lanes at once, as the same STOP does after a cell run: the lane ends with no sleep
+        and no further ready(), which here would hold. Allowed: a regrade that comes back with an assessor fault
+        again is regraded at the next dispatch and sets no latch."""
+        fault = dict(status='STOP', reason='assessment failed: timeout', teardown='CLEAN', identity={'status': 'MATCH'},
+                     owner_status='EXITED_0', owner_ran=True)
+        unproved = dict(fault, reason='assessor teardown unproved: cannot prove container x is gone')
+
+        def regrading(root, outcomes, ready):
+            seal(root)
+            name = row('c001-')[0]
+            d = lane(root, 'claude', [row('c001-')])
+            (d.output / name).mkdir()
+            path = d.output / f'verdict-{name}.json'
+            path.write_text(json.dumps(fault))
+
+            def regrade(*_args, **_kwargs):
+                verdict = outcomes.pop(0)
+                path.write_text(json.dumps(verdict))
+                return 2 if verdict['status'] == 'STOP' else 0
+            stack = contextlib.ExitStack()
+            readied = stack.enter_context(mock.patch.object(d, 'ready', side_effect=ready))
+            regraded = stack.enter_context(mock.patch.object(driver.cell, 'regrade', side_effect=regrade))
+            run = stack.enter_context(mock.patch.object(driver.cell, 'run'))
+            sleep = stack.enter_context(mock.patch.object(driver.time, 'sleep'))
+            try:
+                with stack:
+                    d.run()
+            finally:
+                d.lock.close()
+                run.assert_not_called()
+                self.mocks = dict(ready=readied, regrade=regraded, sleep=sleep)
+            return d
+
+        calls = []
+
+        class Held(BaseException):
+            """Ends the old code's wait loop: run() latches no BaseException that is not an Exception."""
+
+        def holds_after_the_first(*args):
+            calls.append(args)
+            if len(calls) > 3:
+                raise Held(f'ready() called {len(calls)} times')
+            return len(calls) == 1
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            with self.assertRaisesRegex(driver.Stopped, f'{row("c001-")[0]}: STOP assessor teardown unproved'):
+                regrading(root, [unproved], holds_after_the_first)
+            self.assertEqual((calls, self.mocks['regrade'].call_count), ([(1500, None, None)], 1))
+            self.mocks['sleep'].assert_not_called()
+            self.assertEqual(latched(root, 'claude')['reason'], 'STOP ' + unproved['reason'])
+            with self.assertRaisesRegex(driver.Stopped, 'harm latch in lane claude'):
+                lane(root, 'codex').assert_active()
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            d = regrading(root, [dict(fault, reason='assessment failed: again'), COMPLETE], lambda *_args: True)
+            self.assertEqual((self.mocks['regrade'].call_count, self.mocks['sleep'].call_count), (2, 1))
+            self.assertEqual(d.verdict(row('c001-')[0])['status'], 'COMPLETE')
+            self.assertIsNone(latched(root, 'claude'))
+
     def test_quota_fault_archived_and_assessor_fault_regraded(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
@@ -955,6 +1016,48 @@ class LaneEnd(unittest.TestCase):
             claude.lock.close()
             codex.lock.close()
 
+    def test_a_lane_that_fails_while_it_is_set_up_stops_the_other(self):
+        """Re-check MEDIUM 4: violating, an error in the constructor after the lane lock is taken (caps that are not
+        95/95, a malformed SMOKE start) sets the latch with its text, so the other lane stops at its next check.
+        Allowed: a second start of a lane that is already running is refused before any write and touches no latch."""
+        def bad_caps(root, path):
+            path.write_text(json.dumps(dict(json.loads(path.read_text()), caps={'seven_day': 70, 'five_hour': 85})))
+
+        def bad_start(root, _path):
+            started = root / 'output/smoke-claude-A/run/started.json'
+            started.parent.mkdir(parents=True)
+            started.write_text(json.dumps({'started_at': 'soon'}))
+        for spoil, error in ((bad_caps, 'registration caps must be seven_day=95 and five_hour=95'),
+                             (bad_start, 'malformed SMOKE start: started_at must be numeric')):
+            with self.subTest(error=error), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                peer = lane(root, 'codex')
+                peer.assert_active()
+                path = runtime(root, 'claude')
+                spoil(root, path)
+                with self.assertRaisesRegex(ValueError, error):
+                    driver.Driver(path, [])
+                latch = latched(root, 'claude')
+                self.assertEqual((latch['cell'], latch['verdict_sha256']), (None, None))
+                self.assertRegex(latch['reason'], '^lane claude failed while it was set up: ValueError: .*' + error)
+                with self.assertRaisesRegex(driver.Stopped, 'harm latch in lane claude'):
+                    peer.assert_active()
+                peer.lock.close()
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            first, peer = lane(root, 'claude'), lane(root, 'codex')
+            first.event('started')
+            status = root / 'output/driver-status-claude.json'
+            before = status.read_text()
+            with self.assertRaisesRegex(RuntimeError, 'lane claude already has a driver process'):
+                lane(root, 'claude')
+            self.assertEqual(status.read_text(), before)
+            self.assertIsNone(latched(root, 'claude'))
+            first.assert_active()
+            peer.assert_active()
+            first.lock.close()
+            peer.lock.close()
+
     def test_an_interrupt_or_a_latch_already_set_adds_no_latch(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
@@ -1078,10 +1181,13 @@ class RunCellContract(unittest.TestCase):
         for name in ('run', 'regrade', 'claude_limits', 'image_identity'):
             self.assertEqual(list(inspect.signature(getattr(real, name)).parameters),
                              list(inspect.signature(getattr(fake, name)).parameters), name)
-        # The Docker-loss recovery's calls, which the driver tests patch onto the fake (H2, H5).
-        for function, parameters in ((real.stop_evidence, ['out', 'record']), (real.seal_after_teardown, ['out']),
+        # The Docker-loss recovery's calls, which the driver tests patch onto the fake (H2, H5). The recovery has proved
+        # the teardown, so it calls stop_evidence with out and record alone: proved defaults to true.
+        for function, parameters in ((real.stop_evidence, ['out', 'record', 'proved']),
+                                     (real.seal_after_teardown, ['out']),
                                      (real.cell_run.preserve_tmp, ['volume', 'dest', 'image'])):
             self.assertEqual(list(inspect.signature(function).parameters), parameters, function.__name__)
+        self.assertIs(inspect.signature(real.stop_evidence).parameters['proved'].default, True)
 
 
 if __name__ == '__main__':

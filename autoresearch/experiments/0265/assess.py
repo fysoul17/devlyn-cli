@@ -5,7 +5,8 @@ assessor snapshot run_cell takes under the renewal guards). Record only.
 diff and untracked list are the product's), run on the image's pinned CLIs instead of the host's. The two seats run at
 the same time; their records keep TASKS['assessors'] order. one() is also the seat of other blind readers: given a
 record_dir, it writes its prompt, stdout, stderr and result.json there. A seat container whose removal cannot be
-proved raises TeardownUnproved, which is no assessment failure: run_cell stops on it without a regrade.
+proved (the Docker calls of the proof failing, timing out or not running included) raises TeardownUnproved, which is
+no assessment failure: run_cell stops on it without a regrade.
 """
 import concurrent.futures
 import importlib.util
@@ -47,9 +48,13 @@ class TeardownUnproved(RuntimeError):
 
 
 def reap(name):
-    """Remove a named container and prove it is gone; any uncertainty is a STOP of its own, never silence."""
-    removed = subprocess.run(['docker', 'rm', '-f', name], capture_output=True, text=True, timeout=60)
-    probe = subprocess.run(['docker', 'inspect', name], capture_output=True, text=True, timeout=60)
+    """Remove a named container and prove it is gone; any uncertainty is a STOP of its own, never silence: a removal
+    or inspection that times out or cannot be run proves nothing either."""
+    try:
+        removed = subprocess.run(['docker', 'rm', '-f', name], capture_output=True, text=True, timeout=60)
+        probe = subprocess.run(['docker', 'inspect', name], capture_output=True, text=True, timeout=60)
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise TeardownUnproved(f'cannot prove container {name} is gone: {type(exc).__name__}: {exc}') from exc
     gone = probe.returncode != 0 and 'no such object' in probe.stderr.lower()  # Docker 29 prints it in lower case
     if not gone or (removed.returncode != 0 and 'no such container' not in removed.stderr.lower()):
         raise TeardownUnproved(f'cannot prove container {name} is gone: {removed.stderr.strip()} {probe.stderr.strip()}')

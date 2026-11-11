@@ -10,7 +10,8 @@ cells.tsv (SMOKE, the lane rehearsal) share the folder and are never read.
 A slot is final when its verdict is COMPLETE or PRODUCT_INCOMPLETE; a STOP is not. DESIGN "Details every count
 uses": an owner HANG_TIMEOUT is neither COMPLETE nor check-complete; a slot's completion, checks and witnesses are its
 final attempt's. DESIGN "The rule for attempts": every verdict records `owner_ran`; an attempt in which an owner ran
-(an assessor fault's archive is the final attempt's owner run, tree and evidence, not one of its own) is charged, with
+(an assessor fault's archive is the final attempt's owner run, tree and evidence, not one of its own; the last such
+archive stands for that run when a regrade stopped before it wrote the current verdict) is charged, with
 a hang at 2,700 s, in every slot, final or not, and is part of the slot's harm. Each such attempt needs, for the harm
 line, its scope result, its name in its slot's harm check entry, a result for every harm witness of its task on its
 own tree and the judges' answers for its pairs; one whose owner did not exit 0 has no final report and forms no pair.
@@ -125,6 +126,7 @@ def load(out, cells):
                                 rows={}, failed=[], verdict_scope=False, assessments=[], archived={}, trees={},
                                 attempts=[], oom=[], accounts=None)
         try:
+            old = None
             for path in sorted(out.glob(f'verdict-{name}.stop-*.json'), key=stop_number):
                 old, attempt = json.loads(path.read_text()), f'stop-{stop_number(path)}'
                 row['archived'][attempt] = str(old.get('reason', ''))
@@ -136,6 +138,11 @@ def load(out, cells):
             path = out / f'verdict-{name}.json'
             if not path.is_file():
                 row['gap'] = 'no verdict'
+                # A regrade stopped after it archived the current verdict: the last archive, an assessor fault's, is
+                # then the only record of the owner run in OUT/<name>, so it is charged and kept once, as that run.
+                if old is not None and str(old.get('reason', '')).startswith(REGRADE) and owner_ran(old):
+                    row['attempts'].append(attempt_cost(old))
+                    row['trees']['final'] = evidence(old, name)
                 continue
             verdict = json.loads(path.read_text())
             row.update(verdicts=row['verdicts'] + 1, reason=verdict.get('reason'))

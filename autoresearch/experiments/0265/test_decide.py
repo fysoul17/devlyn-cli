@@ -867,6 +867,27 @@ class Accounting(Case):
         group = self.run.evaluate()['reported']['cost']['codex']['A']['development']
         self.assertEqual((group['wall'], group['input']), (24 * 100 + 3 * 7, 24 * 1000 + 3 * 70))
 
+    def test_an_interrupted_regrade_charges_its_owner_run_once(self):
+        """Re-check MEDIUM 5: a regrade archived the current verdict and stopped before it wrote the next one, so the
+        slot has assessor-fault archives and no current verdict. Violating (before): its owner run was charged
+        nowhere. Now the last archive is charged once (two archives, one charge) and its evidence is the slot's own
+        tree (its scope counts). Allowed: an assessor-fault archive behind a current verdict stays free, since that
+        verdict carries the run."""
+        interrupted = self.run.name('codex', 'D3', 'A', 1)
+        (self.run.out / f'verdict-{interrupted}.json').unlink()
+        self.run.stop(interrupted, 'assessment failed: x', number=1, owner_seconds=7.0, input_tokens=70)
+        self.run.stop(interrupted, 'assessor produced no verdict: codex', number=2, owner_seconds=7.0, input_tokens=70,
+                      scope_violations=['notes.txt'])
+        regraded = self.run.name('codex', 'D3', 'A', 2)
+        self.run.stop(regraded, 'assessment failed: y', number=1, owner_seconds=7.0, input_tokens=70)
+        result = self.run.evaluate()
+        group = result['reported']['cost']['codex']['A']['development']
+        self.assertEqual((group['wall'], group['input']), (23 * 100 + 7, 23 * 1000 + 70))
+        self.assertEqual((group['check_complete'], group['final_slots']), (23, 23))
+        slot = result['slots'][interrupted]
+        self.assertEqual((slot['final'], slot['gap'], slot['scope']), (False, 'no verdict', True))
+        self.assertIn(f'{interrupted}: no verdict', result['lines']['codex']['harm']['missing'])
+
     def test_cost_sums_every_slot_final_or_not(self):
         # Review M3: the charged attempts of every slot count, a terminal STOP whose owner ran among them; the
         # denominator stays the final check-complete slots. (Before, a slot that was not final added nothing.)

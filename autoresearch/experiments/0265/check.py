@@ -76,7 +76,7 @@ def evaluate(work, task_id, runtime):
 
 def scope(out):
     """The selected snapshot against baseline.json, with no container: (every changed path, the changed paths outside
-    the task's allowed paths). The check phase's scope, and an archived attempt's (run_cell.stop_evidence)."""
+    the task's allowed paths). The check phase's scope, and that of a STOP after its owner ran (run_cell.stop_evidence)."""
     baseline = json.loads((out / 'baseline.json').read_text())
     current = packet.tree(out / 'snapshot')
     changed = sorted(n for n in baseline['files'].keys() | current.keys() if baseline['files'].get(n) != current.get(n))

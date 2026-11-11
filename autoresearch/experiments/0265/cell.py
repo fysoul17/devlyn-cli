@@ -93,8 +93,8 @@ def run(out, runtime):
     volume = 'devlyn-0233-tmp-' + uuid.uuid4().hex
     record = dict(source_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest())
     cid, start, status = None, time.monotonic(), None
-    secret.mkdir(parents=True, exist_ok=False)
     try:
+        secret.mkdir(parents=True, exist_ok=False)  # a copy a killed run left is an error, and the finally removes it
         shutil.copyfile(auth / 'claude.json', secret / 'claude.json')
         (secret / 'claude.json').chmod(0o600)
         home = Path(plan['home'])
@@ -136,8 +136,14 @@ def run(out, runtime):
             stderr = getattr(exc, 'stderr', None)  # bytes on a timeout, even when the call asked for text
             stderr = stderr.decode(errors='replace') if isinstance(stderr, bytes) else stderr
             record.update(teardown='FAILED', teardown_error=' '.join(filter(None, (str(exc), stderr))))
-        shutil.rmtree(secret)
-        (record_dir / 'result.json').write_text(json.dumps(record, indent=2))
+        (record_dir / 'result.json').write_text(json.dumps(record, indent=2))  # before the removal: never lost to it
+        try:
+            if secret.exists():
+                shutil.rmtree(secret)
+        except OSError as exc:
+            record.update(teardown='FAILED', teardown_error=' '.join(filter(None, (
+                record.get('teardown_error'), f'credential copy not removed: {exc}'))))
+            (record_dir / 'result.json').write_text(json.dumps(record, indent=2))
     try:
         record['identity'] = identity(out, plan)
     except (OSError, ValueError, KeyError, TypeError) as exc:  # an apparatus defect: stop, but with a record
