@@ -1,10 +1,10 @@
 """Select one 0265 submitted source: unique accepted receipt, else unique changed product tree.
 
 0233's locate with two changes for 4.3.30's delivery helper (DESIGN Q4): a receipt binds an accepted commit by either
-kind the helper binds, `direct` or `loop` (ACCEPTED; 4.3.30 retired `pipeline`), and changed trees whose files have the
-same bytes at every path are one result (4.3.30 keeps the edits in the anchor while a delivery is pending or refused),
-graded once with the others recorded as duplicates. All other trees remain for audit; changed trees whose contents
-differ, or two accepted receipts, STOP before grading.
+kind the helper binds, `direct` or `loop` (ACCEPTED; 4.3.30 retired `pipeline`), and changed trees that are the same
+in Git's view at every path (same_result) are one result (4.3.30 keeps the edits in the anchor while a delivery is
+pending or refused), graded once with the others recorded as duplicates. All other trees remain for audit; changed
+trees that differ, or two accepted receipts, STOP before grading.
 """
 import importlib.util
 import json
@@ -99,10 +99,21 @@ def accepted(out, anchor, receipt, allocation_sha):
     return sha
 
 
+def same_result(entries):
+    """packet.tree() entries as Git sees a tree (DESIGN Q4, O2): each path's type (a symbolic link and its target, or a
+    regular file and its bytes; a directory by the paths under it), and a regular file's executable bit. Other
+    permission bits are dropped, as Git drops them (0644 and 0664 are one mode, 0755 another)."""
+    def mode(value):
+        digest, bits = value.split(':')
+        return f'{digest}:{"755" if int(bits, 8) & 0o100 else "644"}'
+    return json.dumps({name: value if value.startswith('link:') else mode(value) for name, value in entries.items()},
+                      sort_keys=True)
+
+
 def native(out, baseline):
-    """Select the one changed product tree, or the unchanged anchor. Changed trees with the same bytes at every path
-    are one result: the first (the anchor when it is one of them) is selected and the others are its duplicates.
-    Changed trees whose contents differ are rejected."""
+    """Select the one changed product tree, or the unchanged anchor. Changed trees that are the same result at every
+    path (same_result) are one result: the first (the anchor when it is one of them) is selected and the others are
+    its duplicates. Changed trees that differ are rejected."""
     anchor = out / 'cell/work'
     links = (host(out, (d / 'gitdir').read_text().strip()) for d in sorted((anchor / '.git/worktrees').glob('*')))
     trees = [anchor, *(link.parent for link in links if link and link.parent.is_dir())]
@@ -110,8 +121,7 @@ def native(out, baseline):
         entries = [packet.tree(copy_tree(out, t, Path(temp) / str(i))) for i, t in enumerate(trees)]
     changed = [(t, e) for t, e in zip(trees, entries) if e != baseline['files']]
     names = [str(t.relative_to(out)) for t, _ in changed]
-    contents = {json.dumps({name: value if value.startswith('link:') else value.split(':')[0]
-                            for name, value in e.items()}, sort_keys=True) for _, e in changed}
+    contents = {same_result(e) for _, e in changed}
     if len(contents) > 1:
         raise LocatorError('more than one changed product tree: ' + ', '.join(names))
     if not changed or changed[0][0] == anchor:

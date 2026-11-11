@@ -2,7 +2,8 @@
 driver.py <runtime.json> <cells.tsv>[:prefix] ...  The runtime's lane (null, claude or codex) selects the rows it runs.
 A lane's process holds an exclusive lock on <output>/driver-<lane>.lock for its whole life (--clear-latch too), so a
 lane never runs twice. A STOP that is not redispatched sets the harm latch, which stops both lanes; a lane with a cell
-running lets it finish."""
+running lets it finish. So does stop(), and any other exception that ends a lane (an operator's interrupt aside): the
+latch carries its text, so the other lane stops dispatching too."""
 import datetime
 import fcntl
 import hashlib
@@ -37,6 +38,11 @@ ONCE = (MEMORY_KILL, ACCOUNT_FAULT)  # redispatched once per slot; a repeat on t
 GIB = 2**30
 # 4.3.30's delivery helper measures its target with shutil.disk_usage and refuses below max(10 GiB, 2% of the total).
 DISK_PROBE = "import json, shutil; print(json.dumps({p: shutil.disk_usage(p)._asdict() for p in ('/cell', '/tmp')}))"
+
+
+class Stopped(RuntimeError):
+    """A lane ends on a harm latch already set (its own or another lane's), or on a STOP whose latch an amendment
+    cleared: run() sets no further latch for it."""
 
 
 def digest(path):
@@ -172,8 +178,10 @@ class Driver:
         replace(self.status_path, json.dumps(self.state, indent=2) + '\n')
 
     def stop(self, reason):
+        """End this lane and, through the harm latch, the other one."""
         self.event('stop', reason=reason)
-        raise RuntimeError(reason)
+        self.latch(None, reason)
+        raise Stopped(reason)
 
     def lanes(self):
         """Every lane's state in the shared output folder: this lane's from memory, the others' from their files."""
@@ -188,13 +196,9 @@ class Driver:
         latch = self.state.get('harm_latch')
         if not latch:
             raise ValueError('no harm latch to clear')
-        verdict = self.output / f'verdict-{latch["cell"]}.json'
-        if not verdict.is_file():
-            raise ValueError(f'latched verdict missing: {verdict}')
-        sha = digest(verdict)
-        if latch.get('verdict_sha256') and latch['verdict_sha256'] != sha:
+        if self.verdict_sha(latch['cell']) != latch['verdict_sha256']:  # a lane's own end latches with no verdict
             raise ValueError('latched verdict changed before amendment')
-        cleared = dict(cell=latch['cell'], amendment=str(Path(amendment).resolve()), verdict_sha256=sha)
+        cleared = dict(cell=latch['cell'], amendment=str(Path(amendment).resolve()), verdict_sha256=latch['verdict_sha256'])
         self.state.setdefault('cleared_latches', []).append(cleared)
         del self.state['harm_latch']
         self.event('latch_cleared', **cleared)
@@ -240,13 +244,19 @@ class Driver:
         if reason:
             self.latch(name, reason)
 
+    def verdict_sha(self, name):
+        """The sha256 of a slot's current verdict; None for no slot (a lane's own end) or no verdict."""
+        path = self.output / f'verdict-{name}.json'
+        return digest(path) if name and path.is_file() else None
+
     def latch(self, name, reason):
+        """Set the harm latch for a slot's verdict (name), or with no slot for the lane's own end. A verdict whose latch
+        an amendment cleared is not latched again; nothing else is exempt."""
         if self.state.get('harm_latch'):
             return
-        path = self.output / f'verdict-{name}.json'
-        sha = digest(path) if path.is_file() else None
-        if any(item['cell'] == name and item['verdict_sha256'] == sha
-               for item in self.state.get('cleared_latches', ())):
+        sha = self.verdict_sha(name)
+        if sha and any(item['cell'] == name and item['verdict_sha256'] == sha
+                       for item in self.state.get('cleared_latches', ())):
             return
         self.state['harm_latch'] = dict(cell=name, reason=reason, verdict_sha256=sha)
         self.event('harm_latch', cell=name, reason=reason)
@@ -254,7 +264,7 @@ class Driver:
     def assert_active(self):
         for lane, state in self.lanes().items():
             if state.get('harm_latch'):
-                raise RuntimeError(f'harm latch in lane {lane}: {state["harm_latch"]}')
+                raise Stopped(f'harm latch in lane {lane}: {state["harm_latch"]}')
         first = self.state.get('first_smoke_dispatch')
         if first and datetime.datetime.now(datetime.timezone.utc) >= datetime.datetime.fromisoformat(first) + datetime.timedelta(days=7):
             self.stop('7-day deadline reached')
@@ -411,9 +421,14 @@ class Driver:
         return reason.startswith(ACCOUNT_FAULT) or docker_fault(verdict)
 
     def prove_docker_teardown(self, name):
-        """Remove the stopped containers and /tmp volume recorded for this attempt."""
+        """End what Docker lost of this attempt as a normal teardown ends it: its stopped containers removed (the owner
+        among them, unless the cell's own teardown had removed it already: run/started.json names the owner and the /tmp
+        volume either way), then, while the volume still exists, its /tmp preserved into the cell by cell.py's
+        preserve_tmp (which removes the volume), and both proven gone. Returns how /tmp ended: 'preserved' or 'volume
+        absent'. A step that fails or cannot be proved stops both lanes and leaves the volume in place."""
         try:
             started = json.loads((self.output / name / 'run/started.json').read_text())
+            plan = json.loads((self.output / name / 'plan.json').read_text())
             argv = started['create_argv']
             volume = started['tmp_volume']
             if (argv[0] != 'create' or argv.count('--name') != 1
@@ -425,8 +440,8 @@ class Driver:
                 return subprocess.run(['docker', *args], check=True, capture_output=True, text=True).stdout.strip()
 
             ids = docker('ps', '-aq', '--no-trunc', '--filter', f'volume={volume}').splitlines()
-            owner = json.loads(docker('inspect', owner_name))[0]
-            if owner['Id'] not in ids or owner['Name'] != '/' + owner_name:
+            owner = docker('ps', '-aq', '--no-trunc', '--filter', f'name=^/{owner_name}$')
+            if owner and owner not in ids:
                 raise ValueError('recorded owner container was not found on its volume')
             found = []
             for cid in ids:
@@ -442,14 +457,32 @@ class Driver:
             if (docker('ps', '-aq', '--no-trunc', '--filter', f'volume={volume}')
                     or docker('ps', '-aq', '--no-trunc', '--filter', f'name=^/{owner_name}$')):
                 raise ValueError('container removal could not be verified')
-            docker('volume', 'rm', volume)
+            tmp = 'volume absent'
+            if docker('volume', 'ls', '-q', '--filter', f'name=^{volume}$'):
+                cell.cell_run.preserve_tmp(volume, Path(plan['tmp']), plan['image'])
+                tmp = 'preserved'
             if docker('volume', 'ls', '-q', '--filter', f'name=^{volume}$'):
                 raise ValueError('volume removal could not be verified')
         except (OSError, ValueError, KeyError, IndexError, TypeError, AttributeError,
                 subprocess.SubprocessError) as exc:
             self.stop(f'{name}: Docker teardown proof failed: {exc}')
         self.event('docker_teardown_proven', cell=name, source='run/started.json create_argv and tmp_volume',
-                   found=found, removed=[item['id'] for item in found], removed_volume=volume)
+                   found=found, removed=[item['id'] for item in found], removed_volume=volume, tmp=tmp)
+        return tmp
+
+    def recover(self, name, verdict):
+        """A proven Docker loss before it is archived: ended as a normal teardown ends a cell (prove_docker_teardown),
+        sealed again now that /tmp is in the cell (run_cell.seal_after_teardown, as after a normal teardown) and, when
+        its owner ran, given the evidence of DESIGN "The rule for attempts" (run_cell.stop_evidence). The verdict
+        records how /tmp ended (tmp_recovery) and is replaced atomically."""
+        tmp = self.prove_docker_teardown(name)
+        sealed, failures = cell.seal_after_teardown(self.output / name)
+        if failures:
+            self.stop(f'{name}: evidence collection failed after the Docker recovery: ' + '; '.join(failures[:3]))
+        record = dict(verdict, tmp_recovery=tmp, evidence_manifest_sha256=sealed)
+        if record.get('owner_ran'):
+            record = cell.stop_evidence(self.output / name, record)
+        replace(self.output / f'verdict-{name}.json', json.dumps(record, indent=2))
 
     def dispatch(self, row):
         name, task, arm, config = row[:4]
@@ -481,7 +514,7 @@ class Driver:
             infrastructure_fault = docker_fault(verdict)
             if self.redispatch(name, verdict):
                 if infrastructure_fault:
-                    self.prove_docker_teardown(name)
+                    self.recover(name, verdict)
                 number = 1
                 while (self.output / f'verdict-{name}.stop-{number}.json').exists():
                     number += 1
@@ -489,7 +522,7 @@ class Driver:
                 (self.output / name).rename(self.output / f'{name}.stop-{number}')
             else:
                 self.latch(name, f'STOP {reason}')  # any other STOP stops both lanes, as it stopped the one driver
-                raise RuntimeError(f'{name}: STOP {reason}')
+                raise Stopped(f'{name}: STOP {reason}')
         if task == 'SMOKE' and not self.state.get('first_smoke_dispatch'):
             first = datetime.datetime.now(datetime.timezone.utc).isoformat()
             self.state['first_smoke_dispatch'] = first
@@ -521,32 +554,41 @@ class Driver:
             reason = verdict.get('reason', '') if verdict else 'no verdict'
             if not (verdict and (reason.startswith(REGRADE) or self.redispatch(name, verdict))):
                 self.latch(name, f'STOP {reason}')
-                raise RuntimeError(f'{name}: STOP {reason}')
+                raise Stopped(f'{name}: STOP {reason}')
         return rc == 0
 
     def run(self):
-        i = 0
-        while i < len(self.slots):
-            self.assert_active()
-            row = self.slots[i]
-            name, task, arm, config = row[:4]
-            verdict = self.verdict(name)
-            self.latch_for(name, verdict)
-            self.assert_active()
-            if verdict and verdict['status'] != 'STOP':
-                self.event('skip_finished', cell=name)
-                i += 1
-                continue
-            second = i > 0 and self.slots[i - 1][1] == task and self.slots[i - 1][3] == config and self.slots[i - 1][-1] == row[-1]
-            assessment = bool(verdict and str(verdict.get('reason', '')).startswith(REGRADE))
-            if not self.ready(1500 if assessment else cell.MIN_TOKEN_SECONDS,
-                              name if second else None, self.slots[i - 1][0] if second else None):
-                time.sleep(60)
-                continue
-            if self.dispatch(row):
-                i += 1
-            else:
-                time.sleep(60)
+        """The lane's slots in order. Any exception but Stopped and an operator's interrupt sets the harm latch with
+        its text before it ends the process, so the other lane stops dispatching too."""
+        i, name = 0, None
+        try:
+            while i < len(self.slots):
+                self.assert_active()
+                row = self.slots[i]
+                name, task, arm, config = row[:4]
+                verdict = self.verdict(name)
+                self.latch_for(name, verdict)
+                self.assert_active()
+                if verdict and verdict['status'] != 'STOP':
+                    self.event('skip_finished', cell=name)
+                    i += 1
+                    continue
+                second = (i > 0 and self.slots[i - 1][1] == task and self.slots[i - 1][3] == config
+                          and self.slots[i - 1][-1] == row[-1])
+                assessment = bool(verdict and str(verdict.get('reason', '')).startswith(REGRADE))
+                if not self.ready(1500 if assessment else cell.MIN_TOKEN_SECONDS,
+                                  name if second else None, self.slots[i - 1][0] if second else None):
+                    time.sleep(60)
+                    continue
+                if self.dispatch(row):
+                    i += 1
+                else:
+                    time.sleep(60)
+        except Stopped:
+            raise
+        except Exception as exc:
+            self.latch(None, f'lane {self.lane or "smoke"} ended at {name}: {type(exc).__name__}: {exc}')
+            raise
         self.event('complete', cells=len(self.slots))
 
 

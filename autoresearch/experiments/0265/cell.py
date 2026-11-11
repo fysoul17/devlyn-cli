@@ -1,9 +1,10 @@
-"""0265 owner: 0237's v1 lifecycle (0233's with explicit Docker init), plus three things.
+"""0265 owner: 0237's v1 lifecycle (0233's with explicit Docker init), plus four things.
 
 A B cell's plan names the frozen package folder (plan['install']), mounted read-only at /install so `devlyn run` can
 start the engine; A has no such mount. run/result.json records how the owner container ended (Docker's OOMKilled
-flag and exit code), so run_cell.py can tell a memory kill from an owner outcome. And identity() holds a Codex session
-that started before the owner to no model (DESIGN Q7). mounts() and create_argv() are the container a cell runs in;
+flag and exit code), so run_cell.py can tell a memory kill from an owner outcome. identity() holds a Codex session
+that started before the owner to no model (DESIGN Q7). And the credential copy, volume and container are acquired
+inside the lifecycle that removes them (run). mounts() and create_argv() are the container a cell runs in;
 instructions.py's launch probe (DESIGN Q2) runs its probes in the same container, without credentials.
 """
 import hashlib
@@ -78,31 +79,36 @@ def create_argv(plan, name, volume, binds, env, command):
 
 
 def run(out, runtime):
+    """The owner's container from the cell's first credential copy to its teardown. Everything acquired (the per-cell
+    credential copy, the /tmp volume, the container) is acquired inside the lifecycle whose finally ends it, so an
+    exception anywhere after the copy is made leaves no copy in scratch and no volume or container behind."""
     plan = json.loads((out / 'plan.json').read_text())
     record_dir = out / 'run'
     record_dir.mkdir(exist_ok=False)
     auth = Path(runtime['auth'])
     secret = Path(runtime['scratch']) / 'credentials' / plan['name']
-    secret.mkdir(parents=True, exist_ok=False)
-    shutil.copyfile(auth / 'claude.json', secret / 'claude.json')
-    (secret / 'claude.json').chmod(0o600)
-    home = Path(plan['home'])
-    (home / '.claude/.credentials.json').touch()
-    (home / '.codex/auth.json').touch()
-    credentials = [(auth / 'codex.json', '/home/participant/.codex/auth.json', True),
-                   (secret / 'claude.json', '/home/participant/.claude/.credentials.json', False)]
     name = 'devlyn-0231-' + uuid.uuid4().hex
     # /tmp is a per-cell Docker volume, copied to plan['tmp'] after teardown: Codex's Linux sandbox refuses to run any
     # command when /tmp is a host bind mount (0232 SMOKE), which would disable sandboxed Codex children.
     volume = 'devlyn-0233-tmp-' + uuid.uuid4().hex
-    docker('volume', 'create', '--label', 'devlyn.task=0233', volume)
-    argv = create_argv(plan, name, volume, mounts(plan, credentials), plan['env'], plan['argv'])
-    record = dict(create_argv=argv, source_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
-                  tmp_volume=volume, started_at=time.time())
-    (record_dir / 'started.json').write_text(json.dumps(record, indent=2))
-    cid = docker(*argv)
-    start, status = time.monotonic(), None
+    record = dict(source_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest())
+    cid, start, status = None, time.monotonic(), None
+    secret.mkdir(parents=True, exist_ok=False)
     try:
+        shutil.copyfile(auth / 'claude.json', secret / 'claude.json')
+        (secret / 'claude.json').chmod(0o600)
+        home = Path(plan['home'])
+        (home / '.claude/.credentials.json').touch()
+        (home / '.codex/auth.json').touch()
+        credentials = [(auth / 'codex.json', '/home/participant/.codex/auth.json', True),
+                       (secret / 'claude.json', '/home/participant/.claude/.credentials.json', False)]
+        record['tmp_volume'] = volume  # from here on the volume may exist
+        docker('volume', 'create', '--label', 'devlyn.task=0233', volume)
+        argv = create_argv(plan, name, volume, mounts(plan, credentials), plan['env'], plan['argv'])
+        record.update(create_argv=argv, started_at=time.time())
+        (record_dir / 'started.json').write_text(json.dumps(record, indent=2))
+        cid = docker(*argv)
+        start = time.monotonic()
         with (record_dir / 'stdout').open('xb') as stdout, (record_dir / 'stderr').open('xb') as stderr:
             process = subprocess.Popen(['docker', 'start', '-a', cid], stdout=stdout, stderr=stderr)
             try:
@@ -113,16 +119,20 @@ def run(out, runtime):
     finally:
         record.update(owner_status=status, seconds=time.monotonic() - start)
         try:
-            if json.loads(docker('inspect', cid))[0]['State']['Running']:
-                docker('kill', cid)
-            state = json.loads(docker('inspect', cid))[0]['State']
-            record['container'] = dict(oom_killed=state.get('OOMKilled'), exit_code=state.get('ExitCode'))
-            if state['Running'] or state['Pid'] != 0:
-                raise RuntimeError('container survived kill')
-            docker('rm', cid)
-            preserve_tmp(volume, Path(plan['tmp']), plan['image'])
+            if cid is None and (record_dir / 'started.json').is_file():  # `docker create` gave no answer, yet may
+                cid = docker('ps', '-aq', '--no-trunc', '--filter', f'name=^/{name}$') or None  # have made it
+            if cid is not None:
+                if json.loads(docker('inspect', cid))[0]['State']['Running']:
+                    docker('kill', cid)
+                state = json.loads(docker('inspect', cid))[0]['State']
+                record['container'] = dict(oom_killed=state.get('OOMKilled'), exit_code=state.get('ExitCode'))
+                if state['Running'] or state['Pid'] != 0:
+                    raise RuntimeError('container survived kill')
+                docker('rm', cid)
+            if 'tmp_volume' in record:
+                preserve_tmp(volume, Path(plan['tmp']), plan['image'])
             record['teardown'] = 'CLEAN'
-        except (OSError, RuntimeError, subprocess.SubprocessError) as exc:
+        except (OSError, RuntimeError, ValueError, KeyError, IndexError, subprocess.SubprocessError) as exc:
             stderr = getattr(exc, 'stderr', None)  # bytes on a timeout, even when the call asked for text
             stderr = stderr.decode(errors='replace') if isinstance(stderr, bytes) else stderr
             record.update(teardown='FAILED', teardown_error=' '.join(filter(None, (str(exc), stderr))))

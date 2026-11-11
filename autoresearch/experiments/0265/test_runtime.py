@@ -7,6 +7,7 @@ import io
 import json
 from pathlib import Path
 import subprocess
+import sys
 import tarfile
 import tempfile
 import time
@@ -189,7 +190,7 @@ class IssueSnapshots(Fixture):
 
 class RuntimeFiles(Fixture):
     SHARED = ('output', 'control', 'sources', 'scratch', 'image', 'image_tarball', 'models_cache', 'renewal_command',
-              'tasks_override', 'caps', 'account', 'codex_auth', 'renewal_lock', 'check_lock')
+              'tasks_override', 'caps', 'codex_auth', 'renewal_lock', 'check_lock')  # no `account`: nothing reads it
 
     def test_shared_and_per_lane_fields(self):
         self.run_setup()
@@ -589,6 +590,21 @@ class StrictConfigExec(unittest.TestCase):
         with mock.patch('sys.stderr', new=io.StringIO()):
             code, _, _ = self.run_exec()
         self.assertEqual((code, self.snapshots, self.calls), (3, 1, []))  # Q3 is recorded once
+
+    def test_the_exec_runs_are_the_only_mode(self):
+        """M2: the `codex debug` mode and its printed fallback commands, which left a config home with the login's
+        mount for an operator to run unguarded, are gone. Violating: the script without --run-exec refuses before it
+        reads the runtime file, snapshots nothing and writes nothing; allowed: --run-exec (the tests above)."""
+        self.assertEqual([name for name in ('main', 'decide', 'exec_commands', 'docker_argv', 'codex_home')
+                          if hasattr(strict, name)], [])
+        before = sorted((self.root / 'scratch').iterdir())
+        done = subprocess.run([sys.executable, '-I', str(HERE / 'strict_config_check.py'), str(self.runtime)],
+                              capture_output=True, text=True, timeout=60)
+        self.assertEqual(done.returncode, 2, done.stderr)
+        self.assertIn('the following arguments are required: --run-exec', done.stderr)
+        self.assertEqual((done.stdout, sorted((self.root / 'scratch').iterdir()), self.snapshots), ('', before, 0))
+        self.assertFalse((self.root / 'q3-strict-config.json').exists())
+        self.assertEqual(list((self.root / 'auth-smoke').iterdir()), [])
 
     def test_an_old_codex_login_holds_the_exec_runs(self):
         """O15, through the real run_cell.snapshot_auth: a Codex login renewed 7.5 days ago leaves Q3 undecided with

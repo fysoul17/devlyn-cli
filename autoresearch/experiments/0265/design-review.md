@@ -95,3 +95,43 @@ build, in a separate folder that is never part of the run. After the two fixes a
 `CLEAN`, identity `MATCH`, usage COMPLETE in both arms of both engines (Codex B's app-server read left no session of
 its own), every other per-cell assertion passed as built, the graded tree was the anchor in all four (B did not use
 the delivery helper on this task), and the mechanical harm check had no finding.
+
+## Code review of the apparatus (2026-11-11)
+
+One pass by GPT Astra (ultra, read-only) and Grok 4.7 (read-only) on commit `43b32a85`, the source the 230 tests
+passed on. Every finding, with what was done.
+
+### Astra: REVISE (7 HIGH, 6 MEDIUM)
+
+| # | Severity | Finding | Disposition |
+|---|---|---|---|
+| CA1 | HIGH | Unassessable probe classes were moved together in both arms, which is not an extreme, so a replication reading and P2 could be wrong | Fixed: the two opposing assignments (Decision 1); P2 holds or misses only when every feasible pair of counts agrees. |
+| CA2 | HIGH | Archived attempts in which an owner ran could lose their scope and witness coverage while the harm line read as final | Fixed: "Attempts" (Decision): such an attempt keeps its graded tree and scope result even on a STOP, witnesses run on it, and the harm line is NOT_FINISHED while any of it is missing. An attempt whose owner did not exit normally has no final report and forms no judge pair. |
+| CA3 | HIGH | An assessor container whose teardown could not be proved was regraded like an assessor fault | Fixed: its own STOP, never regraded, so it stops both lanes. |
+| CA4 | HIGH | An error while a cell was being set up could leave its credential copy, volume or container behind, and a lane that ended in an error did not stop the other | Fixed: acquisition is inside the cleanup; a setup failure is a STOP verdict; a lane ending in an error sets the shared latch. |
+| CA5 | HIGH | Docker-loss recovery removed the attempt's `/tmp` volume without keeping its contents, and needed an owner container that normal cleanup may already have removed | Fixed: the volume is preserved first when it still exists; recovery works from `run/started.json` when the container is gone. |
+| CA6 | HIGH | The Git-configuration harm test exempted every key under a new branch name | Fixed: only `branch.<new>.remote` and `.merge` (audit-rule §4). |
+| CA7 | HIGH | "Identical trees" (O2) ignored the executable bit | Fixed: same type, executable bit and bytes (Q4). |
+| CA8 | MEDIUM | Judge packets for unresolved witnesses lacked the recorded output | Fixed: both passes' exit status, output and error text. |
+| CA9 | MEDIUM | Two leftover entry points could use a login copy without the renewal guards (`assess.py`'s command line, the strict-config fallback commands) | Fixed by deleting both. |
+| CA10 | MEDIUM | Cost tables left out owner-ran attempts of unfinished slots | Fixed (Decision, "Details"). |
+| CA11 | MEDIUM | The imported Fisher function printed p = 1 without computing when the effect was not in the tested direction | Fixed: a 0265 function computes the tail in every case; no reading changes, the printed p does. |
+| CA12 | MEDIUM | The pruning record was written after deletion and held no symbolic links | Fixed: written before, with the links, and marked when done. |
+| CA13 | MEDIUM | A cell at the watchdog could carry a COMPLETE verdict that the decision then overrode | Fixed: its verdict reads PRODUCT_INCOMPLETE. |
+
+Removed on Astra's list: the strict-config debug mode and its printed commands, `assess.py`'s command line, the
+E1/E2 entries of `check.py`, an unused token fallback and an unused parameter in `run_cell.py`, the inherited
+diagnostics call (no 0265 reader), the unused `account` field of the runtime files.
+
+### Grok: REVISE (1 HIGH, 3 MEDIUM)
+
+| # | Severity | Finding | Disposition |
+|---|---|---|---|
+| CG1 | HIGH | A failed `docker create` left the credential copy and the cell folder (so the slot could not be prepared again), and `stop()` ended a lane without stopping the other | Fixed with CA4: a setup failure is a STOP verdict the usual archive path handles; `stop()` sets the shared latch. |
+| CG2 | MEDIUM | The Git-configuration exemption was too wide | Fixed with CA6. |
+| CG3 | MEDIUM | A judge's quote was checked against the raw messages, so a quote copied with the packet's `[n] ` prefix was called invalid | Fixed: the quote is checked against the packet's report as the judge saw it. |
+| CG4 | MEDIUM | The Claude token guard was read only before `prepare`, which has no time limit | Fixed: read again after `prepare`; a cell with less than the watchdog plus 300 s left is not started (Operations, "Token guard"). |
+
+Asked about them in particular, neither reviewer reported a finding on: arm symmetry beyond the wrapper and the
+`/install` mount, the lane locks and separate login snapshots, the per-cell assertions and the launch probe, and
+the witness pins and exit semantics. Grok checked the Codex seven-day guard for a hole like CG4's and found none.

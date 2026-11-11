@@ -1,9 +1,11 @@
-"""Dual blinded assessment of one sealed 0265 cell: assess.py <cell-out> <runtime.json>. Record only.
+"""Dual blinded assessment of one sealed 0265 cell, called by run_cell.py only (its credential copies are the
+assessor snapshot run_cell takes under the renewal guards). Record only.
 
 0233's assessors: 0222's packet and prompt, built on the selected snapshot laid over the allocation commit (so its
 diff and untracked list are the product's), run on the image's pinned CLIs instead of the host's. The two seats run at
 the same time; their records keep TASKS['assessors'] order. one() is also the seat of other blind readers: given a
-record_dir, it writes its prompt, stdout, stderr and result.json there.
+record_dir, it writes its prompt, stdout, stderr and result.json there. A seat container whose removal cannot be
+proved raises TeardownUnproved, which is no assessment failure: run_cell stops on it without a regrade.
 """
 import concurrent.futures
 import importlib.util
@@ -12,7 +14,6 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
-import sys
 import tempfile
 import time
 import uuid
@@ -41,13 +42,17 @@ def review_tree(out, temp):
     return work
 
 
+class TeardownUnproved(RuntimeError):
+    """A seat's container may have outlived its seat: never regraded, since another assessment could run beside it."""
+
+
 def reap(name):
-    """Remove a named container and prove it is gone; any uncertainty is an evaluator STOP, never silence."""
+    """Remove a named container and prove it is gone; any uncertainty is a STOP of its own, never silence."""
     removed = subprocess.run(['docker', 'rm', '-f', name], capture_output=True, text=True, timeout=60)
     probe = subprocess.run(['docker', 'inspect', name], capture_output=True, text=True, timeout=60)
     gone = probe.returncode != 0 and 'no such object' in probe.stderr.lower()  # Docker 29 prints it in lower case
     if not gone or (removed.returncode != 0 and 'no such container' not in removed.stderr.lower()):
-        raise RuntimeError(f'cannot prove container {name} is gone: {removed.stderr.strip()} {probe.stderr.strip()}')
+        raise TeardownUnproved(f'cannot prove container {name} is gone: {removed.stderr.strip()} {probe.stderr.strip()}')
 
 
 def valid(answer):
@@ -137,14 +142,15 @@ def assess(out, runtime):
                   'and limitations. No tools or repairs. Do not infer an arm from coding style.\n' + prompt)
         prompt += '\nROOT DETERMINISTIC CHECKS\n' + (out / 'checks.json').read_text()
         prompt = prompt.replace(str(work), '/sealed-cell/work').replace(str(out), '/sealed-cell')
-        # Both seats finish before either result is read, so a failing seat raises only after the other ended.
+        # Both seats finish before either result is read, so a failing seat raises only after the other ended; an
+        # unproved teardown in either seat is raised before any other seat failure.
         with concurrent.futures.ThreadPoolExecutor(2) as pool:
             seats = [pool.submit(one, out, runtime, route, prompt) for route in TASKS['assessors']]
+        failed = sorted((seat.exception() for seat in seats if seat.exception()),
+                        key=lambda exc: not isinstance(exc, TeardownUnproved))
+        if failed:
+            raise failed[0]
         records = [seat.result() for seat in seats]
         if before != {n: packet.digest(work / n) for n in before}:
             raise RuntimeError('sealed source changed during assessment')
     return records
-
-
-if __name__ == '__main__':
-    print(json.dumps(assess(Path(sys.argv[1]).resolve(), json.loads(Path(sys.argv[2]).read_text()))))

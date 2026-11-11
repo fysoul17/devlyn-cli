@@ -227,7 +227,6 @@ def runtime_record(root, image, lane_file, lane, codex_auth=None):
                 scratch=str(root / 'scratch'), image=image, image_tarball=str(root / 'image.tar'),
                 models_cache=str(root / 'models_cache.json'), auth=str(root / f'auth-{lane_file}'),
                 renewal_command=RENEWAL, tasks_override=str(OVERRIDE.resolve()), caps=CAPS,
-                account=None,  # since 0257 amendment 1 any logged-in account; the driver reads it per dispatch
                 codex_auth=codex_auth,  # the Codex login run_cell.snapshot_auth copies; null: the host default
                 lane=lane, renewal_lock=str(root / 'renewal.lock'), check_lock=str(root / 'check.lock'))
 

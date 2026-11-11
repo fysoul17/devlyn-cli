@@ -1,12 +1,16 @@
 """Run one 0265 cell end to end: run_cell.py <runtime.json> <name> <task> <arm> <config>. After an assessor fault,
 run_cell.py --regrade <runtime.json> <name> assesses the preserved cell again.
 
-Exit 0 = verdict recorded (any product outcome), 3 = not dispatched (preflight), 2 = STOP: a container survivor,
-a B launch fault, a memory kill, changed control or harness, model identity collapse, a shared account fault, a
-failed per-cell assertion (instructions.check against the launch probe's and SMOKE's seal), a locator defect, or an
-evaluator or assessor that produced no verdict. Every verdict of a cell whose owner ran records oom_killed (Docker's
-flag for any process in the owner container). Once a measured cell's verdict is written and is not a STOP, Codex's own
-caches are pruned from its HOME (prune()).
+Exit 0 = verdict recorded (any product outcome), 3 = not dispatched (preflight, or a Claude login copy left with less
+than the watchdog plus 300 s once the cell is prepared: the prepared folder is removed), 2 = STOP: a container that
+could not be set up, a container survivor, a B launch fault, a memory kill, changed control or harness, model
+identity collapse, a shared account fault, a failed per-cell assertion (instructions.check against the launch probe's
+and SMOKE's seal), a locator defect, an evaluator or assessor that produced no verdict, or an assessor container whose
+removal is unproved. Every verdict records owner_ran (DESIGN "The rule for attempts": false only before the cell and
+for a B launch fault), and every verdict of a cell whose container ran records oom_killed (Docker's flag for any
+process in the owner container). A memory kill or a shared account fault, which the driver redispatches, keeps its
+graded tree and scope (stop_evidence). An owner at the watchdog is never COMPLETE. Once a measured cell's verdict is
+written and is not a STOP, Codex's own caches are pruned from its HOME (prune()).
 """
 import datetime
 import fcntl
@@ -40,11 +44,12 @@ def load(name, path=None):
     return module
 
 
-prepare, cell_run, usage, locate, check, assess, quota, diagnostics = (load(n) for n in (
-    'prepare', 'cell', 'record_usage', 'locate', 'check', 'assess', 'quota', 'diagnostics'))
+prepare, cell_run, usage, locate, check, assess, quota = (load(n) for n in (
+    'prepare', 'cell', 'record_usage', 'locate', 'check', 'assess', 'quota'))
 base = load('run_cell0222', HERE.parent / '0222/run_cell.py')
 instructions = load('instructions')
 MIN_TOKEN_SECONDS = prepare.WALL_SECONDS + 900  # 3,600: no copied token is refreshed inside a cell
+START_TOKEN_SECONDS = prepare.WALL_SECONDS + 300  # 3,000: what the copy must still hold once the cell is prepared
 # Free space on the output volume before a cell: two lanes' cells and traces (full request payloads) with margin.
 HEADROOM_BYTES = 16 * 2**30
 # DESIGN Operations "Disk": every Codex session clones OpenAI's curated plugin marketplace into CODEX_HOME (30-100 MB a
@@ -54,6 +59,8 @@ PRUNED = ('home/.codex/.tmp', 'home/.codex/plugins/cache/openai-curated-remote',
 # DESIGN Operations "Codex login" (O15): Codex renews a login by itself about eight days after its last renewal, and a
 # renewal inside a cell, an assessor or a judge, which hold a copy, would be used up without being saved.
 CODEX_LOGIN_MAX_AGE_SECONDS = 7 * 86400
+# The STOPs after an owner ran that driver.py redispatches from run_cell's own verdict (a Docker loss is recovered there).
+REDISPATCHED = ('memory kill: ', 'shared account fault during execution: ')
 
 
 def digest(path):
@@ -122,10 +129,16 @@ def snapshot_auth(runtime):
     return dict(account=identity, token_seconds_left=int(remaining), codex_account=codex_account), None
 
 
-def claude_limits(runtime, access_token=None):
-    """The dispatching Claude account's own windows (utilization percent and reset), from its usage endpoint."""
-    if access_token is None:
-        access_token = json.loads((Path(runtime['auth']) / 'claude.json').read_text())['claudeAiOauth']['accessToken']
+def token_life(runtime):
+    """Seconds left on the Claude login copy a cell is about to mount (runtime['auth']/claude.json, which preflight's
+    snapshot_auth wrote): DESIGN "Token guard" reads it again once the cell is prepared. Only expiresAt is read."""
+    oauth = json.loads((Path(runtime['auth']) / 'claude.json').read_text())['claudeAiOauth']
+    return oauth['expiresAt'] / 1000 - time.time()
+
+
+def claude_limits(runtime, access_token):
+    """The dispatching Claude account's own windows (utilization percent and reset), from its usage endpoint, read with
+    the token the driver's ready() read."""
     request = urllib.request.Request('https://api.anthropic.com/api/oauth/usage', headers={
         'Authorization': 'Bearer ' + access_token, 'anthropic-beta': 'oauth-2025-04-20'})
     with urllib.request.urlopen(request, timeout=20) as response:
@@ -160,7 +173,7 @@ def image_identity(runtime):
     return actual == runtime['image']
 
 
-def assessment_snapshot(runtime, venue):
+def assessment_snapshot(runtime):
     """Fresh 1,500-second assessor credential from the current host login, and a fresh copy of the Codex login under
     the same renewal guard as a cell's (a regrade can come long after its cell's copy was taken)."""
     raw = subprocess.run(['security', 'find-generic-password', '-s', 'Claude Code-credentials', '-w'],
@@ -275,16 +288,16 @@ def run(runtime_path, name, task, arm, config, *, expected_account=None):
         raise ValueError(f'{name}: verdict already exists')
     instruction_seal = Path(runtime['output']).parent / 'instructions.seal.json'
     if not instruction_seal.is_file():
-        return write_verdict(verdict_path, dict(cell=name, status='STOP',
+        return write_verdict(verdict_path, dict(cell=name, status='STOP', owner_ran=False,
                                                reason='instruction assertion: seal missing'))
     if task != 'SMOKE':
         try:
             forms = json.loads(instruction_seal.read_text())['forms']
         except (OSError, ValueError, KeyError, TypeError) as exc:
-            return write_verdict(verdict_path, dict(cell=name, status='STOP',
+            return write_verdict(verdict_path, dict(cell=name, status='STOP', owner_ran=False,
                                                    reason=f'instruction assertion: seal unreadable: {exc}'))
         if set(forms) != {'claude', 'codex'}:
-            return write_verdict(verdict_path, dict(cell=name, status='STOP',
+            return write_verdict(verdict_path, dict(cell=name, status='STOP', owner_ran=False,
                                                    reason='instruction assertion: owner forms unsealed'))
     if not image_identity(runtime):
         (Path(runtime['output']) / f'not-dispatched-{name}.json').write_text(json.dumps(
@@ -295,7 +308,8 @@ def run(runtime_path, name, task, arm, config, *, expected_account=None):
         (Path(runtime['output']) / f'not-dispatched-{name}.json').write_text(json.dumps(dict(reason=blocked), indent=2))
         return 3
     if not control_unchanged(runtime):
-        verdict_path.write_text(json.dumps(dict(cell=name, status='STOP', reason='control changed'), indent=2))
+        verdict_path.write_text(json.dumps(dict(cell=name, status='STOP', owner_ran=False, reason='control changed'),
+                                           indent=2))
         return 2
     out = prepare.prepare(runtime, name, task, arm, config)
     control_manifest = json.loads(Path(runtime['control'] + '.manifest.json').read_text())
@@ -316,14 +330,28 @@ def run(runtime_path, name, task, arm, config, *, expected_account=None):
                                           'home/.claude/settings.json') +
               (('home/.codex/config.toml',) if config == 'codex' else ())},
         control_manifest_sha256=digest(runtime['control'] + '.manifest.json')), indent=2))
+    left = token_life(runtime)
+    if left < START_TOKEN_SECONDS:  # DESIGN "Token guard": prepare has no time limit; nothing ran in the folder
+        shutil.rmtree(out)
+        (Path(runtime['output']) / f'not-dispatched-{name}.json').write_text(json.dumps(dict(
+            reason=f'Claude login copy expires in {int(left)}s after prepare, below {START_TOKEN_SECONDS}s'), indent=2))
+        return 3
     record = dict(cell=name, task=task, arm=arm, config=config, claude_account_before=venue['account'],
                   codex_account=venue['codex_account'])
-    owner = cell_run.run(out, runtime)
+    try:
+        owner = cell_run.run(out, runtime)
+    except (OSError, subprocess.SubprocessError) as exc:  # DESIGN Faults: a container that could not be set up (or
+        ended = out / 'run/result.json'  # recorded) is a STOP; cell.run has removed what it had made
+        ended = json.loads(ended.read_text()) if ended.is_file() else {}
+        record.update({key: ended[key] for key in ('owner_status', 'teardown', 'teardown_error') if key in ended},
+                      owner_ran=ended.get('owner_status') is not None, status='STOP',
+                      reason=f'cell setup failed: {type(exc).__name__}: {exc}')
+        return write_verdict(verdict_path, record)
     record['oom_killed'] = (owner.get('container') or {}).get('oom_killed') is True
     sealed, collection_failures = seal_after_teardown(out)
-    if collection_failures:  # stop before any other reader touches evidence that could not be sealed
-        record.update(owner_status=owner['owner_status'], teardown=owner['teardown'],
-                      identity=owner['identity'], status='STOP',
+    if collection_failures:  # stop before any other reader touches evidence that could not be sealed; nothing shows
+        record.update(owner_status=owner['owner_status'], teardown=owner['teardown'],  # a launch fault, so the
+                      identity=owner['identity'], status='STOP', owner_ran=True,  # owner is taken to have run
                       reason='evidence collection failed: ' + '; '.join(collection_failures[:3]))
         return write_verdict(verdict_path, record)
     try:
@@ -337,13 +365,10 @@ def run(runtime_path, name, task, arm, config, *, expected_account=None):
                   output_tokens=recorded['output_tokens'],
                   quota=limits, trace_bytes=trace_bytes, evidence_manifest_sha256=sealed,
                   collection_failures=collection_failures)
-    try:
-        record['diagnostics'] = diagnostics.record(out)
-    except (OSError, ValueError, TypeError, KeyError) as exc:
-        record['diagnostics'] = dict(status='UNKNOWN', error=f'{type(exc).__name__}: {exc}')
     baseline = json.loads((out / 'baseline.json').read_text())
     plan = json.loads((out / 'plan.json').read_text())
     fault, killed = launch_fault(out, plan), memory_kill(owner)
+    record['owner_ran'] = fault is None
     stop = ('teardown failed: ' + str(owner.get('teardown_error')) if owner['teardown'] != 'CLEAN' else
             'B launch fault: ' + fault if fault is not None else
             'memory kill: ' + killed if killed else
@@ -352,6 +377,8 @@ def run(runtime_path, name, task, arm, config, *, expected_account=None):
             if limits['execution'] else
             'model identity ' + owner['identity']['status'].lower()
             if owner['identity']['status'] in ('MISMATCH', 'UNVERIFIED', 'UNKNOWN') else None)
+    if stop and stop.startswith(REDISPATCHED):
+        record = stop_evidence(out, record)
     if not stop and task != 'SMOKE':  # SMOKE is asserted by `instructions.py seal-forms`, once its forms exist
         try:
             assertion = instructions.check(out, plan, json.loads(instruction_seal.read_text()))
@@ -370,27 +397,48 @@ def run(runtime_path, name, task, arm, config, *, expected_account=None):
     if stop:
         record.update(status='STOP', reason=stop)
         return write_verdict(verdict_path, record)
-    return write_graded(out, verdict_path, grade(out, runtime, record, checks, venue))
+    return write_graded(out, verdict_path, grade(out, runtime, record, checks))
 
 
-def grade(out, runtime, record, checks, venue, assessment_venue=None):
-    """The assessors on the checked snapshot, then the arm's methodology record: the verdict record."""
+def stop_evidence(out, record):
+    """DESIGN "The rule for attempts": an attempt whose owner ran and that ends in a STOP the driver redispatches (a
+    memory kill, a shared account fault, a Docker loss once driver.py has recovered it) keeps its graded tree
+    (locate.locate: snapshot/ and snapshot.json) and its scope result (check.scope, the check phase's own reading of
+    tree against baseline and allowed paths), in the record and in a checks.json of those fields alone: nothing else
+    was checked. A tree locate cannot choose leaves scope_violations null, the reason in scope_error, and no snapshot (a
+    partial copy is moved to snapshot.partial). Returns the record."""
+    try:
+        selection = locate.locate(out)
+    except locate.LocatorError as exc:
+        if (out / 'snapshot').exists():
+            (out / 'snapshot').rename(out / 'snapshot.partial')
+        return dict(record, scope_violations=None, scope_error=str(exc))
+    changed, violations = check.scope(out)
+    (out / 'checks.json').write_text(json.dumps(dict(scope_violations=violations, changed=changed), indent=2))
+    return dict(record, snapshot=selection, scope_violations=violations, changed=changed)
+
+
+def grade(out, runtime, record, checks, assessment_venue=None):
+    """The assessors on the checked snapshot, then the arm's methodology record: the verdict record. An owner at the
+    watchdog is PRODUCT_INCOMPLETE whatever its checks and assessors say (DESIGN "Details every count uses")."""
     record.pop('assessor_account', None)
     try:
-        fresh, blocked = (assessment_snapshot(runtime, venue) if assessment_venue is None
-                          else (assessment_venue, None))
+        fresh, blocked = assessment_snapshot(runtime) if assessment_venue is None else (assessment_venue, None)
         if blocked:
             return dict(record, status='STOP', reason='assessment held: ' + blocked)
         record['assessment_venue'] = fresh
         record['assessor_account'] = fresh['account']
         assessments = assess.assess(out, runtime)
+    except assess.TeardownUnproved as exc:  # never regraded: another assessment could run beside the survivor
+        record.update(status='STOP', reason=f'assessor teardown unproved: {exc}')
     except (RuntimeError, OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError) as exc:
         record.update(status='STOP', reason=f'assessment failed: {exc}')
     else:
         record.update(product_check_pass=checks['product_check_pass'], oracle=checks['oracle'],
                       scope_violations=checks['scope_violations'], assessments=assessments,
                       assessor_disagreement=len({a['complete'] for a in assessments}) > 1,
-                      status=base.verdict(checks, assessments))
+                      status='PRODUCT_INCOMPLETE' if record['owner_status'] == 'HANG_TIMEOUT'
+                      else base.verdict(checks, assessments))
         if base.unassessed(assessments):
             regrade = quota.classify(out)['assessment']
             record.update(status='STOP', reason='assessor produced no verdict: ' + ', '.join(base.unassessed(assessments))
@@ -408,7 +456,7 @@ def regrade(runtime_path, name, *, expected_account=None):
     if record.get('status') != 'STOP' or not str(record.get('reason')).startswith(('assessment failed', 'assessor produced', 'assessment held:')):
         raise SystemExit(f'{name}: only an assessor STOP is regraded')
     venue = json.loads((out / 'seal.json').read_text())['venue']
-    fresh, blocked = assessment_snapshot(runtime, venue)
+    fresh, blocked = assessment_snapshot(runtime)
     if blocked:
         print(f'{name}: not regraded: {blocked}', file=sys.stderr)
         return 3
@@ -424,7 +472,7 @@ def regrade(runtime_path, name, *, expected_account=None):
         regraded=dict(after=f'stop-{stop}', venue=venue, at=datetime.datetime.now(datetime.timezone.utc).isoformat()))
     record.setdefault('claude_account_before', venue['account'])
     return write_graded(out, verdict_path, grade(out, runtime, record, json.loads((out / 'checks.json').read_text()),
-                                                 venue, assessment_venue=fresh))
+                                                 assessment_venue=fresh))
 
 
 def write_verdict(path, record):
@@ -447,32 +495,53 @@ def write_graded(out, path, record):
     return code
 
 
+def replace(path, record):
+    """Write a JSON record through a temp file in its folder and os.replace, so no reader sees part of it."""
+    temp = path.with_name(f'.{path.name}.{os.getpid()}')
+    temp.write_text(json.dumps(record, indent=2, sort_keys=True))
+    os.replace(temp, path)
+
+
 def prune(out):
-    """Remove PRUNED from a graded cell and record each removed root's file count and bytes in pruned.json. Nothing
-    else is touched: the devlyn projection, sessions, rollouts, sqlite state and skills/ stay. An absent root is
-    skipped, so a Claude cell or a second call leaves the record as it was. A root reached through a symbolic link is
-    never followed, and a root that cannot be removed is recorded with its error and printed; the verdict stands."""
+    """Remove PRUNED from a graded cell. Before anything is deleted, pruned.json lists each present root with its file
+    count, bytes and every symbolic link under it (path and target: evidence.manifest.json holds regular files only),
+    marked "removed": false; once every listed root is gone the mark becomes true (an atomic replace). Nothing else is
+    touched: the devlyn projection, sessions, rollouts, sqlite state and skills/ stay. An existing pruned.json is
+    returned as it is, so a second call (a regrade) or a cell left at "removed": false keeps its record. A root reached
+    through a symbolic link is never followed, and a root that cannot be removed keeps its error and is printed; the
+    mark then stays false and the verdict stands."""
     path = out / 'pruned.json'
-    record = json.loads(path.read_text()) if path.is_file() else {}
+    if path.is_file():
+        return json.loads(path.read_text())
+    roots = {}
     for root in PRUNED:
         target = out / root
         if not os.path.lexists(target):
             continue
         if target.resolve() != out.resolve() / root:
-            record[root] = dict(error='not removed: reached through a symbolic link')
-        else:
-            files = size = 0
-            for folder, dirs, names in os.walk(target):
-                for name in names + [d for d in dirs if os.path.islink(os.path.join(folder, d))]:
-                    files, size = files + 1, size + os.lstat(os.path.join(folder, name)).st_size
-            record[root] = dict(files=files, bytes=size)
+            roots[root] = dict(error='not removed: reached through a symbolic link')
+            continue
+        files = size = 0
+        links = {}
+        for folder, dirs, names in os.walk(target):
+            for name in names + [d for d in dirs if os.path.islink(os.path.join(folder, d))]:
+                item = os.path.join(folder, name)
+                files, size = files + 1, size + os.lstat(item).st_size
+                if os.path.islink(item):
+                    links[os.path.relpath(item, out)] = os.readlink(item)
+        roots[root] = dict(files=files, bytes=size, symlinks=links)
+    record = dict(removed=False, roots=roots)
+    replace(path, record)
+    for root, entry in roots.items():
+        if 'error' not in entry:
             try:
-                shutil.rmtree(target)
+                shutil.rmtree(out / root)
             except OSError as exc:
-                record[root]['error'] = f'not removed: {exc}'
-        if 'error' in record[root]:
-            print(f'{out.name}: {root} {record[root]["error"]}', file=sys.stderr)
-    path.write_text(json.dumps(record, indent=2, sort_keys=True))
+                entry['error'] = f'not removed: {exc}'
+        if 'error' in entry:
+            print(f'{out.name}: {root} {entry["error"]}', file=sys.stderr)
+    record['removed'] = not any('error' in entry for entry in roots.values())
+    replace(path, record)
     return record
 
 

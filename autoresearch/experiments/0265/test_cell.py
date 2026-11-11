@@ -7,6 +7,7 @@ import datetime
 import fcntl
 import hashlib
 import importlib.util
+import inspect
 import io
 import json
 from pathlib import Path
@@ -855,7 +856,7 @@ class Arms(unittest.TestCase):
                   r'instructions\.pre', r'codex_limits', r'claude_limits_with_account', r'claude_limits_(before|after)',
                   r"'E1'", r"'E2'"]
         for name in ('prepare.py', 'cell.py', 'run_cell.py', 'instructions.py', 'assess.py', 'quota.py',
-                     'strict_config_check.py'):
+                     'strict_config_check.py', 'check.py'):
             text = (HERE / name).read_text()
             for pattern in banned:
                 self.assertIsNone(re.search(pattern, text), (name, pattern))
@@ -864,6 +865,17 @@ class Arms(unittest.TestCase):
             self.assertFalse(flag in text, flag)
         self.assertEqual((prepare.ARMS, prepare.CONFIGS), (('A', 'B'), ('claude', 'codex')))
         self.assertFalse(hasattr(run_cell, 'codex_limits') or hasattr(run_cell, 'claude_limits_with_account'))
+
+    def test_removed_entry_points_and_parameters(self):
+        """Astra's removable list: no assess.py command line (it bypassed the guarded credential snapshot), no E1/E2
+        rows, no stored-token fallback for the usage read, no unused venue, no diagnostics nothing in 0265 reads."""
+        self.assertNotIn('__main__', (HERE / 'assess.py').read_text())
+        self.assertEqual(set(run_cell.check.ROWS), {'B5', 'F10', 'F11'})
+        self.assertIs(inspect.signature(run_cell.claude_limits).parameters['access_token'].default,
+                      inspect.Parameter.empty)
+        self.assertEqual(list(inspect.signature(run_cell.assessment_snapshot).parameters), ['runtime'])
+        self.assertNotIn('venue', inspect.signature(run_cell.grade).parameters)
+        self.assertFalse(hasattr(run_cell, 'diagnostics') or 'diagnostics' in run_cell.MODULES)
 
 
 class Cell(unittest.TestCase):
@@ -923,6 +935,89 @@ class Cell(unittest.TestCase):
         _, result, _, record, _ = self.owner('A', {'OOMKilled': True, 'ExitCode': 137}, status_code=137)
         self.assertEqual(result['container'], {'oom_killed': True, 'exit_code': 137})
         self.assertEqual((record['owner_status'], record['teardown']), ('EXITED_NONZERO', 'CLEAN'))
+
+
+class CellLifecycle(unittest.TestCase):
+    """H4 (a): cell.run makes the credential copy, the /tmp volume and the container inside the lifecycle whose finally
+    removes them. Docker is a fake that holds volumes and containers; each violating case raises at one step."""
+
+    def lifecycle(self, fail=None):
+        """cell.run with Docker failing at `fail` (copy, volume, argv, create, create-made, start or None); returns
+        (the exception raised or None, result.json, what Docker still holds, whether the credential copy remains)."""
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            out = root / 'cell-1'
+            for folder in ('home/.claude', 'home/.codex', 'cell', 'harness', 'tmp'):
+                (out / folder).mkdir(parents=True)
+            (root / 'auth').mkdir()
+            if fail != 'copy':
+                (root / 'auth/claude.json').write_text('{"fake": true}')
+            (root / 'auth/codex.json').write_text('{"fake": true}')
+            plan = dict(name='cell-1', engine='claude', image='sha256:image', cell=str(out / 'cell'),
+                        home=str(out / 'home'), control=str(root / 'control/public'), harness=str(out / 'harness'),
+                        tmp=str(out / 'tmp'), env={}, argv=['claude', '-p', 'x'], wall_seconds=5, install=None)
+            (out / 'plan.json').write_text(json.dumps(plan))
+            volumes, containers = set(), {}
+            refused = subprocess.CalledProcessError(1, ['docker'], stderr='Error response from daemon: refused')
+
+            def docker(*args, timeout=60):
+                if args[:2] == ('volume', 'create'):
+                    if fail == 'volume':
+                        raise refused
+                    volumes.add(args[-1])
+                elif args[0] == 'create':
+                    name = args[args.index('--name') + 1]
+                    if fail in ('create', 'create-made'):
+                        if fail == 'create-made':  # the daemon made it, then its answer was lost
+                            containers[name] = dict(Running=False, Pid=0, OOMKilled=False, ExitCode=0)
+                        raise subprocess.TimeoutExpired(['docker', 'create'], 60)
+                    containers[name] = dict(Running=False, Pid=0, OOMKilled=False, ExitCode=0)
+                    return name
+                elif args[0] == 'ps':
+                    return next((n for n in containers if args[-1] == f'name=^/{n}$'), '')
+                elif args[0] == 'inspect':
+                    return json.dumps([{'State': containers[args[1]]}])
+                elif args[0] == 'rm':
+                    del containers[args[1]]
+                return ''
+
+            def preserve(volume, dest, image):  # copies the volume into the cell, then removes it, as cell.py's does
+                volumes.discard(volume)
+
+            def popen(argv, **_kwargs):
+                if fail == 'start':
+                    raise OSError('docker start could not be run')
+                return mock.Mock(**{'wait.return_value': 0})
+            argv = mock.patch.object(cell, 'create_argv', side_effect=ValueError('bad plan')) if fail == 'argv' else \
+                contextlib.nullcontext()
+            raised = None
+            with mock.patch.object(cell, 'docker', side_effect=docker), argv, \
+                    mock.patch.object(cell.subprocess, 'Popen', side_effect=popen), \
+                    mock.patch.object(cell, 'preserve_tmp', side_effect=preserve), \
+                    mock.patch.object(cell, 'identity', return_value={'status': 'MATCH'}):
+                try:
+                    cell.run(out, dict(auth=str(root / 'auth'), scratch=str(root / 'scratch')))
+                except (OSError, ValueError, subprocess.SubprocessError) as exc:
+                    raised = exc
+            result = json.loads((out / 'run/result.json').read_text())
+            return raised, result, (volumes, containers), (root / 'scratch/credentials/cell-1').exists()
+
+    def test_nothing_survives_an_exception_at_any_step(self):
+        cases = {'copy': FileNotFoundError, 'volume': subprocess.CalledProcessError, 'argv': ValueError,
+                 'create': subprocess.TimeoutExpired, 'create-made': subprocess.TimeoutExpired, 'start': OSError}
+        for fail, kind in cases.items():
+            with self.subTest(fail=fail):
+                raised, result, held, copy_left = self.lifecycle(fail)
+                self.assertIsInstance(raised, kind)  # the exception still ends the cell
+                self.assertEqual((held, copy_left), ((set(), {}), False))
+                self.assertEqual((result['teardown'], result['owner_status']), ('CLEAN', None))
+
+    def test_a_cell_that_runs_is_torn_down_the_same_way(self):
+        raised, result, held, copy_left = self.lifecycle()
+        self.assertIsNone(raised)
+        self.assertEqual((held, copy_left), ((set(), {}), False))
+        self.assertEqual((result['teardown'], result['owner_status'], result['container']),
+                         ('CLEAN', 'EXITED_0', {'oom_killed': False, 'exit_code': 0}))
 
 
 class Rules(unittest.TestCase):
@@ -1114,7 +1209,7 @@ class CodexLogin(unittest.TestCase):
         lane = driver.Driver(runtime_path, [row])
         self.addCleanup(lane.lock.close)
 
-        class Waited(Exception):
+        class Waited(BaseException):  # ends the loop at its first wait as an interrupt would: no lane-end latch
             pass
         with mock.patch.object(driver.Driver, 'ready', return_value=True), \
                 mock.patch.object(driver.cell, 'image_identity', return_value=True), \
@@ -1138,10 +1233,10 @@ class CodexLogin(unittest.TestCase):
         for name in ('claude.json', 'codex.json'):
             (self.auth / name).write_text('earlier copy')
         old = codex_auth_file(self.root / 'old.json', days=7.5)
-        self.assertEqual(run_cell.assessment_snapshot(self.runtime(str(old)), {}),
+        self.assertEqual(run_cell.assessment_snapshot(self.runtime(str(old))),
                          (None, 'Codex login (codex_auth) last renewed 7.5 days ago; limit 7 days'))
         self.assertEqual([(self.auth / n).read_text() for n in ('claude.json', 'codex.json')], ['earlier copy'] * 2)
-        fresh, blocked = run_cell.assessment_snapshot(self.runtime(str(self.named)), {})
+        fresh, blocked = run_cell.assessment_snapshot(self.runtime(str(self.named)))
         self.assertIsNone(blocked)
         self.assertEqual((self.auth / 'codex.json').read_bytes(), self.named.read_bytes())
         self.assertEqual(fresh['codex_account'], run_cell.base.fingerprint('named-account-id'))
@@ -1159,6 +1254,11 @@ CODEX_KEPT = {  # what a Codex cell's HOME holds besides them; none of it is pru
     'home/.codex/plugins/cache/openai-curated-remote-other/x.json': '{}'}
 
 
+SELECTED = dict(kind='anchor', path='cell/work', changed=['cell/work'], duplicates=[], candidates=[],
+                rule='changed-product')  # locate.locate's selection, as the fake writes it
+SCOPE = (['add_one.py', 'notes.txt'], ['notes.txt'])  # check.scope's (changed, scope violations)
+
+
 def write_codex_home(out):
     for path, text in (CODEX_CACHES | CODEX_KEPT).items():
         (out / path).parent.mkdir(parents=True, exist_ok=True)
@@ -1170,18 +1270,34 @@ def tree_files(out):
     return sorted(str(p.relative_to(out)) for p in out.rglob('*') if p.is_symlink() or not p.is_dir())
 
 
+def pruned_roots():
+    """pruned.json's roots for write_codex_home's caches: files (a symlink counted, not followed), bytes, symlinks."""
+    sizes = {root: sum(len(text) for path, text in CODEX_CACHES.items() if path.startswith(root + '/'))
+             for root in run_cell.PRUNED}
+    return {run_cell.PRUNED[0]: dict(files=3, bytes=sizes[run_cell.PRUNED[0]] + len('plugins'),
+                                     symlinks={'home/.codex/.tmp/plugins/current': 'plugins'}),
+            run_cell.PRUNED[1]: dict(files=1, bytes=sizes[run_cell.PRUNED[1]], symlinks={}),
+            run_cell.PRUNED[2]: dict(files=1, bytes=sizes[run_cell.PRUNED[2]], symlinks={})}
+
+
 class RunFlow(unittest.TestCase):
     def run_cell(self, root, *, task='D3', arm='B', config='claude', stderr='', stdout='', teardown='CLEAN',
-                 container=None, violations=(), caches=False, assessed=None, snapshot=None, expected=None):
+                 container=None, violations=(), caches=False, assessed=None, snapshot=None, expected=None,
+                 owner_status='EXITED_0', execution=(), located=None, ran=None, token_left=5000):
         """run_cell.run with every outside effect faked. caches: the cell's HOME holds Codex's caches; assessed: the
         assessors' side effect; snapshot: the cell's own credential read (preflight is then the real one); expected:
-        the account the driver's ready() approved (default the dispatching venue's)."""
+        the account the driver's ready() approved (default the dispatching venue's); execution: quota.py's execution
+        faults; located: locate.locate's side effect (default: it writes snapshot/ and snapshot.json); ran: cell.run's
+        side effect in place of its record; token_left: seconds left on the made-up Claude login copy preflight left
+        in the auth folder."""
         output = root / 'output'
         output.mkdir()
         runtime = dict(output=str(output), auth=str(root / 'auth'), control=str(root / 'control'), image='image',
                        models_cache=str(root / 'models'), scratch=str(root / 'scratch'),
                        check_lock=str(root / 'check.lock'))
         (root / 'auth').mkdir()
+        (root / 'auth/claude.json').write_text(json.dumps({'claudeAiOauth': {
+            'expiresAt': (time.time() + token_left) * 1000, 'accessToken': 'fake'}}))
         (root / 'models').write_text('models')
         (root / 'control.manifest.json').write_text(json.dumps({'packages': {'B': {'sha256': 'package'}}}))
         seal = {'forms': {'claude': {}, 'codex': {}}, 'qualification': {'status': 'PASS'}}
@@ -1202,7 +1318,7 @@ class RunFlow(unittest.TestCase):
             if caches:
                 write_codex_home(out)
             return out
-        owner = dict(owner_status='EXITED_0', seconds=1, teardown=teardown, teardown_error='survived',
+        owner = dict(owner_status=owner_status, seconds=1, teardown=teardown, teardown_error='survived',
                      identity={'status': 'MATCH'}, container=container or {'oom_killed': False, 'exit_code': 0})
         venue = dict(account=['dispatch', 'org'], token_seconds_left=5000, codex_account='codexaccount')
         checks = dict(product_check_pass=True, oracle={}, scope_violations=[], adjudication_needed=False)
@@ -1215,9 +1331,15 @@ class RunFlow(unittest.TestCase):
                 except BlockingIOError:
                     held.append(True)
             return checks
+        def locate(out):
+            (out / 'snapshot').mkdir()
+            (out / 'snapshot.json').write_text(json.dumps(SELECTED))
+            return SELECTED
         patches = dict(instructions=mock.patch.object(run_cell.instructions, 'check', return_value=list(violations)),
-                       locate=mock.patch.object(run_cell.locate, 'locate', return_value={}),
+                       locate=mock.patch.object(run_cell.locate, 'locate', side_effect=located or locate),
                        check=mock.patch.object(run_cell.check, 'check', side_effect=locked_check),
+                       scope=mock.patch.object(run_cell.check, 'scope', return_value=SCOPE),
+                       ran=mock.patch.object(run_cell.cell_run, 'run', return_value=owner, side_effect=ran),
                        assess=mock.patch.object(run_cell.assess, 'assess', return_value=[], side_effect=assessed),
                        limits=mock.patch.object(run_cell, 'claude_limits', side_effect=AssertionError('window read')))
         if snapshot is None:
@@ -1230,12 +1352,10 @@ class RunFlow(unittest.TestCase):
                 mock.patch.object(run_cell, 'control_unchanged', return_value=True), \
                 mock.patch.object(run_cell.prepare, 'prepare', side_effect=prepared), \
                 mock.patch.object(run_cell.subprocess, 'check_output', return_value='commit'), \
-                mock.patch.object(run_cell.cell_run, 'run', return_value=owner), \
                 mock.patch.object(run_cell, 'seal_after_teardown', return_value=('seal', [])), \
                 mock.patch.object(run_cell.usage, 'record',
                                   return_value=dict(completeness='COMPLETE', input_tokens=1, output_tokens=1)), \
-                mock.patch.object(run_cell.quota, 'classify', return_value={'execution': []}), \
-                mock.patch.object(run_cell.diagnostics, 'record', return_value={}), \
+                mock.patch.object(run_cell.quota, 'classify', return_value={'execution': list(execution)}), \
                 mock.patch.object(run_cell, 'harness_unchanged', return_value=True), \
                 mock.patch.object(run_cell, 'assessment_snapshot', return_value=(dict(account=['a', 'o']), None)):
             mocks = {name: patch.start() for name, patch in patches.items()}
@@ -1248,9 +1368,13 @@ class RunFlow(unittest.TestCase):
         verdict = json.loads(path.read_text()) if path.is_file() else None
         return code, verdict, mocks, output / 'cell-1', held
 
-    def assert_not_graded(self, mocks):
-        for name in ('instructions', 'locate', 'check', 'assess'):
+    def assert_not_graded(self, mocks, *, evidence=False):
+        """No assertion, check or assessor ran; the graded tree and scope (locate, check.scope) only with evidence."""
+        for name in ('instructions', 'check', 'assess', *(() if evidence else ('locate', 'scope'))):
             mocks[name].assert_not_called()
+        if evidence:
+            mocks['locate'].assert_called_once()
+            mocks['scope'].assert_called_once()
 
     def test_launch_fault_stops_without_checks_or_assessors(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -1259,13 +1383,156 @@ class RunFlow(unittest.TestCase):
             self.assertEqual(verdict['reason'],
                              'B launch fault: run-argument-unsupported {"engine":"codex","argument":"-C"}')
             self.assert_not_graded(mocks)
+            self.assertIs(verdict['owner_ran'], False)  # H2: no owner ran, so no tree or scope is kept
+            self.assertFalse({'snapshot', 'scope_violations', 'changed', 'scope_error'} & set(verdict))
 
     def test_memory_kill_stops_without_checks_or_assessors(self):
         with tempfile.TemporaryDirectory() as temp:
-            code, verdict, mocks, _, _ = self.run_cell(Path(temp), arm='A', container={'oom_killed': True,
-                                                                                     'exit_code': 137})
+            code, verdict, mocks, out, _ = self.run_cell(Path(temp), arm='A', container={'oom_killed': True,
+                                                                                       'exit_code': 137})
             self.assertEqual(verdict['reason'], 'memory kill: OOMKilled=True exit_code=137 owner EXITED_0')
+            self.assert_not_graded(mocks, evidence=True)
+            self.assert_stop_evidence(verdict, out, mocks)
+
+    def assert_stop_evidence(self, verdict, out, mocks):
+        """H2: a redispatched STOP whose owner ran keeps its graded tree and its scope (check.scope, no container), in
+        the verdict and in a checks.json of the scope fields alone."""
+        self.assertEqual((verdict['status'], verdict['owner_ran']), ('STOP', True))
+        self.assertEqual((verdict['snapshot'], verdict['changed'], verdict['scope_violations']),
+                         (SELECTED, SCOPE[0], SCOPE[1]))
+        self.assertNotIn('scope_error', verdict)
+        self.assertEqual(json.loads((out / 'checks.json').read_text()),
+                         dict(scope_violations=SCOPE[1], changed=SCOPE[0]))
+        self.assertEqual(json.loads((out / 'snapshot.json').read_text()), SELECTED)
+        mocks['scope'].assert_called_once_with(out)
+
+    def test_a_shared_account_fault_keeps_its_tree_and_scope(self):
+        """H2, allowed: a shared account fault (a quota fault among them) is redispatched, so its tree and scope are
+        kept before its STOP is written."""
+        for kind in ('quota', 'authentication'):
+            with self.subTest(kind=kind), tempfile.TemporaryDirectory() as temp:
+                code, verdict, mocks, out, _ = self.run_cell(Path(temp), config='codex', owner_status='EXITED_NONZERO',
+                                                             execution=[{'kind': kind}])
+                self.assertEqual((code, verdict['reason']), (2, f'shared account fault during execution: {kind}'))
+                self.assert_not_graded(mocks, evidence=True)
+                self.assert_stop_evidence(verdict, out, mocks)
+
+    def test_a_tree_locate_cannot_choose_leaves_scope_null_and_no_snapshot(self):
+        """H2, violating: locate refuses (two differing trees, or a copy that failed part way): scope_violations is
+        null with the reason, the verdict has no snapshot and a partial copy is moved out of the graders' way."""
+        def refused(out):
+            (out / 'snapshot').mkdir()
+            raise run_cell.locate.LocatorError('more than one changed product tree: cell/work, tmp/x')
+        with tempfile.TemporaryDirectory() as temp:
+            code, verdict, mocks, out, _ = self.run_cell(Path(temp), arm='A', located=refused,
+                                                         container={'oom_killed': True, 'exit_code': 137})
+            self.assertEqual((code, verdict['status'], verdict['owner_ran']), (2, 'STOP', True))
+            self.assertEqual((verdict['scope_violations'], verdict['scope_error']),
+                             (None, 'more than one changed product tree: cell/work, tmp/x'))
+            self.assertFalse({'snapshot', 'changed'} & set(verdict))
+            self.assertEqual(((out / 'snapshot').exists(), (out / 'snapshot.partial').is_dir(),
+                              (out / 'checks.json').exists()), (False, True, False))
+            mocks['scope'].assert_not_called()
+
+    def test_owner_ran_on_every_verdict(self):
+        """H2: false for a STOP before the cell, true for a final verdict and for a STOP after the owner ran (one the
+        driver latches keeps no extra evidence: nothing is graded around it)."""
+        with tempfile.TemporaryDirectory() as temp:
+            code, verdict, _, out, _ = self.run_cell(Path(temp))
+            self.assertEqual((code, verdict['status'], verdict['owner_ran']), (0, 'COMPLETE', True))
+        with tempfile.TemporaryDirectory() as temp:
+            code, verdict, mocks, out, _ = self.run_cell(Path(temp), violations=['status-line: x'])
+            self.assertEqual((code, verdict['owner_ran']), (2, True))
+            self.assertFalse({'snapshot', 'scope_violations'} & set(verdict))
+            mocks['locate'].assert_not_called()
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / 'output').mkdir()
+            runtime = root / 'runtime.json'
+            runtime.write_text(json.dumps(dict(output=str(root / 'output'), control=str(root / 'control'))))
+            verdict_path = root / 'output/verdict-cell-1.json'
+            self.assertEqual(run_cell.run(runtime, 'cell-1', 'D3', 'A', 'claude'), 2)
+            self.assertEqual({k: v for k, v in json.loads(verdict_path.read_text()).items() if k != 'cell'},
+                             dict(status='STOP', owner_ran=False, reason='instruction assertion: seal missing'))
+            verdict_path.unlink()
+            (root / 'instructions.seal.json').write_text(json.dumps({'forms': {'claude': {}, 'codex': {}}}))
+            with mock.patch.object(run_cell, 'image_identity', return_value=True), \
+                    mock.patch.object(run_cell, 'preflight', return_value=(dict(account=['a', 'o']), None)), \
+                    mock.patch.object(run_cell, 'control_unchanged', return_value=False):
+                self.assertEqual(run_cell.run(runtime, 'cell-1', 'D3', 'A', 'claude'), 2)
+            self.assertEqual({k: v for k, v in json.loads(verdict_path.read_text()).items() if k != 'cell'},
+                             dict(status='STOP', owner_ran=False, reason='control changed'))
+
+    def test_a_container_that_could_not_be_set_up_is_a_stop(self):
+        """H4, DESIGN Faults: cell.run raised (it removed what it had made): a STOP with its teardown, no owner."""
+        def failed(out, _runtime):
+            (out / 'run/result.json').write_text(json.dumps(dict(owner_status=None, teardown='CLEAN')))
+            raise subprocess.CalledProcessError(1, ['docker', 'create'])
+        with tempfile.TemporaryDirectory() as temp:
+            code, verdict, mocks, _, _ = self.run_cell(Path(temp), ran=failed)
+            self.assertEqual((code, verdict['status'], verdict['owner_ran'], verdict['teardown']),
+                             (2, 'STOP', False, 'CLEAN'))
+            self.assertTrue(verdict['reason'].startswith('cell setup failed: CalledProcessError: '), verdict)
             self.assert_not_graded(mocks)
+            driver = load('driver')  # neither regraded nor redispatched: the driver latches both lanes on it
+            self.assertFalse(verdict['reason'].startswith(driver.REGRADE + driver.ONCE + (driver.LAUNCH_FAULT,)))
+
+    def test_the_token_life_is_read_again_after_prepare(self):
+        """CG4 (DESIGN "Token guard"): prepare has no time limit, so the Claude login copy the cell would mount is read
+        again before the owner starts. Violating: less than the watchdog plus 300 s left: nothing starts, the prepared
+        folder is gone, not-dispatched says why, exit 3 (the driver's retry after 60 s), no verdict. Allowed: enough
+        left starts the owner."""
+        self.assertEqual(run_cell.START_TOKEN_SECONDS, 3000)
+        with tempfile.TemporaryDirectory() as temp:
+            code, verdict, mocks, out, _ = self.run_cell(Path(temp), token_left=2940)
+            self.assertEqual((code, verdict, out.exists()), (3, None, False))
+            mocks['ran'].assert_not_called()
+            reason = json.loads((Path(temp) / 'output/not-dispatched-cell-1.json').read_text())['reason']
+            self.assertRegex(reason, r'^Claude login copy expires in 29\d\ds after prepare, below 3000s$')
+        with tempfile.TemporaryDirectory() as temp:
+            code, verdict, mocks, out, _ = self.run_cell(Path(temp), token_left=3060)
+            self.assertEqual((code, verdict['status']), (0, 'COMPLETE'))
+            mocks['ran'].assert_called_once()
+            self.assertFalse((Path(temp) / 'output/not-dispatched-cell-1.json').exists())
+
+    def test_an_owner_at_the_watchdog_is_never_complete(self):
+        """M6: HANG_TIMEOUT reads PRODUCT_INCOMPLETE though every check and assessor passes (they still run), and so
+        does its regrade; an owner that exited reads what its checks and assessors say."""
+        for status, expected in (('HANG_TIMEOUT', 'PRODUCT_INCOMPLETE'), ('EXITED_0', 'COMPLETE'),
+                                 ('EXITED_NONZERO', 'COMPLETE')):
+            with self.subTest(status=status), tempfile.TemporaryDirectory() as temp:
+                code, verdict, mocks, _, _ = self.run_cell(Path(temp), arm='A', owner_status=status)
+                self.assertEqual((code, verdict['status'], verdict['product_check_pass']), (0, expected, True))
+                mocks['check'].assert_called_once()
+                mocks['assess'].assert_called_once()
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            _, verdict, _, out, _ = self.run_cell(root, arm='A', owner_status='HANG_TIMEOUT',
+                                                  assessed=RuntimeError('seat timed out'))
+            self.assertEqual(verdict['reason'], 'assessment failed: seat timed out')
+            (out / 'checks.json').write_text(json.dumps(dict(product_check_pass=True, oracle={}, scope_violations=[],
+                                                             adjudication_needed=False)))
+            with mock.patch.object(run_cell, 'assessment_snapshot', return_value=(dict(account=['a', 'o']), None)), \
+                    mock.patch.object(run_cell.assess, 'assess', return_value=[]):
+                self.assertEqual(run_cell.regrade(root / 'runtime.json', 'cell-1'), 0)
+            self.assertEqual(json.loads((root / 'output/verdict-cell-1.json').read_text())['status'],
+                             'PRODUCT_INCOMPLETE')
+
+    def test_an_unproved_assessor_teardown_is_its_own_stop_and_never_regraded(self):
+        """H3: violating, a seat container whose removal is unproved stops without a regrade (the driver latches it);
+        allowed, any other seat failure stays an assessment failure the driver regrades."""
+        driver = load('driver')
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            code, verdict, _, _, _ = self.run_cell(root, assessed=run_cell.assess.TeardownUnproved(
+                'cannot prove container x is gone'))
+            self.assertEqual((code, verdict['reason']), (2, 'assessor teardown unproved: cannot prove container x is gone'))
+            self.assertFalse(verdict['reason'].startswith(driver.REGRADE))
+            with self.assertRaisesRegex(SystemExit, 'only an assessor STOP is regraded'):
+                run_cell.regrade(root / 'runtime.json', 'cell-1')
+        with tempfile.TemporaryDirectory() as temp:
+            _, verdict, _, _, _ = self.run_cell(Path(temp), assessed=RuntimeError('seat timed out'))
+            self.assertTrue(verdict['reason'].startswith(driver.REGRADE), verdict['reason'])
 
     def test_an_oom_flag_whose_owner_went_on_is_graded_and_recorded(self):
         for container, oom in (({'oom_killed': True, 'exit_code': 0}, True), ({'oom_killed': True, 'exit_code': 1}, True),
@@ -1302,7 +1569,7 @@ class RunFlow(unittest.TestCase):
             loaded = {name: next(f'{folder}/{name}.py' for folder in ('0265', '0256', '0233')  # run_cell.load's order
                                  if (HERE.parent / folder / f'{name}.py').is_file())
                       for name in ('prepare', 'cell', 'record_usage', 'locate', 'check', 'assess', 'quota',
-                                   'diagnostics', 'instructions')}
+                                   'instructions')}  # no diagnostics: nothing in 0265 reads them
             self.assertEqual({name: entry['path'] for name, entry in seal['modules'].items()},
                              dict(loaded, run_cell0222='0222/run_cell.py'))
             self.assertTrue(all(loaded[name].startswith('0265/') for name in ('prepare', 'cell', 'assess', 'quota',
@@ -1332,13 +1599,9 @@ class RunFlow(unittest.TestCase):
 
     def test_a_graded_cell_loses_codex_caches_only_and_records_them(self):
         """D-b, allowed: once a measured cell's verdict is written and is not a STOP, exactly run_cell.PRUNED leaves
-        it, in both arms, and pruned.json records each root's files (a symlink counted, not followed) and bytes. The
-        same cell held at a STOP (violating) keeps every file."""
-        sizes = {root: sum(len(text) for path, text in CODEX_CACHES.items() if path.startswith(root + '/'))
-                 for root in run_cell.PRUNED}
-        expected = {run_cell.PRUNED[0]: dict(files=3, bytes=sizes[run_cell.PRUNED[0]] + len('plugins')),
-                    run_cell.PRUNED[1]: dict(files=1, bytes=sizes[run_cell.PRUNED[1]]),
-                    run_cell.PRUNED[2]: dict(files=1, bytes=sizes[run_cell.PRUNED[2]])}
+        it, in both arms, and pruned.json records each root's files (a symlink counted, not followed), bytes and
+        symlinks, marked removed. The same cell held at a STOP (violating) keeps every file."""
+        expected = dict(removed=True, roots=pruned_roots())
         for arm in prepare.ARMS:
             with self.subTest(arm=arm), tempfile.TemporaryDirectory() as temp, \
                     tempfile.TemporaryDirectory() as held:
@@ -1350,8 +1613,9 @@ class RunFlow(unittest.TestCase):
                 code, verdict, _, out, _ = self.run_cell(Path(temp), arm=arm, config='codex', caches=True)
                 self.assertEqual((code, verdict['status']), (0, 'COMPLETE'))
                 self.assertEqual(json.loads((out / 'pruned.json').read_text()), expected)
-                self.assertEqual(tree_files(out), sorted(
-                    [p for p in before if not p.startswith(tuple(r + '/' for r in run_cell.PRUNED))] + ['pruned.json']))
+                self.assertEqual(tree_files(out), sorted(  # the graded cell also has its graded tree's record
+                    [p for p in before if not p.startswith(tuple(r + '/' for r in run_cell.PRUNED))]
+                    + ['pruned.json', 'snapshot.json']))
                 for path, text in CODEX_KEPT.items():
                     self.assertEqual((out / path).read_text(), text)
                 self.assertTrue((out / 'home/.codex/plugins/cache').is_dir())
@@ -1359,13 +1623,14 @@ class RunFlow(unittest.TestCase):
                 self.assertEqual(json.loads((out / 'pruned.json').read_text()), expected)
 
     def test_a_cell_without_codex_caches_and_a_smoke_task_cell(self):
-        """D-b: a Claude cell has none of the roots and gets an empty record (allowed, idempotent); a SMOKE-task cell
-        keeps its caches, since seal-forms asserts SMOKE's CODEX_HOME after the verdict."""
+        """D-b: a Claude cell has none of the roots and gets a record with none (allowed, idempotent); a SMOKE-task
+        cell keeps its caches, since seal-forms asserts SMOKE's CODEX_HOME after the verdict."""
         with tempfile.TemporaryDirectory() as temp:
             code, _, _, out, _ = self.run_cell(Path(temp), arm='A', config='claude')
-            self.assertEqual((code, json.loads((out / 'pruned.json').read_text())), (0, {}))
+            empty = dict(removed=True, roots={})
+            self.assertEqual((code, json.loads((out / 'pruned.json').read_text())), (0, empty))
             files = tree_files(out)
-            self.assertEqual(run_cell.prune(out), {})
+            self.assertEqual(run_cell.prune(out), empty)
             self.assertEqual(tree_files(out), files)
         with tempfile.TemporaryDirectory() as temp:
             code, _, _, out, _ = self.run_cell(Path(temp), task='SMOKE', arm='A', config='codex', caches=True)
@@ -1391,13 +1656,51 @@ class RunFlow(unittest.TestCase):
                     record = run_cell.prune(out)
             finally:
                 (out / 'home/.codex/.tmp/locked').chmod(0o700)
-            self.assertEqual(record[run_cell.PRUNED[1]], {'error': 'not removed: reached through a symbolic link'})
-            self.assertEqual(record[run_cell.PRUNED[0]]['files'], 1)
-            self.assertTrue(record[run_cell.PRUNED[0]]['error'].startswith('not removed: '))
-            self.assertEqual(sorted(record), sorted(run_cell.PRUNED[:2]))
+            roots = record['roots']
+            self.assertEqual(roots[run_cell.PRUNED[1]], {'error': 'not removed: reached through a symbolic link'})
+            self.assertEqual(roots[run_cell.PRUNED[0]]['files'], 1)
+            self.assertTrue(roots[run_cell.PRUNED[0]]['error'].startswith('not removed: '))
+            self.assertEqual(sorted(roots), sorted(run_cell.PRUNED[:2]))
+            self.assertIs(record['removed'], False)  # a root left in place keeps the mark visible
             self.assertTrue((outside / 'keep.txt').is_file())
             self.assertEqual(len(printed.getvalue().splitlines()), 2)
             self.assertEqual(json.loads((out / 'pruned.json').read_text()), record)
+
+    def test_pruned_json_is_written_before_any_removal_and_marked_after(self):
+        """M5, allowed: pruned.json lists every root (files, bytes, symlinks with their targets) marked removed: false
+        before the first removal, and is replaced atomically with removed: true once all are gone. Violating: a removal
+        cut short leaves the false mark and the list, and a later call keeps them as they are."""
+        with tempfile.TemporaryDirectory() as temp:
+            out = Path(temp) / 'cell-1'
+            write_codex_home(out)
+            seen, replaced = [], []
+            real_rmtree, real_replace = shutil.rmtree, run_cell.os.replace
+
+            def rmtree(path, *args, **kwargs):
+                seen.append(json.loads((out / 'pruned.json').read_text()))
+                return real_rmtree(path, *args, **kwargs)
+
+            def replace(source, target):
+                replaced.append((Path(source).parent, Path(target)))
+                return real_replace(source, target)
+            with mock.patch.object(run_cell.shutil, 'rmtree', side_effect=rmtree), \
+                    mock.patch.object(run_cell.os, 'replace', side_effect=replace):
+                record = run_cell.prune(out)
+            self.assertEqual(seen, [dict(removed=False, roots=pruned_roots())] * len(run_cell.PRUNED))
+            self.assertEqual(record, dict(removed=True, roots=pruned_roots()))
+            self.assertEqual(json.loads((out / 'pruned.json').read_text()), record)
+            self.assertEqual(replaced, [(out, out / 'pruned.json')] * 2)
+            self.assertEqual([p.name for p in out.iterdir() if p.name.startswith('.')], [])
+        with tempfile.TemporaryDirectory() as temp:
+            out = Path(temp) / 'cell-1'
+            write_codex_home(out)
+            with mock.patch.object(run_cell.shutil, 'rmtree', side_effect=KeyboardInterrupt), \
+                    self.assertRaises(KeyboardInterrupt):
+                run_cell.prune(out)
+            left = dict(removed=False, roots=pruned_roots())
+            self.assertEqual(json.loads((out / 'pruned.json').read_text()), left)
+            self.assertEqual(run_cell.prune(out), left)
+            self.assertTrue(all((out / path).exists() for path in CODEX_CACHES))
 
     def test_assessor_stop_keeps_the_caches_and_its_regrade_prunes_and_reads_a_pruned_cell(self):
         """D-b: an assessor STOP is not pruned; its regrade grades from the preserved evidence and then prunes, and a
@@ -1421,7 +1724,7 @@ class RunFlow(unittest.TestCase):
                 verdict = json.loads((root / 'output/verdict-cell-1.json').read_text())
                 self.assertEqual((code, verdict['status'], verdict['regraded']['after']), (0, 'COMPLETE', 'stop-1'))
                 self.assertFalse([path for path in CODEX_CACHES if (out / path).exists()])
-                self.assertEqual(sorted(json.loads((out / 'pruned.json').read_text())), sorted(run_cell.PRUNED))
+                self.assertEqual(json.loads((out / 'pruned.json').read_text()), dict(removed=True, roots=pruned_roots()))
                 if recorded:
                     self.assertEqual((out / 'pruned.json').read_text(), recorded)
 
@@ -1500,6 +1803,16 @@ class Assessors(unittest.TestCase):
             self.assess_with(one)
         self.assertEqual(finished, [assess.TASKS['assessors'][1]['engine']])
 
+    def test_an_unproved_teardown_outranks_the_other_seats_failure(self):
+        """H3: whichever seat's container is unproved, assess() raises that, never the other seat's plain failure."""
+        for unproved in assess.TASKS['assessors']:
+            def one(_out, _runtime, route, prompt, unproved=unproved):
+                if route == unproved:
+                    raise assess.TeardownUnproved('cannot prove container y is gone')
+                raise RuntimeError('seat timed out')
+            with self.subTest(seat=unproved['engine']), self.assertRaises(assess.TeardownUnproved):
+                self.assess_with(one)
+
     def test_record_dir_is_honoured(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
@@ -1523,6 +1836,30 @@ class Assessors(unittest.TestCase):
             self.assertTrue(record['complete'])
             self.assertEqual(default, json.loads((out / f'assessment/{route["engine"]}/result.json').read_text()))
             self.assertEqual(sorted(p.name for p in (out / 'assessment').iterdir()), [route['engine']])
+
+
+class Scope(unittest.TestCase):
+    def test_scope_is_the_check_phases_reading_without_a_container(self):
+        """H2: check.scope is the scope check.check records (snapshot against baseline.json, the task's allowed
+        paths), read with no container. Violating: an added or deleted path outside the allowed ones; allowed: a change
+        to an allowed path is only a change."""
+        with tempfile.TemporaryDirectory() as temp:
+            out = Path(temp)
+            snapshot = out / 'snapshot'
+            snapshot.mkdir()
+            for name, text in (('add_one.py', 'def add_one(x):\n    return x + 1\n'), ('README.md', 'readme\n')):
+                (snapshot / name).write_text(text)
+            (out / 'baseline.json').write_text(json.dumps(dict(task='SMOKE',
+                                                               files=run_cell.check.packet.tree(snapshot))))
+            self.assertEqual(run_cell.check.scope(out), ([], []))
+            (snapshot / 'add_one.py').write_text('changed\n')
+            (snapshot / 'notes.txt').write_text('new\n')
+            (snapshot / 'README.md').unlink()
+            self.assertEqual(run_cell.check.scope(out),
+                             (['README.md', 'add_one.py', 'notes.txt'], ['README.md', 'notes.txt']))
+            with mock.patch.object(run_cell.check, 'evaluate', return_value=dict(public=[], rows=[], raw=[])):
+                seal = run_cell.check.check(out, {})
+            self.assertEqual((seal['changed'], seal['scope_violations']), run_cell.check.scope(out))
 
 
 class DockerAnswers(unittest.TestCase):
@@ -1560,12 +1897,12 @@ class DockerAnswers(unittest.TestCase):
                 assess.reap('x')
         for stderr in ('permission denied', 'Cannot connect to the Docker daemon at unix:///var/run/docker.sock'):
             with self.subTest(stderr=stderr), self.answers(stderr), \
-                    self.assertRaisesRegex(RuntimeError, 'cannot prove container x'):
+                    self.assertRaisesRegex(assess.TeardownUnproved, 'cannot prove container x'):
                 assess.reap('x')
         with self.answers('error: no such object: x', 'permission denied'), \
-                self.assertRaisesRegex(RuntimeError, 'cannot prove container x'):  # the removal itself failed otherwise
+                self.assertRaisesRegex(assess.TeardownUnproved, 'cannot prove container x'):  # the removal failed otherwise
             assess.reap('x')
-        with self.survives(), self.assertRaisesRegex(RuntimeError, 'cannot prove container x'):
+        with self.survives(), self.assertRaisesRegex(assess.TeardownUnproved, 'cannot prove container x'):
             assess.reap('x')
 
 
@@ -1577,59 +1914,6 @@ class StrictConfig(unittest.TestCase):
         self.assertIs(loose.pop(strict.UNKNOWN[0]), True)
         self.assertIs(loose['features'].pop(strict.UNKNOWN[1]), True)
         self.assertEqual(loose, parsed)
-
-    def check(self, answers):
-        with tempfile.TemporaryDirectory() as temp:
-            root = Path(temp)
-            (root / 'models.json').write_text('{}')
-            runtime = root / 'runtime.json'
-            runtime.write_text(json.dumps(dict(image='sha256:image', scratch=str(root), auth=str(root / 'auth'),
-                                               models_cache=str(root / 'models.json'))))
-            calls, configs = [], []
-
-            def runner(argv):
-                calls.append(argv)
-                if argv[:2] == ['docker', 'run']:
-                    home = next(v for v in argv if v.endswith('dst=/home/probe')).split('src=')[1].split(',dst=')[0]
-                    configs.append(Path(home, '.codex/config.toml').read_text())
-                    return answers[len(configs) - 1]
-                return 0, '', ''
-            printed = io.StringIO()
-            with mock.patch('sys.stdout', printed):
-                code = strict.main(runtime, runner)
-            return code, calls, configs, printed.getvalue()
-
-    def test_pass_when_the_file_loads_and_the_violating_one_fails_at_load(self):
-        code, calls, configs, printed = self.check([(0, '[]', ''), (1, '', 'Error: unknown field `zz_unknown_top_0265`')])
-        self.assertEqual(code, 0)
-        self.assertEqual(configs, list(strict.configs()))
-        for argv in calls:
-            self.assertEqual(argv[argv.index('--network') + 1], 'none')
-            self.assertEqual(argv[-5:], ['codex', '--strict-config', 'debug', 'prompt-input', 'Reply OK.'])
-            self.assertFalse([value for value in argv if 'auth.json' in value or 'codex.json' in value])
-        self.assertTrue(printed.startswith('PASS'))
-
-    def test_fail_when_the_0265_file_does_not_load_or_fails_for_another_reason(self):
-        self.assertEqual(self.check([(1, '', 'Error: unknown field `rollout_budget`'), (1, '', 'x')])[0], 1)
-        self.assertEqual(self.check([(0, '', ''), (1, '', 'network unreachable')])[0], 1)
-
-    def test_undecided_prints_the_exec_commands_without_running_them(self):
-        for answers in ([(1, '', 'Error: `--strict-config` is not supported for `codex debug`\n')] * 2,
-                        [(2, '', "error: unexpected argument '--strict-config' found")] * 2,
-                        [(0, '', ''), (0, '', '')]):
-            code, calls, _, printed = self.check(answers)
-            self.assertEqual(code, 3)
-            self.assertEqual(len(calls), 2)
-            self.assertFalse([argv for argv in calls if 'exec' in argv])
-            commands = [line for line in printed.splitlines() if line.startswith('docker run')]
-            self.assertEqual(len(commands), 2)
-            for command in commands:
-                self.assertIn('codex exec --strict-config --json --skip-git-repo-check', command)
-
-    def test_a_timed_out_run_is_removed(self):
-        code, calls, _, _ = self.check([(None, '', 'timed out after 180 s'), (1, '', 'zz_unknown_feature_0265')])
-        self.assertEqual(code, 1)
-        self.assertEqual(calls[1][:3], ['docker', 'rm', '-f'])
 
 
 if __name__ == '__main__':

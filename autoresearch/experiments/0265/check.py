@@ -5,7 +5,7 @@
 with "cannot verify check container teardown" (seen on the first real cell, 2026-11-11). Everything else is 0233's:
 0222's evaluator, rows and verdict rules, check containers mounting the public tools at /control and the oracle tree
 over /control/autoresearch. Exit 0 with a verdict, 2 only when no verdict can be produced or a check container
-survives.
+survives. scope() is the scope part alone, for an attempt that ends in a STOP after its owner ran.
 """
 import importlib.util
 import json
@@ -52,7 +52,7 @@ base.in_image = in_image  # 0222's evaluate() resolves in_image at call time
 TASKS = json.loads((HERE.parent / '0233/tasks.json').read_text())
 base.TASKS = TASKS
 task = base.task
-ROWS = {t['id']: t['oracle'] for t in TASKS['tasks'] if t['id'] in ('B5', 'F10', 'F11', 'E1', 'E2')}
+ROWS = {t['id']: t['oracle'] for t in TASKS['tasks'] if t['id'] in ('B5', 'F10', 'F11')}
 
 
 def evaluate(work, task_id, runtime):
@@ -74,12 +74,19 @@ def evaluate(work, task_id, runtime):
     return dict(public=public, rows=rows, raw=raw)
 
 
+def scope(out):
+    """The selected snapshot against baseline.json, with no container: (every changed path, the changed paths outside
+    the task's allowed paths). The check phase's scope, and an archived attempt's (run_cell.stop_evidence)."""
+    baseline = json.loads((out / 'baseline.json').read_text())
+    current = packet.tree(out / 'snapshot')
+    changed = sorted(n for n in baseline['files'].keys() | current.keys() if baseline['files'].get(n) != current.get(n))
+    return changed, [n for n in changed if not packet.allowed(n, task(baseline['task'])['allowed'])]
+
+
 def check(out, runtime):
     baseline = json.loads((out / 'baseline.json').read_text())
     spec, snapshot = task(baseline['task']), out / 'snapshot'
-    current = packet.tree(snapshot)
-    changed = sorted(n for n in baseline['files'].keys() | current.keys() if baseline['files'].get(n) != current.get(n))
-    violations = [n for n in changed if not packet.allowed(n, spec['allowed'])]
+    changed, violations = scope(out)
     result = evaluate(snapshot, spec['id'], runtime)
     (out / 'checks-raw.json').write_text(json.dumps(result, indent=2))
     public_pass = all(r['exit_code'] == 0 for r in result['public'])

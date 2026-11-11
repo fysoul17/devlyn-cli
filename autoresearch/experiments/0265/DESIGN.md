@@ -159,9 +159,10 @@ Every guard has a violating and an allowed control.
 - **Q4 graded tree.** B's delivery helper can leave the work in a task worktree. `0233/locate.py` must select the
   tree B delivered on fixtures shaped like 4.3.30's helper output (anchor only; one changed helper worktree; a
   receipt of each kind 4.3.30 binds, `direct` and `loop`; a delivered commit whose worktree is still present) and
-  STOP on two changed trees whose contents differ. Two changed trees with identical content are one result (4.3.30
-  keeps the edits in the main checkout while a delivery is pending or refused), graded once and recorded as
-  duplicates. The helper's worktree and receipt locations at `v4.2.24` and `v4.3.30` are
+  STOP on two changed trees whose contents differ. Two changed trees with identical content (every path has the same
+  type, the same executable bit and the same bytes or link target; other permission bits are ignored, as Git ignores
+  them) are one result (4.3.30 keeps the edits in the main checkout while a delivery is pending or refused), graded
+  once and recorded as duplicates. The helper's worktree and receipt locations at `v4.2.24` and `v4.3.30` are
   compared first; a difference `locate.py` does not handle is fixed in a 0265 copy before SMOKE.
 - **Q5 witness and probe controls.** Through the final `judge.py` on the new image, twice each: every harm witness
   reproduces on a tree known to have its defect, does not on one known not to, and reads not applicable on a tree
@@ -263,9 +264,10 @@ passes only when the other reading's p is ≤ 0.025. Exact power (single test at
 0.78 / 0.93; R2 at 0257's rates 1.00, and 0.89 / 0.97 if B has drifted to 0.25 as 0260's 4/16 suggests; for a gap of
 0.50 (0.90 vs 0.40) 0.39 / 0.49; for R1's gap halved (0.90 vs 0.56) 0.14 / 0.25. Both readings are NOT_FINISHED
 until all 32 of their slots have final verdicts and every F10 slot of R2 has a probe class: neither is read alone,
-so stopping a run cannot choose which one is read. A slot whose probe class is still `unassessable` after its retry
-is read as `json_error_400` and as not; if R2's reading differs between the two, both readings are NOT_FINISHED and
-both versions are printed.
+so stopping a run cannot choose which one is read. A probe class still `unassessable` after its retry is read both
+ways, under the two extreme assignments for a test of A more than B: every such A slot as `json_error_400` and
+every such B slot as not, and the reverse. When the two readings of R2 agree, that is its reading; when they differ,
+both readings (R1 and R2) are NOT_FINISHED and both versions are printed.
 
 **2. Completion line, per engine:** D₃ = ⅓ Σ over D3, D4, B5 of (COMPLETE_B − COMPLETE_A)/8 with 0257's equal-weight
 Wilson-MOVER 95% interval. **B_BETTER** when lo > 0, **B_WORSE** when hi < 0, otherwise **NO_DETECTED_DIFFERENCE**,
@@ -289,10 +291,18 @@ answer, and pairs on an unresolved witness unless both judges answered false. Th
 B item harmful and every open A item harmless, and the reverse. When the two readings agree, that is the reading;
 when they differ, the line is NOT_FINISHED and both are printed.
 
-**Details every count uses.** A cell at the watchdog is neither COMPLETE nor check-complete. A slot's completion,
-tree, checks and witnesses are its final attempt's; its harm covers every attempt; its cost sums every attempt in
-which an owner ran (archived quota faults, Docker losses and memory kills included; a B launch fault has no owner),
-and a hang is charged 2,700 s. Unknown usage stays unknown and makes a cost figure a lower bound.
+**Details every count uses.** A cell at the watchdog is neither COMPLETE nor check-complete, and its verdict reads
+PRODUCT_INCOMPLETE whatever its checks and assessors say. A slot's completion, tree, checks and witnesses are its
+final attempt's. Its cost sums every attempt in which an owner ran, in finished and unfinished slots alike (archived
+quota faults, Docker losses and memory kills included), and a hang is charged 2,700 s. Unknown usage stays unknown
+and makes a cost figure a lower bound.
+
+**Attempts.** An attempt ran an owner when an engine session started in it: every attempt except one refused before
+the cell and a B launch fault. A slot's harm covers every attempt that ran an owner, final or archived. For such an
+attempt the mechanical evidence is kept even when it ends in a STOP: the graded tree chosen by `locate` and its
+scope result; witnesses run on every such tree. A false completion needs a final report: an attempt whose owner did
+not exit normally has none and forms no judge pair. The harm line is NOT_FINISHED, naming the attempt, while an
+attempt that ran an owner lacks its scope result, its harm-check entry or a witness result.
 
 **Reported beside the lines, never a line:** per task × engine × arm: COMPLETE, check-complete, each public check and
 oracle row, each assessor's ruling, each witness, the probe classes (every engine × task), the D3 `parseOptions`
@@ -340,7 +350,9 @@ the readings; UNSCORED when its cells are not final.
   owner's stored login would stop working. An older login holds the lanes (never a verdict) until it has been
   renewed on the host.
 - **Token guard.** A cell is dispatched only with at least watchdog + 900 = 3,600 s of Claude token life (an assessor
-  redo: 1,500 s), so that no copied token is refreshed inside a cell. Below that the lane waits for the host renewal
+  redo: 1,500 s), so that no copied token is refreshed inside a cell; the life is read again after the cell has been
+  prepared, and a cell left with less than the watchdog plus 300 s is not started (its prepared folder is removed
+  and the lane holds). Below that the lane waits for the host renewal
   at ≤ 300 s, as in 0257. The renewal runs under a host lock and re-reads the credential inside it, so two lanes
   never spend one refresh token. Credentials are never edited by hand; the per-cell copies are deleted at teardown,
   as in every run since 0233.
@@ -359,17 +371,21 @@ the readings; UNSCORED when its cells are not final.
   redispatched once, then a STOP. An out-of-memory kill of some other process in a cell whose owner went on is that
   session's own outcome: the cell is graded as it stands and listed. A shared
   account fault (a Codex `refresh_token_reused` among them: both lanes present one Codex login) is archived and
-  redispatched once; a repeat on the same slot is a STOP. **Any STOP that is not redispatched stops both lanes**
-  (the lane that has a cell running lets it finish) until the orchestrator has resolved it; nothing is graded around
-  it.
+  redispatched once; a repeat on the same slot is a STOP. An assessor container whose teardown cannot be proved is
+  a STOP, never a regrade, and so is a cell whose container could not be set up. **Any STOP that is not redispatched
+  stops both lanes** (the lane that has a cell running lets it finish), and so does a lane that ends in an error,
+  until the orchestrator has resolved it; nothing is graded around it. A cell's credential copy, volume and
+  container are removed whatever happens after they are made, and a Docker loss keeps what the attempt's `/tmp`
+  volume still holds before the volume is removed.
 - **Disk.** No dispatch below 16 GiB free on the output volume, nor, measured before each dispatch in a short
   container from the cell image, below max(10 GiB, 2%) + 2 GiB on the cell's `/cell` bind or on a fresh `/tmp`
   volume. 4.3.30's delivery helper refuses below max(10 GiB, 2%) on its target's filesystem, which would fail B only,
   and 0261 lost 4.6 h to a full Docker VM disk after a passing host check. Every Codex session clones OpenAI's
   curated plugin marketplace into its `CODEX_HOME` (30–100 MB per cell in both arms, about 6 GB over the run):
   after a measured cell's verdict is written and is not a STOP, those caches (`.codex/.tmp`,
-  `.codex/plugins/cache/openai-curated-remote` and its staging folder) are removed from the cell's HOME in both arms,
-  `pruned.json` records what was removed, and `evidence.manifest.json`, sealed before, keeps their file list and
+  `.codex/plugins/cache/openai-curated-remote` and its staging folder) are removed from the cell's HOME in both arms.
+  `pruned.json` is written before anything is removed (each root with its file count, bytes and symbolic links) and
+  marked once the removal is done, and `evidence.manifest.json`, sealed before, keeps the regular files' list and
   hashes. A STOP keeps them (an assessor STOP until its regrade is written), and the SMOKE-task cells (SMOKE and the rehearsal) keep them, because
   `seal-forms` checks SMOKE's `CODEX_HOME` after its verdict as a measured cell's is checked before. Nothing the
   harness wrote is removed.

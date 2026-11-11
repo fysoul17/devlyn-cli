@@ -11,6 +11,7 @@ import subprocess
 import tempfile
 import threading
 import time
+import types
 import unittest
 from unittest import mock
 import urllib.error
@@ -77,6 +78,12 @@ def snapshot(seconds, account=('account', 'org')):
 
 def row(name):
     return next(r for r in CELLS if r[0].startswith(name))
+
+
+def latched(root, name):
+    """The lane's harm latch as its status file holds it (None: no latch, or no status written)."""
+    path = root / 'output' / f'driver-status-{name}.json'
+    return json.loads(path.read_text()).get('harm_latch') if path.is_file() else None
 
 
 COMPLETE = dict(status='COMPLETE', scope_violations=[], teardown='CLEAN', identity={'status': 'MATCH'},
@@ -499,7 +506,8 @@ class Guards(unittest.TestCase):
                 started.write_text(json.dumps({'started_at': (now - age).timestamp()}))
                 for name in ('claude', 'codex'):
                     with self.subTest(age=age, lane=name):
-                        (root / f'output/driver-status-{name}.json').unlink(missing_ok=True)
+                        for label in ('claude', 'codex'):  # each lane on its own; the latch it sets is checked below
+                            (root / f'output/driver-status-{label}.json').unlink(missing_ok=True)
                         d = lane(root, name)
                         self.assertEqual(d.state['first_smoke_dispatch'],
                                          datetime.datetime.fromtimestamp((now - age).timestamp(),
@@ -509,7 +517,12 @@ class Guards(unittest.TestCase):
                         else:
                             with self.assertRaisesRegex(RuntimeError, '7-day deadline reached'):
                                 d.assert_active()
-                            self.assertEqual(events(root, name)[-1]['reason'], '7-day deadline reached')
+                            self.assertEqual([(e['event'], e['reason']) for e in events(root, name)[-2:]],
+                                             [('stop', '7-day deadline reached'), ('harm_latch', '7-day deadline reached')])
+                            other = lane(root, 'codex' if name == 'claude' else 'claude')  # stop() latches both lanes
+                            with self.assertRaisesRegex(driver.Stopped, f'harm latch in lane {name}'):
+                                other.assert_active()
+                            other.lock.close()
                         d.lock.close()
 
     def test_a_lane_adopts_the_fixed_caps_and_refuses_any_other(self):
@@ -708,6 +721,23 @@ class Faults(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, 'harm latch in lane codex'):
                 lane(root, 'claude').assert_active()
 
+    def test_an_unproved_assessor_teardown_latches_both_lanes_without_a_regrade(self):
+        """H3: violating, 'assessor teardown unproved' is no assessor fault: not regraded, not redispatched, latched
+        for both lanes. (Allowed, an assessor fault is regraded: the next test.)"""
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            name = row('c001-')[0]
+            stop = dict(status='STOP', reason='assessor teardown unproved: cannot prove container x is gone',
+                        teardown='CLEAN', identity={'status': 'MATCH'}, owner_status='EXITED_0', owner_ran=True)
+            with mock.patch.object(driver.cell, 'regrade') as regraded, \
+                    self.assertRaisesRegex(driver.Stopped, 'STOP assessor teardown unproved'):
+                self.run_lane(root, 'claude', [row('c001-')], {name: [stop]})
+            regraded.assert_not_called()
+            self.assertEqual(self.called, [name])
+            self.assertEqual(latched(root, 'claude')['reason'], 'STOP ' + stop['reason'])
+            with self.assertRaisesRegex(driver.Stopped, 'harm latch in lane claude'):
+                lane(root, 'codex').assert_active()
+
     def test_quota_fault_archived_and_assessor_fault_regraded(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
@@ -746,44 +776,217 @@ class Faults(unittest.TestCase):
                         dict(stop, teardown='CLEAN', teardown_error=lost[0]), dict(COMPLETE, teardown_error=lost[0]), None):
             self.assertFalse(driver.docker_fault(verdict), verdict)
 
+    def docker_loss(self, root, *, owner=True, volume=True, owner_ran=True, preserve=None, on_volume=True,
+                    sealed=('after', [])):
+        """A Docker-loss STOP of one slot recovered by dispatch, against a fake Docker that holds the attempt's owner
+        container (owner) and /tmp volume (volume). preserve: what cell.py's preserve_tmp raises (it otherwise copies
+        the volume into the cell and removes it). Returns (dispatch's result or the exception, Docker's calls, the
+        fakes, the slot's name)."""
+        seal(root)
+        d = lane(root, 'claude')
+        name = row('c001-')[0]
+        container, vol, cid = 'devlyn-0231-owner', 'devlyn-0233-tmp-owner', 'a' * 64
+        out = d.output / name
+        (out / 'run').mkdir(parents=True)
+        (out / 'tmp').mkdir()
+        (out / 'plan.json').write_text(json.dumps(dict(tmp=str(out / 'tmp'), image='sha256:test')))
+        (out / 'run/started.json').write_text(json.dumps({
+            'create_argv': ['create', '--name', container, f'type=volume,src={vol},dst=/tmp'],
+            'tmp_volume': vol, 'started_at': time.time()}))
+        (d.output / f'verdict-{name}.json').write_text(json.dumps(dict(
+            status='STOP', teardown='FAILED', identity={'status': 'MATCH'}, owner_status='EXITED_NONZERO',
+            owner_ran=owner_ran, evidence_manifest_sha256='before',
+            reason='teardown failed: failed to connect to the docker API at unix:///docker.sock')))
+        containers = {cid: dict(Id=cid, Name='/' + container, Config={'Labels': {'devlyn.task': '0233'}},
+                                Mounts=[{'Type': 'volume', 'Name': vol if on_volume else 'other'}],
+                                State={'Running': False, 'Pid': 0, 'Status': 'exited'})} if owner else {}
+        volumes, calls = {vol} if volume else set(), []
+
+        def docker(argv, **_kwargs):
+            args = argv[1:]
+            calls.append(args)
+            if args[:2] == ['ps', '-aq']:
+                found = args[-1]
+                value = '\n'.join(c for c, item in containers.items()
+                                  if found == f'name=^{item["Name"]}$'
+                                  or any(found == f'volume={m["Name"]}' for m in item['Mounts']))
+            elif args[0] == 'inspect':
+                value = json.dumps([containers[args[1]]])
+            elif args[:2] == ['volume', 'ls']:
+                value = '\n'.join(v for v in volumes if args[-1] == f'name=^{v}$')
+            elif args[0] == 'rm':
+                del containers[args[1]]
+                value = ''
+            else:
+                raise AssertionError(f'unexpected docker call {args}')
+            return subprocess.CompletedProcess(argv, 0, stdout=value)
+
+        def preserve_tmp(volume_, dest, image):
+            calls.append(['preserve_tmp', volume_, str(dest), image])
+            if preserve:
+                raise preserve
+            (dest / 'helper-worktree.txt').write_text('kept')
+            volumes.discard(volume_)
+        fakes = dict(preserve=mock.Mock(side_effect=preserve_tmp),
+                     seal=mock.Mock(return_value=sealed),
+                     evidence=mock.Mock(side_effect=lambda out_, record: dict(
+                         record, snapshot={'kind': 'anchor'}, scope_violations=[], changed=['src/x.js'])))
+        run, called = cells(d.output, {name: [COMPLETE]})
+        with mock.patch.object(driver.subprocess, 'run', side_effect=docker), \
+                mock.patch.object(driver.cell, 'run', side_effect=run), \
+                mock.patch.object(driver.cell, 'cell_run', types.SimpleNamespace(preserve_tmp=fakes['preserve']),
+                                  create=True), \
+                mock.patch.object(driver.cell, 'seal_after_teardown', fakes['seal'], create=True), \
+                mock.patch.object(driver.cell, 'stop_evidence', fakes['evidence'], create=True):
+            try:
+                result = d.dispatch(row('c001-'))
+            except RuntimeError as exc:
+                result = exc
+        fakes.update(called=called, volumes=volumes, containers=containers, out=out, lane=d)
+        d.lock.close()
+        return result, calls, fakes, name
+
     def test_docker_loss_is_proven_archived_and_redispatched(self):
+        """H5, allowed: the attempt's containers are removed, its /tmp volume is preserved into the cell (then removed)
+        before anything else touches it, the cell is sealed again with /tmp in it, its tree and scope are kept, and
+        the attempt is archived with tmp_recovery and redispatched."""
+        with tempfile.TemporaryDirectory() as temp:
+            result, calls, fakes, name = self.docker_loss(Path(temp))
+            output = Path(temp) / 'output'
+            self.assertIs(result, True)
+            self.assertEqual((fakes['containers'], fakes['volumes']), ({}, set()))
+            self.assertEqual([c[0] for c in calls if c[0] in ('rm', 'preserve_tmp')], ['rm', 'preserve_tmp'])
+            out = fakes['out']
+            self.assertEqual(calls[[c[0] for c in calls].index('preserve_tmp')],
+                             ['preserve_tmp', 'devlyn-0233-tmp-owner', str(out / 'tmp'), 'sha256:test'])
+            fakes['seal'].assert_called_once_with(out)
+            fakes['evidence'].assert_called_once()
+            archived = json.loads((output / f'verdict-{name}.stop-1.json').read_text())
+            self.assertEqual((archived['tmp_recovery'], archived['evidence_manifest_sha256'], archived['scope_violations'],
+                              archived['changed'], archived['owner_ran']),
+                             ('preserved', 'after', [], ['src/x.js'], True))
+            self.assertEqual((output / f'{name}.stop-1/tmp/helper-worktree.txt').read_text(), 'kept')
+            self.assertEqual(fakes['called'], [name])
+            proven = next(e for e in events(Path(temp), 'claude') if e['event'] == 'docker_teardown_proven')
+            self.assertEqual(proven['tmp'], 'preserved')
+
+    def test_docker_loss_recovers_when_the_owner_or_the_volume_is_already_gone(self):
+        """H5, allowed: the cell's own teardown had removed the owner before Docker was lost (run/started.json still
+        proves the attempt), or the volume no longer exists (nothing to preserve, recorded as such). An attempt
+        whose owner did not run is archived without a tree or scope."""
+        for owner, volume, owner_ran, tmp in ((False, True, True, 'preserved'), (True, False, True, 'volume absent'),
+                                              (True, True, False, 'preserved')):
+            with self.subTest(owner=owner, volume=volume, owner_ran=owner_ran), \
+                    tempfile.TemporaryDirectory() as temp:
+                result, calls, fakes, name = self.docker_loss(Path(temp), owner=owner, volume=volume,
+                                                               owner_ran=owner_ran)
+                self.assertIs(result, True)
+                self.assertEqual((fakes['containers'], fakes['volumes']), ({}, set()))
+                self.assertEqual(fakes['preserve'].call_count, int(volume))
+                self.assertEqual(fakes['evidence'].call_count, int(owner_ran))
+                archived = json.loads((Path(temp) / f'output/verdict-{name}.stop-1.json').read_text())
+                self.assertEqual(archived['tmp_recovery'], tmp)
+                self.assertEqual('scope_violations' in archived, owner_ran)
+                self.assertEqual(fakes['called'], [name])
+
+    def test_a_docker_recovery_that_cannot_be_proved_stops_both_lanes_and_keeps_the_volume(self):
+        """H5, violating: /tmp cannot be preserved, the recorded owner is not on the attempt's volume, or the cell
+        cannot be sealed again: the lane stops with the harm latch set, nothing is archived or redispatched, and the
+        volume stays for the orchestrator."""
+        cases = (('preserve', dict(preserve=subprocess.CalledProcessError(1, ['docker', 'run'])), True,
+                  'Docker teardown proof failed'),
+                 ('owner elsewhere', dict(on_volume=False), True, 'recorded owner container was not found on its volume'),
+                 ('seal', dict(sealed=(None, ['tmp/x: permission denied'])), False,
+                  'evidence collection failed after the Docker recovery: tmp/x: permission denied'))
+        for label, change, volume_kept, reason in cases:
+            with self.subTest(label), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                result, calls, fakes, name = self.docker_loss(root, **change)
+                self.assertIsInstance(result, driver.Stopped)
+                self.assertIn(reason, str(result))
+                self.assertEqual(bool(fakes['volumes']), volume_kept)
+                self.assertEqual(fakes['called'], [])
+                fakes['evidence'].assert_not_called()
+                self.assertTrue((root / f'output/verdict-{name}.json').is_file())
+                self.assertFalse((root / f'output/verdict-{name}.stop-1.json').exists())
+                latch = json.loads((root / 'output/driver-status-claude.json').read_text())['harm_latch']
+                self.assertEqual(latch['cell'], None)
+                self.assertIn(reason, latch['reason'])
+                with self.assertRaisesRegex(driver.Stopped, 'harm latch in lane claude'):
+                    lane(root, 'codex').assert_active()
+
+
+class LaneEnd(unittest.TestCase):
+    """H4 (b): an exception that ends a lane sets the harm latch with its text, so the other lane stops dispatching;
+    an operator's interrupt does not, nor does a lane that ends on a latch already set or on a STOP whose latch an
+    amendment cleared."""
+
+    def run_lane(self, root, side_effect, slots=None):
+        seal(root)
+        d = lane(root, 'claude', slots or [row('c001-')])
+        with mock.patch.object(d, 'ready', return_value=True), \
+                mock.patch.object(driver.cell, 'run', side_effect=side_effect), \
+                mock.patch.object(driver.time, 'sleep'):
+            try:
+                d.run()
+            finally:
+                d.lock.close()
+
+    def test_an_error_that_ends_a_lane_latches_both_lanes_until_cleared(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            seal(root)
-            d = lane(root, 'claude')
-            name = row('c001-')[0]
-            container, volume, cid = 'devlyn-0231-owner', 'devlyn-0233-tmp-owner', 'a' * 64
-            (d.output / name / 'run').mkdir(parents=True)
-            (d.output / name / 'run/started.json').write_text(json.dumps({
-                'create_argv': ['create', '--name', container, f'type=volume,src={volume},dst=/tmp'],
-                'tmp_volume': volume, 'started_at': time.time()}))
-            (d.output / f'verdict-{name}.json').write_text(json.dumps(dict(
-                status='STOP', teardown='FAILED', identity={'status': 'MATCH'}, owner_status='EXITED_NONZERO',
-                reason='teardown failed: failed to connect to the docker API at unix:///docker.sock')))
-            removed = []
-            inspected = dict(Id=cid, Name='/' + container, Config={'Labels': {'devlyn.task': '0233'}},
-                             Mounts=[{'Type': 'volume', 'Name': volume}],
-                             State={'Running': False, 'Pid': 0, 'Status': 'exited'})
+            with self.assertRaisesRegex(OSError, 'disk full'):
+                self.run_lane(root, OSError(28, 'disk full'))
+            latch = json.loads((root / 'output/driver-status-claude.json').read_text())['harm_latch']
+            self.assertEqual(latch, dict(cell=None, verdict_sha256=None, reason=(
+                f'lane claude ended at {row("c001-")[0]}: OSError: [Errno 28] disk full')))
+            codex = lane(root, 'codex')
+            with self.assertRaisesRegex(driver.Stopped, 'harm latch in lane claude'):
+                codex.assert_active()
+            amendment = root / 'amendment-1.md'
+            amendment.write_text('resolved')
+            claude = lane(root, 'claude')
+            claude.clear_latch(amendment)  # a latch with no verdict clears like any other
+            codex.assert_active()
+            self.assertEqual(claude.state['cleared_latches'][-1]['cell'], None)
+            claude.latch(None, 'a second lane end')  # a cleared lane end exempts no later one
+            with self.assertRaisesRegex(driver.Stopped, 'a second lane end'):
+                codex.assert_active()
+            claude.lock.close()
+            codex.lock.close()
 
-            def docker(argv, **_kwargs):
-                if argv[1:3] == ['ps', '-aq']:
-                    value = '' if removed or 'name=' in argv[-1] else cid
-                elif argv[1] == 'inspect':
-                    value = json.dumps([inspected])
-                elif argv[1:3] == ['volume', 'ls']:
-                    value = ''
-                else:
-                    removed.append(argv[1:])
-                    value = ''
-                return subprocess.CompletedProcess(argv, 0, stdout=value)
+    def test_an_interrupt_or_a_latch_already_set_adds_no_latch(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            with self.assertRaises(KeyboardInterrupt):
+                self.run_lane(root, KeyboardInterrupt())
+            self.assertIsNone(latched(root, 'claude'))
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            other = lane(root, 'codex')
+            other.latch(None, 'codex ended')
+            with self.assertRaisesRegex(driver.Stopped, 'harm latch in lane codex'):
+                self.run_lane(root, AssertionError('never dispatched'))
+            self.assertIsNone(latched(root, 'claude'))
+            other.lock.close()
 
-            run, called = cells(d.output, {name: [COMPLETE]})
-            with mock.patch.object(driver.subprocess, 'run', side_effect=docker), \
-                    mock.patch.object(driver.cell, 'run', side_effect=run):
-                self.assertTrue(d.dispatch(row('c001-')))
-            self.assertEqual(removed, [['rm', cid], ['volume', 'rm', volume]])
-            self.assertEqual(called, [name])
-            self.assertTrue((d.output / f'{name}.stop-1/run/started.json').is_file())
+    def test_a_stop_whose_latch_was_cleared_ends_its_lane_without_a_new_latch(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            name = row('c002-')[0]
+            stop = dict(status='STOP', reason='instruction assertion: x', teardown='CLEAN',
+                        identity={'status': 'MATCH'}, owner_status='EXITED_0', owner_ran=True)
+            with self.assertRaisesRegex(driver.Stopped, 'STOP instruction assertion'):
+                self.run_lane(root, cells(root / 'output', {name: [stop]})[0], [row('c002-')])
+            amendment = root / 'amendment-1.md'
+            amendment.write_text('resolved')
+            claude = lane(root, 'claude')
+            claude.clear_latch(amendment)
+            claude.lock.close()
+            with self.assertRaisesRegex(driver.Stopped, 'STOP instruction assertion'):
+                self.run_lane(root, AssertionError('a STOP is not run again'), [row('c002-')])
+            self.assertIsNone(latched(root, 'claude'))
+            lane(root, 'codex').assert_active()
 
 
 class Accounts(unittest.TestCase):
@@ -875,6 +1078,10 @@ class RunCellContract(unittest.TestCase):
         for name in ('run', 'regrade', 'claude_limits', 'image_identity'):
             self.assertEqual(list(inspect.signature(getattr(real, name)).parameters),
                              list(inspect.signature(getattr(fake, name)).parameters), name)
+        # The Docker-loss recovery's calls, which the driver tests patch onto the fake (H2, H5).
+        for function, parameters in ((real.stop_evidence, ['out', 'record']), (real.seal_after_teardown, ['out']),
+                                     (real.cell_run.preserve_tmp, ['volume', 'dest', 'image'])):
+            self.assertEqual(list(inspect.signature(function).parameters), parameters, function.__name__)
 
 
 if __name__ == '__main__':
