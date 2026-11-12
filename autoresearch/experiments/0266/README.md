@@ -13,9 +13,9 @@ frozen witnesses are read from 0265 by path.
 
 From the root of the worktree at the registration commit, with `X=autoresearch/experiments/0266` and
 `R=~/.local/share/nx01/0266-live`, one command per line, in order. **Model** marks a step that makes model calls;
-every other step makes none and reads no credential unless it says so. A step that writes its file once (the seal,
-`q5-controls.json`, `screen-decision.json`) refuses while that file exists: move it aside before repeating the step on
-another commit.
+every other step makes none and reads no credential unless it says so. The seal and the screen decision are written
+once and refuse while their file exists: move it aside before repeating the step on another commit. The controls
+(step 4) are run again on a new commit and replace `q5-controls.json`.
 
 Before the Codex login is chosen (none of these reads a login, and naming it later changes nothing they made):
 
