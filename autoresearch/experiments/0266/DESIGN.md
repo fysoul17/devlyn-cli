@@ -267,9 +267,9 @@ whose seal holds the file's bytes.
 - **Q4 graded tree**: 0265's `locate.py`, unchanged: 4.3.31 changes no delivery-helper code from 4.3.30
   (`git diff v4.3.30 v4.3.31 -- bin config` touches `bin/instruction-templates.json`, `runtime-principles.md` and
   `devlyn-ideate/references/executor.md` only), and C changes only the principle files.
-- **Q5 witness and probe controls** (`judge.py controls`): 0265's 30, and four new ones on archived 0265 trees: the
-  write-failure witness on c004-F10 with a 400 planted in its write-failure path (reproduces) and as it is (a 500: does
-  not); the probe's G5 field on c038-F11 with `Number.isSafeInteger` planted (restricts) and as it is (allows).
+- **Q5 witness and probe controls** (`judge.py controls`): 0265's 30, and five new ones on archived 0265 trees: the
+  write-failure witness on c004-F10 with a 400 planted in its write-failure path (reproduces), as it is (a 500: does
+  not) and with a server that writes through a descriptor it opened at load (not applicable); the probe's G5 field on c038-F11 with `Number.isSafeInteger` planted (restricts) and as it is (allows).
 - **Q6 judge calibration**: re-run with 0265's judges, rule, prompt and descriptions, unchanged.
 - **Q7 SMOKE**: four cells (both engines, B and C-K3) in one driver process, then `seal-forms` and the assertions on
   all four; C-K3 must show B's plugin entry and session-text location against K3's probe. SMOKE says nothing about a
@@ -291,7 +291,8 @@ The probe is retried once while any of its fields is unknown (DESIGN "Unknowns")
 
 The write-failure witness copies the tree into the container's own filesystem before it makes the store read-only: on
 Docker Desktop's macOS bind mount a read-only mode does not stop the container's user from writing (seen 2026-11-12,
-uid 501), on the container's filesystem it does. Its reading on a slot covers every attempt that ran an owner: it
+uid 501), on the container's filesystem it does. The store is made read-only before the server starts, so the server
+holds no writable descriptor of it; a tree that cannot then load, listen or answer `GET /items` reads not applicable. Its reading on a slot covers every attempt that ran an owner: it
 reproduced on one of their trees, or (unknown) none reproduced and one is unresolved, or not.
 
 The screen runs the same per-cell pipeline; it is graded by the probe alone (`judge.py probe-all screen`), since its

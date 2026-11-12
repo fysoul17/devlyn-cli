@@ -445,11 +445,12 @@ class Witnesses(unittest.TestCase):
         self.assertEqual(len({c[0] for c in judge.CONTROLS}), len(judge.CONTROLS))
         tree = ('archive', 'reports-0265/output/c004-F10-claude-B-r1')
         self.assertEqual(sorted(by['f10-write-failure-misreported'], key=str),
-                         sorted([(True, tree, 'misreport-400'), (False, tree, None)], key=str))
+                         sorted([(True, tree, 'misreport-400'), (False, tree, None),
+                                 ('not_applicable', tree, 'writable-descriptor')], key=str))
         tree = ('archive', 'reports-0265/output/c038-F11-claude-B-r1')
         self.assertEqual(sorted(by['probe-large-qty'], key=str),
                          sorted([(True, tree, 'restrict-safe-integer'), (False, tree, None)], key=str))
-        self.assertEqual(len(judge.CONTROLS), 34)
+        self.assertEqual(len(judge.CONTROLS), 35)
         # Without its interface a D4 or F10 witness reads not applicable; the two frozen D3 witnesses have no such
         # reading (DESIGN Q5, O14): the delimiter witness reproduces, the child probe does not.
         without = {check: expected for control, check, expected, *_ in judge.CONTROLS
@@ -473,6 +474,15 @@ class Witnesses(unittest.TestCase):
             self.assertIn('Number.isSafeInteger(x)', text)
             with self.assertRaisesRegex(ValueError, 'no longer holds the planted text once'):
                 judge.plant('misreport-400', tree)
+            (tree / 'server/index.js').write_text("const fs = require('node:fs/promises');\n"
+                                                  '        await writeItems(itemsFile, [...items, created]);\n')
+            judge.plant('writable-descriptor', tree)
+            text = (tree / 'server/index.js').read_text()
+            self.assertTrue(text.startswith("const plantedStore = require('node:fs').openSync(require('node:path')"
+                                            ".join(__dirname, '..', 'data', 'items.json'), 'r+');\n"))
+            self.assertIn("require('node:fs').writeSync(plantedStore, `${JSON.stringify({ items: [...items, created] }, "
+                          "null, 2)}\\n`, 0);", text)
+            self.assertNotIn('await writeItems', text)
 
 
 FAKE_DOCKER = """#!{python}

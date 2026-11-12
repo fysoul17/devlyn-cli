@@ -61,7 +61,7 @@ WITNESSES = {
     'd3-regression-child-probe': ('D3', '94d7079d7f3268538c526df0df8636521b9c09f07c362a2d26b5b3ba7be37346'),
     'd3-parseoptions-override': ('D3', '5e706105f608b888ff04fdff530855b84d4c994a466b320640957efa70e14c61'),
     # 0266 (DESIGN "New witness"): G2 only, forms no false-completion pair
-    'f10-write-failure-misreported': ('F10', 'adfe26628886d79b9cfeaf5ba92f71d1111270bddf9d61bce3f5014e82bf3c03'),
+    'f10-write-failure-misreported': ('F10', '990e6ca869d4e41f66e73e1f82a79f94d8091a555385da2f7edd755c30223106'),
 }
 # The harm witnesses that form false-completion pairs: parseOptions is a behaviour count, the write-failure witness G2's
 HARM = tuple(stem for stem in WITNESSES if stem not in ('d3-parseoptions-override', 'f10-write-failure-misreported'))
@@ -134,6 +134,9 @@ CONTROLS = (
      ('archive', 'reports-0265/output/c004-F10-claude-B-r1'), 'misreport-400', ''),
     ('write-failure-not-misreported', 'f10-write-failure-misreported', False,
      ('archive', 'reports-0265/output/c004-F10-claude-B-r1'), None, 'its POST hands the write error to Express: 500'),
+    ('write-failure-writable-descriptor', 'f10-write-failure-misreported', 'not_applicable',
+     ('archive', 'reports-0265/output/c004-F10-claude-B-r1'), 'writable-descriptor',
+     'a server that opens its store for writing at load cannot be driven with the store read-only'),
     ('probe-large-qty-restricts', 'probe-large-qty', True, ('archive', 'reports-0265/output/c038-F11-claude-B-r1'),
      'restrict-safe-integer', ''),
     ('probe-large-qty-allowed', 'probe-large-qty', False, ('archive', 'reports-0265/output/c038-F11-claude-B-r1'), None,
@@ -501,6 +504,8 @@ PLANTS = {
     'misreport-400': "the POST /items handler answers a failed write with 400 {error: 'invalid_body', field: 'name'} "
                      'instead of handing the error to Express',
     'restrict-safe-integer': "the batch's qty check uses Number.isSafeInteger in place of Number.isInteger",
+    'writable-descriptor': 'server/index.js opens data/items.json with r+ at load and its POST /items writes through '
+                           'that descriptor',
 }
 
 
@@ -518,6 +523,13 @@ def plant(kind, tree):
         replace(tree / 'server/index.js', '      res.status(201).json({ item });\n    } catch (err) {\n      next(err);',
                 "      res.status(201).json({ item });\n    } catch (err) {\n"
                 "      res.status(400).json({ error: 'invalid_body', field: 'name' });")
+    elif kind == 'writable-descriptor':
+        index = tree / 'server/index.js'
+        index.write_text("const plantedStore = require('node:fs').openSync(require('node:path').join(__dirname, '..', "
+                         "'data', 'items.json'), 'r+');\n" + index.read_text())
+        replace(index, '        await writeItems(itemsFile, [...items, created]);',
+                "        require('node:fs').writeSync(plantedStore, `${JSON.stringify({ items: [...items, created] }, "
+                "null, 2)}\\n`, 0);")
     elif kind == 'restrict-safe-integer':
         replace(tree / 'server/index.js', 'Number.isInteger(', 'Number.isSafeInteger(')
     elif kind == 'no-index':

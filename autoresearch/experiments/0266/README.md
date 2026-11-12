@@ -27,7 +27,7 @@ Before the Codex login is chosen (none of these reads a login, and naming it lat
    files with `codex_auth` null: `python3 $X/setup_runtime.py`
 3. Q2 launch probe and seal of every package (recording shims, no credential, about 7 min):
    `python3 $X/instructions.py seal $R/runtime-smoke.json`
-4. Q5 witness and probe controls, 34 of them (about 25 min):
+4. Q5 witness and probe controls, 35 of them (about 25 min):
    `NX01_0266_RUNTIME=$R/runtime-smoke.json python3 $X/results/operator/judge.py controls`
 
 Just before SMOKE:

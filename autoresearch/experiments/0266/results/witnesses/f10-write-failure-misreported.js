@@ -2,14 +2,16 @@
 // 0266 witness f10-write-failure-misreported (DESIGN "New witness"), run from a disposable snapshot at /work in the
 // cell image without network, not as root. The snapshot is copied into the container's own filesystem first: on
 // Docker Desktop's macOS bind mount a read-only mode does not stop the container user from writing (seen 2026-11-12),
-// on the container's filesystem it does. The tree's app is started from that copy in a child process on the tree's own
-// store (data/items.json under the tree): its exported app, else its exported createApp given that file the way 0260's
-// f10-nonobject-items-file does. Once GET /items answers 200, data/items.json and data/ are made read-only and one
+// on the container's filesystem it does. In the copy, data/items.json and data/ are made read-only first, before the
+// server starts, so the server can hold no writable descriptor of the store. Then the tree's app is started from the
+// copy in a child process on the tree's own store (data/items.json under the tree): its exported app, else its
+// exported createApp given that file the way 0260's f10-nonobject-items-file does. Once GET /items answers 200, one
 // valid item is posted to /items. A 5xx: the failure is reported as the server's (exit 0, does not reproduce). Any other
 // response, a 4xx (the client is told its input was wrong) or a 2xx (that the item was saved): misreported (exit 1,
 // reproduces). No response within 10 s (the server hung, crashed or dropped the connection): unresolved (exit 2), and
-// exit 2 too when the store is still writable (run as root). A tree that cannot be driven (no exported app or
-// createApp, the app does not load or listen, or GET /items does not answer 200) reads not applicable (exit 3).
+// exit 2 too when the store stays writable (run as root). A tree that cannot be driven with its store read-only (no
+// exported app or createApp, the app does not load or listen, or GET /items does not answer 200) reads not applicable
+// (exit 3).
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
@@ -75,6 +77,18 @@ async function main() {
   fs.cpSync(process.cwd(), root, { recursive: true, verbatimSymlinks: true });
   const store = path.join(root, 'data');
   const file = path.join(store, 'items.json');
+  try {
+    fs.chmodSync(file, 0o444);
+    fs.chmodSync(store, 0o555);
+  } catch (error) {
+    return finish(2, { result: 'unresolved', reason: `the store could not be made read-only: ${error}` });
+  }
+  for (const target of [store, file]) {
+    try {
+      fs.accessSync(target, fs.constants.W_OK);
+      return finish(2, { result: 'unresolved', reason: `${target} is still writable` });
+    } catch {}
+  }
   const child = fork(__filename, ['serve'], { cwd: root, stdio: ['ignore', 'ignore', 'pipe', 'ipc'] });
   let stderr = '';
   child.stderr.on('data', (chunk) => { stderr = (stderr + chunk).slice(-2000); });
@@ -86,18 +100,6 @@ async function main() {
     if (baseline.status !== 200) return end(3, { result: 'not applicable', reason: `GET /items ${baseline.status}` });
   } catch (error) {
     return end(3, { result: 'not applicable', reason: `GET /items: ${error}` });
-  }
-  try {
-    fs.chmodSync(file, 0o444);
-    fs.chmodSync(store, 0o555);
-  } catch (error) {
-    return end(2, { result: 'unresolved', reason: `the store could not be made read-only: ${error}` });
-  }
-  for (const target of [store, file]) {
-    try {
-      fs.accessSync(target, fs.constants.W_OK);
-      return end(2, { result: 'unresolved', reason: `${target} is still writable` });
-    } catch {}
   }
   let response;
   try {
