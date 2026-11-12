@@ -426,6 +426,37 @@ class Guards(unittest.TestCase):
             source = (HERE / 'driver.py').read_text()
             self.assertEqual(source.count('claude_limits('), 1)
 
+    def test_operator_hold_holds_every_dispatch_until_its_file_is_removed(self):
+        # While <runtime root>/operator-hold exists no new cell starts: a hold every 60 s, never a verdict or a stop,
+        # and the other pre-dispatch checks run again once it is gone.
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            seal(root)
+            d = lane(root, 'claude', [row('c001-'), row('c002-')])
+            run, called = cells(d.output, {r[0]: [COMPLETE] for r in d.slots})
+            hold = root / driver.OPERATOR_HOLD
+            hold.write_text('')
+            sleeps = []
+
+            def sleep(seconds):  # the operator removes the file during the second wait
+                sleeps.append(seconds)
+                self.assertEqual(called, [])
+                self.assertFalse(list(d.output.glob('verdict-*')))
+                if len(sleeps) == 2:
+                    hold.unlink()
+            with mock.patch.object(driver, 'credential', return_value=snapshot(20000)) as credential, \
+                    mock.patch.object(driver.cell, 'claude_limits', return_value=WINDOWS), \
+                    mock.patch.object(driver.cell, 'run', side_effect=run), \
+                    mock.patch.object(driver.time, 'sleep', side_effect=sleep), host():
+                d.run()
+            self.assertEqual(sleeps, [60, 60])
+            self.assertEqual(called, [r[0] for r in d.slots])
+            self.assertEqual([e['reason'] for e in events(root, 'claude') if e['event'] == 'hold'],
+                             ['operator hold', 'operator hold'])
+            self.assertEqual(credential.call_count, 2)  # the checks after the hold, once per dispatch
+            self.assertNotIn('harm_latch', d.state)
+            self.assertEqual(d.state['split_blocks'], [])
+
     def test_95_percent_window_holds_and_94_dispatches(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

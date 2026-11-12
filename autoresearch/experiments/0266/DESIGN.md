@@ -336,3 +336,4 @@ evidence) is now possible in both arms; it is archived and redispatched once, as
 | Q3, Q8 run | not repeated | "Apparatus" |
 | B launch fault | launch fault, either arm | both arms launch through `devlyn run` |
 | `codex_auth` written once | named late, alone | the operator chooses the login just before SMOKE |
+| holds: disk, login, windows, image | plus an operator hold: no new cell while `<runtime root>/operator-hold` exists | host courtesy for a timing-sensitive job in another session |

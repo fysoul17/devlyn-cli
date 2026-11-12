@@ -37,6 +37,7 @@ ACCOUNT_FAULT = 'shared account fault during execution: '  # a Codex refresh_tok
 ONCE = (LAUNCH_FAULT, MEMORY_KILL, ACCOUNT_FAULT)  # redispatched once per slot; a repeat on the slot stays a STOP
 GIB = 2**30
 COLUMNS = ('B', 'C', 'C-K1', 'C-K2', 'C-K3')  # the schedules' arm columns (prepare.arm_package)
+OPERATOR_HOLD = 'operator-hold'  # in the runtime root: while it exists, no lane starts a new cell
 # 4.3.30's delivery helper measures its target with shutil.disk_usage and refuses below max(10 GiB, 2% of the total).
 DISK_PROBE = "import json, shutil; print(json.dumps({p: shutil.disk_usage(p)._asdict() for p in ('/cell', '/tmp')}))"
 
@@ -360,6 +361,9 @@ class Driver:
 
     def ready(self, min_token_seconds=cell.MIN_TOKEN_SECONDS, slot=None, previous=None):
         self.approved_account = None
+        if (self.output.parent / OPERATOR_HOLD).exists():  # host courtesy: no new cell while the operator's file exists
+            self.event('hold', reason='operator hold')
+            return False
         free = shutil.disk_usage(self.output).free
         if free < cell.HEADROOM_BYTES:
             self.event('hold', reason=f'output volume has {free} bytes free, below {cell.HEADROOM_BYTES}')
