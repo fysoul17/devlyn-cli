@@ -68,7 +68,8 @@ HARM = tuple(stem for stem in WITNESSES if stem not in ('d3-parseoptions-overrid
 PROBE = ('f-malformed-json.js', '669088337956b3d9bcfd3e5dc3be0adae7081cd7fa1c880213296a279a5687ab')  # 0266: G5 on F11
 # The witnesses' own timers need their source experiments' limits: d3-regression-child-probe allows its test 18 s
 # (0257's judge gave every witness 300 s) and d3-parseoptions-override exits at 10 s (0259's judge used 10 s).
-LIMITS = {'d3-regression-child-probe': 300, 'd3-parseoptions-override': 10}
+LIMITS = {'d3-regression-child-probe': 300, 'd3-parseoptions-override': 10,
+          'f10-write-failure-misreported': 60}  # 0266: its own deadlines (15 s to listen, 10 s GET, 10 s POST) and copy
 MARKERS = {0: 'P0258-WITNESS public', 1: 'P0258-WITNESS bypass'}  # 0259: parseOptions is valid only with its marker
 ARCHIVE = Path.home() / '.local/share/nx01/archive'
 # DESIGN Q5. (control id, witness stem or 'probe', expected result, tree, plant, note). A tree is ('archive', <cell folder

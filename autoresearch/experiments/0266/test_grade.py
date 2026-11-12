@@ -94,6 +94,17 @@ class Witnesses(unittest.TestCase):
             return last[0]
         return fake, events, pending
 
+    def test_the_write_failure_witness_has_60_seconds(self):
+        # F9: its own deadlines exceed the default 30 s container limit.
+        with tempfile.TemporaryDirectory() as temp:
+            judge, output = self.module(Path(temp))
+            self.assertEqual(judge.limit('f10-write-failure-misreported'), 60)
+            self.snapshot(output, 'c001-F10-claude-B-r1')
+            fake, events, _ = self.fake_docker([subprocess.CompletedProcess([], 0, '', '')] * 2)
+            with mock.patch.object(judge.subprocess, 'run', side_effect=fake):
+                judge.run('f10-write-failure-misreported', ['c001-F10-claude-B-r1'])
+            self.assertEqual([timeout for argv, timeout in events if argv[1] == 'start'], [60, 60])
+
     def test_a_refused_create_removes_nothing(self):
         # F11: a create that exited non-zero made no container (the name may be another process's): no `docker rm`.
         # A create whose outcome is unknown (a timeout) may have made ours: it is removed.
