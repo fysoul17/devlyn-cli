@@ -1,5 +1,10 @@
-"""Offline tests of 0265's arms, cell, launch probe, per-cell assertions and assessors. Fakes stand in for Docker and
-credentials; Codex's model input is real 0.164.0 output (fixtures/cell/prompt-input-*.json)."""
+"""Offline tests of 0266's arms and packages, the launch probe and seal of every package, the per-cell assertions
+(every cell against its own package's seal, with the delivered candidate sentences) and run_cell. Fakes stand in for
+Docker and credentials. The shapes are 0265's fixtures (fixtures/cell: Codex 0.164.0's real model input, the init
+event, the status lines, a release.json), moved to 4.3.31 and to each package at test time: the session text of C-K<n>
+is B's with its sentence inserted (control.insert), and each package's release.json differs in one file digest, so
+each has its own release digest and status line. 0265's cell.py, assess.py and check.py, unchanged, are tested in
+0265."""
 import base64
 import contextlib
 import copy
@@ -22,23 +27,51 @@ import unittest
 from unittest import mock
 
 HERE = Path(__file__).resolve().parent
+PRIOR = HERE.parent / '0265'
 
 
-def load(name):
-    spec = importlib.util.spec_from_file_location('test_0265_cell_' + name, HERE / (name + '.py'))
+def load(name, path=None):
+    spec = importlib.util.spec_from_file_location('test_0266_cell_' + name, path or HERE / (name + '.py'))
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
 
 
-prepare, cell, run_cell, instructions, assess, strict = (
-    load(name) for name in ('prepare', 'cell', 'run_cell', 'instructions', 'assess', 'strict_config_check'))
-SHAPES = json.loads((HERE / 'fixtures/cell/shapes.json').read_text())
-RELEASE = HERE / 'fixtures/cell/release.json'
+prepare, run_cell, instructions = (load(name) for name in ('prepare', 'run_cell', 'instructions'))
+control = instructions.control
+runtime_tests = load('test_runtime')  # its synthetic package, re-derived as release.js derives it
+
+
+def moved(text):
+    """A 0265 fixture's text moved to 4.3.31 (the release root, the marketplace and the projection carry the version)."""
+    return text.replace('4.3.30', '4.3.31').replace('4-3-30', '4-3-31')
+
+
+SHAPES = json.loads(moved((PRIOR / 'fixtures/cell/shapes.json').read_text()))
 OWNER = {engine: prepare.TASKS['routes'][engine]['owner'] for engine in prepare.CONFIGS}
-INPUT = {name: json.loads((HERE / f'fixtures/cell/prompt-input-{name}.json').read_text())
-         for name in ('A', 'B', 'control')}
-TEXT = INPUT['B'][2]['content'][0]['text']  # devlyn run 4.3.30's developer_instructions, where Codex 0.164.0 puts it
+INPUT = {name: json.loads(moved((PRIOR / f'fixtures/cell/prompt-input-{name}.json').read_text()))
+         for name in ('A', 'B', 'control')}  # A: the raw reference input; B: through devlyn run
+TEXT = INPUT['B'][2]['content'][0]['text']  # devlyn run's developer_instructions, where Codex 0.164.0 puts it
+PACKAGES = instructions.PACKAGES
+CANDIDATES = tuple(control.CANDIDATES)
+TEXTS = {'B': TEXT, **{k: control.insert(TEXT, k) for k in CANDIDATES}}
+ARM = {package: 'B' if package == 'B' else 'C' for package in PACKAGES}
+
+
+def release_manifest(package):
+    """A 4.3.31 release.json per package: 0265's fixture with one file digest of its own, its digest recomputed."""
+    manifest = json.loads((PRIOR / 'fixtures/cell/release.json').read_text())
+    manifest['version'] = '4.3.31'
+    manifest['files'][0]['sha256'] = f'{PACKAGES.index(package):064x}'
+    manifest['digest']['value'] = hashlib.sha256(instructions.canonical(
+        {k: v for k, v in manifest.items() if k != 'digest'}).encode()).hexdigest()
+    return manifest
+
+
+RELEASES = {package: release_manifest(package) for package in PACKAGES}
+DIGEST = {package: RELEASES[package]['digest']['value'] for package in PACKAGES}
+STATUS = {package: {engine: SHAPES['status_lines'][engine].replace('@53a2f9f2', f'@{DIGEST[package][:8]}')
+                    for engine in prepare.CONFIGS} for package in PACKAGES}
 DEVLYN_SKILLS = ['devlyn:devlyn-engines', 'devlyn:devlyn-ideate']
 CODEX_TOML = '''model = "gpt-6-astra"
 model_reasoning_effort = "high"
@@ -67,13 +100,13 @@ def request(items):
     return {'model': 'gpt-6-astra', 'input': copy.deepcopy(items)}
 
 
-def a_request():
+def raw_request():
     return request(INPUT['A'])
 
 
-def b_request(text=TEXT):
+def package_request(package='B', text=None):
     body = request(INPUT['B'])
-    body['input'][2]['content'][0]['text'] = text
+    body['input'][2]['content'][0]['text'] = TEXTS[package] if text is None else text
     return body
 
 
@@ -115,14 +148,14 @@ def with_plugin(body, root, skill):
     return body
 
 
-def moved_text():
-    body = b_request()
+def moved_text(package):
+    body = package_request(package)
     body['input'].append({'type': 'message', 'role': 'user', 'content': [body['input'][2]['content'].pop(0)]})
     return body
 
 
-def b_without_devlyn_skills():
-    body = b_request()
+def without_devlyn_skills(package):
+    body = package_request(package)
     body['input'][2]['content'][1]['text'] = INPUT['A'][2]['content'][0]['text']
     return body
 
@@ -142,66 +175,75 @@ def write_request(out, request, later=None):
     (trace / 'trace.jsonl').write_text(''.join(json.dumps(row) + '\n' for row in rows) + '{"torn')
 
 
-def make_cell(root, engine, arm):
-    """A SMOKE-shaped cell that passes every assertion for its arm."""
+def write_release(out, package):
+    release = out / 'home/.devlyn/cli/releases/devlyn-cli/4.3.31'
+    release.mkdir(parents=True, exist_ok=True)
+    (release / 'release.json').write_text(json.dumps(RELEASES[package], indent=2) + '\n')
+
+
+def write_projection(home, package):
+    folder = home / '.codex' / instructions.PROJECTION
+    (folder / '.codex-plugin').mkdir(parents=True, exist_ok=True)
+    (folder / '.codex-plugin/plugin.json').write_text('{"name": "devlyn"}\n')
+    (folder / '.devlyn-harness-projection.json').write_text(json.dumps({'schemaVersion': 1, 'package': package}) + '\n')
+
+
+def make_cell(root, engine, package):
+    """A SMOKE-shaped cell of the package that passes every assertion against that package's seal."""
+    arm = ARM[package]
     out = root / f'smoke-{engine}-{arm}'
     (out / 'run').mkdir(parents=True)
     (out / 'home/.codex').mkdir(parents=True)
     (out / 'home/.codex/models_cache.json').write_text('{}')
-    (out / 'run/stderr').write_text('an unrelated engine warning\n' +
-                                    (SHAPES['status_lines'][engine] + '\n' if arm == 'B' else ''))
+    (out / 'run/stderr').write_text('an unrelated engine warning\n' + STATUS[package][engine] + '\n')
     (out / 'run/result.json').write_text(json.dumps({'identity': {'status': 'MATCH', 'owner': 'MATCH'}}))
-    if arm == 'B':
-        release = out / 'home/.devlyn/cli/releases/devlyn-cli/4.3.30'
-        release.mkdir(parents=True)
-        shutil.copyfile(RELEASE, release / 'release.json')
+    write_release(out, package)
     if engine == 'claude':
         init = copy.deepcopy(SHAPES['claude_init'])
-        if arm == 'B':
-            init['plugins'].append(SHAPES['devlyn_plugin'])
+        init['plugins'].append(SHAPES['devlyn_plugin'])
         (out / 'run/stdout').write_text(json.dumps(init) + '\n' + json.dumps({'type': 'result', 'result': 'done'}) + '\n')
     else:
         (out / 'home/.codex/config.toml').write_text(prepare.codex_config(OWNER['codex']))
         (out / 'run/stdout').write_text(json.dumps({'type': 'thread.started', 'thread_id': 'owner'}) + '\n')
-        write_request(out, b_request() if arm == 'B' else a_request(), later=a_request())
+        write_request(out, package_request(package), later=raw_request())
         for name in ('.tmp/plugins/plugins/x/.codex-plugin/plugin.json', '.tmp/plugins.sha',  # Codex's own caches (O10)
                      'plugins/cache/openai-curated-remote/github/1.0.0/.codex-plugin/plugin.json'):
             (out / 'home/.codex' / name).parent.mkdir(parents=True, exist_ok=True)
             (out / 'home/.codex' / name).write_text('{}')
-        if arm == 'B':
-            folder = out / 'home/.codex' / instructions.PROJECTION
-            (folder / '.codex-plugin').mkdir(parents=True)
-            (folder / '.codex-plugin/plugin.json').write_text('{"name": "devlyn"}\n')
-            (folder / '.devlyn-harness-projection.json').write_text('{"schemaVersion": 1}\n')
-    plan = dict(name=out.name, task='SMOKE', arm=arm, config=engine)
+        write_projection(out / 'home', package)
+    plan = dict(name=out.name, task='SMOKE', arm=arm, package=package, config=engine)
     (out / 'plan.json').write_text(json.dumps(plan))
     return out, plan
 
 
 def probe_seal(root):
-    """The launch probe's fields of a seal for the SMOKE and D3 trees, as `seal` writes them."""
+    """The launch probe's fields of a seal for the SMOKE and D3 trees of every package, as `seal` writes them."""
     launch = {}
-    for engine in prepare.CONFIGS:
-        out, _ = make_cell(Path(tempfile.mkdtemp(dir=root)), engine, 'B')
-        entry = dict(status_line=SHAPES['status_lines'][engine], release_digest=instructions.RELEASE_DIGEST)
-        if engine == 'claude':
-            entry['plugin_dir'] = SHAPES['devlyn_plugin']['path']
-        else:
-            entry.update(projection=dict(path=instructions.PROJECTION, files=instructions.projection(out)),
-                         model_input={arm: instructions.model_input(body, TEXT)
-                                      for arm, body in (('A', a_request()), ('B', b_request()))})
-        launch[engine] = {tree: copy.deepcopy(entry) for tree in ('SMOKE', 'D3')}
-    return dict(launch=launch, devlyn_skills=DEVLYN_SKILLS)
+    for package in PACKAGES:
+        for engine in prepare.CONFIGS:
+            out, _ = make_cell(Path(tempfile.mkdtemp(dir=root)), engine, package)
+            entry = dict(status_line=STATUS[package][engine], release_digest=DIGEST[package])
+            if engine == 'claude':
+                entry['plugin_dir'] = SHAPES['devlyn_plugin']['path']
+            else:
+                entry.update(projection=dict(path=instructions.PROJECTION, files=instructions.projection(out)),
+                             model_input=instructions.model_input(package_request(package), TEXTS[package]))
+            launch.setdefault(package, {})[engine] = {tree: copy.deepcopy(entry) for tree in ('SMOKE', 'D3')}
+    reference = {tree: instructions.model_input(raw_request(), TEXT) for tree in ('SMOKE', 'D3')}
+    return dict(launch=launch, devlyn_skills=DEVLYN_SKILLS, reference_input=reference)
 
 
 def pending_seal(root):
-    return dict(package=dict(version='4.3.30', release_digest=instructions.RELEASE_DIGEST), cli=instructions.CLI,
-                session_text=TEXT, **probe_seal(root), forms={}, qualification=dict(status='PENDING'))
+    packages = {package: dict(version='4.3.31', release_digest=DIGEST[package], tree_sha256=f'{package}-tree')
+                for package in PACKAGES}
+    return dict(packages=packages, cli=instructions.CLI, session_text=TEXTS, **probe_seal(root), forms={},
+                qualification=dict(status='PENDING'))
 
 
 def sealed(root):
     seal = pending_seal(root)
-    seal['forms'] = {engine: instructions.observed_form(make_cell(root / 'seal', engine, 'B')[0], engine, seal)
+    seal['forms'] = {engine: {key: instructions.observed_form(make_cell(root / 'seal', engine, 'B')[0], engine, seal,
+                                                              'B')[key] for key in instructions.SHARED[engine]}
                      for engine in prepare.CONFIGS}
     return seal
 
@@ -231,167 +273,194 @@ def edit_init(out, change, count=1):
     (out / 'run/stdout').write_text(''.join(json.dumps(e) + '\n' for e in events))
 
 
+def other(package):
+    return {'B': 'K3', 'K1': 'K2', 'K2': 'K3', 'K3': 'K1'}[package]
+
+
 FOREIGN = {'name': 'other', 'path': '/home/participant/.claude/plugins/other', 'source': 'other@market'}
-MUTATIONS = {
-    'no_status': lambda out, engine: (out / 'run/stderr').write_text('an unrelated engine warning\n'),
-    'two_status': lambda out, engine: (out / 'run/stderr').write_text(
-        (SHAPES['status_lines'][engine] + '\n') * 2),
-    'other_version': lambda out, engine: edit_stderr(out, f'{engine} {instructions.CLI[engine]} ',
-                                                     f'{engine} 9.9.9 '),
-    'other_digest': lambda out, engine: edit_stderr(out, '@53a2f9f2', '@00000000'),
-    'principles_unavailable': lambda out, engine: (out / 'run/stderr').write_text(re.sub(
+MUTATIONS = {  # mutation(out, engine, package)
+    'no_status': lambda out, engine, p: (out / 'run/stderr').write_text('an unrelated engine warning\n'),
+    'two_status': lambda out, engine, p: (out / 'run/stderr').write_text((STATUS[p][engine] + '\n') * 2),
+    'other_version': lambda out, engine, p: edit_stderr(out, f'{engine} {instructions.CLI[engine]} ', f'{engine} 9.9.9 '),
+    'other_digest': lambda out, engine, p: edit_stderr(out, f'@{DIGEST[p][:8]}', '@00000000'),
+    'other_package_status': lambda out, engine, p: (out / 'run/stderr').write_text(STATUS[other(p)][engine] + '\n'),
+    'principles_unavailable': lambda out, engine, p: (out / 'run/stderr').write_text(re.sub(
         r'principles=configured:\S+', 'principles=unavailable', (out / 'run/stderr').read_text())),
-    'status': lambda out, engine: (out / 'run/stderr').write_text(SHAPES['status_lines'][engine] + '\n'),
-    'refused': lambda out, engine: (out / 'run/stderr').write_text(SHAPES['status_lines']['refused'] + '\n'),
-    'devlyn_home': lambda out, engine: (out / 'home/.devlyn/cli').mkdir(parents=True),
-    'altered_release': lambda out, engine: rewrite_release(
-        out, lambda m: m['files'][0].update(sha256='0' * 64), recompute=False),
-    'other_release': lambda out, engine: rewrite_release(
-        out, lambda m: m['files'][0].update(sha256='0' * 64), recompute=True),
-    'no_release': lambda out, engine: next((out / 'home/.devlyn').rglob('release.json')).unlink(),
-    'no_plugin': lambda out, engine: edit_init(out, lambda e: e['plugins'].pop()),
-    'plugin': lambda out, engine: edit_init(out, lambda e: e['plugins'].append(SHAPES['devlyn_plugin'])),
-    'second_init_plugin': lambda out, engine: edit_init(
-        out, lambda e: e['plugins'].append(SHAPES['devlyn_plugin']), count=2),
-    'foreign_plugin_init': lambda out, engine: edit_init(out, lambda e: e['plugins'].append(FOREIGN)),
-    'mcp': lambda out, engine: edit_init(out, lambda e: e.update(mcp_servers=[{'name': 'x', 'status': 'connected'}])),
-    'no_init': lambda out, engine: (out / 'run/stdout').write_text(json.dumps({'type': 'result'}) + '\n'),
-    'no_text': lambda out, engine: write_request(out, a_request()),
-    'text_twice': lambda out, engine: write_request(out, dict(b_request(), instructions=TEXT)),
-    'text': lambda out, engine: write_request(out, b_request()),
-    'preamble': lambda out, engine: write_request(out, b_request(instructions.PREAMBLE + ' another version')),
-    'moved_text': lambda out, engine: write_request(out, moved_text()),
-    'no_devlyn_skills': lambda out, engine: write_request(out, b_without_devlyn_skills()),
-    'devlyn_skills': lambda out, engine: write_request(out, with_plugin(
-        a_request(), instructions.DEVLYN_ROOT, 'devlyn:devlyn-ideate')),
-    'foreign_skill': lambda out, engine: write_request(out, with_plugin(
-        b_request() if (out / 'home/.devlyn').exists() else a_request(), CURATED_ROOT, 'github:github')),
-    'no_request': lambda out, engine: shutil.rmtree(out / 'cell/trace'),
-    'foreign_plugin': lambda out, engine: (
+    'refused': lambda out, engine, p: (out / 'run/stderr').write_text(SHAPES['status_lines']['refused'] + '\n'),
+    'altered_release': lambda out, engine, p: rewrite_release(
+        out, lambda m: m['files'][0].update(sha256='f' * 64), recompute=False),
+    'other_release': lambda out, engine, p: rewrite_release(
+        out, lambda m: m['files'][0].update(sha256='f' * 64), recompute=True),
+    'other_package_release': lambda out, engine, p: write_release(out, other(p)),
+    'no_release': lambda out, engine, p: next((out / 'home/.devlyn').rglob('release.json')).unlink(),
+    'no_plugin': lambda out, engine, p: edit_init(out, lambda e: e['plugins'].pop()),
+    'second_init_without_plugin': lambda out, engine, p: edit_init(out, lambda e: e['plugins'].pop(), count=2),
+    'foreign_plugin_init': lambda out, engine, p: edit_init(out, lambda e: e['plugins'].append(FOREIGN)),
+    'mcp': lambda out, engine, p: edit_init(out, lambda e: e.update(mcp_servers=[{'name': 'x', 'status': 'connected'}])),
+    'no_init': lambda out, engine, p: (out / 'run/stdout').write_text(json.dumps({'type': 'result'}) + '\n'),
+    'no_text': lambda out, engine, p: write_request(out, raw_request()),
+    'text_twice': lambda out, engine, p: write_request(out, dict(package_request(p), instructions=TEXTS[p])),
+    'other_package_text': lambda out, engine, p: write_request(out, package_request(other(p))),
+    'sentence_added': lambda out, engine, p: write_request(out, dict(
+        package_request(p), instructions=control.CANDIDATES[other(p) if p == 'B' else p][1])),
+    'moved_text': lambda out, engine, p: write_request(out, moved_text(p)),
+    'no_devlyn_skills': lambda out, engine, p: write_request(out, without_devlyn_skills(p)),
+    'foreign_skill': lambda out, engine, p: write_request(out, with_plugin(package_request(p), CURATED_ROOT,
+                                                                           'github:github')),
+    'no_request': lambda out, engine, p: shutil.rmtree(out / 'cell/trace'),
+    'foreign_plugin': lambda out, engine, p: (
         (out / 'home/.codex/plugins/cache/foreign/x/1.0/.codex-plugin').mkdir(parents=True),
         (out / 'home/.codex/plugins/cache/foreign/x/1.0/.codex-plugin/plugin.json').write_text('{}')),
-    'devlyn_projection': lambda out, engine: (
-        (out / 'home/.codex' / instructions.PROJECTION).mkdir(parents=True),
-        (out / 'home/.codex' / instructions.PROJECTION / '.devlyn-harness-projection.json').write_text('{}')),
-    'marketplace': lambda out, engine: (out / 'home/.codex/config.toml').write_text(
+    'marketplace': lambda out, engine, p: (out / 'home/.codex/config.toml').write_text(
         (out / 'home/.codex/config.toml').read_text() + '[marketplaces.x]\nsource_type = "local"\nsource = "/x"\n'),
-    'devlyn_marketplace': lambda out, engine: (out / 'home/.codex/config.toml').write_text(
-        (out / 'home/.codex/config.toml').read_text() + f'[marketplaces.{instructions.MARKET}]\nsource_type = "local"\n'
-        'source = "/x"\n'),
-    'no_projection': lambda out, engine: shutil.rmtree(out / 'home/.codex/plugins'),
-    'altered_projection': lambda out, engine: (
+    'no_projection': lambda out, engine, p: shutil.rmtree(out / 'home/.codex/plugins'),
+    'altered_projection': lambda out, engine, p: (
         out / 'home/.codex' / instructions.PROJECTION / '.codex-plugin/plugin.json').write_text('{"name": "x"}\n'),
-    'mismatch': lambda out, engine: (out / 'run/result.json').write_text(json.dumps(
+    'other_package_projection': lambda out, engine, p: write_projection(out / 'home', other(p)),
+    'mismatch': lambda out, engine, p: (out / 'run/result.json').write_text(json.dumps(
         {'identity': {'status': 'MISMATCH', 'owner': 'MISMATCH'}})),
-    'unverified': lambda out, engine: (out / 'run/result.json').write_text(json.dumps(
+    'unverified': lambda out, engine, p: (out / 'run/result.json').write_text(json.dumps(
         {'identity': {'status': 'UNVERIFIED', 'owner': 'MATCH'}})),
 }
-# (engine, arm, mutation, the one assertion it must fail): DESIGN Q1's violating list, both arms and engines.
+# (engine, mutation, the one assertion it must fail): DESIGN "Per-cell assertions", run on B and on each C package.
 CASES = [
-    *[(e, 'B', m, 'status-line') for e in prepare.CONFIGS
-      for m in ('no_status', 'two_status', 'other_version', 'other_digest', 'principles_unavailable')],
-    *[(e, 'A', m, 'status-line') for e in prepare.CONFIGS for m in ('status', 'refused')],
-    *[(e, 'A', 'devlyn_home', 'devlyn-home') for e in prepare.CONFIGS],
-    *[(e, 'B', m, 'devlyn-home') for e in prepare.CONFIGS for m in ('altered_release', 'other_release', 'no_release')],
-    ('claude', 'B', 'no_plugin', 'claude-init'), ('claude', 'B', 'foreign_plugin_init', 'claude-init'),
-    ('claude', 'A', 'plugin', 'claude-init'), ('claude', 'A', 'second_init_plugin', 'claude-init'),
-    ('claude', 'A', 'mcp', 'claude-init'), ('claude', 'B', 'mcp', 'claude-init'),
-    ('claude', 'A', 'no_init', 'claude-init'), ('claude', 'B', 'no_init', 'claude-init'),
-    ('codex', 'B', 'no_text', 'codex-request'), ('codex', 'B', 'text_twice', 'codex-request'),
-    ('codex', 'B', 'moved_text', 'codex-request'), ('codex', 'A', 'text', 'codex-request'),
-    ('codex', 'A', 'preamble', 'codex-request'), ('codex', 'A', 'no_request', 'codex-request'),
-    ('codex', 'B', 'no_request', 'codex-request'), ('codex', 'B', 'no_devlyn_skills', 'codex-request'),
-    ('codex', 'A', 'devlyn_skills', 'codex-request'), ('codex', 'A', 'foreign_skill', 'codex-request'),
-    ('codex', 'B', 'foreign_skill', 'codex-request'),
-    ('codex', 'A', 'devlyn_projection', 'codex-home'), ('codex', 'A', 'devlyn_marketplace', 'codex-home'),
-    ('codex', 'B', 'no_projection', 'codex-home'), ('codex', 'B', 'altered_projection', 'codex-home'),
-    *[(e, a, m, 'models') for e in prepare.CONFIGS for a in prepare.ARMS for m in ('mismatch', 'unverified')],
+    *[(e, m, 'status-line') for e in prepare.CONFIGS
+      for m in ('no_status', 'two_status', 'other_version', 'other_digest', 'other_package_status',
+                'principles_unavailable', 'refused')],
+    *[(e, m, 'devlyn-home') for e in prepare.CONFIGS
+      for m in ('altered_release', 'other_release', 'other_package_release', 'no_release')],
+    *[('claude', m, 'claude-init') for m in ('no_plugin', 'second_init_without_plugin', 'foreign_plugin_init', 'mcp',
+                                             'no_init')],
+    *[('codex', m, 'codex-request') for m in ('no_text', 'text_twice', 'other_package_text', 'sentence_added',
+                                              'moved_text', 'no_devlyn_skills', 'foreign_skill', 'no_request')],
+    *[('codex', m, 'codex-home') for m in ('no_projection', 'altered_projection', 'other_package_projection')],
+    *[(e, m, 'models') for e in prepare.CONFIGS for m in ('mismatch', 'unverified')],
 ]
 
 
 class Assertions(unittest.TestCase):
-    def test_sealed_forms_pass_both_arms_and_engines(self):
+    def test_sealed_forms_pass_every_package_and_engine(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             seal = sealed(root)
-            self.assertEqual(seal['forms']['claude']['plugin'], SHAPES['devlyn_plugin'])
-            self.assertEqual(seal['forms']['codex']['location'],
-                             dict(path='input/*/content/*/text', role='developer', type='input_text', whole=True))
+            self.assertEqual(seal['forms']['claude'], dict(plugin=SHAPES['devlyn_plugin']))
+            self.assertEqual(seal['forms']['codex'], dict(location=dict(
+                path='input/*/content/*/text', role='developer', type='input_text', whole=True)))
             for engine in prepare.CONFIGS:
-                for arm in prepare.ARMS:
-                    out, plan = make_cell(root / 'cells', engine, arm)
-                    self.assertEqual(instructions.check(out, plan, seal), [], (engine, arm))
+                for package in PACKAGES:
+                    out, plan = make_cell(root / 'cells' / package, engine, package)
+                    self.assertEqual(instructions.check(out, plan, seal), [], (engine, package))
 
-    def test_each_violation_fails_exactly_its_assertion(self):
+    def test_each_violation_fails_exactly_its_assertion_in_both_arms(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             seal = sealed(root)
-            for number, (engine, arm, mutation, expected) in enumerate(CASES):
-                out, plan = make_cell(root / str(number), engine, arm)
-                MUTATIONS[mutation](out, engine)
-                violations = instructions.check(out, plan, seal)
-                self.assertEqual({v.split(':', 1)[0] for v in violations}, {expected},
-                                 (engine, arm, mutation, violations))
+            for package in ('B', 'K2'):
+                for number, (engine, mutation, expected) in enumerate(CASES):
+                    out, plan = make_cell(root / package / str(number), engine, package)
+                    MUTATIONS[mutation](out, engine, package)
+                    violations = instructions.check(out, plan, seal)
+                    self.assertEqual({v.split(':', 1)[0] for v in violations}, {expected},
+                                     (package, engine, mutation, violations))
 
-    def test_unsealed_forms_and_unknown_arm_fail(self):
+    def test_the_delivered_sentences(self):
+        # A C cell's request holds its sentence exactly once and no other; a B cell's holds none of the three.
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            seal = sealed(root)
+            for package in PACKAGES:
+                out, plan = make_cell(root / package, 'codex', package)
+                found = instructions.model_input(instructions.first_owner_request(out), TEXTS[package])
+                self.assertEqual(found['session_text'], 1)
+                self.assertEqual(control.sentence_counts(json.dumps(instructions.first_owner_request(out),
+                                                                    ensure_ascii=False)),
+                                 {k: int(k == package) for k in CANDIDATES})
+                MUTATIONS['sentence_added'](out, 'codex', package)  # B: K3's sentence once; C: its own twice
+                added = 'K3' if package == 'B' else package
+                counts = dict({k: int(k == package) for k in CANDIDATES}, **{added: 1 + (package != 'B')})
+                self.assertEqual(instructions.check(out, plan, seal), [
+                    f'codex-request: candidate sentences {counts}, expected {({k: int(k == package) for k in CANDIDATES})}'])
+        self.assertEqual(instructions.sentences('B', TEXTS['B']), [])
+        self.assertEqual(instructions.sentences('K1', TEXTS['K1']), [])
+        self.assertEqual(len(instructions.sentences('K2', TEXTS['K1'])), 1)
+        self.assertEqual(len(instructions.sentences('B', TEXTS['K3'])), 1)
+
+    def test_a_cell_is_held_to_its_own_package(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            seal = sealed(root)
+            for engine in prepare.CONFIGS:
+                out, plan = make_cell(root / engine, engine, 'K1')
+                violations = instructions.check(out, dict(plan, package='K2'), seal)
+                expected = {'status-line', 'devlyn-home'} | ({'codex-home', 'codex-request'} if engine == 'codex'
+                                                             else set())
+                self.assertEqual({v.split(':', 1)[0] for v in violations}, expected, (engine, violations))
+
+    def test_unsealed_forms_and_unknown_arm_or_package_fail(self):
         with tempfile.TemporaryDirectory() as temp:
             out, plan = make_cell(Path(temp), 'claude', 'B')
             self.assertEqual(instructions.check(out, plan, pending_seal(Path(temp))), ['forms: claude form unsealed'])
-            self.assertTrue(instructions.check(out, dict(plan, arm='C'), sealed(Path(temp))))
+            seal = sealed(Path(temp))
+            for change in (dict(arm='C-K3'), dict(package='K4'), dict(arm='C', package='B'), dict(arm='B', package='K1')):
+                self.assertEqual(instructions.check(out, dict(plan, **change), seal),
+                                 [f'arm {change.get("arm", "B")}, package {change.get("package", "B")} or config '
+                                  'claude unsupported'])
 
-    def test_cells_are_tied_to_the_launch_probe_of_their_tree(self):
+    def test_cells_are_tied_to_the_launch_probe_of_their_package_and_tree(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             seal = sealed(root)
-            changes = [  # (engine, arms, change to the D3 probe seal, the assertions it must fail)
-                ('claude', 'B', lambda p: p.update(status_line=p['status_line'].replace('2.1.322', '2.1.321')),
+            changes = [  # (engine, change to the D3 probe seal, the assertions it must fail)
+                ('claude', lambda p: p.update(status_line=p['status_line'].replace('2.1.322', '2.1.321')),
                  {'status-line'}),
-                ('codex', 'B', lambda p: p.update(release_digest='0' * 64), {'devlyn-home'}),
-                ('codex', 'B', lambda p: p['projection']['files'].update({'skills/x/SKILL.md': '0' * 64}),
-                 {'codex-home'})]
+                ('codex', lambda p: p.update(release_digest='0' * 64), {'devlyn-home'}),
+                ('codex', lambda p: p['projection']['files'].update({'skills/x/SKILL.md': '0' * 64}), {'codex-home'})]
             for engine in prepare.CONFIGS:
-                for arm in prepare.ARMS:  # allowed: the cell's own tree's seal
-                    out, plan = make_cell(root / f'd3-{engine}-{arm}', engine, arm)
-                    self.assertEqual(instructions.check(out, dict(plan, task='D3'), seal), [], (engine, arm))
+                for package in PACKAGES:  # allowed: the cell's own package's own tree's seal
+                    out, plan = make_cell(root / f'd3-{engine}-{package}', engine, package)
+                    self.assertEqual(instructions.check(out, dict(plan, task='D3'), seal), [], (engine, package))
                     self.assertEqual(instructions.check(out, dict(plan, task='F11'), seal),
-                                     [f'launch: no launch probe seal for {engine} F11'])
-            for number, (engine, arms, change, expected) in enumerate(changes):
-                other = copy.deepcopy(seal)
-                change(other['launch'][engine]['D3'])
-                for arm in arms:
-                    out, plan = make_cell(root / f'change-{number}-{arm}', engine, arm)
-                    violations = instructions.check(out, dict(plan, task='D3'), other)
-                    self.assertEqual({v.split(':', 1)[0] for v in violations}, expected, (number, arm, violations))
-                    self.assertEqual(instructions.check(out, plan, other), [], (number, arm))  # SMOKE's seal holds
+                                     [f'launch: no launch probe seal for {package} {engine} F11'])
+            for number, (engine, change, expected) in enumerate(changes):
+                for package in ('B', 'K3'):
+                    altered = copy.deepcopy(seal)
+                    change(altered['launch'][package][engine]['D3'])
+                    out, plan = make_cell(root / f'change-{number}-{package}', engine, package)
+                    violations = instructions.check(out, dict(plan, task='D3'), altered)
+                    self.assertEqual({v.split(':', 1)[0] for v in violations}, expected, (number, package, violations))
+                    self.assertEqual(instructions.check(out, plan, altered), [], (number, package))  # SMOKE's holds
+                    other_package = 'K1'
+                    out, plan = make_cell(root / f'change-{number}-{package}-{other_package}', engine, other_package)
+                    self.assertEqual(instructions.check(out, dict(plan, task='D3'), altered), [])  # its own seal holds
 
     def test_codex_own_plugin_files_pass_in_both_arms(self):
         # O10: Codex downloads its own curated plugins into CODEX_HOME in both arms; only devlyn's files are read.
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             seal = sealed(root)
-            for arm in prepare.ARMS:
-                out, plan = make_cell(root / arm, 'codex', arm)
+            for package in ('B', 'K3'):
+                out, plan = make_cell(root / package, 'codex', package)
                 for mutation in ('foreign_plugin', 'marketplace'):
-                    MUTATIONS[mutation](out, 'codex')
-                self.assertEqual(instructions.check(out, plan, seal), [], arm)
-            home = root / 'A/smoke-codex-A/home/.codex'
-            self.assertEqual(instructions.devlyn_files(home), [])
-            (home / '.devlyn-harness-projection.json').write_text('{}')
-            self.assertEqual(instructions.devlyn_files(home), ['.devlyn-harness-projection.json'])
+                    MUTATIONS[mutation](out, 'codex', package)
+                self.assertEqual(instructions.check(out, plan, seal), [], package)
 
     def test_release_digest_port_matches_release_js(self):
-        record = instructions.release_record(RELEASE)
-        self.assertEqual(record, dict(version='4.3.30', digest=instructions.RELEASE_DIGEST))
-        for engine in prepare.CONFIGS:
-            self.assertIn(f'release 4.3.30@{instructions.RELEASE_DIGEST[:8]} (package)', SHAPES['status_lines'][engine])
+        for package in PACKAGES:
+            with tempfile.TemporaryDirectory() as temp:
+                path = Path(temp) / 'release.json'
+                path.write_text(json.dumps(RELEASES[package]))
+                self.assertEqual(instructions.release_record(path), dict(version='4.3.31', digest=DIGEST[package]))
+        record = instructions.release_record(PRIOR / 'fixtures/cell/release.json')  # 4.3.30's real file
+        self.assertEqual(record['digest'], '53a2f9f2d3d8cf8cf43391dd92224aa5190e331f0a993649d0a06256ca6a417d')
+        self.assertEqual(len(set(DIGEST.values())), 4)
 
 
 class SealForms(unittest.TestCase):
     def smoke(self, root):
         output = root / 'output'
         for engine in prepare.CONFIGS:
-            for arm in prepare.ARMS:
-                out, _ = make_cell(output, engine, arm)
+            for package in ('B', 'K3'):
+                out, _ = make_cell(output, engine, package)
                 (output / f'verdict-{out.name}.json').write_text(json.dumps(
                     {'status': 'COMPLETE', 'usage': 'COMPLETE', 'identity': {'owner_launched_sessions': []}}))
         (root / 'instructions.seal.json').write_text(json.dumps(pending_seal(root)))
@@ -399,16 +468,15 @@ class SealForms(unittest.TestCase):
         runtime.write_text(json.dumps({'output': str(output)}))
         return output, runtime
 
-    def test_pass_seals_forms_and_qualifies(self):
+    def test_pass_seals_the_shared_forms_and_qualifies(self):
         with tempfile.TemporaryDirectory() as temp:
             output, runtime = self.smoke(Path(temp))
             instructions.seal_forms(runtime)
             seal = json.loads((Path(temp) / 'instructions.seal.json').read_text())
-            self.assertEqual(seal['qualification']['status'], 'PASS')
-            self.assertEqual(seal['forms']['claude']['status_line'], SHAPES['status_lines']['claude'])
-            self.assertEqual(seal['forms']['codex']['projection']['path'], instructions.PROJECTION)
-            self.assertEqual(set(seal['forms']['codex']['projection']['files']),
-                             {'.codex-plugin/plugin.json', '.devlyn-harness-projection.json'})
+            self.assertEqual(seal['qualification'], dict(status='PASS', cells=[
+                'smoke-claude-B', 'smoke-claude-C', 'smoke-codex-B', 'smoke-codex-C']))
+            self.assertEqual(seal['forms'], dict(claude=dict(plugin=SHAPES['devlyn_plugin']), codex=dict(location=dict(
+                path='input/*/content/*/text', role='developer', type='input_text', whole=True))))
             with self.assertRaisesRegex(ValueError, 'already sealed'):
                 instructions.seal_forms(runtime)
 
@@ -421,30 +489,52 @@ class SealForms(unittest.TestCase):
     def test_status_line_shape_mismatch_names_what_it_looked_for(self):
         with tempfile.TemporaryDirectory() as temp:
             output, _ = self.smoke(Path(temp))
-            MUTATIONS['no_status'](output / 'smoke-claude-B', 'claude')
-            self.assert_refused(Path(temp), r"smoke-claude-B: looked for one stderr line matching .*found \[\]")
+            MUTATIONS['no_status'](output / 'smoke-claude-C', 'claude', 'K3')
+            self.assert_refused(Path(temp), r"smoke-claude-C: looked for one stderr line matching .*found \[\]")
+
+    def test_smoke_c_is_k3_and_must_match_its_probe(self):
+        with tempfile.TemporaryDirectory() as temp:
+            output, _ = self.smoke(Path(temp))
+            MUTATIONS['other_package_status'](output / 'smoke-codex-C', 'codex', 'K3')
+            MUTATIONS['other_package_release'](output / 'smoke-codex-C', 'codex', 'K3')
+            self.assert_refused(Path(temp), r"smoke-codex-C: HOME release digest .* package K3 release")
 
     def test_plugin_shape_mismatch_lists_the_init_plugins(self):
         with tempfile.TemporaryDirectory() as temp:
             output, _ = self.smoke(Path(temp))
-            MUTATIONS['no_plugin'](output / 'smoke-claude-B', 'claude')
+            MUTATIONS['no_plugin'](output / 'smoke-claude-B', 'claude', 'B')
             self.assert_refused(Path(temp), r"looked for one init plugin named devlyn .*agents-md@builtin")
 
     def test_session_text_shape_mismatch_reports_where_the_first_sentence_is(self):
         with tempfile.TemporaryDirectory() as temp:
             output, _ = self.smoke(Path(temp))
-            write_request(output / 'smoke-codex-B', b_request('<developer_instructions>\n' + TEXT.rstrip('.')))
+            write_request(output / 'smoke-codex-B', package_request(text='<developer_instructions>\n' + TEXT.rstrip('.')))
             self.assert_refused(Path(temp), r"found it 0 time\(s\).*'role': 'developer'.*'starts_at': 25, "
                                             r"'first_difference': " + str(len(TEXT) - 1))
 
+    def test_c_must_share_b_s_plugin_and_location(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            self.smoke(root)
+            seal = json.loads((root / 'instructions.seal.json').read_text())
+            moved_location = request(INPUT['B'])
+            moved_location['input'].append({'type': 'message', 'role': 'user',
+                                            'content': [moved_location['input'][2]['content'].pop(0)]})
+            moved_location['input'][-1]['content'][0]['text'] = TEXTS['K3']
+            write_request(root / 'output/smoke-codex-C', moved_location)
+            seal['launch']['K3']['codex']['SMOKE']['model_input'] = instructions.model_input(moved_location, TEXTS['K3'])
+            (root / 'instructions.seal.json').write_text(json.dumps(seal))
+            self.assert_refused(root, r"smoke-codex-C: location .*'role': 'user'.*, B .*'role': 'developer'")
+
     def test_smoke_forms_must_equal_the_launch_probe(self):
         changes = [
-            (lambda launch: launch['claude']['SMOKE'].update(status_line=SHAPES['status_lines']['codex']),
+            (lambda launch: launch['B']['claude']['SMOKE'].update(status_line=STATUS['B']['codex']),
              r'smoke-claude-B: SMOKE differs from the launch probe.s SMOKE seal: status line or digest'),
-            (lambda launch: launch['claude']['SMOKE'].update(plugin_dir='/elsewhere'), r'plugin path, probe /elsewhere'),
-            (lambda launch: launch['codex']['SMOKE']['projection']['files'].update({'x': '0'}),
-             r'smoke-codex-B: SMOKE differs .*: projection'),
-            (lambda launch: launch['codex']['SMOKE']['model_input']['B']['location'].update(role='user'),
+            (lambda launch: launch['K3']['claude']['SMOKE'].update(plugin_dir='/elsewhere'),
+             r'smoke-claude-C: .*plugin path, probe /elsewhere'),
+            (lambda launch: launch['K3']['codex']['SMOKE']['projection']['files'].update({'x': '0'}),
+             r'smoke-codex-C: SMOKE differs .*: projection'),
+            (lambda launch: launch['B']['codex']['SMOKE']['model_input']['location'].update(role='user'),
              r"session text location .*'role': 'developer'.*probe .*'role': 'user'")]
         for change, pattern in changes:
             with self.subTest(pattern=pattern), tempfile.TemporaryDirectory() as temp:
@@ -457,77 +547,116 @@ class SealForms(unittest.TestCase):
     def test_a_violation_or_stop_verdict_refuses_qualification(self):
         with tempfile.TemporaryDirectory() as temp:
             output, _ = self.smoke(Path(temp))
-            MUTATIONS['plugin'](output / 'smoke-claude-A', 'claude')
-            self.assert_refused(Path(temp), r'SMOKE qualification failed: smoke-claude-A: claude-init: A init plugins')
+            MUTATIONS['mcp'](output / 'smoke-claude-C', 'claude', 'K3')
+            self.assert_refused(Path(temp), r'SMOKE qualification failed: smoke-claude-C: claude-init: mcp_servers')
         with tempfile.TemporaryDirectory() as temp:
             output, _ = self.smoke(Path(temp))
-            (output / 'verdict-smoke-codex-A.json').write_text(json.dumps({'status': 'STOP', 'reason': 'locator: x'}))
-            self.assert_refused(Path(temp), r'smoke-codex-A: verdict is STOP \(locator: x\)')
+            (output / 'verdict-smoke-codex-C.json').write_text(json.dumps({'status': 'STOP', 'reason': 'locator: x'}))
+            self.assert_refused(Path(temp), r'smoke-codex-C: verdict is STOP \(locator: x\)')
+        with tempfile.TemporaryDirectory() as temp:
+            output, _ = self.smoke(Path(temp))
+            plan = json.loads((output / 'smoke-claude-C/plan.json').read_text())
+            (output / 'smoke-claude-C/plan.json').write_text(json.dumps(dict(plan, package='K2')))
+            self.assert_refused(Path(temp), r'smoke-claude-C: plan is SMOKE C K2 claude')
 
-    def test_codex_b_usage_must_be_the_owner_session_alone(self):
-        """DESIGN Q7: Codex B's usage COMPLETE, and no session besides the owner (the app-server read starts none);
-        the other SMOKE cells are not held to it."""
-        for verdict, pattern in (
-                (dict(usage='PARTIAL', identity=dict(owner_launched_sessions=[])), r"usage PARTIAL, sessions .* \[\]"),
-                (dict(usage='COMPLETE', identity=dict(owner_launched_sessions=[dict(engine='codex', session='s')])),
-                 r"smoke-codex-B: usage COMPLETE, sessions besides the owner \[\{'engine': 'codex'")):
-            with self.subTest(pattern=pattern), tempfile.TemporaryDirectory() as temp:
-                output, runtime = self.smoke(Path(temp))
-                (output / 'verdict-smoke-codex-B.json').write_text(json.dumps(dict(status='COMPLETE', **verdict)))
-                self.assert_refused(Path(temp), pattern)
+    def test_codex_usage_must_be_the_owner_session_alone_in_both_arms(self):
+        """DESIGN Q7: Codex's usage COMPLETE, and no session besides the owner (devlyn run's app-server read starts
+        none), now in both arms: both launch through devlyn run."""
+        for name in ('smoke-codex-B', 'smoke-codex-C'):
+            for verdict, pattern in (
+                    (dict(usage='PARTIAL', identity=dict(owner_launched_sessions=[])), r"usage PARTIAL, sessions"),
+                    (dict(usage='COMPLETE', identity=dict(owner_launched_sessions=[dict(engine='codex', session='s')])),
+                     rf"{name}: usage COMPLETE, sessions besides the owner \[\{{'engine': 'codex'")):
+                with self.subTest(name=name, pattern=pattern), tempfile.TemporaryDirectory() as temp:
+                    output, runtime = self.smoke(Path(temp))
+                    (output / f'verdict-{name}.json').write_text(json.dumps(dict(status='COMPLETE', **verdict)))
+                    self.assert_refused(Path(temp), pattern)
         with tempfile.TemporaryDirectory() as temp:
             output, runtime = self.smoke(Path(temp))
-            (output / 'verdict-smoke-codex-A.json').write_text(json.dumps(dict(status='COMPLETE', usage='PARTIAL')))
+            (output / 'verdict-smoke-claude-C.json').write_text(json.dumps(dict(status='COMPLETE', usage='PARTIAL')))
             instructions.seal_forms(runtime)
 
-    def control(self, root, version='4.3.30', tarball=None):
-        package = root / 'control/packages/B/package'
-        (package / 'config/skills/_shared').mkdir(parents=True)
-        (package / 'package.json').write_text(json.dumps({'name': 'devlyn-cli', 'version': version}))
-        shutil.copyfile(RELEASE, package / 'release.json')
-        (package / 'config/skills/_shared/runtime-principles.md').write_text(instructions.PREAMBLE + ' Rules.\n')
+    def control_tree(self, root):
+        """A control tree of synthetic packages (test_runtime's stand-in) pinned and recorded as the control build
+        records them."""
+        packages = root / 'control/packages'
+        package = runtime_tests.synthetic_package(packages / 'B')
+        (package / 'package.json').write_text(json.dumps({'name': 'devlyn-cli', 'version': '4.3.31'}))
+        runtime_tests.derive(package, runtime_tests.TEMPLATE)  # release.json lists package.json too
         files = {'package/' + str(p.relative_to(package)): hashlib.sha256(p.read_bytes()).hexdigest()
                  for p in package.rglob('*') if p.is_file()}
-        (root / 'control.manifest.json').write_text(json.dumps({'packages': {'B': dict(
-            sha256=tarball or instructions.TARBALL_SHA256, integrity=instructions.INTEGRITY, files=files)}}))
+        record = dict(B=dict(sha256='tarball', integrity='sha512-x', files=files, tree_sha256=control.tree_sha256(package),
+                             release_digest=control.release(package)['digest']['value']))
+        for candidate in CANDIDATES:
+            record[candidate] = runtime_tests.fake_candidate(packages, candidate, 'image')
+        (root / 'control.manifest.json').write_text(json.dumps(dict(packages=record)))
         (root / 'output').mkdir()
         runtime = root / 'runtime.json'
         runtime.write_text(json.dumps({'output': str(root / 'output'), 'control': str(root / 'control')}))
-        return package, runtime
+        pins = {name: (entry['tree_sha256'], entry['release_digest']) for name, entry in record.items()}
+        return runtime, pins
 
-    def test_seal_records_package_identity_session_text_and_pending(self):
+    def test_package_identity_every_package_against_its_pin(self):
         with tempfile.TemporaryDirectory() as temp:
-            _, runtime = self.control(Path(temp))
-            probed = dict(launch={'probe': 'fields'}, controls={}, devlyn_skills=[])
+            runtime, pins = self.control_tree(Path(temp))
+            with mock.patch.multiple(control, PINS=pins, TARBALL_SHA256='tarball', INTEGRITY='sha512-x'):
+                identity = instructions.package_identity(json.loads(runtime.read_text()))
+                self.assertEqual(set(identity), set(PACKAGES))
+                self.assertEqual(identity['B'], dict(tree_sha256=pins['B'][0], version='4.3.31',
+                                                     release_digest=pins['B'][1], tarball_sha256='tarball',
+                                                     integrity='sha512-x'))
+                self.assertEqual(identity['K2']['comparison']['files'], list(control.PRINCIPLE_FILES))
+                self.assertEqual(identity['K2']['sentence'], control.CANDIDATES['K2'][1])
+                for change, pattern in (  # in this order: the second keeps the first's change
+                        (lambda: (Path(temp) / 'control/packages/K1/package/bin/devlyn.js').write_text('x'),
+                         'package K1 is 4.3.31'),
+                        (lambda: (Path(temp) / 'control/packages/B/package/bin/devlyn.js').write_text('x'),
+                         'B unpacked package differs from its tarball')):
+                    with self.subTest(pattern=pattern):
+                        change()
+                        with self.assertRaisesRegex(ValueError, pattern):
+                            instructions.package_identity(json.loads(runtime.read_text()))
+            with mock.patch.multiple(control, PINS=pins, TARBALL_SHA256='other', INTEGRITY='sha512-x'), \
+                    self.assertRaisesRegex(ValueError, 'B registry tarball identity mismatch'):
+                instructions.package_identity(json.loads(runtime.read_text()))
+
+    def test_seal_records_every_package_its_session_text_and_pending(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            for package in PACKAGES:
+                folder = root / 'control/packages' / package / 'package/config/skills/_shared'
+                folder.mkdir(parents=True)
+                (folder / 'runtime-principles.md').write_text(control.insert(
+                    instructions.PREAMBLE + ' Rules.\n2. **No overengineering** — x.\n7. **Production ready** — y.\n',
+                    package) if package != 'B' else instructions.PREAMBLE + ' Rules.\n2. **No overengineering** — x.\n'
+                    '7. **Production ready** — y.\n')
+            (root / 'output').mkdir()
+            runtime = root / 'runtime.json'
+            runtime.write_text(json.dumps({'output': str(root / 'output'), 'control': str(root / 'control')}))
+            probed = dict(packages={'B': {}}, launch={'probe': 'fields'}, controls={}, reference_input={},
+                          devlyn_skills=[])
             with mock.patch.object(instructions, 'launch_probe', return_value=probed) as probe:
                 seal = json.loads(Path(instructions.seal(runtime)).read_text())
             self.assertEqual(probe.call_args.args[1], seal['session_text'])
             self.assertEqual({key: seal[key] for key in probed}, probed)
-            self.assertEqual(seal['package'], dict(tarball_sha256=instructions.TARBALL_SHA256,
-                                                   integrity=instructions.INTEGRITY, version='4.3.30',
-                                                   release_digest=instructions.RELEASE_DIGEST))
             self.assertEqual(seal['cli'], {'claude': '2.1.322', 'codex': '0.164.0'})
             self.assertEqual(seal['qualification'], {'status': 'PENDING'})
-            root = instructions.RELEASE_ROOT + '/config/skills'
-            self.assertEqual(seal['session_text'], instructions.PREAMBLE + ' Rules.\n\n\n' + '\n'.join([
-                'Devlyn session skill catalog (read the absolute file to invoke):',
-                f'devlyn-ideate: {root}/devlyn-ideate/SKILL.md', f'devlyn-engines: {root}/devlyn-engines/SKILL.md',
-                f"This session's _shared folder is {root}/_shared.",
-                'Use that absolute folder wherever the Devlyn defaults name _shared/.']))
+            self.assertEqual(set(seal['session_text']), set(PACKAGES))
+            for package, text in seal['session_text'].items():
+                self.assertEqual(control.sentence_counts(text), {k: int(k == package) for k in CANDIDATES})
+            catalog = instructions.RELEASE_ROOT + '/config/skills'
+            self.assertTrue(seal['session_text']['B'].endswith(
+                f"This session's _shared folder is {catalog}/_shared.\n"
+                'Use that absolute folder wherever the Devlyn defaults name _shared/.'))
             with self.assertRaisesRegex(ValueError, 'already exists'):
                 instructions.seal(runtime)
-
-    def test_seal_refuses_another_tarball_altered_tree_or_version(self):
-        for case in ('tarball', 'tree', 'version'):
-            with tempfile.TemporaryDirectory() as temp:
-                package, runtime = self.control(Path(temp), version='4.3.29' if case == 'version' else '4.3.30',
-                                                tarball='0' * 64 if case == 'tarball' else None)
-                if case == 'tree':
-                    (package / 'config/skills/_shared/runtime-principles.md').write_text('edited\n')
-                with self.assertRaisesRegex(ValueError, 'tarball identity|differs from its tarball|B package is 4.3.29'), \
-                        mock.patch.object(instructions, 'launch_probe', side_effect=AssertionError('probe ran')):
-                    instructions.seal(runtime)
-                self.assertFalse((Path(temp) / 'instructions.seal.json').exists())
+            (root / 'instructions.seal.json').unlink()
+            path = root / 'control/packages/K2/package/config/skills/_shared/runtime-principles.md'
+            path.write_text(path.read_text() + control.CANDIDATES['K1'][1])  # K2 delivering K1's sentence too
+            with mock.patch.object(instructions, 'launch_probe', side_effect=AssertionError('probe ran')), \
+                    self.assertRaisesRegex(ValueError, 'K2 delivers the candidate sentences'):
+                instructions.seal(runtime)
+            self.assertFalse((root / 'instructions.seal.json').exists())
 
 
 O = {engine: prepare.owner_argv(engine, OWNER[engine], 'do the task now') for engine in prepare.CONFIGS}
@@ -535,7 +664,7 @@ RUN_FOLDER = '/tmp/devlyn-run-Ab12Cd'
 
 
 def planned(engine, text=TEXT):
-    """What devlyn run 4.3.30 hands the engine before O (the 2026-11-11 probe and the Q2 probe saw this)."""
+    """What devlyn run hands the engine before O (the 2026-11-11 probe and the Q2 probe saw this)."""
     if engine == 'claude':
         return ['--plugin-dir', f'{instructions.RELEASE_ROOT}/native/claude', '--append-system-prompt-file',
                 f'{RUN_FOLDER}/devlyn-instructions.md']
@@ -545,84 +674,65 @@ def planned(engine, text=TEXT):
             '-c', 'developer_instructions=' + json.dumps(text, ensure_ascii=False)]
 
 
-def engine_call(engine, arm, text=TEXT, **change):
+def engine_call(engine, package='B', text=None, **change):
     """One shim record: the engine's argv, environment and the files its argv names."""
-    argv = (planned(engine, text) if arm == 'B' else []) + O[engine]
-    files = {argv[3]: base64.b64encode(text.encode()).decode()} if engine == 'claude' and arm == 'B' else {}
-    env = dict(HOME=instructions.HOME, HOSTNAME=arm, **({'DEVLYN_NODE': '/usr/local/bin/node'} if arm == 'B' else {}))
+    text = TEXTS[package] if text is None else text
+    argv = planned(engine, text) + O[engine]
+    files = {argv[3]: base64.b64encode(text.encode()).decode()} if engine == 'claude' else {}
+    env = dict(HOME=instructions.HOME, HOSTNAME='h', DEVLYN_NODE='/usr/local/bin/node')
     return dict(dict(argv=argv, env=env, files=files), **change)
 
 
 class LaunchProbe(unittest.TestCase):
-    """DESIGN Q2's guards, each violating and allowed, on the shapes the 2026-11-11 probe saw."""
+    """DESIGN Q2's guards, each violating and allowed, on the shapes the 2026-11-11 probe saw, for B and a C."""
 
-    def cell(self, root, engine, arm):
-        out, _ = make_cell(root, engine, arm)
-        plan = dict(name=out.name, argv=(instructions.DEVLYN if arm == 'B' else []) + [engine, *O[engine]])
+    def cell(self, root, engine, package):
+        out, _ = make_cell(root, engine, package)
+        plan = dict(name=out.name, argv=instructions.DEVLYN + [engine, *O[engine]])
         return out, plan
 
-    def test_b_launch_is_sealed_and_each_departure_refused(self):
-        with tempfile.TemporaryDirectory() as temp:
-            for engine in prepare.CONFIGS:
-                out, plan = self.cell(Path(temp) / engine, engine, 'B')
-                status = SHAPES['status_lines'][engine]
-                sealed = instructions.launch_b(engine, plan, out, (0, '', f'noise\n{status}\n', [engine_call(engine, 'B')]),
-                                               TEXT)
-                self.assertEqual(sealed['argv'], instructions.normalise(planned(engine)) + O[engine])
-                self.assertEqual(sealed['raw_argv'][-len(O[engine]):], O[engine])
-                self.assertEqual((sealed['status_line'], sealed['release_digest']), (status, instructions.RELEASE_DIGEST))
-                self.assertEqual(list(sealed['plan_files'].values()), [hashlib.sha256(TEXT.encode()).hexdigest()])
-                if engine == 'claude':
-                    self.assertEqual(list(sealed['plan_files']), ['/tmp/devlyn-run-*/devlyn-instructions.md'])
-                else:
-                    self.assertEqual(set(sealed['projection']['files']),
-                                     {'.codex-plugin/plugin.json', '.devlyn-harness-projection.json'})
-                call = engine_call(engine, 'B')
-                departures = [(1, f'{status}\n', [call]), (0, '', [call]), (0, f'{status}\n{status}\n', [call]),
-                              (0, f'{status}\n' + SHAPES['status_lines']['refused'] + '\n', [call]),
-                              (0, f'{status}\n', [call, call]), (0, f'{status}\n', []),
-                              (0, f'{status}\n', [dict(call, argv=call['argv'][:-1] + ['another prompt'])]),
-                              (0, f'{status}\n', [engine_call(engine, 'B', text=TEXT + ' ')])]
-                if engine == 'claude':
-                    departures.append((0, f'{status}\n', [dict(call, argv=['--plugin-dir', '/x'] + call['argv'][2:])]))
-                else:
-                    departures.append((0, f'{status}\n', [dict(call, argv=['-c', 'model="x"'] + call['argv'])]))
-                for number, (code, stderr, records) in enumerate(departures):
-                    with self.subTest(engine=engine, departure=number):
-                        with self.assertRaisesRegex(ValueError, f'^{plan["name"]}: '):
-                            instructions.launch_b(engine, plan, out, (code, '', stderr, records), TEXT)
-                rewrite_release(out, lambda m: m['files'][0].update(sha256='0' * 64), recompute=True)
-                with self.assertRaisesRegex(ValueError, 'HOME release'):
-                    instructions.launch_b(engine, plan, out, (0, '', f'{status}\n', [call]), TEXT)
-            (Path(temp) / 'codex/smoke-codex-B/home/.codex' / instructions.PROJECTION /
-             '.devlyn-harness-projection.json').unlink()
-            shutil.copyfile(RELEASE, next((Path(temp) / 'codex/smoke-codex-B/home/.devlyn').rglob('release.json')))
-            with self.assertRaisesRegex(ValueError, 'projection lacks'):
-                instructions.launch_b('codex', self.cell(Path(temp) / 'again', 'codex', 'B')[1],
-                                      Path(temp) / 'codex/smoke-codex-B',
-                                      (0, '', SHAPES['status_lines']['codex'] + '\n', [engine_call('codex', 'B')]), TEXT)
-
-    def test_a_is_handed_exactly_o_with_nothing_devlyn(self):
-        with tempfile.TemporaryDirectory() as temp:
-            for engine in prepare.CONFIGS:
-                out, plan = self.cell(Path(temp) / engine, engine, 'A')
-                sealed = instructions.launch_a(engine, plan, out, (0, '', '', [engine_call(engine, 'A')]))
-                self.assertEqual(sealed['argv'], O[engine])
-                call = engine_call(engine, 'A')
-                if engine == 'codex':
-                    MUTATIONS['devlyn_projection'](out, engine)
-                    with self.assertRaisesRegex(ValueError, 'devlyn in A'):
-                        instructions.launch_a(engine, plan, out, (0, '', '', [call]))
-                    shutil.rmtree(out / 'home/.codex/plugins/cache' / instructions.MARKET)
-                for run in ((0, '', '', [dict(call, argv=call['argv'] + ['--verbose'])]), (0, '', '', []),
-                            (0, '', SHAPES['status_lines'][engine] + '\n', [call]), (1, '', '', [call]),
-                            (0, '', '', [dict(call, env=dict(call['env'], DEVLYN_NODE='/usr/local/bin/node'))])):
-                    with self.subTest(engine=engine, run=run[1:3]), \
-                            self.assertRaisesRegex(ValueError, f'^{plan["name"]}: '):
-                        instructions.launch_a(engine, plan, out, run)
-                (out / 'home/.devlyn').mkdir()
-                with self.assertRaisesRegex(ValueError, 'devlyn in A'):
-                    instructions.launch_a(engine, plan, out, (0, '', '', [call]))
+    def test_a_launch_is_sealed_and_each_departure_refused(self):
+        for package in ('B', 'K2'):
+            with tempfile.TemporaryDirectory() as temp:
+                for engine in prepare.CONFIGS:
+                    out, plan = self.cell(Path(temp) / engine, engine, package)
+                    status, text, release = STATUS[package][engine], TEXTS[package], DIGEST[package]
+                    call = engine_call(engine, package)
+                    sealed = instructions.launch(engine, plan, out, (0, '', f'noise\n{status}\n', [call]), text, release)
+                    self.assertEqual(sealed['argv'], instructions.normalise(planned(engine, text)) + O[engine])
+                    self.assertEqual(sealed['raw_argv'][-len(O[engine]):], O[engine])
+                    self.assertEqual((sealed['status_line'], sealed['release_digest']), (status, release))
+                    self.assertEqual(list(sealed['plan_files'].values()), [hashlib.sha256(text.encode()).hexdigest()])
+                    if engine == 'claude':
+                        self.assertEqual(list(sealed['plan_files']), ['/tmp/devlyn-run-*/devlyn-instructions.md'])
+                    else:
+                        self.assertEqual(set(sealed['projection']['files']),
+                                         {'.codex-plugin/plugin.json', '.devlyn-harness-projection.json'})
+                    departures = [(1, f'{status}\n', [call]), (0, '', [call]), (0, f'{status}\n{status}\n', [call]),
+                                  (0, f'{status}\n' + SHAPES['status_lines']['refused'] + '\n', [call]),
+                                  (0, f'{status}\n', [call, call]), (0, f'{status}\n', []),
+                                  (0, f'{status}\n', [dict(call, argv=call['argv'][:-1] + ['another prompt'])]),
+                                  (0, f'{status}\n', [engine_call(engine, package, text=text + ' ')]),
+                                  (0, f'{status}\n', [engine_call(engine, other(package))]),  # another package's text
+                                  (0, STATUS[other(package)][engine] + '\n', [call])]  # another package's release
+                    if engine == 'claude':
+                        departures.append((0, f'{status}\n', [dict(call, argv=['--plugin-dir', '/x'] + call['argv'][2:])]))
+                    else:
+                        departures.append((0, f'{status}\n', [dict(call, argv=['-c', 'model="x"'] + call['argv'])]))
+                    for number, (code, stderr, records) in enumerate(departures):
+                        with self.subTest(package=package, engine=engine, departure=number):
+                            with self.assertRaisesRegex(ValueError, f'^{plan["name"]}: '):
+                                instructions.launch(engine, plan, out, (code, '', stderr, records), text, release)
+                    write_release(out, other(package))
+                    with self.assertRaisesRegex(ValueError, 'HOME release'):
+                        instructions.launch(engine, plan, out, (0, '', f'{status}\n', [call]), text, release)
+            with tempfile.TemporaryDirectory() as temp:
+                out, plan = self.cell(Path(temp), 'codex', package)
+                (out / 'home/.codex' / instructions.PROJECTION / '.devlyn-harness-projection.json').unlink()
+                with self.assertRaisesRegex(ValueError, 'projection lacks'):
+                    instructions.launch('codex', plan, out, (0, '', STATUS[package]['codex'] + '\n',
+                                                             [engine_call('codex', package)]), TEXTS[package],
+                                        DIGEST[package])
 
     def test_strict_mcp_config_control(self):
         for engine in prepare.CONFIGS:
@@ -630,7 +740,7 @@ class LaunchProbe(unittest.TestCase):
             self.assertEqual(json.loads(refused.split(' ', 3)[3]), {'engine': engine, 'argument': '--strict-mcp-config'})
             self.assertEqual(instructions.refusal(engine, (2, '', refused + '\n', [])),
                              dict(exit=2, stderr=[refused], engine_calls=0))
-            for run in ((0, '', '', [engine_call(engine, 'B')]), (2, '', refused + '\n', [engine_call(engine, 'B')]),
+            for run in ((0, '', '', [engine_call(engine)]), (2, '', refused + '\n', [engine_call(engine)]),
                         (2, '', SHAPES['status_lines']['refused'] + '\n', []), (2, '', '', [])):
                 with self.subTest(engine=engine, run=run[0]), \
                         self.assertRaisesRegex(ValueError, f'^{engine} --strict-mcp-config: '):
@@ -645,23 +755,24 @@ class LaunchProbe(unittest.TestCase):
                          (1, DEVLYN_SKILLS, []))
         self.assertEqual(found['B']['location'], dict(path='input/*/content/*/text', role='developer',
                                                       type='input_text', whole=True))
-        self.assertEqual(found['B']['skill_roots'], sorted(found['A']['skill_roots'] + [
-            f'{instructions.HOME}/.codex/{instructions.PROJECTION}/skills']))
+        self.assertEqual(found['B']['skill_roots'], sorted(found['A']['skill_roots'] + [instructions.DEVLYN_ROOT]))
         self.assertEqual((found['control']['plugin_skills'], len(found['control']['agents_md'])),
                          (['other:foreign-skill'], 1))
-        self.assertEqual(instructions.plugin_roots(found['control']),
-                         [f'{instructions.HOME}/.codex/plugins/cache/foreign-market'])
-        a = found['A']
-        self.assertEqual(instructions.input_violations('A', a), [])  # the per-cell rule
-        self.assertEqual(instructions.input_violations('B', found['B']), [])
-        self.assertEqual(len(instructions.input_violations('A', found['control'])), 1)
-        self.assertEqual(len(instructions.input_violations('B', a)), 2)
-        self.assertEqual(len(instructions.input_violations('A', found['B'])), 2)
-        self.assertEqual(instructions.probe_violations('A', a, a, DEVLYN_SKILLS), [])  # Q2's reading
-        self.assertEqual(instructions.probe_violations('B', found['B'], a, DEVLYN_SKILLS), [])
-        self.assertEqual(len(instructions.probe_violations('A', found['control'], a, DEVLYN_SKILLS)), 3)
+        raw = found['A']
+        self.assertEqual(instructions.input_violations('raw', raw), [])  # the reference reading
+        for arm in ('B', 'C'):
+            self.assertEqual(instructions.input_violations(arm, found['B']), [])  # the per-cell rule
+            self.assertEqual(len(instructions.input_violations(arm, raw)), 2)
+        self.assertEqual(len(instructions.input_violations('raw', found['control'])), 1)
+        self.assertEqual(len(instructions.input_violations('raw', found['B'])), 2)
+        self.assertEqual(instructions.probe_violations('raw', raw, raw, DEVLYN_SKILLS), [])  # Q2's reading
+        self.assertEqual(instructions.probe_violations('K1', found['B'], raw, DEVLYN_SKILLS), [])
+        self.assertEqual(len(instructions.probe_violations('raw', found['control'], raw, DEVLYN_SKILLS)), 3)
         extra = dict(found['B'], plugin_skills=DEVLYN_SKILLS + ['devlyn:extra'])  # a skill the package does not have
-        self.assertEqual(len(instructions.probe_violations('B', extra, a, DEVLYN_SKILLS)), 1)
+        self.assertEqual(len(instructions.probe_violations('B', extra, raw, DEVLYN_SKILLS)), 1)
+        k3 = instructions.model_input(package_request('K3'), TEXTS['K3'])
+        self.assertEqual((k3['session_text'], instructions.model_input(package_request('K3'), TEXT)['session_text']),
+                         (1, 0))
 
     def test_reader_control_flags_each_plant_and_passes_the_clean_home(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -684,68 +795,63 @@ class LaunchProbe(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'clean HOME is flagged'):
             instructions.reader_control(planted, planted, DEVLYN_SKILLS)
 
-    def test_normalise_settings_and_environment_patch(self):
+    def test_normalise_and_settings(self):
         self.assertEqual(instructions.normalise([f'{RUN_FOLDER}/devlyn-instructions.md', '-p']),
                          ['/tmp/devlyn-run-*/devlyn-instructions.md', '-p'])
         self.assertEqual(instructions.codex_settings(planned('codex'))['developer_instructions'], TEXT)
         for args in (['-c'], ['--config', 'a=1'], ['-c', 'a=1', 'exec']):
             with self.assertRaisesRegex(ValueError, 'not -c pairs'):
                 instructions.codex_settings(args)
-        self.assertEqual(instructions.env_patch(dict(HOME='/h', HOSTNAME='b', DEVLYN_NODE='/n', GONE=None),
-                                                dict(HOME='/h', HOSTNAME='a', GONE='x')),
-                         dict(DEVLYN_NODE='/n', GONE=None))
 
 
 class LaunchProbeRun(unittest.TestCase):
-    """launch_probe's wiring with a fake container in place of Docker: every engine x tree x arm prepared and run, the
-    controls and Codex's model input read, scratch removed; any failure writes no seal."""
+    """launch_probe's wiring with a fake container in place of Docker: every package x engine x tree prepared and run,
+    the controls and Codex's model input (raw and per package) read, scratch removed; any failure writes no seal."""
 
     def fake(self, root, broken=None):
         runs = []
 
-        def prepared(runtime, name, tree, arm, engine):
+        def prepared(runtime, name, tree, column, engine):
+            arm, package = prepare.arm_package(runtime, column)
             out = Path(runtime['output']) / name
             (out / 'home/.codex').mkdir(parents=True)
             (out / 'home/.claude').mkdir()
             if engine == 'codex':
                 (out / 'home/.codex/config.toml').write_text(CODEX_TOML)
-            argv = (instructions.DEVLYN if arm == 'B' else []) + [engine, *O[engine]]
-            (out / 'plan.json').write_text(json.dumps(dict(name=name, task=tree, arm=arm, config=engine, argv=argv,
-                                                           home=str(out / 'home'), env=dict(HOME=instructions.HOME))))
+            (out / 'plan.json').write_text(json.dumps(dict(
+                name=name, task=tree, arm=arm, package=package, config=engine, home=str(out / 'home'),
+                argv=instructions.DEVLYN + [engine, *O[engine]], env=dict(HOME=instructions.HOME))))
             return out
 
-        def materialize(home, codex):
-            release = home / '.devlyn/cli/releases/devlyn-cli/4.3.30'
-            release.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(RELEASE, release / 'release.json')
+        def materialize(home, package, codex):
+            write_release(home.parent, package)
             if codex:
-                folder = home / '.codex' / instructions.PROJECTION
-                (folder / '.codex-plugin').mkdir(parents=True, exist_ok=True)
-                (folder / '.codex-plugin/plugin.json').write_text('{}')
-                (folder / '.devlyn-harness-projection.json').write_text('{}')
+                write_projection(home, package)
                 (home / '.codex/.tmp').mkdir(exist_ok=True)
                 (home / '.codex/.tmp/plugins.sync.lock').write_text('')
 
         def container(_cell, plan, command, binds=(), env=None, timeout=300):
-            home, engine, arm = Path(plan['home']), plan['config'], plan['arm']
+            home, engine, package = Path(plan['home']), plan['config'], plan['package']
             runs.append((plan['name'], command[:6]))
             records = next((Path(src) for src, dst, _ in binds if dst == '/q2/records'), None)
-            status = SHAPES['status_lines'][engine] + '\n'
+            status = STATUS[package][engine] + '\n'
             if '--strict-mcp-config' in command and broken != f'strict {engine}':
                 return 2, '', instructions.REFUSED.format(engine=engine) + '\n'
             if 'prompt-input' in command:
-                if arm == 'B':
-                    materialize(home, True)
+                raw = command[0] == 'codex'
+                if not raw:
+                    materialize(home, package, True)
                 planted = (home / '.codex/AGENTS.md').exists()
-                items = INPUT['control' if planted else 'A' if arm == 'A' or broken == f'debug {plan["task"]}' else 'B']
-                return 0, json.dumps(items), status if arm == 'B' else ''
-            call = engine_call(engine, arm)
-            if broken == f'A {engine} {plan["task"]}' and arm == 'A':
+                if planted or raw:
+                    return 0, json.dumps(INPUT['control' if planted else 'A']), ''
+                shown = package_request(other(package) if broken == f'debug {plan["task"]} {package}' else package)
+                return 0, json.dumps(shown['input']), status
+            call = engine_call(engine, package)
+            if broken == f'launch {package} {engine} {plan["task"]}':
                 call['argv'] = call['argv'] + ['--extra']
-            if arm == 'B':
-                materialize(home, engine == 'codex')
+            materialize(home, package, engine == 'codex')
             (records / f'{engine}-1.json').write_text(json.dumps(call))
-            return 0, '', status if arm == 'B' else ''
+            return 0, '', status
 
         cell = mock.Mock(docker=mock.Mock(return_value=json.dumps(['LANG=C', 'PATH=/usr/local/bin:/usr/bin'])))
         modules = dict(prepare=mock.Mock(prepare=prepared), cell=cell)
@@ -757,77 +863,114 @@ class LaunchProbeRun(unittest.TestCase):
         (root / 'scratch').mkdir(exist_ok=True)
         runtime = dict(output=str(root / 'output'), control=str(root / 'control'), scratch=str(root / 'scratch'),
                        image='sha256:image')
+        identity = {name: dict(release_digest=DIGEST[name], tree_sha256=f'{name}-tree') for name in PACKAGES}
         return runtime, runs, [mock.patch.object(instructions, 'load', side_effect=lambda name: modules[name]),
-                               mock.patch.object(instructions, 'container', side_effect=container)]
+                               mock.patch.object(instructions, 'container', side_effect=container),
+                               mock.patch.object(instructions, 'package_identity', return_value=identity)]
 
     def probe(self, root, broken=None):
         runtime, runs, patches = self.fake(root, broken)
         for patch in patches:
             patch.start()
         try:
-            return instructions.launch_probe(runtime, TEXT), runs
+            return instructions.launch_probe(runtime, TEXTS), runs
         finally:
             mock.patch.stopall()
             self.assertEqual(list((root / 'scratch').iterdir()), [])
 
-    def test_every_engine_tree_and_arm_is_probed_and_sealed(self):
+    def test_every_package_engine_and_tree_is_probed_and_sealed(self):
         with tempfile.TemporaryDirectory() as temp:
             sealed, runs = self.probe(Path(temp))
-        self.assertEqual(set(sealed), {'launch', 'controls', 'devlyn_skills'})
-        self.assertEqual({engine: list(trees) for engine, trees in sealed['launch'].items()},
-                         {engine: list(instructions.TREES) for engine in prepare.CONFIGS})
+        self.assertEqual(set(sealed), {'packages', 'launch', 'controls', 'reference_input', 'devlyn_skills'})
+        self.assertEqual({package: {engine: list(trees) for engine, trees in engines.items()}
+                          for package, engines in sealed['launch'].items()},
+                         {package: {engine: list(instructions.TREES) for engine in prepare.CONFIGS}
+                          for package in PACKAGES})
         self.assertEqual(sealed['devlyn_skills'], DEVLYN_SKILLS)
         self.assertEqual(set(sealed['controls']), {'claude --strict-mcp-config', 'codex --strict-mcp-config', 'reader'})
-        for engine in prepare.CONFIGS:
-            for tree, entry in sealed['launch'][engine].items():
-                self.assertEqual(entry['a']['argv'], O[engine])
-                self.assertEqual(entry['env_patch'], dict(DEVLYN_NODE='/usr/local/bin/node'))
-                self.assertEqual(entry['argv'][:len(planned(engine))], instructions.normalise(planned(engine)))
-                if engine == 'codex':
-                    self.assertEqual(entry['model_input']['B']['plugin_skills'], DEVLYN_SKILLS)
-                    self.assertEqual(entry['model_input']['A']['plugin_skills'], [])
+        self.assertEqual(list(sealed['reference_input']), list(instructions.TREES))
+        for package in PACKAGES:
+            for engine in prepare.CONFIGS:
+                for tree, entry in sealed['launch'][package][engine].items():
+                    self.assertEqual(entry['argv'][:len(planned(engine))],
+                                     instructions.normalise(planned(engine, TEXTS[package])))
+                    self.assertEqual((entry['status_line'], entry['release_digest']),
+                                     (STATUS[package][engine], DIGEST[package]))
+                    self.assertNotIn('a', entry)  # no raw arm A
+                    if engine == 'codex':
+                        self.assertEqual(entry['model_input']['plugin_skills'], DEVLYN_SKILLS)
+                        self.assertEqual(entry['model_input']['session_text'], 1)
         kinds = [('strict' if '--strict-mcp-config' in command else 'debug' if 'prompt-input' in command else 'launch')
                  for _, command in runs]
-        self.assertEqual({kind: kinds.count(kind) for kind in set(kinds)}, dict(launch=24, strict=2, debug=12 + 1))
+        self.assertEqual({kind: kinds.count(kind) for kind in set(kinds)}, dict(launch=48, strict=2, debug=6 + 24 + 1))
 
     def test_a_failed_expectation_raises_and_cleans_scratch(self):
-        for broken, pattern in (('A codex F11', 'q2-codex-F11-A: .*exactly O'),
+        for broken, pattern in (('launch K2 codex F11', 'q2-K2-codex-F11: the engine was not handed O'),
                                 ('strict codex', 'codex --strict-mcp-config: exit 0, .*1 engine call'),
-                                ('debug D4', 'Codex model input, D4: B carries the session text 0')):
+                                ('debug D4 K1', 'Codex model input, D4: K1: K1 carries the session text 0')):
             with self.subTest(broken=broken), tempfile.TemporaryDirectory() as temp:
                 with self.assertRaisesRegex(ValueError, pattern):
                     self.probe(Path(temp), broken)
 
 
 class Arms(unittest.TestCase):
-    def prepared(self, root, arm, config):
-        runtime = dict(output=str(root / 'output'), control=str(root / 'control'), image='sha256:image',
-                       auth=str(root / 'auth'), sources=str(root / 'sources'))
-        out = prepare.prepare(runtime, f'smoke-{config}-{arm}', 'SMOKE', arm, config)
+    def runtime(self, root):
+        return dict(output=str(root / 'output'), control=str(root / 'control'), image='sha256:image',
+                    auth=str(root / 'auth'), sources=str(root / 'sources'))
+
+    def prepared(self, root, column, config):
+        out = prepare.prepare(self.runtime(root), f'smoke-{config}-{column}', 'SMOKE', column, config)
         return out, json.loads((out / 'plan.json').read_text())
 
     def test_argv_install_watchdog_and_config_byte_for_byte(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             for config in prepare.CONFIGS:
-                for arm in prepare.ARMS:
-                    out, plan = self.prepared(root, arm, config)
+                for column, package in (('B', 'B'), ('C-K1', 'K1'), ('C-K2', 'K2'), ('C-K3', 'K3')):
+                    out, plan = self.prepared(root, column, config)
                     prompt = (out / 'prompt.txt').read_text()
                     owner = (['-p', '--model', 'claude-opus-5-5', '--effort', 'high', '--permission-mode',
                               'bypassPermissions', '--output-format', 'stream-json', '--verbose', prompt]
                              if config == 'claude' else ['exec', '--json', '--skip-git-repo-check', prompt])
-                    wrapper = [] if arm == 'A' else ['node', '/install/package/bin/devlyn.js', 'run']
-                    self.assertEqual(plan['argv'], wrapper + [config] + owner)
-                    self.assertEqual(plan['install'], str(root / 'control/packages/B') if arm == 'B' else None)
+                    self.assertEqual(plan['argv'], ['node', '/install/package/bin/devlyn.js', 'run', config] + owner)
+                    self.assertEqual((plan['arm'], plan['package']), (ARM[package], package))
+                    self.assertEqual(plan['install'], str(root / 'control/packages' / package))
+                    self.assertEqual(json.loads((out / 'baseline.json').read_text())['package'], package)
                     self.assertEqual(plan['wall_seconds'], 2700)
-                    self.assertFalse((out / 'instructions.pre.json').exists())
-                    self.assertNotIn('instructions_pre_sha256', json.loads((out / 'baseline.json').read_text()))
                     config_toml = out / 'home/.codex/config.toml'
                     if config == 'codex':
                         self.assertEqual(config_toml.read_text(), CODEX_TOML)
-                        self.assertNotIn('plugins', tomllib.loads(CODEX_TOML)['features'])
                     else:
                         self.assertFalse(config_toml.exists())
+
+    def go(self, root, candidate='K2', package_sha256=None, decision='GO'):
+        (root / 'instructions.seal.json').write_text(json.dumps(dict(packages={
+            k: dict(tree_sha256=f'{k}-tree') for k in PACKAGES})))
+        (root / 'screen-decision.json').write_text(json.dumps(dict(
+            decision=decision, candidate=candidate, package_sha256=package_sha256 or f'{candidate}-tree')))
+
+    def test_the_registered_c_takes_its_package_from_a_go(self):
+        # DESIGN "Stage S": C of the registered run is the screen decision's candidate, only on a GO whose package is
+        # the sealed one; anything else refuses before any write.
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            runtime = self.runtime(root)
+            for setup, pattern in (
+                    (lambda: None, 'no screen decision and instruction seal'),
+                    (lambda: self.go(root, decision='STOP'), 'the screen decision is STOP, not GO'),
+                    (lambda: self.go(root, decision='UNDECIDED', candidate=None), 'the screen decision is UNDECIDED'),
+                    (lambda: self.go(root, package_sha256='K3-tree'), "the screen decision's K2 package K3-tree is "
+                                                                       'not the sealed one'),
+                    (lambda: self.go(root, candidate='B'), 'not GO with a candidate')):
+                with self.subTest(pattern=pattern):
+                    setup()
+                    with self.assertRaisesRegex(ValueError, pattern):
+                        prepare.prepare(runtime, 'c002-F10-claude-C-r1', 'F10', 'C', 'claude')
+                    self.assertFalse((root / 'output').exists())
+            self.go(root)
+            self.assertEqual(prepare.arm_package(runtime, 'C'), ('C', 'K2'))
+            out, plan = self.prepared(root, 'C', 'claude')
+            self.assertEqual((plan['arm'], plan['package'], plan['install']), ('C', 'K2', str(root / 'control/packages/K2')))
 
     def test_codex_config_refuses_a_plugins_line_or_other_trust(self):
         text = prepare.base.codex_toml(OWNER['codex'])
@@ -840,36 +983,36 @@ class Arms(unittest.TestCase):
                                                         'inherited Codex project trust'):
                     prepare.codex_config(OWNER['codex'])
         self.assertEqual(prepare.codex_config(OWNER['codex']), CODEX_TOML)
-        self.assertIs(tomllib.loads(CODEX_TOML)['features']['remote_plugin'], False)
 
     def test_other_tasks_arms_and_configs_are_refused_before_any_write(self):
         with tempfile.TemporaryDirectory() as temp:
             runtime = dict(output=str(Path(temp) / 'output'))
-            for task, arm, config in (('I0185', 'A', 'claude'), ('E1', 'B', 'codex'), ('SMOKE', 'C', 'claude'),
-                                      ('D3', 'A', 'grok')):
-                with self.assertRaisesRegex(ValueError, '0265 cells are'):
-                    prepare.prepare(runtime, 'x', task, arm, config)
+            for task, column, config, pattern in (('I0185', 'B', 'claude', '0266 cells are'),
+                                                  ('D3', 'B', 'grok', '0266 cells are'),
+                                                  ('SMOKE', 'A', 'claude', "arm 'A'"),
+                                                  ('SMOKE', 'C-K4', 'codex', "arm 'C-K4'"),
+                                                  ('SMOKE', 'K1', 'codex', "arm 'K1'")):
+                with self.assertRaisesRegex(ValueError, pattern):
+                    prepare.prepare(runtime, 'x', task, column, config)
             self.assertFalse((Path(temp) / 'output').exists())
 
-    def test_no_installer_i0185_or_arm_c_code_path_remains(self):
-        banned = [r'I0185', r'\bINSTALL\b', r'\binstall\(', r'skills_present', r'install_output', r"'C'",
-                  r'instructions\.pre', r'codex_limits', r'claude_limits_with_account', r'claude_limits_(before|after)',
-                  r"'E1'", r"'E2'"]
-        for name in ('prepare.py', 'cell.py', 'run_cell.py', 'instructions.py', 'assess.py', 'quota.py',
-                     'strict_config_check.py', 'check.py'):
+    def test_no_raw_arm_or_installer_code_path_remains(self):
+        banned = [r'I0185', r'\bINSTALL\b', r'\binstall\(', r'skills_present', r'install_output', r"== 'A'",
+                  r'launch_a', r'env_patch', r'devlyn_files', r'instructions\.pre', r'codex_limits',
+                  r'claude_limits_with_account', r'claude_limits_(before|after)', r"'E1'", r"'E2'", r'B launch fault']
+        for name in ('prepare.py', 'run_cell.py', 'instructions.py', 'driver.py', 'decide.py'):
             text = (HERE / name).read_text()
             for pattern in banned:
                 self.assertIsNone(re.search(pattern, text), (name, pattern))
         text = (HERE / 'prepare.py').read_text()
-        for flag in ('--strict-mcp-config', '--strict-config', '--mcp-config'):  # refused by devlyn run 4.3.30
+        for flag in ('--strict-mcp-config', '--strict-config', '--mcp-config'):  # refused by devlyn run
             self.assertFalse(flag in text, flag)
-        self.assertEqual((prepare.ARMS, prepare.CONFIGS), (('A', 'B'), ('claude', 'codex')))
-        self.assertFalse(hasattr(run_cell, 'codex_limits') or hasattr(run_cell, 'claude_limits_with_account'))
+        self.assertEqual((prepare.ARMS, prepare.CONFIGS, prepare.PACKAGES), (('B', 'C'), ('claude', 'codex'),
+                                                                             control.PACKAGES))
+        self.assertFalse((HERE / 'strict_config_check.py').exists() or (HERE / 'rehearse_memory.py').exists())
 
     def test_removed_entry_points_and_parameters(self):
-        """Astra's removable list: no assess.py command line (it bypassed the guarded credential snapshot), no E1/E2
-        rows, no stored-token fallback for the usage read, no unused venue, no diagnostics nothing in 0265 reads."""
-        self.assertNotIn('__main__', (HERE / 'assess.py').read_text())
+        self.assertNotIn('__main__', (PRIOR / 'assess.py').read_text())
         self.assertEqual(set(run_cell.check.ROWS), {'B5', 'F10', 'F11'})
         self.assertIs(inspect.signature(run_cell.claude_limits).parameters['access_token'].default,
                       inspect.Parameter.empty)
@@ -877,196 +1020,10 @@ class Arms(unittest.TestCase):
         self.assertNotIn('venue', inspect.signature(run_cell.grade).parameters)
         self.assertFalse(hasattr(run_cell, 'diagnostics') or 'diagnostics' in run_cell.MODULES)
 
-
-class Cell(unittest.TestCase):
-    def owner(self, arm, state, status_code=0):
-        with tempfile.TemporaryDirectory() as temp:
-            root = Path(temp)
-            out = root / 'cell-1'
-            for folder in ('home/.claude', 'home/.codex', 'cell', 'harness', 'tmp'):
-                (out / folder).mkdir(parents=True)
-            (root / 'auth').mkdir()
-            (root / 'auth/claude.json').write_text('{"fake": true}')
-            (root / 'auth/codex.json').write_text('{"fake": true}')
-            plan = dict(name='cell-1', engine='claude', image='sha256:image', cell=str(out / 'cell'),
-                        home=str(out / 'home'), control=str(root / 'control/public'), harness=str(out / 'harness'),
-                        tmp=str(out / 'tmp'), env={'HOME': '/home/participant'}, argv=['claude', '-p', 'x'],
-                        wall_seconds=5, install=str(root / 'control/packages/B') if arm == 'B' else None)
-            (out / 'plan.json').write_text(json.dumps(plan))
-
-            def docker(*args, timeout=60):
-                if args[0] == 'create':
-                    return 'cid'
-                if args[0] == 'inspect':
-                    return json.dumps([{'State': dict(state, Running=False, Pid=0)}])
-                return ''
-            popen = mock.Mock()
-            popen.return_value.wait.return_value = status_code
-            with mock.patch.object(cell, 'docker', side_effect=docker), \
-                    mock.patch.object(cell.subprocess, 'Popen', popen), \
-                    mock.patch.object(cell, 'preserve_tmp'), \
-                    mock.patch.object(cell, 'identity', return_value={'status': 'MATCH'}):
-                record = cell.run(out, dict(auth=str(root / 'auth'), scratch=str(root / 'scratch')))
-            argv = json.loads((out / 'run/started.json').read_text())['create_argv']
-            return argv, json.loads((out / 'run/result.json').read_text()), str(root / 'control/packages/B'), record, plan
-
-    def test_install_mount_only_for_b(self):
-        b, _, install, _, _ = self.owner('B', {'OOMKilled': False, 'ExitCode': 0})
-        a, _, _, _, _ = self.owner('A', {'OOMKilled': False, 'ExitCode': 0})
-        self.assertIn(f'type=bind,src={install},dst=/install,readonly', b)
-        self.assertEqual(b[b.index('sha256:image'):], ['sha256:image', 'claude', '-p', 'x'])
-        self.assertFalse([value for value in a if '/install' in value])
-        targets = lambda argv: [value.split('dst=')[1] for value in argv if 'dst=' in value]
-        self.assertEqual(targets(b), targets(a) + ['/install,readonly'])
-
-    def test_the_probe_container_is_the_cell_container_without_credentials(self):
-        for arm in prepare.ARMS:
-            argv, _, _, _, plan = self.owner(arm, {'OOMKilled': False, 'ExitCode': 0})
-            volume = argv[argv.index('--mount') + 1].split('src=')[1].split(',')[0]
-            probe = cell.create_argv(plan, argv[argv.index('--name') + 1], volume, cell.mounts(plan), plan['env'],
-                                     plan['argv'])
-            secret = [i for i, value in enumerate(argv) if value == '--mount' and any(
-                f'dst={dst}' in argv[i + 1] for dst in ('/home/participant/.codex/auth.json',
-                                                        '/home/participant/.claude/.credentials.json'))]
-            self.assertEqual(len(secret), 2)
-            self.assertEqual(probe, [value for i, value in enumerate(argv) if i not in secret and i - 1 not in secret])
-
-    def test_container_end_is_recorded(self):
-        _, result, _, record, _ = self.owner('A', {'OOMKilled': True, 'ExitCode': 137}, status_code=137)
-        self.assertEqual(result['container'], {'oom_killed': True, 'exit_code': 137})
-        self.assertEqual((record['owner_status'], record['teardown']), ('EXITED_NONZERO', 'CLEAN'))
-
-
-class CellLifecycle(unittest.TestCase):
-    """H4 (a): cell.run makes the credential copy, the /tmp volume and the container inside the lifecycle whose finally
-    removes them. Docker is a fake that holds volumes and containers; each violating case raises at one step."""
-
-    def lifecycle(self, fail=None):
-        """cell.run with Docker failing at `fail` (copy, volume, argv, create, create-made, start or None); returns
-        (the exception raised or None, result.json, what Docker still holds, whether the credential copy remains)."""
-        with tempfile.TemporaryDirectory() as temp:
-            root = Path(temp)
-            out = root / 'cell-1'
-            for folder in ('home/.claude', 'home/.codex', 'cell', 'harness', 'tmp'):
-                (out / folder).mkdir(parents=True)
-            (root / 'auth').mkdir()
-            if fail != 'copy':
-                (root / 'auth/claude.json').write_text('{"fake": true}')
-            (root / 'auth/codex.json').write_text('{"fake": true}')
-            if fail == 'leftover':  # a credential copy a killed run of this cell left in scratch
-                (root / 'scratch/credentials/cell-1').mkdir(parents=True)
-                (root / 'scratch/credentials/cell-1/claude.json').write_text('{"stale": true}')
-            plan = dict(name='cell-1', engine='claude', image='sha256:image', cell=str(out / 'cell'),
-                        home=str(out / 'home'), control=str(root / 'control/public'), harness=str(out / 'harness'),
-                        tmp=str(out / 'tmp'), env={}, argv=['claude', '-p', 'x'], wall_seconds=5, install=None)
-            (out / 'plan.json').write_text(json.dumps(plan))
-            volumes, containers = set(), {}
-            refused = subprocess.CalledProcessError(1, ['docker'], stderr='Error response from daemon: refused')
-
-            def docker(*args, timeout=60):
-                if args[:2] == ('volume', 'create'):
-                    if fail == 'volume':
-                        raise refused
-                    volumes.add(args[-1])
-                elif args[0] == 'create':
-                    name = args[args.index('--name') + 1]
-                    if fail in ('create', 'create-made'):
-                        if fail == 'create-made':  # the daemon made it, then its answer was lost
-                            containers[name] = dict(Running=False, Pid=0, OOMKilled=False, ExitCode=0)
-                        raise subprocess.TimeoutExpired(['docker', 'create'], 60)
-                    containers[name] = dict(Running=False, Pid=0, OOMKilled=False, ExitCode=0)
-                    return name
-                elif args[0] == 'ps':
-                    return next((n for n in containers if args[-1] == f'name=^/{n}$'), '')
-                elif args[0] == 'inspect':
-                    return json.dumps([{'State': containers[args[1]]}])
-                elif args[0] == 'rm':
-                    del containers[args[1]]
-                return ''
-
-            def preserve(volume, dest, image):  # copies the volume into the cell, then removes it, as cell.py's does
-                if fail == 'interrupt':
-                    raise KeyboardInterrupt
-                volumes.discard(volume)
-
-            def popen(argv, **_kwargs):
-                if fail == 'start':
-                    raise OSError('docker start could not be run')
-                return mock.Mock(**{'wait.return_value': 0})
-            argv = mock.patch.object(cell, 'create_argv', side_effect=ValueError('bad plan')) if fail == 'argv' else \
-                contextlib.nullcontext()
-            raised = None
-            removal = mock.patch.object(cell.shutil, 'rmtree', side_effect=PermissionError('scratch is read-only')) \
-                if fail == 'removal' else contextlib.nullcontext()
-            if fail == 'record':  # the run folder cannot take result.json: its write raises, the removal still runs
-                real_write = Path.write_text
-
-                def write(path, *args, **kwargs):
-                    if path.name == 'result.json':
-                        raise OSError('no space left on device')
-                    return real_write(path, *args, **kwargs)
-                removal = mock.patch.object(Path, 'write_text', write)
-            with mock.patch.object(cell, 'docker', side_effect=docker), argv, removal, \
-                    mock.patch.object(cell.subprocess, 'Popen', side_effect=popen), \
-                    mock.patch.object(cell, 'preserve_tmp', side_effect=preserve), \
-                    mock.patch.object(cell, 'identity', return_value={'status': 'MATCH'}):
-                try:
-                    cell.run(out, dict(auth=str(root / 'auth'), scratch=str(root / 'scratch')))
-                except (OSError, ValueError, subprocess.SubprocessError, KeyboardInterrupt) as exc:
-                    raised = exc
-            written = out / 'run/result.json'
-            result = json.loads(written.read_text()) if written.is_file() else None
-            return raised, result, (volumes, containers), (root / 'scratch/credentials/cell-1').exists()
-
-    def test_nothing_survives_an_exception_at_any_step(self):
-        cases = {'copy': FileNotFoundError, 'volume': subprocess.CalledProcessError, 'argv': ValueError,
-                 'create': subprocess.TimeoutExpired, 'create-made': subprocess.TimeoutExpired, 'start': OSError}
-        for fail, kind in cases.items():
-            with self.subTest(fail=fail):
-                raised, result, held, copy_left = self.lifecycle(fail)
-                self.assertIsInstance(raised, kind)  # the exception still ends the cell
-                self.assertEqual((held, copy_left), ((set(), {}), False))
-                self.assertEqual((result['teardown'], result['owner_status']), ('CLEAN', None))
-
-    def test_a_copy_left_by_a_killed_run_is_removed_and_ends_the_cell(self):
-        # Re-check finding (Grok): the credential folder is made inside the lifecycle, so a leftover is an error the
-        # finally still cleans up; before, mkdir raised outside the try and the stale copy stayed in scratch.
-        raised, result, held, copy_left = self.lifecycle('leftover')
-        self.assertIsInstance(raised, FileExistsError)
-        self.assertEqual((held, copy_left), ((set(), {}), False))
-        self.assertEqual((result['teardown'], result['owner_status']), ('CLEAN', None))
-
-    def test_the_record_survives_a_credential_copy_that_cannot_be_removed(self):
-        # Re-check finding (Grok): result.json is written before the removal, and a failed removal is a failed
-        # teardown with its reason, never a lost record. The allowed case is the clean run below.
-        raised, result, held, copy_left = self.lifecycle('removal')
-        self.assertIsNone(raised)
-        self.assertTrue(copy_left)
-        self.assertEqual((result['teardown'], result['owner_status']), ('FAILED', 'EXITED_0'))
-        self.assertIn('credential copy not removed: scratch is read-only', result['teardown_error'])
-
-    def test_an_interrupt_during_the_teardown_still_removes_the_credential_copy(self):
-        # Third re-check (MEDIUM): the removal sits in a finally around the whole teardown, so an operator's Ctrl-C
-        # while /tmp is being preserved ends the cell with that interrupt and leaves no copy in scratch. (The volume
-        # it was preserving is what the interrupt left; the driver's restart rule stops both lanes on this attempt.)
-        raised, result, held, copy_left = self.lifecycle('interrupt')
-        self.assertIsInstance(raised, KeyboardInterrupt)
-        self.assertEqual((result, copy_left, held[1]), (None, False, {}))
-
-    def test_a_record_that_cannot_be_written_still_removes_the_credential_copy(self):
-        # Second re-check (MEDIUM): the record is written first, but inside a try whose finally removes the copy, so a
-        # failed write ends the cell with its error and leaves no copy. The allowed case is the clean run below.
-        raised, result, held, copy_left = self.lifecycle('record')
-        self.assertIsInstance(raised, OSError)
-        self.assertIn('no space left on device', str(raised))
-        self.assertEqual((result, held, copy_left), (None, (set(), {}), False))
-
-    def test_a_cell_that_runs_is_torn_down_the_same_way(self):
-        raised, result, held, copy_left = self.lifecycle()
-        self.assertIsNone(raised)
-        self.assertEqual((held, copy_left), ((set(), {}), False))
-        self.assertEqual((result['teardown'], result['owner_status'], result['container']),
-                         ('CLEAN', 'EXITED_0', {'oom_killed': False, 'exit_code': 0}))
+    def test_every_cell_mounts_its_package_read_only(self):
+        for package in PACKAGES:
+            plan = dict(cell='/c', home='/h', control='/k', harness='/hn', install=f'/control/packages/{package}')
+            self.assertIn((Path(f'/control/packages/{package}'), '/install', True), run_cell.cell_run.mounts(plan))
 
 
 class VerdictWrite(unittest.TestCase):
@@ -1112,8 +1069,8 @@ class Rules(unittest.TestCase):
             ('B', refused + '\n', json.dumps({'type': 'thread.started', 'thread_id': 't'}) + '\n', False, None),
             ('B', refused + '\n', '', True, None),
             ('B', 'ERROR: something else\n', '', False, None),
-            ('A', refused + '\n', '', False, None),
-        ]
+            ('C', refused + '\n', '', False, 'run-argument-unsupported {"engine":"codex","argument":"-C"}'),
+        ]  # both arms launch through devlyn run, so a refusal is a launch fault in either
         for number, (arm, stderr, stdout, rollout, fault) in enumerate(cases):
             with tempfile.TemporaryDirectory() as temp:
                 out = self.evidence(Path(temp), stderr, stdout, rollout)
@@ -1370,7 +1327,8 @@ class RunFlow(unittest.TestCase):
         (root / 'auth/claude.json').write_text(json.dumps({'claudeAiOauth': {
             'expiresAt': (time.time() + token_left) * 1000, 'accessToken': 'fake'}}))
         (root / 'models').write_text('models')
-        (root / 'control.manifest.json').write_text(json.dumps({'packages': {'B': {'sha256': 'package'}}}))
+        (root / 'control.manifest.json').write_text(json.dumps({'packages': {
+            package: {'tree_sha256': f'{package}-tree'} for package in PACKAGES}}))
         seal = {'forms': {'claude': {}, 'codex': {}}, 'qualification': {'status': 'PASS'}}
         (root / 'instructions.seal.json').write_text(json.dumps(seal))
         runtime_path = root / 'runtime.json'
@@ -1453,14 +1411,14 @@ class RunFlow(unittest.TestCase):
             code, verdict, mocks, _, _ = self.run_cell(Path(temp), stderr=SHAPES['status_lines']['refused'] + '\n')
             self.assertEqual((code, verdict['status']), (2, 'STOP'))
             self.assertEqual(verdict['reason'],
-                             'B launch fault: run-argument-unsupported {"engine":"codex","argument":"-C"}')
+                             'launch fault: run-argument-unsupported {"engine":"codex","argument":"-C"}')
             self.assert_not_graded(mocks)
             self.assertIs(verdict['owner_ran'], False)  # H2: no owner ran, so no tree or scope is kept
             self.assertFalse({'snapshot', 'scope_violations', 'changed', 'scope_error'} & set(verdict))
 
     def test_memory_kill_stops_without_checks_or_assessors(self):
         with tempfile.TemporaryDirectory() as temp:
-            code, verdict, mocks, out, _ = self.run_cell(Path(temp), arm='A', container={'oom_killed': True,
+            code, verdict, mocks, out, _ = self.run_cell(Path(temp), arm='C-K3', container={'oom_killed': True,
                                                                                        'exit_code': 137})
             self.assertEqual(verdict['reason'], 'memory kill: OOMKilled=True exit_code=137 owner EXITED_0')
             self.assert_not_graded(mocks, evidence=True)
@@ -1496,7 +1454,7 @@ class RunFlow(unittest.TestCase):
             (out / 'snapshot').mkdir()
             raise run_cell.locate.LocatorError('more than one changed product tree: cell/work, tmp/x')
         with tempfile.TemporaryDirectory() as temp:
-            code, verdict, mocks, out, _ = self.run_cell(Path(temp), arm='A', located=refused,
+            code, verdict, mocks, out, _ = self.run_cell(Path(temp), arm='C-K3', located=refused,
                                                          container={'oom_killed': True, 'exit_code': 137})
             self.assertEqual((code, verdict['status'], verdict['owner_ran']), (2, 'STOP', True))
             self.assertEqual((verdict['scope_violations'], verdict['scope_error']),
@@ -1583,7 +1541,7 @@ class RunFlow(unittest.TestCase):
             runtime = root / 'runtime.json'
             runtime.write_text(json.dumps(dict(output=str(root / 'output'), control=str(root / 'control'))))
             verdict_path = root / 'output/verdict-cell-1.json'
-            self.assertEqual(run_cell.run(runtime, 'cell-1', 'D3', 'A', 'claude'), 2)
+            self.assertEqual(run_cell.run(runtime, 'cell-1', 'D3', 'C-K3', 'claude'), 2)
             self.assertEqual({k: v for k, v in json.loads(verdict_path.read_text()).items() if k != 'cell'},
                              dict(status='STOP', owner_ran=False, reason='instruction assertion: seal missing'))
             verdict_path.unlink()
@@ -1591,7 +1549,7 @@ class RunFlow(unittest.TestCase):
             with mock.patch.object(run_cell, 'image_identity', return_value=True), \
                     mock.patch.object(run_cell, 'preflight', return_value=(dict(account=['a', 'o']), None)), \
                     mock.patch.object(run_cell, 'control_unchanged', return_value=False):
-                self.assertEqual(run_cell.run(runtime, 'cell-1', 'D3', 'A', 'claude'), 2)
+                self.assertEqual(run_cell.run(runtime, 'cell-1', 'D3', 'C-K3', 'claude'), 2)
             self.assertEqual({k: v for k, v in json.loads(verdict_path.read_text()).items() if k != 'cell'},
                              dict(status='STOP', owner_ran=False, reason='control changed'))
 
@@ -1654,13 +1612,13 @@ class RunFlow(unittest.TestCase):
         for status, expected in (('HANG_TIMEOUT', 'PRODUCT_INCOMPLETE'), ('EXITED_0', 'COMPLETE'),
                                  ('EXITED_NONZERO', 'COMPLETE')):
             with self.subTest(status=status), tempfile.TemporaryDirectory() as temp:
-                code, verdict, mocks, _, _ = self.run_cell(Path(temp), arm='A', owner_status=status)
+                code, verdict, mocks, _, _ = self.run_cell(Path(temp), arm='C-K3', owner_status=status)
                 self.assertEqual((code, verdict['status'], verdict['product_check_pass']), (0, expected, True))
                 mocks['check'].assert_called_once()
                 mocks['assess'].assert_called_once()
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            _, verdict, _, out, _ = self.run_cell(root, arm='A', owner_status='HANG_TIMEOUT',
+            _, verdict, _, out, _ = self.run_cell(root, arm='C-K3', owner_status='HANG_TIMEOUT',
                                                   assessed=RuntimeError('seat timed out'))
             self.assertEqual(verdict['reason'], 'assessment failed: seat timed out')
             (out / 'checks.json').write_text(json.dumps(dict(product_check_pass=True, oracle={}, scope_violations=[],
@@ -1692,11 +1650,11 @@ class RunFlow(unittest.TestCase):
                                ({'oom_killed': False, 'exit_code': 137}, False),
                                ({'oom_killed': False, 'exit_code': 0}, False)):
             with self.subTest(container=container), tempfile.TemporaryDirectory() as temp:
-                code, verdict, mocks, _, _ = self.run_cell(Path(temp), arm='A', container=container)
+                code, verdict, mocks, _, _ = self.run_cell(Path(temp), arm='C-K3', container=container)
                 self.assertEqual((code, verdict['status'], verdict['oom_killed']), (0, 'COMPLETE', oom))
                 mocks['assess'].assert_called_once()
         with tempfile.TemporaryDirectory() as temp:  # a memory kill records the flag on its STOP too
-            _, verdict, _, _, _ = self.run_cell(Path(temp), arm='A', container={'oom_killed': True, 'exit_code': 137})
+            _, verdict, _, _, _ = self.run_cell(Path(temp), arm='C-K3', container={'oom_killed': True, 'exit_code': 137})
             self.assertEqual((verdict['status'], verdict['oom_killed']), ('STOP', True))
 
     def test_a_teardown_failure_outranks_a_launch_fault(self):
@@ -1719,24 +1677,29 @@ class RunFlow(unittest.TestCase):
             args = mocks['instructions'].call_args.args
             self.assertEqual((args[0], args[1]['arm'], args[2]['qualification']['status']), (out, 'B', 'PASS'))
             seal = json.loads((out / 'seal.json').read_text())
-            loaded = {name: next(f'{folder}/{name}.py' for folder in ('0265', '0256', '0233')  # run_cell.load's order
+            loaded = {name: next(f'{folder}/{name}.py' for folder in ('0266', '0265', '0256', '0233')  # load's order
                                  if (HERE.parent / folder / f'{name}.py').is_file())
                       for name in ('prepare', 'cell', 'record_usage', 'locate', 'check', 'assess', 'quota',
-                                   'instructions')}  # no diagnostics: nothing in 0265 reads them
+                                   'instructions')}  # no diagnostics: nothing in 0266 reads them
             self.assertEqual({name: entry['path'] for name, entry in seal['modules'].items()},
                              dict(loaded, run_cell0222='0222/run_cell.py'))
-            self.assertTrue(all(loaded[name].startswith('0265/') for name in ('prepare', 'cell', 'assess', 'quota',
-                                                                                'instructions')))
-            self.assertEqual(seal['package_sha256'], 'package')
+            self.assertEqual({name for name, path in loaded.items() if path.startswith('0266/')}, {'prepare',
+                                                                                                 'instructions'})
+            self.assertEqual({name for name, path in loaded.items() if path.startswith('0265/')},
+                             {'cell', 'locate', 'check', 'assess', 'quota'})  # unchanged, loaded from 0265
+            self.assertEqual((seal['package'], seal['package_sha256']), ('B', 'B-tree'))
+            self.assertIn('0265/cell.py', seal['imported'])
             self.assertNotIn('0237/cell-init-v1.py', seal['imported'])
             self.assertEqual(seal['endpoints_sha256'], run_cell.digest(HERE / 'endpoints.json'))
 
-    def test_smoke_is_asserted_by_seal_forms_not_inline_and_a_has_no_package(self):
+    def test_smoke_is_asserted_by_seal_forms_not_inline_and_c_records_its_package(self):
         with tempfile.TemporaryDirectory() as temp:
-            code, verdict, mocks, out, _ = self.run_cell(Path(temp), task='SMOKE', arm='A', config='codex')
+            code, verdict, mocks, out, _ = self.run_cell(Path(temp), task='SMOKE', arm='C-K3', config='codex')
             self.assertEqual(code, 0)
             mocks['instructions'].assert_not_called()
-            self.assertIsNone(json.loads((out / 'seal.json').read_text())['package_sha256'])
+            seal = json.loads((out / 'seal.json').read_text())
+            self.assertEqual((seal['package'], seal['package_sha256']), ('K3', 'K3-tree'))
+            self.assertEqual((verdict['arm'], verdict['package']), ('C', 'K3'))
 
     def test_assertion_failure_stops_before_checks(self):
         """Rewritten for re-check MEDIUM 3: no check or assessor runs after a failed assertion, but its graded tree is
@@ -1749,16 +1712,21 @@ class RunFlow(unittest.TestCase):
             mocks['locate'].assert_called_once()
 
     def test_arms_and_configs_guard(self):
-        for arm, config in (('C', 'claude'), ('A', 'grok')):
-            with self.assertRaisesRegex(ValueError, 'arm A/B and config claude/codex'):
-                run_cell.run('/nonexistent/runtime.json', 'x', 'D3', arm, config)
+        with tempfile.TemporaryDirectory() as temp:
+            runtime = Path(temp) / 'runtime.json'
+            runtime.write_text(json.dumps(dict(output=str(Path(temp) / 'output'))))
+            for column, config, pattern in (('A', 'claude', "arm 'A'"), ('C-K3', 'grok', 'config claude/codex'),
+                                            ('C', 'claude', 'no screen decision')):
+                with self.assertRaisesRegex(ValueError, pattern):
+                    run_cell.run(runtime, 'x', 'D3', column, config)
+            self.assertFalse((Path(temp) / 'output').exists())
 
     def test_a_graded_cell_loses_codex_caches_only_and_records_them(self):
         """D-b, allowed: once a measured cell's verdict is written and is not a STOP, exactly run_cell.PRUNED leaves
         it, in both arms, and pruned.json records each root's files (a symlink counted, not followed), bytes and
         symlinks, marked removed. The same cell held at a STOP (violating) keeps every file."""
         expected = dict(removed=True, roots=pruned_roots())
-        for arm in prepare.ARMS:
+        for arm in ('B', 'C-K1'):
             with self.subTest(arm=arm), tempfile.TemporaryDirectory() as temp, \
                     tempfile.TemporaryDirectory() as held:
                 code, verdict, _, stopped, _ = self.run_cell(Path(held), arm=arm, config='codex', caches=True,
@@ -1783,14 +1751,14 @@ class RunFlow(unittest.TestCase):
         """D-b: a Claude cell has none of the roots and gets a record with none (allowed, idempotent); a SMOKE-task
         cell keeps its caches, since seal-forms asserts SMOKE's CODEX_HOME after the verdict."""
         with tempfile.TemporaryDirectory() as temp:
-            code, _, _, out, _ = self.run_cell(Path(temp), arm='A', config='claude')
+            code, _, _, out, _ = self.run_cell(Path(temp), arm='C-K3', config='claude')
             empty = dict(removed=True, roots={})
             self.assertEqual((code, json.loads((out / 'pruned.json').read_text())), (0, empty))
             files = tree_files(out)
             self.assertEqual(run_cell.prune(out), empty)
             self.assertEqual(tree_files(out), files)
         with tempfile.TemporaryDirectory() as temp:
-            code, _, _, out, _ = self.run_cell(Path(temp), task='SMOKE', arm='A', config='codex', caches=True)
+            code, _, _, out, _ = self.run_cell(Path(temp), task='SMOKE', arm='C-K3', config='codex', caches=True)
             self.assertEqual(code, 0)
             self.assertFalse((out / 'pruned.json').exists())
             self.assertTrue(all((out / path).exists() for path in CODEX_CACHES))
@@ -1915,212 +1883,9 @@ class RunFlow(unittest.TestCase):
             with stack:
                 venue, blocked = run_cell.snapshot_auth(dict(auth=str(root / 'snapshot'), codex_auth=str(named)))
             self.assertIsNone(blocked)
-            code, verdict, _, out, _ = self.run_cell(root, arm='A', config='codex', snapshot=venue,
+            code, verdict, _, out, _ = self.run_cell(root, arm='C-K3', config='codex', snapshot=venue,
                                                      expected=venue['account'])
             self.assertEqual((code, verdict['claude_account_before'], verdict['codex_account']),
                              (0, venue['account'], run_cell.base.fingerprint('named-account-id')))
             for text in ((root / 'output/verdict-cell-1.json').read_text(), (out / 'seal.json').read_text()):
                 self.assertFalse([value for value in ('named-account-id', *SECRETS) if value in text])
-
-
-class Assessors(unittest.TestCase):
-    def assess_with(self, one):
-        with tempfile.TemporaryDirectory() as temp:
-            root = Path(temp)
-            (root / 'checks.json').write_text('{}')
-
-            def tree(_out, scratch):
-                (scratch / 'work').mkdir()
-                return scratch / 'work'
-            with mock.patch.object(assess, 'review_tree', side_effect=tree), \
-                    mock.patch.object(assess.packet, 'packet', return_value=({}, 'PACKET')), \
-                    mock.patch.object(assess, 'one', side_effect=one):
-                return assess.assess(root, {'scratch': str(root)})
-
-    def test_seats_run_at_once_and_keep_their_order(self):
-        both = threading.Barrier(2, timeout=5)
-
-        def one(_out, _runtime, route, prompt):
-            both.wait()  # a serial runner would never reach the second seat
-            time.sleep(0.3 if route == assess.TASKS['assessors'][0] else 0)
-            return {'route': route}
-        records = self.assess_with(one)
-        self.assertEqual([r['route'] for r in records], assess.TASKS['assessors'])
-
-    def test_a_failing_seat_raises_after_the_other_finished(self):
-        finished = []
-
-        def one(_out, _runtime, route, prompt):
-            if route == assess.TASKS['assessors'][0]:
-                raise RuntimeError('first seat failed')
-            time.sleep(0.3)
-            finished.append(route['engine'])
-            return {}
-        with self.assertRaisesRegex(RuntimeError, 'first seat failed'):
-            self.assess_with(one)
-        self.assertEqual(finished, [assess.TASKS['assessors'][1]['engine']])
-
-    def test_an_unproved_teardown_outranks_the_other_seats_failure(self):
-        """H3: whichever seat's container is unproved, assess() raises that, never the other seat's plain failure."""
-        for unproved in assess.TASKS['assessors']:
-            def one(_out, _runtime, route, prompt, unproved=unproved):
-                if route == unproved:
-                    raise assess.TeardownUnproved('cannot prove container y is gone')
-                raise RuntimeError('seat timed out')
-            with self.subTest(seat=unproved['engine']), self.assertRaises(assess.TeardownUnproved):
-                self.assess_with(one)
-
-    def test_record_dir_is_honoured(self):
-        with tempfile.TemporaryDirectory() as temp:
-            root = Path(temp)
-            out = root / 'cell'
-            out.mkdir()
-            (root / 'auth').mkdir()
-            (root / 'auth/claude.json').write_text('{"fake": true}')
-            runtime = dict(scratch=str(root), auth=str(root / 'auth'), image='sha256:image')
-            route = assess.TASKS['assessors'][0]
-
-            def docker(argv, stdin, stdout, stderr, timeout):
-                stdout.write(json.dumps({'type': 'result', 'result': '{"complete": true, "findings": []}',
-                                         'modelUsage': {}}).encode() + b'\n')
-                return subprocess.CompletedProcess(argv, 0)
-            with mock.patch.object(assess.subprocess, 'run', side_effect=docker), mock.patch.object(assess, 'reap'):
-                record = assess.one(out, runtime, route, 'PROMPT', record_dir=root / 'judge/claude')
-                default = assess.one(out, runtime, route, 'PROMPT')
-            self.assertEqual(sorted(p.name for p in (root / 'judge/claude').iterdir()),
-                             ['prompt.txt', 'result.json', 'stderr', 'stdout'])
-            self.assertEqual((root / 'judge/claude/prompt.txt').read_text(), 'PROMPT')
-            self.assertTrue(record['complete'])
-            self.assertEqual(default, json.loads((out / f'assessment/{route["engine"]}/result.json').read_text()))
-            self.assertEqual(sorted(p.name for p in (out / 'assessment').iterdir()), [route['engine']])
-
-
-class Scope(unittest.TestCase):
-    def test_scope_is_the_check_phases_reading_without_a_container(self):
-        """H2: check.scope is the scope check.check records (snapshot against baseline.json, the task's allowed
-        paths), read with no container. Violating: an added or deleted path outside the allowed ones; allowed: a change
-        to an allowed path is only a change."""
-        with tempfile.TemporaryDirectory() as temp:
-            out = Path(temp)
-            snapshot = out / 'snapshot'
-            snapshot.mkdir()
-            for name, text in (('add_one.py', 'def add_one(x):\n    return x + 1\n'), ('README.md', 'readme\n')):
-                (snapshot / name).write_text(text)
-            (out / 'baseline.json').write_text(json.dumps(dict(task='SMOKE',
-                                                               files=run_cell.check.packet.tree(snapshot))))
-            self.assertEqual(run_cell.check.scope(out), ([], []))
-            (snapshot / 'add_one.py').write_text('changed\n')
-            (snapshot / 'notes.txt').write_text('new\n')
-            (snapshot / 'README.md').unlink()
-            self.assertEqual(run_cell.check.scope(out),
-                             (['README.md', 'add_one.py', 'notes.txt'], ['README.md', 'notes.txt']))
-            with mock.patch.object(run_cell.check, 'evaluate', return_value=dict(public=[], rows=[], raw=[])):
-                seal = run_cell.check.check(out, {})
-            self.assertEqual((seal['changed'], seal['scope_violations']), run_cell.check.scope(out))
-
-
-class DockerAnswers(unittest.TestCase):
-    """O9: Docker 29 answers "error: no such object" in lower case. The check container's and an assessor's teardown
-    proofs read it in any letter case; any other inspect failure is still no proof."""
-
-    def answers(self, inspect, rm=''):
-        def run(argv, **kwargs):
-            if argv[1] == 'inspect':
-                return subprocess.CompletedProcess(argv, 1, '', inspect)
-            return subprocess.CompletedProcess(argv, 1 if argv[1] == 'rm' and rm else 0, 'ok', rm if argv[1] == 'rm' else '')
-        return mock.patch.object(subprocess, 'run', side_effect=run)
-
-    def survives(self):
-        """Docker still answers for the container after its removal: inspect succeeds every time."""
-        return mock.patch.object(subprocess, 'run', side_effect=lambda argv, **kwargs: subprocess.CompletedProcess(
-            argv, 0, '[{"Id": "x"}]' if argv[1] == 'inspect' else 'ok', ''))
-
-    def test_check_container_teardown(self):
-        check, runtime = run_cell.check, {'control': '/control', 'image': 'sha256:image'}
-        self.assertEqual(Path(check.__file__), HERE / 'check.py')  # run_cell's load order picks 0265's copy
-        for stderr in ('error: no such object: x', 'Error: No such object: x'):
-            with self.subTest(stderr=stderr), self.answers(stderr):
-                self.assertEqual(check.in_image(runtime, Path('/work'), ['true'])['exit_code'], 0)
-        for stderr in ('permission denied', 'Cannot connect to the Docker daemon at unix:///var/run/docker.sock'):
-            with self.subTest(stderr=stderr), self.answers(stderr), self.assertRaisesRegex(check.NoVerdict, 'cannot verify'):
-                check.in_image(runtime, Path('/work'), ['true'])
-        with self.survives(), self.assertRaisesRegex(check.NoVerdict, 'check container survived teardown'):
-            check.in_image(runtime, Path('/work'), ['true'])
-
-    def test_assessor_container_reaped(self):
-        self.assertEqual((Path(assess.__file__), Path(run_cell.assess.__file__)), (HERE / 'assess.py',) * 2)
-        for stderr in ('error: no such object: x', 'Error: No such object: x'):
-            with self.subTest(stderr=stderr), self.answers(stderr, 'Error response from daemon: no such container: x'):
-                assess.reap('x')
-        for stderr in ('permission denied', 'Cannot connect to the Docker daemon at unix:///var/run/docker.sock'):
-            with self.subTest(stderr=stderr), self.answers(stderr), \
-                    self.assertRaisesRegex(assess.TeardownUnproved, 'cannot prove container x'):
-                assess.reap('x')
-        with self.answers('error: no such object: x', 'permission denied'), \
-                self.assertRaisesRegex(assess.TeardownUnproved, 'cannot prove container x'):  # the removal failed otherwise
-            assess.reap('x')
-        with self.survives(), self.assertRaisesRegex(assess.TeardownUnproved, 'cannot prove container x'):
-            assess.reap('x')
-
-    def test_a_teardown_proof_that_raises_is_an_unproved_teardown(self):
-        """Re-check HIGH 1: both seats failed (their `docker run` could not be run), then the proof of each seat
-        container's removal raised. Violating: a timeout or an OS error from `docker rm` or from `docker inspect` is
-        the STOP `assessor teardown unproved: …`, which the driver never regrades. Allowed: a proved removal after the
-        same failed seats stays an ordinary assessor fault, which the driver regrades."""
-        driver = load('driver')
-        errors = {'timeout': lambda argv: subprocess.TimeoutExpired(argv, 60),
-                  'os error': lambda argv: OSError(5, 'Input/output error')}
-
-        def graded(call=None, error=None):
-            def docker(argv, **kwargs):
-                if argv[1] == 'run':
-                    raise OSError(2, 'No such file or directory', 'docker')
-                if argv[1] == call:
-                    raise error(argv)
-                if argv[1] == 'inspect':
-                    return subprocess.CompletedProcess(argv, 1, '', 'error: no such object: x')
-                return subprocess.CompletedProcess(argv, 0, '', '')
-            with tempfile.TemporaryDirectory() as temp:
-                out, auth = Path(temp) / 'cell', Path(temp) / 'auth'
-                out.mkdir()
-                auth.mkdir()
-                (out / 'checks.json').write_text('{}')
-                for name in ('claude.json', 'codex.json'):
-                    (auth / name).write_text('{"fake": true}')
-                runtime = dict(scratch=temp, auth=str(auth), image='sha256:image')
-
-                def tree(_out, scratch):
-                    (scratch / 'work').mkdir()
-                    return scratch / 'work'
-                with mock.patch.object(run_cell.assess, 'review_tree', side_effect=tree), \
-                        mock.patch.object(run_cell.assess.packet, 'packet', return_value=({}, 'PACKET')), \
-                        mock.patch.object(subprocess, 'run', side_effect=docker):
-                    return run_cell.grade(out, runtime, dict(owner_status='EXITED_0'), dict(scope_violations=[]),
-                                          assessment_venue=dict(account=['a', 'o']))
-        for call in ('rm', 'inspect'):
-            for label, error in errors.items():
-                with self.subTest(call=call, error=label):
-                    record = graded(call, error)
-                    self.assertEqual(record['status'], 'STOP')
-                    self.assertRegex(record['reason'], r'^assessor teardown unproved: cannot prove container '
-                                                       r'devlyn-0231-assess-[0-9a-f]{32} is gone: '
-                                                       r'(TimeoutExpired|OSError): ')
-                    self.assertFalse(record['reason'].startswith(driver.REGRADE))
-        record = graded()
-        self.assertEqual((record['status'], record['reason']),
-                         ('STOP', "assessment failed: [Errno 2] No such file or directory: 'docker'"))
-        self.assertTrue(record['reason'].startswith(driver.REGRADE))
-
-
-class StrictConfig(unittest.TestCase):
-    def test_configs_add_exactly_two_unknown_keys(self):
-        allowed, violating = strict.configs()
-        self.assertEqual(allowed, CODEX_TOML)
-        parsed, loose = tomllib.loads(allowed), tomllib.loads(violating)
-        self.assertIs(loose.pop(strict.UNKNOWN[0]), True)
-        self.assertIs(loose['features'].pop(strict.UNKNOWN[1]), True)
-        self.assertEqual(loose, parsed)
-
-
-if __name__ == '__main__':
-    unittest.main()
