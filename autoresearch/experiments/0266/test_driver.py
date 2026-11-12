@@ -1,4 +1,4 @@
-"""Offline tests for 0265's schedule and two-lane driver. driver.py runs from a temp copy beside the fake
+"""Offline tests for 0266's schedules and two-lane driver. driver.py runs from a temp copy beside the fake
 fixtures/driver/run_cell.py, so no Docker, keychain, network or model is touched."""
 import contextlib
 import datetime
@@ -20,7 +20,7 @@ HERE = Path(__file__).resolve().parent
 
 
 def load(name, path):
-    spec = importlib.util.spec_from_file_location('test_0265_driver_' + name, path)
+    spec = importlib.util.spec_from_file_location('test_0266_driver_' + name, path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -49,7 +49,14 @@ def runtime(root, lane):
     return path
 
 
-def lane(root, name, slots=()):
+def go(root, candidate='K3'):
+    """A GO screen decision: lanes whose rows hold the registered C start only with one (prepare.selected)."""
+    (root / 'screen-decision.json').write_text(json.dumps(dict(decision='GO', candidate=candidate)))
+
+
+def lane(root, name, slots=(), decided=True):
+    if decided and not (root / 'screen-decision.json').exists():
+        go(root)
     return driver.Driver(runtime(root, name), list(slots))
 
 
@@ -88,7 +95,7 @@ def latched(root, name):
 
 COMPLETE = dict(status='COMPLETE', scope_violations=[], teardown='CLEAN', identity={'status': 'MATCH'},
                 owner_status='EXITED_0')
-LAUNCH = dict(status='STOP', reason='B launch fault: run-package-missing', teardown='CLEAN',
+LAUNCH = dict(status='STOP', reason='launch fault: run-package-missing', teardown='CLEAN',
               identity={'status': 'UNKNOWN'}, owner_status='EXITED_1')
 MEMORY = dict(status='STOP', reason='memory kill: OOMKilled=True exit_code=137 owner EXITED_NONZERO', teardown='CLEAN',
               identity={'status': 'MATCH'}, owner_status='EXITED_NONZERO')
@@ -110,63 +117,109 @@ def cells(output, outcomes):
 
 
 class Schedule(unittest.TestCase):
-    def test_160_unique_slots_and_committed_files(self):
+    def test_counts_order_and_committed_files(self):
         written = generate.generate()
-        self.assertEqual({name: len(rows) for name, rows in written.items()}, {'cells.tsv': 160, 'smoke.tsv': 4})
-        self.assertEqual(written['smoke.tsv'], [('smoke-claude-A', 'SMOKE', 'A', 'claude'),
-                                               ('smoke-claude-B', 'SMOKE', 'B', 'claude'),
-                                               ('smoke-codex-A', 'SMOKE', 'A', 'codex'),
-                                               ('smoke-codex-B', 'SMOKE', 'B', 'codex')])
+        self.assertEqual({name: len(rows) for name, rows in written.items()},
+                         {'cells.tsv': 176, 'screen.tsv': 18, 'smoke.tsv': 4})
+        self.assertEqual(written['smoke.tsv'], [('smoke-claude-B', 'SMOKE', 'B', 'claude'),
+                                               ('smoke-claude-C', 'SMOKE', 'C-K3', 'claude'),
+                                               ('smoke-codex-B', 'SMOKE', 'B', 'codex'),
+                                               ('smoke-codex-C', 'SMOKE', 'C-K3', 'codex')])
         for name, rows in written.items():
             self.assertEqual(generate.render(rows), (HERE / name).read_text())
             self.assertTrue(all(len(line.split('\t')) == len(rows[0])
                                 for line in (HERE / name).read_text().splitlines()))
         measured = written['cells.tsv']
-        self.assertEqual(len({r[0] for r in measured}), 160)
-        self.assertEqual(len({r[1:] for r in measured}), 160)
+        self.assertEqual(len({r[0] for r in measured}), 176)
+        self.assertEqual(len({r[1:] for r in measured}), 176)
         for i, (name, task, arm, config, replicate) in enumerate(measured, 1):
             self.assertEqual(name, f'c{i:03d}-{task}-{config}-{arm}-r{replicate}')
         self.assertEqual(driver.rows([str(HERE / 'cells.tsv')]), [list(map(str, r)) for r in measured])
+        self.assertEqual(driver.rows([str(HERE / 'screen.tsv')]), [list(map(str, r)) for r in written['screen.tsv']])
 
-    def test_each_config_runs_core_then_screen(self):
+    def test_panel_order(self):
+        # DESIGN "Panel": Claude for r = 1..16 the F10 block then the F11 block, then for r = 1..8 the B5, D3 and D4
+        # blocks; Codex for r = 1..8 the B5, F10, F11 and D3 blocks. Claude's lane first in the file.
         measured = generate.generate()['cells.tsv']
-        for config in ('claude', 'codex'):
-            own = [r for r in measured if r[3] == config]
-            self.assertEqual(len(own), 80)
-            self.assertEqual([(r[1], r[4]) for r in own[:32]],
-                             [(task, rep) for rep in range(1, 9) for task in ('B5', 'F10') for _ in 'AB'])
-            self.assertEqual([(r[1], r[4]) for r in own[32:]],
-                             [(task, rep) for rep in range(1, 9) for task in ('D3', 'D4', 'F11') for _ in 'AB'])
-        self.assertEqual({r[3] for r in measured[:80]}, {'claude'})
+        claude, codex = ([r for r in measured if r[3] == config] for config in ('claude', 'codex'))
+        self.assertEqual((len(claude), len(codex)), (112, 64))
+        self.assertEqual(measured[:112], claude)
+        self.assertEqual([(r[1], r[4]) for r in claude[:64]],
+                         [(task, rep) for rep in range(1, 17) for task in ('F10', 'F11') for _ in 'BC'])
+        self.assertEqual([(r[1], r[4]) for r in claude[64:]],
+                         [(task, rep) for rep in range(1, 9) for task in ('B5', 'D3', 'D4') for _ in 'BC'])
+        self.assertEqual([(r[1], r[4]) for r in codex],
+                         [(task, rep) for rep in range(1, 9) for task in ('B5', 'F10', 'F11', 'D3') for _ in 'BC'])
 
-    def test_blocks_alternate_ab_and_ba(self):
+    def test_blocks_alternate_bc_and_cb(self):
         measured = generate.generate()['cells.tsv']
-        for i in range(0, 160, 2):
+        for i in range(0, 176, 2):
             block = measured[i:i + 2]
             self.assertEqual({(r[1], r[3], r[4]) for r in block}, {(block[0][1], block[0][3], block[0][4])})
-            self.assertEqual(''.join(r[2] for r in block), 'AB' if block[0][4] % 2 else 'BA')
-        for task in ('B5', 'F10', 'D3', 'D4', 'F11'):
-            for config in ('claude', 'codex'):
-                for arm in 'AB':
+            self.assertEqual(''.join(r[2] for r in block), 'BC' if block[0][4] % 2 else 'CB')
+        replicates = {'claude': {'F10': 16, 'F11': 16, 'B5': 8, 'D3': 8, 'D4': 8},
+                      'codex': {'B5': 8, 'F10': 8, 'F11': 8, 'D3': 8}}
+        for config, tasks in replicates.items():
+            for task, n in tasks.items():
+                for arm in 'BC':
                     self.assertEqual(sorted(r[4] for r in measured if r[1:4] == (task, arm, config)),
-                                     list(range(1, 9)))
+                                     list(range(1, n + 1)))
+
+    def test_screen_rotates_the_candidates(self):
+        # DESIGN "Stage S": per candidate 4 F10 and 2 F11 cells on Claude; six rounds of one cell per candidate, the
+        # candidates' order rotating, so no candidate runs all its cells first.
+        screen = generate.generate()['screen.tsv']
+        self.assertEqual({r[3] for r in screen}, {'claude'})
+        for candidate in ('K1', 'K2', 'K3'):
+            own = [r for r in screen if r[2] == f'C-{candidate}']
+            self.assertEqual(sorted((r[1], r[4]) for r in own), [('F10', 1), ('F10', 2), ('F10', 3), ('F10', 4),
+                                                                ('F11', 1), ('F11', 2)])
+        rounds = [screen[i:i + 3] for i in range(0, 18, 3)]
+        self.assertEqual([r[0][1] for r in rounds], ['F10', 'F11', 'F10', 'F10', 'F11', 'F10'])
+        for number, three in enumerate(rounds):
+            self.assertEqual({r[1] for r in three}, {three[0][1]})
+            self.assertEqual(sorted(r[2] for r in three), ['C-K1', 'C-K2', 'C-K3'])
+            self.assertEqual(three[0][2], f'C-K{number % 3 + 1}')  # the round's first candidate rotates
+        last_first = {k: max(i for i, r in enumerate(screen) if r[2] == f'C-{k}') for k in ('K1', 'K2', 'K3')}
+        first = {k: min(i for i, r in enumerate(screen) if r[2] == f'C-{k}') for k in ('K1', 'K2', 'K3')}
+        self.assertTrue(all(last_first[k] > max(first.values()) for k in first))  # nobody finishes before all start
 
 
 class LaneControls(unittest.TestCase):
+    def test_registered_lanes_refuse_to_start_without_a_go(self):
+        # DESIGN "Stage S": no registered run without a GO; the lane refuses before it takes its lock or writes its
+        # status, so nothing is latched. The screen's and SMOKE's lanes need no decision (their C names its package).
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            for decision in (None, dict(decision='STOP', candidate='K3'), dict(decision='UNDECIDED', candidate=None)):
+                with self.subTest(decision=decision):
+                    (root / 'screen-decision.json').unlink(missing_ok=True)
+                    if decision:
+                        (root / 'screen-decision.json').write_text(json.dumps(decision))
+                    with self.assertRaisesRegex(RuntimeError, 'lane claude refuses to start: .*no registered run'):
+                        lane(root, 'claude', CELLS, decided=False)
+                    self.assertFalse((root / 'output/driver-status-claude.json').exists())
+                    self.assertIsNone(latched(root, 'codex'))
+            screen = driver.rows([str(HERE / 'screen.tsv')])
+            self.assertEqual(len(lane(root, 'claude', screen, decided=False).slots), 18)
+            self.assertEqual(len(lane(root, None, driver.rows([str(HERE / 'smoke.tsv')]), decided=False).slots), 4)
+            go(root)
+            self.assertEqual(len(lane(root, 'codex', CELLS).slots), 64)
+
     def test_lane_filter(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             claude, codex, smoke = (lane(root, name, CELLS) for name in ('claude', 'codex', None))
-            self.assertEqual((len(claude.slots), len(codex.slots), len(smoke.slots)), (80, 80, 160))
+            self.assertEqual((len(claude.slots), len(codex.slots), len(smoke.slots)), (112, 64, 176))
             self.assertEqual({r[3] for r in claude.slots}, {'claude'})
             self.assertEqual({r[3] for r in codex.slots}, {'codex'})
             self.assertEqual(smoke.slots, CELLS)
             seal(root)
             with mock.patch.object(driver.cell, 'run') as run:
                 with self.assertRaisesRegex(ValueError, 'own lane'):
-                    claude.dispatch(row('c081-'))
-                with self.assertRaisesRegex(ValueError, 'arm A/B'):
-                    claude.dispatch(['c999-D3-claude-C-r1', 'D3', 'C', 'claude', '1'])
+                    claude.dispatch(row('c113-'))
+                with self.assertRaisesRegex(ValueError, 'arm B/C/C-K1/C-K2/C-K3'):
+                    claude.dispatch(['c999-D3-claude-A-r1', 'D3', 'A', 'claude', '1'])
                 run.assert_not_called()
             path = runtime(root, 'grok')
             with self.assertRaisesRegex(ValueError, 'lane must be'):
@@ -232,15 +285,15 @@ class LaneControls(unittest.TestCase):
             claude, codex = lane(root, 'claude'), lane(root, 'codex')
             codex.assert_active()
             bad = dict(COMPLETE, scope_violations=['outside'])
-            (root / 'output/verdict-c001-B5-claude-A-r1.json').write_text(json.dumps(bad))
-            claude.latch_for('c001-B5-claude-A-r1', bad)
+            (root / 'output/verdict-c001-F10-claude-B-r1.json').write_text(json.dumps(bad))
+            claude.latch_for('c001-F10-claude-B-r1', bad)
             with mock.patch.object(driver.cell, 'run') as run:
                 codex.lock.close()  # the codex process ends; its restart sees the latch too
                 for d in (codex, lane(root, 'codex'), claude):
                     with self.assertRaisesRegex(RuntimeError, 'harm latch in lane claude'):
                         d.assert_active()
                 with self.assertRaisesRegex(RuntimeError, 'harm latch in lane claude'):
-                    codex.dispatch(row('c081-'))
+                    codex.dispatch(row('c113-'))
                 run.assert_not_called()
             amendment = root / 'amendment-1.md'
             amendment.write_text('dated amendment')
@@ -481,7 +534,7 @@ class Guards(unittest.TestCase):
             root = Path(temp)
             d = lane(root, 'claude')
             measured = row('c001-')
-            run, called = cells(d.output, {measured[0]: [COMPLETE], 'smoke-claude-A': [COMPLETE]})
+            run, called = cells(d.output, {measured[0]: [COMPLETE], 'smoke-claude-B': [COMPLETE]})
             with mock.patch.object(driver.cell, 'run', side_effect=run):
                 for status in (None, 'PENDING', 'FAIL'):
                     if status:
@@ -490,16 +543,16 @@ class Guards(unittest.TestCase):
                         d.dispatch(measured)
                 self.assertEqual(called, [])
                 (root / 'instructions.seal.json').unlink()
-                self.assertTrue(lane(root, None).dispatch(['smoke-claude-A', 'SMOKE', 'A', 'claude']))
+                self.assertTrue(lane(root, None).dispatch(['smoke-claude-B', 'SMOKE', 'B', 'claude']))
                 seal(root)
                 self.assertTrue(d.dispatch(measured))
-            self.assertEqual(called, ['smoke-claude-A', measured[0]])
+            self.assertEqual(called, ['smoke-claude-B', measured[0]])
 
     def test_seven_day_deadline_from_the_shared_smoke_start(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             now = datetime.datetime.now(datetime.timezone.utc)
-            started = root / 'output/smoke-claude-A/run/started.json'
+            started = root / 'output/smoke-claude-B/run/started.json'
             started.parent.mkdir(parents=True)
             for age, active in ((datetime.timedelta(days=7, seconds=-60), True),
                                 (datetime.timedelta(days=7, seconds=60), False)):
@@ -550,7 +603,7 @@ class Guards(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             seal(root)
-            first, second = row('c081-'), row('c082-')
+            first, second = row('c113-'), row('c114-')
             d = lane(root, 'codex', [first, second])
             (d.output / f'verdict-{first[0]}.json').write_text(json.dumps(COMPLETE))
             run, called = cells(d.output, {second[0]: [COMPLETE]})
@@ -581,7 +634,7 @@ class Faults(unittest.TestCase):
     def test_a_launch_fault_is_archived_and_redispatched_once_per_slot(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            slots = [row(f'c00{i}-') for i in range(1, 5)]  # B5 then F10, AB on r1
+            slots = [row(f'c00{i}-') for i in range(1, 5)]  # F10 then F11, BC on r1
             d = self.run_lane(root, 'claude', slots, {
                 slots[0][0]: [COMPLETE], slots[1][0]: [LAUNCH, COMPLETE],
                 slots[2][0]: [COMPLETE], slots[3][0]: [LAUNCH, COMPLETE]})
@@ -597,15 +650,15 @@ class Faults(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             slots = [row('c002-')]
-            with self.assertRaisesRegex(driver.Stopped, 'STOP B launch fault: x'):
-                self.run_lane(root, 'claude', slots, {slots[0][0]: [LAUNCH, dict(LAUNCH, reason='B launch fault: x')]})
+            with self.assertRaisesRegex(driver.Stopped, 'STOP launch fault: x'):
+                self.run_lane(root, 'claude', slots, {slots[0][0]: [LAUNCH, dict(LAUNCH, reason='launch fault: x')]})
             name = slots[0][0]
             self.assertEqual(self.called, [name, name])
             latch = json.loads((root / 'output/driver-status-claude.json').read_text())['harm_latch']
             self.assertEqual(latch['cell'], name)
-            self.assertEqual(latch['reason'], 'STOP B launch fault: x')
+            self.assertEqual(latch['reason'], 'STOP launch fault: x')
             self.assertEqual(json.loads((root / f'output/verdict-{name}.json').read_text())['reason'],
-                             'B launch fault: x')
+                             'launch fault: x')
             self.assertTrue((root / f'output/verdict-{name}.stop-1.json').is_file())
             with self.assertRaisesRegex(RuntimeError, 'harm latch in lane claude'):
                 lane(root, 'codex').assert_active()
@@ -615,9 +668,9 @@ class Faults(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             name = row('c002-')[0]
-            with self.assertRaisesRegex(driver.Stopped, 'STOP B launch fault: y'):
+            with self.assertRaisesRegex(driver.Stopped, 'STOP launch fault: y'):
                 self.run_lane(root, 'claude', [row('c002-')],
-                              {name: [LAUNCH, MEMORY, dict(LAUNCH, reason='B launch fault: y')]})
+                              {name: [LAUNCH, MEMORY, dict(LAUNCH, reason='launch fault: y')]})
             self.assertEqual(self.called, [name, name, name])
             self.assertEqual([json.loads((root / f'output/verdict-{name}.stop-{n}.json').read_text())['reason']
                               for n in (1, 2)], [LAUNCH['reason'], MEMORY['reason']])
@@ -655,7 +708,7 @@ class Faults(unittest.TestCase):
         for fault in (MEMORY, ACCOUNT):
             with self.subTest(fault=fault['reason']), tempfile.TemporaryDirectory() as temp:  # allowed: once per slot
                 root = Path(temp)
-                slots = [row('c081-'), row('c082-')]
+                slots = [row('c113-'), row('c114-')]
                 d = self.run_lane(root, 'codex', slots, {slots[0][0]: [fault, COMPLETE], slots[1][0]: [fault, COMPLETE]})
                 self.assertEqual(self.called, [slots[0][0], slots[0][0], slots[1][0], slots[1][0]])
                 self.assertTrue(all(d.verdict(r[0])['status'] == 'COMPLETE' for r in slots))
@@ -663,9 +716,9 @@ class Faults(unittest.TestCase):
 
             with self.subTest(fault=fault['reason'], repeat=True), tempfile.TemporaryDirectory() as temp:
                 root = Path(temp)
-                name = row('c081-')[0]
+                name = row('c113-')[0]
                 with self.assertRaisesRegex(RuntimeError, f'{name}: STOP {fault["reason"]}'):
-                    self.run_lane(root, 'codex', [row('c081-')], {name: [fault, fault]})
+                    self.run_lane(root, 'codex', [row('c113-')], {name: [fault, fault]})
                 self.assertEqual(self.called, [name, name])
                 self.assertEqual(json.loads((root / f'output/verdict-{name}.json').read_text())['reason'],
                                  fault['reason'])
@@ -676,13 +729,13 @@ class Faults(unittest.TestCase):
                     lane(root, 'claude').assert_active()
                 with mock.patch.object(driver.cell, 'run') as run:  # a restart keeps the STOP and the latch
                     with self.assertRaisesRegex(RuntimeError, 'harm latch in lane codex'):
-                        lane(root, 'codex').dispatch(row('c081-'))
+                        lane(root, 'codex').dispatch(row('c113-'))
                     run.assert_not_called()
 
         with tempfile.TemporaryDirectory() as temp:  # each kind counts on its own: a memory kill, then an account fault
             root = Path(temp)
-            name = row('c081-')[0]
-            d = self.run_lane(root, 'codex', [row('c081-')], {name: [MEMORY, ACCOUNT, COMPLETE]})
+            name = row('c113-')[0]
+            d = self.run_lane(root, 'codex', [row('c113-')], {name: [MEMORY, ACCOUNT, COMPLETE]})
             self.assertEqual(self.called, [name] * 3)
             self.assertEqual(d.verdict(name)['status'], 'COMPLETE')
 
@@ -723,11 +776,11 @@ class Faults(unittest.TestCase):
             root = Path(temp)
             seal(root)
             d = lane(root, 'codex')
-            name = row('c081-')[0]
+            name = row('c113-')[0]
             (d.output / f'verdict-{name}.json').write_text(json.dumps(dict(stop, cell=name)))
             with mock.patch.object(driver.cell, 'run') as run:
                 with self.assertRaisesRegex(RuntimeError, 'STOP instruction assertion'):
-                    d.dispatch(row('c081-'))
+                    d.dispatch(row('c113-'))
                 run.assert_not_called()
             with self.assertRaisesRegex(RuntimeError, 'harm latch in lane codex'):
                 lane(root, 'claude').assert_active()
@@ -880,7 +933,7 @@ class Faults(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            with self.assertRaisesRegex(driver.Stopped, 'STOP B launch fault'):
+            with self.assertRaisesRegex(driver.Stopped, 'STOP launch fault'):
                 restart(root, True)
             self.mocks['ready'].assert_not_called()
             self.mocks['run'].assert_not_called()
@@ -1156,7 +1209,7 @@ class LaneEnd(unittest.TestCase):
             path.write_text(json.dumps(dict(json.loads(path.read_text()), caps={'seven_day': 70, 'five_hour': 85})))
 
         def bad_start(root, _path):
-            started = root / 'output/smoke-claude-A/run/started.json'
+            started = root / 'output/smoke-claude-B/run/started.json'
             started.parent.mkdir(parents=True)
             started.write_text(json.dumps({'started_at': 'soon'}))
         for spoil, error in ((bad_caps, 'registration caps must be seven_day=95 and five_hour=95'),
