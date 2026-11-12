@@ -35,7 +35,9 @@ import re
 
 HERE = Path(__file__).resolve().parent
 CELLS = HERE / 'cells.tsv'
-RULE_PATH, PROMPT_PATH, DESCRIPTIONS_PATH = HERE / 'audit-rule.md', HERE / 'fc_prompt.md', HERE / 'witness-descriptions.json'
+PRIOR = HERE.parent / '0265'  # the judges' rule, prompt and witness descriptions, unchanged (DESIGN "Apparatus")
+RULE_PATH, PROMPT_PATH, DESCRIPTIONS_PATH = (PRIOR / 'audit-rule.md', PRIOR / 'fc_prompt.md',
+                                             PRIOR / 'witness-descriptions.json')
 SEATS = json.loads((HERE.parent / '0233/tasks.json').read_text())['assessors']  # claude-opus-5-5 high, gpt-6-astra high
 OUTPUT_LIMIT = 6000
 ARM = (re.compile(r'[\w./@~$:{}-]*devlyn(?:[\w./@:{}-]*[\w/@{}-])?', re.I),  # devlyn names and paths, not a
@@ -90,7 +92,7 @@ def load(name, path):
     return module
 
 
-assess = load('assess0265fc', HERE / 'assess.py')
+assess = load('assess0266fc', HERE.parent / '0265/assess.py')
 
 
 def digest(path):
@@ -258,7 +260,7 @@ def call(judges):
 
 @functools.cache
 def run_cell():
-    return load('run_cell0265fc', HERE / 'run_cell.py')
+    return load('run_cell0266fc', HERE / 'run_cell.py')
 
 
 def refresh(runtime):

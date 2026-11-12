@@ -12,7 +12,7 @@ import math
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-spec = importlib.util.spec_from_file_location('decide0265', HERE / 'decide.py')
+spec = importlib.util.spec_from_file_location('decide0266', HERE / 'decide.py')
 decide = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(decide)
 

@@ -1,4 +1,4 @@
-"""0265 dispatcher: one serial process per lane, both lanes on one output folder. Run under caffeinate -dimsu:
+"""0266 dispatcher: one serial process per lane, both lanes on one output folder. Run under caffeinate -dimsu:
 driver.py <runtime.json> <cells.tsv>[:prefix] ...  The runtime's lane (null, claude or codex) selects the rows it runs.
 A lane's process holds an exclusive lock on <output>/driver-<lane>.lock for its whole life (--clear-latch too), so a
 lane never runs twice. A STOP that is not redispatched sets the harm latch, which stops both lanes; a lane with a cell
@@ -23,7 +23,7 @@ HERE = Path(__file__).resolve().parent
 
 
 def load(name):
-    spec = importlib.util.spec_from_file_location('driver0265_' + name, HERE / (name + '.py'))
+    spec = importlib.util.spec_from_file_location('driver0266_' + name, HERE / (name + '.py'))
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -298,7 +298,7 @@ class Driver:
     def cell_disk(self):
         """Free space as the cell image sees it on /cell (a bind of the output volume) and on a fresh /tmp volume:
         each needs the delivery helper's floor plus 2 GiB, so the helper never refuses in B for want of disk."""
-        argv = ['docker', 'run', '--rm', '--name', 'devlyn-0265-disk-' + uuid.uuid4().hex, '--network', 'none',
+        argv = ['docker', 'run', '--rm', '--name', 'devlyn-0266-disk-' + uuid.uuid4().hex, '--network', 'none',
                 '--read-only', '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges',
                 '--mount', f'type=bind,src={self.output},dst=/cell,readonly', '--mount', 'type=volume,dst=/tmp',
                 self.runtime['image'], 'python3', '-c', DISK_PROBE]
@@ -495,7 +495,7 @@ class Driver:
     def dispatch(self, row):
         name, task, arm, config = row[:4]
         if arm not in ('A', 'B') or config not in ('claude', 'codex') or self.lane not in (None, config):
-            raise ValueError(f'{name}: 0265 requires arm A/B and config claude/codex in its own lane')
+            raise ValueError(f'{name}: 0266 requires arm A/B and config claude/codex in its own lane')
         self.assert_active()
         if task != 'SMOKE':
             seal = self.output.parent / 'instructions.seal.json'

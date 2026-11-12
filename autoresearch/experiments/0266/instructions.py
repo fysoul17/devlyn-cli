@@ -70,7 +70,7 @@ DEVLYN = ['node', '/install/package/bin/devlyn.js', 'run']
 RUN_FOLDER = re.compile(r'/tmp/devlyn-run-[^/\s]+')  # os.tmpdir()/devlyn-run-XXXXXX, harness-run.js
 REFUSED = 'devlyn run: run-argument-unsupported {{"engine":"{engine}","argument":"--strict-mcp-config"}}'
 SHIM = r'''#!/usr/bin/env python3
-"""0265 Q2 recording shim: --version and Codex's app-server go to the pinned binary; any other call is recorded."""
+"""0266 Q2 recording shim: --version and Codex's app-server go to the pinned binary; any other call is recorded."""
 import base64, json, os, sys, uuid
 name, argv = os.path.basename(sys.argv[0]), sys.argv[1:]
 real = {'claude': '/usr/local/bin/claude', 'codex': '/usr/local/bin/codex'}[name]
@@ -97,7 +97,10 @@ def root(runtime):
 
 
 def load(name):
-    spec = importlib.util.spec_from_file_location(f'{name}0265i', HERE / f'{name}.py')
+    """This folder's module, else 0265's (a module 0266 does not change stays 0265's)."""
+    path = HERE / f'{name}.py'
+    path = path if path.is_file() else HERE.parent / '0265' / path.name
+    spec = importlib.util.spec_from_file_location(f'{name}0266i', path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -445,8 +448,8 @@ def container(cell, plan, command, binds=(), env=None, timeout=300):
     """One command in the cell's own container (cell.create_argv: its mounts, limits and working folder; no
     credential), removed with its /tmp volume afterwards. Returns (exit code, stdout, stderr)."""
     tag = uuid.uuid4().hex
-    name, volume = 'devlyn-0265-q2-' + tag, 'devlyn-0265-q2-tmp-' + tag
-    cell.docker('volume', 'create', '--label', 'devlyn.task=0265-q2', volume)
+    name, volume = 'devlyn-0266-q2-' + tag, 'devlyn-0266-q2-tmp-' + tag
+    cell.docker('volume', 'create', '--label', 'devlyn.task=0266-q2', volume)
     try:
         cell.docker(*cell.create_argv(plan, name, volume, cell.mounts(plan) + list(binds), env or plan['env'],
                                       command))

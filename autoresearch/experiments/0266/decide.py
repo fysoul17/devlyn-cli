@@ -1,4 +1,4 @@
-"""0265 decision (DESIGN r3 "Decision"), read once, after the last cell and its grading.
+"""0266 decision (DESIGN r3 "Decision"), read once, after the last cell and its grading.
 
 CLI: decide.py <runtime.json> [--out <file>]. Reads cells.tsv beside this file and, in the runtime's output folder,
 verdict-<name>.json with its archived attempts verdict-<name>.stop-N.json, <name>/checks.json, the lanes'
@@ -644,7 +644,7 @@ def token(readings, lines):
                 + (f',open={open_["A"]}v{open_["B"]}' if open_['A'] or open_['B'] else '') + ')')
 
     lead = {'claude': 'R2', 'codex': 'R1'}
-    return '0265:' + ';'.join(f'{config}=' + ','.join((replication(lead[config]),
+    return '0266:' + ';'.join(f'{config}=' + ','.join((replication(lead[config]),
                                                         completion_segment(lines[config]['completion']),
                                                         harm_segment(lines[config]['harm']))) for config in CONFIGS)
 
@@ -694,8 +694,8 @@ def evaluate(out, cells):
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description='0265 decision, read once after the last cell and its grading.')
-    parser.add_argument('runtime', help='a 0265 runtime.json (all of them share the output folder)')
+    parser = argparse.ArgumentParser(description='0266 decision, read once after the last cell and its grading.')
+    parser.add_argument('runtime', help='a 0266 runtime.json (all of them share the output folder)')
     parser.add_argument('--out', help='decision file (default: <output>/decision.json)')
     args = parser.parse_args(argv)
     out = Path(json.loads(Path(args.runtime).read_text())['output'])

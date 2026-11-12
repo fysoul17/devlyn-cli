@@ -1,4 +1,4 @@
-"""Run one 0265 cell end to end: run_cell.py <runtime.json> <name> <task> <arm> <config>. After an assessor fault,
+"""Run one 0266 cell end to end: run_cell.py <runtime.json> <name> <task> <arm> <config>. After an assessor fault,
 run_cell.py --regrade <runtime.json> <name> assesses the preserved cell again.
 
 Exit 0 = verdict recorded (any product outcome), 3 = not dispatched (preflight, or a Claude login copy left with less
@@ -34,11 +34,11 @@ MODULES = {}  # module -> the file it was loaded from, sealed per cell
 
 
 def load(name, path=None):
+    """This folder's module, else 0265's (a module 0266 does not change stays 0265's), then 0256's, then 0233's."""
     local = HERE / f'{name}.py'
-    prior = HERE.parent / '0256' / local.name
-    source = path or (local if local.is_file() else prior if prior.is_file()
-                      else HERE.parent / '0233' / local.name)
-    spec = importlib.util.spec_from_file_location(name + '0265', source)
+    source = path or next((folder / local.name for folder in (HERE, HERE.parent / '0265', HERE.parent / '0256')
+                           if (folder / local.name).is_file()), HERE.parent / '0233' / local.name)
+    spec = importlib.util.spec_from_file_location(name + '0266', source)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     MODULES[name] = Path(source)
@@ -280,7 +280,7 @@ def harness_unchanged(out, baseline):
 
 def run(runtime_path, name, task, arm, config, *, expected_account=None):
     if arm not in prepare.ARMS or config not in prepare.CONFIGS:
-        raise ValueError('0265 requires arm A/B and config claude/codex')
+        raise ValueError('0266 requires arm A/B and config claude/codex')
     runtime = json.loads(Path(runtime_path).read_text())
     verdict_path = Path(runtime['output']) / f'verdict-{name}.json'
     if verdict_path.is_file():
@@ -310,7 +310,7 @@ def run(runtime_path, name, task, arm, config, *, expected_account=None):
         return write_verdict(verdict_path, dict(cell=name, status='STOP', owner_ran=False, reason='control changed'))
     out = prepare.prepare(runtime, name, task, arm, config)
     control_manifest = json.loads(Path(runtime['control'] + '.manifest.json').read_text())
-    imported = {str(p.relative_to(HERE.parent)): digest(p) for iteration in ('0222', '0232', '0233', '0256')
+    imported = {str(p.relative_to(HERE.parent)): digest(p) for iteration in ('0222', '0232', '0233', '0256', '0265')
                 for p in sorted((HERE.parent / iteration).glob('*.py'))}
     (out / 'seal.json').write_text(json.dumps(dict(
         sealed_at=datetime.datetime.now(datetime.timezone.utc).isoformat(), venue=venue, image=runtime['image'],

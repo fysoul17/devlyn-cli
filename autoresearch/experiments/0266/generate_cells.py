@@ -1,4 +1,4 @@
-"""Freeze 0265's schedule: one serial lane per config, core then screen; no execution occurs here."""
+"""Freeze 0266's schedule: one serial lane per config, core then screen; no execution occurs here."""
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent

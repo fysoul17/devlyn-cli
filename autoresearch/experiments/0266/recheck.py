@@ -20,11 +20,11 @@ TASKS = ('D3', 'D4')
 
 
 def load(name):
-    """run_cell's resolution: this folder, then 0256, then 0233."""
+    """run_cell's resolution: this folder, then 0265, then 0256, then 0233."""
     local = HERE / f'{name}.py'
-    prior = HERE.parent / '0256' / local.name
-    source = local if local.is_file() else prior if prior.is_file() else HERE.parent / '0233' / local.name
-    spec = importlib.util.spec_from_file_location(name + '0265r', source)
+    source = next((folder / local.name for folder in (HERE, HERE.parent / '0265', HERE.parent / '0256')
+                   if (folder / local.name).is_file()), HERE.parent / '0233' / local.name)
+    spec = importlib.util.spec_from_file_location(name + '0266r', source)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module

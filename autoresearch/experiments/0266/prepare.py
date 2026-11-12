@@ -1,4 +1,4 @@
-"""Materialize one 0265 cell: prepare.py <runtime.json> <name> <task> <arm> <config>. Never dispatches models.
+"""Materialize one 0266 cell: prepare.py <runtime.json> <name> <task> <arm> <config>. Never dispatches models.
 
 Arms: A starts the engine raw; B starts the same arguments through `devlyn run` of the frozen package, which the owner
 container mounts read-only at /install (plan['install']). Nothing is installed in the tree. All use the same native
@@ -154,7 +154,7 @@ def native_prompt(caller):
 
 def prepare(runtime, name, task_id, arm, config):
     if task_id not in TASK_IDS or arm not in ARMS or config not in CONFIGS:
-        raise ValueError(f'0265 cells are {"/".join(TASK_IDS)} x arm A/B x config claude/codex')
+        raise ValueError(f'0266 cells are {"/".join(TASK_IDS)} x arm A/B x config claude/codex')
     override_path = Path(runtime.get('tasks_override', HERE.parent / '0256/tasks-override.json'))
     tasks = override_tasks(override_path)
     task = next(t for t in tasks['tasks'] if t['id'] == task_id)

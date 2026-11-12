@@ -1,4 +1,4 @@
-"""Bring the 0265 runtime root to "ready for SMOKE": setup_runtime.py [--root DIR] [--codex-auth PATH].
+"""Bring the 0266 runtime root to "ready for SMOKE": setup_runtime.py [--root DIR] [--codex-auth PATH].
 
 Never dispatches models. Idempotent: each step prints one line with what it found or did, keeps what already matches its pin and refuses on
 anything that differs. It never reads a credential and never writes into the auth folders. --codex-auth names the
@@ -18,7 +18,7 @@ import sys
 import tarfile
 
 HERE = Path(__file__).resolve().parent
-ROOT = Path.home() / '.local/share/nx01/0265-live'
+ROOT = Path.home() / '.local/share/nx01/0266-live'
 ARCHIVE = Path.home() / '.local/share/nx01/archive/reports-0256-0260/0257'  # 0257 prompts carry the issue snapshots
 HOST_MODELS_CACHE = Path.home() / '.codex/models_cache.json'
 OVERRIDE = HERE.parent / '0256/tasks-override.json'
@@ -35,7 +35,7 @@ RENEWAL = ['claude', '-p', '--tools', '', '--strict-mcp-config', '--mcp-config',
 CAPS = {'five_hour': 95, 'seven_day': 95}
 CALLER = '\nCALLER CONTRACT\n'
 
-_spec = importlib.util.spec_from_file_location('control0265', HERE / 'control.py')
+_spec = importlib.util.spec_from_file_location('control0266', HERE / 'control.py')
 control = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(control)
 
@@ -153,7 +153,7 @@ def image(root):
         sh('docker', 'load', '-i', str(tarball))
         found, action = image_id(), 'loaded from image.tar'
     elif found is None:
-        sh('bash', str(HERE / 'build.sh'), str(root / 'cache/image'), str(root / 'sources'), stream=True)
+        sh('bash', str(HERE.parent / '0265/build.sh'), str(root / 'cache/image'), str(root / 'sources'), stream=True)
         found, action = image_id(), 'built'
     if found is None:
         raise Refused(f'no image {IMAGE} after {action}')

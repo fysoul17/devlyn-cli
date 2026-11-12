@@ -1,7 +1,7 @@
-"""Operator tool (not apparatus) for the 0265 witnesses and probe, run after the last cell with no cell running.
-0261's judge.py (the hardened docker_attempt form) with runtime path from NX01_0265_RUNTIME, 0265 cells.tsv and the
+"""Operator tool (not apparatus) for the 0266 witnesses and probe, run after the last cell with no cell running.
+0261's judge.py (the hardened docker_attempt form) with runtime path from NX01_0266_RUNTIME, 0266 cells.tsv and the
 frozen witness list below: a witness whose bytes differ from its pin is refused.
-NX01_0265_JUDGE_SCRATCH selects an absolute scratch directory under /private/tmp when set.
+NX01_0266_JUDGE_SCRATCH selects an absolute scratch directory under /private/tmp when set.
 
 judge.py cells                    measured cells and their tasks
 judge.py findings                 every severe assessor finding of the measured cells, as JSON
@@ -31,16 +31,17 @@ import subprocess
 import sys
 import tempfile
 
-RUNTIME = Path(os.environ['NX01_0265_RUNTIME'])
+RUNTIME = Path(os.environ['NX01_0266_RUNTIME'])
 CONFIG = json.loads(RUNTIME.read_text())
 LIVE = Path(CONFIG['output']).parent
 OUT = Path(CONFIG['output'])
-scratch_override = os.environ.get('NX01_0265_JUDGE_SCRATCH')
+scratch_override = os.environ.get('NX01_0266_JUDGE_SCRATCH')
 SCRATCH = Path(scratch_override) if scratch_override else LIVE / 'scratch' / 'judge'
 if scratch_override and (not SCRATCH.is_absolute() or not SCRATCH.resolve().is_relative_to('/private/tmp')):
-    raise ValueError('NX01_0265_JUDGE_SCRATCH must be an absolute path under /private/tmp')
+    raise ValueError('NX01_0266_JUDGE_SCRATCH must be an absolute path under /private/tmp')
 CELLS = Path(__file__).resolve().parents[2] / 'cells.tsv'
 WITNESS_DIR = Path(__file__).resolve().parents[1] / 'witnesses'
+PRIOR_WITNESS_DIR = Path(__file__).resolve().parents[3] / '0265/results/witnesses'  # the witnesses 0266 keeps as they are
 # Frozen witness list (DESIGN "Grading"): stem -> (task, sha256 of the bytes copied from its source experiment).
 WITNESSES = {
     'd4-writer-death': ('D4', '5c0df523f0a556a6a6ff2c94a02f99ad9dc8993387e7605d04a77b101ea34fdc'),
@@ -126,8 +127,9 @@ def frozen(witness):
     """The pinned witness file for a stem or path; refuse anything not frozen or whose bytes differ from its pin."""
     stem = Path(witness).stem
     if stem not in WITNESSES:
-        raise ValueError(f'{stem}: not a frozen 0265 witness')
-    path = Path(witness).resolve() if Path(witness).suffix else next(WITNESS_DIR.glob(stem + '.*')).resolve()
+        raise ValueError(f'{stem}: not a frozen 0266 witness')
+    path = Path(witness).resolve() if Path(witness).suffix else next(
+        path for folder in (WITNESS_DIR, PRIOR_WITNESS_DIR) for path in sorted(folder.glob(stem + '.*'))).resolve()
     if hashlib.sha256(path.read_bytes()).hexdigest() != WITNESSES[stem][1]:
         raise ValueError(f'{path}: bytes differ from the frozen sha256 of {stem}')
     return path
@@ -498,7 +500,7 @@ def plant(kind, tree):
 def control_trees(temp):
     """Each control's tree, built under temp: base trees once per task (prepare.source, .git removed), archived
     snapshots copied, an F10/F11 snapshot without node_modules given its base tree's."""
-    spec = importlib.util.spec_from_file_location('prepare0265j', Path(__file__).resolve().parents[2] / 'prepare.py')
+    spec = importlib.util.spec_from_file_location('prepare0266j', Path(__file__).resolve().parents[2] / 'prepare.py')
     prepare = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(prepare)
     bases = {}
