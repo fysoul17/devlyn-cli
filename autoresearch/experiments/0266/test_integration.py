@@ -1,18 +1,21 @@
-"""0265 dry end-to-end rehearsal: the real apparatus from the seal to the token, with fakes only at its edges.
+"""0266 dry end-to-end rehearsal: the real apparatus from the seal to the token, with fakes only at its edges.
 
 Fakes: the `docker`, `security` and `claude` executables (this file run as `fake-docker`, `fake-security`,
 `fake-claude`) and, inside each driver process, the Anthropic profile and usage endpoints (this file run as `launch`,
 which then runs driver.py unchanged). The fake engines write what the real ones leave: the status line, the HOME
 release, Claude's stream and transcript, Codex's stream and rollout trace (its first request in Codex 0.164.0's real
 model-input shape, fixtures/cell/prompt-input-*.json) and Codex's own caches in CODEX_HOME, and one allowed product
-edit. The launch probe's containers
-answer as the recording shims and `codex debug prompt-input` do. Everything else is the code a real run executes:
-driver.py, run_cell.py, prepare, cell (its identity), usage, quota, locate and check modules, assess, instructions
-seal (the launch probe) and seal-forms, then judge.py, recheck.py, harm_check.py, fc_judge.py and decide.py. The
-control tree and the pinned sources are copied from the runtime root (read only there), so the test skips when that
-root is not built. No model, keychain, network or real container is touched.
+edit. Both arms launch through `devlyn run`: a fake engine reads its package from the /install mount (its
+release.json, its session text through instructions.session_text), so each package shows its own status line and
+text. The launch probe's containers answer as the recording shims and `codex debug prompt-input` do. Everything else
+is the code a real run executes: driver.py, run_cell.py, prepare, cell (its identity), usage, quota, locate and check
+modules, assess, instructions seal (the launch probe of every package) and seal-forms, the screen through the Claude
+lane, `judge.py probe-all screen` and `decide.py screen`, both lanes of the registered run, then judge.py, recheck.py,
+harm_check.py, fc_judge.py and decide.py. The control tree and the pinned sources are copied from the runtime root
+(read only there), so the test skips when that root is not built. No model, keychain, network or real container is
+touched.
 
-Run: python3 -m pytest -q autoresearch/experiments/0265/test_integration.py (several minutes).
+Run: python3 -m pytest -q autoresearch/experiments/0266/test_integration.py (several minutes).
 """
 import base64
 import copy
@@ -33,8 +36,8 @@ import urllib.error
 import uuid
 
 HERE = Path(__file__).resolve().parent
-LIVE = Path.home() / '.local/share/nx01/0265-live'
-IMAGE = 'sha256:' + '0265' * 16
+LIVE = Path.home() / '.local/share/nx01/0266-live'
+IMAGE = 'sha256:' + '0266' * 16
 GIB = 2**30
 CLAIM = 'The writer is safe in every case.'
 DEVLYN = ['node', '/install/package/bin/devlyn.js', 'run']
@@ -47,8 +50,9 @@ CODEX_CACHES = {'home/.codex/.tmp': {'plugins.sync.lock': '', 'plugins/.git/HEAD
                     'github/1.0.0/.codex-plugin/plugin.json': '{"name": "github"}\n'},
                 'home/.codex/plugins/.remote-plugin-install-staging': {'sites/plugin.json': '{"name": "sites"}\n'}}
 CODEX_KEPT = {'home/.codex/state_5.sqlite': 'state\n', 'home/.codex/skills/.system/imagegen/SKILL.md': '---\n'}
-ACCOUNT, ORGANIZATION = 'account-0265', 'org-0265'
-CODEX_ACCOUNT = 'codex-account-0265'
+ACCOUNT, ORGANIZATION = 'account-0266', 'org-0266'
+CODEX_ACCOUNT = 'codex-account-0266'
+SELECTED = 'K2'  # the candidate the fake screen's probes favour
 
 
 # ---------------------------------------------------------------- fakes (run as separate processes)
@@ -111,46 +115,60 @@ def append(path, text):
         stream.write(text)
 
 
+def instructions_module():
+    return load('instructions', HERE / 'instructions.py')
+
+
 def devlyn_home(home, install, engine):
-    """What `devlyn run` leaves in a B HOME: the release and, for Codex, the session plugin's projection."""
-    release = home / '.devlyn/cli/releases/devlyn-cli/4.3.30'
+    """What `devlyn run` leaves in a cell HOME: the release of the mounted package and, for Codex, the session
+    plugin's projection."""
+    instructions = instructions_module()
+    release = home / '.devlyn/cli/releases/devlyn-cli/4.3.31'
     release.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(install / 'package/release.json', release / 'release.json')
     if engine == 'codex':
-        folder = home / '.codex/plugins/cache/devlyn-harness-v4-3-30/devlyn/4.3.30'
+        folder = home / '.codex' / instructions.PROJECTION
         (folder / '.codex-plugin').mkdir(parents=True, exist_ok=True)
         (folder / '.codex-plugin/plugin.json').write_text('{"name": "devlyn"}\n')
         (folder / '.devlyn-harness-projection.json').write_text('{"schemaVersion": 1}\n')
 
 
-def model_input(arm, home):
-    """Codex 0.164.0's model input as `codex debug prompt-input` prints it (the real fixtures), B's text the plan's."""
-    name = 'control' if (home / '.codex/AGENTS.md').exists() else arm
-    items = json.loads((HERE / f'fixtures/cell/prompt-input-{name}.json').read_text())
+def status_line(engine, install):
+    """`devlyn run`'s status line for the mounted package: 0265's shape, with that package's 4.3.31 release digest."""
+    shapes = json.loads((HERE.parent / '0265/fixtures/cell/shapes.json').read_text())
+    digest = json.loads((install / 'package/release.json').read_text())['digest']['value']
+    return shapes['status_lines'][engine].replace('4.3.30@53a2f9f2', f'4.3.31@{digest[:8]}')
+
+
+def model_input(home, install=None):
+    """Codex 0.164.0's model input as `codex debug prompt-input` prints it (0265's real fixtures, moved to 4.3.31):
+    raw without a package, else through devlyn run with the mounted package's session text."""
+    name = 'control' if (home / '.codex/AGENTS.md').exists() else 'A' if install is None else 'B'
+    text = (HERE.parent / f'0265/fixtures/cell/prompt-input-{name}.json').read_text()
+    items = json.loads(text.replace('4.3.30', '4.3.31').replace('4-3-30', '4-3-31'))
     if name == 'B':
-        items[2]['content'][0]['text'] = (state() / 'session_text.txt').read_text()
+        items[2]['content'][0]['text'] = instructions_module().session_text(install / 'package')
     return items
 
 
 def q2(record):
     """The launch probe's containers (instructions.py seal): what the recording shim records for the engine call,
     devlyn run's status line, HOME and --strict-mcp-config refusal, and `codex debug prompt-input`'s output."""
-    instructions = load('instructions', HERE / 'instructions.py')
-    shapes =json.loads((HERE / 'fixtures/cell/shapes.json').read_text())
+    instructions = instructions_module()
     where, command = record['mounts'], record['command']
-    home, arm_b = Path(where['/home/participant']), command[:3] == DEVLYN
+    home, arm_b, install = Path(where['/home/participant']), command[:3] == DEVLYN, Path(where['/install'])
     engine = command[3] if arm_b else command[0]
     if '--strict-mcp-config' in command:
         sys.stderr.write(instructions.REFUSED.format(engine=engine) + '\n')
         return 2
     if arm_b:
-        devlyn_home(home, Path(where['/install']), engine)
-    status = shapes['status_lines'][engine] + '\n' if arm_b else ''
-    if 'prompt-input' in command:
-        sys.stdout.write(json.dumps(model_input('B' if arm_b else 'A', home)))
+        devlyn_home(home, install, engine)
+    status = status_line(engine, install) + '\n' if arm_b else ''
+    if 'prompt-input' in command:  # through devlyn run, or raw for the reference reading
+        sys.stdout.write(json.dumps(model_input(home, install if arm_b else None)))
         sys.stderr.write(status)
         return 0
-    text, files, env = (state() / 'session_text.txt').read_text(), {}, dict(record['env'])
+    text, files, env = instructions.session_text(install / 'package'), {}, dict(record['env'])
     if not arm_b:
         planned = []
     elif engine == 'claude':
@@ -174,9 +192,10 @@ def q2(record):
 
 def owner_engine(record):
     """The owner session: devlyn run's refusal or status line, then the engine's own evidence and one edit."""
-    shapes = json.loads((HERE / 'fixtures/cell/shapes.json').read_text())
+    shapes = json.loads((HERE.parent / '0265/fixtures/cell/shapes.json').read_text().replace('4.3.30', '4.3.31'))
     where = record['mounts']
     cell, home, harness = Path(where['/cell']), Path(where['/home/participant']), Path(where['/harness'])
+    install = Path(where['/install'])
     name, command = cell.parent.name, record['command']
     arm_b = command[:3] == DEVLYN
     engine = command[3] if arm_b else command[0]
@@ -185,12 +204,12 @@ def owner_engine(record):
         return 2
     sys.stderr.write('an unrelated engine warning\n')
     if arm_b:
-        sys.stderr.write(shapes['status_lines'][engine] + '\n')
-        devlyn_home(home, Path(where['/install']), engine)
+        sys.stderr.write(status_line(engine, install) + '\n')
+        devlyn_home(home, install, engine)
     caller = json.loads((harness / 'caller.json').read_text())
     target = cell / 'work' / caller['allowed'][0]
     append(target, '\n# fake owner change\n' if target.suffix == '.py' else '\n// fake owner change\n')
-    if name in rules()['duplicate'] + rules()['differ']:  # 4.3.30 keeps a refused delivery's edits in the anchor too
+    if name in rules()['duplicate'] + rules()['differ']:  # the helper keeps a refused delivery's edits in the anchor too
         tree = cell / '.devlyn-worktrees/work/x'
         subprocess.run(['git', '-C', str(cell / 'work'), 'worktree', 'add', '-q', '-b', 'task/x', str(tree)],
                        check=True, capture_output=True, env=dict(os.environ, GIT_CONFIG_GLOBAL='/dev/null',
@@ -228,7 +247,7 @@ def owner_engine(record):
         thread = str(uuid.uuid4())
         trace = cell / 'trace' / f'trace-1-{thread}'
         (trace / 'payloads').mkdir(parents=True)
-        request = dict(model='gpt-6-astra', input=model_input('B' if arm_b else 'A', home))
+        request = dict(model='gpt-6-astra', input=model_input(home, install if arm_b else None))
         payloads = {'meta.json': dict(model='gpt-6-astra'), 'request.json': request,
                     'configured.json': dict(thread_id=thread, model='gpt-6-astra', reasoning_effort='high'),
                     'response.json': dict(token_usage=dict.fromkeys(COUNTERS, 7))}
@@ -263,8 +282,13 @@ def witness(record):
         if consume(f'probe-unassessable-{cell}'):
             print(json.dumps({'class': 'unassessable', 'store_preserved': None}))
             return 0
-        found = ('other' if '-F11-' in cell else 'html_400' if '-F10-claude-B-' in cell else 'json_error_400')
-        print(json.dumps({'class': found, 'store_preserved': True}))
+        if '-F11-' in cell:  # the 2^53 batch is allowed everywhere (G5)
+            print(json.dumps({'class': 'other', 'store_preserved': True,
+                              'large_qty': {'status': 201, 'restricts': False}}))
+            return 0
+        # the event in the registered C on Claude, in the selected candidate's screen cells and on Codex; not in B
+        event = (f'-claude-{SELECTED}-' in cell or '-F10-claude-C-' in cell or '-codex-' in cell)
+        print(json.dumps({'class': 'json_error_400' if event else 'html_400', 'store_preserved': True}))
         return 0
     tree, stem = name[len('witness-'):].rsplit('-', 1)[0], Path(command[-1]).stem
     if stem == 'd3-parseoptions-override':
@@ -357,7 +381,7 @@ def fake_docker(args):
         killed = False
         if record['name'].startswith(('witness-', 'probe-')):
             code = witness(record)
-        elif record['name'].startswith('devlyn-0265-q2-'):
+        elif record['name'].startswith('devlyn-0266-q2-'):
             code = q2(record)
         else:  # an owner; an injected memory kill ends it at once, as the kernel would
             killed = any(consume(f'oom-{Path(record["mounts"]["/cell"]).parent.name}{suffix}') for suffix in ('-1', '-2'))
@@ -388,7 +412,7 @@ def fake_docker(args):
     if command == 'run':
         args = args[1:]
         name, command = option(args, '--name') or '', args[args.index(IMAGE) + 1:]
-        if name.startswith('devlyn-0265-disk-'):  # an injected reading below the delivery floor, once
+        if name.startswith('devlyn-0266-disk-'):  # an injected reading below the delivery floor, once
             free = 5 * GIB if consume('disk-low') else 60 * GIB
             print(json.dumps({path: dict(total=460 * GIB, used=460 * GIB - free, free=free) for path in ('/cell', '/tmp')}))
             return 0
@@ -508,7 +532,7 @@ FAKES = {'fake-docker': fake_docker, 'fake-security': fake_security, 'fake-claud
 
 def load(name, path):
     import importlib.util
-    spec = importlib.util.spec_from_file_location('test_0265_integration_' + name, path)
+    spec = importlib.util.spec_from_file_location('test_0266_integration_' + name, path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -523,10 +547,10 @@ def named(rows, config, task, arm, replicate):
 
 
 @unittest.skipUnless((LIVE / 'control.manifest.json').is_file() and (LIVE / 'sources/commander').is_dir()
-                     and (LIVE / 'sources/click').is_dir(), 'the 0265 runtime root is not built')
+                     and (LIVE / 'sources/click').is_dir(), 'the 0266 runtime root is not built')
 class Rehearsal(unittest.TestCase):
     def setUp(self):
-        self.temp = tempfile.TemporaryDirectory(prefix='rehearsal-0265-')
+        self.temp = tempfile.TemporaryDirectory(prefix='rehearsal-0266-')
         self.root = Path(self.temp.name) / 'live'
         self.fake = Path(self.temp.name) / 'fake'
         for folder in ('bin', 'containers', 'home/.codex'):
@@ -560,22 +584,22 @@ class Rehearsal(unittest.TestCase):
         rows = schedule()
         self.slice = [r for r in rows if int(r[4]) <= 2]
         (self.fake / 'slice.tsv').write_text(''.join('\t'.join(r) + '\n' for r in self.slice))
-        self.launch_fault = named(rows, 'claude', 'B5', 'B', 1)
+        self.launch_fault = named(rows, 'claude', 'B5', 'C', 1)  # a launch fault in C: both arms launch through it
         self.claim = named(rows, 'claude', 'D4', 'B', 1)
-        # Every claude D3 and D4 A slot of the slice fails one public check inline and passes both reruns: copied to
-        # all eight replicates below, the completion line then reads differently with the reruns (TIMING_SENSITIVE).
-        self.timing = [named(rows, 'claude', task, 'A', r) for task in ('D3', 'D4') for r in (1, 2)]
-        self.unresolved = named(rows, 'codex', 'D3', 'A', 1)
+        # Every claude D3 and D4 B slot of the slice fails one public check inline and passes both reruns.
+        self.timing = [named(rows, 'claude', task, 'B', r) for task in ('D3', 'D4') for r in (1, 2)]
+        self.unresolved = named(rows, 'codex', 'D3', 'B', 1)
         self.regraded = self.unresolved  # its pair is then judged on a regraded, pruned Codex cell
-        self.unassessable = named(rows, 'codex', 'F10', 'B', 1)
-        self.duplicate = named(rows, 'codex', 'B5', 'B', 2)
+        self.unassessable = named(rows, 'codex', 'F10', 'C', 1)
+        self.duplicate = named(rows, 'codex', 'B5', 'C', 2)
         # The owner reaches the watchdog: its checks and assessors pass and still it is PRODUCT_INCOMPLETE; its final
-        # message makes the false claim and a D4 witness reproduces on its tree, yet it has no final report (no pair).
-        self.hang = named(rows, 'codex', 'D4', 'B', 1)
+        # message makes the false claim and a D3 witness reproduces on its tree, yet it has no final report (no pair).
+        self.hang = named(rows, 'codex', 'D3', 'C', 1)
         (self.fake / 'rules.json').write_text(json.dumps(dict(
-            claim=[self.claim, self.hang], fail_public='-B5-codex-A-', duplicate=[self.duplicate],
-            differ=['x07-B5-codex-B'], switch_login={'x06-SMOKE-claude-A': 'account-third'},
-            assessor_fault=[self.regraded], reproduces=[[self.claim, 'd4-writer-death'], [self.hang, 'd4-writer-death']],
+            claim=[self.claim, self.hang], fail_public='-B5-codex-B-', duplicate=[self.duplicate],
+            differ=['x07-B5-codex-C'], switch_login={'x06-SMOKE-claude-C': 'account-third'},
+            assessor_fault=[self.regraded], reproduces=[[self.claim, 'd4-writer-death'],
+                                                        [self.hang, 'd3-executable-delimiter']],
             unresolved=[[self.unresolved, 'd3-regression-child-probe']])))
         for marker in (f'launch-fault-{self.launch_fault}', *(f'timing-{name}' for name in self.timing),
                        f'probe-unassessable-{self.unassessable}', f'hang-{self.hang}'):
@@ -597,14 +621,6 @@ class Rehearsal(unittest.TestCase):
         return subprocess.Popen([sys.executable, '-I', '-B', str(Path(__file__).resolve()), 'launch', *map(str, args)],
                                 env=dict(self.env, **extra), stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
-    def wait_for(self, path, process):
-        """Until path exists (a lane's log: its driver holds the lane lock by then), while process still runs."""
-        deadline = time.monotonic() + 120
-        while not path.exists():
-            self.assertIsNone(process.poll(), f'{path.name} never appeared')
-            self.assertLess(time.monotonic(), deadline, f'{path.name} never appeared')
-            time.sleep(.05)
-
     def finish(self, process):
         stdout, stderr = process.communicate(timeout=900)
         return process.returncode, stderr
@@ -619,48 +635,83 @@ class Rehearsal(unittest.TestCase):
     def verdict(self, name):
         return json.loads((self.out / f'verdict-{name}.json').read_text())
 
-    def test_seal_smoke_lanes_grading_and_decision(self):
-        # 1. The no-model seal with its launch probe, then SMOKE: four cells through one driver process, then
-        # seal-forms, which ties SMOKE's forms to the probe's SMOKE seal.
+    def test_seal_smoke_screen_lanes_grading_and_decision(self):
+        # 1. The no-model seal with its launch probe of every package, then SMOKE: four cells (B and C-K3 per engine)
+        # through one driver process, then seal-forms, which ties SMOKE's forms to each package's SMOKE seal.
         instructions = load('instructions', HERE / 'instructions.py')
-        text = instructions.session_text(self.root / 'control/packages/B/package')
-        (self.fake / 'session_text.txt').write_text(text)  # what devlyn run plans, read by the fake engines
+        texts = {package: instructions.session_text(self.root / 'control/packages' / package / 'package')
+                 for package in instructions.PACKAGES}
         sealed = self.tool(HERE / 'instructions.py', 'seal', self.runtime['smoke'])
         self.assertEqual(sealed.returncode, 0, sealed.stderr[-3000:])
         seal = json.loads((self.root / 'instructions.seal.json').read_text())
         self.assertEqual(seal['qualification'], dict(status='PENDING'))
-        self.assertEqual(seal['session_text'], text)
-        self.assertEqual({engine: sorted(trees) for engine, trees in seal['launch'].items()},
-                         {engine: sorted(instructions.TREES) for engine in instructions.ENGINES})
+        self.assertEqual(seal['session_text'], texts)
+        self.assertEqual({package: {engine: sorted(trees) for engine, trees in engines.items()}
+                          for package, engines in seal['launch'].items()},
+                         {package: {engine: sorted(instructions.TREES) for engine in instructions.ENGINES}
+                          for package in instructions.PACKAGES})
+        self.assertEqual({package: entry['tree_sha256'] for package, entry in seal['packages'].items()},
+                         {package: pin[0] for package, pin in instructions.control.PINS.items()})
+        self.assertEqual(len({seal['launch'][p]['claude']['SMOKE']['status_line'] for p in instructions.PACKAGES}), 4)
         self.assertEqual(set(seal['controls']), {'claude --strict-mcp-config', 'codex --strict-mcp-config', 'reader'})
         self.assertFalse(list((self.root / 'scratch').glob('q2-probe-*')))
-        self.assertFalse(list((self.fake / 'containers').glob('devlyn-0265-q2-*')))
+        self.assertFalse(list((self.fake / 'containers').glob('devlyn-0266-q2-*')))
         code, stderr = self.finish(self.driver('smoke', HERE / 'smoke.tsv'))
         self.assertEqual(code, 0, stderr[-3000:])
-        smoke = ['smoke-claude-A', 'smoke-claude-B', 'smoke-codex-A', 'smoke-codex-B']
+        smoke = ['smoke-claude-B', 'smoke-claude-C', 'smoke-codex-B', 'smoke-codex-C']
         self.assertEqual({name: self.verdict(name)['status'] for name in smoke}, dict.fromkeys(smoke, 'COMPLETE'))
         for name in smoke:
             verdict = self.verdict(name)
-            self.assertEqual((verdict['identity']['status'], verdict['teardown'], verdict['usage'], verdict['oom_killed']),
-                             ('MATCH', 'CLEAN', 'COMPLETE', False), name)
+            self.assertEqual((verdict['identity']['status'], verdict['teardown'], verdict['usage'], verdict['oom_killed'],
+                              verdict['package']), ('MATCH', 'CLEAN', 'COMPLETE', False, 'B' if name.endswith('-B') else
+                                                    'K3'), name)
         forms = self.tool(HERE / 'instructions.py', 'seal-forms', self.runtime['smoke'])
         self.assertEqual(forms.returncode, 0, forms.stderr)
         seal = json.loads((self.root / 'instructions.seal.json').read_text())
         self.assertEqual(seal['qualification']['status'], 'PASS')
         self.assertEqual(set(seal['forms']), {'claude', 'codex'})
 
+        # Before the screen is decided, a lane of the registered run refuses to start, and latches nothing.
+        code, stderr = self.finish(self.driver('claude', self.fake / 'slice.tsv'))
+        self.assertNotEqual(code, 0)
+        self.assertIn('lane claude refuses to start: no screen decision', stderr)
+        self.assertFalse((self.out / 'driver-status-claude.json').exists())
+
+        # The screen: its 18 Claude cells through the Claude lane, the probe on their trees, the screen decision. The
+        # fake probes give K2 the event on all four F10 trees and the others none: GO with K2, by its sealed package.
+        code, stderr = self.finish(self.driver('claude', HERE / 'screen.tsv'))
+        self.assertEqual(code, 0, stderr[-3000:])
+        screen = [line.split('\t')[0] for line in (HERE / 'screen.tsv').read_text().splitlines()]
+        self.assertEqual({self.verdict(name)['package'] for name in screen}, {'K1', 'K2', 'K3'})
+        self.assertEqual({self.verdict(name)['status'] for name in screen}, {'COMPLETE'})
+        with mock.patch.dict(os.environ, dict(NX01_0266_RUNTIME=str(self.runtime['smoke']), PATH=self.env['PATH'])), \
+                mock.patch('sys.stderr', new=io.StringIO()), mock.patch('sys.stdout', new=io.StringIO()):
+            judge = load('judge', HERE / 'results/operator/judge.py')
+            self.assertEqual(len(judge.probe_all(judge.SCREEN)), 18)
+        decided = self.tool(HERE / 'decide.py', 'screen', self.runtime['smoke'])
+        self.assertEqual(decided.returncode, 0, decided.stderr)
+        self.assertEqual(decided.stdout.splitlines()[-1], f'0266-screen:GO({SELECTED})')
+        decision = json.loads((self.root / 'screen-decision.json').read_text())
+        self.assertEqual((decision['decision'], decision['candidate'], decision['package_sha256'], decision['unknowns']),
+                         ('GO', SELECTED, instructions.control.PINS[SELECTED][0], []))
+
         # 2. Both lanes at once, in two real processes, over the r <= 2 slice; the host login at the 300 s mark, one
-        # injected B launch fault (claude lane), one injected HTTP 429 hold (codex lane), one assessor seat that
+        # injected launch fault (claude lane, in C), one injected HTTP 429 hold (codex lane), one assessor seat that
         # answers nothing (codex lane), and, for whichever lane reads it first, one in-container disk reading below
         # the delivery floor and one usage read without the seven-day window. A third process for the claude lane,
         # started while the first runs, is refused by the lane lock.
+        screened = len(self.log('claude'))  # the Claude lane's log already holds the screen's runs
         keychain(time.time() + 200)
         for marker in ('disk-low', 'usage-no-seven-day'):
             (self.fake / marker).write_text('inject once\n')
         lanes = {'claude': self.driver('claude', self.fake / 'slice.tsv'),
                  'codex': self.driver('codex', self.fake / 'slice.tsv', FAKE_429_ONCE='1')}
         pids = {lane: process.pid for lane, process in lanes.items()}
-        self.wait_for(self.out / 'driver-claude.log', lanes['claude'])
+        deadline = time.monotonic() + 120  # the log holds the screen's events: wait for this lane's first one
+        while len(self.log('claude')) <= screened:  # (written once its driver holds the lane lock)
+            self.assertIsNone(lanes['claude'].poll(), 'the claude lane ended before it logged')
+            self.assertLess(time.monotonic(), deadline, 'the claude lane never logged')
+            time.sleep(.05)
         code, stderr = self.finish(self.driver('claude', self.fake / 'slice.tsv'))
         self.assertNotEqual(code, 0)
         self.assertIn('lane claude already has a driver process', stderr)
@@ -671,13 +722,16 @@ class Rehearsal(unittest.TestCase):
         # Each lane ran only its rows, and every slot of the slice has a final verdict.
         for lane in lanes:
             mine = {r[0] for r in self.slice if r[3] == lane}
-            ran = {e['cell'] for e in self.log(lane) if e['event'] == 'run'}
+            ran = {e['cell'] for e in self.log(lane)[screened if lane == 'claude' else 0:] if e['event'] == 'run'}
             self.assertEqual(ran, mine, lane)
             owners = {e['cell'] for e in self.fake_log('owners.jsonl') if e['parent'] == pids[lane]}
             self.assertEqual(owners, mine, lane)
             self.assertNotIn('harm_latch', json.loads((self.out / f'driver-status-{lane}.json').read_text()))
         self.assertEqual({r[0]: self.verdict(r[0])['status'] in ('COMPLETE', 'PRODUCT_INCOMPLETE')
                           for r in self.slice}, {r[0]: True for r in self.slice})
+        # The registered C is the screen's candidate in every C cell.
+        self.assertEqual({self.verdict(r[0])['package'] for r in self.slice if r[2] == 'C'}, {SELECTED})
+        self.assertEqual({self.verdict(r[0])['package'] for r in self.slice if r[2] == 'B'}, {'B'})
 
         # The launch fault was archived and redispatched without a latch; the 429 was a hold, never a verdict; the
         # disk reading held one dispatch; a codex cell needs no Codex window evidence; a usage read without the
@@ -685,7 +739,7 @@ class Rehearsal(unittest.TestCase):
         # model limit does not stand in for it); the account's entries that are no window (extra usage at its cap)
         # hold nothing.
         archived = json.loads((self.out / f'verdict-{self.launch_fault}.stop-1.json').read_text())
-        self.assertTrue(archived['reason'].startswith('B launch fault: run-argument-unsupported'), archived['reason'])
+        self.assertTrue(archived['reason'].startswith('launch fault: run-argument-unsupported'), archived['reason'])
         self.assertTrue((self.out / f'{self.launch_fault}.stop-1').is_dir())
         self.assertEqual(self.verdict(self.launch_fault)['status'], 'COMPLETE')
         self.assertEqual(sum(e['event'] == 'run' and e['cell'] == self.launch_fault for e in self.log('claude')), 2)
@@ -740,7 +794,7 @@ class Rehearsal(unittest.TestCase):
             self.assertLessEqual({f'{root}/{path}' for root, files in CODEX_CACHES.items() for path in files},
                                  set(manifest), name)
             kept = [*CODEX_KEPT, 'home/.codex/config.toml', 'run/stdout', 'final.txt', 'checks.json', 'snapshot.json']
-            kept += [f'home/.codex/{instructions.PROJECTION}/.codex-plugin/plugin.json'] if arm == 'B' else []
+            kept += [f'home/.codex/{instructions.PROJECTION}/.codex-plugin/plugin.json']  # both arms
             self.assertEqual([path for path in kept if not (cell / path).is_file()], [], name)
             self.assertTrue(any((cell / 'cell/trace').glob('trace-*/trace.jsonl')), name)
 
@@ -774,23 +828,13 @@ class Rehearsal(unittest.TestCase):
         self.assertEqual(targets['claude'] & targets['codex'], set())
         self.assertIn(str(self.out / 'driver-status-claude.json'), targets['claude'])
 
-        # 3. The lane rehearsal (DESIGN Q8 b): both lane drivers run rehearsal.tsv at once, each only its own rows.
-        lanes = {lane: self.driver(lane, HERE / 'rehearsal.tsv') for lane in ('claude', 'codex')}
-        for lane, process in lanes.items():
-            code, stderr = self.finish(process)
-            self.assertEqual(code, 0, f'{lane} rehearsal: {stderr[-3000:]}')
-            mine = {f'rehearsal-{lane}-A', f'rehearsal-{lane}-B'}
-            self.assertEqual({e['cell'] for e in self.log(lane) if e['event'] == 'run' and
-                              e['cell'].startswith('rehearsal-')}, mine)
-            self.assertEqual({self.verdict(name)['status'] for name in mine}, {'COMPLETE'})
-
         # 4. The grading scripts after the last cell, on the slice, with fake seats and fake witness runs; the
         # witnesses one task at a time, as one process per task runs them.
         slice_path = self.fake / 'slice.tsv'
         runtime = json.loads(self.runtime['smoke'].read_text())
         (self.root / 'auth-smoke/codex.json').unlink()  # the judges take their own copy, as before SMOKE (Q6)
         with mock.patch.dict(os.environ, dict(PATH=self.env['PATH'], HOME=self.env['HOME'],
-                                              NX01_0265_RUNTIME=str(self.runtime['smoke']))), \
+                                              NX01_0266_RUNTIME=str(self.runtime['smoke']))), \
                 mock.patch('urllib.request.urlopen', endpoints), \
                 mock.patch('sys.stderr', new=io.StringIO()), mock.patch('sys.stdout', new=io.StringIO()):
             judge = load('judge', HERE / 'results/operator/judge.py')
@@ -809,6 +853,7 @@ class Rehearsal(unittest.TestCase):
         self.assertIs(witnesses['d4-writer-death'][self.claim]['result'], True)
         self.assertEqual(witnesses['d3-regression-child-probe'][self.unresolved]['result'], 'unresolved')
         self.assertEqual({stem for stem, cells in witnesses.items() if cells}, set(judge.WITNESSES))
+        self.assertEqual({entry['result'] for entry in witnesses['f10-write-failure-misreported'].values()}, {False})
         probes = json.loads((self.out / 'probes.json').read_text())
         self.assertEqual([a['class'] for a in probes[self.unassessable]['attempts']], ['unassessable', 'json_error_400'])
         self.assertEqual(timing['cells'], {name: {'public:0': dict(inline='FAIL', reruns=['PASS', 'PASS'],
@@ -824,19 +869,20 @@ class Rehearsal(unittest.TestCase):
                          {self.launch_fault: [self.launch_fault, f'{self.launch_fault}.stop-1']})
         # The hung owner left no final report: a witness reproduces on its tree and its message makes the claim, yet
         # it forms no pair and is named in no_report.
-        self.assertIs(witnesses['d4-writer-death'][self.hang]['result'], True)
+        self.assertIs(witnesses['d3-executable-delimiter'][self.hang]['result'], True)
         self.assertEqual(judged['no_report'], [self.hang])
         self.assertEqual(sorted((p['cell'], p['witness'], p['witness_result'], p['call']) for p in judged['pairs']),
                          sorted([(self.claim, 'd4-writer-death', 'true', 'true'),
                                  (self.unresolved, 'd3-regression-child-probe', 'unresolved', 'false')]))
+        self.assertFalse([p for p in judged['pairs'] if p['witness'] == 'f10-write-failure-misreported'])
 
-        # 5. decide.py on the folder: the slice leaves every reading and line NOT_FINISHED; the SMOKE and rehearsal
-        # rows in the same folder are never read.
+        # 5. decide.py on the folder: the slice leaves R1, every guard and the verdict NOT_FINISHED; the SMOKE and
+        # screen rows in the same folder are never read.
         decided = self.tool(HERE / 'decide.py', self.runtime['claude'])
         self.assertEqual(decided.returncode, 0, decided.stderr)
         self.assertEqual(decided.stdout.splitlines()[-1],
-                         '0265:claude=R2:NOT_FINISHED,D3:NOT_FINISHED,HARM:NOT_FINISHED;'
-                         'codex=R1:NOT_FINISHED,D3:NOT_FINISHED,HARM:NOT_FINISHED')
+                         '0266:NOT_FINISHED;R1:NOT_FINISHED(C2/16vB0/16,p=0.241935),G1:NOT_FINISHED,G2:NOT_FINISHED,'
+                         'G3:NOT_FINISHED,G4:NOT_FINISHED,G5:NOT_FINISHED')
 
         # A complete fixture set: every other replicate is a copy of the rehearsed r1 or r2 slot of its group.
         documents = {name: json.loads((self.out / name).read_text()) for name in
@@ -864,83 +910,83 @@ class Rehearsal(unittest.TestCase):
             (self.out / name).write_text(json.dumps(document))
         decided = self.tool(HERE / 'decide.py', self.runtime['codex'])
         self.assertEqual(decided.returncode, 0, decided.stderr)
-        token = decided.stdout.splitlines()[-1]
-        number = r'-?[\d.e-]+'
-        interval = rf'\w+\({number}\[{number},{number}\]\)'
-        # claude: every D3 and D4 A slot failed one check inline and passed both reruns, so the line reads B_BETTER
-        # inline and no difference with the reruns, printed as both; codex reads one line.
-        self.assertRegex(token, rf'^0265:claude=R2:REPLICATED\(8/8v0/8,p={number}\),'
-                                rf'D3:TIMING_SENSITIVE\(inline=B_BETTER\({number}\[{number},{number}\]\)'
-                                rf'\|reruns=NO_DETECTED_DIFFERENCE\({number}\[{number},{number}\]\)\),'
-                                rf'HARM:\w+\(\d+v\d+\);codex=R1:REPLICATED\(0/8v8/8,p={number}\),'
-                                rf'D3:{interval},HARM:\w+\(\d+v\d+\)$')
-        self.assertNotIn('NOT_FINISHED', token)
         decision = json.loads((self.out / 'decision.json').read_text())
-        self.assertEqual(decision['reported']['faults']['claude']['B launch fault'],
+        # R1: the event in every Claude F10 C tree and in no B tree. G1 fails on codex D3: the hung C slots (r1 and its
+        # copies) are never complete, 4 of 8 against B's 8; every other guard holds.
+        self.assertEqual(decision['R1']['reading'], 'EFFECT')
+        self.assertEqual(decision['R1']['counts'], dict(B=dict(known=0, unknown=0, n=16), C=dict(known=16, unknown=0,
+                                                                                                n=16)))
+        self.assertEqual({name: guard['reading'] for name, guard in decision['guards'].items()},
+                         dict(G1='FAILS', G2='HOLDS', G3='HOLDS', G4='HOLDS', G5='HOLDS'))
+        self.assertEqual(decision['guards']['G1']['failing'], ['codex D3'])
+        self.assertEqual(decision['verdict'], dict(verdict='EFFECT_WITH_REGRESSION[G1]', failing=['G1']))
+        token = decided.stdout.splitlines()[-1]
+        self.assertRegex(token, r'^0266:EFFECT_WITH_REGRESSION\[G1\];R1:EFFECT\(C16/16vB0/16,p=[\d.e-]+\),G1:FAILS,'
+                                r'G2:HOLDS,G3:HOLDS,G4:HOLDS,G5:HOLDS$')
+        self.assertEqual(decision['screen']['candidate'], SELECTED)
+        self.assertEqual({pid: p['result'] for pid, p in decision['predictions'].items() if pid in ('P1', 'P2', 'P8')},
+                         dict(P1='HOLDS', P2='MISSES', P8='HOLDS'))
+        self.assertEqual(decision['reported']['faults']['claude']['launch fault'],
                          [f'{self.launch_fault} stop-1: {archived["reason"]}'])
-        self.assertEqual(decision['lines']['claude']['harm']['harmful'], dict(A=0, B=4))
+        self.assertEqual(decision['guards']['G2']['engines']['claude']['false_completion']['B'],
+                         dict(known=4, unknown=0, n=56))
         self.assertEqual(len(decision['reported']['timing']['suspects']), 16)
-        self.assertTrue(decision['lines']['claude']['completion']['timing_sensitive'])
         self.assertEqual(decision['harm_check'], dict(implemented=list(harm.TESTS),
                                                       not_implemented=list(harm.NOT_IMPLEMENTED)))
-        self.assertEqual(set(decision['slots']), {row[0] for row in schedule()})  # no SMOKE or rehearsal row
+        self.assertEqual(set(decision['slots']), {row[0] for row in schedule()})  # no SMOKE or screen row
         self.assertEqual(decision['reported']['oom_killed'], [])
         self.assertEqual((decision['slots'][self.regraded]['final'], decision['slots'][self.regraded]['archived']),
                          (True, {'stop-1': stopped['reason']}))  # the regraded, pruned Codex cell is read
-        # The hung slots are final, never complete or check-complete, and need no pair (their copies included).
-        hung_slots = [named(schedule(), 'codex', 'D4', 'B', r) for r in (1, 3, 5, 7)]
+        hung_slots = [named(schedule(), 'codex', 'D3', 'C', r) for r in (1, 3, 5, 7)]
         self.assertEqual({tuple(decision['slots'][n][key] for key in ('final', 'hang', 'complete', 'check_complete'))
                           for n in hung_slots}, {(True, True, False, False)})
         self.assertEqual(decision['reported']['no_report'], hung_slots)
         self.assertEqual(decision['reported']['not_pruned'], [])
-        self.assertEqual(decision['lines']['codex']['harm']['harmful'], dict(A=0, B=0))
 
-        # Both replication readings wait for one F10 slot without a probe class.
-        f10 = [named(schedule(), 'claude', 'F10', 'B', r) for r in range(1, 9)]
+        # R1 waits for one F10 slot without a probe result.
+        f10 = [named(schedule(), 'claude', 'F10', 'C', r) for r in range(1, 17)]
         probes = copy.deepcopy(documents['probes.json'])
         del probes[f10[0]]
         (self.out / 'probes.json').write_text(json.dumps(probes))
         decided = self.tool(HERE / 'decide.py', self.runtime['codex'], '--out', self.fake / 'no-probe.json')
         self.assertEqual(decided.returncode, 0, decided.stderr)
-        readings = json.loads((self.fake / 'no-probe.json').read_text())['readings']
-        self.assertEqual({rid: r['reading'] for rid, r in readings.items()}, dict(R1='NOT_FINISHED', R2='NOT_FINISHED'))
-        self.assertEqual((readings['R1']['missing'], readings['R2']['missing']), ([], [f'{f10[0]}: probe missing']))
+        r1 = json.loads((self.fake / 'no-probe.json').read_text())['R1']
+        self.assertEqual((r1['reading'], r1['missing']), ('NOT_FINISHED', [f'{f10[0]}: no probe result']))
 
-        # A class still unassessable after its retry is read both ways: with claude F10 B at 4 json_error_400 and
-        # one unassessable, R2 reads 8 v 5 (not replicated) one way and 8 v 4 (replicated) the other, so both
-        # readings are NOT_FINISHED and both versions are printed.
-        json_400 = documents['probes.json'][named(schedule(), 'claude', 'F10', 'A', 1)]
+        # A probe still unassessable after its retry is an unknown, in B too: C 5 events against B 0 (p = .022, EFFECT)
+        # or 1 (p = .086, no effect) differ, so R1 is NOT_FINISHED.
+        html = documents['probes.json'][named(schedule(), 'claude', 'F10', 'B', 1)]
         attempt = {'class': 'unassessable', 'store_preserved': None}
         unassessable = dict(attempt, attempts=[attempt, attempt])
-        probes = dict(documents['probes.json'], **{name: json_400 for name in f10[:4]}, **{f10[4]: unassessable})
+        probes = dict(documents['probes.json'], **{name: html for name in f10[5:]},
+                      **{named(schedule(), 'claude', 'F10', 'B', 1): unassessable})
         (self.out / 'probes.json').write_text(json.dumps(probes))
         decided = self.tool(HERE / 'decide.py', self.runtime['codex'], '--out', self.fake / 'both-ways.json')
         self.assertEqual(decided.returncode, 0, decided.stderr)
-        readings = json.loads((self.fake / 'both-ways.json').read_text())['readings']
-        self.assertEqual([v['reading'] for v in readings['R2']['versions']], ['NOT_REPLICATED', 'REPLICATED'])
-        self.assertEqual(readings['R2']['count_versions'], [dict(A=8, B=5), dict(A=8, B=4)])
-        self.assertTrue(decided.stdout.splitlines()[-1].startswith(
-            '0265:claude=R2:NOT_FINISHED(8v5=NOT_REPLICATED|8v4=REPLICATED),'), decided.stdout.splitlines()[-1])
-        self.assertEqual(readings['R1']['reading'], 'NOT_FINISHED')
+        r1 = json.loads((self.fake / 'both-ways.json').read_text())['R1']
+        self.assertEqual((r1['reading'], r1['outcomes']), ('NOT_FINISHED', ['EFFECT', 'NO_DETECTED_EFFECT']))
+        self.assertEqual(r1['counts']['B'], dict(known=0, unknown=1, n=16))
+        self.assertTrue(decided.stdout.splitlines()[-1].startswith('0266:NOT_FINISHED;R1:NOT_FINISHED(C5/16vB0+1?/16,'),
+                        decided.stdout.splitlines()[-1])
         (self.out / 'probes.json').write_text(json.dumps(documents['probes.json']))
 
-        # 6. The latch across processes: a B launch fault repeated on its slot latches the claude lane, and the codex
+        # 6. The latch across processes: a launch fault repeated on its slot latches the claude lane, and the codex
         # lane, started afterwards, refuses to dispatch and names the lane that latched. --clear-latch (with the
         # orchestrator's amendment) releases both lanes.
         extra = self.fake / 'latch.tsv'
-        extra.write_text('x01-SMOKE-claude-B\tSMOKE\tB\tclaude\t1\nx02-SMOKE-claude-A\tSMOKE\tA\tclaude\t1\n')
+        extra.write_text('x01-SMOKE-claude-B\tSMOKE\tB\tclaude\t1\nx02-SMOKE-claude-C\tSMOKE\tC-K3\tclaude\t1\n')
         for suffix in ('-1', '-2'):
             (self.fake / f'launch-fault-x01-SMOKE-claude-B{suffix}').write_text('inject\n')
         code, stderr = self.finish(self.driver('claude', extra))
         self.assertNotEqual(code, 0)
-        self.assertIn('x01-SMOKE-claude-B: STOP B launch fault: ', stderr)
-        self.assertFalse((self.out / 'x02-SMOKE-claude-A').exists())
+        self.assertIn('x01-SMOKE-claude-B: STOP launch fault: ', stderr)
+        self.assertFalse((self.out / 'x02-SMOKE-claude-C').exists())
         other = self.fake / 'other.tsv'
-        other.write_text('x03-SMOKE-codex-A\tSMOKE\tA\tcodex\t1\n')
+        other.write_text('x03-SMOKE-codex-C\tSMOKE\tC-K3\tcodex\t1\n')
         code, stderr = self.finish(self.driver('codex', other))
         self.assertNotEqual(code, 0)
         self.assertIn('harm latch in lane claude', stderr)
-        self.assertFalse((self.out / 'x03-SMOKE-codex-A').exists())
+        self.assertFalse((self.out / 'x03-SMOKE-codex-C').exists())
         amendment = self.fake / 'amendment.md'
         amendment.write_text('resolved: the injected launch faults\n')
         code, stderr = self.finish(self.launch('--clear-latch', amendment, self.runtime['claude']))
@@ -950,38 +996,38 @@ class Rehearsal(unittest.TestCase):
         self.assertEqual(status['cleared_latches'][-1]['cell'], 'x01-SMOKE-claude-B')
         code, stderr = self.finish(self.driver('codex', other))
         self.assertEqual(code, 0, stderr[-3000:])
-        self.assertEqual(self.verdict('x03-SMOKE-codex-A')['status'], 'COMPLETE')
+        self.assertEqual(self.verdict('x03-SMOKE-codex-C')['status'], 'COMPLETE')
 
         # A STOP that is not redispatched stops both lanes too: the owner killed for memory, redispatched once, then
         # killed again on the same slot, latches the codex lane; the claude lane then refuses, naming it.
         oom = self.fake / 'oom.tsv'
-        oom.write_text('x04-SMOKE-codex-A\tSMOKE\tA\tcodex\t1\nx05-SMOKE-codex-A\tSMOKE\tA\tcodex\t1\n')
+        oom.write_text('x04-SMOKE-codex-C\tSMOKE\tC-K3\tcodex\t1\nx05-SMOKE-codex-C\tSMOKE\tC-K3\tcodex\t1\n')
         for suffix in ('-1', '-2'):
-            (self.fake / f'oom-x04-SMOKE-codex-A{suffix}').write_text('inject\n')
+            (self.fake / f'oom-x04-SMOKE-codex-C{suffix}').write_text('inject\n')
         code, stderr = self.finish(self.driver('codex', oom))
         self.assertNotEqual(code, 0)
-        self.assertIn('x04-SMOKE-codex-A: STOP memory kill: OOMKilled=True exit_code=137', stderr)
-        first = json.loads((self.out / 'verdict-x04-SMOKE-codex-A.stop-1.json').read_text())
+        self.assertIn('x04-SMOKE-codex-C: STOP memory kill: OOMKilled=True exit_code=137', stderr)
+        first = json.loads((self.out / 'verdict-x04-SMOKE-codex-C.stop-1.json').read_text())
         self.assertTrue(first['reason'].startswith('memory kill: ') and first['oom_killed'], first)
-        self.assertTrue(self.verdict('x04-SMOKE-codex-A')['reason'].startswith('memory kill: '))
+        self.assertTrue(self.verdict('x04-SMOKE-codex-C')['reason'].startswith('memory kill: '))
         # Each memory-killed attempt ran an owner, so it kept its graded tree and its scope result before its STOP was
         # written (CA2), in a checks.json of the scope fields alone: the archived one and the repeat that latches.
-        for attempt, killed in (('x04-SMOKE-codex-A.stop-1', first),
-                                ('x04-SMOKE-codex-A', self.verdict('x04-SMOKE-codex-A'))):
+        for attempt, killed in (('x04-SMOKE-codex-C.stop-1', first),
+                                ('x04-SMOKE-codex-C', self.verdict('x04-SMOKE-codex-C'))):
             kept = json.loads((self.out / attempt / 'checks.json').read_text())
             self.assertEqual((killed['owner_ran'], killed['scope_violations'], killed['changed'],
                               killed['snapshot']['kind']), (True, [], kept['changed'], 'anchor'), attempt)
             self.assertEqual(set(kept), {'scope_violations', 'changed'}, attempt)
             self.assertTrue((self.out / attempt / 'snapshot').is_dir(), attempt)
-        self.assertFalse((self.out / 'x05-SMOKE-codex-A').exists())
+        self.assertFalse((self.out / 'x05-SMOKE-codex-C').exists())
         self.assertEqual(json.loads((self.out / 'driver-status-codex.json').read_text())['harm_latch']['cell'],
-                         'x04-SMOKE-codex-A')
+                         'x04-SMOKE-codex-C')
         later = self.fake / 'later.tsv'
-        later.write_text('x06-SMOKE-claude-A\tSMOKE\tA\tclaude\t1\n')
+        later.write_text('x06-SMOKE-claude-C\tSMOKE\tC-K3\tclaude\t1\n')
         code, stderr = self.finish(self.driver('claude', later))
         self.assertNotEqual(code, 0)
         self.assertIn('harm latch in lane codex', stderr)
-        self.assertFalse((self.out / 'x06-SMOKE-claude-A').exists())
+        self.assertFalse((self.out / 'x06-SMOKE-claude-C').exists())
 
         # 7. --clear-latch releases both lanes again. The claude lane then runs two cells while the host's default
         # login changes twice (D-c): between ready()'s read and the cell's own credential snapshot, which leaves the
@@ -990,22 +1036,22 @@ class Rehearsal(unittest.TestCase):
         # lane, and each verdict records the account that dispatched it.
         code, stderr = self.finish(self.launch('--clear-latch', amendment, self.runtime['codex']))
         self.assertEqual(code, 0, stderr[-3000:])
-        later.write_text('x06-SMOKE-claude-A\tSMOKE\tA\tclaude\t1\nx08-SMOKE-claude-B\tSMOKE\tB\tclaude\t1\n')
+        later.write_text('x06-SMOKE-claude-C\tSMOKE\tC-K3\tclaude\t1\nx08-SMOKE-claude-B\tSMOKE\tB\tclaude\t1\n')
         (self.fake / 'account-switch').write_text('inject once\n')
         start = len(self.log('claude'))
         code, stderr = self.finish(self.driver('claude', later))
         self.assertEqual(code, 0, stderr[-3000:])
         events = self.log('claude')[start:]
         self.assertEqual([(e['cell'], e['rc']) for e in events if e['event'] == 'run'],
-                         [('x06-SMOKE-claude-A', 3), ('x06-SMOKE-claude-A', 0), ('x08-SMOKE-claude-B', 0)])
-        self.assertEqual(json.loads((self.out / 'not-dispatched-x06-SMOKE-claude-A.json').read_text()),
+                         [('x06-SMOKE-claude-C', 3), ('x06-SMOKE-claude-C', 0), ('x08-SMOKE-claude-B', 0)])
+        self.assertEqual(json.loads((self.out / 'not-dispatched-x06-SMOKE-claude-C.json').read_text()),
                          dict(reason='account changed after reserve check'))
         self.assertFalse([e for e in events if e['event'] in ('hold', 'stop', 'harm_latch')], events)
         fingerprint = lambda value: hashlib.sha256(value.encode()).hexdigest()[:12]  # noqa: E731 (0222's)
         self.assertEqual({name: (self.verdict(name)['status'], self.verdict(name)['claude_account_before'],
                                  self.verdict(name)['codex_account'])
-                          for name in ('x06-SMOKE-claude-A', 'x08-SMOKE-claude-B')},
-                         {'x06-SMOKE-claude-A': ('COMPLETE', [fingerprint('account-second'), fingerprint(ORGANIZATION)],
+                          for name in ('x06-SMOKE-claude-C', 'x08-SMOKE-claude-B')},
+                         {'x06-SMOKE-claude-C': ('COMPLETE', [fingerprint('account-second'), fingerprint(ORGANIZATION)],
                                                  fingerprint(CODEX_ACCOUNT)),
                           'x08-SMOKE-claude-B': ('COMPLETE', [fingerprint('account-third'), fingerprint(ORGANIZATION)],
                                                  fingerprint(CODEX_ACCOUNT))})
@@ -1013,17 +1059,17 @@ class Rehearsal(unittest.TestCase):
         # 8. Two changed trees whose contents differ (the anchor and a helper worktree) are a locator STOP: never
         # graded, never pruned (its Codex caches stay), not redispatched, so it latches the lanes.
         differ = self.fake / 'differ.tsv'
-        differ.write_text('x07-B5-codex-B\tB5\tB\tcodex\t9\n')
+        differ.write_text('x07-B5-codex-C\tB5\tC-K3\tcodex\t9\n')
         code, stderr = self.finish(self.driver('codex', differ))
         self.assertNotEqual(code, 0)
-        self.assertIn('x07-B5-codex-B: STOP locator: more than one changed product tree: cell/work, '
+        self.assertIn('x07-B5-codex-C: STOP locator: more than one changed product tree: cell/work, '
                       'cell/.devlyn-worktrees/work/x', stderr)
-        self.assertEqual((self.verdict('x07-B5-codex-B')['status'], 'snapshot' in self.verdict('x07-B5-codex-B')),
+        self.assertEqual((self.verdict('x07-B5-codex-C')['status'], 'snapshot' in self.verdict('x07-B5-codex-C')),
                          ('STOP', False))
         self.assertEqual(json.loads((self.out / 'driver-status-codex.json').read_text())['harm_latch']['cell'],
-                         'x07-B5-codex-B')
-        self.assertEqual([root for root in CODEX_CACHES if not (self.out / 'x07-B5-codex-B' / root).is_dir()], [])
-        self.assertFalse((self.out / 'x07-B5-codex-B/pruned.json').exists())
+                         'x07-B5-codex-C')
+        self.assertEqual([root for root in CODEX_CACHES if not (self.out / 'x07-B5-codex-C' / root).is_dir()], [])
+        self.assertFalse((self.out / 'x07-B5-codex-C/pruned.json').exists())
 
         # 9. A cell whose container could not be set up (CG1: `docker create` refused) is a STOP with no owner and its
         # teardown as proved, not a prepared folder without a verdict; it is never redispatched, so it latches the
@@ -1031,18 +1077,18 @@ class Rehearsal(unittest.TestCase):
         code, stderr = self.finish(self.launch('--clear-latch', amendment, self.runtime['codex']))
         self.assertEqual(code, 0, stderr[-3000:])
         setup = self.fake / 'setup.tsv'
-        setup.write_text('x09-SMOKE-codex-A\tSMOKE\tA\tcodex\t1\n')
-        (self.fake / 'create-fails-x09-SMOKE-codex-A').write_text('inject once\n')
+        setup.write_text('x09-SMOKE-codex-C\tSMOKE\tC-K3\tcodex\t1\n')
+        (self.fake / 'create-fails-x09-SMOKE-codex-C').write_text('inject once\n')
         code, stderr = self.finish(self.driver('codex', setup))
         self.assertNotEqual(code, 0)
-        self.assertIn('x09-SMOKE-codex-A: STOP cell setup failed: CalledProcessError', stderr)
-        failed = self.verdict('x09-SMOKE-codex-A')
+        self.assertIn('x09-SMOKE-codex-C: STOP cell setup failed: CalledProcessError', stderr)
+        failed = self.verdict('x09-SMOKE-codex-C')
         self.assertEqual((failed['status'], failed['owner_ran'], failed['owner_status'], failed['teardown']),
                          ('STOP', False, None, 'CLEAN'))
         self.assertEqual(json.loads((self.out / 'driver-status-codex.json').read_text())['harm_latch']['cell'],
-                         'x09-SMOKE-codex-A')
-        self.assertFalse((self.root / 'scratch/credentials/x09-SMOKE-codex-A').exists())
-        self.assertFalse([p for p in (self.fake / 'containers').glob('*.json') if 'x09-SMOKE-codex-A' in p.read_text()])
+                         'x09-SMOKE-codex-C')
+        self.assertFalse((self.root / 'scratch/credentials/x09-SMOKE-codex-C').exists())
+        self.assertFalse([p for p in (self.fake / 'containers').glob('*.json') if 'x09-SMOKE-codex-C' in p.read_text()])
 
 
 if __name__ == '__main__':
