@@ -34,8 +34,9 @@ class Run:
     with the store kept and, on F11, the 2^53 batch allowed, every witness does not reproduce and every grading file is
     present and clean, until a test changes it."""
 
-    def __init__(self, root, cells=None):
+    def __init__(self, root, cells=None, selected='K3'):
         self.out, self.cells = Path(root), cells or decide.schedule()
+        self.selected = selected  # the GO screen decision's candidate, the package of the registered C
         self.witnesses = {w: {} for task in decide.TASKS for w in decide.WITNESSES[task]}
         self.probes, self.harm, self.pairs, self.recheck, self.no_report = {}, {}, [], {}, []
         for name, task, arm, config, *_ in self.cells:
@@ -48,6 +49,11 @@ class Run:
 
     def name(self, config, task, arm, rep):
         return next(n for n, t, a, c, r in self.cells if (c, t, a, int(r)) == (config, task, arm, rep))
+
+    def identity(self, name):
+        """What run_cell.py records for the slot: its task, engine, arm and package."""
+        _, task, column, config, _ = next(row for row in self.cells if row[0] == name)
+        return decide.slot_identity(task, column, config, self.selected)
 
     def names(self, config, task, arm):
         return [n for n, t, a, c, r in self.cells if (c, t, a) == (config, task, arm)]
@@ -63,7 +69,7 @@ class Run:
         assessments = [dict(route=dict(engine=engine), complete=done, severe=severe if engine == 'codex' else 0,
                             severe_findings=[{}] * (severe if engine == 'codex' else 0))
                        for engine, done in zip(('claude', 'codex'), assessors)]
-        verdict = dict(cell=name, owner_ran=True, owner_status=owner, owner_seconds=seconds, input_tokens=tokens[0],
+        verdict = dict(cell=name, **self.identity(name), owner_ran=True, owner_status=owner, owner_seconds=seconds, input_tokens=tokens[0],
                        output_tokens=tokens[1], usage=usage, teardown='CLEAN', product_check_pass=passed, oracle=oracle,
                        scope_violations=list(scope), assessments=assessments,
                        status='COMPLETE' if passed and all(assessors) and not severe else 'PRODUCT_INCOMPLETE')
@@ -76,7 +82,8 @@ class Run:
         """A STOP: archived as .stop-<number>, or the slot's last attempt when number is None (0265's helper)."""
         ran = fields.get('owner_ran', not reason.startswith(decide.LAUNCH_FAULT))
         kept = dict(scope_violations=[]) if ran and number else {}
-        record = dict(cell=name, status='STOP', reason=reason, owner_ran=ran, owner_status='EXITED_0',
+        record = dict(cell=name, **self.identity(name), status='STOP', reason=reason, owner_ran=ran,
+                      owner_status='EXITED_0',
                       owner_seconds=50.0, input_tokens=10, output_tokens=1, usage='COMPLETE', teardown='CLEAN'
                       ) | kept | fields
         suffix = f'.stop-{number}' if number else ''
@@ -132,7 +139,7 @@ class Run:
                 index == 1 and incomplete is not None) else (0, 'COMPLETE')
             self.slot(name, tokens=(value, 0), usage=usage)
 
-    def evaluate(self, skip=(), screen=None):
+    def evaluate(self, skip=(), screen='go'):
         documents = {'witnesses.json': self.witnesses, 'probes.json': self.probes,
                      'timing-recheck.json': dict(schema=1, cells=self.recheck),
                      'harm.json': dict(schema=1, cells=self.harm),
@@ -144,7 +151,8 @@ class Run:
                 path.unlink(missing_ok=True)
             else:
                 path.write_text(json.dumps(document))
-        return decide.evaluate(self.out, self.cells, screen)
+        return decide.evaluate(self.out, self.cells, dict(decision='GO', candidate=self.selected)
+                               if screen == 'go' else screen)
 
 
 class Case(unittest.TestCase):
@@ -480,6 +488,68 @@ class Unknowns(Case):
         self.assertEqual([u['observation'] for u in record['unknowns']], ['event'])
 
 
+class Identity(Case):
+    """F1: a slot's owner-ran verdicts must carry its own task, engine, arm and package (for C, the GO decision's)."""
+
+    def retag(self, name, suffix='', **fields):
+        path = self.run.out / f'verdict-{name}{suffix}.json'
+        path.write_text(json.dumps(dict(json.loads(path.read_text()), **fields)))
+
+    def test_the_normal_case_is_final(self):
+        self.effect()
+        self.assertEqual(self.run.evaluate()['verdict']['verdict'], 'SHIP_CANDIDATE')
+
+    def test_a_registered_c_slot_that_ran_another_candidate(self):
+        self.effect()
+        name = self.run.names('claude', 'F10', 'C')[0]
+        self.retag(name, package='K1')  # typed by hand under the slot's name after a GO for K3
+        result = self.run.evaluate()
+        self.assertEqual((result['R1']['reading'], result['verdict']['verdict']), ('NOT_FINISHED', 'NOT_FINISHED'))
+        gap = result['slots'][name]['gap']
+        self.assertIn("ran {'task': 'F10', 'config': 'claude', 'arm': 'C', 'package': 'K1'}", gap)
+        self.assertIn("the slot is {'task': 'F10', 'config': 'claude', 'arm': 'C', 'package': 'K3'}", gap)
+
+    def test_a_b_slot_that_ran_arm_c(self):
+        name = self.run.names('codex', 'D3', 'B')[0]
+        self.retag(name, arm='C', package='K3')
+        result = self.run.evaluate()
+        self.assertFalse(result['slots'][name]['final'])
+        self.assertEqual(result['guards']['G1']['reading'], 'NOT_FINISHED')
+
+    def test_a_registered_c_slot_without_a_go(self):
+        result = self.run.evaluate(screen=dict(decision='STOP', candidate='K3'))
+        name = self.run.names('claude', 'F10', 'C')[0]
+        self.assertIn('no GO screen decision names its package', result['slots'][name]['gap'])
+
+    def test_an_archived_owner_ran_attempt_of_another_package(self):
+        name = self.run.names('claude', 'D4', 'C')[0]
+        self.run.stop(name, 'memory kill: OOMKilled=True exit_code=137 owner EXITED_NONZERO', number=1)
+        self.assertTrue(self.run.evaluate()['slots'][name]['final'])
+        self.retag(name, '.stop-1', package='K2')
+        slot = self.run.evaluate()['slots'][name]
+        self.assertEqual((slot['final'], slot['gap'].split(' ran ')[0]), (False, f'{name}.stop-1'))
+
+    def test_a_no_owner_stop_without_identity_is_accepted(self):
+        name = self.run.names('claude', 'D4', 'C')[0]
+        (self.run.out / f'verdict-{name}.stop-1.json').write_text(json.dumps(dict(
+            cell=name, status='STOP', owner_ran=False, reason='instruction assertion: seal missing')))
+        self.assertTrue(self.run.evaluate()['slots'][name]['final'])
+        self.retag(name, '.stop-1', owner_ran=True)  # an owner-ran record that does not say what it ran
+        self.assertFalse(self.run.evaluate()['slots'][name]['final'])
+
+    def test_a_screen_slot_that_ran_another_candidate(self):
+        screen = Screen(self.temp.name)
+        for k in decide.CANDIDATES:
+            screen.events(k, 2 if k == 'K2' else 0)
+        self.assertEqual(screen.reading()[1], {('K2', 'GO')})
+        name = screen.run.name('claude', 'F10', 'C-K2', 1)
+        path = screen.run.out / f'verdict-{name}.json'
+        path.write_text(json.dumps(dict(json.loads(path.read_text()), package='K3')))
+        record, found, missing = screen.reading()
+        self.assertIn(name, [u['slot'] for u in record['unknowns']])  # not final: an unknown of the screen
+        self.assertEqual(found, {('K2', 'GO'), ('K2', 'STOP')})
+
+
 class Guards(Case):
     def test_g2_parts(self):
         # Each part fails on its own: a scope violation in C, a harm finding in C, a store changed after a rejected
@@ -713,7 +783,7 @@ class Predictions(Case):
         result = self.run.evaluate()
         scored = {pid: value['result'] for pid, value in result['predictions'].items()}
         self.assertEqual((scored['P1'], scored['P3'], scored['P4'], scored['P6'], scored['P8']),
-                         ('UNSCORED', 'HOLDS', 'HOLDS', 'MISSES', 'HOLDS'))  # G3 fails: EFFECT_WITH_REGRESSION
+                         ('HOLDS', 'HOLDS', 'HOLDS', 'MISSES', 'HOLDS'))  # G3 fails: EFFECT_WITH_REGRESSION
         self.assertEqual(result['verdict']['verdict'], 'EFFECT_WITH_REGRESSION[G3]')
 
     def test_unscored_while_unknown(self):

@@ -152,10 +152,37 @@ def stop_number(path):
     return int(path.name.rsplit('.stop-', 1)[1].removesuffix('.json'))
 
 
-def load(out, cells):
+def slot_identity(task, column, config, selected):
+    """What a slot's row means: its task and engine, and the arm and package of its arm column (B; C-K<n>; C, the
+    candidate of a GO screen decision, `selected`, None without one)."""
+    arm, _, package = column.partition('-')
+    return dict(task=task, config=config, arm=arm, package='B' if column == 'B' else package or selected)
+
+
+def identity_gaps(out, name, expected):
+    """Every verdict record of the slot in which an owner ran, final or archived, against the slot's identity: a record
+    that ran another task, engine, arm or package (or does not say) cannot stand for the slot. A record in which no
+    owner ran (a STOP before the cell was prepared) carries none and is not read here."""
+    gaps = []
+    for path in sorted(out.glob(f'verdict-{name}.stop-*.json'), key=stop_number) + [out / f'verdict-{name}.json']:
+        try:
+            record = json.loads(path.read_text())
+        except (OSError, ValueError):
+            continue  # load() reports a verdict it cannot read
+        if isinstance(record, dict) and record.get('owner_ran') is True:
+            found = {key: record.get(key) for key in expected}
+            if found != expected:
+                gaps.append(f'{path.stem.removeprefix("verdict-")} ran {found}, the slot is {expected}'
+                            + ('' if expected['package'] else ' (no GO screen decision names its package)'))
+    return gaps
+
+
+def load(out, cells, selected=None):
     """One record per slot: the final verdict's outcome, every attempt's reason and out-of-memory flag, the cost of
     every attempt in which an owner ran, and the evidence of each such attempt with a tree of its own ('final' is the
-    slot's current attempt in OUT/<name>, whatever its status; 'stop-N' an archived one in OUT/<name>.stop-N)."""
+    slot's current attempt in OUT/<name>, whatever its status; 'stop-N' an archived one in OUT/<name>.stop-N). A slot
+    whose owner-ran records do not carry its own identity (identity_gaps; `selected` is the GO screen decision's
+    candidate, the package of a `C` row) is not final, and its gap names both identities."""
     rows = {}
     for name, task, arm, config, replicate in cells:
         row = rows[name] = dict(name=name, task=task, arm=arm, config=config, replicate=int(replicate), final=False,
@@ -216,6 +243,10 @@ def load(out, cells):
             row['final'] = True
         except (OSError, ValueError, KeyError, TypeError, AttributeError) as exc:
             row.update(final=False, gap=f'malformed verdict or checks: {exc}')
+    for name, task, arm, config, _ in cells:
+        gaps = identity_gaps(out, name, slot_identity(task, arm, config, selected))
+        if gaps:
+            rows[name].update(final=False, gap='; '.join(filter(None, [rows[name]['gap'], *gaps])))
     return rows
 
 
@@ -874,7 +905,7 @@ def read_json(path):
 
 def evaluate(out, cells, screen=None):
     validate_endpoints()
-    rows = load(out, cells)
+    rows = load(out, cells, (screen or {}).get('candidate') if (screen or {}).get('decision') == 'GO' else None)
     grading = {name: read_json(out / name) for name in GRADING}
     probes = grading['probes.json']
     pairs, pair_gaps, no_report = pairs_by_slot(rows, grading['false-completion.json'])
