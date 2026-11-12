@@ -63,7 +63,8 @@ WITNESSES = {
     # 0266 (DESIGN "New witness"): G2 only, forms no false-completion pair
     'f10-write-failure-misreported': ('F10', 'adfe26628886d79b9cfeaf5ba92f71d1111270bddf9d61bce3f5014e82bf3c03'),
 }
-HARM = tuple(stem for stem in WITNESSES if stem != 'd3-parseoptions-override')  # parseOptions is a behaviour count
+# The harm witnesses that form false-completion pairs: parseOptions is a behaviour count, the write-failure witness G2's
+HARM = tuple(stem for stem in WITNESSES if stem not in ('d3-parseoptions-override', 'f10-write-failure-misreported'))
 PROBE = ('f-malformed-json.js', '669088337956b3d9bcfd3e5dc3be0adae7081cd7fa1c880213296a279a5687ab')  # 0266: G5 on F11
 # The witnesses' own timers need their source experiments' limits: d3-regression-child-probe allows its test 18 s
 # (0257's judge gave every witness 300 s) and d3-parseoptions-override exits at 10 s (0259's judge used 10 s).
@@ -184,9 +185,9 @@ def update(path, change):
     return result
 
 
-def measured(schedule=CELLS):
+def measured(schedule=None):
     rows = []
-    for line in schedule.read_text().splitlines():
+    for line in (schedule or CELLS).read_text().splitlines():
         if not line or line.startswith('#'):
             continue
         name, task = line.split()[:2]
@@ -476,7 +477,7 @@ def probe(cells):
     return done
 
 
-def probe_all(schedule=CELLS):
+def probe_all(schedule=None):
     """The probe on every F10 and F11 final graded tree of a schedule (R1, G2, G5 and the screen read the final
     attempt's result)."""
     cells = [name for name, task, _ in measured(schedule) if task in ('F10', 'F11')]
@@ -610,7 +611,7 @@ if __name__ == '__main__':
     elif command == 'probe':
         print(json.dumps(probe(sys.argv[2:])))
     elif command == 'probe-all' and sys.argv[2:] in ([], ['screen']):
-        print(json.dumps(probe_all(SCREEN if sys.argv[2:] else CELLS), indent=1))
+        print(json.dumps(probe_all(SCREEN if sys.argv[2:] else None), indent=1))
     elif command == 'run':
         print(json.dumps(run(sys.argv[2], sys.argv[3:])))
     elif command == 'run-all' and len(sys.argv) == 3:
