@@ -1308,6 +1308,78 @@ class LaneEnd(unittest.TestCase):
             lane(root, 'codex').assert_active()
 
 
+class ScreenStops(unittest.TestCase):
+    """F5 and F7: DESIGN "Stage S" runs no screen cell again; a screen slot left at a STOP reads as an unknown."""
+    SCREEN = driver.rows([str(HERE / 'screen.tsv')])
+
+    def run_lane(self, root, slots, outcomes):
+        seal(root)
+        d = lane(root, 'claude', slots)
+        run, called = cells(d.output, outcomes)
+        with mock.patch.object(d, 'ready', return_value=True), mock.patch.object(driver.cell, 'run', side_effect=run), \
+                mock.patch.object(driver.time, 'sleep'):
+            try:
+                d.run()
+            finally:
+                self.called = called
+                d.lock.close()
+        return d
+
+    def clear(self, root):
+        amendment = root / 'amendment.md'
+        amendment.write_text('resolved')
+        claude = lane(root, 'claude')
+        claude.clear_latch(amendment)
+        claude.lock.close()
+
+    def test_a_cleared_screen_stop_is_passed_and_the_rows_after_it_run(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            slots = self.SCREEN[:3]
+            first = slots[0][0]
+            with self.assertRaisesRegex(driver.Stopped, f'{first}: STOP memory kill'):
+                self.run_lane(root, slots, {first: [dict(MEMORY, owner_ran=True)]})
+            self.assertEqual(self.called, [first])  # an owner ran: not run again (F7)
+            self.assertFalse(list((root / 'output').glob(f'verdict-{first}.stop-*')))
+            stopped = (root / f'output/verdict-{first}.json').read_text()
+            with self.assertRaisesRegex(driver.Stopped, 'harm latch in lane claude'):  # not cleared: still stops
+                self.run_lane(root, slots, {})
+            self.clear(root)
+            d = self.run_lane(root, slots, {name: [COMPLETE] for name, *_ in slots[1:]})
+            self.assertEqual(self.called, [name for name, *_ in slots[1:]])
+            self.assertEqual((root / f'output/verdict-{first}.json').read_text(), stopped)  # it keeps its verdict
+            self.assertEqual([e['cell'] for e in events(root, 'claude') if e['event'] == 'skip_cleared_stop'], [first])
+            self.assertNotIn('harm_latch', d.state)
+
+    def test_an_uncleared_screen_stop_met_at_a_restart_stops_the_lane(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            first = self.SCREEN[0][0]
+            (root / 'output').mkdir()
+            (root / f'output/verdict-{first}.json').write_text(json.dumps(dict(MEMORY, owner_ran=True, cell=first)))
+            with self.assertRaisesRegex(driver.Stopped, f'{first}: STOP memory kill'):
+                self.run_lane(root, self.SCREEN[:2], {})
+            self.assertEqual(self.called, [])
+            self.assertEqual(latched(root, 'claude')['cell'], first)
+
+    def test_a_screen_launch_fault_is_run_again_once(self):
+        # No owner ran in a launch fault, so the screen cell has not run yet.
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            first = self.SCREEN[0][0]
+            launch = dict(LAUNCH, owner_ran=False)
+            self.run_lane(root, self.SCREEN[:1], {first: [launch, COMPLETE]})
+            self.assertEqual(self.called, [first, first])
+            self.assertTrue((root / f'output/verdict-{first}.stop-1.json').is_file())
+
+    def test_the_registered_run_still_runs_a_memory_kill_again(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            name = row('c002-')[0]
+            self.run_lane(root, [row('c002-')], {name: [dict(MEMORY, owner_ran=True), COMPLETE]})
+            self.assertEqual(self.called, [name, name])
+
+
 class Accounts(unittest.TestCase):
     def test_the_login_changing_between_cells_neither_stops_nor_holds(self):
         """D-c (DESIGN Operations "Accounts"): ready() takes whichever account is the host's default login. Cells on

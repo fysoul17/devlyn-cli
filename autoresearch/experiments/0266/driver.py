@@ -263,16 +263,20 @@ class Driver:
         path = self.output / f'verdict-{name}.json'
         return digest(path) if name and path.is_file() else None
 
+    def cleared(self, name):
+        """Whether an amendment cleared the latch of the slot's current verdict."""
+        sha = self.verdict_sha(name)
+        return bool(sha) and any(item['cell'] == name and item['verdict_sha256'] == sha
+                                 for item in self.state.get('cleared_latches', ()))
+
     def latch(self, name, reason):
         """Set the harm latch for a slot's verdict (name), or with no slot for the lane's own end. A verdict whose latch
         an amendment cleared is not latched again; nothing else is exempt."""
         if self.state.get('harm_latch'):
             return
-        sha = self.verdict_sha(name)
-        if sha and any(item['cell'] == name and item['verdict_sha256'] == sha
-                       for item in self.state.get('cleared_latches', ())):
+        if self.cleared(name):
             return
-        self.state['harm_latch'] = dict(cell=name, reason=reason, verdict_sha256=sha)
+        self.state['harm_latch'] = dict(cell=name, reason=reason, verdict_sha256=self.verdict_sha(name))
         self.event('harm_latch', cell=name, reason=reason)
 
     def assert_active(self):
@@ -424,11 +428,20 @@ class Driver:
         path = self.output / f'verdict-{name}.json'
         return json.loads(path.read_text()) if path.is_file() else None
 
+    def screen_slot(self, name):
+        """Whether the slot is a screen row (arm column C-K<n>, not SMOKE): DESIGN "Stage S" runs no screen cell
+        again."""
+        row = next((row for row in self.slots if row[0] == name), None)
+        return bool(row) and row[2].startswith('C-K') and row[1] != 'SMOKE'
+
     def redispatch(self, name, verdict):
-        """Whether a STOP is archived and its slot run again: a proven Docker loss, and the slot's first B launch
+        """Whether a STOP is archived and its slot run again: a proven Docker loss, and the slot's first launch
         fault, memory kill or shared account fault. Anything else, a repeat of one of those three on the slot among
         it, stays a STOP, which the caller latches for both lanes. The repeat is read from the slot's archive, so it
-        is a STOP at a restart too."""
+        is a STOP at a restart too. A screen slot is run again only when no owner ran in the STOP (DESIGN "Stage S"
+        rule 4: no screen cell is run again)."""
+        if self.screen_slot(name) and verdict.get('owner_ran') is not False:
+            return False
         reason = str(verdict.get('reason', ''))
         kind = next((prefix for prefix in ONCE if reason.startswith(prefix)), None)
         if kind and any(str(json.loads(path.read_text()).get('reason', '')).startswith(kind)
@@ -585,6 +598,11 @@ class Driver:
                 self.assert_active()
                 if verdict and verdict['status'] != 'STOP':
                     self.event('skip_finished', cell=name)
+                    i += 1
+                    continue
+                if verdict and self.screen_slot(name) and self.cleared(name) and not (
+                        str(verdict.get('reason', '')).startswith(REGRADE) or self.redispatch(name, verdict)):
+                    self.event('skip_cleared_stop', cell=name)  # DESIGN "Stage S": the slot reads as an unknown
                     i += 1
                     continue
                 if verdict:  # a STOP met at a restart (written, then the process died before its latch): one that is

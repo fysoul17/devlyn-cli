@@ -60,7 +60,9 @@ The registered run (Stage R):
 16. After a latch the orchestrator has resolved in an amendment file, release it, then start the lane again with its
     command: `python3 $X/driver.py --clear-latch <amendment> $R/runtime-<lane>.json`. A lane that was killed inside a
     cell ran no cleanup: resolving its latch includes proving that cell's container and volume gone and removing
-    `$R/scratch/credentials/<cell>` unread. After the last cell `$R/scratch/credentials` holds nothing.
+    `$R/scratch/credentials/<cell>` unread. After the last cell `$R/scratch/credentials` holds nothing. A screen slot's latch
+    (step 11) is resolved the same way, before step 14: the screen lane, started again with its command, passes that
+    slot, whose STOP then reads as an unknown of the screen (no screen cell is run again).
 17. After the last cell, with no cell running, the D3 witnesses (steps 17-19 may run at once):
     `NX01_0266_RUNTIME=$R/runtime-smoke.json python3 $X/results/operator/judge.py run-all D3`
 18. The D4 witnesses: `NX01_0266_RUNTIME=$R/runtime-smoke.json python3 $X/results/operator/judge.py run-all D4`

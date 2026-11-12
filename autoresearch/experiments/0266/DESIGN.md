@@ -301,7 +301,10 @@ rule reads only F10 events and F11 COMPLETE. Its cells never count in a reading.
 neither complete nor check-complete and is charged 2,700 s; a slot's completion, tree, probe and witnesses are its
 final attempt's; every attempt that ran an owner is charged and is part of the slot's harm (scope, findings, false
 completions, the write-failure witness). A launch fault (a `devlyn run: <code>` line, no status line, no owner
-evidence) is now possible in both arms; it is archived and redispatched once, as 0265's B launch fault was.
+evidence) is now possible in both arms; it is archived and redispatched once, as 0265's B launch fault was. A
+screen slot is redispatched only after a STOP in which no owner ran (a launch fault, or a Docker loss before the owner
+started): any other screen STOP stays a STOP, and once its latch is cleared the screen lane passes it and the slot
+reads as an unknown (DESIGN "Stage S" rule 4).
 
 ## Operations
 
