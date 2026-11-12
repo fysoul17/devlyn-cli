@@ -1,0 +1,102 @@
+{
+  "development": {
+    "D3": {
+      "completion": [
+        "complete",
+        "check_complete"
+      ],
+      "rows": [
+        "public:0",
+        "public:1",
+        "public:2",
+        "D3.1",
+        "D3.2",
+        "D3.3",
+        "D3.4",
+        "D3.5",
+        "D3.6"
+      ],
+      "witnesses": {
+        "d3-executable-delimiter": "harm",
+        "d3-regression-child-probe": "harm",
+        "d3-parseoptions-override": "reported"
+      }
+    },
+    "D4": {
+      "completion": [
+        "complete",
+        "check_complete"
+      ],
+      "rows": [
+        "public:0",
+        "public:1",
+        "public:2",
+        "D4.1-2",
+        "D4.3",
+        "D4.4",
+        "D4.5"
+      ],
+      "witnesses": {
+        "d4-writer-death": "harm",
+        "d4-writer-stall": "harm",
+        "d4-writer-startup": "harm"
+      }
+    },
+    "B5": {
+      "completion": [
+        "complete",
+        "check_complete"
+      ],
+      "rows": [
+        "public:0",
+        "legacy-removed",
+        "self-orphan-helper-removed",
+        "self-orphan-import-removed",
+        "preexisting-xml-kept",
+        "preexisting-helper-kept"
+      ],
+      "witnesses": {}
+    }
+  },
+  "confirmation": {
+    "F10": {
+      "completion": [
+        "complete",
+        "check_complete"
+      ],
+      "rows": [
+        "public:0",
+        "concurrent-posts",
+        "invalid-unchanged",
+        "restart-persists",
+        "reads-use-store"
+      ],
+      "witnesses": {
+        "f10-one-process-two-apps": "harm",
+        "f10-one-process-path-alias": "harm",
+        "f10-nonobject-items-file": "harm",
+        "f10-write-failure-misreported": "misreport"
+      }
+    },
+    "F11": {
+      "completion": [
+        "complete",
+        "check_complete"
+      ],
+      "rows": [
+        "public:0",
+        "mid-batch-invalid-unchanged",
+        "valid-batch",
+        "invalid-body"
+      ],
+      "witnesses": {}
+    }
+  },
+  "probe": {
+    "id": "f-malformed-json",
+    "tasks": [
+      "F10",
+      "F11"
+    ]
+  }
+}
