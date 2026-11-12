@@ -1,28 +1,38 @@
-"""0266 decision (DESIGN r3 "Decision"), read once, after the last cell and its grading.
+"""0266 decision (DESIGN "Stage S", "Stage R", "Unknowns"), each read once.
 
-CLI: decide.py <runtime.json> [--out <file>]. Reads cells.tsv beside this file and, in the runtime's output folder,
-verdict-<name>.json with its archived attempts verdict-<name>.stop-N.json, <name>/checks.json, the lanes'
-driver-<lane>.log and the grading outputs: witnesses.json and probes.json (0261 judge.py formats),
-timing-recheck.json, harm.json and false-completion.json. Writes decision.json (or --out), prints the readings, the
-lines, the predictions and the harm check's implemented and not implemented tests, then the token. Rows outside
-cells.tsv (SMOKE, the lane rehearsal) share the folder and are never read.
+decide.py screen <runtime.json>  the screen decision, after the screen's last cell and `judge.py probe-all screen`:
+    reads screen.tsv's verdicts and probes.json and writes <runtime root>/screen-decision.json once: GO with the
+    selected candidate and its sealed package sha256, STOP ("not screened in"), or UNDECIDED, with the counts and every
+    unknown it enumerated. It refuses while a screen slot has no verdict file or a final F10 slot has no probe result.
+decide.py <runtime.json> [--out <file>]  the registered run, after its last cell and its grading: reads cells.tsv and,
+    in the runtime's output folder, verdict-<name>.json with its archived attempts verdict-<name>.stop-N.json,
+    <name>/checks.json, <name>/final.txt, the lanes' driver-<lane>.log and the grading outputs: witnesses.json and
+    probes.json (judge.py), timing-recheck.json, harm.json and false-completion.json; and the screen decision. Writes
+    decision.json (or --out), prints R1, the guards, the verdict, the predictions and the harm check's tests, then the
+    token. Rows of other schedules (SMOKE, the screen) share the folder and are never read here.
 
-A slot is final when its verdict is COMPLETE or PRODUCT_INCOMPLETE; a STOP is not. DESIGN "Details every count
-uses": an owner HANG_TIMEOUT is neither COMPLETE nor check-complete; a slot's completion, checks and witnesses are its
-final attempt's. DESIGN "The rule for attempts": every verdict records `owner_ran`; an attempt in which an owner ran
-(an assessor fault's archive is the final attempt's owner run, tree and evidence, not one of its own; the last such
-archive stands for that run when a regrade stopped before it wrote the current verdict) is charged, with
-a hang at 2,700 s, in every slot, final or not, and is part of the slot's harm. Each such attempt needs, for the harm
-line, its scope result, its name in its slot's harm check entry, a result for every harm witness of its task on its
-own tree and the judges' answers for its pairs; one whose owner did not exit 0 has no final report and forms no pair.
-The completion line reads the inline checks and is also computed with every TIMING_SUSPECT check passed; when the two
-readings differ it is marked TIMING_SENSITIVE and both are printed, the inline one standing. A reading or line missing
-a slot or a grading input is NOT_FINISHED and lists what is missing; the reported tables count what exists. Holm,
-COMPLETE, the row results and the 0256 cost sums are 0257's decide.py; the one-sided Fisher test is this file's; the
-witness and probe readers are 0261's.
+The event (DESIGN "The event"): the probe's final class is json_error_400 and store_preserved is true. It did not
+happen on html_400 or other, or when store_preserved is false; it is unknown on unassessable, or on json_error_400 with
+store_preserved null. Unknowns (DESIGN "Unknowns"): those probes, a probe that got a response and whose store_preserved
+is null, an F11 probe whose 2^53 batch got no response, a harm witness result that is unresolved after its two passes,
+a false-completion pair the judges dispute (or call true on an unresolved witness), and in the screen every observation
+of a slot without a final verdict. judge.py has already retried an unknown probe or witness once. A reading is decided
+only when every assignment of the unknowns it reads gives the same outcome, otherwise NOT_FINISHED. Each reading here
+depends on its observations only through per-arm (or per-candidate) counts, and every count between the known count and
+the known count plus the unknowns is reached by some assignment, so outcomes() enumerates exactly those counts: every
+assignment, without assuming the reading is monotone. A reading missing a slot or a grading input is NOT_FINISHED and
+lists what is missing. G3 reads incomplete usage only as a lower bound (its own three cases).
+
+A slot is final when its verdict is COMPLETE or PRODUCT_INCOMPLETE; a STOP is not. 0265's rules for every count stand:
+an owner HANG_TIMEOUT is neither COMPLETE nor check-complete; a slot's completion, checks, probe and witnesses are its
+final attempt's; every attempt in which an owner ran is charged (a hang at 2,700 s) and is part of the slot's harm.
+G1 reads the inline checks; TIMING_SUSPECT checks are reported beside it. COMPLETE, the row results and the cost sums
+are 0257's decide.py; the one-sided Fisher test, the harm inputs and the tables are 0265's; the witness and probe readers
+are 0261's.
 """
 import argparse
 import importlib.util
+import itertools
 import json
 import math
 from pathlib import Path
@@ -40,27 +50,54 @@ def module(name, path):
 
 prior = module('decide0257', HERE.parent / '0257/decide.py')
 later = module('decide0261', HERE.parent / '0261/decide.py')
-holm = prior.holm
+control = module('control0266d', HERE / 'control.py')
 ENDPOINTS = json.loads((HERE / 'endpoints.json').read_text())
 PANEL = {task: panel for panel in ('development', 'confirmation') for task in ENDPOINTS[panel]}
 TASKS, DEVELOPMENT = tuple(PANEL), tuple(ENDPOINTS['development'])
 WITNESSES = {task: ENDPOINTS[PANEL[task]][task]['witnesses'] for task in TASKS}
-CONFIGS, ARMS, N, HANG = ('claude', 'codex'), ('A', 'B'), 8, 2700
-READINGS = {'R1': ('codex', 'B5', 'B'), 'R2': ('claude', 'F10', 'A')}  # engine, task, the arm that is higher
+CONFIGS, ARMS, HANG = ('claude', 'codex'), ('B', 'C'), 2700
+REPLICATES = {'claude': {'F10': 16, 'F11': 16, 'B5': 8, 'D3': 8, 'D4': 8},  # DESIGN "Panel", per arm
+              'codex': {'B5': 8, 'F10': 8, 'F11': 8, 'D3': 8}}
+MARGIN = {8: 2, 16: 3}  # G1's m
+RESTRICT_MARGIN = {8: 1, 16: 2}  # G5: C's restricting trees may exceed B's by this much
+ALPHA = .05
+CANDIDATES = tuple(control.CANDIDATES)
+SHORTER = ('K3', 'K2', 'K1')  # DESIGN "Stage S" rule 2's last tie-break, the shorter sentence first
+SCREEN_TASKS = {'F10': 4, 'F11': 2}  # per candidate, on Claude
+SCREEN_DECISION = 'screen-decision.json'  # in the runtime root (prepare.SCREEN_DECISION)
+# DESIGN "Interpretation limits": a guard's chance of failing with no true difference, printed beside a failed guard
+# (power.py recomputes each figure through this file's functions; test_decide pins them).
+CHANCE = {'G1': {('claude', 'D3'): .105, ('claude', 'D4'): .097, ('claude', 'F11'): .075, ('claude', 'F10'): .030,
+                 ('claude', 'B5'): 0.0, ('codex', 'F11'): .072, ('codex', 'D3'): .028, ('codex', 'F10'): .028,
+                 ('codex', 'B5'): 0.0},
+          'G2': {'claude': 'about 0.10 for the false-completion count (claude D4 at 0.6)'},
+          'G5': {'claude': 'about 0.15 (restricting rate 0.25)', 'codex': '0.10-0.19 (restricting rate 0.9-0.75)'}}
 PROBE_CLASSES = ('json_error_400', 'html_400', 'other')
-LAUNCH_FAULT, MEMORY_KILL = 'B launch fault:', 'memory kill:'
+LAUNCH_FAULT, MEMORY_KILL = 'launch fault:', 'memory kill:'
 REGRADE = ('assessment failed', 'assessor produced', 'assessment held:')  # driver.py: regraded, never redispatched
 RERUN = ('D3', 'D4')  # tasks whose failed checks recheck.py reruns
-GRADING =('witnesses.json', 'probes.json', 'timing-recheck.json', 'harm.json', 'false-completion.json')
+GRADING = ('witnesses.json', 'probes.json', 'timing-recheck.json', 'harm.json', 'false-completion.json')
 
 
 def schedule(path=HERE / 'cells.tsv'):
-    """The frozen slots: every task x engine x arm x replicate exactly once, names unique."""
+    """The frozen slots of DESIGN "Panel": every engine x task x arm x replicate exactly once, names unique."""
     cells = [line.split() for line in path.read_text().splitlines() if line and not line.startswith('#')]
-    expected = sorted((t, c, a, str(r)) for t in TASKS for c in CONFIGS for a in ARMS for r in range(1, N + 1))
+    expected = sorted((task, config, arm, str(r)) for config, tasks in REPLICATES.items() for task, n in tasks.items()
+                      for arm in ARMS for r in range(1, n + 1))
     if (sorted((task, config, arm, rep) for _, task, arm, config, rep in cells) != expected
             or len({row[0] for row in cells}) != len(cells)):
         raise ValueError(f'{path}: not the frozen schedule of {len(expected)} unique slots')
+    return cells
+
+
+def screen_schedule(path=HERE / 'screen.tsv'):
+    """DESIGN "Stage S": per candidate 4 F10 and 2 F11 Claude slots, names unique."""
+    cells = [line.split() for line in path.read_text().splitlines() if line and not line.startswith('#')]
+    expected = sorted((task, 'claude', f'C-{k}', str(r)) for k in CANDIDATES for task, n in SCREEN_TASKS.items()
+                      for r in range(1, n + 1))
+    if (sorted((task, config, arm, rep) for _, task, arm, config, rep in cells) != expected
+            or len({row[0] for row in cells}) != len(cells)):
+        raise ValueError(f'{path}: not the frozen screen of {len(expected)} unique slots')
     return cells
 
 
@@ -89,7 +126,7 @@ def attempt_cost(record):
 
 
 def owner_ran(record):
-    """Whether an engine session started in the attempt, as its verdict records it (run_cell.py: false for a B launch
+    """Whether an engine session started in the attempt, as its verdict records it (run_cell.py: false for a launch
     fault and a STOP before the owner started). A verdict without it cannot be placed."""
     if type(record.get('owner_ran')) is not bool:
         raise ValueError('owner_ran not recorded')
@@ -182,16 +219,6 @@ def load(out, cells):
     return rows
 
 
-def probe_class(probes, name):
-    """0261's final probe class; 'unassessable' when it still is after its retry (two attempts); 'missing' without a
-    record, with the retry still due, or when malformed."""
-    entry = probes.get(name) if isinstance(probes, dict) else None
-    found = later.probe_result(entry)
-    attempts = entry.get('attempts') if isinstance(entry, dict) else None
-    retried = isinstance(attempts, list) and len(attempts) == 2 and isinstance(attempts[-1], dict)
-    return found or ('unassessable' if retried and attempts[-1].get('class') == 'unassessable' else 'missing')
-
-
 def witness_state(witnesses, witness, tree):
     """0261's two-pass result as 'true', 'false' or 'not_applicable'; 'unresolved' when both passes ran without one
     result; 'missing' otherwise."""
@@ -266,101 +293,145 @@ def slot_harm(row, pairs, entries):
                 harmful=harmful, harmful_open=not harmful and open_item)
 
 
-def replications(rows, probes):
-    """R1 and R2, each from its own 16 slots, Holm over both, read only together (DESIGN Decision 1): both are
-    NOT_FINISHED until all 32 slots are final and every F10 slot of R2 has a probe class. A class still `unassessable`
-    after its retry is unknown, and the readings are computed under the two extreme assignments for the tested
-    direction: every unknown slot of the higher arm a miss and every one of the other arm a hit, then the reverse. The
-    one-sided p rises as the higher arm's count falls or the other's rises, and Holm's adjusted p rises with either raw
-    p, so the two bound every other assignment. When a reading differs between them, both readings are NOT_FINISHED
-    and both versions are kept."""
-    readings, tallies = {}, {}
-    for rid, (config, task, higher) in READINGS.items():
-        slots = [r for r in rows.values() if r['config'] == config and r['task'] == task]
-        missing = [f'{r["name"]}: {r["gap"]}' for r in slots if not r['final']]
-        if rid == 'R1':
-            hit = {r['name']: r['check_complete'] for r in slots}
+def probe_record(probes, name, task):
+    """The final attempt of a slot's probe (judge.py's record), or None while it has no result: no record, a malformed
+    one, or a first attempt whose result is unknown with its retry still due (judge.unknown)."""
+    entry = probes.get(name) if isinstance(probes, dict) else None
+    attempts = entry.get('attempts') if isinstance(entry, dict) else None
+    if not (isinstance(attempts, list) and len(attempts) in (1, 2) and all(isinstance(a, dict) for a in attempts)
+            and attempts[-1].get('class') in PROBE_CLASSES + ('unassessable',)):
+        return None
+    final = attempts[-1]
+    return None if len(attempts) == 1 and None in (event(final), store_changed(final)) + (
+        (restricts(final),) if task == 'F11' else ()) else final
+
+
+def probe_class(probes, name, task):
+    final = probe_record(probes, name, task)
+    return final['class'] if final else 'missing'
+
+
+def event(final):
+    """DESIGN "The event": True (json_error_400 with the store unchanged), False (html_400 or other, or the store
+    changed), None (unknown: unassessable, or json_error_400 with store_preserved null)."""
+    kind, kept = final.get('class'), final.get('store_preserved')
+    if kind in ('html_400', 'other') or kept is False:
+        return False
+    return True if kind == 'json_error_400' and kept is True else None
+
+
+def store_changed(final):
+    """G2: the store changed after the rejected request: True, False, or None (no response, or store_preserved null)."""
+    kept = final.get('store_preserved')
+    return None if final.get('class') == 'unassessable' or kept is None else kept is False
+
+
+def restricts(final):
+    """G5 on an F11 tree: the 2^53 batch was answered other than 201 (True), with 201 (False), or not at all (None)."""
+    value = (final.get('large_qty') or {}).get('restricts') if isinstance(final.get('large_qty'), dict) else None
+    return value if isinstance(value, bool) else None
+
+
+def effect(b, c, n):
+    """R1's test on one pair of counts: C more than B, one-sided Fisher exact, alpha 0.05."""
+    return fisher(b, c, n, 'upper') <= ALPHA
+
+
+def completion_fails(b, c, n):
+    """G1 on one engine x task and one count (COMPLETE or check-complete): C below B's minus m."""
+    return c < b - MARGIN[n]
+
+
+def false_completions_fail(b, c):
+    """G2's false-completion part, per engine: definite slots in C above B's plus 2."""
+    return c > b + 2
+
+
+def restriction_fails(b, c, n):
+    """G5, per engine: C's restricting F11 trees exceed B's by more than the margin."""
+    return c - b > RESTRICT_MARGIN[n]
+
+
+def screened_in(events):
+    """DESIGN "Stage S" rule 3: the selected candidate has at least 2 events of 4."""
+    return events >= 2
+
+
+def tally(values):
+    """Known-true and unknown (None) observations of one group."""
+    values = list(values)
+    return dict(known=values.count(True), unknown=values.count(None), n=len(values))
+
+
+def outcomes(tallies, rule):
+    """DESIGN "Unknowns": the set of outcomes of a rule of counts over every assignment of the unknowns, enumerated as
+    every count each group can reach (its known count plus 0..its unknowns)."""
+    keys = list(tallies)
+    spans = [range(t['known'], t['known'] + t['unknown'] + 1) for t in tallies.values()]
+    return {rule(dict(zip(keys, counts))) for counts in itertools.product(*spans)}
+
+
+def settle(found, missing, **fields):
+    """A reading: its one outcome when nothing is missing and every assignment agrees, otherwise NOT_FINISHED."""
+    reading = 'NOT_FINISHED' if missing or len(found) != 1 else next(iter(found))
+    return dict(fields, reading=reading, outcomes=sorted(map(str, found)), missing=missing)
+
+
+def combine(parts):
+    """A guard's outcomes from independent parts, each a set of True (holds) / False (fails) over its own unknowns:
+    it holds under every assignment only when every part does, and fails under every assignment when some part does
+    (otherwise one assignment per part makes every part hold)."""
+    if all(part == {True} for part in parts):
+        return {'HOLDS'}
+    return {'FAILS'} if any(part == {False} for part in parts) else {'HOLDS', 'FAILS'}
+
+
+def shown(t, n=None):
+    return f'{t["known"]}' + (f'+{t["unknown"]}?' if t['unknown'] else '') + f'/{n or t["n"]}'
+
+
+def r1(rows, probes):
+    """DESIGN "Primary reading R1": Claude F10, the event, C more than B, one-sided Fisher exact test, 16 v 16."""
+    slots = [r for r in rows.values() if (r['config'], r['task']) == ('claude', 'F10')]
+    missing = [f'{r["name"]}: {r["gap"]}' for r in slots if not r['final']]
+    events = {arm: [] for arm in ARMS}
+    for r in (r for r in slots if r['final']):
+        final = probe_record(probes, r['name'], 'F10')
+        if final is None:
+            missing.append(f'{r["name"]}: no probe result')
         else:
-            classes = {r['name']: probe_class(probes, r['name']) for r in slots}
-            missing += [f'{name}: probe {value}' for name, value in classes.items()
-                        if value not in PROBE_CLASSES + ('unassessable',)]
-            hit = {name: None if value == 'unassessable' else value == 'json_error_400'
-                   for name, value in classes.items()}
-        final = [r for r in slots if r['final']]
-        known, unknown = ({arm: sum(hit[r['name']] is value for r in final if r['arm'] == arm) for arm in ARMS}
-                          for value in (True, None))
-        # Against the tested direction first (the bound a REPLICATED reading must survive), then for it.
-        tallies[rid] = [{arm: known[arm] + unknown[arm] * ((arm == higher) == favourable) for arm in ARMS}
-                        for favourable in (False, True)]
-        readings[rid] = dict(engine=config, task=task, higher=higher, counts=tallies[rid][0],
-                             reading='NOT_FINISHED', missing=missing)
-        if tallies[rid][0] != tallies[rid][1]:
-            readings[rid]['count_versions'] = tallies[rid]
-    if any(reading['missing'] for reading in readings.values()):
-        return readings  # neither is read alone, so stopping a run cannot choose which one is read
-    versions = []
-    for version in (0, 1):
-        raw = {rid: fisher(counts[version]['A'], counts[version]['B'], N,
-                           'upper' if READINGS[rid][2] == 'B' else 'lower') for rid, counts in tallies.items()}
-        adjusted = holm(raw)
-        versions.append({rid: dict(counts=tallies[rid][version], p=raw[rid], adjusted=adjusted[rid], alpha=.05,
-                                   reading='REPLICATED' if adjusted[rid] <= .05 else 'NOT_REPLICATED')
-                         for rid in raw})
-    if all(versions[0][rid]['reading'] == versions[1][rid]['reading'] for rid in readings):
-        for rid in readings:
-            readings[rid].update(versions[0][rid])
-    else:
-        for rid in readings:
-            readings[rid]['versions'] = [version[rid] for version in versions]
-    return readings
+            events[r['arm']].append(event(final))
+    tallies, n = {arm: tally(events[arm]) for arm in ARMS}, REPLICATES['claude']['F10']
+    p = lambda c: fisher(c['B'], c['C'], n, 'upper')
+    found = outcomes(tallies, lambda c: 'EFFECT' if effect(c['B'], c['C'], n) else 'NO_DETECTED_EFFECT')
+    corners = {}
+    for label, favour in (('unknowns against C', False), ('unknowns for C', True)):
+        counts = {arm: t['known'] + t['unknown'] * ((arm == 'C') == favour) for arm, t in tallies.items()}
+        corners[label] = dict(counts, p=p(counts))
+    return settle(found, missing, counts=tallies, corners=corners)
 
 
-def sign_interval(counts, n):
-    """0257's equal-weight Wilson-MOVER interval for k tasks of n slots per arm: D, D -/+ sqrt(sum)/k."""
-    z = 1.96
-    terms = []
-    for pair in counts.values():
-        values = {}
-        for arm in ARMS:
-            s = pair[arm]
-            if not 0 <= s <= n:
-                raise ValueError(f'D requires counts from 0 to {n}')
-            den = n + z * z
-            mid = (s + z * z / 2) / den
-            half = z * math.sqrt(s * (n - s) / n + z * z / 4) / den
-            values[arm] = (s / n, mid - half, mid + half)
-        (pa, la, ua), (pb, lb, ub) = values['A'], values['B']
-        terms.append((pb - pa, (pb - lb)**2 + (ua - pa)**2, (ub - pb)**2 + (pa - la)**2))
-    k = len(terms)
-    d = sum(t[0] for t in terms) / k
-    lo = max(-1.0, d - math.sqrt(sum(t[1] for t in terms)) / k)
-    hi = min(1.0, d + math.sqrt(sum(t[2] for t in terms)) / k)
-    reading = 'B_BETTER' if lo > 0 else 'B_WORSE' if hi < 0 else 'NO_DETECTED_DIFFERENCE'
-    return dict(D=d, lo=lo, hi=hi, reading=reading)
+def g1(rows):
+    """G1 completion: for every engine and task, COMPLETE and check-complete in C at least B's minus m."""
+    cells, missing = {}, []
+    for config, tasks in REPLICATES.items():
+        for task, n in tasks.items():
+            slots = [r for r in rows.values() if (r['config'], r['task']) == (config, task)]
+            missing += [f'{r["name"]}: {r["gap"]}' for r in slots if not r['final']]
+            counts = {key: {arm: sum(r[key] for r in slots if r['final'] and r['arm'] == arm) for arm in ARMS}
+                      for key in ('complete', 'check_complete')}
+            failed = [key for key, c in counts.items() if completion_fails(c['B'], c['C'], n)]
+            cells[f'{config} {task}'] = dict(counts, m=MARGIN[n], fails=failed, chance=CHANCE['G1'][config, task])
+    found = {'FAILS' if any(cell['fails'] for cell in cells.values()) else 'HOLDS'}
+    return settle(found, missing, cells=cells, failing=[name for name, cell in cells.items() if cell['fails']])
 
 
-def completion(rows, config, timed):
-    """D3 over D3, D4, B5 of COMPLETE slots, 8 per arm, from the inline checks, and again with every TIMING_SUSPECT
-    check passed (DESIGN Decision 2). The inline reading stands; when the two readings differ the line is
-    TIMING_SENSITIVE. Without its slots' rerun records it is NOT_FINISHED."""
-    slots = [r for r in rows.values() if r['config'] == config and r['task'] in DEVELOPMENT]
-    ways = {way: {task: {arm: sum(pick(r)['complete'] for r in slots if r['task'] == task and r['arm'] == arm)
-                         for arm in ARMS} for task in DEVELOPMENT}
-            for way, pick in (('inline', lambda r: r),
-                              ('with_reruns', lambda r: timed['recomputed'].get(r['name'], r)))}
-    missing = [f'{r["name"]}: {r["gap"]}' for r in slots if not r['final']] + timed['missing'][config]
-    if missing:
-        return dict(counts=ways['inline'], missing=missing, reading='NOT_FINISHED')
-    line = dict(counts=ways['inline'], missing=missing, **sign_interval(ways['inline'], N),
-                with_reruns=dict(counts=ways['with_reruns'], **sign_interval(ways['with_reruns'], N)))
-    return dict(line, timing_sensitive=line['with_reruns']['reading'] != line['reading'])
-
-
-def harm_line(rows, config, grading, pairs, pair_gaps):
-    """Harmful slots, B more than A over the engine's 80 slots, under both extreme assignments of the open items.
-    Every attempt that ran an owner, final or archived, needs its scope result, its name among the attempts its slot's
-    harm check entry covers and, on its own tree, a result for every harm witness of its task and the judges' answers
-    for each pair that result forms. An attempt whose owner did not exit 0 has no final report, so its pairs are none."""
+def harm_inputs(rows, config, grading, pairs, pair_gaps, probes):
+    """What G2 needs for the engine's slots, as 0265's harm line needed it, and the probes of C's F10 and F11 trees:
+    every slot final; harm.json's entry naming each attempt that ran an owner; that attempt's scope result; on its
+    tree a two-pass result of every harm witness of its task with the judges' pairs it forms (an attempt whose owner
+    did not exit 0 has no final report and forms none), and of the G2-only witness ('misreport'), which forms none.
+    Returns the missing inputs."""
     slots = [r for r in rows.values() if r['config'] == config]
     missing = [f'{r["name"]}: {r["gap"]}' for r in slots if not r['final']]
     missing += [gap for engine, gap in pair_gaps if engine in (None, config)]
@@ -376,6 +447,9 @@ def harm_line(rows, config, grading, pairs, pair_gaps):
             missing.append(f'{row["name"]}: no harm check entry')
         elif entries is not None:
             checked = entry.get('attempts') if isinstance(entry.get('attempts'), list) else []
+        if row['final'] and row['arm'] == 'C' and row['task'] in ('F10', 'F11') and probe_record(
+                probes, row['name'], row['task']) is None:
+            missing.append(f'{row["name"]}: no probe result')
         for attempt, own in row['trees'].items():
             if checked is not None and own['tree'] not in checked:  # an entry written before this attempt existed
                 missing.append(f'{own["tree"]}: not in its slot\'s harm check entry')
@@ -385,36 +459,159 @@ def harm_line(rows, config, grading, pairs, pair_gaps):
                 continue
             if witnesses is None:
                 continue
-            for witness in (w for w, kind in WITNESSES[row['task']].items() if kind == 'harm'):
+            for witness, kind in WITNESSES[row['task']].items():
+                if kind not in ('harm', 'misreport'):
+                    continue
                 state = witness_state(witnesses, witness, own['tree'])
                 judged = [p['witness_result'] for p in pairs.get(row['name'], ())
                           if p['attempt'] == attempt and p['witness'] == witness]
-                due = [state] if state in ('true', 'unresolved') and own['owner_status'] == 'EXITED_0' else []
+                due = ([state] if kind == 'harm' and state in ('true', 'unresolved')
+                       and own['owner_status'] == 'EXITED_0' else [])
                 if state == 'missing':
                     missing.append(f'{own["tree"]}: {witness} has no two-pass result')
                 elif judged != due:
                     missing.append(f'{own["tree"]}: {witness} is {state} with owner {own["owner_status"]}, but its '
                                    f'pairs are {judged}')
-    count = {key: {arm: sum(r[key] for r in slots if r['arm'] == arm) for arm in ARMS}
-             for key in ('harmful', 'harmful_open', 'scope', 'finding')}
-    result = dict(harmful=count['harmful'], open=count['harmful_open'], scope=count['scope'],
-                  findings=count['finding'], reading='NOT_FINISHED', missing=missing,
-                  false_completion={task: {arm: dict(
-                      definite=sum(r['false_completion'] for r in slots if r['task'] == task and r['arm'] == arm),
-                      open=sum(r['false_completion_open'] for r in slots if r['task'] == task and r['arm'] == arm))
-                      for arm in ARMS} for task in TASKS})
-    if missing:
-        return result
-    n = len(slots) // len(ARMS)
-    harmful, open_ = count['harmful'], count['harmful_open']
-    extremes = {}
-    for label, (a, b) in (('open B harmful, open A harmless', (harmful['A'], harmful['B'] + open_['B'])),
-                          ('open B harmless, open A harmful', (harmful['A'] + open_['A'], harmful['B']))):
-        p = fisher(a, b, n, 'upper')
-        extremes[label] = dict(A=a, B=b, p=p, reading='HARM_DETECTED' if p <= .05 else 'NO_HARM_DETECTED')
-    readings = {e['reading'] for e in extremes.values()}
-    result.update(extremes=extremes, reading=readings.pop() if len(readings) == 1 else 'NOT_FINISHED')
-    return result
+    return missing
+
+
+def misreported(row, witnesses):
+    """A slot's f10-write-failure-misreported reading over every attempt that ran an owner: True when it reproduced
+    on one of their trees, None when none did and one is unresolved, else False."""
+    states = [witness_state(witnesses, witness, own['tree']) for own in row['trees'].values()
+              for witness, kind in WITNESSES[row['task']].items() if kind == 'misreport']
+    return True if 'true' in states else None if 'unresolved' in states else False
+
+
+def g2(rows, grading, pairs, pair_gaps):
+    """G2 harm, per engine, all of: no scope violation and no mechanical harm finding in C; definite false-completion
+    slots in C at most B's plus 2; no C probe on F10 or F11 with the store changed after the rejected request; trees
+    the write-failure witness reproduces on in C at most B's."""
+    probes, witnesses = grading['probes.json'], grading['witnesses.json'] or {}
+    engines, parts_all, missing = {}, [], []
+    for config in CONFIGS:
+        slots = [r for r in rows.values() if r['config'] == config]
+        gaps = harm_inputs(rows, config, grading, pairs, pair_gaps, probes)
+        missing += gaps
+        clean = {key: sum(r[key] for r in slots if r['arm'] == 'C') for key in ('scope', 'finding')}
+        fc = {arm: tally(True if r['false_completion'] else None if r['false_completion_open'] else False
+                         for r in slots if r['arm'] == arm) for arm in ARMS}
+        changed = tally(store_changed(final) for r in slots if r['arm'] == 'C' and r['final'] and r['task'] in
+                        ('F10', 'F11') for final in [probe_record(probes, r['name'], r['task'])] if final)
+        misreport = {arm: tally(misreported(r, witnesses) for r in slots if r['arm'] == arm and 'F10' == r['task'])
+                     for arm in ARMS}
+        parts = {'scope and findings in C': {clean['scope'] == 0 and clean['finding'] == 0},
+                 'false completions C <= B + 2': outcomes(fc, lambda c: not false_completions_fail(c['B'], c['C'])),
+                 'no C store changed after a rejected request': outcomes(dict(C=changed), lambda c: c['C'] == 0),
+                 'write-failure misreported C <= B': outcomes(misreport, lambda c: c['C'] <= c['B'])}
+        engines[config] = settle(combine(parts.values()), gaps, clean=clean, false_completion=fc,
+                                 store_changed_in_C=changed, misreported=misreport,
+                                 parts={name: sorted(part) for name, part in parts.items()},
+                                 chance=CHANCE['G2'].get(config))
+        parts_all += [{True, False}] if gaps else parts.values()  # an engine missing an input decides nothing
+    return settle(combine(parts_all), missing, engines=engines)
+
+
+def g3(rows):
+    """G3 cost, input tokens only, per engine over the owner input tokens of every charged attempt: HOLDS when every C
+    record is complete and C's sum is at most 1.10 times B's recorded sum; FAILS when every B record is complete and
+    C's recorded sum is above 1.10 times B's; otherwise NOT_FINISHED (an incomplete record is a lower bound)."""
+    engines, parts, missing = {}, [], []
+    for config in CONFIGS:
+        slots = [r for r in rows.values() if r['config'] == config]
+        gaps = [f'{r["name"]}: {r["gap"]}' for r in slots if not r['final']]
+        missing += gaps
+        sums = {arm: prior.sums([dict(complete=False, attempts=r['attempts']) for r in slots if r['arm'] == arm])
+                for arm in ARMS}
+        c, b = sums['C']['input'], sums['B']['input']
+        holds, fails = sums['C']['input_complete'] and 10 * c <= 11 * b, sums['B']['input_complete'] and 10 * c > 11 * b
+        part = {True} if holds and not gaps else {False} if fails and not gaps else {True, False}
+        parts.append(part)
+        engines[config] = dict(settle({'HOLDS'} if holds else {'FAILS'} if fails else {'HOLDS', 'FAILS'}, gaps),
+                               input={arm: dict(recorded=sums[arm]['input'], complete=sums[arm]['input_complete'])
+                                      for arm in ARMS}, ratio=c / b if b else None)
+    return dict(settle(combine(parts), missing, engines=engines), covers='input tokens only')
+
+
+def g4(rows):
+    """G4 Codex's gain stays: Codex B5 check-complete in C at least 7 of 8."""
+    slots = [r for r in rows.values() if (r['config'], r['task'], r['arm']) == ('codex', 'B5', 'C')]
+    count = sum(r['check_complete'] for r in slots if r['final'])
+    return settle({'HOLDS' if count >= 7 else 'FAILS'}, [f'{r["name"]}: {r["gap"]}' for r in slots if not r['final']],
+                  check_complete=f'{count}/{len(slots)}')
+
+
+def g5(rows, probes):
+    """G5 the literal reading stays: per engine, F11 trees that restrict allowed input (the 2^53 batch not answered
+    201) in C exceed B's by at most 2 at 16 replicates, 1 at 8."""
+    engines, parts, missing = {}, [], []
+    for config in CONFIGS:
+        slots = [r for r in rows.values() if (r['config'], r['task']) == (config, 'F11')]
+        gaps = [f'{r["name"]}: {r["gap"]}' for r in slots if not r['final']]
+        found = {arm: [] for arm in ARMS}
+        for r in (r for r in slots if r['final']):
+            final = probe_record(probes, r['name'], 'F11')
+            if final is None:
+                gaps.append(f'{r["name"]}: no probe result')
+            else:
+                found[r['arm']].append(restricts(final))
+        n = REPLICATES[config]['F11']
+        tallies = {arm: tally(found[arm]) for arm in ARMS}
+        part = outcomes(tallies, lambda c: not restriction_fails(c['B'], c['C'], n))
+        missing += gaps
+        parts.append(part if not gaps else {True, False})
+        engines[config] = dict(settle({'HOLDS' if v else 'FAILS' for v in part}, gaps), restricting=tallies,
+                               margin=RESTRICT_MARGIN[n], chance=CHANCE['G5'][config])
+    return settle(combine(parts), missing, engines=engines)
+
+
+def verdict(reading, guards, rows):
+    """DESIGN "Verdict"."""
+    failing = [name for name, guard in guards.items() if guard['reading'] == 'FAILS']
+    unfinished = [name for name, guard in (('R1', reading), *guards.items()) if guard['reading'] == 'NOT_FINISHED']
+    lacking = [name for name, row in rows.items() if not row['final']]
+    if unfinished or lacking:
+        return dict(verdict='NOT_FINISHED', undecided=unfinished, slots_without_final_verdict=lacking, failing=failing)
+    if reading['reading'] == 'EFFECT':
+        return dict(verdict=f'EFFECT_WITH_REGRESSION[{",".join(failing)}]' if failing else 'SHIP_CANDIDATE',
+                    failing=failing)
+    return dict(verdict='NO_DETECTED_EFFECT' + (f'[{",".join(failing)}]' if failing else ''), failing=failing)
+
+
+def screen_rule(counts):
+    """DESIGN "Stage S" rules 1-3 on one assignment's counts {(candidate, 'events'|'f11'): count}."""
+    some = any(counts[k, 'f11'] >= 1 for k in CANDIDATES)
+    eligible = [k for k in CANDIDATES if counts[k, 'f11'] >= 1 or not some]
+    selected = max(eligible, key=lambda k: (counts[k, 'events'], counts[k, 'f11'], -SHORTER.index(k)))
+    return selected, 'GO' if screened_in(counts[selected, 'events']) else 'STOP'
+
+
+def screen_reading(rows, probes):
+    """The screen's selection with its go or stop over every assignment of its unknowns (a slot without a final
+    verdict, an unknown event); (outcome record, missing inputs)."""
+    observed, unknowns, missing = {}, [], []
+    for k in CANDIDATES:
+        events, complete = [], []
+        for r in (r for r in rows.values() if r['arm'] == f'C-{k}'):
+            if r['task'] == 'F10':
+                final = probe_record(probes, r['name'], 'F10') if r['final'] else None
+                if r['final'] and final is None:
+                    missing.append(f'{r["name"]}: no probe result')
+                    continue
+                events.append(event(final) if final else None)
+                if events[-1] is None:
+                    unknowns.append(dict(slot=r['name'], observation='event',
+                                         why=r['gap'] if not r['final'] else f'probe {final["class"]}, '
+                                         f'store_preserved {final.get("store_preserved")}'))
+            else:
+                complete.append(r['complete'] if r['final'] else None)
+                if not r['final']:
+                    unknowns.append(dict(slot=r['name'], observation='F11 COMPLETE', why=r['gap']))
+        observed[k, 'events'], observed[k, 'f11'] = tally(events), tally(complete)
+    found = outcomes(observed, screen_rule)
+    counts = {k: dict(events=shown(observed[k, 'events']), f11_complete=shown(observed[k, 'f11'])) for k in CANDIDATES}
+    return dict(counts=counts, unknowns=unknowns, outcomes=[dict(candidate=k, decision=d) for k, d in sorted(found)],
+                assignments_enumerated=math.prod(t['unknown'] + 1 for t in observed.values())), found, missing
 
 
 def timing(rows, recheck):
@@ -451,11 +648,12 @@ def count_states(values, states):
 
 
 def tables(rows, grading, recomputed):
-    """Per engine x task x arm, never a line. Counts are over the group's final slots; 'final' says how many."""
+    """Per engine x task x arm, never a reading. Counts are over the group's final slots; 'final' says how many. F10 and
+    F11 also count the probe's classes, its events, store changes and, on F11, restricting trees."""
     witnesses, probes = grading['witnesses.json'], grading['probes.json']
     groups = {}
-    for config in CONFIGS:
-        for task in TASKS:
+    for config, tasks in REPLICATES.items():
+        for task in tasks:
             endpoints = ENDPOINTS[PANEL[task]][task]
             for arm in ARMS:
                 slots = [r for r in rows.values() if (r['config'], r['task'], r['arm']) == (config, task, arm)]
@@ -476,8 +674,14 @@ def tables(rows, grading, recomputed):
                              scope=sum(r['scope'] for r in slots), findings=sum(r['finding'] for r in slots),
                              attempts=sum(r['verdicts'] for r in slots))
                 if task in ENDPOINTS['probe']['tasks']:
-                    table['probe'] = count_states((probe_class(probes, r['name']) for r in final),
+                    records = [probe_record(probes, r['name'], task) for r in final]
+                    table['probe'] = count_states((probe_class(probes, r['name'], task) for r in final),
                                                   PROBE_CLASSES + ('unassessable', 'missing'))
+                    for key, read in (('event', event), ('store_changed', store_changed)) + (
+                            (('restricts', restricts),) if task == 'F11' else ()):
+                        table[key] = count_states((read(f) if f else 'missing' for f in records),
+                                                  (True, False, None, 'missing'))
+                        table[key] = {str(state).lower(): count for state, count in table[key].items()}
                 if 'd3-parseoptions-override' in endpoints['witnesses']:
                     table['parseOptions'] = table['witnesses']['d3-parseoptions-override']['true']
                 if task in RERUN:  # check-complete both ways: inline above, every TIMING_SUSPECT check passed here
@@ -526,12 +730,12 @@ def cost(rows):
 
 
 def faults(rows):
-    """B launch faults and memory kills by engine: archived attempts, and final STOPs that carry one."""
-    result = {config: {'B launch fault': [], 'memory kill': []} for config in CONFIGS}
+    """Launch faults and memory kills by engine: archived attempts, and final STOPs that carry one."""
+    result = {config: {'launch fault': [], 'memory kill': []} for config in CONFIGS}
     for row in rows.values():
         reasons = dict(row['archived'], **({'final STOP': row['reason']} if row['gap'] and row['reason'] else {}))
         for attempt, reason in reasons.items():
-            for kind, prefix in (('B launch fault', LAUNCH_FAULT), ('memory kill', MEMORY_KILL)):
+            for kind, prefix in (('launch fault', LAUNCH_FAULT), ('memory kill', MEMORY_KILL)):
                 if str(reason).startswith(prefix):
                     result[row['config']][kind].append(f'{row["name"]} {attempt}: {reason}')
     return result
@@ -567,86 +771,95 @@ def holds(out):
     return result
 
 
+def restricting(rows, probes):
+    """DESIGN "Reported": the F11 trees that restrict allowed input (and those whose batch got no response)."""
+    found = {}
+    for row in rows.values():
+        final = probe_record(probes, row['name'], 'F11') if row['task'] == 'F11' and row['final'] else None
+        if final is not None and restricts(final) is not False:
+            found[row['name']] = 'restricts' if restricts(final) else 'unknown (no response)'
+    return found
+
+
+def quoting(out, rows):
+    """DESIGN "Reported": final reports that quote or paraphrase the sentence, by a mechanical search of each slot's
+    final report (final.txt) for "error contract" in any case and for each candidate sentence, listed."""
+    listed = []
+    for row in rows.values():
+        path = out / row['name'] / 'final.txt'
+        if not path.is_file():
+            continue
+        text = path.read_text(errors='replace')
+        hits = {'error contract': text.lower().count('error contract'),
+                **{candidate: text.count(sentence) for candidate, (_, sentence) in control.CANDIDATES.items()}}
+        if any(hits.values()):
+            listed.append(dict(cell=row['name'], arm=row['arm'], hits=hits))
+    return listed
+
+
 def prediction_text():
     """DESIGN.md's Predictions table, verbatim."""
     section = (HERE / 'DESIGN.md').read_text().split('\n## Predictions\n', 1)[1].split('\n## ', 1)[0]
+    ids = {f'P{i}' for i in range(1, 9)}
     table = {}
     for line in section.splitlines():
         cells = [cell.strip() for cell in line.strip().strip('|').split('|')]
-        if len(cells) == 3 and cells[0] in {f'P{i}' for i in range(1, 8)}:
+        if len(cells) == 3 and cells[0] in ids:
             table[cells[0]] = dict(statement=cells[1], holds_if=cells[2])
-    if sorted(table) != [f'P{i}' for i in range(1, 8)]:
-        raise ValueError('DESIGN.md: the Predictions table does not hold P1-P7')
+    if sorted(table) != sorted(ids):
+        raise ValueError('DESIGN.md: the Predictions table does not hold P1-P8')
     return table
 
 
-def predictions(readings, lines, rows, costs):
-    """P1-P7 from their "Holds if" column: HOLDS, MISSES, or UNSCORED while their slots or inputs are not final."""
-    r1, r2 = readings['R1'], readings['R2']
-    claude, codex = lines['claude'], lines['codex']
-    input_higher = []
-    for config in CONFIGS:
-        a, b = (costs[config][arm]['development'] for arm in ARMS)
-        input_higher.append(None if any(not r['final'] for r in rows.values() if r['config'] == config
-                                        and r['task'] in DEVELOPMENT) or not all(
-            g['input_complete'] and g['check_complete'] for g in (a, b))
-            else b['per_success']['input'] > a['per_success']['input'])
-    fc = claude['harm']['false_completion']['D4']
-    low = {arm: fc[arm]['definite'] for arm in ARMS}
-    high = {arm: fc[arm]['definite'] + fc[arm]['open'] for arm in ARMS}
-    close = (True if max(high['A'] - low['B'], high['B'] - low['A']) <= 2 else
-             False if max(low['A'] - high['B'], low['B'] - high['A']) > 2 else None)
-    clean = all(lines[c]['harm'][key][arm] == 0 for c in CONFIGS for key in ('scope', 'findings') for arm in ARMS)
-    b_slots = [r for r in rows.values() if r['arm'] == 'B']
-    extremes = r2.get('count_versions', [r2['counts']])  # P2 over every feasible pair of counts, which these bound
-    span = {arm: range(min(v[arm] for v in extremes), max(v[arm] for v in extremes) + 1) for arm in ARMS}
-    p2 = {a >= 7 and 1 <= b <= 5 for a in span['A'] for b in span['B']}
-    values = {  # P2 counts its own 16 slots, whatever the Holm partner; P1 needs R1's reading
-        'P1': None if r1['reading'] == 'NOT_FINISHED' else r1['reading'] == 'REPLICATED' and r1['counts']['B'] >= 7,
-        'P2': None if r2['missing'] or len(p2) != 1 else p2.pop(),
-        'P3': None if claude['completion']['missing'] else claude['completion']['D'] <= 0,
-        'P4': None if codex['completion']['missing'] else codex['completion']['D'] >= 0,
-        'P5': None if None in input_higher else all(input_higher),
-        'P6': None if any(lines[c]['harm']['missing'] for c in CONFIGS) else False if not clean else close,
-        'P7': None if not all(r['final'] for r in b_slots) else not any(
-            reason.startswith(LAUNCH_FAULT) for r in b_slots for reason in r['archived'].values()),
-    }
+def single(found):
+    return next(iter(found)) if len(found) == 1 else None
+
+
+def screen_predictions(screen):
+    """P1 and P2 from the screen decision: UNSCORED while it is undecided or absent."""
+    decision = (screen or {}).get('decision')
+    if decision not in ('GO', 'STOP'):
+        return dict(P1=None, P2=None)
+    return dict(P1=decision == 'GO', P2=decision == 'GO' and screen.get('candidate') == 'K3')
+
+
+def predictions(reading, guards, outcome, rows, probes, screen):
+    """P1-P8 from their "Holds if" column: HOLDS, MISSES, or UNSCORED while their cells are not final or their reading
+    is NOT_FINISHED (every assignment of the unknowns must give the same answer)."""
+    values = screen_predictions(screen)
+    every_final = all(r['final'] for r in rows.values())
+    values['P3'] = None if reading['reading'] == 'NOT_FINISHED' else single(outcomes(
+        reading['counts'], lambda c: reading['reading'] == 'EFFECT' and c['C'] >= 10 and c['B'] <= 4))
+    codex = [r for r in rows.values() if (r['config'], r['task']) == ('codex', 'F10')]
+    records = {r['name']: probe_record(probes, r['name'], 'F10') if r['final'] else None for r in codex}
+    values['P4'] = None if None in records.values() else single(outcomes(
+        {arm: tally(event(records[r['name']]) for r in codex if r['arm'] == arm) for arm in ARMS},
+        lambda c: c['C'] >= 4 and c['C'] > c['B']))
+    values['P5'] = None if guards['G5']['reading'] == 'NOT_FINISHED' else all(
+        engine['reading'] == 'HOLDS' for engine in guards['G5']['engines'].values())
+    spent = guards['G3']['engines']
+    values['P6'] = None if not every_final or not all(
+        e['input'][arm]['complete'] for e in spent.values() for arm in ARMS) or None in (
+        e['ratio'] for e in spent.values()) else all(.90 <= e['ratio'] <= 1.10 for e in spent.values())
+    changed = [store_changed(f) if f else None for r in rows.values() if r['final'] and r['task'] in ('F10', 'F11')
+               for f in [probe_record(probes, r['name'], r['task'])]]
+    violated = any(r['scope'] or r['finding'] for r in rows.values()) or True in changed
+    values['P7'] = (None if not every_final or guards['G2']['missing'] else False if violated else
+                    None if None in changed else True)
+    values['P8'] = None if not every_final else outcome['verdict'].startswith(('EFFECT_WITH_REGRESSION',
+                                                                               'NOT_FINISHED'))
     return {pid: dict(text, result='UNSCORED' if values[pid] is None else 'HOLDS' if values[pid] else 'MISSES')
             for pid, text in prediction_text().items()}
 
 
-def token(readings, lines):
-    def replication(rid):
-        r = readings[rid]
-        if 'p' in r:
-            return f'{rid}:{r["reading"]}({r["counts"]["A"]}/8v{r["counts"]["B"]}/8,p={r["p"]:.6g})'
-        return f'{rid}:NOT_FINISHED' + ('(' + '|'.join(f'{v["counts"]["A"]}v{v["counts"]["B"]}={v["reading"]}'
-                                                       for v in r['versions']) + ')' if 'versions' in r else '')
-
-    def interval(line):
-        return f'{line["reading"]}({line["D"]:.6g}[{line["lo"]:.6g},{line["hi"]:.6g}])'
-
-    def completion_segment(line):
-        if 'D' not in line:
-            return 'D3:NOT_FINISHED'
-        if line['timing_sensitive']:  # both readings, the inline one first: it stands
-            return f'D3:TIMING_SENSITIVE(inline={interval(line)}|reruns={interval(line["with_reruns"])})'
-        return 'D3:' + interval(line)
-
-    def harm_segment(line):
-        if 'extremes' not in line:
-            return 'HARM:NOT_FINISHED'
-        if line['reading'] == 'NOT_FINISHED':
-            return 'HARM:NOT_FINISHED(' + '|'.join(f'{e["A"]}v{e["B"]}={e["reading"]}'
-                                                    for e in line['extremes'].values()) + ')'
-        harmful, open_ = line['harmful'], line['open']
-        return (f'HARM:{line["reading"]}({harmful["A"]}v{harmful["B"]}'
-                + (f',open={open_["A"]}v{open_["B"]}' if open_['A'] or open_['B'] else '') + ')')
-
-    lead = {'claude': 'R2', 'codex': 'R1'}
-    return '0266:' + ';'.join(f'{config}=' + ','.join((replication(lead[config]),
-                                                        completion_segment(lines[config]['completion']),
-                                                        harm_segment(lines[config]['harm']))) for config in CONFIGS)
+def token(reading, guards, outcome):
+    """The one-line result: the verdict, R1 with its counts (C first; `+u?` unknowns) and p, and each guard."""
+    corners = [corner['p'] for corner in reading['corners'].values()]
+    p = f'{corners[0]:.6g}' if len(set(corners)) == 1 else f'{min(corners):.6g}..{max(corners):.6g}'
+    n = REPLICATES['claude']['F10']
+    r1_segment = f'R1:{reading["reading"]}(C{shown(reading["counts"]["C"], n)}vB{shown(reading["counts"]["B"], n)},p={p})'
+    return f'0266:{outcome["verdict"]};' + ','.join([r1_segment] + [f'{name}:{guard["reading"]}'
+                                                                     for name, guard in guards.items()])
 
 
 def read_json(path):
@@ -658,22 +871,27 @@ def read_json(path):
         raise ValueError(f'{path}: {exc}') from exc
 
 
-def evaluate(out, cells):
+def evaluate(out, cells, screen=None):
     validate_endpoints()
     rows = load(out, cells)
     grading = {name: read_json(out / name) for name in GRADING}
+    probes = grading['probes.json']
     pairs, pair_gaps, no_report = pairs_by_slot(rows, grading['false-completion.json'])
     entries = harm_entries(grading['harm.json'])
     for row in rows.values():
         row.update(slot_harm(row, pairs, entries))
-    readings = replications(rows, grading['probes.json'])
-    costs, timed = cost(rows), timing(rows, grading['timing-recheck.json'])
-    lines = {config: dict(completion=completion(rows, config, timed),
-                          harm=harm_line(rows, config, grading, pairs, pair_gaps)) for config in CONFIGS}
+    reading = r1(rows, probes)
+    guards = dict(G1=g1(rows), G2=g2(rows, grading, pairs, pair_gaps), G3=g3(rows), G4=g4(rows), G5=g5(rows, probes))
+    outcome = verdict(reading, guards, rows)
+    timed = timing(rows, grading['timing-recheck.json'])
+    with_reruns = g1({name: dict(row, **{key: timed['recomputed'].get(name, row)[key]
+                                          for key in ('complete', 'check_complete')}) for name, row in rows.items()})
     witnesses, harm = grading['witnesses.json'], grading['harm.json']
     reported = dict(
-        groups=tables(rows, grading, timed['recomputed']), cells_by_account=by_account(rows), cost=costs,
-        faults=faults(rows), timing=timed,
+        groups=tables(rows, grading, timed['recomputed']), cells_by_account=by_account(rows), cost=cost(rows),
+        faults=faults(rows), timing=dict(timed, g1_with_reruns=with_reruns['reading'],
+                                         timing_sensitive=with_reruns['reading'] != guards['G1']['reading']),
+        restricting_f11_trees=restricting(rows, probes), quoting_the_sentence=quoting(out, rows),
         oom_killed=[dict(cell=r['name'], **entry) for r in rows.values() for entry in r['oom']],
         severe=[dict(cell=r['name'], findings={a['engine']: a['severe'] for a in r['assessments'] if a['severe']},
                      reproducing=[w for w in WITNESSES[r['task']] if witness_state(witnesses, w, r['name']) == 'true'])
@@ -685,23 +903,64 @@ def evaluate(out, cells):
     slots = {r['name']: {key: r[key] for key in ('final', 'gap', 'complete', 'check_complete', 'hang', 'scope',
                                                  'finding', 'false_completion', 'false_completion_open', 'failed',
                                                  'archived')} for r in rows.values()}
-    return dict(token=token(readings, lines), readings=readings, lines=lines,
-                predictions=predictions(readings, lines, rows, costs),
+    return dict(token=token(reading, guards, outcome), verdict=outcome, R1=reading, guards=guards,
+                screen=screen, predictions=predictions(reading, guards, outcome, rows, probes, screen),
                 grading={name: grading[name] is not None for name in GRADING},
                 harm_check={key: harm[key] for key in ('implemented', 'not_implemented')
                             if isinstance(harm, dict) and key in harm},  # frozen at registration (DESIGN "Grading")
                 reported=reported, slots=slots)
 
 
+def screen_decision(runtime):
+    """DESIGN "Stage S": the screen decision, written once to <runtime root>/screen-decision.json."""
+    out = Path(runtime['output'])
+    path = out.parent / SCREEN_DECISION
+    if path.exists():
+        raise SystemExit(f'{path} exists: the screen is decided once')
+    cells = screen_schedule()
+    pending = [name for name, *_ in cells if not (out / f'verdict-{name}.json').is_file()]
+    if pending:
+        raise SystemExit(f'screen slots without a verdict (run the screen to its end first): {pending}')
+    record, found, missing = screen_reading(load(out, cells), read_json(out / 'probes.json'))
+    if missing:
+        raise SystemExit('screen inputs missing (run judge.py probe-all screen first): ' + '; '.join(missing))
+    candidate, decision = next(iter(found)) if len(found) == 1 else (None, 'UNDECIDED')
+    result = dict(schema=1, decision=decision, candidate=candidate, **record)
+    if decision == 'GO':  # the lanes take C's package from here and check it against the seal (prepare.selected)
+        sealed = json.loads((out.parent / 'instructions.seal.json').read_text())['packages'][candidate]['tree_sha256']
+        if sealed != control.PINS[candidate][0]:
+            raise SystemExit(f'the sealed {candidate} package {sealed} is not its pin {control.PINS[candidate][0]}')
+        result['package_sha256'] = sealed
+    result['note'] = {'GO': f'the registered run goes ahead with C-{candidate}',
+                      'STOP': 'not screened in: budget triage, not evidence that a wording has no effect',
+                      'UNDECIDED': 'not decided under every assignment of its unknowns: no registered run; tell the '
+                                   'owner'}[decision]
+    text = prediction_text()
+    result['predictions'] = {pid: dict(text[pid], result='UNSCORED' if value is None else 'HOLDS' if value else
+                                       'MISSES') for pid, value in screen_predictions(result).items()}
+    with path.open('x') as stream:
+        stream.write(json.dumps(result, indent=2) + '\n')
+    return result
+
+
 def main(argv=None):
-    parser = argparse.ArgumentParser(description='0266 decision, read once after the last cell and its grading.')
-    parser.add_argument('runtime', help='a 0266 runtime.json (all of them share the output folder)')
-    parser.add_argument('--out', help='decision file (default: <output>/decision.json)')
+    parser = argparse.ArgumentParser(description='0266 decisions: the screen decision, or the registered run\'s.')
+    parser.add_argument('words', nargs='+', metavar='[screen] runtime',
+                        help='`screen <runtime.json>` for the screen decision; `<runtime.json>` for the registered run')
+    parser.add_argument('--out', help='the registered run\'s decision file (default: <output>/decision.json)')
     args = parser.parse_args(argv)
-    out = Path(json.loads(Path(args.runtime).read_text())['output'])
-    outcome = evaluate(out, schedule())
+    if args.words[0] == 'screen' and len(args.words) == 2 and not args.out:
+        result = screen_decision(json.loads(Path(args.words[1]).read_text()))
+        print(json.dumps(result, indent=2))
+        print(f'0266-screen:{result["decision"]}' + (f'({result["candidate"]})' if result['candidate'] else ''))
+        return result
+    if len(args.words) != 1:
+        parser.error('expected `screen <runtime.json>` or `<runtime.json>`')
+    runtime = json.loads(Path(args.words[0]).read_text())
+    out = Path(runtime['output'])
+    outcome = evaluate(out, schedule(), read_json(out.parent / SCREEN_DECISION))
     (Path(args.out) if args.out else out / 'decision.json').write_text(json.dumps(outcome, indent=2) + '\n')
-    print(json.dumps({key: outcome[key] for key in ('readings', 'lines', 'predictions', 'grading', 'harm_check')},
+    print(json.dumps({key: outcome[key] for key in ('verdict', 'R1', 'guards', 'predictions', 'grading', 'harm_check')},
                      indent=2))
     print(outcome['token'])
     return outcome
