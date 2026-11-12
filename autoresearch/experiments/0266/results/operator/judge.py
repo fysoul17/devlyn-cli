@@ -221,8 +221,11 @@ def findings():
 
 
 def docker_attempt(cell, container, options, run_limit):
-    """Return a started container's result (or timeout); never count failed startup."""
+    """Return a started container's result (or timeout); never count failed startup. A create that exited non-zero
+    made no container (its name may be another's), so nothing is removed after it; after a create whose outcome is
+    unknown (a timeout or an OS error) the name may be ours and is removed."""
     create_error = None
+    refused = False
     state_error = None
     never_started_error = None
     invalid_error = None
@@ -236,7 +239,7 @@ def docker_attempt(cell, container, options, run_limit):
             create_error = str(exc)
         else:
             if created.returncode:
-                create_error = f'exit {created.returncode}: {created.stdout}{created.stderr}'
+                create_error, refused = f'exit {created.returncode}: {created.stdout}{created.stderr}', True
         if create_error is None:
             try:
                 outcome = subprocess.run(['docker', 'start', '-a', container], capture_output=True,
@@ -282,8 +285,9 @@ def docker_attempt(cell, container, options, run_limit):
                                                                   outcome.stdout, outcome.stderr)
     finally:
         try:
-            subprocess.run(['docker', 'rm', '-f', container], capture_output=True, text=True,
-                           check=True, timeout=10)
+            if not refused:
+                subprocess.run(['docker', 'rm', '-f', container], capture_output=True, text=True,
+                               check=True, timeout=10)
         except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
             cleanup_error = str(exc)
     if create_error is not None:

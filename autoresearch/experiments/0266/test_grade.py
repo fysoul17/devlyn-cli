@@ -94,6 +94,28 @@ class Witnesses(unittest.TestCase):
             return last[0]
         return fake, events, pending
 
+    def test_a_refused_create_removes_nothing(self):
+        # F11: a create that exited non-zero made no container (the name may be another process's): no `docker rm`.
+        # A create whose outcome is unknown (a timeout) may have made ours: it is removed.
+        with tempfile.TemporaryDirectory() as temp:
+            judge, _ = self.module(Path(temp))
+            for create, removed in ((subprocess.CompletedProcess([], 1, '', 'Conflict. The name is in use'), False),
+                                    (subprocess.TimeoutExpired(['docker'], 60), True)):
+                calls = []
+
+                def fake(argv, **kwargs):
+                    calls.append(argv[1])
+                    if argv[1] == 'create':
+                        if isinstance(create, Exception):
+                            raise create
+                        return create
+                    return subprocess.CompletedProcess(argv, 0, '', '')
+                with self.subTest(create=type(create).__name__), \
+                        mock.patch.object(judge.subprocess, 'run', side_effect=fake), \
+                        self.assertRaisesRegex(RuntimeError, 'docker create failed'):
+                    judge.docker_attempt('c001', 'witness-c001-0', ['--network', 'none', 'image'], 30)
+                self.assertEqual(calls, ['create', 'rm'] if removed else ['create'])
+
     def test_frozen_list_and_pins(self):
         with tempfile.TemporaryDirectory() as temp:
             judge, _ = self.module(Path(temp))
