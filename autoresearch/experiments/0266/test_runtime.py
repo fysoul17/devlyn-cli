@@ -1,11 +1,15 @@
-"""Offline tests for the 0265 runtime root: fakes for Docker, the registry and the control build; local Git only."""
+"""Offline tests for the 0266 runtime root and its packages: fakes for Docker, the registry and the control build
+(a small synthetic package stands in for devlyn-cli, its derived files re-derived the way release.js derives them);
+local Git only."""
 import base64
 import datetime
 import hashlib
 import importlib.util
 import io
 import json
+import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tarfile
@@ -18,7 +22,7 @@ HERE = Path(__file__).resolve().parent
 
 
 def load(name, path=None):
-    spec = importlib.util.spec_from_file_location('test_0265_runtime_' + name, path or HERE / (name + '.py'))
+    spec = importlib.util.spec_from_file_location('test_0266_runtime_' + name, path or HERE / (name + '.py'))
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -90,8 +94,52 @@ class FakeDocker:
         return [c for c in self.calls if c[0] == 'bash' or c[:2] in (['docker', 'save'], ['docker', 'load'])]
 
 
-def fake_build(sources, cache, out):
-    """control.build's shape: three trees, the package from cache/B.tgz, the manifest beside the tree."""
+TEMPLATE = ('# Project Instructions\n\n## Core principles\n\n1. **No workaround** — fix the root cause.\n'
+            '2. **No overengineering** — smallest sufficient change.\n7. **Production ready** — errors are visible.\n'
+            '\nEach skill is the source of truth.\n')
+PREAMBLE = 'The following Devlyn instructions are defaults for this session.\n\n'
+
+
+def derive(package, template):
+    """What bin/release.js derives from the principle sources (sessionDefaults, managedBlock, release.json), written
+    the way release.js writes it: the stand-in for the package's own buildRelease."""
+    body = control.MANAGED_PREFIX + template
+    texts = {name: template for name in control.SOURCES} | {
+        name: PREAMBLE + template for name in control.PRINCIPLE_FILES if name.endswith('runtime-principles.md')} | {
+        name: f'{control.BEGIN}{control.sha256(body.encode())} -->\n{body}{control.END}\n' for name in control.MANAGED}
+    for name, text in texts.items():
+        (package / name).parent.mkdir(parents=True, exist_ok=True)
+        (package / name).write_text(text, encoding='utf-8')
+    files = sorted(str(p.relative_to(package)) for p in package.rglob('*') if p.is_file() and p.name != 'release.json')
+    manifest = dict(schemaVersion=1, package='devlyn-cli', version='4.3.31',
+                    principles=dict(defaults='config/skills/_shared/runtime-principles.md',
+                                    sourceBlockSha256=control.sha256(body.encode())),
+                    files=[dict(path=name, sha256=control.digest(package / name), executable=False) for name in files])
+    manifest['digest'] = dict(algorithm='sha256', value=control.sha256(control.canonical(manifest).encode()))
+    (package / 'release.json').write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + '\n')
+
+
+def synthetic_package(folder):
+    """A small stand-in for B's unpacked package: one program file and the principle files with their derivations."""
+    package = folder / 'package'
+    (package / 'bin').mkdir(parents=True)
+    (package / 'bin/devlyn.js').write_text('console.log("4.3.31")\n')
+    derive(package, TEMPLATE)
+    return package
+
+
+def fake_candidate(packages, candidate, image):
+    """control.build_candidate's shape, with derive() for the package's own buildRelease (no Docker here)."""
+    b, c = packages / 'B/package', packages / candidate / 'package'
+    shutil.copytree(b, c, symlinks=True)
+    derive(c, control.insert(TEMPLATE, candidate))
+    number, sentence = control.CANDIDATES[candidate]
+    return dict(source='B', principle=number, sentence=sentence, release_digest=control.release(c)['digest']['value'],
+                tree_sha256=control.tree_sha256(c), comparison=control.compare(b, c, candidate))
+
+
+def fake_build(sources, cache, out, image):
+    """control.build's shape: three trees, B from cache/B.tgz and the three candidates, the manifest beside the tree."""
     out.mkdir(parents=False, exist_ok=False)
     (out / 'public/python').mkdir(parents=True)
     (out / 'public/ruff').write_text('ruff')
@@ -100,10 +148,15 @@ def fake_build(sources, cache, out):
     tgz = cache / 'B.tgz'
     with tarfile.open(tgz) as archive:
         archive.extractall(out / 'packages/B', filter='data')
-    record = dict(packages=dict(B=dict(url=control.PACKAGE_URL, integrity=control.INTEGRITY,
-                                       sha256=control.digest(tgz), files=control.members(tgz))),
+    packages = dict(B=dict(url=control.PACKAGE_URL, integrity=control.INTEGRITY, sha256=control.digest(tgz),
+                           files=control.members(tgz), tree_sha256=control.tree_sha256(out / 'packages/B/package'),
+                           release_digest=control.release(out / 'packages/B/package')['digest']['value']))
+    for candidate in control.CANDIDATES:
+        packages[candidate] = fake_candidate(out / 'packages', candidate, image)
+    record = dict(packages=packages,
                   manifests={name: control.manifest(out / name) for name in ('public', 'oracle', 'packages')})
     (out.parent / (out.name + '.manifest.json')).write_text(json.dumps(record, indent=1, sort_keys=True) + '\n')
+    return record
 
 
 class Fixture(unittest.TestCase):
@@ -124,15 +177,16 @@ class Fixture(unittest.TestCase):
         self.override = base / 'tasks-override.json'
         self.override.write_text(json.dumps({task: dict(issue_snapshot_sha256=value, fetched_at='t', url='u')
                                              for task, value in hashes.items()}))
-        package = base / 'pkg'
-        (package / 'package/bin').mkdir(parents=True)
-        (package / 'package/bin/devlyn.js').write_text('console.log("4.3.30")\n')
+        package = synthetic_package(base / 'pkg')
         self.tgz = base / 'B.tgz'
         with tarfile.open(self.tgz, 'w:gz') as archive:
-            archive.add(package / 'package', arcname='package')
+            archive.add(package, arcname='package')
         integrity = 'sha512-' + base64.b64encode(hashlib.sha512(self.tgz.read_bytes()).digest()).decode()
         (self.root / 'cache').mkdir(parents=True)
         (self.root / 'cache/B.tgz').write_bytes(self.tgz.read_bytes())
+        with mock.patch.object(control, 'INTEGRITY', integrity):  # the pins a build of this stand-in gives
+            reference = fake_build(None, self.root / 'cache', base / 'reference', IMAGE_ID)['packages']
+        pins = {name: (entry['tree_sha256'], entry['release_digest']) for name, entry in reference.items()}
         self.host_cache = base / 'models_cache.json'
         self.host_cache.write_text(json.dumps(dict(client_version='0.164.0', models=[])))
         self.docker = FakeDocker()
@@ -140,6 +194,7 @@ class Fixture(unittest.TestCase):
                         mock.patch.object(setup, 'REMOTE', str(base / 'remote') + '/{}'),
                         mock.patch.object(setup, 'OVERRIDE', self.override),
                         mock.patch.object(control, 'INTEGRITY', integrity),
+                        mock.patch.object(control, 'PINS', pins),
                         mock.patch.object(control, 'build', side_effect=fake_build),
                         mock.patch.object(setup.subprocess, 'run', side_effect=self.docker)]
         for patcher in self.patches:
@@ -221,28 +276,61 @@ class RuntimeFiles(Fixture):
             self.assertEqual(list(auth.iterdir()), [], 'setup never writes into an auth folder')
         self.assertEqual(oct((self.root / 'scratch').stat().st_mode & 0o777), '0o700')
 
+    def login(self, name='auth.json'):
+        login = self.root.parent / 'registered' / name
+        login.parent.mkdir(exist_ok=True)
+        login.write_text('{"made": "up"}')
+        return login
+
+    def codex_auth(self):
+        return {lane: json.loads((self.root / f'runtime-{lane}.json').read_text())['codex_auth']
+                for lane in ('smoke', 'claude', 'codex')}
+
     def test_codex_auth_option(self):
         """--codex-auth (O15): an absolute path to an existing regular file, by its metadata only, written into all
-        three runtime files and pinned like the rest. The login file here is made up."""
-        login = self.root.parent / 'registered/auth.json'
-        login.parent.mkdir()
-        login.write_text('{"made": "up"}')
+        three runtime files. The login file here is made up."""
+        login = self.login()
         for bad in ('registered/auth.json', str(login.parent), str(login.parent / 'absent.json')):
             with self.subTest(bad=bad), self.assertRaisesRegex(setup.Refused, 'is not an absolute path to an existing '
                                                                                'regular file'):
                 self.run_setup(bad)
             self.assertFalse(self.root.joinpath('output').exists())  # refused before any step
         self.run_setup(str(login))
-        self.assertEqual({lane: json.loads((self.root / f'runtime-{lane}.json').read_text())['codex_auth']
-                          for lane in ('smoke', 'claude', 'codex')}, dict.fromkeys(('smoke', 'claude', 'codex'),
-                                                                                   str(login)))
+        self.assertEqual(self.codex_auth(), dict.fromkeys(('smoke', 'claude', 'codex'), str(login)))
         self.assertIn('runtime: runtime-codex.json present', self.run_setup(str(login)))
-        other = login.with_name('other.json')
-        other.write_text('{"made": "up"}')
-        for value in (str(other), None):  # another login, or none, than the files hold
-            with self.subTest(value=value), self.assertRaisesRegex(setup.Refused, 'runtime-smoke.json differs'):
-                self.run_setup(value)
-        self.assertEqual(json.loads((self.root / 'runtime-codex.json').read_text())['codex_auth'], str(login))
+        self.assertIn('runtime: runtime-codex.json present', self.run_setup())  # omitted: kept as it is
+        with self.assertRaisesRegex(setup.Refused, 'runtime-smoke.json already names the Codex login'):
+            self.run_setup(str(self.login('other.json')))
+        self.assertEqual(self.codex_auth(), dict.fromkeys(('smoke', 'claude', 'codex'), str(login)))
+
+    def test_codex_login_named_late_rewrites_that_field_alone(self):
+        # README: the root, the seal and the controls are prepared without a login; naming it afterwards changes the
+        # runtime files' codex_auth and nothing else, once, before any cell has started.
+        self.run_setup()
+        self.assertEqual(self.codex_auth(), dict.fromkeys(('smoke', 'claude', 'codex')))
+        (self.root / 'instructions.seal.json').write_text('{"sealed": true}')  # stands for the seal and controls
+        before = {name: data for name, (_, data) in self.snapshot().items()}
+        calls = len(self.docker.mutations())
+        login = self.login()
+        lines = self.run_setup(str(login))
+        after = {name: data for name, (_, data) in self.snapshot().items()}
+        self.assertEqual(sorted(name for name in after if after[name] != before.get(name)),
+                         ['runtime-claude.json', 'runtime-codex.json', 'runtime-smoke.json'])
+        for lane in ('smoke', 'claude', 'codex'):
+            self.assertEqual(json.loads(after[f'runtime-{lane}.json']),
+                             dict(json.loads(before[f'runtime-{lane}.json']), codex_auth=str(login)))
+            self.assertIn(f'runtime: runtime-{lane}.json: codex_auth named {login}', lines)
+        self.assertEqual(len(self.docker.mutations()), calls)
+        self.assertEqual([line for line in lines if not line.startswith('runtime:')],
+                         [line for line in self.run_setup() if not line.startswith('runtime:')])
+
+    def test_codex_login_is_not_named_after_a_cell_started(self):
+        self.run_setup()
+        (self.root / 'output/smoke-claude-B/run').mkdir(parents=True)
+        (self.root / 'output/smoke-claude-B/run/started.json').write_text('{}')
+        with self.assertRaisesRegex(setup.Refused, 'a cell has started \\(smoke-claude-B\\)'):
+            self.run_setup(str(self.login()))
+        self.assertEqual(self.codex_auth(), dict.fromkeys(('smoke', 'claude', 'codex')))
 
     def test_renewal_command_passes_the_0257_driver_check(self):
         driver = load('driver0257', HERE.parent / '0257/driver.py')
@@ -332,310 +420,119 @@ class PinMismatch(Fixture):
         self.assert_refused('auth-claude has mode 755, expected 700')
 
 
-rehearse = load('rehearse_memory')
-GIB, MIB = 2 ** 30, 2 ** 20
-OWNER_1, OWNER_2, ASSESSOR = 'devlyn-0231-' + 'a' * 32, 'devlyn-0231-' + 'b' * 32, 'devlyn-0231-assess-' + 'c' * 32
+class Packages(Fixture):
+    def test_every_package_is_checked_and_its_comparison_printed(self):
+        lines = '\n'.join(self.run_setup())
+        for name in control.PACKAGES:
+            self.assertIn(f'package: {name} present: tree {control.PINS[name][0]}', lines)
+        self.assertIn('differs from B in exactly 7 files', lines)
+        self.assertIn('and 11 derived fields', lines)
+
+    def test_a_package_off_its_pin_refuses(self):
+        self.run_setup()
+        with mock.patch.dict(control.PINS, K2=('0' * 64, control.PINS['K2'][1])):
+            with self.assertRaisesRegex(setup.Refused, 'package K2: tree'):
+                self.run_setup()
+
+    def test_a_tampered_package_refuses(self):
+        self.run_setup()
+        (self.root / 'control/packages/K3/package/bin/devlyn.js').write_text('changed\n')
+        with self.assertRaisesRegex(setup.Refused, 'packages differs from control.manifest.json'):
+            self.run_setup()
 
 
-class FakeSamplerDocker:
-    """`docker` for the sampler: per `docker stats` call, the containers it lists (None: the call fails) and the VM's
-    MemAvailable in bytes; the until-file appears during the call `stop_at` (1-based), or `interrupt_at` raises."""
-
-    def __init__(self, until, ticks, stop_at=None, interrupt_at=None):
-        self.until, self.ticks, self.stop_at, self.interrupt_at = until, ticks, stop_at, interrupt_at
-        self.calls, self.sampler, self.stats_calls = [], None, 0
-
-    def __call__(self, argv, **kwargs):
-        argv = list(argv)
-        self.calls.append(argv)
-        done = lambda out='': subprocess.CompletedProcess(argv, 0, out, '')  # noqa: E731
-        if argv[:2] == ['docker', 'info']:
-            return done('8319369216\n')
-        if argv[:3] == ['docker', 'run', '-d']:
-            self.sampler = argv[argv.index('--name') + 1]
-            return done('cid\n')
-        if argv[:2] == ['docker', 'stats']:
-            self.stats_calls += 1
-            if self.stats_calls == self.interrupt_at:
-                raise KeyboardInterrupt
-            if self.stats_calls == self.stop_at:
-                self.until.touch()
-            listed = self.ticks[self.stats_calls - 1][0]
-            if listed is None:
-                raise subprocess.CalledProcessError(1, argv, '', 'Cannot connect to the Docker daemon')
-            return done('\n'.join(json.dumps(dict(Name=name, MemUsage=f'{used / MIB:.1f}MiB / 7.748GiB'))
-                                  for name, used in (listed | {self.sampler: MIB}).items()) + '\n')
-        if argv[:2] == ['docker', 'exec']:
-            available = self.ticks[self.stats_calls - 1][1]
-            return done(f'MemTotal:        8124384 kB\nMemAvailable:   {available // 1024} kB\n')
-        if argv[:3] == ['docker', 'rm', '-f']:
-            return done()
-        raise AssertionError(f'unexpected command {argv}')
-
-
-class RehearsalParsing(unittest.TestCase):
-    def test_memory_sizes_and_step_markers(self):
-        self.assertEqual(rehearse.size('1.5GiB / 4GiB'), 3 * 2 ** 29)
-        self.assertEqual(rehearse.size('837.2MiB / 7.748GiB'), round(837.2 * 2 ** 20))
-        self.assertEqual(rehearse.size('0B / 0B'), 0)
-        self.assertEqual(rehearse.size('12.5MB / 4GB'), 12_500_000)
-        log = 'noise\nQ6-STEP 0 0 100 104\nmore\nQ6-STEP 1 1 104 110\n'
-        self.assertEqual(rehearse.steps(['a', 'b', 'c'], log), [
-            dict(command='a', exit_code=0, seconds=4), dict(command='b', exit_code=1, seconds=6),
-            dict(command='c', exit_code=None, seconds=None)])
-        self.assertIn("sh -c 'a b'; code=$?; echo \"Q6-STEP 0 $code", rehearse.script(['a b']))
-        self.assertEqual([rehearse.prefix(n) for n in (OWNER_1, ASSESSOR, 'a9-mysql', 'devlyn-0231-abc')],
-                         ['devlyn-0231', 'devlyn-0231-assess', 'a9-mysql', 'devlyn-0231-abc'])
-
-
-class MemorySampler(unittest.TestCase):
-    """DESIGN Q8 (b): rehearse_memory.py sample, with a fake docker."""
+class Comparison(unittest.TestCase):
+    """control.compare, DESIGN "Arms": exactly the sentence once in the 7 principle files and the 11 derived fields."""
 
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
-        self.root = Path(self.temp.name)
-        (self.root / 'runtime-smoke.json').write_text(json.dumps(dict(image=IMAGE_ID)))
-        self.out, self.until = self.root / 'q8-sample.json', self.root / 'rehearsal.done'
+        self.packages = Path(self.temp.name)
+        synthetic_package(self.packages / 'B')
+        self.b = self.packages / 'B/package'
+        self.c = {k: self.packages / k / 'package' for k in control.CANDIDATES}
+        for candidate in control.CANDIDATES:
+            fake_candidate(self.packages, candidate, IMAGE_ID)
 
     def tearDown(self):
         self.temp.cleanup()
 
-    def watch(self, fake):
-        with mock.patch.object(rehearse.subprocess, 'run', side_effect=fake), \
-                mock.patch.object(rehearse.time, 'sleep') as sleep:
-            result = rehearse.watch(self.root, self.out, self.until, interval=2)
-        self.assertEqual(sleep.call_count, len(result['samples']))
-        return result
+    def test_the_frozen_lists(self):
+        for candidate, folder in self.c.items():
+            result = control.compare(self.b, folder, candidate)
+            self.assertEqual(result, dict(files=list(control.PRINCIPLE_FILES), fields=list(control.DERIVED)))
+        self.assertEqual(len(control.PRINCIPLE_FILES), 7)
+        self.assertEqual(len(control.DERIVED), 11)
+        text = (self.c['K1'] / 'CLAUDE.md').read_text()
+        self.assertEqual(control.sentence_counts(text), dict(K1=1, K2=0, K3=0))
+        self.assertIn('2. **No overengineering** — smallest sufficient change. ' + control.CANDIDATES['K1'][1], text)
+        self.assertEqual(control.sentence_counts((self.c['K3'] / 'harness/AGENTS.md').read_text()),
+                         dict(K1=0, K2=0, K3=1))
 
-    def test_samples_until_the_file_appears_then_summarises(self):
-        ticks = [({OWNER_1: GIB, ASSESSOR: 300 * MIB, 'a9-mysql': 500 * MIB}, 3 * GIB),
-                 ({OWNER_1: 1200 * MIB, OWNER_2: 800 * MIB, 'a9-mysql': 500 * MIB}, 2 * GIB),
-                 (None, 5 * GIB // 2)]  # a failed `docker stats` is a recorded gap, not the end
-        fake = FakeSamplerDocker(self.until, ticks, stop_at=3)
-        result = self.watch(fake)
-        self.assertEqual(json.loads(self.out.read_text()), result)
-        self.assertEqual((result['sample_count'], result['samples_without_stats'], result['samples_without_available']),
-                         (3, 1, 0))
-        self.assertEqual(result['stopped'], 'until-file')
-        self.assertEqual(result['min_vm_available'], 2 * GIB)
-        self.assertEqual(result['running_at_min'], ticks[1][0] | {fake.sampler: MIB})
-        self.assertEqual(result['peak_by_prefix'], {
-            'a9-mysql': dict(peak=500 * MIB, largest=500 * MIB),
-            'devlyn-0231': dict(peak=2000 * MIB, largest=1200 * MIB),  # both lanes' owners in one sample
-            'devlyn-0231-assess': dict(peak=300 * MIB, largest=300 * MIB),
-            'devlyn-0265-q8-sampler': dict(peak=MIB, largest=MIB)})
-        self.assertIn('Cannot connect', ''.join(s.get('stats_error', '') for s in result['samples']))
-        # The sampler is ours, small, offline and removed; memory is read only inside it, never another container.
-        run = next(c for c in fake.calls if c[:3] == ['docker', 'run', '-d'])
-        for flag, value in (('--network', 'none'), ('--memory', '64m'), ('--label', 'devlyn.task=0265-q8')):
-            self.assertEqual(run[run.index(flag) + 1], value)
-        self.assertEqual(run[-3:], [IMAGE_ID, 'sleep', 'infinity'])
-        self.assertEqual({c[2] for c in fake.calls if c[:2] == ['docker', 'exec']}, {fake.sampler})
-        self.assertEqual(fake.calls[-1], ['docker', 'rm', '-f', fake.sampler])
-        self.assertFalse([c for c in fake.calls if c[:2] in (['docker', 'kill'], ['docker', 'stop'])
-                          or (c[:2] == ['docker', 'rm'] and fake.sampler not in c)])
+    def refused(self, pattern, candidate='K3', folder=None):
+        with self.assertRaisesRegex(ValueError, pattern):
+            control.compare(self.b, folder or self.c[candidate], candidate)
 
-    def test_an_interrupted_run_keeps_its_samples_and_removes_the_sampler(self):
-        fake = FakeSamplerDocker(self.until, [({OWNER_1: GIB}, 3 * GIB)] * 3, interrupt_at=2)
-        with mock.patch.object(rehearse.subprocess, 'run', side_effect=fake), \
-                mock.patch.object(rehearse.time, 'sleep'), self.assertRaises(KeyboardInterrupt):
-            rehearse.watch(self.root, self.out, self.until)
-        record = json.loads(self.out.read_text())
-        self.assertEqual((record['sample_count'], record['stopped']), (1, 'KeyboardInterrupt: '))
-        self.assertEqual(fake.calls[-1], ['docker', 'rm', '-f', fake.sampler])
+    def test_another_byte_refuses(self):
+        (self.c['K3'] / 'bin/devlyn.js').write_text('console.log("4.3.31") \n')
+        self.refused(r"contents differ in \[.*'bin/devlyn.js'")
 
-    def test_refuses_to_overwrite_or_to_start_already_stopped(self):
-        fake = FakeSamplerDocker(self.until, [({}, GIB)], stop_at=1)
-        self.watch(fake)  # allowed: a new file, written once
-        calls = len(fake.calls)
-        with mock.patch.object(rehearse.subprocess, 'run', side_effect=fake), self.assertRaises(FileExistsError):
-            rehearse.watch(self.root, self.out, self.root / 'other.done')
-        self.out.unlink()
-        with mock.patch.object(rehearse.subprocess, 'run', side_effect=fake), self.assertRaises(FileExistsError):
-            rehearse.watch(self.root, self.out, self.until)  # the until-file is already there
-        self.assertEqual(len(fake.calls), calls)  # neither refusal touched docker
-        self.assertFalse(self.out.exists())
+    def test_a_mode_refuses(self):
+        os.chmod(self.c['K3'] / 'bin/devlyn.js', 0o755)
+        self.refused('bin/devlyn.js: kind or mode')
 
+    def test_a_name_refuses(self):
+        (self.c['K3'] / 'bin/extra.js').write_text('')
+        self.refused('bin/extra.js: only in C')
+        (self.c['K3'] / 'bin/extra.js').unlink()
+        (self.c['K3'] / 'bin/devlyn.js').rename(self.c['K3'] / 'bin/devlyn2.js')
+        self.refused('bin/devlyn.js: only in B')
 
-class Rehearsal(unittest.TestCase):
-    """DESIGN Q8 (b): rehearsal.tsv, the SMOKE task once more per lane, outside every sum."""
+    def test_the_sentence_twice_or_another_candidate_refuses(self):
+        derive(self.c['K3'], control.insert(control.insert(TEMPLATE, 'K3'), 'K3'))
+        self.refused('not B with the K3 sentence inserted once')
+        self.refused('not B with the K3 sentence inserted once', folder=self.c['K1'])
+        self.refused('not B with the K1 sentence inserted once', candidate='K1', folder=self.c['K2'])
 
-    def test_rehearsal_rows(self):
-        generate = load('generate_cells')
-        rows = generate.rehearsal()
-        self.assertEqual(rows, [(f'rehearsal-{config}-{arm}', 'SMOKE', arm, config)
-                                for config in ('claude', 'codex') for arm in 'AB'])
-        self.assertEqual((HERE / 'rehearsal.tsv').read_text(), generate.render(rows))
-        others = {row[0] for name in ('cells.tsv', 'smoke.tsv') for row in generate.generate()[name]}
-        self.assertFalse(others & {row[0] for row in rows})
-        self.assertFalse([row for row in rows if row[0].startswith('smoke-')])  # the driver's SMOKE start glob
-        for config in ('claude', 'codex'):  # each lane driver runs its own two rows (row[3] is the config)
-            self.assertEqual([row[2] for row in rows if row[3] == config], ['A', 'B'])
-        cells = (HERE / 'cells.tsv').read_text()
-        self.assertNotIn('rehearsal', cells)  # decide.py and the grading scripts read cells.tsv only
+    def test_a_derived_field_not_re_derived_refuses(self):
+        harness = self.c['K3'] / 'harness/CLAUDE.md'
+        old = (self.b / 'harness/CLAUDE.md').read_text().split('\n', 1)[0]
+        new_text = harness.read_text()
+        harness.write_text(old + '\n' + new_text.split('\n', 1)[1])  # the stale marker of B
+        self.refused('harness/CLAUDE.md: not B with the K3 sentence')
 
+    def test_another_release_field_refuses(self):
+        path = self.c['K3'] / 'release.json'
+        manifest = json.loads(path.read_text())
+        manifest['version'] = '4.3.32'
+        manifest['digest']['value'] = control.sha256(control.canonical(
+            {k: v for k, v in manifest.items() if k != 'digest'}).encode())
+        path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + '\n')
+        self.refused(r"release.json fields differ in \[.*'version'")
+        manifest['version'] = '4.3.31'
+        path.write_text(json.dumps(manifest, indent=1) + '\n')
+        self.refused('not in release.js serialization')
 
-strict = load('strict_config_check')
-SECRET = 'fake-refresh-token-0265'
+    def test_a_wrong_derived_value_refuses(self):
+        path = self.c['K3'] / 'release.json'
+        manifest = json.loads(path.read_text())
+        manifest['principles']['sourceBlockSha256'] = '0' * 64
+        manifest['digest']['value'] = control.sha256(control.canonical(
+            {k: v for k, v in manifest.items() if k != 'digest'}).encode())
+        path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + '\n')
+        self.refused('release.json principles.sourceBlockSha256 is 0{64}, re-derived')
 
+    def test_insert_needs_one_line_of_its_own(self):
+        with self.assertRaisesRegex(ValueError, 'principle 7 is not one line of its own'):
+            control.insert(TEMPLATE.replace('7. **Production ready**', '8. **Production ready**'), 'K3')
+        with self.assertRaisesRegex(ValueError, 'principle 2 is not one line of its own'):
+            control.insert(TEMPLATE + TEMPLATE, 'K1')
 
-class StrictConfigExec(unittest.TestCase):
-    """DESIGN Q3 (O1): strict_config_check.py --run-exec with a fake runner and a fake credential snapshot."""
+    def test_the_cli_prints_the_lists_or_refuses(self):
+        done = REAL_RUN([sys.executable, str(HERE / 'control.py'), 'compare', str(self.b), str(self.c['K2']), 'K2'],
+                        capture_output=True, text=True)
+        self.assertEqual((done.returncode, json.loads(done.stdout)['files']), (0, list(control.PRINCIPLE_FILES)))
+        done = REAL_RUN([sys.executable, str(HERE / 'control.py'), 'compare', str(self.b), str(self.c['K2']), 'K3'],
+                        capture_output=True, text=True)
+        self.assertEqual(done.returncode, 1)
+        self.assertIn('REFUSED: C-K3 does not differ from B', done.stderr)
 
-    def setUp(self):
-        self.temp = tempfile.TemporaryDirectory()
-        root = self.root = Path(self.temp.name)
-        for folder in ('output', 'scratch/strict-config-exec-old1/allowed/.codex', 'scratch/strict-config-exec-old2',
-                       'auth-smoke'):
-            (root / folder).mkdir(parents=True)
-        (root / 'models.json').write_text('{}')
-        self.runtime = root / 'runtime-smoke.json'
-        self.runtime.write_text(json.dumps(dict(image=IMAGE_ID, output=str(root / 'output'),
-                                                scratch=str(root / 'scratch'), auth=str(root / 'auth-smoke'),
-                                                models_cache=str(root / 'models.json'))))
-        self.snapshots, self.calls = 0, []
-
-    def tearDown(self):
-        self.temp.cleanup()
-
-    def snapshot(self, runtime):
-        self.snapshots += 1
-        (Path(runtime['auth']) / 'codex.json').write_text(json.dumps(dict(tokens=dict(refresh_token=SECRET))))
-        return dict(account=['a', 'o'], token_seconds_left=7200), None
-
-    def runner(self, answers):
-        """answers: label -> (code, stdout, stderr, files written under the home)."""
-        def run(argv):
-            self.calls.append(argv)
-            if argv[:2] == ['docker', 'rm']:
-                return 0, '', ''
-            label = next(label for label in strict.LABELS if f'devlyn-0265-strict-{label}-' in ' '.join(argv))
-            home = Path(next(v for v in argv if v.endswith(',dst=/home/probe')).split('src=')[1].split(',dst=')[0])
-            code, stdout, stderr, files = answers[label]
-            for file in files:
-                (home / file).parent.mkdir(parents=True, exist_ok=True)
-                (home / file).write_text('x')
-            return code, stdout, stderr
-        return run
-
-    def run_exec(self, allowed=None, violating=None, snapshot=None):
-        answers = dict(allowed=allowed or (0, '{"type":"thread.started","thread_id":"t"}\n{"type":"turn.completed"}\n',
-                                           'session log', ['trace/t/1.jsonl', '.codex/sessions/2026/r.jsonl']),
-                       violating=violating or (1, '', 'Error: unknown field `zz_unknown_top_0265`', []))
-        with mock.patch('sys.stdout', new=io.StringIO()) as printed:
-            code = strict.run_exec(self.runtime, self.runner(answers), snapshot or self.snapshot)
-        target = self.root / 'q3-strict-config.json'
-        return code, json.loads(target.read_text()) if target.exists() else None, printed.getvalue()
-
-    def test_pass_records_no_credential_and_removes_every_config_home(self):
-        code, record, printed = self.run_exec()
-        self.assertEqual((code, record['status']), (0, 'PASS'))
-        self.assertTrue(printed.startswith('PASS'))
-        self.assertEqual(record['runs']['allowed'], dict(exit_code=0, events=['thread.started', 'turn.completed'],
-                                                          trace_and_session_files=['.codex/sessions/2026/r.jsonl',
-                                                                                   'trace/t/1.jsonl'], named_keys=[]))
-        self.assertEqual(record['runs']['violating'], dict(exit_code=1, events=[], trace_and_session_files=[],
-                                                            named_keys=['zz_unknown_top_0265'],
-                                                            error_text='Error: unknown field `zz_unknown_top_0265`'))
-        self.assertNotIn(SECRET, (self.root / 'q3-strict-config.json').read_text())
-        self.assertEqual(list((self.root / 'scratch').iterdir()), [])  # its own homes and the two earlier ones
-        self.assertEqual(self.snapshots, 1)
-        self.assertEqual(len(self.calls), 2)
-        for argv, text in zip(self.calls, strict.configs()):
-            self.assertEqual(argv[-6:], ['codex', 'exec', '--strict-config', '--json', '--skip-git-repo-check',
-                                         'Reply OK.'])
-            self.assertEqual(argv[argv.index('--network') + 1], 'bridge')
-            self.assertIn(f'type=bind,src={self.root / "auth-smoke/codex.json"},dst=/home/probe/.codex/auth.json,'
-                          'readonly', argv)
-            self.assertIn('CODEX_ROLLOUT_TRACE_ROOT=/home/probe/trace', argv)
-
-    def test_violating_run_must_fail_at_config_load_without_a_model_request(self):
-        for violating, why in (
-                ((0, '{"type":"turn.completed"}\n', '', []), 'did not fail at config load'),
-                ((1, '{"type":"thread.started","thread_id":"t"}\n', 'zz_unknown_top_0265 later', []),
-                 'past config load'),
-                ((1, '', 'Error: unknown field `zz_unknown_top_0265`', ['trace/t/1.jsonl']), 'past config load'),
-                ((1, '', 'error sending request: network unreachable', []), 'for another reason'),
-                ((None, '', 'timed out after 180 s', []), 'did not fail at config load')):
-            with self.subTest(why=why, violating=violating[:2]):
-                (self.root / 'q3-strict-config.json').unlink(missing_ok=True)
-                code, record, _ = self.run_exec(violating=violating)
-                self.assertEqual((code, record['status']), (1, 'FAIL'))
-                self.assertIn(why, record['why'])
-        self.assertEqual(self.calls[-1][:3], ['docker', 'rm', '-f'])  # the timed-out run is removed
-
-    def test_an_error_event_alone_is_not_a_session(self):
-        code, record, _ = self.run_exec(violating=(1, '{"type":"error","message":"unknown field `zz_unknown_top_0265`"}'
-                                                      '\n', '', []))
-        self.assertEqual((code, record['status'], record['runs']['violating']['events']), (0, 'PASS', ['error']))
-
-    def test_allowed_run_must_exit_0(self):
-        code, record, _ = self.run_exec(allowed=(1, '', 'Error: unknown field `rollout_budget`', []))
-        self.assertEqual((code, record['status']), (1, 'FAIL'))
-        self.assertIn('did not exit 0', record['why'])
-        self.assertEqual(record['runs']['allowed']['error_text'], 'Error: unknown field `rollout_budget`')
-
-    def test_nothing_runs_without_a_fresh_snapshot_or_over_a_record(self):
-        held = lambda runtime: (None, 'Claude login token expires in 1200s; refresh the host login first')  # noqa: E731
-
-        def broken(runtime):
-            raise subprocess.CalledProcessError(44, ['security', 'find-generic-password'])
-        for snapshot in (held, broken):
-            code, record, printed = self.run_exec(snapshot=snapshot)
-            self.assertEqual((code, record, self.calls), (3, None, []))
-            self.assertTrue(printed.startswith('UNDECIDED: not run'))
-        self.assertEqual(len(list((self.root / 'scratch').iterdir())), 2)  # nothing made, nothing removed yet
-        self.run_exec()
-        self.calls.clear()
-        with mock.patch('sys.stderr', new=io.StringIO()):
-            code, _, _ = self.run_exec()
-        self.assertEqual((code, self.snapshots, self.calls), (3, 1, []))  # Q3 is recorded once
-
-    def test_the_exec_runs_are_the_only_mode(self):
-        """M2: the `codex debug` mode and its printed fallback commands, which left a config home with the login's
-        mount for an operator to run unguarded, are gone. Violating: the script without --run-exec refuses before it
-        reads the runtime file, snapshots nothing and writes nothing; allowed: --run-exec (the tests above)."""
-        self.assertEqual([name for name in ('main', 'decide', 'exec_commands', 'docker_argv', 'codex_home')
-                          if hasattr(strict, name)], [])
-        before = sorted((self.root / 'scratch').iterdir())
-        done = subprocess.run([sys.executable, '-I', str(HERE / 'strict_config_check.py'), str(self.runtime)],
-                              capture_output=True, text=True, timeout=60)
-        self.assertEqual(done.returncode, 2, done.stderr)
-        self.assertIn('the following arguments are required: --run-exec', done.stderr)
-        self.assertEqual((done.stdout, sorted((self.root / 'scratch').iterdir()), self.snapshots), ('', before, 0))
-        self.assertFalse((self.root / 'q3-strict-config.json').exists())
-        self.assertEqual(list((self.root / 'auth-smoke').iterdir()), [])
-
-    def test_an_old_codex_login_holds_the_exec_runs(self):
-        """O15, through the real run_cell.snapshot_auth: a Codex login renewed 7.5 days ago leaves Q3 undecided with
-        the reason, no copy and no run (violating); a 2-day-old one is copied and both runs go (allowed). The logins
-        are made-up files."""
-        real = strict.run_cell()
-        raw = json.dumps({'claudeAiOauth': {'expiresAt': (time.time() + 5400) * 1000, 'accessToken': 'fake'}})
-        profile = json.dumps({'account': {'uuid': 'a'}, 'organization': {'uuid': 'o'}})
-        record = json.loads(self.runtime.read_text())
-        for days, held in ((7.5, True), (2, False)):
-            with self.subTest(days=days):
-                login = self.root / f'login-{days}.json'
-                refreshed = datetime.datetime.fromtimestamp(time.time() - days * 86400, datetime.timezone.utc)
-                login.write_text(json.dumps(dict(tokens=dict(account_id='fake-account-id', refresh_token=SECRET),
-                                                 last_refresh=refreshed.isoformat().replace('+00:00', 'Z'))))
-                self.runtime.write_text(json.dumps(dict(record, codex_auth=str(login))))
-                with mock.patch.object(real.subprocess, 'run',
-                                       return_value=subprocess.CompletedProcess([], 0, stdout=raw)), \
-                        mock.patch.object(real.urllib.request, 'urlopen', side_effect=lambda *_a, **_k: io.StringIO(profile)):
-                    code, result, printed = self.run_exec(snapshot=real.snapshot_auth)
-                copied = self.root / 'auth-smoke/codex.json'
-                if held:
-                    self.assertEqual((code, result, self.calls), (3, None, []))
-                    self.assertEqual(printed, 'UNDECIDED: not run: Codex login (codex_auth) last renewed 7.5 days ago; '
-                                              'limit 7 days\n')
-                    self.assertFalse(copied.exists())
-                else:
-                    self.assertEqual((code, result['status'], len(self.calls)), (0, 'PASS', 2))
-                    self.assertEqual(copied.read_bytes(), login.read_bytes())
-                    self.assertNotIn(SECRET, (self.root / 'q3-strict-config.json').read_text())
-
-
-if __name__ == '__main__':
-    unittest.main()

@@ -221,7 +221,7 @@ def packages(folder, recorded):
                 release_digest}:
             raise Refused(f'package {name}: tree {found}, release {declared}; pinned {tree}, {release_digest}')
         if name == 'B':
-            say('package', f'B tree {tree}, release {release_digest}')
+            say('package', f'B present: tree {tree}, release {release_digest}')
             continue
         try:
             comparison = control.compare(folder / 'B/package', folder / name / 'package', name)
@@ -229,7 +229,7 @@ def packages(folder, recorded):
             raise Refused(str(exc)) from None
         if comparison != recorded[name]['comparison']:
             raise Refused(f'package {name}: comparison differs from its record')
-        say('package', f'{name} tree {tree}, release {release_digest}; differs from B in exactly '
+        say('package', f'{name} present: tree {tree}, release {release_digest}; differs from B in exactly '
                        f'{len(comparison["files"])} files {comparison["files"]} and {len(comparison["fields"])} '
                        f'derived fields {comparison["fields"]}')
 
