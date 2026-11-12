@@ -224,7 +224,9 @@ def findings():
 def docker_attempt(cell, container, options, run_limit):
     """Return a started container's result (or timeout); never count failed startup. The container is removed only
     after a create that succeeded: after one that exited non-zero, timed out or raised, the name may be another
-    process's, so nothing is removed and the error is raised."""
+    process's, so nothing is removed and the error is raised. Only a create that returned with exit 0 sets `created_ok`,
+    so no exception before it (an interrupt among them) can lead to a removal."""
+    created_ok = False
     create_error = None
     state_error = None
     never_started_error = None
@@ -240,6 +242,8 @@ def docker_attempt(cell, container, options, run_limit):
         else:
             if created.returncode:
                 create_error = f'exit {created.returncode}: {created.stdout}{created.stderr}'
+            else:
+                created_ok = True
         if create_error is None:
             try:
                 outcome = subprocess.run(['docker', 'start', '-a', container], capture_output=True,
@@ -285,7 +289,7 @@ def docker_attempt(cell, container, options, run_limit):
                                                                   outcome.stdout, outcome.stderr)
     finally:
         try:
-            if create_error is None:
+            if created_ok:
                 subprocess.run(['docker', 'rm', '-f', container], capture_output=True, text=True,
                                check=True, timeout=10)
         except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:

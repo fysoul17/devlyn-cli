@@ -126,6 +126,15 @@ class Witnesses(unittest.TestCase):
                         self.assertRaisesRegex(RuntimeError, 'docker create failed'):
                     judge.docker_attempt('c001', 'witness-c001-0', ['--network', 'none', 'image'], 30)
                 self.assertEqual(calls, ['create', 'rm'] if removed else ['create'])
+            calls = []
+
+            def interrupted(argv, **kwargs):
+                calls.append(argv[1])
+                raise KeyboardInterrupt
+            with mock.patch.object(judge.subprocess, 'run', side_effect=interrupted), \
+                    self.assertRaises(KeyboardInterrupt):  # the interrupt propagates, and nothing is removed
+                judge.docker_attempt('c001', 'witness-c001-0', ['--network', 'none', 'image'], 30)
+            self.assertEqual(calls, ['create'])
             fake, events, _ = self.fake_docker([subprocess.TimeoutExpired(['docker'], 30)])  # created, start timed out
             with mock.patch.object(judge.subprocess, 'run', side_effect=fake):
                 done, _, _ = judge.docker_attempt('c001', 'witness-c001-0', ['--network', 'none', 'image'], 30)
