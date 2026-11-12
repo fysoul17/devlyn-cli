@@ -574,6 +574,47 @@ class Guards(Case):
         self.run.slot(self.run.names('codex', 'D3', 'B')[0], scope=('x.txt',))
         self.assertEqual(self.run.evaluate()['guards']['G2']['reading'], 'HOLDS')
 
+    def archived_reproducing(self, name):
+        """An archived owner-ran attempt of the slot whose tree the write-failure witness reproduces on."""
+        self.run.stop(name, 'shared account fault during execution: quota', number=1)
+        self.run.witness(f'{name}.stop-1', 'f10-write-failure-misreported', 1)
+
+    def test_g2_counts_misreporting_trees(self):
+        # F10 (Grok's cases): C one slot whose archived and final trees both reproduce, B one tree: 2 v 1 fails.
+        c, b = self.run.names('claude', 'F10', 'C'), self.run.names('claude', 'F10', 'B')
+        self.archived_reproducing(c[0])
+        self.run.witness(c[0], 'f10-write-failure-misreported', 1)
+        self.run.witness(b[0], 'f10-write-failure-misreported', 1)
+        g2 = self.run.evaluate()['guards']['G2']
+        self.assertEqual((g2['reading'], g2['engines']['claude']['misreported']['C'],
+                          g2['engines']['claude']['misreported']['B']),
+                         ('FAILS', dict(known=2, unknown=0, n=17), dict(known=1, unknown=0, n=16)))
+        # The reverse: C two slots with one tree each, B one slot with two trees: 2 v 2 holds.
+        self.archived_reproducing(b[0])
+        self.run.witness(c[1], 'f10-write-failure-misreported', 1)
+        self.run.stop(c[0], 'shared account fault during execution: quota', number=1)  # its archive no longer reproduces
+        g2 = self.run.evaluate()['guards']['G2']
+        self.assertEqual((g2['reading'], g2['engines']['claude']['misreported']['C']['known'],
+                          g2['engines']['claude']['misreported']['B']['known']), ('HOLDS', 2, 2))
+
+    def test_an_unresolved_archived_tree_is_an_unknown(self):
+        c = self.run.names('claude', 'F10', 'C')[0]
+        self.run.stop(c, 'shared account fault during execution: quota', number=1)
+        self.run.witness(f'{c}.stop-1', 'f10-write-failure-misreported', 1, 2)
+        g2 = self.run.evaluate()['guards']['G2']
+        self.assertEqual((g2['reading'], g2['engines']['claude']['misreported']['C']), (
+            'NOT_FINISHED', dict(known=0, unknown=1, n=17)))
+        self.assertEqual(g2['missing'], [])
+
+    def test_one_tree_per_slot_counts_as_before(self):
+        for name in self.run.names('claude', 'F10', 'C')[:2]:
+            self.run.witness(name, 'f10-write-failure-misreported', 1)
+        for name in self.run.names('claude', 'F10', 'B')[:2]:
+            self.run.witness(name, 'f10-write-failure-misreported', 1)
+        g2 = self.run.evaluate()['guards']['G2']
+        self.assertEqual((g2['reading'], g2['engines']['claude']['misreported']['C']), (
+            'HOLDS', dict(known=2, unknown=0, n=16)))
+
     def test_g2_needs_every_input(self):
         name = self.run.names('claude', 'F10', 'C')[0]
         del self.run.witnesses['f10-write-failure-misreported'][name]
@@ -658,7 +699,7 @@ class Readiness(Case):
         self.run.stop(f10, 'shared account fault during execution: quota', number=1)
         self.run.witness(f'{f10}.stop-1', 'f10-write-failure-misreported', 1)
         claude = self.run.evaluate()['guards']['G2']['engines']['claude']
-        self.assertEqual(claude['misreported']['C'], dict(known=1, unknown=0, n=16))
+        self.assertEqual(claude['misreported']['C'], dict(known=1, unknown=0, n=17))  # 17 trees: G2 counts trees
 
 
 class Screen:

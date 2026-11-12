@@ -292,8 +292,9 @@ The probe is retried once while any of its fields is unknown (DESIGN "Unknowns")
 The write-failure witness copies the tree into the container's own filesystem before it makes the store read-only: on
 Docker Desktop's macOS bind mount a read-only mode does not stop the container's user from writing (seen 2026-11-12,
 uid 501), on the container's filesystem it does. The store is made read-only before the server starts, so the server
-holds no writable descriptor of it; a tree that cannot then load, listen or answer `GET /items` reads not applicable. Its reading on a slot covers every attempt that ran an owner: it
-reproduced on one of their trees, or (unknown) none reproduced and one is unresolved, or not.
+holds no writable descriptor of it; a tree that cannot then load, listen or answer `GET /items` reads not applicable.
+G2 counts trees, as the design says: the tree of every attempt of an arm's F10 slots in which an owner ran is one
+count, reproduced, unresolved after its retry (unknown), or not.
 
 The screen runs the same per-cell pipeline; it is graded by the probe alone (`judge.py probe-all screen`), since its
 rule reads only F10 events and F11 COMPLETE. Its cells never count in a reading.
