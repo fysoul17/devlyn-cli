@@ -11,7 +11,9 @@ frozen witnesses are read from 0265 by path.
 
 ## Operator
 
-From the root of the worktree at the registration commit, with `X=autoresearch/experiments/0266` and
+Every step is run from one run worktree, a detached worktree (as 0265 used) that stays until RESULT is merged: the
+runtime root is prepared from it (its runtime files point into it, `tasks_override` among them), and it is moved to the
+registration commit before the screen. From the root of that worktree, with `X=autoresearch/experiments/0266` and
 `R=~/.local/share/nx01/0266-live`, one command per line, in order. **Model** marks a step that makes model calls;
 every other step makes none and reads no credential unless it says so. The seal and the screen decision are written
 once and refuse while their file exists: move it aside before repeating the step on another commit. The controls
