@@ -14,6 +14,10 @@ fc_judge.py calibrate <runtime.json> [--held-out] [--pairs N]
     label) left out of the rule the judge reads; writes <runtime root>/q6-held-out.json and prints the same table,
     never a gate.
 
+0266 keeps the judges as 0265 had them (DESIGN "Apparatus"): they read 0265's audit-rule.md, fc_prompt.md and
+witness-descriptions.json byte for byte, so pairs form on 0265's harm witnesses only; 0266's G2-only witness
+f10-write-failure-misreported (g2-witness-descriptions.json) forms none.
+
 The judges are the assessor seat of 0265/assess.py (raw in the image, fresh HOME, no tools): claude-opus-5-5 high and
 gpt-6-astra high, both seats of a pair at once, --pairs pairs at a time (default 4), fresh Claude and Codex login
 copies before each group (run_cell.snapshot_auth, as a cell's preflight takes them). A packet is fc_prompt.md filled

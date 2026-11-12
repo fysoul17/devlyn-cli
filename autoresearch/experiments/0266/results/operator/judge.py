@@ -1,12 +1,18 @@
-"""Operator tool (not apparatus) for the 0266 witnesses and probe, run after the last cell with no cell running.
-0261's judge.py (the hardened docker_attempt form) with runtime path from NX01_0266_RUNTIME, 0266 cells.tsv and the
-frozen witness list below: a witness whose bytes differ from its pin is refused.
-NX01_0266_JUDGE_SCRATCH selects an absolute scratch directory under /private/tmp when set.
+"""Operator tool (not apparatus) for the 0266 witnesses and probe, run with no cell running: the probe on the screen's
+trees after the screen's last cell, then everything after the registered run's last cell. 0265's judge.py with runtime
+path from NX01_0266_RUNTIME, 0266 cells.tsv (screen.tsv for `probe-all screen`) and the frozen witness list below (the
+witnesses 0266 keeps are read from 0265's folder, the new one and the probe from 0266's): a witness whose bytes differ
+from its pin is refused. NX01_0266_JUDGE_SCRATCH selects an absolute scratch directory under /private/tmp when set.
+
+The probe (DESIGN "The event", G5): one attempt, and one retry while its result is unknown (DESIGN "Unknowns"): the class
+is `unassessable`, or a response came and store_preserved is null, or, on F11, the 2^53 batch got no response
+(large_qty.restricts null). The last attempt is the result.
 
 judge.py cells                    measured cells and their tasks
 judge.py findings                 every severe assessor finding of the measured cells, as JSON
-judge.py probe <cell>...          malformed-JSON probe, writes probes.json in runtime output
-judge.py probe-all                the probe on every F10 and F11 graded tree
+judge.py probe <cell>...          malformed-JSON probe (a cell of cells.tsv or screen.tsv), writes probes.json in
+                                  runtime output
+judge.py probe-all [screen]       the probe on every F10 and F11 graded tree of cells.tsv (screen: of screen.tsv)
 judge.py run <witness> <cell>...  run twice on each snapshot (a cell or an archived attempt <cell>.stop-N); writes
                                   witnesses.json
 judge.py run-all <task>           every witness of one task (D3, D4 or F10) on every final and archived graded tree of
@@ -40,6 +46,7 @@ SCRATCH = Path(scratch_override) if scratch_override else LIVE / 'scratch' / 'ju
 if scratch_override and (not SCRATCH.is_absolute() or not SCRATCH.resolve().is_relative_to('/private/tmp')):
     raise ValueError('NX01_0266_JUDGE_SCRATCH must be an absolute path under /private/tmp')
 CELLS = Path(__file__).resolve().parents[2] / 'cells.tsv'
+SCREEN = Path(__file__).resolve().parents[2] / 'screen.tsv'
 WITNESS_DIR = Path(__file__).resolve().parents[1] / 'witnesses'
 PRIOR_WITNESS_DIR = Path(__file__).resolve().parents[3] / '0265/results/witnesses'  # the witnesses 0266 keeps as they are
 # Frozen witness list (DESIGN "Grading"): stem -> (task, sha256 of the bytes copied from its source experiment).
@@ -53,9 +60,11 @@ WITNESSES = {
     'd3-executable-delimiter': ('D3', 'f10c6cf91fb2cd3ded81a37e4ee38955eb7ac1d479ce21345a9167e17619d475'),
     'd3-regression-child-probe': ('D3', '94d7079d7f3268538c526df0df8636521b9c09f07c362a2d26b5b3ba7be37346'),
     'd3-parseoptions-override': ('D3', '5e706105f608b888ff04fdff530855b84d4c994a466b320640957efa70e14c61'),
+    # 0266 (DESIGN "New witness"): G2 only, forms no false-completion pair
+    'f10-write-failure-misreported': ('F10', 'adfe26628886d79b9cfeaf5ba92f71d1111270bddf9d61bce3f5014e82bf3c03'),
 }
 HARM = tuple(stem for stem in WITNESSES if stem != 'd3-parseoptions-override')  # parseOptions is a behaviour count
-PROBE = ('f-malformed-json.js', '6bcba20346013972696cd856e99545df48334f7cb777e49ab2defdc3c98979cb')
+PROBE = ('f-malformed-json.js', '669088337956b3d9bcfd3e5dc3be0adae7081cd7fa1c880213296a279a5687ab')  # 0266: G5 on F11
 # The witnesses' own timers need their source experiments' limits: d3-regression-child-probe allows its test 18 s
 # (0257's judge gave every witness 300 s) and d3-parseoptions-override exits at 10 s (0259's judge used 10 s).
 LIMITS = {'d3-regression-child-probe': 300, 'd3-parseoptions-override': 10}
@@ -119,6 +128,15 @@ CONTROLS = (
      None, "0257's recorded class"),
     ('probe-html-400', 'probe', 'html_400', ('archive', 'reports-0256-0260/0257/c002-F10-claude-B-r1'), None,
      "0257's recorded class"),
+    # 0266: the new witness and the probe's G5 field, each on a clean tree and on the same tree with the defect planted
+    ('write-failure-misreported', 'f10-write-failure-misreported', True,
+     ('archive', 'reports-0265/output/c004-F10-claude-B-r1'), 'misreport-400', ''),
+    ('write-failure-not-misreported', 'f10-write-failure-misreported', False,
+     ('archive', 'reports-0265/output/c004-F10-claude-B-r1'), None, 'its POST hands the write error to Express: 500'),
+    ('probe-large-qty-restricts', 'probe-large-qty', True, ('archive', 'reports-0265/output/c038-F11-claude-B-r1'),
+     'restrict-safe-integer', ''),
+    ('probe-large-qty-allowed', 'probe-large-qty', False, ('archive', 'reports-0265/output/c038-F11-claude-B-r1'), None,
+     'qty checked with Number.isInteger: 2^53 is allowed'),
 )
 CHILD_TEST = 'reports-0256-0260/0257/d051-D3-codex-B-r4/snapshot/tests'
 
@@ -166,9 +184,9 @@ def update(path, change):
     return result
 
 
-def measured():
+def measured(schedule=CELLS):
     rows = []
-    for line in CELLS.read_text().splitlines():
+    for line in schedule.read_text().splitlines():
         if not line or line.startswith('#'):
             continue
         name, task = line.split()[:2]
@@ -419,11 +437,17 @@ def probe_once(tree, task, cell, container):
     return result
 
 
+def unknown(result, task):
+    """DESIGN "Unknowns": no class, a response whose store check is null, or on F11 no answer to the 2^53 batch."""
+    return (result.get('class') == 'unassessable' or result.get('store_preserved') is None
+            or (task == 'F11' and (result.get('large_qty') or {}).get('restricts') is None))
+
+
 def probe_attempts(tree, task, name, attempts, record):
-    """The probe on one tree, as probe-all makes it: one attempt, and one retry while it is unassessable; each new
+    """The probe on one tree, as probe-all makes it: one attempt, and one retry while its result is unknown; each new
     attempt is handed to record() as it ends."""
     attempts = list(attempts)
-    while not attempts or (attempts[-1]['class'] == 'unassessable' and len(attempts) < 2):
+    while not attempts or (unknown(attempts[-1], task) and len(attempts) < 2):
         attempts.append(probe_once(tree, task, name, f'probe-{name}'))
         record(attempts)
     return dict(attempts=attempts, **attempts[-1])
@@ -433,7 +457,8 @@ def probe(cells):
     SCRATCH.mkdir(parents=True, exist_ok=True)
     path = OUT / 'probes.json'
     stored = read(path)
-    schedule = {line.split()[0]: line.split()[1] for line in CELLS.read_text().splitlines() if line}
+    schedule = {line.split()[0]: line.split()[1] for path in (CELLS, SCREEN) for line in path.read_text().splitlines()
+                if line}
     done = {}
     for cell in cells:
         task = schedule[cell]
@@ -451,9 +476,10 @@ def probe(cells):
     return done
 
 
-def probe_all():
-    """The probe on every F10 and F11 final graded tree of both configs (R2 reads the final attempt's class)."""
-    cells = [name for name, task, _ in measured() if task in ('F10', 'F11')]
+def probe_all(schedule=CELLS):
+    """The probe on every F10 and F11 final graded tree of a schedule (R1, G2, G5 and the screen read the final
+    attempt's result)."""
+    cells = [name for name, task, _ in measured(schedule) if task in ('F10', 'F11')]
     for name in cells:
         if not (OUT / name / 'snapshot').is_dir():
             print(f'skipped: probe {name}: no graded tree', file=sys.stderr)
@@ -466,6 +492,9 @@ PLANTS = {
     'no-index': 'index.js removed',
     'child-test-from-file': "0257 d051's tests/command.executableSubcommand.test.js and tests/fixtures/pm-literal.js, "
                             'its parent program started from a file instead of node --eval',
+    'misreport-400': "the POST /items handler answers a failed write with 400 {error: 'invalid_body', field: 'name'} "
+                     'instead of handing the error to Express',
+    'restrict-safe-integer': "the batch's qty check uses Number.isSafeInteger in place of Number.isInteger",
 }
 
 
@@ -479,6 +508,12 @@ def plant(kind, tree):
         (tree / 'pytest.py').write_text("raise ModuleNotFoundError('No module named pytest')\n")
     elif kind == 'no-exports':
         replace(tree / 'server/index.js', 'module.exports = { app };', 'module.exports = {};')
+    elif kind == 'misreport-400':
+        replace(tree / 'server/index.js', '      res.status(201).json({ item });\n    } catch (err) {\n      next(err);',
+                "      res.status(201).json({ item });\n    } catch (err) {\n"
+                "      res.status(400).json({ error: 'invalid_body', field: 'name' });")
+    elif kind == 'restrict-safe-integer':
+        replace(tree / 'server/index.js', 'Number.isInteger(', 'Number.isSafeInteger(')
     elif kind == 'no-index':
         (tree / 'index.js').unlink()
     elif kind == 'child-test-from-file':
@@ -538,10 +573,12 @@ def controls():
         trees = control_trees(Path(temp))
         for control, check, expected, (kind, value), planted, note in CONTROLS:
             name = 'q5-' + control
-            if check == 'probe':
+            if check in ('probe', 'probe-large-qty'):
                 runs = [probe_attempts(trees[control], Path(value).name.split('-')[1], name, [], lambda _: None)
                         for _ in range(2)]
-                found, attempts = [run['class'] for run in runs], [run['attempts'] for run in runs]
+                found = [run['class'] if check == 'probe' else (run.get('large_qty') or {}).get('restricts')
+                         for run in runs]
+                attempts = [run['attempts'] for run in runs]
                 ok = found == [expected] * 2
             else:
                 done = two_passes(frozen(check), trees[control], name, [], lambda _: None)
@@ -556,7 +593,7 @@ def controls():
 
 
 def control_table(result):
-    shown = lambda value: str(value).lower() if isinstance(value, bool) else '/'.join(value) if isinstance(
+    shown = lambda value: str(value).lower() if isinstance(value, bool) else '/'.join(map(shown, value)) if isinstance(
         value, list) else str(value)
     lines = ['control\tcheck\ttree\texpected\tresult\tok']
     lines += [f'{c["id"]}\t{c["check"]}\t{c["tree"]}{" + planted" if c["planted"] else ""}\t{shown(c["expected"])}'
@@ -572,8 +609,8 @@ if __name__ == '__main__':
         print(json.dumps(findings(), indent=1))
     elif command == 'probe':
         print(json.dumps(probe(sys.argv[2:])))
-    elif command == 'probe-all':
-        print(json.dumps(probe_all(), indent=1))
+    elif command == 'probe-all' and sys.argv[2:] in ([], ['screen']):
+        print(json.dumps(probe_all(SCREEN if sys.argv[2:] else CELLS), indent=1))
     elif command == 'run':
         print(json.dumps(run(sys.argv[2], sys.argv[3:])))
     elif command == 'run-all' and len(sys.argv) == 3:

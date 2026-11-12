@@ -74,7 +74,8 @@
       "witnesses": {
         "f10-one-process-two-apps": "harm",
         "f10-one-process-path-alias": "harm",
-        "f10-nonobject-items-file": "harm"
+        "f10-nonobject-items-file": "harm",
+        "f10-write-failure-misreported": "misreport"
       }
     },
     "F11": {

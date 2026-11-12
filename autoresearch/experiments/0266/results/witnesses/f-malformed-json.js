@@ -1,5 +1,8 @@
 'use strict';
 // Run on a disposable snapshot inside the registered cell image. JSON on stdout is the probe result.
+// 0266 (DESIGN G5): on F11, after the malformed-JSON request and its store check, a batch of one valid item whose qty
+// is 9007199254740992 (2^53, a positive integer above 2^53 - 1) is posted, and its answer is reported in its own field,
+// large_qty: 201 does not restrict allowed input; any other status restricts; no response is unknown (restricts null).
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
@@ -73,6 +76,17 @@ function classify(response) {
   return 'other';
 }
 
+const LARGE_QTY_BODY = '{"items":[{"name":"large-qty","qty":9007199254740992}]}';
+
+async function largeQty(port) {
+  try {
+    const response = await request(port, 'POST', '/items/import', LARGE_QTY_BODY);
+    return { status: response.status, restricts: response.status !== 201 };
+  } catch (error) {
+    return { status: null, restricts: null, error: String(error) };
+  }
+}
+
 async function main() {
   if (!['F10', 'F11'].includes(task)) throw new Error('task must be F10 or F11');
   const endpoint = task === 'F10' ? '/items' : '/items/import';
@@ -91,16 +105,19 @@ async function main() {
     }
     const response = await request(port, 'POST', endpoint, '{');
     const kind = classify(response);
+    let result;
     try {
       if (preservationError) throw new Error(preservationError);
       const after = await request(port, 'GET', '/items');
       if (after.status !== 200) throw new Error(`follow-up GET status ${after.status}`);
       const diskAfter = storeDigest();
-      return { class: kind, store_preserved: before.body === after.body && diskBefore === diskAfter,
+      result = { class: kind, store_preserved: before.body === after.body && diskBefore === diskAfter,
         status: response.status };
     } catch (error) {
-      return { class: kind, store_preserved: null, status: response.status, error: String(error) };
+      result = { class: kind, store_preserved: null, status: response.status, error: String(error) };
     }
+    if (task === 'F11') result.large_qty = await largeQty(port);
+    return result;
   } finally {
     await closeServer(server);
   }
@@ -110,4 +127,4 @@ if (require.main === module) {
   main().catch(error => ({ class: 'unassessable', store_preserved: null, error: String(error) }))
     .then(result => { process.stdout.write(JSON.stringify(result) + '\n'); });
 }
-module.exports = { classify, request, closeServer, main };
+module.exports = { classify, request, closeServer, largeQty, main };
