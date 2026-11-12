@@ -1721,6 +1721,30 @@ class RunFlow(unittest.TestCase):
                     run_cell.run(runtime, 'x', 'D3', column, config)
             self.assertFalse((Path(temp) / 'output').exists())
 
+    def test_a_slot_runs_only_as_its_own_row_says(self):
+        # F1b: a name of cells.tsv, screen.tsv or smoke.tsv with another task, arm column or engine is refused before
+        # anything is written; a name in none of them is not a slot of 0266.
+        with tempfile.TemporaryDirectory() as temp:
+            runtime = Path(temp) / 'runtime.json'
+            runtime.write_text(json.dumps(dict(output=str(Path(temp) / 'output'))))
+            for name, task, column, config in (('c002-F10-claude-C-r1', 'F10', 'C-K1', 'claude'),
+                                               ('s01-F10-claude-K1-r1', 'F10', 'C-K2', 'claude'),
+                                               ('smoke-codex-C', 'SMOKE', 'B', 'codex'),
+                                               ('c001-F10-claude-B-r1', 'F10', 'B', 'codex')):
+                with self.subTest(name=name), self.assertRaisesRegex(ValueError, f'{name} is the slot '):
+                    run_cell.run(runtime, name, task, column, config)
+            self.assertFalse((Path(temp) / 'output').exists())
+            self.assertEqual(run_cell.schedule_row('s01-F10-claude-K1-r1'), ('F10', 'C-K1', 'claude'))
+            self.assertIsNone(run_cell.schedule_row('cell-1'))
+        with tempfile.TemporaryDirectory() as temp:  # the right row passes the check (and goes on to the seal)
+            root = Path(temp)
+            (root / 'output').mkdir()
+            runtime = root / 'runtime.json'
+            runtime.write_text(json.dumps(dict(output=str(root / 'output'))))
+            self.assertEqual(run_cell.run(runtime, 's01-F10-claude-K1-r1', 'F10', 'C-K1', 'claude'), 2)
+            self.assertEqual(json.loads((root / 'output/verdict-s01-F10-claude-K1-r1.json').read_text())['reason'],
+                             'instruction assertion: seal missing')
+
     def test_a_graded_cell_loses_codex_caches_only_and_records_them(self):
         """D-b, allowed: once a measured cell's verdict is written and is not a STOP, exactly run_cell.PRUNED leaves
         it, in both arms, and pruned.json records each root's files (a symlink counted, not followed), bytes and

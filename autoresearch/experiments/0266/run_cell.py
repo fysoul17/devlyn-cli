@@ -278,7 +278,21 @@ def harness_unchanged(out, baseline):
             and digest(out / 'harness/caller.json') == baseline['caller_sha256'])
 
 
+def schedule_row(name):
+    """The row of cells.tsv, screen.tsv or smoke.tsv (beside this file) that names the slot, as (task, arm column,
+    config); None for a name that is no slot of 0266."""
+    for schedule in ('cells.tsv', 'screen.tsv', 'smoke.tsv'):
+        for line in (HERE / schedule).read_text().splitlines():
+            row = line.split()
+            if row and row[0] == name:
+                return row[1], row[2], row[3]
+    return None
+
+
 def run(runtime_path, name, task, column, config, *, expected_account=None):
+    row = schedule_row(name)
+    if row is not None and row != (task, column, config):  # a slot runs only as its own row says
+        raise ValueError(f'{name} is the slot {" ".join(row)}, not {task} {column} {config}')
     runtime = json.loads(Path(runtime_path).read_text())
     arm, package = prepare.arm_package(runtime, column)  # refuses an unknown column, and C without a GO screen decision
     if config not in prepare.CONFIGS:
