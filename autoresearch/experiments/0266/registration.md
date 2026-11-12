@@ -290,8 +290,8 @@ owner's approval.
 - A change of the default Claude login between cells was exercised with fakes only.
 - The screen lane's pass over a STOP whose latch was cleared, and the screen's refusal to redispatch a STOP in which an
   owner ran, were exercised with the fixture driver only.
-- The witness retry (two more passes after an unresolved pair) was exercised with fake containers only; the real
-  witness controls hold one retried pair (the no-pytest controls).
+- The witness retry (two more passes after an unresolved pair) ran for real only on the three no-pytest Q5 controls
+  (each kept `first_attempts`); on a cell's tree it has not run.
 - The operator hold was exercised with the fixture driver only.
 - The new witness and the probe's G5 field ran for real on archived 0265 trees and on the Q5 control trees, never on a
   tree a 0266 cell left.
