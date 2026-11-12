@@ -105,13 +105,13 @@ class Witnesses(unittest.TestCase):
                 judge.run('f10-write-failure-misreported', ['c001-F10-claude-B-r1'])
             self.assertEqual([timeout for argv, timeout in events if argv[1] == 'start'], [60, 60])
 
-    def test_a_refused_create_removes_nothing(self):
-        # F11: a create that exited non-zero made no container (the name may be another process's): no `docker rm`.
-        # A create whose outcome is unknown (a timeout) may have made ours: it is removed.
+    def test_only_a_created_container_is_removed(self):
+        # F11: the container is removed only after a create that succeeded; after one that exited non-zero, timed out
+        # or raised, the name may be another process's, so nothing is removed and the error is raised.
         with tempfile.TemporaryDirectory() as temp:
             judge, _ = self.module(Path(temp))
             for create, removed in ((subprocess.CompletedProcess([], 1, '', 'Conflict. The name is in use'), False),
-                                    (subprocess.TimeoutExpired(['docker'], 60), True)):
+                                    (subprocess.TimeoutExpired(['docker'], 60), False), (OSError('no docker'), False)):
                 calls = []
 
                 def fake(argv, **kwargs):
@@ -126,6 +126,11 @@ class Witnesses(unittest.TestCase):
                         self.assertRaisesRegex(RuntimeError, 'docker create failed'):
                     judge.docker_attempt('c001', 'witness-c001-0', ['--network', 'none', 'image'], 30)
                 self.assertEqual(calls, ['create', 'rm'] if removed else ['create'])
+            fake, events, _ = self.fake_docker([subprocess.TimeoutExpired(['docker'], 30)])  # created, start timed out
+            with mock.patch.object(judge.subprocess, 'run', side_effect=fake):
+                done, _, _ = judge.docker_attempt('c001', 'witness-c001-0', ['--network', 'none', 'image'], 30)
+            self.assertIsInstance(done, subprocess.TimeoutExpired)
+            self.assertEqual([argv[1] for argv, _ in events], ['create', 'start', 'inspect', 'rm'])
 
     def test_frozen_list_and_pins(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -449,6 +454,9 @@ class Witnesses(unittest.TestCase):
             self.assertEqual([(c['id'], c['result'], c['ok']) for c in result['controls']],
                              [('death', True, True), ('no-pytest', 'unresolved', True),
                               ('probe', ['json_error_400', 'html_400'], False)])
+            # a retried control keeps its first pair readable; one that resolved has none
+            self.assertEqual([[a['exit'] for a in c.get('first_attempts', [])] for c in result['controls']],
+                             [[], [2, 2], []])
             self.assertEqual(result['result'], 'FAIL')
             self.assertEqual(json.loads((Path(temp) / 'q5-controls.json').read_text()), result)
             self.assertEqual(list(output.iterdir()), [])

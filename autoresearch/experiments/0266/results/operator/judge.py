@@ -222,11 +222,10 @@ def findings():
 
 
 def docker_attempt(cell, container, options, run_limit):
-    """Return a started container's result (or timeout); never count failed startup. A create that exited non-zero
-    made no container (its name may be another's), so nothing is removed after it; after a create whose outcome is
-    unknown (a timeout or an OS error) the name may be ours and is removed."""
+    """Return a started container's result (or timeout); never count failed startup. The container is removed only
+    after a create that succeeded: after one that exited non-zero, timed out or raised, the name may be another
+    process's, so nothing is removed and the error is raised."""
     create_error = None
-    refused = False
     state_error = None
     never_started_error = None
     invalid_error = None
@@ -240,7 +239,7 @@ def docker_attempt(cell, container, options, run_limit):
             create_error = str(exc)
         else:
             if created.returncode:
-                create_error, refused = f'exit {created.returncode}: {created.stdout}{created.stderr}', True
+                create_error = f'exit {created.returncode}: {created.stdout}{created.stderr}'
         if create_error is None:
             try:
                 outcome = subprocess.run(['docker', 'start', '-a', container], capture_output=True,
@@ -286,7 +285,7 @@ def docker_attempt(cell, container, options, run_limit):
                                                                   outcome.stdout, outcome.stderr)
     finally:
         try:
-            if not refused:
+            if create_error is None:
                 subprocess.run(['docker', 'rm', '-f', container], capture_output=True, text=True,
                                check=True, timeout=10)
         except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
@@ -601,14 +600,15 @@ def controls():
                         for _ in range(2)]
                 found = [run['class'] if check == 'probe' else (run.get('large_qty') or {}).get('restricts')
                          for run in runs]
-                attempts = [run['attempts'] for run in runs]
+                attempts, first = [run['attempts'] for run in runs], None
                 ok = found == [expected] * 2
             else:
                 done = two_passes(frozen(check), trees[control], name, [], lambda *_: None)
-                found, attempts = done['result'], done['attempts']
+                found, attempts, first = done['result'], done['attempts'], done.get('first_attempts')
                 ok = found == expected
             result['controls'].append(dict(id=control, check=check, tree=f'{kind} {value}', planted=PLANTS.get(planted),
-                                           note=note, expected=expected, result=found, ok=ok, attempts=attempts))
+                                           note=note, expected=expected, result=found, ok=ok, attempts=attempts,
+                                           **({'first_attempts': first} if first else {})))
             path.write_text(json.dumps(result, indent=2) + '\n')
     result['result'] = 'PASS' if all(c['ok'] for c in result['controls']) else 'FAIL'
     path.write_text(json.dumps(result, indent=2) + '\n')
