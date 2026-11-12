@@ -152,14 +152,54 @@ class Witnesses(unittest.TestCase):
                 judge, output = self.module(Path(temp))
                 cell = 'c001-F10-claude-A-r1'
                 self.snapshot(output, cell)
-                fake, _, _ = self.fake_docker([subprocess.TimeoutExpired(['docker'], 30) if code == 'timeout'
-                                               else subprocess.CompletedProcess([], code, '{"rounds":[]}\n', '')
-                                               for code in codes])
+                retried = codes * (2 if expected == 'unresolved' else 1)  # an unresolved pair is made once more
+                fake, _, pending = self.fake_docker([subprocess.TimeoutExpired(['docker'], 30) if code == 'timeout'
+                                                     else subprocess.CompletedProcess([], code, '{"rounds":[]}\n', '')
+                                                     for code in retried])
                 with mock.patch.object(judge.subprocess, 'run', side_effect=fake):
                     result = judge.run('f10-one-process-two-apps', [cell])[cell]
                 self.assertEqual(result['result'], expected)
+                self.assertFalse(pending)
                 stored = json.loads((output / 'witnesses.json').read_text())['f10-one-process-two-apps'][cell]
                 self.assertEqual(stored, result)
+
+    def test_an_unresolved_pair_is_retried_once(self):
+        # DESIGN "Unknowns": two passes that give unresolved are made once more; the second pair is the result and the
+        # first is kept as first_attempts. A resolved pair is never retried; a stored unresolved pair without
+        # first_attempts has its retry made on the next run.
+        cases = (([1, 2, 1, 1], True), ([2, 2, 2, 2], 'unresolved'), ([0, 0], False), ([3, 2, 3, 3], 'not_applicable'))
+        for exits, expected in cases:
+            with self.subTest(exits=exits), tempfile.TemporaryDirectory() as temp:
+                judge, output = self.module(Path(temp))
+                self.snapshot(output, 'c001-F10-claude-B-r1')
+                fake, events, pending = self.fake_docker([subprocess.CompletedProcess([], code, '', '')
+                                                          for code in exits])
+                with mock.patch.object(judge.subprocess, 'run', side_effect=fake):
+                    entry = judge.run('f10-write-failure-misreported', ['c001-F10-claude-B-r1'])['c001-F10-claude-B-r1']
+                self.assertFalse(pending)
+                self.assertEqual((entry['result'], [a['exit'] for a in entry['attempts']]),
+                                 (expected, exits[-2:]))
+                stored = json.loads((output / 'witnesses.json').read_text())['f10-write-failure-misreported'][
+                    'c001-F10-claude-B-r1']
+                if len(exits) == 4:
+                    self.assertEqual([a['exit'] for a in stored['first_attempts']], exits[:2])
+                else:
+                    self.assertNotIn('first_attempts', stored)
+                self.assertEqual(stored['result'], expected)
+        with tempfile.TemporaryDirectory() as temp:  # a stored pair whose retry is still due
+            judge, output = self.module(Path(temp))
+            self.snapshot(output, 'c001-F10-claude-B-r1')
+            pin = judge.WITNESSES['f10-write-failure-misreported'][1]
+            (output / 'witnesses.json').write_text(json.dumps({'f10-write-failure-misreported': {
+                'c001-F10-claude-B-r1': dict(attempts=[dict(exit=2, error='x')] * 2, result='unresolved',
+                                             witness_sha256=pin)}}))
+            fake, _, pending = self.fake_docker([subprocess.CompletedProcess([], 0, '', '')] * 2)
+            with mock.patch.object(judge.subprocess, 'run', side_effect=fake):
+                entry = judge.run('f10-write-failure-misreported', ['c001-F10-claude-B-r1'])['c001-F10-claude-B-r1']
+            self.assertFalse(pending)
+            self.assertEqual((entry['result'], len(entry['first_attempts'])), (False, 2))
+            with mock.patch.object(judge.subprocess, 'run', side_effect=AssertionError('Docker was called')):
+                judge.run('f10-write-failure-misreported', ['c001-F10-claude-B-r1'])  # final: never again
 
     def test_limits_follow_the_source_experiments(self):
         expected = {'d4-writer-death': 300, 'd4-writer-stall': 300, 'd4-writer-startup': 300,
@@ -183,11 +223,12 @@ class Witnesses(unittest.TestCase):
             self.snapshot(output, cell)
             hung = '{"reproduced": true, "hung": 1, "results": [{"test": "tests/test_fifo.py::test_x", "stack": ["File x"]}]}\n'
             fake, _, _ = self.fake_docker([subprocess.CompletedProcess([], 1, hung, ''),
-                                           subprocess.CompletedProcess([], 2, 'WITNESS ERROR: x\n', 'trace')])
+                                           subprocess.CompletedProcess([], 2, 'WITNESS ERROR: x\n', 'trace')] * 2)
             with mock.patch.object(judge.subprocess, 'run', side_effect=fake):
-                attempts = judge.run('d4-writer-death', [cell])[cell]['attempts']
-            self.assertEqual(attempts[0], {'exit': 1, 'error': None, 'stdout': hung})
-            self.assertEqual(attempts[1], {'exit': 2, 'error': 'WITNESS ERROR: x\ntrace'})
+                entry = judge.run('d4-writer-death', [cell])[cell]
+            for attempts in (entry['first_attempts'], entry['attempts']):  # unresolved, then its retry
+                self.assertEqual(attempts[0], {'exit': 1, 'error': None, 'stdout': hung})
+                self.assertEqual(attempts[1], {'exit': 2, 'error': 'WITNESS ERROR: x\ntrace'})
 
     def test_parseoptions_marker(self):
         cases = [((1, 'P0258-WITNESS bypass\n', ''), 1), ((0, 'P0258-WITNESS public\n', ''), 0),
@@ -198,7 +239,8 @@ class Witnesses(unittest.TestCase):
                 judge, output = self.module(Path(temp))
                 cell = 'd001-D3-claude-A-r1'
                 self.snapshot(output, cell)
-                fake, _, _ = self.fake_docker([subprocess.CompletedProcess([], code, stdout, stderr)] * 2)
+                fake, _, _ = self.fake_docker([subprocess.CompletedProcess([], code, stdout, stderr)]
+                                              * (4 if exit_code == 2 else 2))  # an unresolved pair is retried
                 with mock.patch.object(judge.subprocess, 'run', side_effect=fake):
                     result = judge.run('d3-parseoptions-override', [cell])[cell]
                 self.assertEqual([a['exit'] for a in result['attempts']], [exit_code] * 2)
@@ -356,7 +398,7 @@ class Witnesses(unittest.TestCase):
                         ('probe', 'probe', 'json_error_400', ('archive', 'runs/c001-F10-claude-A-r1'), None, ''))
             done = lambda code, stdout: subprocess.CompletedProcess([], code, stdout, '')
             fake, events, pending = self.fake_docker([done(1, '{"reproduced": true}\n')] * 2
-                                                     + [done(2, 'WITNESS ERROR: No module named pytest\n')] * 2
+                                                     + [done(2, 'WITNESS ERROR: No module named pytest\n')] * 4
                                                      + [done(0, '{"class":"json_error_400","store_preserved":true}\n'),
                                                         done(0, '{"class":"html_400","store_preserved":true}\n')])
             planted = []
@@ -370,7 +412,7 @@ class Witnesses(unittest.TestCase):
                     mock.patch.object(judge.subprocess, 'run', side_effect=docker):
                 result = judge.controls()
             self.assertFalse(pending)
-            self.assertEqual(planted, [False, False, True, True, False, False])
+            self.assertEqual(planted, [False, False, True, True, True, True, False, False])  # unresolved: retried
             self.assertEqual([(c['id'], c['result'], c['ok']) for c in result['controls']],
                              [('death', True, True), ('no-pytest', 'unresolved', True),
                               ('probe', ['json_error_400', 'html_400'], False)])

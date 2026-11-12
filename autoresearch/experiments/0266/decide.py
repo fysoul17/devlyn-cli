@@ -221,13 +221,14 @@ def load(out, cells):
 
 def witness_state(witnesses, witness, tree):
     """0261's two-pass result as 'true', 'false' or 'not_applicable'; 'unresolved' when both passes ran without one
-    result; 'missing' otherwise."""
+    result after judge.py's retry (`first_attempts`: DESIGN "Unknowns", an unknown witness is retried once); 'missing'
+    otherwise, an unresolved pair whose retry is still due among them."""
     entry = (witnesses or {}).get(witness, {}).get(tree)
     if not isinstance(entry, dict) or not isinstance(entry.get('attempts'), list) or len(entry['attempts']) != 2:
         return 'missing'
     value = later.witness_result(entry)
     if value is None:
-        return 'unresolved' if entry.get('result') == 'unresolved' else 'missing'
+        return 'unresolved' if entry.get('result') == 'unresolved' and 'first_attempts' in entry else 'missing'
     return value if value == 'not_applicable' else str(value).lower()
 
 

@@ -87,11 +87,14 @@ class Run:
                 self.witness(name + suffix, witness, 0)
         (self.out / f'verdict-{name}{suffix}.json').write_text(json.dumps(record))
 
-    def witness(self, name, witness, first, second=None):
+    def witness(self, name, witness, first, second=None, retried=True):
+        """judge.py's record; an unresolved pair carries the first pair of its retry unless retried is False."""
         exits = [first, first if second is None else second]
         result = (('not_applicable' if exits[0] == 3 else exits[0] == 1)
                   if exits[0] == exits[1] and exits[0] in (0, 1, 3) else 'unresolved')
-        self.witnesses[witness][name] = dict(attempts=[dict(exit=e) for e in exits], result=result, witness_sha256='x')
+        self.witnesses[witness][name] = dict(attempts=[dict(exit=e) for e in exits], result=result, witness_sha256='x',
+                                             **({'first_attempts': [dict(exit=2)] * 2}
+                                                if result == 'unresolved' and retried else {}))
 
     def probe(self, name, kind='json_error_400', kept=True, restricts=False, attempts=None):
         """judge.py's record: the final attempt, after one retry when the first was unknown (attempts=2)."""
@@ -428,6 +431,18 @@ class Unknowns(Case):
     def disputed(self, arm, index, witness_result='true', claude=True, codex=False):
         name = self.run.names('claude', 'D4', arm)[index]
         self.run.pair(name, 'd4-writer-death', claude, codex, witness_result=witness_result)
+
+    def test_an_unresolved_witness_waits_for_its_retry(self):
+        # DESIGN "Unknowns": an unknown witness is retried once; an unresolved pair without judge.py's first_attempts
+        # has its retry still due, so it reads missing and G2 lists it.
+        name = self.run.names('claude', 'F10', 'C')[0]
+        self.run.witness(name, 'f10-write-failure-misreported', 1, 2, retried=False)
+        self.assertEqual(decide.witness_state(self.run.witnesses, 'f10-write-failure-misreported', name), 'missing')
+        g2 = self.run.evaluate()['guards']['G2']
+        self.assertEqual(g2['missing'], [f'{name}: f10-write-failure-misreported has no two-pass result'])
+        self.run.witness(name, 'f10-write-failure-misreported', 1, 2)
+        self.assertEqual(decide.witness_state(self.run.witnesses, 'f10-write-failure-misreported', name), 'unresolved')
+        self.assertEqual(self.run.evaluate()['guards']['G2']['missing'], [])
 
     def test_disputed_false_completion_pair(self):
         # claude: definite C 3 v B 1 holds (<= B + 2); a disputed C pair makes it 3 or 4.

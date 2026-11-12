@@ -339,13 +339,17 @@ def outcome(attempts):
             if len(exits) == 2 and exits[0] == exits[1] and exits[0] in (0, 1, 3) else 'unresolved')
 
 
-def two_passes(witness, tree, name, attempts, record):
-    """A witness's two passes on one tree, as run-all makes them; each new pass is handed to record() as it ends."""
+def two_passes(witness, tree, name, attempts, record, first=None):
+    """A witness's two passes on one tree, as run-all makes them; each new pass is handed to record(attempts, first)
+    as it ends. DESIGN "Unknowns": two passes that give `unresolved` are made once more; the result is then the
+    second pair's, and the first pair is kept as `first_attempts`. A pair resumed with `first` is that retry."""
     attempts = list(attempts)
     for index in range(len(attempts), 2):
-        attempts.append(witness_pass(witness, tree, name, f'witness-{name}-{index}'))
-        record(attempts)
-    return {'attempts': attempts, 'result': outcome(attempts)}
+        attempts.append(witness_pass(witness, tree, name, f'witness-{name}-{index + (2 if first else 0)}'))
+        record(attempts, first)
+    if outcome(attempts) == 'unresolved' and first is None:
+        return two_passes(witness, tree, name, [], record, first=attempts)
+    return {'attempts': attempts, 'result': outcome(attempts), **({'first_attempts': first} if first else {})}
 
 
 def run(witness, cells):
@@ -361,12 +365,13 @@ def run(witness, cells):
             raise ValueError(f'{cell}: witness differs from stored witness_sha256; use a new file name')
     done = {}
     for cell in cells:
-        def record(attempts, cell=cell):
-            entry = {'attempts': attempts, 'result': outcome(attempts), 'witness_sha256': witness_sha256}
+        def record(attempts, first, cell=cell):
+            entry = {'attempts': attempts, 'result': outcome(attempts), 'witness_sha256': witness_sha256,
+                     **({'first_attempts': first} if first else {})}
             update(path, lambda result: result.setdefault(label, {}).update({cell: entry}))
-        previous = stored.get(cell)
-        done[cell] = dict(two_passes(witness, OUT / cell / 'snapshot', cell, previous['attempts'] if previous else [],
-                                     record), witness_sha256=witness_sha256)
+        previous = stored.get(cell) or {}  # an unresolved pair without first_attempts is retried here
+        done[cell] = dict(two_passes(witness, OUT / cell / 'snapshot', cell, previous.get('attempts', []), record,
+                                     previous.get('first_attempts')), witness_sha256=witness_sha256)
     return done
 
 
@@ -582,7 +587,7 @@ def controls():
                 attempts = [run['attempts'] for run in runs]
                 ok = found == [expected] * 2
             else:
-                done = two_passes(frozen(check), trees[control], name, [], lambda _: None)
+                done = two_passes(frozen(check), trees[control], name, [], lambda *_: None)
                 found, attempts = done['result'], done['attempts']
                 ok = found == expected
             result['controls'].append(dict(id=control, check=check, tree=f'{kind} {value}', planted=PLANTS.get(planted),
