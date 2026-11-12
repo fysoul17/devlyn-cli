@@ -778,7 +778,7 @@ class ScreenRules(unittest.TestCase):
         result = self.screen.decide()
         self.assertEqual((result['decision'], result['candidate']), ('STOP', 'K3'))
         self.assertIn('not screened in', result['note'])
-        self.assertEqual({k: v['result'] for k, v in result['predictions'].items()}, dict(P1='MISSES', P2='MISSES'))
+        self.assertEqual({k: v['result'] for k, v in result['predictions'].items()}, dict(P1='MISSES', P2='HOLDS'))
         (self.screen.root / decide.SCREEN_DECISION).unlink()
         self.screen.events('K3', 1, nulls=1)
         result = self.screen.decide()
@@ -833,6 +833,28 @@ class Predictions(Case):
         self.run.slot(self.run.names('codex', 'D3', 'C')[0], tokens=(1000, 100), usage='PARTIAL')
         scored = {pid: value['result'] for pid, value in self.run.evaluate()['predictions'].items()}
         self.assertEqual((scored['P6'], scored['P7'], scored['P8']), ('UNSCORED', 'UNSCORED', 'HOLDS'))
+
+
+class PredictionColumns(Case):
+    """F3: P2 and P7 are scored against their "Holds if" column as written."""
+
+    def test_p2_is_whether_the_screen_selects_k3(self):
+        for screen, expected in ((dict(decision='STOP', candidate='K3'), True), (dict(decision='GO', candidate='K3'), True),
+                                 (dict(decision='STOP', candidate='K2'), False), (dict(decision='UNDECIDED'), None)):
+            self.assertEqual(decide.screen_predictions(screen)['P2'], expected, screen)
+
+    def test_p7_misses_on_one_definite_case_whatever_is_missing(self):
+        name = self.run.name('codex', 'D3', 'B', 3)
+        (self.run.out / f'verdict-{name}.json').unlink()
+        self.assertEqual(self.run.evaluate()['predictions']['P7']['result'], 'UNSCORED')
+        self.run.slot(self.run.names('claude', 'D4', 'B')[0], scope=('x.txt',))  # either arm counts
+        self.assertEqual(self.run.evaluate()['predictions']['P7']['result'], 'MISSES')
+        self.run.slot(self.run.names('claude', 'D4', 'B')[0])
+        self.run.probe(self.run.names('codex', 'F11', 'B')[0], kept=False)  # a store changed after a rejection
+        self.assertEqual(self.run.evaluate()['predictions']['P7']['result'], 'MISSES')
+        self.run.probe(self.run.names('codex', 'F11', 'B')[0])
+        self.run.slot(name)
+        self.assertEqual(self.run.evaluate()['predictions']['P7']['result'], 'HOLDS')
 
 
 class Reported(Case):

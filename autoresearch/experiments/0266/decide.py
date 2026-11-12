@@ -853,7 +853,7 @@ def screen_predictions(screen):
     decision = (screen or {}).get('decision')
     if decision not in ('GO', 'STOP'):
         return dict(P1=None, P2=None)
-    return dict(P1=decision == 'GO', P2=decision == 'GO' and screen.get('candidate') == 'K3')
+    return dict(P1=decision == 'GO', P2=screen.get('candidate') == 'K3')  # P2: "the screen selects K3"
 
 
 def predictions(reading, guards, outcome, rows, probes, screen):
@@ -877,8 +877,8 @@ def predictions(reading, guards, outcome, rows, probes, screen):
     changed = [store_changed(f) if f else None for r in rows.values() if r['final'] and r['task'] in ('F10', 'F11')
                for f in [probe_record(probes, r['name'], r['task'])]]
     violated = any(r['scope'] or r['finding'] for r in rows.values()) or True in changed
-    values['P7'] = (None if not every_final or guards['G2']['missing'] else False if violated else
-                    None if None in changed else True)
+    values['P7'] = (False if violated else  # one definite case misses, whatever is still missing
+                    None if not every_final or guards['G2']['missing'] or None in changed else True)
     values['P8'] = None if not every_final else outcome['verdict'].startswith(('EFFECT_WITH_REGRESSION',
                                                                                'NOT_FINISHED'))
     return {pid: dict(text, result='UNSCORED' if values[pid] is None else 'HOLDS' if values[pid] else 'MISSES')
