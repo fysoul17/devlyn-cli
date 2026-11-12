@@ -1,40 +1,47 @@
-"""Seal B's devlyn-cli 4.3.30 launch and assert each cell against it: instructions.py seal|seal-forms <runtime.json>.
+"""Seal the launch of every 0266 package and assert each cell against it: instructions.py seal|seal-forms <runtime.json>.
 
-seal (before SMOKE; DESIGN Q2: no model call, no credential mounted): the package identity (the tarball's sha256 and
-npm integrity from the control manifest, the unpacked tree against the tarball, package.json's version, the digest its
-release.json declares), the pinned CLI versions, the session text `devlyn run` plans for a cell HOME (the release's
-runtime principles and skill catalog), and the launch probe:
-- For each engine x base tree (TREES), a B and an A cell are prepared exactly as run_cell prepares them (under scratch,
-  never output/) and their argv run in the cell's own container (cell.create_argv) with recording shims first on PATH:
+Packages (DESIGN "Arms"): B, the published devlyn-cli 4.3.31, and C-K1, C-K2, C-K3 (control.py). Both arms launch
+through `devlyn run` with the cell's package mounted read-only at /install; each cell is asserted against its own
+package's seal.
+
+seal (before SMOKE; DESIGN Q2: no model call, no credential mounted): each package's identity (B: the tarball's sha256
+and npm integrity from the control manifest and the unpacked tree against the tarball; every package: its tree sha256
+and release digest against control.PINS, package.json's version, and for C its comparison with B, control.compare),
+the pinned CLI versions, the session text `devlyn run` plans from each package for a cell HOME (the release's runtime
+principles and skill catalog) with the candidate sentences it holds (C: its own exactly once and no other; B: none of
+the three), and the launch probe:
+- For each package x engine x base tree (TREES), a cell is prepared exactly as run_cell prepares it (under scratch,
+  never output/) and its argv runs in the cell's own container (cell.create_argv) with recording shims first on PATH:
   a shim passes `--version` and Codex's `app-server` to the pinned binary and, for any other call, records its argv,
-  environment and the bytes of every file its argv names, then exits 0. Sealed per engine x tree: B's argv with the
-  run folder normalised (raw beside it), the sha256 of its plan files (Claude's appended file, Codex's
-  developer_instructions; each must equal the session text), the devlyn projection Codex B's CODEX_HOME holds, what
-  devlyn changed in the engine's environment, the status line and the release digest. A must be handed exactly O with
-  nothing devlyn in HOME or the environment.
+  environment and the bytes of every file its argv names, then exits 0. Sealed per package x engine x tree: the argv
+  with the run folder normalised (raw beside it), the sha256 of its plan files (Claude's appended file, Codex's
+  developer_instructions; each must equal the package's session text), the devlyn projection Codex's CODEX_HOME
+  holds, the status line and the release digest.
 - Control: B's argv with --strict-mcp-config must stop with run-argument-unsupported and hand the engine nothing.
-- Codex model input without a model call: `codex debug prompt-input <prompt>` through `devlyn run` (B) and raw (A) from
-  a fresh copy of each cell HOME, with both arms' `remote_plugin = false` (O10). B shows the session text once, the
-  devlyn plugin's skills and no plugin skill root but devlyn's; A shows none of them.
+- Codex model input without a model call: `codex debug prompt-input <prompt>` through `devlyn run` for every package,
+  and raw once per tree (the reference), from a fresh copy of the cell HOME, with `remote_plugin = false` (O10). A
+  package's input shows its session text once, the devlyn plugin's skills and no plugin skill root but devlyn's, and
+  otherwise the reference's skills and AGENTS.md blocks; the reference shows none of devlyn's.
 - Reader control: a fixture HOME with a foreign plugin in plugins/cache, a marketplace entry in config.toml and a
   ~/.codex/AGENTS.md is flagged on all three by the model-input reader; the clean HOME passes.
 Writes <output>.parent/instructions.seal.json with qualification PENDING; any failed expectation writes nothing.
 
 seal-forms (after SMOKE): from smoke-<engine>-B, its status line, its HOME release digest, Claude's devlyn plugin entry
 in the init event, Codex's projection folder and where Codex's first owner request carries the session text; each
-that the launch probe also saw must equal its SMOKE seal. Then check() on all four SMOKE cells; PASS only when each has
-a finished verdict and passes, and Codex B's usage is COMPLETE with no session besides the owner's (DESIGN Q7).
+that the launch probe also saw must equal its SMOKE seal. smoke-<engine>-C (C-K3) must show the same plugin entry and
+location against K3's probe. Then check() on all four SMOKE cells; PASS only when each has a finished verdict and
+passes, and Codex B's usage is COMPLETE with no session besides the owner's (DESIGN Q7).
 
-check(cell, plan, seal): DESIGN "Per-cell assertions" for the cell's arm, tied to the launch probe's seal for its engine
-and task tree; [] passes, otherwise '<assertion>: <detail>'.
+check(cell, plan, seal): DESIGN "Per-cell assertions" for the cell's package, tied to the launch probe's seal for its
+package, engine and task tree; [] passes, otherwise '<assertion>: <detail>'.
 
 Shapes read: run/stderr lines (`devlyn run` writes its status line, or `devlyn run: <code> <params>` when it refuses,
 bin/harness-run.js); Claude's system/init events in run/stdout (plugins [{name, path, source}], built-ins with path
 'builtin' as in every 0257 cell; mcp_servers); Codex's owner thread (run/stdout thread.started) and its first
 inference_started request payload under cell/trace (0257 codex_form; 0232 trace schema 1); Codex's model input (a
 skills block listing `<plugin>:<skill>` entries and its skill roots, AGENTS.md blocks), as `codex debug prompt-input`
-0.164.0 renders it (fixtures/cell/prompt-input-*.json). A missing or ambiguous shape is a violation, never an empty
-match; seal-forms says what it looked for and what it found.
+0.164.0 renders it (0265's fixtures/cell/prompt-input-*.json). A missing or ambiguous shape is a violation, never an
+empty match; seal-forms says what it looked for and what it found.
 """
 import base64
 import hashlib
@@ -50,13 +57,14 @@ import tomllib
 import uuid
 
 HERE = Path(__file__).resolve().parent
+_spec = importlib.util.spec_from_file_location('control0266i', HERE / 'control.py')
+control = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(control)
 ENGINES = ('claude', 'codex')
-ARMS = ('A', 'B')
+ARMS = ('B', 'C')
+PACKAGES = control.PACKAGES
 TREES = ('SMOKE', 'D3', 'D4', 'B5', 'F10', 'F11')
-VERSION = '4.3.30'
-TARBALL_SHA256 = '139ec4cb86a1d82ea5617e35de564b509f9247ba89c0fc43f7946730127b2970'
-INTEGRITY = 'sha512-1qehRZd7iA5mwf15rXzjfmAEX6MHjMwD1c52wN6eJgmg489WKnq57LQMCZRH/7LgixPeePIV/oy2fDq/sT6ISg=='
-RELEASE_DIGEST = '53a2f9f2d3d8cf8cf43391dd92224aa5190e331f0a993649d0a06256ca6a417d'
+VERSION = '4.3.31'
 CLI = {'claude': '2.1.322', 'codex': '0.164.0'}
 CHANNELS = {'claude': ('append-system-prompt-file', 'plugin-dir'),
             'codex': ('developer_instructions', 'session-plugin')}
@@ -119,14 +127,7 @@ def lines(path):
     return found
 
 
-def canonical(value):
-    """bin/release.js canonical(): sorted keys, no whitespace, JSON.stringify scalars."""
-    if isinstance(value, list):
-        return '[' + ','.join(canonical(item) for item in value) + ']'
-    if isinstance(value, dict):
-        return '{' + ','.join(json.dumps(key, ensure_ascii=False) + ':' + canonical(value[key])
-                              for key in sorted(value)) + '}'
-    return json.dumps(value, ensure_ascii=False)
+canonical = control.canonical  # bin/release.js canonical()
 
 
 def release_record(path):
@@ -139,20 +140,50 @@ def release_record(path):
     return dict(version=manifest.get('version'), digest=declared['value'])
 
 
+def column(package):
+    """The schedule arm column that prepares a cell of this package (prepare.arm_package)."""
+    return 'B' if package == 'B' else f'C-{package}'
+
+
+def sentences(package, text):
+    """DESIGN "Apparatus": what a package delivers as principles holds its own candidate sentence exactly once and no
+    other (C), or none of the three (B). [] passes."""
+    found, expected = control.sentence_counts(text), {k: int(k == package) for k in control.CANDIDATES}
+    return [] if found == expected else [f'{package} delivers the candidate sentences {found}, expected {expected}']
+
+
 def package_identity(runtime):
-    control = Path(runtime['control'])
-    b = json.loads(Path(str(control) + '.manifest.json').read_text())['packages']['B']
-    if b['sha256'] != TARBALL_SHA256 or b['integrity'] != INTEGRITY:
+    """Every package against its pin (control.PINS: tree sha256, release digest), its control manifest record and its
+    version; B's tarball against its sha256 and npm integrity and its unpacked tree against the tarball; each C
+    package's comparison with B (control.compare) equal to the one the control build recorded."""
+    folder = Path(runtime['control'])
+    recorded = json.loads(Path(str(folder) + '.manifest.json').read_text())['packages']
+    b = recorded['B']
+    if b['sha256'] != control.TARBALL_SHA256 or b['integrity'] != control.INTEGRITY:
         raise ValueError('B registry tarball identity mismatch')
-    package = control / 'packages/B/package'
+    unpacked = folder / 'packages/B/package'
     expected = {name.removeprefix('package/'): value for name, value in b['files'].items()}
-    if {str(p.relative_to(package)): digest(p.read_bytes()) for p in package.rglob('*') if p.is_file()} != expected:
+    if {str(p.relative_to(unpacked)): digest(p.read_bytes()) for p in unpacked.rglob('*') if p.is_file()} != expected:
         raise ValueError('B unpacked package differs from its tarball')
-    version = json.loads((package / 'package.json').read_text())['version']
-    release = release_record(package / 'release.json')
-    if version != VERSION or release != dict(version=VERSION, digest=RELEASE_DIGEST):
-        raise ValueError(f'B package is {version}, release {release}; expected {VERSION}@{RELEASE_DIGEST}')
-    return dict(tarball_sha256=b['sha256'], integrity=b['integrity'], version=version, release_digest=release['digest'])
+    identity = {}
+    for name in PACKAGES:
+        package = folder / 'packages' / name / 'package'
+        tree, release_digest = control.PINS[name]
+        version = json.loads((package / 'package.json').read_text())['version']
+        release = release_record(package / 'release.json')
+        if (control.tree_sha256(package), recorded[name]['tree_sha256'], version, release) != (
+                tree, tree, VERSION, dict(version=VERSION, digest=release_digest)):
+            raise ValueError(f'package {name} is {version}, release {release}; expected {VERSION}@{release_digest} '
+                             f'with tree {tree}')
+        identity[name] = dict(tree_sha256=tree, version=version, release_digest=release_digest)
+        if name == 'B':
+            identity[name].update(tarball_sha256=b['sha256'], integrity=b['integrity'])
+        else:
+            comparison = control.compare(unpacked, package, name)
+            if comparison != recorded[name]['comparison']:
+                raise ValueError(f'package {name}: its comparison with B differs from the control build\'s')
+            identity[name].update(sentence=control.CANDIDATES[name][1], comparison=comparison)
+    return identity
 
 
 def session_text(package):
@@ -215,16 +246,6 @@ def projection(out):
     if not folder.is_dir():
         raise ValueError(f'CODEX_HOME has no {PROJECTION}')
     return {str(p.relative_to(folder)): digest(p.read_bytes()) for p in sorted(folder.rglob('*')) if p.is_file()}
-
-
-def devlyn_files(home):
-    """What in a CODEX_HOME names devlyn: config.toml plugin or marketplace keys and file paths. Codex's own plugin
-    cache is not among them (O10: it downloads its curated plugins in both arms)."""
-    config = tomllib.loads((home / 'config.toml').read_text())
-    keys = [f'config.toml [{table}] {key}' for table in ('plugins', 'marketplaces') for key in config.get(table, {})
-            if 'devlyn' in key.lower()]
-    return keys + [str(p.relative_to(home)) for p in sorted(home.rglob('*'))
-                   if p.is_file() and 'devlyn' in str(p.relative_to(home)).lower()]
 
 
 def owner_thread(out):
@@ -303,30 +324,31 @@ def plugin_roots(found):
     return [root for root in found['skill_roots'] if '/plugins/' in root]
 
 
-def input_violations(arm, found):
-    """DESIGN "Per-cell assertions" for a Codex model input: A carries neither the session text nor its first sentence
-    and no plugin skill root; B carries the text exactly once and no plugin skill root but devlyn's."""
+def input_violations(label, found):
+    """DESIGN "Per-cell assertions" for a Codex model input: a package's input (label B or C) carries its session text
+    exactly once and no plugin skill root but devlyn's; the raw reference input (label 'raw', Q2 only) carries neither
+    the session text nor its first sentence and no plugin skill root."""
     problems = []
-    if arm == 'A' and (found['session_text'] or found['preamble']):
-        problems.append(f'A carries the session text {found["session_text"]} time(s), its first sentence '
+    if label == 'raw' and (found['session_text'] or found['preamble']):
+        problems.append(f'raw carries the session text {found["session_text"]} time(s), its first sentence '
                         f'{found["preamble"]} time(s)')
-    if arm == 'B' and found['session_text'] != 1:
-        problems.append(f'B carries the session text {found["session_text"]} time(s)')
-    expected = [DEVLYN_ROOT] if arm == 'B' else []
+    if label != 'raw' and found['session_text'] != 1:
+        problems.append(f'{label} carries the session text {found["session_text"]} time(s)')
+    expected = [] if label == 'raw' else [DEVLYN_ROOT]
     if plugin_roots(found) != expected:
-        problems.append(f'{arm} plugin skill roots {plugin_roots(found)}, expected {expected}')
+        problems.append(f'{label} plugin skill roots {plugin_roots(found)}, expected {expected}')
     return problems
 
 
-def probe_violations(arm, found, clean, devlyn):
-    """Q2's reading of a Codex model input: the per-cell rule, the plugin skills by name (A none, B devlyn's) and the
-    AGENTS.md blocks of the clean A input of the same tree."""
-    problems = input_violations(arm, found)
-    expected = devlyn if arm == 'B' else []
+def probe_violations(label, found, clean, devlyn):
+    """Q2's reading of a Codex model input: the per-cell rule, the plugin skills by name (raw none, a package devlyn's)
+    and the AGENTS.md blocks of the clean raw input of the same tree."""
+    problems = input_violations(label, found)
+    expected = [] if label == 'raw' else devlyn
     if found['plugin_skills'] != expected:
-        problems.append(f'{arm} plugin skills {found["plugin_skills"]}, expected {expected}')
+        problems.append(f'{label} plugin skills {found["plugin_skills"]}, expected {expected}')
     if found['agents_md'] != clean['agents_md']:
-        problems.append(f'{arm} AGENTS.md blocks {found["agents_md"]}, clean A {clean["agents_md"]}')
+        problems.append(f'{label} AGENTS.md blocks {found["agents_md"]}, clean raw {clean["agents_md"]}')
     return problems
 
 
@@ -346,9 +368,9 @@ def codex_settings(args):
     return settings
 
 
-def launch_b(engine, plan, out, run, text):
-    """One B cell under the shims: one status line, the engine called once with devlyn's plan and then O unchanged, the
-    plan files equal to the session text, the HOME release equal to the package's."""
+def launch(engine, plan, out, run, text, release_digest):
+    """One cell under the shims: one status line, the engine called once with devlyn's plan and then O unchanged, the
+    plan files equal to the package's session text, the HOME release equal to the package's."""
     code, _, stderr, records = run
     said = devlyn_lines(stderr)
     match = status_pattern(engine, CLI[engine]).fullmatch(said[0]) if len(said) == 1 else None
@@ -359,9 +381,10 @@ def launch_b(engine, plan, out, run, text):
         raise ValueError(f'{plan["name"]}: the engine was not handed O after the plan')
     planned, argv = raw[:len(raw) - len(owner)], normalise(raw)
     release = home_release(out)
-    if release != RELEASE_DIGEST or match.group(1) != release[:8]:
-        raise ValueError(f'{plan["name"]}: HOME release {release}, status line {match.group(1)}')
-    sealed = dict(status_line=said[0], release_digest=release, argv=argv, raw_argv=raw, env=records[0]['env'])
+    if release != release_digest or match.group(1) != release[:8]:
+        raise ValueError(f'{plan["name"]}: HOME release {release}, status line {match.group(1)}, package '
+                         f'{release_digest}')
+    sealed = dict(status_line=said[0], release_digest=release, argv=argv, raw_argv=raw)
     if engine == 'claude':
         expected = ['--plugin-dir', f'{RELEASE_ROOT}/native/claude', '--append-system-prompt-file',
                     '/tmp/devlyn-run-*/devlyn-instructions.md']
@@ -382,25 +405,6 @@ def launch_b(engine, plan, out, run, text):
         sealed.update(plan_files={'developer_instructions': digest(text.encode())},
                       projection=dict(path=PROJECTION, files=files))
     return sealed
-
-
-def launch_a(engine, plan, out, run):
-    """One A cell under the shims: the engine called once with exactly O; nothing devlyn in stderr, the environment or
-    HOME."""
-    code, _, stderr, records = run
-    if code != 0 or devlyn_lines(stderr) or len(records) != 1 or records[0]['argv'] != plan['argv'][1:]:
-        raise ValueError(f'{plan["name"]}: exit {code}, devlyn lines {devlyn_lines(stderr)!r}, {len(records)} engine '
-                         f'call(s); A must hand the engine exactly O')
-    if ([key for key in records[0]['env'] if key.startswith('DEVLYN_')] or (out / 'home/.devlyn').exists()
-            or (engine == 'codex' and devlyn_files(out / 'home/.codex'))):
-        raise ValueError(f'{plan["name"]}: devlyn in A\'s environment or HOME')
-    return dict(argv=records[0]['argv'], env=records[0]['env'])
-
-
-def env_patch(b, a):
-    """What devlyn run changed in the engine's environment (B's against A's; the container's own HOSTNAME aside)."""
-    return {key: b.get(key) and normalise([b[key]])[0] for key in sorted((set(b) | set(a)) - {'HOSTNAME'})
-            if b.get(key) != a.get(key)}
 
 
 def refusal(engine, run):
@@ -433,9 +437,9 @@ def plant(home):
 
 def reader_control(clean, planted, devlyn):
     """Each plant flagged by the model-input reader on the fixture HOME's input; nothing on the clean HOME's."""
-    if probe_violations('A', clean, clean, devlyn):
+    if probe_violations('raw', clean, clean, devlyn):
         raise ValueError('reader control: the clean HOME is flagged')
-    given = probe_violations('A', planted, clean, devlyn)
+    given = probe_violations('raw', planted, clean, devlyn)
     flags = {plant: [problem for problem in given if needle in problem] for plant, needle in (
         ('foreign plugin', 'other:foreign-skill'), ('marketplace entry', '/plugins/cache/foreign-market'),
         ('AGENTS.md', 'AGENTS.md'))}
@@ -462,11 +466,12 @@ def container(cell, plan, command, binds=(), env=None, timeout=300):
     return done.returncode, done.stdout.decode(errors='replace'), done.stderr.decode(errors='replace')
 
 
-def launch_probe(runtime, text):
-    """DESIGN Q2 in the image; scratch only, removed afterwards. Returns the seal's launch, control and A-set fields."""
+def launch_probe(runtime, texts):
+    """DESIGN Q2 in the image for every package; scratch only, removed afterwards. Returns the seal's launch, control
+    and reference fields."""
     prepare, cell = load('prepare'), load('cell')
-    package = Path(runtime['control']) / 'packages/B/package'
-    devlyn = devlyn_skills(package)
+    devlyn = devlyn_skills(Path(runtime['control']) / 'packages/B/package')
+    sealed = {name: dict(package) for name, package in package_identity(runtime).items()}
     env = json.loads(cell.docker('image', 'inspect', runtime['image'], '--format', '{{json .Config.Env}}'))
     path = next(item[len('PATH='):] for item in env if item.startswith('PATH='))
     work = Path(tempfile.mkdtemp(prefix='q2-probe-', dir=runtime['scratch']))
@@ -487,51 +492,60 @@ def launch_probe(runtime, text):
         def copy(home, label):
             return Path(shutil.copytree(home, work / 'homes' / label, symlinks=True))
 
-        def debug(plan, home, arm):
-            """`codex debug prompt-input` through devlyn run (B) or raw (A) in the cell's container with this HOME."""
-            command = (DEVLYN if arm == 'B' else []) + ['codex', 'debug', 'prompt-input', plan['argv'][-1]]
+        def debug(plan, home, raw):
+            """`codex debug prompt-input` through devlyn run or raw in the cell's container with this HOME."""
+            command = ([] if raw else DEVLYN) + ['codex', 'debug', 'prompt-input', plan['argv'][-1]]
             code, stdout, stderr = container(cell, dict(plan, home=str(home)), command)
             if code != 0:
                 raise ValueError(f'{plan["name"]} debug prompt-input: exit {code}: {stderr[-400:]}')
+            text = texts['B'] if raw else texts[plan['package']]
             return dict(input=model_input(dict(input=json.loads(stdout)), text), status=devlyn_lines(stderr))
 
-        launch, cells, fresh = {engine: {} for engine in ENGINES}, {}, {}
-        for engine in ENGINES:
-            for tree in TREES:
-                for arm in ARMS:
-                    out = prepare.prepare(dict(runtime, output=str(work / 'cells')), f'q2-{engine}-{tree}-{arm}', tree,
-                                          arm, engine)
-                    cells[engine, tree, arm] = out, json.loads((out / 'plan.json').read_text())
-                    fresh[engine, tree, arm] = copy(out / 'home', f'fresh-{engine}-{tree}-{arm}')
-                (b_out, b_plan), (a_out, a_plan) = cells[engine, tree, 'B'], cells[engine, tree, 'A']
-                b = launch_b(engine, b_plan, b_out, shimmed(b_plan, f'{engine}-{tree}-B'), text)
-                a = launch_a(engine, a_plan, a_out, shimmed(a_plan, f'{engine}-{tree}-A'))
-                patch = env_patch(b.pop('env'), a.pop('env'))
-                launch[engine][tree] = dict(b, env_patch=patch, a=a)
+        launch_seal, cells, fresh = {name: {engine: {} for engine in ENGINES} for name in PACKAGES}, {}, {}
+        for name in PACKAGES:
+            for engine in ENGINES:
+                for tree in TREES:
+                    out = prepare.prepare(dict(runtime, output=str(work / 'cells')), f'q2-{name}-{engine}-{tree}', tree,
+                                          column(name), engine)
+                    plan = json.loads((out / 'plan.json').read_text())
+                    cells[name, engine, tree] = out, plan
+                    fresh[name, engine, tree] = copy(out / 'home', f'fresh-{name}-{engine}-{tree}')
+                    launch_seal[name][engine][tree] = launch(engine, plan, out, shimmed(plan, f'{name}-{engine}-{tree}'),
+                                                             texts[name], sealed[name]['release_digest'])
         controls = {}
         for engine in ENGINES:  # the violating launch control; the design's argv above is the allowed one
-            plan = cells[engine, 'SMOKE', 'B'][1]
+            plan = cells['B', engine, 'SMOKE'][1]
             controls[f'{engine} --strict-mcp-config'] = refusal(engine, shimmed(
                 plan, f'{engine}-strict', plan['argv'][:4] + ['--strict-mcp-config'] + plan['argv'][4:]))
 
-        for tree in TREES:  # Codex model input, no model call
-            found = {arm: debug(cells['codex', tree, arm][1], copy(fresh['codex', tree, arm], f'debug-{tree}-{arm}'), arm)
-                     for arm in ARMS}
-            a, b = found['A']['input'], found['B']['input']
-            problems = probe_violations('A', a, a, devlyn) + probe_violations('B', b, a, devlyn)
-            if found['B']['status'] != [launch['codex'][tree]['status_line']] or found['A']['status']:
-                problems.append(f'status lines B {found["B"]["status"]!r}, A {found["A"]["status"]!r}')
-            if b['skill_roots'] != sorted(a['skill_roots'] + [DEVLYN_ROOT]) or b['skills'] != sorted(a['skills'] + devlyn):
-                problems.append(f'skills B {b["skills"]} at {b["skill_roots"]}, A {a["skills"]} at {a["skill_roots"]}')
+        reference = {}
+        for tree in TREES:  # Codex model input, no model call: the raw reference, then every package
+            plan = cells['B', 'codex', tree][1]
+            raw = debug(plan, copy(fresh['B', 'codex', tree], f'debug-{tree}-raw'), raw=True)
+            problems = probe_violations('raw', raw['input'], raw['input'], devlyn)
+            problems += [f'raw status lines {raw["status"]!r}'] if raw['status'] else []
+            for name in PACKAGES:
+                plan = cells[name, 'codex', tree][1]
+                found = debug(plan, copy(fresh[name, 'codex', tree], f'debug-{tree}-{name}'), raw=False)
+                given, base = found['input'], raw['input']
+                problems += [f'{name}: {problem}' for problem in probe_violations(name, given, base, devlyn)]
+                if found['status'] != [launch_seal[name]['codex'][tree]['status_line']]:
+                    problems.append(f'{name} status lines {found["status"]!r}')
+                if (given['skill_roots'] != sorted(base['skill_roots'] + [DEVLYN_ROOT])
+                        or given['skills'] != sorted(base['skills'] + devlyn)):
+                    problems.append(f'{name} skills {given["skills"]} at {given["skill_roots"]}, raw {base["skills"]} '
+                                    f'at {base["skill_roots"]}')
+                launch_seal[name]['codex'][tree]['model_input'] = given
             if problems:
                 raise ValueError(f'Codex model input, {tree}: ' + '; '.join(problems))
-            launch['codex'][tree]['model_input'] = dict(A=a, B=b)
+            reference[tree] = raw['input']
 
-        planted = copy(fresh['codex', 'SMOKE', 'A'], 'reader')
+        planted = copy(fresh['B', 'codex', 'SMOKE'], 'reader')
         plant(planted)
-        controls['reader'] = reader_control(launch['codex']['SMOKE']['model_input']['A'],
-                                            debug(cells['codex', 'SMOKE', 'A'][1], planted, 'A')['input'], devlyn)
-        return dict(launch=launch, controls=controls, devlyn_skills=devlyn)
+        controls['reader'] = reader_control(reference['SMOKE'], debug(cells['B', 'codex', 'SMOKE'][1], planted,
+                                                                      raw=True)['input'], devlyn)
+        return dict(packages=sealed, launch=launch_seal, controls=controls, reference_input=reference,
+                    devlyn_skills=devlyn)
     finally:
         shutil.rmtree(work)
 
@@ -541,9 +555,12 @@ def seal(runtime_path):
     path = root(runtime) / 'instructions.seal.json'
     if path.exists():
         raise ValueError(f'instruction seal already exists: {path}')
-    text = session_text(Path(runtime['control']) / 'packages/B/package')
-    sealed = dict(package=package_identity(runtime), cli=CLI, session_text=text, **launch_probe(runtime, text),
-                  forms={}, qualification=dict(status='PENDING'))
+    texts = {name: session_text(Path(runtime['control']) / 'packages' / name / 'package') for name in PACKAGES}
+    problems = [problem for name, text in texts.items() for problem in sentences(name, text)]
+    if problems:
+        raise ValueError('; '.join(problems))
+    sealed = dict(cli=CLI, session_text=texts, **launch_probe(runtime, texts), forms={},
+                  qualification=dict(status='PENDING'))
     path.write_text(json.dumps(sealed, indent=2) + '\n')
     return path
 
@@ -565,8 +582,9 @@ def session_location(out, text):
                      f'request; found it {count} time(s); strings holding its first sentence: {near}')
 
 
-def observed_form(out, engine, sealed):
-    """One engine's form, read from its SMOKE B cell; what the launch probe also saw must equal its SMOKE seal."""
+def observed_form(out, engine, sealed, package):
+    """One engine's form, read from a SMOKE cell of the package; what the launch probe also saw must equal its SMOKE
+    seal for that package."""
     found = [line for line in devlyn_lines((out / 'run/stderr').read_text(errors='replace'))
              if line.startswith('devlyn: ')]
     pattern = status_pattern(engine, sealed['cli'][engine])
@@ -574,10 +592,11 @@ def observed_form(out, engine, sealed):
     if not match:
         raise ValueError(f'{out.name}: looked for one stderr line matching {pattern.pattern}; found {found!r}')
     release = home_release(out)
-    if release != sealed['package']['release_digest'] or match.group(1) != release[:8]:
+    expected = sealed['packages'][package]['release_digest']
+    if release != expected or match.group(1) != release[:8]:
         raise ValueError(f'{out.name}: HOME release digest {release} and status line digest {match.group(1)}; '
-                         f'package release {sealed["package"]["release_digest"]}')
-    probe = sealed['launch'][engine]['SMOKE']
+                         f'package {package} release {expected}')
+    probe = sealed['launch'][package][engine]['SMOKE']
     differs = [] if (found[0], release) == (probe['status_line'], probe['release_digest']) else ['status line or digest']
     form = dict(status_line=found[0])
     if engine == 'claude':
@@ -590,13 +609,17 @@ def observed_form(out, engine, sealed):
         differs += [] if under[0]['path'] == probe['plugin_dir'] else [f'plugin path, probe {probe["plugin_dir"]}']
     else:
         form['projection'] = dict(path=PROJECTION, files=projection(out))
-        form['location'] = session_location(out, sealed['session_text'])
+        form['location'] = session_location(out, sealed['session_text'][package])
         differs += [] if form['projection'] == probe['projection'] else ['projection']
-        differs += ([] if form['location'] == probe['model_input']['B']['location'] else
-                    [f'session text location {form["location"]}, probe {probe["model_input"]["B"]["location"]}'])
+        differs += ([] if form['location'] == probe['model_input']['location'] else
+                    [f'session text location {form["location"]}, probe {probe["model_input"]["location"]}'])
     if differs:
         raise ValueError(f'{out.name}: SMOKE differs from the launch probe\'s SMOKE seal: {"; ".join(differs)}')
     return form
+
+
+SMOKE_PACKAGES = {'B': 'B', 'C': 'K3'}  # generate_cells.py: SMOKE's C is C-K3; SMOKE says nothing about a candidate
+SHARED = {'claude': ('plugin',), 'codex': ('location',)}  # the form fields every package shares, which check() reads
 
 
 def seal_forms(runtime_path):
@@ -606,10 +629,13 @@ def seal_forms(runtime_path):
     if sealed.get('forms') or sealed.get('qualification', {}).get('status') != 'PENDING':
         raise ValueError('owner forms already sealed')
     output = Path(runtime['output'])
-    sealed['forms'] = {engine: observed_form(output / f'smoke-{engine}-B', engine, sealed) for engine in ENGINES}
-    failures = []
+    observed = {engine: {arm: observed_form(output / f'smoke-{engine}-{arm}', engine, sealed, package)
+                         for arm, package in SMOKE_PACKAGES.items()} for engine in ENGINES}
+    sealed['forms'] = {engine: {key: observed[engine]['B'][key] for key in SHARED[engine]} for engine in ENGINES}
+    failures = [f'smoke-{engine}-C: {key} {observed[engine]["C"][key]!r}, B {observed[engine]["B"][key]!r}'
+                for engine in ENGINES for key in SHARED[engine] if observed[engine]['C'][key] != observed[engine]['B'][key]]
     for engine in ENGINES:
-        for arm in ARMS:
+        for arm, package in SMOKE_PACKAGES.items():
             name = f'smoke-{engine}-{arm}'
             try:
                 verdict = json.loads((output / f'verdict-{name}.json').read_text())
@@ -620,83 +646,84 @@ def seal_forms(runtime_path):
             if verdict.get('status') == 'STOP':
                 failures.append(f'{name}: verdict is STOP ({verdict.get("reason")})')
             launched = (verdict.get('identity') or {}).get('owner_launched_sessions')
-            if (engine, arm) == ('codex', 'B') and (verdict.get('usage') != 'COMPLETE' or launched != []):
-                # DESIGN Q7: Codex B's usage is COMPLETE and is the announced owner session's alone
+            if engine == 'codex' and (verdict.get('usage') != 'COMPLETE' or launched != []):
+                # DESIGN Q7: Codex's usage is COMPLETE and is the announced owner session's alone (both arms now go
+                # through devlyn run, whose wrapper starts `codex app-server` before the owner)
                 failures.append(f'{name}: usage {verdict.get("usage")}, sessions besides the owner {launched}')
-            if (plan.get('task'), plan.get('arm'), plan.get('config')) != ('SMOKE', arm, engine):
-                failures.append(f'{name}: plan is {plan.get("task")} {plan.get("arm")} {plan.get("config")}')
+            if (plan.get('task'), plan.get('arm'), plan.get('package'), plan.get('config')) != (
+                    'SMOKE', arm, package, engine):
+                failures.append(f'{name}: plan is {plan.get("task")} {plan.get("arm")} {plan.get("package")} '
+                                f'{plan.get("config")}')
                 continue
             failures += [f'{name}: {violation}' for violation in check(output / name, plan, sealed)]
     if failures:
         raise ValueError('SMOKE qualification failed: ' + '; '.join(failures))
-    sealed['qualification'] = dict(status='PASS', cells=[f'smoke-{engine}-{arm}' for engine in ENGINES for arm in ARMS])
+    sealed['qualification'] = dict(status='PASS', cells=[f'smoke-{engine}-{arm}' for engine in ENGINES
+                                                         for arm in SMOKE_PACKAGES])
     path.write_text(json.dumps(sealed, indent=2) + '\n')
     return path
 
 
-def status_row(out, arm, form, probe, seal):
+def status_row(out, plan, form, probe, seal):
     found = devlyn_lines((out / 'run/stderr').read_text(errors='replace'))
-    if arm == 'A':
-        return [f'A stderr has {found!r}'] if found else []
-    return [] if found == [probe['status_line']] else [f'B stderr has {found!r}, sealed {[probe["status_line"]]!r}']
+    return [] if found == [probe['status_line']] else [f'stderr has {found!r}, sealed {[probe["status_line"]]!r}']
 
 
-def home_row(out, arm, form, probe, seal):
-    if arm == 'A':
-        present = (out / 'home/.devlyn').exists() or (out / 'home/.devlyn').is_symlink()
-        return ['A HOME has .devlyn'] if present else []
+def home_row(out, plan, form, probe, seal):
     release = home_release(out)
-    return [] if release == probe['release_digest'] else [f'B HOME release digest {release}, sealed '
+    return [] if release == probe['release_digest'] else [f'HOME release digest {release}, sealed '
                                                           f'{probe["release_digest"]}']
 
 
-def init_row(out, arm, form, probe, seal):
+def init_row(out, plan, form, probe, seal):
     problems = []
     for event in inits(out):
         if event.get('mcp_servers') != []:
             problems.append(f'mcp_servers {event.get("mcp_servers")!r}')
         own = own_plugins(event)
-        if arm == 'A' and own:
-            problems.append(f'A init plugins {own!r}')
-        elif arm == 'B' and own != [form['plugin']]:
-            problems.append(f'B init plugins {own!r}, sealed {[form["plugin"]]!r}')
+        if own != [form['plugin']]:
+            problems.append(f'init plugins {own!r}, sealed {[form["plugin"]]!r}')
     return list(dict.fromkeys(problems))
 
 
-def codex_home_row(out, arm, form, probe, seal):
-    if arm == 'A':
-        found = devlyn_files(out / 'home/.codex')
-        return [f'A CODEX_HOME has {len(found)} devlyn file(s): {found[:5]!r}'] if found else []
+def codex_home_row(out, plan, form, probe, seal):
     return [] if projection(out) == probe['projection']['files'] else [
-        f'B {PROJECTION} differs from the launch probe\'s seal']
+        f'{PROJECTION} differs from the launch probe\'s seal']
 
 
-def request_row(out, arm, form, probe, seal):
-    found = model_input(first_owner_request(out), seal['session_text'])
-    problems = input_violations(arm, found)
-    if arm == 'B' and found['session_text'] == 1 and found['location'] != form['location']:
-        problems.append(f'B session text sits at {found["location"]}, sealed {form["location"]}')
-    return problems
+def request_row(out, plan, form, probe, seal):
+    """The package's session text once, where SMOKE sealed it, and no plugin skill root but devlyn's; and, across the
+    whole first request, the package's own candidate sentence exactly once and no other (B: none of the three)."""
+    request = first_owner_request(out)
+    found = model_input(request, seal['session_text'][plan['package']])
+    problems = input_violations(plan['arm'], found)
+    if found['session_text'] == 1 and found['location'] != form['location']:
+        problems.append(f'session text sits at {found["location"]}, sealed {form["location"]}')
+    counts = {candidate: sum(value.count(sentence) for _, value in strings(request))
+              for candidate, (_, sentence) in control.CANDIDATES.items()}
+    expected = {candidate: int(candidate == plan['package']) for candidate in control.CANDIDATES}
+    return problems + ([] if counts == expected else [f'candidate sentences {counts}, expected {expected}'])
 
 
-def models_row(out, arm, form, probe, seal):
+def models_row(out, plan, form, probe, seal):
     identity = json.loads((out / 'run/result.json').read_text()).get('identity') or {}
     return ([] if identity.get('status') == 'MATCH' and identity.get('owner') == 'MATCH' else
             [f'identity {identity.get("status")}, owner {identity.get("owner")}'])
 
 
 def check(cell, plan, seal):
-    """Every per-cell assertion of DESIGN for the cell's arm and engine, against SMOKE's forms and the launch probe's
-    seal for the cell's task tree; [] passes. Each row is read on its own, so one unreadable row never hides another."""
-    out, arm, engine = Path(cell), plan['arm'], plan['config']
-    if arm not in ARMS or engine not in ENGINES:
-        return [f'arm {arm} or config {engine} unsupported']
+    """Every per-cell assertion of DESIGN for the cell's package and engine, against SMOKE's forms and the launch
+    probe's seal for the cell's package and task tree; [] passes. Each row is read on its own, so one unreadable row
+    never hides another."""
+    out, arm, package, engine = Path(cell), plan.get('arm'), plan.get('package'), plan['config']
+    if engine not in ENGINES or (arm, package) not in {('B', 'B')} | {('C', k) for k in control.CANDIDATES}:
+        return [f'arm {arm}, package {package} or config {engine} unsupported']
     form = seal.get('forms', {}).get(engine)
     if not form:
         return [f'forms: {engine} form unsealed']
-    probe = seal.get('launch', {}).get(engine, {}).get(plan.get('task'))
+    probe = seal.get('launch', {}).get(package, {}).get(engine, {}).get(plan.get('task'))
     if not probe:
-        return [f'launch: no launch probe seal for {engine} {plan.get("task")}']
+        return [f'launch: no launch probe seal for {package} {engine} {plan.get("task")}']
     rows = [('status-line', status_row), ('devlyn-home', home_row)]
     rows += ([('claude-init', init_row)] if engine == 'claude' else
              [('codex-home', codex_home_row), ('codex-request', request_row)])
@@ -704,7 +731,7 @@ def check(cell, plan, seal):
     violations = []
     for name, row in rows:
         try:
-            violations += [f'{name}: {detail}' for detail in row(out, arm, form, probe, seal)]
+            violations += [f'{name}: {detail}' for detail in row(out, plan, form, probe, seal)]
         except (OSError, ValueError, KeyError, TypeError, IndexError) as exc:
             violations.append(f'{name}: evidence unreadable: {exc}')
     return violations

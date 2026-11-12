@@ -32,10 +32,11 @@ def load(name):
 cell = load('run_cell')
 LANES = (None, 'claude', 'codex')
 REGRADE = ('assessment failed', 'assessor produced', 'assessment held:')
-LAUNCH_FAULT, MEMORY_KILL = 'B launch fault: ', 'memory kill: '
+LAUNCH_FAULT, MEMORY_KILL = 'launch fault: ', 'memory kill: '
 ACCOUNT_FAULT = 'shared account fault during execution: '  # a Codex refresh_token_reused among them (quota.py)
 ONCE = (LAUNCH_FAULT, MEMORY_KILL, ACCOUNT_FAULT)  # redispatched once per slot; a repeat on the slot stays a STOP
 GIB = 2**30
+COLUMNS = ('B', 'C', 'C-K1', 'C-K2', 'C-K3')  # the schedules' arm columns (prepare.arm_package)
 # 4.3.30's delivery helper measures its target with shutil.disk_usage and refuses below max(10 GiB, 2% of the total).
 DISK_PROBE = "import json, shutil; print(json.dumps({p: shutil.disk_usage(p)._asdict() for p in ('/cell', '/tmp')}))"
 
@@ -149,6 +150,11 @@ class Driver:
         if self.lane not in LANES:
             raise ValueError('lane must be null, claude or codex')
         label = self.lane or 'smoke'
+        if any(row[2] == 'C' for row in slots if self.lane in (None, row[3])):  # the registered run's C (cells.tsv)
+            try:  # DESIGN "Stage S": no registered run without a GO whose package is the sealed one; nothing latched
+                cell.prepare.selected(self.runtime)
+            except ValueError as exc:
+                raise RuntimeError(f'lane {label} refuses to start: {exc}') from None
         self.lock = open(self.output / f'driver-{label}.lock', 'a')  # held until the process ends
         try:
             fcntl.flock(self.lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -494,8 +500,8 @@ class Driver:
 
     def dispatch(self, row):
         name, task, arm, config = row[:4]
-        if arm not in ('A', 'B') or config not in ('claude', 'codex') or self.lane not in (None, config):
-            raise ValueError(f'{name}: 0266 requires arm A/B and config claude/codex in its own lane')
+        if arm not in COLUMNS or config not in ('claude', 'codex') or self.lane not in (None, config):
+            raise ValueError(f'{name}: 0266 requires arm {"/".join(COLUMNS)} and config claude/codex in its own lane')
         self.assert_active()
         if task != 'SMOKE':
             seal = self.output.parent / 'instructions.seal.json'

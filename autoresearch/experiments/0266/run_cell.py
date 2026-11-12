@@ -1,13 +1,14 @@
 """Run one 0266 cell end to end: run_cell.py <runtime.json> <name> <task> <arm> <config>. After an assessor fault,
-run_cell.py --regrade <runtime.json> <name> assesses the preserved cell again.
+run_cell.py --regrade <runtime.json> <name> assesses the preserved cell again. <arm> is the schedule's arm column (B,
+C-K<n>, or C for the screen decision's candidate: prepare.arm_package); both arms launch through `devlyn run`.
 
 Exit 0 = verdict recorded (any product outcome), 3 = not dispatched (preflight, or a Claude login copy left with less
 than the watchdog plus 300 s once the cell is prepared: the prepared folder is removed), 2 = STOP: a container that
-could not be set up, a container survivor, a B launch fault, a memory kill, changed control or harness, model
+could not be set up, a container survivor, a launch fault, a memory kill, changed control or harness, model
 identity collapse, a shared account fault, a failed per-cell assertion (instructions.check against the launch probe's
 and SMOKE's seal), a locator defect, an evaluator or assessor that produced no verdict, or an assessor container whose
 removal is unproved. Every verdict records owner_ran (DESIGN "The rule for attempts": false only before the cell and
-for a B launch fault), and every verdict of a cell whose container ran records oom_killed (Docker's flag for any
+for a launch fault), and every verdict of a cell whose container ran records oom_killed (Docker's flag for any
 process in the owner container). Every STOP whose owner ran keeps its graded tree and scope once its teardown is proved
 (stop_evidence; an assessor STOP keeps its full checks.json), and says why when it has none. An owner at the
 watchdog is never COMPLETE. Once a measured cell's verdict is
@@ -227,10 +228,9 @@ def control_unchanged(runtime):
 
 
 def launch_fault(out, plan):
-    """B's `devlyn run` refused to start the engine: a `devlyn run: <code>` line on stderr, no status line, and no
-    owner evidence (no Claude init event, no Codex thread or rollout). Returns the text after `devlyn run: `."""
-    if plan['arm'] != 'B':
-        return None
+    """`devlyn run` refused to start the engine (either arm: both launch through it): a `devlyn run: <code>` line on
+    stderr, no status line, and no owner evidence (no Claude init event, no Codex thread or rollout). Returns the text
+    after `devlyn run: `."""
     stderr = (out / 'run/stderr').read_text(errors='replace').splitlines()
     codes = [line[len('devlyn run: '):].strip() for line in stderr if line.startswith('devlyn run: ')]
     if not codes or any(line.startswith('devlyn: ') for line in stderr):
@@ -278,10 +278,11 @@ def harness_unchanged(out, baseline):
             and digest(out / 'harness/caller.json') == baseline['caller_sha256'])
 
 
-def run(runtime_path, name, task, arm, config, *, expected_account=None):
-    if arm not in prepare.ARMS or config not in prepare.CONFIGS:
-        raise ValueError('0266 requires arm A/B and config claude/codex')
+def run(runtime_path, name, task, column, config, *, expected_account=None):
     runtime = json.loads(Path(runtime_path).read_text())
+    arm, package = prepare.arm_package(runtime, column)  # refuses an unknown column, and C without a GO screen decision
+    if config not in prepare.CONFIGS:
+        raise ValueError('0266 requires config claude/codex')
     verdict_path = Path(runtime['output']) / f'verdict-{name}.json'
     if verdict_path.is_file():
         raise ValueError(f'{name}: verdict already exists')
@@ -308,13 +309,13 @@ def run(runtime_path, name, task, arm, config, *, expected_account=None):
         return 3
     if not control_unchanged(runtime):
         return write_verdict(verdict_path, dict(cell=name, status='STOP', owner_ran=False, reason='control changed'))
-    out = prepare.prepare(runtime, name, task, arm, config)
+    out = prepare.prepare(runtime, name, task, column, config)
     control_manifest = json.loads(Path(runtime['control'] + '.manifest.json').read_text())
     imported = {str(p.relative_to(HERE.parent)): digest(p) for iteration in ('0222', '0232', '0233', '0256', '0265')
                 for p in sorted((HERE.parent / iteration).glob('*.py'))}
     (out / 'seal.json').write_text(json.dumps(dict(
         sealed_at=datetime.datetime.now(datetime.timezone.utc).isoformat(), venue=venue, image=runtime['image'],
-        package_sha256=control_manifest['packages']['B']['sha256'] if arm == 'B' else None,
+        package=package, package_sha256=control_manifest['packages'][package]['tree_sha256'],
         modules={module: dict(path=str(path.relative_to(HERE.parent)), sha256=digest(path))
                  for module, path in MODULES.items()},
         models_cache_sha256=digest(runtime['models_cache']), imported=imported,
@@ -333,7 +334,7 @@ def run(runtime_path, name, task, arm, config, *, expected_account=None):
         (Path(runtime['output']) / f'not-dispatched-{name}.json').write_text(json.dumps(dict(
             reason=f'Claude login copy expires in {int(left)}s after prepare, below {START_TOKEN_SECONDS}s'), indent=2))
         return 3
-    record = dict(cell=name, task=task, arm=arm, config=config, claude_account_before=venue['account'],
+    record = dict(cell=name, task=task, arm=arm, package=package, config=config, claude_account_before=venue['account'],
                   codex_account=venue['codex_account'])
     try:
         owner = cell_run.run(out, runtime)
@@ -370,7 +371,7 @@ def run(runtime_path, name, task, arm, config, *, expected_account=None):
     fault, killed = launch_fault(out, plan), memory_kill(owner)
     record['owner_ran'] = fault is None
     stop = ('teardown failed: ' + str(owner.get('teardown_error')) if owner['teardown'] != 'CLEAN' else
-            'B launch fault: ' + fault if fault is not None else
+            'launch fault: ' + fault if fault is not None else
             'memory kill: ' + killed if killed else
             'harness changed' if not harness_unchanged(out, baseline) else
             'shared account fault during execution: ' + ', '.join(sorted({h['kind'] for h in limits['execution']}))

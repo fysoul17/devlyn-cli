@@ -3,7 +3,13 @@
 Never dispatches models. Idempotent: each step prints one line with what it found or did, keeps what already matches its pin and refuses on
 anything that differs. It never reads a credential and never writes into the auth folders. --codex-auth names the
 Codex login the run uses (DESIGN Operations "Codex login"), an absolute path to an existing regular file, written as
-`codex_auth` into the three runtime files; without it the field is null and cells use the host's default login.
+`codex_auth` into the three runtime files; without it the field keeps what the runtime files hold (null when new: cells
+would use the host's default login).
+
+The login is named late (README): everything else, the instruction seal and the witness and probe controls are prepared
+without it, because none of them reads a login or the runtime's `codex_auth`. Naming it afterwards (the same command
+with --codex-auth) finds every other step present and rewrites `codex_auth` alone, once, while it is null and before
+any cell has started (no <output>/*/run/started.json); naming another login later refuses.
 """
 import argparse
 import hashlib
@@ -171,14 +177,18 @@ def image(root):
     return found
 
 
-def control_tree(root):
+def control_tree(root, image):
     out, manifest_path = root / 'control', root / 'control.manifest.json'
     action = 'present'
     if not out.exists():
         if manifest_path.exists():
             raise Refused(f'{manifest_path} exists without its tree')
         try:
-            control.build(root / 'sources', root / 'cache', out)
+            control.build(root / 'sources', root / 'cache', out, image)
+        except ValueError as exc:
+            shutil.rmtree(out, ignore_errors=True)
+            manifest_path.unlink(missing_ok=True)
+            raise Refused(str(exc)) from None
         except BaseException:
             shutil.rmtree(out, ignore_errors=True)
             manifest_path.unlink(missing_ok=True)
@@ -196,6 +206,32 @@ def control_tree(root):
             raise Refused(f'{out / name} differs from {manifest_path.name}')
     manifests = sha256(json.dumps(record['manifests'], sort_keys=True).encode())
     say('control', f'{action}: manifest sha256 {sha256(manifest_path.read_bytes())}, manifests digest {manifests}')
+    packages(out / 'packages', record['packages'])
+
+
+def packages(folder, recorded):
+    """DESIGN "Arms": each package's tree and release digest against its pin and its record, and each C package's
+    qualification comparison with B (control.compare), whose frozen files and fields are printed."""
+    if sorted(recorded) != sorted(control.PACKAGES):
+        raise Refused(f'control manifest packages {sorted(recorded)}, expected {sorted(control.PACKAGES)}')
+    for name, (tree, release_digest) in control.PINS.items():
+        found = control.tree_sha256(folder / name / 'package')
+        declared = control.release(folder / name / 'package')['digest']['value']
+        if {found, recorded[name]['tree_sha256']} != {tree} or {declared, recorded[name]['release_digest']} != {
+                release_digest}:
+            raise Refused(f'package {name}: tree {found}, release {declared}; pinned {tree}, {release_digest}')
+        if name == 'B':
+            say('package', f'B tree {tree}, release {release_digest}')
+            continue
+        try:
+            comparison = control.compare(folder / 'B/package', folder / name / 'package', name)
+        except ValueError as exc:
+            raise Refused(str(exc)) from None
+        if comparison != recorded[name]['comparison']:
+            raise Refused(f'package {name}: comparison differs from its record')
+        say('package', f'{name} tree {tree}, release {release_digest}; differs from B in exactly '
+                       f'{len(comparison["files"])} files {comparison["files"]} and {len(comparison["fields"])} '
+                       f'derived fields {comparison["fields"]}')
 
 
 def client_version(path):
@@ -239,13 +275,28 @@ def codex_auth_path(path):
 
 
 def runtime_files(root, image, codex_auth=None):
+    started = sorted((root / 'output').glob('*/run/started.json'))
     for lane_file, lane in LANES.items():
         path = root / f'runtime-{lane_file}.json'
         record = runtime_record(root, image, lane_file, lane, codex_auth)
         if path.exists():
-            if json.loads(path.read_text()) != record:
+            found = json.loads(path.read_text())
+            if codex_auth is None:  # not named in this call: keep what the runtime holds
+                record['codex_auth'] = found.get('codex_auth')
+            if dict(found, codex_auth=None) != dict(record, codex_auth=None):
                 raise Refused(f'{path} differs from the expected runtime')
-            say('runtime', f'{path.name} present')
+            if found.get('codex_auth') == record['codex_auth']:
+                say('runtime', f'{path.name} present')
+                continue
+            if found.get('codex_auth') is not None:
+                raise Refused(f'{path} already names the Codex login {found["codex_auth"]}')
+            if started:
+                raise Refused(f'{path}: a cell has started ({started[0].parent.parent.name}); the Codex login is '
+                              'named before SMOKE')
+            partial = path.with_name(path.name + '.partial')
+            partial.write_text(json.dumps(record, indent=2, sort_keys=True) + '\n')
+            os.replace(partial, path)
+            say('runtime', f'{path.name}: codex_auth named {codex_auth}')
         else:
             with path.open('x') as stream:
                 stream.write(json.dumps(record, indent=2, sort_keys=True) + '\n')
@@ -260,7 +311,7 @@ def setup(root, archive=ARCHIVE, host_cache=HOST_MODELS_CACHE, codex_auth=None):
     issues(root, archive)
     package(root)
     found = image(root)
-    control_tree(root)
+    control_tree(root, found)
     models_cache(root, host_cache)
     runtime_files(root, found, codex_auth)
 

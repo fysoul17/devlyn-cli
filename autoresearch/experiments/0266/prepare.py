@@ -1,8 +1,10 @@
 """Materialize one 0266 cell: prepare.py <runtime.json> <name> <task> <arm> <config>. Never dispatches models.
 
-Arms: A starts the engine raw; B starts the same arguments through `devlyn run` of the frozen package, which the owner
-container mounts read-only at /install (plan['install']). Nothing is installed in the tree. All use the same native
-prompt.
+Arms (DESIGN "Arms"): both start the same arguments through `devlyn run` of a frozen package, which the owner container
+mounts read-only at /install (plan['install']): B the published package, C one of the three one-sentence packages.
+The schedule's arm column names the package: `B`; `C-K<n>` (the screen and SMOKE: candidate K<n>); `C` (the registered
+run: the candidate of the screen decision, which must be GO and name the package the instruction seal pinned).
+Nothing is installed in the tree. All use the same native prompt.
 
 Layout under <output>/<name>: cell/ (container /cell: the anchor repository cell/work, linked worktrees, trace/),
 tmp/ (/tmp, preserved: an owner may allocate its worktree there), home/ (/home/participant) and harness/
@@ -34,7 +36,9 @@ _spec.loader.exec_module(locate)
 _spec = importlib.util.spec_from_file_location('prepare0222', BASE / 'prepare.py')
 base = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(base)
-ARMS = ('A', 'B')
+ARMS = ('B', 'C')
+PACKAGES = ('B', 'K1', 'K2', 'K3')  # control.PACKAGES
+SCREEN_DECISION = 'screen-decision.json'  # in the runtime root, written once by screen.py
 CONFIGS = ('claude', 'codex')
 TASK_IDS = ('D3', 'D4', 'B5', 'F10', 'F11', 'SMOKE')
 WALL_SECONDS = 2700  # owner watchdog, both arms (DESIGN "Arms")
@@ -152,9 +156,42 @@ def native_prompt(caller):
     return (HERE.parent / '0232/common.txt').read_text() + '\nCALLER CONTRACT\n' + json.dumps(caller, indent=2)
 
 
-def prepare(runtime, name, task_id, arm, config):
-    if task_id not in TASK_IDS or arm not in ARMS or config not in CONFIGS:
-        raise ValueError(f'0266 cells are {"/".join(TASK_IDS)} x arm A/B x config claude/codex')
+def selected(runtime):
+    """The candidate the registered run's C uses: the screen decision's, only when it is GO and its package sha256 is
+    the one the instruction seal pinned for that candidate (DESIGN "Stage S"); anything else refuses."""
+    root = Path(runtime['output']).parent
+    try:
+        decision = json.loads((root / SCREEN_DECISION).read_text())
+        sealed = json.loads((root / 'instructions.seal.json').read_text())['packages']
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        raise ValueError(f'no screen decision and instruction seal to take C from: {exc}') from None
+    if not isinstance(decision, dict):
+        raise ValueError('the screen decision is not a record')
+    candidate = decision.get('candidate')
+    if decision.get('decision') != 'GO' or candidate not in PACKAGES[1:]:
+        raise ValueError(f'the screen decision is {decision.get("decision")}, not GO with a candidate: no registered run')
+    if decision.get('package_sha256') != (sealed.get(candidate) or {}).get('tree_sha256'):
+        raise ValueError(f'the screen decision\'s {candidate} package {decision.get("package_sha256")} is not the '
+                         'sealed one')
+    return candidate
+
+
+def arm_package(runtime, column):
+    """(arm, package) of a schedule's arm column: B; C-K<n>; or C, whose package is the screen decision's."""
+    arm, _, package = column.partition('-')
+    if column == 'B':
+        return 'B', 'B'
+    if arm == 'C' and package in PACKAGES[1:]:
+        return 'C', package
+    if column == 'C':
+        return 'C', selected(runtime)
+    raise ValueError(f'arm {column!r}: 0266 arms are B, C-K1, C-K2, C-K3 and C')
+
+
+def prepare(runtime, name, task_id, column, config):
+    if task_id not in TASK_IDS or config not in CONFIGS:
+        raise ValueError(f'0266 cells are {"/".join(TASK_IDS)} x arm B/C x config claude/codex')
+    arm, package = arm_package(runtime, column)
     override_path = Path(runtime.get('tasks_override', HERE.parent / '0256/tasks-override.json'))
     tasks = override_tasks(override_path)
     task = next(t for t in tasks['tasks'] if t['id'] == task_id)
@@ -203,18 +240,19 @@ def prepare(runtime, name, task_id, arm, config):
                CODEX_ROLLOUT_TRACE_ROOT='/cell/trace', MYPY_CACHE_DIR='/tmp/.mypy_cache',
                ENABLE_CLAUDEAI_MCP_SERVERS='false')
     prompt = (out / 'prompt.txt').read_text()
-    argv = ([] if arm == 'A' else DEVLYN) + [owner['engine'], *owner_argv(config, owner, prompt)]
+    argv = DEVLYN + [owner['engine'], *owner_argv(config, owner, prompt)]
     settings = home / '.claude/settings.json'
     settings.write_text(json.dumps(dict(syncClaudeAiSkills=False, syncClaudeAiPlugins=False)) + '\n')
-    plan = dict(name=name, task=task_id, arm=arm, config=config, engine=owner['engine'], model=owner['model'],
+    plan = dict(name=name, task=task_id, arm=arm, package=package, config=config, engine=owner['engine'],
+                model=owner['model'],
                 effort=owner['effort'], wall_seconds=WALL_SECONDS, image=runtime['image'],
                 cell=str(cell), tmp=str(out / 'tmp'), home=str(home), harness=str(harness),
                 control=str(Path(runtime['control']) / 'public'), auth=runtime['auth'],
-                install=str(Path(runtime['control']) / 'packages' / 'B') if arm == 'B' else None, env=env, argv=argv)
+                install=str(Path(runtime['control']) / 'packages' / package), env=env, argv=argv)
     (out / 'plan.json').write_text(json.dumps(plan, indent=2))
     digest = lambda path: hashlib.sha256(path.read_bytes()).hexdigest()
     (out / 'baseline.json').write_text(json.dumps(dict(
-        task=task_id, arm=arm, config=config, source_sha=source_sha, allocation_sha=transport['head'],
+        task=task_id, arm=arm, package=package, config=config, source_sha=source_sha, allocation_sha=transport['head'],
         transport=transport, files=files,
         prompt_sha256=digest(out / 'prompt.txt'), caller_sha256=digest(harness / 'caller.json'),
         roles_sha256=digest(harness / 'roles.json'), prepare_sha256=digest(Path(__file__)),
