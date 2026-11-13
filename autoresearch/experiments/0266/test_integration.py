@@ -351,9 +351,14 @@ def fake_docker(args):
         print(json.dumps(['PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'])
               if 'Env' in args[-1] else IMAGE)
         return 0
-    if command == 'volume':
-        if args[1] != 'ls':
-            print(args[-1])
+    if command == 'volume':  # each volume one file under volumes/: create, rm [-f], ls -q --filter name=^<volume>$
+        volume = state() / 'volumes' / args[-1].removeprefix('name=^').removesuffix('$')
+        if args[1] == 'create':
+            volume.touch()
+        elif args[1] == 'rm':
+            volume.unlink(missing_ok=True)
+        if args[1] != 'ls' or volume.exists():
+            print(volume.name)
         return 0
     if command == 'ps':
         return 0
@@ -416,7 +421,13 @@ def fake_docker(args):
             free = 5 * GIB if consume('disk-low') else 60 * GIB
             print(json.dumps({path: dict(total=460 * GIB, used=460 * GIB - free, free=free) for path in ('/cell', '/tmp')}))
             return 0
-        if '--entrypoint' in args:  # preserve_tmp's copy of the /tmp volume
+        if '--entrypoint' in args:  # preserve_tmp's copy of the /tmp volume, which prints what it leaves out
+            cell = Path(mounts(args)['/dst']).parent.name
+            if consume(f'copy-fails-{cell}'):  # the host mount refuses a FIFO whose mode denies its owner (c069)
+                sys.stderr.write('tar: ./fifo: Cannot mkfifo: Permission denied\n')
+                return 2
+            if consume(f'left-out-{cell}'):
+                sys.stdout.write('p\0' '200\0' './fifo\0')
             return 0
         if name.startswith('devlyn-0231-check-'):
             return check_container(args, command[command.index('timeout') + 3:])
@@ -553,7 +564,7 @@ class Rehearsal(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory(prefix='rehearsal-0266-')
         self.root = Path(self.temp.name) / 'live'
         self.fake = Path(self.temp.name) / 'fake'
-        for folder in ('bin', 'containers', 'home/.codex'):
+        for folder in ('bin', 'containers', 'volumes', 'home/.codex'):
             (self.fake / folder).mkdir(parents=True)
         for name in ('docker', 'security', 'claude'):
             path = self.fake / 'bin' / name
@@ -1092,6 +1103,46 @@ class Rehearsal(unittest.TestCase):
                          'x09-SMOKE-codex-C')
         self.assertFalse((self.root / 'scratch/credentials/x09-SMOKE-codex-C').exists())
         self.assertFalse([p for p in (self.fake / 'containers').glob('*.json') if 'x09-SMOKE-codex-C' in p.read_text()])
+
+        # 10. Amendment 2: a cell whose /tmp copy fails (the host refuses a FIFO) is a teardown STOP that latches the
+        # lanes and keeps its volume. Once an amendment clears the latch, the lane started again proves the teardown
+        # (the copy leaves the FIFO out and lists it, the volume is removed), keeps the attempt's tree and scope, seals
+        # the list with it, archives it and runs the slot again.
+        code, stderr = self.finish(self.launch('--clear-latch', amendment, self.runtime['codex']))
+        self.assertEqual(code, 0, stderr[-3000:])
+        slot = 'x10-SMOKE-codex-C'
+        copied = self.fake / 'copy.tsv'
+        copied.write_text(f'{slot}\tSMOKE\tC-K3\tcodex\t1\n')
+        for marker in (f'copy-fails-{slot}', f'left-out-{slot}'):
+            (self.fake / marker).write_text('inject once\n')
+        code, stderr = self.finish(self.driver('codex', copied))
+        self.assertNotEqual(code, 0)
+        self.assertIn(f'{slot}: STOP teardown failed: ', stderr)
+        failed = self.verdict(slot)
+        self.assertIn('Cannot mkfifo: Permission denied', failed['reason'])
+        self.assertEqual((failed['teardown'], failed['scope_violations'], failed['scope_error']),
+                         ('FAILED', None, 'not taken: the teardown is not proved'))
+        volume = json.loads((self.out / slot / 'run/started.json').read_text())['tmp_volume']
+        self.assertTrue((self.fake / 'volumes' / volume).exists())
+        self.assertEqual(json.loads((self.out / 'driver-status-codex.json').read_text())['harm_latch']['cell'], slot)
+        code, stderr = self.finish(self.launch('--clear-latch', amendment, self.runtime['codex']))
+        self.assertEqual(code, 0, stderr[-3000:])
+        code, stderr = self.finish(self.driver('codex', copied))
+        self.assertEqual(code, 0, stderr[-3000:])
+        archived = json.loads((self.out / f'verdict-{slot}.stop-1.json').read_text())
+        self.assertEqual((archived['reason'], archived['tmp_recovery'], archived['scope_violations'],
+                          'scope_error' in archived), (failed['reason'], 'preserved', [], False))
+        attempt = self.out / f'{slot}.stop-1'
+        self.assertEqual(json.loads((attempt / 'run/tmp-left-out.json').read_text()),
+                         [dict(type='p', mode='200', path='./fifo')])
+        self.assertIn('run/tmp-left-out.json', json.loads((attempt / 'evidence.manifest.json').read_text())['files'])
+        self.assertTrue((attempt / 'checks.json').is_file())
+        self.assertFalse((self.fake / 'volumes' / volume).exists())
+        self.assertEqual([(e['cell'], e['tmp']) for e in self.log('codex') if e['event'] == 'docker_teardown_proven'],
+                         [(slot, 'preserved')])
+        self.assertEqual(self.verdict(slot)['status'], 'COMPLETE')
+        self.assertFalse((self.out / slot / 'run/tmp-left-out.json').exists())
+        self.assertNotIn('harm_latch', json.loads((self.out / 'driver-status-codex.json').read_text()))
 
 
 if __name__ == '__main__':

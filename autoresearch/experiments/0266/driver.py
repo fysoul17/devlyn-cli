@@ -3,7 +3,9 @@ driver.py <runtime.json> <cells.tsv>[:prefix] ...  The runtime's lane (null, cla
 A lane's process holds an exclusive lock on <output>/driver-<lane>.lock for its whole life (--clear-latch too), so a
 lane never runs twice. A STOP that is not redispatched sets the harm latch, which stops both lanes; a lane with a cell
 running lets it finish. So does stop(), and any other exception that ends a lane (an operator's interrupt aside): the
-latch carries its text, so the other lane stops dispatching too."""
+latch carries its text, so the other lane stops dispatching too. A registered slot's failed teardown latches like any
+STOP; once an amendment has cleared that latch, the lane started again proves the teardown, archives the attempt and
+runs the slot again (amendment 2)."""
 import datetime
 import fcntl
 import hashlib
@@ -36,6 +38,7 @@ REGRADE = ('assessment failed', 'assessor produced', 'assessment held:')
 LAUNCH_FAULT, MEMORY_KILL = 'launch fault: ', 'memory kill: '
 ACCOUNT_FAULT = 'shared account fault during execution: '  # a Codex refresh_token_reused among them (quota.py)
 ONCE = (LAUNCH_FAULT, MEMORY_KILL, ACCOUNT_FAULT)  # redispatched once per slot; a repeat on the slot stays a STOP
+TEARDOWN_FAILED = 'teardown failed: '  # amendment 2: redispatched on a registered slot once an amendment cleared it
 GIB = 2**30
 COLUMNS = ('B', 'C', 'C-K1', 'C-K2', 'C-K3')  # the schedules' arm columns (prepare.arm_package)
 OPERATOR_HOLD = 'operator-hold'  # in the runtime root: while it exists, no lane starts a new cell
@@ -454,14 +457,18 @@ class Driver:
         return bool(row) and row[2].startswith('C-K') and row[1] != 'SMOKE'
 
     def redispatch(self, name, verdict):
-        """Whether a STOP is archived and its slot run again: a proven Docker loss, and the slot's first launch
-        fault, memory kill or shared account fault. Anything else, a repeat of one of those three on the slot among
-        it, stays a STOP, which the caller latches for both lanes. The repeat is read from the slot's archive, so it
-        is a STOP at a restart too. A screen slot is run again only when no owner ran in the STOP (DESIGN "Stage S"
-        rule 4: no screen cell is run again)."""
+        """Whether a STOP is archived and its slot run again: a proven Docker loss, the slot's first launch fault,
+        memory kill or shared account fault, and (amendment 2) a registered slot's failed teardown once an amendment
+        has cleared its latch; dispatch() proves the teardown of a Docker loss or a failed teardown first (recover).
+        Anything else, a repeat of one of those three on the slot among it and a failed teardown no amendment cleared,
+        stays a STOP, which the caller latches for both lanes. The repeat is read from the slot's archive, so it is a
+        STOP at a restart too. A screen slot is run again only when no owner ran in the STOP (DESIGN "Stage S" rule 4:
+        no screen cell is run again), and never for a failed teardown."""
         if self.screen_slot(name) and verdict.get('owner_ran') is not False:
             return False
         reason = str(verdict.get('reason', ''))
+        if reason.startswith(TEARDOWN_FAILED) and self.cleared(name) and not self.screen_slot(name):
+            return True
         kind = next((prefix for prefix in ONCE if reason.startswith(prefix)), None)
         if kind and any(str(json.loads(path.read_text()).get('reason', '')).startswith(kind)
                         for path in self.output.glob(f'verdict-{name}.stop-*.json')):
@@ -471,11 +478,12 @@ class Driver:
         return reason.startswith(ACCOUNT_FAULT) or docker_fault(verdict)
 
     def prove_docker_teardown(self, name):
-        """End what Docker lost of this attempt as a normal teardown ends it: its stopped containers removed (the owner
-        among them, unless the cell's own teardown had removed it already: run/started.json names the owner and the /tmp
-        volume either way), then, while the volume still exists, its /tmp preserved into the cell by cell.py's
-        preserve_tmp (which removes the volume), and both proven gone. Returns how /tmp ended: 'preserved' or 'volume
-        absent'. A step that fails or cannot be proved stops both lanes and leaves the volume in place."""
+        """End an attempt whose teardown did not finish (a Docker loss, or a failed teardown an amendment cleared:
+        amendment 2) as a normal teardown ends it: its stopped containers removed (the owner among them, unless the
+        cell's own teardown had removed it already: run/started.json names the owner and the /tmp volume either way),
+        then, while the volume still exists, its /tmp preserved into the cell by preserve_tmp (run_cell.py's, which
+        removes the volume), and both proven gone. Returns how /tmp ended: 'preserved' or 'volume absent'. A step that
+        fails or cannot be proved stops both lanes and leaves the volume in place."""
         try:
             started = json.loads((self.output / name / 'run/started.json').read_text())
             plan = json.loads((self.output / name / 'plan.json').read_text())
@@ -521,10 +529,11 @@ class Driver:
         return tmp
 
     def recover(self, name, verdict):
-        """A proven Docker loss before it is archived: ended as a normal teardown ends a cell (prove_docker_teardown),
-        sealed again now that /tmp is in the cell (run_cell.seal_after_teardown, as after a normal teardown) and, when
-        its owner ran, given the evidence of DESIGN "The rule for attempts" (run_cell.stop_evidence). The verdict
-        records how /tmp ended (tmp_recovery) and is replaced atomically."""
+        """A Docker loss, or a registered slot's failed teardown whose latch an amendment cleared (amendment 2), before
+        it is archived: ended as a normal teardown ends a cell (prove_docker_teardown), sealed again now that /tmp is
+        in the cell (run_cell.seal_after_teardown, as after a normal teardown) and, when its owner ran, given the
+        evidence of DESIGN "The rule for attempts" (run_cell.stop_evidence, which replaces a scope_error the cell's
+        own STOP wrote). The verdict records how /tmp ended (tmp_recovery) and is replaced atomically."""
         tmp = self.prove_docker_teardown(name)
         sealed, failures = cell.seal_after_teardown(self.output / name)
         if failures:
@@ -562,9 +571,8 @@ class Driver:
                 self.assert_active()
                 self.terminal(name, rc)
                 return rc == 0
-            infrastructure_fault = docker_fault(verdict)
             if self.redispatch(name, verdict):
-                if infrastructure_fault:
+                if docker_fault(verdict) or reason.startswith(TEARDOWN_FAILED):  # its teardown is proved first
                     self.recover(name, verdict)
                 number = 1
                 while (self.output / f'verdict-{name}.stop-{number}.json').exists():

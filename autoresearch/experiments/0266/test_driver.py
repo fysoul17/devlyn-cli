@@ -117,6 +117,12 @@ MEMORY = dict(status='STOP', reason='memory kill: OOMKilled=True exit_code=137 o
               identity={'status': 'MATCH'}, owner_status='EXITED_NONZERO')
 ACCOUNT = dict(status='STOP', reason='shared account fault during execution: codex authentication', teardown='CLEAN',
                identity={'status': 'UNVERIFIED'}, owner_status='EXITED_NONZERO')  # a refresh_token_reused at the start
+# c069's shape (amendment 2): the /tmp copy failed after the owner's container was removed; nothing was graded.
+TEARDOWN = dict(status='STOP', teardown='FAILED', identity={'status': 'MATCH'}, owner_status='EXITED_0', owner_ran=True,
+                usage='COMPLETE', evidence_manifest_sha256='before', scope_violations=None,
+                scope_error='not taken: the teardown is not proved',
+                reason="teardown failed: Command '['docker', 'run', '...']' returned non-zero exit status 2. tar: "
+                       './exp/tmp79kh78r5/fifo_noperm: Cannot mkfifo: Permission denied\n')
 
 
 def cells(output, outcomes):
@@ -1212,27 +1218,19 @@ class Faults(unittest.TestCase):
                         dict(stop, teardown='CLEAN', teardown_error=lost[0]), dict(COMPLETE, teardown_error=lost[0]), None):
             self.assertFalse(driver.docker_fault(verdict), verdict)
 
-    def docker_loss(self, root, *, owner=True, volume=True, owner_ran=True, preserve=None, on_volume=True,
-                    sealed=('after', [])):
-        """A Docker-loss STOP of one slot recovered by dispatch, against a fake Docker that holds the attempt's owner
-        container (owner) and /tmp volume (volume). preserve: what cell.py's preserve_tmp raises (it otherwise copies
-        the volume into the cell and removes it). Returns (dispatch's result or the exception, Docker's calls, the
-        fakes, the slot's name)."""
-        seal(root)
-        d = lane(root, 'claude')
-        name = row('c001-')[0]
+    def attempt(self, output, name, *, owner=True, volume=True, preserve=None, on_volume=True, sealed=('after', [])):
+        """A slot's attempt whose teardown did not finish: its plan.json and run/started.json, and the patches of a
+        fake Docker that holds its owner container (owner) and /tmp volume (volume). preserve: what preserve_tmp
+        raises (it otherwise copies the volume into the cell and removes it). Returns (the patches, Docker's calls,
+        the fakes)."""
         container, vol, cid = 'devlyn-0231-owner', 'devlyn-0233-tmp-owner', 'a' * 64
-        out = d.output / name
+        out = output / name
         (out / 'run').mkdir(parents=True)
         (out / 'tmp').mkdir()
         (out / 'plan.json').write_text(json.dumps(dict(tmp=str(out / 'tmp'), image='sha256:test')))
         (out / 'run/started.json').write_text(json.dumps({
             'create_argv': ['create', '--name', container, f'type=volume,src={vol},dst=/tmp'],
             'tmp_volume': vol, 'started_at': time.time()}))
-        (d.output / f'verdict-{name}.json').write_text(json.dumps(dict(
-            status='STOP', teardown='FAILED', identity={'status': 'MATCH'}, owner_status='EXITED_NONZERO',
-            owner_ran=owner_ran, evidence_manifest_sha256='before',
-            reason='teardown failed: failed to connect to the docker API at unix:///docker.sock')))
         containers = {cid: dict(Id=cid, Name='/' + container, Config={'Labels': {'devlyn.task': '0233'}},
                                 Mounts=[{'Type': 'volume', 'Name': vol if on_volume else 'other'}],
                                 State={'Running': False, 'Pid': 0, 'Status': 'exited'})} if owner else {}
@@ -1265,20 +1263,37 @@ class Faults(unittest.TestCase):
             volumes.discard(volume_)
         fakes = dict(preserve=mock.Mock(side_effect=preserve_tmp),
                      seal=mock.Mock(return_value=sealed),
-                     evidence=mock.Mock(side_effect=lambda out_, record: dict(
-                         record, snapshot={'kind': 'anchor'}, scope_violations=[], changed=['src/x.js'])))
+                     evidence=mock.Mock(side_effect=lambda out_, record: dict(  # run_cell's drops a scope_error too
+                         {k: v for k, v in record.items() if k != 'scope_error'},
+                         snapshot={'kind': 'anchor'}, scope_violations=[], changed=['src/x.js'])),
+                     volumes=volumes, containers=containers, out=out)
+        patches = (mock.patch.object(driver.subprocess, 'run', side_effect=docker),
+                   mock.patch.object(driver.cell, 'cell_run', types.SimpleNamespace(preserve_tmp=fakes['preserve']),
+                                     create=True),
+                   mock.patch.object(driver.cell, 'seal_after_teardown', fakes['seal'], create=True),
+                   mock.patch.object(driver.cell, 'stop_evidence', fakes['evidence'], create=True))
+        return patches, calls, fakes
+
+    def docker_loss(self, root, *, owner_ran=True, **attempt):
+        """A Docker-loss STOP of one slot recovered by dispatch (attempt: the fake Docker's state). Returns (dispatch's
+        result or the exception, Docker's calls, the fakes, the slot's name)."""
+        seal(root)
+        d = lane(root, 'claude')
+        name = row('c001-')[0]
+        patches, calls, fakes = self.attempt(d.output, name, **attempt)
+        (d.output / f'verdict-{name}.json').write_text(json.dumps(dict(
+            status='STOP', teardown='FAILED', identity={'status': 'MATCH'}, owner_status='EXITED_NONZERO',
+            owner_ran=owner_ran, evidence_manifest_sha256='before',
+            reason='teardown failed: failed to connect to the docker API at unix:///docker.sock')))
         run, called = cells(d.output, {name: [COMPLETE]})
-        with mock.patch.object(driver.subprocess, 'run', side_effect=docker), \
-                mock.patch.object(driver.cell, 'run', side_effect=run), \
-                mock.patch.object(driver.cell, 'cell_run', types.SimpleNamespace(preserve_tmp=fakes['preserve']),
-                                  create=True), \
-                mock.patch.object(driver.cell, 'seal_after_teardown', fakes['seal'], create=True), \
-                mock.patch.object(driver.cell, 'stop_evidence', fakes['evidence'], create=True):
+        with contextlib.ExitStack() as stack:
+            for patch in (*patches, mock.patch.object(driver.cell, 'run', side_effect=run)):
+                stack.enter_context(patch)
             try:
                 result = d.dispatch(row('c001-'))
             except RuntimeError as exc:
                 result = exc
-        fakes.update(called=called, volumes=volumes, containers=containers, out=out, lane=d)
+        fakes.update(called=called, lane=d)
         d.lock.close()
         return result, calls, fakes, name
 
@@ -1350,6 +1365,147 @@ class Faults(unittest.TestCase):
                 self.assertIn(reason, latch['reason'])
                 with self.assertRaisesRegex(driver.Stopped, 'harm latch in lane claude'):
                     lane(root, 'codex').assert_active()
+
+    def restart(self, root, slots, name, *, cleared=True, outcomes=(COMPLETE,), **attempt):
+        """Amendment 2: a lane started again (run()) on a slot whose teardown STOP is on file, against a fake Docker
+        (attempt: its state). cleared: the STOP latched both lanes and an amendment cleared that latch; otherwise the
+        process died before it latched. Returns (run()'s Stopped or None, Docker's calls, the fakes)."""
+        seal(root)
+        first = lane(root, 'claude', slots)
+        patches, calls, fakes = self.attempt(first.output, name, **attempt)
+        (first.output / f'verdict-{name}.json').write_text(json.dumps(dict(TEARDOWN, cell=name)))
+        if cleared:
+            first.latch(name, 'STOP ' + TEARDOWN['reason'])  # as terminal() latched it
+            amendment = root / 'amendment-2.md'
+            amendment.write_text('resolved')
+            first.clear_latch(amendment)
+        first.lock.close()
+        d = lane(root, 'claude', slots)
+        run, called = cells(d.output, {name: list(outcomes)})
+        result = None
+        with contextlib.ExitStack() as stack:
+            for patch in (*patches, mock.patch.object(driver.cell, 'run', side_effect=run),
+                          mock.patch.object(driver.time, 'sleep')):
+                stack.enter_context(patch)
+            ready = stack.enter_context(mock.patch.object(d, 'ready', return_value=True))
+            try:
+                d.run()
+            except driver.Stopped as exc:
+                result = exc
+            finally:
+                d.lock.close()
+        fakes.update(called=called, ready=ready, lane=d)
+        return result, calls, fakes
+
+    def test_a_cleared_teardown_stop_is_recovered_archived_and_run_again(self):
+        """Amendment 2, allowed: c069's STOP, its latch cleared, met when the lane starts again. Its teardown is
+        proved (the volume preserved by the copy, then removed), the cell sealed again and given its tree and scope
+        (no "not taken" left), the attempt archived as stop-1 and the slot run again; no latch. Violating: before,
+        the lane ended there again, the slot without a final verdict."""
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            name = row('c001-')[0]
+            result, calls, fakes = self.restart(root, [row('c001-')], name, owner=False)
+            self.assertIsNone(result)
+            output = root / 'output'
+            self.assertEqual(fakes['called'], [name])
+            self.assertEqual(fakes['volumes'], set())
+            self.assertEqual([c for c in calls if c[0] == 'preserve_tmp'],
+                             [['preserve_tmp', 'devlyn-0233-tmp-owner', str(fakes['out'] / 'tmp'), 'sha256:test']])
+            fakes['seal'].assert_called_once_with(fakes['out'])
+            archived = json.loads((output / f'verdict-{name}.stop-1.json').read_text())
+            self.assertEqual((archived['reason'], archived['tmp_recovery'], archived['evidence_manifest_sha256'],
+                              archived['scope_violations'], archived['changed']),
+                             (TEARDOWN['reason'], 'preserved', 'after', [], ['src/x.js']))
+            self.assertNotIn('scope_error', archived)
+            self.assertTrue((output / f'{name}.stop-1/tmp/helper-worktree.txt').is_file())
+            self.assertEqual(json.loads((output / f'verdict-{name}.json').read_text())['status'], 'COMPLETE')
+            log = events(root, 'claude')
+            self.assertEqual([(e['cell'], e['tmp']) for e in log if e['event'] == 'docker_teardown_proven'],
+                             [(name, 'preserved')])
+            self.assertEqual(log[-1]['event'], 'complete')
+            self.assertIsNone(latched(root, 'claude'))
+
+    def test_a_teardown_stop_no_amendment_cleared_latches_both_lanes(self):
+        """Amendment 2, violating: the same STOP met at a restart with no amendment (the process died before its
+        latch) is not recovered: it latches both lanes before any wait, its volume kept; and a teardown STOP that a
+        cell run returns latches at once, also the repeat on a slot whose first one was recovered."""
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            name = row('c001-')[0]
+            result, calls, fakes = self.restart(root, [row('c001-')], name, cleared=False, owner=False)
+            self.assertIsInstance(result, driver.Stopped)
+            self.assertIn(f'{name}: STOP teardown failed: ', str(result))
+            fakes['ready'].assert_not_called()
+            self.assertEqual((fakes['called'], calls, fakes['volumes']), ([], [], {'devlyn-0233-tmp-owner'}))
+            self.assertFalse((root / f'output/verdict-{name}.stop-1.json').exists())
+            self.assertEqual(latched(root, 'claude')['reason'], 'STOP ' + TEARDOWN['reason'])
+            with self.assertRaisesRegex(driver.Stopped, 'harm latch in lane claude'):
+                lane(root, 'codex').assert_active()
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            name = row('c002-')[0]
+            with self.assertRaisesRegex(driver.Stopped, f'{name}: STOP teardown failed: '):
+                self.run_lane(root, 'claude', [row('c002-')], {name: [TEARDOWN]})
+            self.assertEqual(self.called, [name])
+            self.assertFalse((root / f'output/verdict-{name}.stop-1.json').exists())
+            self.assertEqual(latched(root, 'claude')['reason'], 'STOP ' + TEARDOWN['reason'])
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            name = row('c001-')[0]
+            repeat = dict(TEARDOWN, evidence_manifest_sha256='repeat')  # a new verdict: no amendment cleared it
+            result, calls, fakes = self.restart(root, [row('c001-')], name, owner=False, outcomes=(repeat,))
+            self.assertIsInstance(result, driver.Stopped)
+            self.assertEqual(fakes['called'], [name])
+            self.assertEqual(fakes['preserve'].call_count, 1)  # the first attempt's recovery only
+            self.assertEqual(sorted(p.name for p in (root / 'output').glob(f'verdict-{name}.stop-*')),
+                             [f'verdict-{name}.stop-1.json'])
+            self.assertEqual(latched(root, 'claude')['cell'], name)
+
+    def test_a_cleared_teardown_stop_of_a_screen_slot_is_passed_and_not_run_again(self):
+        """Amendment 2 leaves the screen's rule (DESIGN "Stage S" rule 4): a screen slot's cleared teardown STOP is
+        passed and reads as an unknown, whether or not its owner ran; nothing is recovered or run again."""
+        screen = driver.rows([str(HERE / 'screen.tsv')])[:2]
+        for owner_ran in (True, False):
+            with self.subTest(owner_ran=owner_ran), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                first, second = screen[0][0], screen[1][0]
+                seal(root)
+                d = lane(root, 'claude', screen)
+                (d.output / f'verdict-{first}.json').write_text(json.dumps(dict(TEARDOWN, owner_ran=owner_ran)))
+                stopped = (d.output / f'verdict-{first}.json').read_text()
+                d.latch(first, 'STOP ' + TEARDOWN['reason'])
+                amendment = root / 'amendment-2.md'
+                amendment.write_text('resolved')
+                d.clear_latch(amendment)
+                d.lock.close()
+                d = self.run_lane(root, 'claude', screen, {second: [COMPLETE]})
+                self.assertEqual(self.called, [second])
+                self.assertEqual((d.output / f'verdict-{first}.json').read_text(), stopped)
+                self.assertFalse(list(d.output.glob(f'verdict-{first}.stop-*')))
+                self.assertEqual([e['cell'] for e in events(root, 'claude') if e['event'] == 'skip_cleared_stop'],
+                                 [first])
+                self.assertFalse([e for e in events(root, 'claude') if e['event'] == 'docker_teardown_proven'])
+
+    def test_a_cleared_teardown_stop_whose_recovery_cannot_be_proved_stops_both_lanes(self):
+        """Amendment 2, violating: the copy fails again during the recovery. Both lanes stop with the harm latch
+        set, the volume and the STOP stay as they were, and nothing is archived or run again."""
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            name = row('c001-')[0]
+            failed = subprocess.CalledProcessError(2, ['docker', 'run'])
+            result, calls, fakes = self.restart(root, [row('c001-')], name, owner=False, preserve=failed)
+            self.assertIsInstance(result, driver.Stopped)
+            self.assertIn(f'{name}: Docker teardown proof failed', str(result))
+            self.assertEqual((fakes['called'], fakes['volumes']), ([], {'devlyn-0233-tmp-owner'}))
+            fakes['evidence'].assert_not_called()
+            self.assertEqual(json.loads((root / f'output/verdict-{name}.json').read_text()), dict(TEARDOWN, cell=name))
+            self.assertFalse((root / f'output/verdict-{name}.stop-1.json').exists())
+            latch = latched(root, 'claude')
+            self.assertEqual(latch['cell'], None)
+            self.assertIn('Docker teardown proof failed', latch['reason'])
+            with self.assertRaisesRegex(driver.Stopped, 'harm latch in lane claude'):
+                lane(root, 'codex').assert_active()
 
 
 class LaneEnd(unittest.TestCase):

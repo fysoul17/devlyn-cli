@@ -50,6 +50,42 @@ prepare, cell_run, usage, locate, check, assess, quota = (load(n) for n in (
     'prepare', 'cell', 'record_usage', 'locate', 'check', 'assess', 'quota'))
 base = load('run_cell0222', HERE.parent / '0222/run_cell.py')
 instructions = load('instructions')
+# Amendment 2: the /tmp copy prints each FIFO, socket and device node (type, octal mode, path) and copies the rest.
+COPY_TMP = (r"set -o pipefail; cd /src && find . \( -type p -o -type s -o -type b -o -type c \) -printf '%y\0%m\0%p\0'"
+            r" && find . ! \( -type p -o -type s -o -type b -o -type c \) -print0"
+            r" | tar --null --no-unquote --verbatim-files-from --no-recursion -T - -cf - | tar -C /dst -xpf -")
+
+
+def preserve_tmp(volume, dest, image):
+    """0233's preserve_tmp with one change (amendment 2): copy the cell's /tmp volume into dest, leaving out FIFOs,
+    sockets and device nodes, then remove the volume. Docker Desktop's host mount refuses some special files (a FIFO
+    whose mode denies its owner, c069), and nothing reads them: seal_after_teardown hashes regular files only. What is
+    left out is listed in run/ beside dest (tmp-left-out.json), which the seal after the teardown covers. What a failed
+    copy left in dest is removed first. On failure the volume stays for recovery and the caller records a teardown
+    failure."""
+    for entry in dest.iterdir():  # a failed copy's part, half-made FIFO nodes among it; the volume still holds it all
+        if entry.is_dir() and not entry.is_symlink():
+            shutil.rmtree(entry)
+        else:
+            entry.unlink()
+    listed = subprocess.run(['docker', 'run', '--rm', '--network', 'none', '--user', '0', '--mount',
+                             f'type=volume,src={volume},dst=/src,readonly', '--mount', f'type=bind,src={dest},dst=/dst',
+                             '--entrypoint', 'bash', image, '-c', COPY_TMP],
+                            capture_output=True, check=True, timeout=600).stdout  # bytes: a name need not be UTF-8
+    fields = listed.split(b'\0')
+    if fields.pop() or len(fields) % 3:
+        raise ValueError(f'the /tmp copy listed what it left out in no readable form: {listed[:200]!r}')
+    left_out = [dict(type=fields[i].decode(), mode=fields[i + 1].decode(), path=os.fsdecode(fields[i + 2]))
+                for i in range(0, len(fields), 3)]
+    record = dest.parent / 'run/tmp-left-out.json'
+    if left_out:
+        record.write_text(json.dumps(left_out, indent=2))
+    else:
+        record.unlink(missing_ok=True)
+    cell_run.docker('volume', 'rm', volume)
+
+
+cell_run.preserve_tmp = preserve_tmp  # 0265's run() and driver.py's recovery resolve the name at call time
 MIN_TOKEN_SECONDS = prepare.WALL_SECONDS + 900  # 3,600: no copied token is refreshed inside a cell
 START_TOKEN_SECONDS = prepare.WALL_SECONDS + 300  # 3,000: what the copy must still hold once the cell is prepared
 # Free space on the output volume before a cell: two lanes' cells and traces (full request payloads) with margin.
