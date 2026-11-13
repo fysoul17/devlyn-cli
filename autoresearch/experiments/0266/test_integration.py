@@ -696,7 +696,7 @@ class Rehearsal(unittest.TestCase):
                          ('GO', SELECTED, instructions.control.PINS[SELECTED][0], []))
 
         # 2. Both lanes at once, in two real processes, over the r <= 2 slice; the host login at the 300 s mark, one
-        # injected launch fault (claude lane, in C), one injected HTTP 429 hold (codex lane), one assessor seat that
+        # injected launch fault (claude lane, in C), one injected HTTP 429 (codex lane), one assessor seat that
         # answers nothing (codex lane), and, for whichever lane reads it first, one in-container disk reading below
         # the delivery floor and one usage read without the seven-day window. A third process for the claude lane,
         # started while the first runs, is refused by the lane lock.
@@ -733,7 +733,8 @@ class Rehearsal(unittest.TestCase):
         self.assertEqual({self.verdict(r[0])['package'] for r in self.slice if r[2] == 'C'}, {SELECTED})
         self.assertEqual({self.verdict(r[0])['package'] for r in self.slice if r[2] == 'B'}, {'B'})
 
-        # The launch fault was archived and redispatched without a latch; the 429 was a hold, never a verdict; the
+        # The launch fault was archived and redispatched without a latch; the 429 held nothing (amendment 1: its cell
+        # was dispatched unread, the endpoint naming no Retry-After) and was never a verdict; the
         # disk reading held one dispatch; a codex cell needs no Codex window evidence; a usage read without the
         # five-hour window dispatches (every read here lacks it), one without the seven-day window holds (a weekly
         # model limit does not stand in for it); the account's entries that are no window (extra usage at its cap)
@@ -744,7 +745,9 @@ class Rehearsal(unittest.TestCase):
         self.assertEqual(self.verdict(self.launch_fault)['status'], 'COMPLETE')
         self.assertEqual(sum(e['event'] == 'run' and e['cell'] == self.launch_fault for e in self.log('claude')), 2)
         holds = {lane: [e['reason'] for e in self.log(lane) if e['event'] == 'hold'] for lane in lanes}
-        self.assertTrue(any(r.startswith('Claude window check failed: HTTP Error 429') for r in holds['codex']), holds)
+        self.assertEqual([(e.get('cell'), e['retry_after']) for e in self.log('codex') if e['event'] == 'window_unread'],
+                         [(None, None)])
+        self.assertFalse([r for lane in lanes for r in holds[lane] if '429' in r], holds)
         self.assertEqual(sum(r.startswith('cell disk below the delivery floor: /cell has')
                              for lane in lanes for r in holds[lane]), 1, holds)
         self.assertEqual(sum(r == 'Claude window evidence unavailable: no seven-day window'
