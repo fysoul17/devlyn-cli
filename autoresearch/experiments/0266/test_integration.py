@@ -421,13 +421,13 @@ def fake_docker(args):
             free = 5 * GIB if consume('disk-low') else 60 * GIB
             print(json.dumps({path: dict(total=460 * GIB, used=460 * GIB - free, free=free) for path in ('/cell', '/tmp')}))
             return 0
-        if '--entrypoint' in args:  # preserve_tmp's copy of the /tmp volume, which prints what it leaves out
+        if '--entrypoint' in args:  # preserve_tmp's copy of the /tmp volume, which prints a record of what it changed
             cell = Path(mounts(args)['/dst']).parent.name
-            if consume(f'copy-fails-{cell}'):  # the host mount refuses a FIFO whose mode denies its owner (c069)
+            if consume(f'copy-fails-{cell}'):  # the host mount refuses a FIFO of mode 0200 (c069)
                 sys.stderr.write('tar: ./fifo: Cannot mkfifo: Permission denied\n')
                 return 2
-            if consume(f'left-out-{cell}'):
-                sys.stdout.write('p\0' '200\0' './fifo\0')
+            if consume(f'copy-records-{cell}'):
+                sys.stdout.write('left_out\0' 'p\0' '200\0' './fifo\0' 'made_searchable\0' 'd\0' '0\0' './locked\0')
             return 0
         if name.startswith('devlyn-0231-check-'):
             return check_container(args, command[command.index('timeout') + 3:])
@@ -1106,14 +1106,14 @@ class Rehearsal(unittest.TestCase):
 
         # 10. Amendment 2: a cell whose /tmp copy fails (the host refuses a FIFO) is a teardown STOP that latches the
         # lanes and keeps its volume. Once an amendment clears the latch, the lane started again proves the teardown
-        # (the copy leaves the FIFO out and lists it, the volume is removed), keeps the attempt's tree and scope, seals
-        # the list with it, archives it and runs the slot again.
+        # (the copy leaves the FIFO out, makes a directory searchable and lists both, the volume is removed), keeps the
+        # attempt's tree and scope, seals the list with it, archives it and runs the slot again.
         code, stderr = self.finish(self.launch('--clear-latch', amendment, self.runtime['codex']))
         self.assertEqual(code, 0, stderr[-3000:])
         slot = 'x10-SMOKE-codex-C'
         copied = self.fake / 'copy.tsv'
         copied.write_text(f'{slot}\tSMOKE\tC-K3\tcodex\t1\n')
-        for marker in (f'copy-fails-{slot}', f'left-out-{slot}'):
+        for marker in (f'copy-fails-{slot}', f'copy-records-{slot}'):
             (self.fake / marker).write_text('inject once\n')
         code, stderr = self.finish(self.driver('codex', copied))
         self.assertNotEqual(code, 0)
@@ -1133,15 +1133,16 @@ class Rehearsal(unittest.TestCase):
         self.assertEqual((archived['reason'], archived['tmp_recovery'], archived['scope_violations'],
                           'scope_error' in archived), (failed['reason'], 'preserved', [], False))
         attempt = self.out / f'{slot}.stop-1'
-        self.assertEqual(json.loads((attempt / 'run/tmp-left-out.json').read_text()),
-                         [dict(type='p', mode='200', path='./fifo')])
-        self.assertIn('run/tmp-left-out.json', json.loads((attempt / 'evidence.manifest.json').read_text())['files'])
+        self.assertEqual(json.loads((attempt / 'run/tmp-copy.json').read_text()),
+                         dict(left_out=[dict(type='p', mode='200', path='./fifo')],
+                              made_searchable=[dict(mode='0', path='./locked')]))
+        self.assertIn('run/tmp-copy.json', json.loads((attempt / 'evidence.manifest.json').read_text())['files'])
         self.assertTrue((attempt / 'checks.json').is_file())
         self.assertFalse((self.fake / 'volumes' / volume).exists())
         self.assertEqual([(e['cell'], e['tmp']) for e in self.log('codex') if e['event'] == 'docker_teardown_proven'],
                          [(slot, 'preserved')])
         self.assertEqual(self.verdict(slot)['status'], 'COMPLETE')
-        self.assertFalse((self.out / slot / 'run/tmp-left-out.json').exists())
+        self.assertFalse((self.out / slot / 'run/tmp-copy.json').exists())
         self.assertNotIn('harm_latch', json.loads((self.out / 'driver-status-codex.json').read_text()))
 
 

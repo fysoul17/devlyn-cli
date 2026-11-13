@@ -1053,8 +1053,11 @@ class PreserveTmp(unittest.TestCase):
     """Amendment 2: 0266's copy of a cell's /tmp volume (run_cell.preserve_tmp), which 0265's cell.py and driver.py's
     recovery call, against a fake Docker at subprocess.run. CopyProof runs it on the pinned image."""
     COMMAND = (r"set -o pipefail; cd /src && find . \( -type p -o -type s -o -type b -o -type c \) -printf "
-               r"'%y\0%m\0%p\0' && find . ! \( -type p -o -type s -o -type b -o -type c \) -print0 | tar --null "
-               r"--no-unquote --verbatim-files-from --no-recursion -T - -cf - | tar -C /dst -xpf -")
+               r"'left_out\0%y\0%m\0%p\0' && find . -type d ! -perm -u+x -printf 'made_searchable\0%y\0%m\0%p\0' "
+               r"&& find . -type d -print0 | (cd /dst && xargs -0 -r mkdir -p --) && find . ! \( -type p -o -type s "
+               r"-o -type b -o -type c \) -print0 | tar --null --no-unquote --verbatim-files-from --no-recursion -T - "
+               r"-cf - | tar -C /dst -xpf - && find . -type d ! -perm -u+x -print0 | (cd /dst && xargs -0 -r chmod "
+               r"u+x --)")
 
     def cell(self, root):
         out = root / 'cell'
@@ -1083,10 +1086,13 @@ class PreserveTmp(unittest.TestCase):
                 return calls, held, exc
         return calls, held, None
 
-    def test_the_copy_leaves_special_files_out_and_then_removes_the_volume(self):
-        """Violating (the old copy): `tar -cf - .` reaches every FIFO, and the host mount refuses one whose mode
-        denies its owner. Allowed: one container, its output read as bytes, copies everything but FIFOs, sockets and
-        device nodes (both type filters, names read NUL-separated and verbatim), then the volume is removed."""
+    def test_the_copy_leaves_special_files_out_makes_directories_first_and_then_removes_the_volume(self):
+        """Violating (the old copy): `tar -cf - .` reaches every FIFO and, run as root, creates each directory with
+        its recorded mode at once; the host mount refuses a FIFO without owner read or write and a directory without
+        owner read, and tar cannot write into a read-only one. Allowed: one container, its output read as bytes, in
+        five steps: list the FIFOs, sockets and device nodes, which are left out; list the directories without owner
+        search; make every directory in /dst; copy everything else (both type filters, names read NUL-separated and
+        verbatim); give the listed directories owner search. Then the volume is removed."""
         with tempfile.TemporaryDirectory() as temp:
             out = self.cell(Path(temp))
             calls, _, error = self.preserve(out)
@@ -1096,45 +1102,62 @@ class PreserveTmp(unittest.TestCase):
                   'type=volume,src=vol,dst=/src,readonly', '--mount', f'type=bind,src={out / "tmp"},dst=/dst',
                   '--entrypoint', 'bash', 'image', '-c', self.COMMAND], dict(capture_output=True, check=True, timeout=600)),
                 (['docker', 'volume', 'rm', 'vol'], dict(capture_output=True, text=True, check=True, timeout=60))])
-            self.assertFalse((out / 'run/tmp-left-out.json').exists())
+            self.assertFalse((out / 'run/tmp-copy.json').exists())
 
-    def test_what_is_left_out_is_listed_in_run_and_a_stale_list_is_removed(self):
-        """The copy's NUL-separated triples (type, octal mode, path) become run/tmp-left-out.json, a name that is not
-        UTF-8 or holds a newline among them; a copy that leaves nothing out leaves no list, an earlier one removed."""
-        listing = (b'p\x00200\x00./exp/tmp79kh78r5/fifo_noperm\x00s\x00755\x00./cc-socks/s\x00'
-                   b'p\x000\x00./-new\nline \\ caf\xe9\x00')
+    def test_what_the_copy_changed_is_listed_in_run_and_a_stale_list_is_removed(self):
+        """The copy's NUL-separated records (kind, type letter, octal mode, path) become run/tmp-copy.json: the
+        special files left out and the directories made searchable, a name that is not UTF-8 or holds a newline among
+        them. Either list alone writes the file; a copy that changed nothing leaves none, an earlier one removed."""
+        listing = (b'left_out\x00p\x00200\x00./exp/tmp79kh78r5/fifo_noperm\x00left_out\x00s\x00755\x00./cc-socks/s\x00'
+                   b'made_searchable\x00d\x000\x00./locked\x00left_out\x00p\x000\x00./-new\nline \\ caf\xe9\x00'
+                   b'made_searchable\x00d\x00600\x00./locked/-T\x00')
         with tempfile.TemporaryDirectory() as temp:
             out = self.cell(Path(temp))
             calls, _, error = self.preserve(out, listing)
             self.assertIsNone(error)
-            self.assertEqual(json.loads((out / 'run/tmp-left-out.json').read_text()), [
-                dict(type='p', mode='200', path='./exp/tmp79kh78r5/fifo_noperm'),
-                dict(type='s', mode='755', path='./cc-socks/s'),
-                dict(type='p', mode='0', path=os.fsdecode(b'./-new\nline \\ caf\xe9'))])
+            self.assertEqual(json.loads((out / 'run/tmp-copy.json').read_text()), dict(
+                left_out=[dict(type='p', mode='200', path='./exp/tmp79kh78r5/fifo_noperm'),
+                          dict(type='s', mode='755', path='./cc-socks/s'),
+                          dict(type='p', mode='0', path=os.fsdecode(b'./-new\nline \\ caf\xe9'))],
+                made_searchable=[dict(mode='0', path='./locked'), dict(mode='600', path='./locked/-T')]))
             self.assertEqual(calls[-1][0], ['docker', 'volume', 'rm', 'vol'])
+            calls, _, error = self.preserve(out, b'made_searchable\x00d\x00600\x00./dir-600\x00')
+            self.assertIsNone(error)
+            self.assertEqual(json.loads((out / 'run/tmp-copy.json').read_text()),
+                             dict(left_out=[], made_searchable=[dict(mode='600', path='./dir-600')]))
             calls, _, error = self.preserve(out)
             self.assertIsNone(error)
-            self.assertFalse((out / 'run/tmp-left-out.json').exists())
+            self.assertFalse((out / 'run/tmp-copy.json').exists())
 
     def test_what_a_failed_copy_left_is_removed_before_the_copy(self):
-        """c069: the failed copy left its part in tmp, half-made FIFO nodes among it. Violating: the copy starts over
-        it. Allowed: tmp is emptied (a real FIFO, a nested folder, a file, a link to a folder whose target stays) and
-        keeps its own mode."""
+        """c069: the failed copy left its part in tmp, half-made FIFO nodes among it, and a failed copy can leave
+        directories the host user cannot enter. Violating: the copy starts over it, or emptying it fails on such a
+        directory or follows a link out of tmp. Allowed: tmp is emptied (a real FIFO, a nested folder, a file,
+        directories of mode 000 holding a file, links to a folder outside tmp whose target stays as it was) and keeps
+        its own mode."""
         with tempfile.TemporaryDirectory() as temp:
             out = self.cell(Path(temp))
-            tmp = out / 'tmp'
+            tmp, outside = out / 'tmp', Path(temp) / 'outside'
+            outside.mkdir()
+            (outside / 'kept').write_text('kept')
+            outside.chmod(0o750)
             (tmp / 'exp/nested').mkdir(parents=True)
             (tmp / 'exp/nested/e.py').write_text('x')
             os.mkfifo(tmp / 'exp/fifo_noperm', 0o200)
             (tmp / 'editor.txt~').write_text('x')
-            (out / 'run/kept').write_text('kept')
-            (tmp / 'link').symlink_to(out / 'run')
+            (tmp / 'link').symlink_to(outside)
+            (tmp / 'locked/inner').mkdir(parents=True)
+            (tmp / 'locked/inner/in').write_text('x')
+            (tmp / 'locked/link').symlink_to(outside)
+            (tmp / 'locked/inner').chmod(0)
+            (tmp / 'locked').chmod(0)
             tmp.chmod(0o1777)
             calls, held, error = self.preserve(out)
             self.assertIsNone(error)
             self.assertEqual(held, [])
             self.assertEqual(stat.S_IMODE(tmp.stat().st_mode), 0o1777)
-            self.assertEqual((out / 'run/kept').read_text(), 'kept')
+            self.assertEqual((stat.S_IMODE(outside.stat().st_mode), [p.name for p in outside.iterdir()],
+                              (outside / 'kept').read_text()), (0o750, ['kept'], 'kept'))
 
     def test_a_failed_copy_raises_and_keeps_the_volume(self):
         """0265's cell.py records a teardown failure from what the copy raises (driver.py's recovery stops both
@@ -1143,14 +1166,15 @@ class PreserveTmp(unittest.TestCase):
                                                 b'tar: ./exp/fifo: Cannot mkfifo: Permission denied\n')
         for fails, listing, raised in ((refused, b'', subprocess.CalledProcessError),
                                        (subprocess.TimeoutExpired(['docker', 'run'], 600), b'', subprocess.TimeoutExpired),
-                                       (None, b'p\x00200\x00./exp/fifo', ValueError),
-                                       (None, b'p\x00200\x00', ValueError)):
+                                       (None, b'left_out\x00p\x00200\x00./exp/fifo', ValueError),
+                                       (None, b'left_out\x00p\x00200\x00', ValueError),
+                                       (None, b'other\x00p\x00200\x00./exp/fifo\x00', ValueError)):
             with self.subTest(raised=raised.__name__, listing=listing), tempfile.TemporaryDirectory() as temp:
                 out = self.cell(Path(temp))
                 calls, _, error = self.preserve(out, listing, fails)
                 self.assertIsInstance(error, raised)
                 self.assertEqual([argv[:2] for argv, _ in calls], [['docker', 'run']])
-                self.assertFalse((out / 'run/tmp-left-out.json').exists())
+                self.assertFalse((out / 'run/tmp-copy.json').exists())
 
     def test_0265s_cell_and_the_recovery_take_this_copy_and_the_closed_modules_stay(self):
         """0265's run() and driver.py's recovery (cell.cell_run.preserve_tmp) resolve the name in 0266's loaded copy
@@ -1168,82 +1192,191 @@ class PreserveTmp(unittest.TestCase):
 @unittest.skipUnless(os.environ.get('NX01_0266_COPY_PROOF'),
                      'the copy proof on the pinned image: set NX01_0266_COPY_PROOF to runtime-smoke.json')
 class CopyProof(unittest.TestCase):
-    """Amendment 2's proof of the copy on the pinned image, run by the orchestrator (it makes a volume and containers,
-    no model): a /tmp volume filled as a cell's user fills it, copied by the real preserve_tmp into a folder under the
-    runtime root's scratch/ (a host path Docker shares), then both sides listed as a container sees them."""
-    FILL = r'''
-import os, socket
+    """Amendment 2's proof of the copy on the pinned image, run by the orchestrator (volumes and containers, no model),
+    in two parts. Each fills a scratch volume as a cell's user fills /tmp, copies it into a folder under the runtime
+    root's scratch/ (a host path Docker shares) and lists both sides as a root container sees them. The ordinary
+    volume: the old copy (0233's) and this one give the same tree, and the old copy shows what the mount itself makes
+    of a mode. The special volume: what the mount refuses (special files, directories without owner read or search, a
+    read-only directory that holds a file) and names that look like options."""
+    ORDINARY = r'''
+import os, subprocess
 os.chdir('/tmp')
-for name, mode in (('fifo-200', 0o200), ('fifo-644', 0o644), ('-fifo \\ 000\n', 0)):
-    os.mkfifo(name)
-    os.chmod(name, mode)
-socket.socket(socket.AF_UNIX).bind('socket')
-for name, mode, body in (('file-200', 0o200, 'a'), ('file-000', 0, 'bb'), ('-dash', 0o644, 'ccc'),
-                         ('back\\slash', 0o644, 'dddd'), ('new\nline', 0o644, 'eeeee'), ('with space', 0o644, 'ffffff')):
+subprocess.run(['git', 'init', '-q', 'repo'], check=True)
+with open('repo/a.txt', 'w') as stream:
+    stream.write('a\n')
+subprocess.run(['git', '-C', 'repo', 'add', 'a.txt'], check=True)
+subprocess.run(['git', '-C', 'repo', '-c', 'user.name=proof', '-c', 'user.email=proof@example.invalid', 'commit',
+                '-qm', 'one'], check=True)
+os.makedirs('tree/700/750')
+with open('tree/700/750/deep', 'w') as stream:
+    stream.write('deep')
+for name, mode in (('file-000', 0), ('file-200', 0o200), ('file-400', 0o400), ('file-444', 0o444),
+                   ('file-600', 0o600), ('file-644', 0o644), ('file-755', 0o755)):
     with open(name, 'w') as stream:
-        stream.write(body)
+        stream.write(name)
     os.chmod(name, mode)
-os.mkdir('dir-000')
-with open('dir-000/inside', 'w') as stream:
-    stream.write('inside')
-os.chmod('dir-000', 0)
-os.symlink('/tmp/absent', 'dangling')
-os.symlink('loop', 'loop')
 with open('hard-a', 'w') as stream:
     stream.write('linked')
 os.link('hard-a', 'hard-b')
+os.symlink('file-644', 'to-file')
+os.symlink('tree', 'to-dir')
+os.symlink('/tmp/absent', 'dangling')
+os.symlink('loop', 'loop')
+os.chmod('tree/700/750', 0o750)
+os.chmod('tree/700', 0o700)
+for top, folders, names in os.walk('.', topdown=False):
+    for name in folders + names:
+        os.utime(os.path.join(top, name), (1_000_000_000, 1_000_000_000), follow_symlinks=False)
 '''
+    SPECIAL = r'''
+import os, socket
+os.chdir('/tmp')
+os.makedirs('dir-000/nested-000')
+for path, body in (('dir-000/inside', 'inside'), ('dir-000/nested-000/inside', 'nested')):
+    with open(path, 'w') as stream:
+        stream.write(body)
+for name, mode in (('fifo-200', 0o200), ('fifo-644', 0o644), ('-fifo \\ 000\n', 0),
+                   ('dir-000/nested-000/fifo-600', 0o600)):
+    os.mkfifo(name)
+    os.chmod(name, mode)
+socket.socket(socket.AF_UNIX).bind('socket')
+for name, mode, body in (('file-200', 0o200, 'a'), ('file-000', 0, 'bb'), ('file-444', 0o444, 'ccc'),
+                         ('-dash', 0o644, 'dddd'), ('-T', 0o644, 'eeeee'), ('--null', 0o644, 'ffffff'),
+                         ('back\\slash', 0o644, 'g'), ('new\nline', 0o644, 'hh'), ('a space', 0o644, 'iii')):
+    with open(name, 'w') as stream:
+        stream.write(body)
+    os.chmod(name, mode)
+for folder in ('dir-555', 'dir-600', '-dirdash'):
+    os.mkdir(folder)
+    with open(folder + '/in', 'w') as stream:
+        stream.write(folder)
+os.mkdir('dir-300')
+os.symlink('/tmp/absent', 'dangling')
+os.symlink('loop', 'loop')
+os.symlink('dir-000', 'to-dir-000')
+with open('hard-a', 'w') as stream:
+    stream.write('linked')
+os.link('hard-a', 'hard-b')
+for folder, mode in (('dir-000/nested-000', 0), ('dir-000', 0), ('dir-555', 0o555), ('dir-600', 0o600),
+                     ('dir-300', 0o300)):
+    os.chmod(folder, mode)
+'''
+    LIST = r'''
+import hashlib, json, os, stat, sys
+TYPES = {stat.S_IFREG: 'f', stat.S_IFDIR: 'd', stat.S_IFLNK: 'l', stat.S_IFIFO: 'p', stat.S_IFSOCK: 's',
+         stat.S_IFBLK: 'b', stat.S_IFCHR: 'c'}
+
+
+def refuse(error):
+    raise error
+
+
+def entry(path):
+    status = os.lstat(path)
+    kind, digest = TYPES[stat.S_IFMT(status.st_mode)], None
+    if kind == 'f':
+        with open(path, 'rb') as stream:
+            digest = hashlib.sha256(stream.read()).hexdigest()
+    return dict(type=kind, mode=format(stat.S_IMODE(status.st_mode), 'o'), owner=[status.st_uid, status.st_gid],
+                links=status.st_nlink, size=status.st_size, mtime=status.st_mtime_ns, inode=status.st_ino,
+                target=os.readlink(path) if kind == 'l' else None, sha256=digest)
+
+
+os.chdir(sys.argv[1])
+paths = ['.'] + [os.path.join(top, name) for top, folders, names in os.walk('.', onerror=refuse)
+                 for name in folders + names]
+print(json.dumps({path: entry(path) for path in paths}))
+'''
+    TREE = ('type', 'mode', 'owner', 'links', 'size', 'mtime', 'target')  # what the old copy and this one keep alike
 
     def docker(self, *args, timeout=120):
         return subprocess.run(['docker', *args], capture_output=True, check=True, timeout=timeout).stdout
 
     def listing(self, image, mount, root):
-        """Every entry under root as a root container sees it: {path: (type, octal mode, size, inode, links)}."""
-        fields = self.docker('run', '--rm', '--network', 'none', '--user', '0', '--mount', mount, '--entrypoint',
-                             'bash', image, '-c', rf"cd {root} && find . -printf '%y\0%m\0%s\0%i\0%n\0%p\0'").split(b'\0')
-        self.assertEqual(fields.pop(), b'')
-        return {os.fsdecode(fields[i + 5]): tuple(field.decode() for field in fields[i:i + 5])
-                for i in range(0, len(fields), 6)}
+        """Every entry under root as a root container sees it: {path as find prints it: its fields (LIST)}."""
+        return json.loads(self.docker('run', '--rm', '--network', 'none', '--user', '0', '--mount', mount,
+                                      '--entrypoint', 'python3', image, '-c', self.LIST, root))
+
+    def volume(self, image, fill):
+        """A scratch volume (its own name and label, removed when the test ends) filled by fill as the cell's user
+        (the image's own, as a cell's owner runs) with the volume at /tmp, as in a cell; returns it and its listing."""
+        volume = 'devlyn-0266-copy-proof-' + uuid.uuid4().hex
+        self.addCleanup(self.docker, 'volume', 'rm', '-f', volume)
+        self.docker('volume', 'create', '--label', 'devlyn.task=0266-copy-proof', volume)
+        self.docker('run', '--rm', '--network', 'none', '--mount', f'type=volume,src={volume},dst=/tmp',
+                    '--entrypoint', 'python3', image, '-c', fill)
+        return volume, self.listing(image, f'type=volume,src={volume},dst=/src,readonly', '/src')
+
+    def copy(self, preserve, volume, image, cell):
+        """preserve(volume, cell/tmp, image) in a cell's layout (tmp/ beside run/); returns tmp's listing."""
+        (cell / 'run').mkdir(parents=True)
+        (cell / 'tmp').mkdir()
+        self.assertIsNone(preserve(volume, cell / 'tmp', image))
+        return self.listing(image, f'type=bind,src={cell / "tmp"},dst=/dst,readonly', '/dst')
+
+    def gone(self, volume):
+        return self.docker('volume', 'ls', '-q', '--filter', f'name=^{volume}$').strip() == b''
 
     def test_the_copy_on_the_pinned_image(self):
         runtime = json.loads(Path(os.environ['NX01_0266_COPY_PROOF']).read_text())
-        image, volume = runtime['image'], 'devlyn-0266-copy-proof-' + uuid.uuid4().hex
-        try:
-            self.docker('volume', 'create', '--label', 'devlyn.task=0266-copy-proof', volume)
-            # As the cell's user (the image's own, as a cell's owner runs) with the volume at /tmp, as in a cell.
-            self.docker('run', '--rm', '--network', 'none', '--mount', f'type=volume,src={volume},dst=/tmp',
-                        '--entrypoint', 'python3', image, '-c', self.FILL)
-            source = self.listing(image, f'type=volume,src={volume},dst=/src,readonly', '/src')
-            special = {path: entry for path, entry in source.items() if entry[0] in ('p', 's', 'b', 'c')}
-            self.assertEqual(sorted(entry[:2] for entry in special.values()),
-                             [('p', '0'), ('p', '200'), ('p', '644'), ('s', source['./socket'][1])])
-            with tempfile.TemporaryDirectory(dir=runtime['scratch'], prefix='copy-proof-') as folder:
-                dest = Path(folder) / 'tmp'
-                dest.mkdir()
-                (Path(folder) / 'run').mkdir()
-                self.assertIsNone(run_cell.preserve_tmp(volume, dest, image))
-                copied = self.listing(image, f'type=bind,src={dest},dst=/dst,readonly', '/dst')
-                kept = {path: entry for path, entry in source.items() if path not in special}
-                self.assertEqual(set(copied), set(kept))
-                for path, (kind, mode, size, _, _) in kept.items():
-                    self.assertEqual(copied[path][:2], (kind, mode), path)
-                    if kind != 'd':  # a folder's size is the filesystem's
-                        self.assertEqual(copied[path][2], size, path)
-                self.assertEqual(copied['./hard-a'][3:], (copied['./hard-b'][3], '2'))  # one file, two names
-                left_out = json.loads((Path(folder) / 'run/tmp-left-out.json').read_text())
-                self.assertEqual(sorted((entry['type'], entry['mode'], entry['path']) for entry in left_out),
-                                 sorted((entry[0], entry[1], path) for path, entry in special.items()))
+        image, legacy = runtime['image'], run_cell.cell_run.legacy  # 0233's cell.py: its preserve_tmp is the old copy
+        real = legacy.docker
 
-                def refuse(error):
-                    raise error
-                on_host = [os.path.join(top, name) for top, folders, names in os.walk(dest, onerror=refuse)
-                           for name in folders + names
-                           if stat.S_ISFIFO(os.lstat(os.path.join(top, name)).st_mode)
-                           or stat.S_ISSOCK(os.lstat(os.path.join(top, name)).st_mode)]
-                self.assertEqual(on_host, [])
-            self.assertEqual(self.docker('volume', 'ls', '-q', '--filter', f'name=^{volume}$').strip(), b'')
-        finally:
-            self.docker('volume', 'rm', '-f', volume)
+        def keep(*args, **kwargs):  # the old copy without its volume removal, so that the new copy reads the volume too
+            return None if args[:2] == ('volume', 'rm') else real(*args, **kwargs)
+
+        def refuse(error):
+            raise error
+        with tempfile.TemporaryDirectory(dir=runtime['scratch'], prefix='copy-proof-') as temp:
+            # The ordinary volume: the old copy and this one give the same tree.
+            volume, ordinary = self.volume(image, self.ORDINARY)
+            with mock.patch.object(legacy, 'docker', keep):
+                old = self.copy(legacy.preserve_tmp, volume, image, Path(temp) / 'old')
+            new = self.copy(run_cell.preserve_tmp, volume, image, Path(temp) / 'new')
+            self.assertEqual(set(old), set(ordinary))
+            self.assertEqual({path: [entry[field] for field in self.TREE] for path, entry in new.items()},
+                             {path: [entry[field] for field in self.TREE] for path, entry in old.items()})
+            self.assertFalse((Path(temp) / 'new/run/tmp-copy.json').exists())
+            self.assertTrue(self.gone(volume))
+            mount = {}  # what the mount itself makes of a mode, which the old copy gives too (a 444 file read as 400)
+            for path, entry in ordinary.items():
+                self.assertEqual(mount.setdefault((entry['type'], entry['mode']), old[path]['mode']), old[path]['mode'],
+                                 path)
+
+            # The special volume: what the copy leaves out or makes searchable is listed, every other entry is copied.
+            volume, source = self.volume(image, self.SPECIAL)
+            special = {path for path, entry in source.items() if entry['type'] in ('p', 's', 'b', 'c')}
+            closed = {path for path, entry in source.items()
+                      if entry['type'] == 'd' and not int(entry['mode'], 8) & 0o100}
+            self.assertEqual(sorted((source[path]['type'], source[path]['mode']) for path in special),
+                             [('p', '0'), ('p', '200'), ('p', '600'), ('p', '644'), ('s', source['./socket']['mode'])])
+            self.assertEqual(sorted(source[path]['mode'] for path in closed), ['0', '0', '600'])
+            copied = self.copy(run_cell.preserve_tmp, volume, image, Path(temp) / 'special')
+            self.assertTrue(self.gone(volume))
+            record = json.loads((Path(temp) / 'special/run/tmp-copy.json').read_text())
+            self.assertEqual(sorted((entry['type'], entry['mode'], entry['path']) for entry in record['left_out']),
+                             sorted((source[path]['type'], source[path]['mode'], path) for path in special))
+            self.assertEqual(sorted((entry['mode'], entry['path']) for entry in record['made_searchable']),
+                             sorted((source[path]['mode'], path) for path in closed))
+            kept = {path: entry for path, entry in source.items() if path not in special}
+            self.assertEqual(set(copied), set(kept))
+            for path, entry in kept.items():  # a listed directory gains exactly the owner search bit
+                mode = (format(int(entry['mode'], 8) | 0o100, 'o') if path in closed
+                        else mount.get((entry['type'], entry['mode']), entry['mode']))
+                self.assertEqual([copied[path][field] for field in ('type', 'mode', 'sha256')],
+                                 [entry['type'], mode, entry['sha256']], path)
+                if entry['type'] != 'd':  # a directory's size is the file system's
+                    self.assertEqual(copied[path]['size'], entry['size'], path)
+            self.assertEqual([copied['./hard-a'][field] for field in ('inode', 'links')],
+                             [copied['./hard-b']['inode'], 2])  # one file, two names
+            host = Path(temp) / 'special/tmp'
+            for top, folders, names in os.walk(host, onerror=refuse):  # no FIFO or socket on the host
+                for name in folders + names:
+                    self.assertNotIn(stat.S_IFMT(os.lstat(os.path.join(top, name)).st_mode),
+                                     (stat.S_IFIFO, stat.S_IFSOCK), os.path.join(top, name))
+            for path, entry in kept.items():  # the host user opens every regular file
+                if entry['type'] == 'f':
+                    self.assertEqual(hashlib.sha256((host / path).read_bytes()).hexdigest(), entry['sha256'], path)
 
 
 class Rules(unittest.TestCase):

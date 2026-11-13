@@ -1,9 +1,9 @@
-# 0266 amendment 2: special files in a cell's /tmp are left out of the copy, and a cleared teardown STOP is recovered and run again (2026-11-14)
+# 0266 amendment 2: the copy of a cell's /tmp leaves special files out and can hold any directory, and a cleared teardown STOP is recovered and run again (2026-11-14)
 
 This is a dated amendment to [DESIGN.md](DESIGN.md) "Operations", which takes 0265's "Faults" rule
-([../0265/DESIGN.md](../0265/DESIGN.md)). It changes two operations: what the copy of a cell's `/tmp` volume takes,
-and what becomes of a registered slot whose teardown failed once an amendment has cleared its latch. DESIGN.md and
-[registration.md](registration.md) are unchanged.
+([../0265/DESIGN.md](../0265/DESIGN.md)). It changes two operations: how a cell's `/tmp` volume is copied into the
+cell, and what becomes of a registered slot whose teardown failed once an amendment has cleared its latch. DESIGN.md
+and [registration.md](registration.md) are unchanged.
 
 ## What happened
 
@@ -21,7 +21,7 @@ keep them.
   session had written its own experiment, `/tmp/exp/e.py`, on `click.File` (D4 is the click task). It ran it twice,
   and each run made a FIFO of mode 0200 (beside a file of mode 0200, a dangling link and a looping link).
 - Cause, shown at 04:51 by two diagnostic containers on the pinned image: on Docker Desktop's host mount, `mkfifo`
-  works for a FIFO of mode 644 and fails with "Permission denied" for a FIFO whose mode denies its owner. The node
+  works for a FIFO of mode 644 and fails with "Permission denied" for one of mode 0200, as c069's are. The node
   appears on the host all the same. The volume `devlyn-0233-tmp-0924ac2f014e4cf99266f7df8a55a52a` holds 1196
   entries; the two FIFOs are its only entries that are not a regular file, a directory or a symlink. The partial copy
   on the host has 1196 paths (its root counted), both half-made FIFO nodes among them.
@@ -43,9 +43,28 @@ keep them.
   dispatched again. Until now `recover()` is reached only when the teardown error names the Docker daemon
   (`docker_fault`).
 
+The proof of the first version of the copy (special files left out, directories copied as before), run by the
+orchestrator on the pinned image from 05:23 to 05:35 on scratch volumes (GNU tar 1.35, findutils 4.10.0), showed that
+the copy, old and new, also fails on a directory whose mode denies its owner and on a read-only directory that holds
+a file. So the change covers directories too. No cell had met that case. What was measured on Docker Desktop's host
+mount, written by root in a container:
+
+- `mkdir -m <mode>` fails with "Permission denied" for 000, 100, 200, 300 and 111 and works for 400, 500, 600, 700
+  and 555: a directory is refused when its mode has no owner read bit. `mkfifo -m` fails for 000, 200, 400 and 444
+  and works for 600 and 644. In every failing case the node appears on the host all the same.
+- GNU tar run by root creates a directory with its recorded mode at once (it adds owner write and search only when
+  it is not root). So the old copy fails on a directory of mode 000 ("Cannot mkdir: Permission denied") and on a
+  read-only directory that holds a file (mode 555: "Cannot open: Permission denied", since the host directory has no
+  write bit when the file is to be made).
+- A directory that exists already is not created by tar: tar sets its recorded mode and time once its members are
+  done, and the mount keeps a 555 directory usable on the host (host mode 755, the recorded mode in an attribute).
+  For a recorded mode without owner search (000, 600) the host directory ends without the search bit, the host user
+  cannot read what is inside, and `seal_after_teardown` could not hash it.
+- A regular file of any mode (000, 200, 444) is copied and stays readable on the host, as before.
+
 ## The change
 
-### 1. The copy leaves special files out and lists them (0266 only)
+### 1. The copy leaves special files out, can hold any directory, and lists what it changed (0266 only)
 
 `0233/cell.py` and `0265/cell.py` stay byte for byte, so the `imported` hashes in every cell's `seal.json` stay the
 same. `run_cell.py` defines its own `preserve_tmp(volume, dest, image)` and sets it in its loaded copy of
@@ -53,23 +72,37 @@ same. `run_cell.py` defines its own `preserve_tmp(volume, dest, image)` and sets
 `run()` and `driver.py`'s recovery look the name up at call time, so both use it. It does four things:
 
 1. If `dest` holds anything, it empties it first and keeps `dest` itself and its mode. A copy that failed before
-   left its part there, half-made FIFO nodes among it, and the volume still holds everything.
+   left its part there: half-made FIFO nodes, and directories the host user may not be able to enter. Each
+   directory is given owner read, write and search before it is entered, and a symlink is removed, never followed.
+   The volume still holds everything.
 2. It runs one copy container, as before (`docker run --rm --network none --user 0`, the volume read-only at `/src`,
    `dest` at `/dst`, `--entrypoint bash`, the pinned image, a 600 s timeout). It reads the output as bytes, since a
    name need not be UTF-8. The command:
    ```
-   set -o pipefail; cd /src && find . \( -type p -o -type s -o -type b -o -type c \) -printf '%y\0%m\0%p\0' && find . ! \( -type p -o -type s -o -type b -o -type c \) -print0 | tar --null --no-unquote --verbatim-files-from --no-recursion -T - -cf - | tar -C /dst -xpf -
+   set -o pipefail; cd /src && find . \( -type p -o -type s -o -type b -o -type c \) -printf 'left_out\0%y\0%m\0%p\0' && find . -type d ! -perm -u+x -printf 'made_searchable\0%y\0%m\0%p\0' && find . -type d -print0 | (cd /dst && xargs -0 -r mkdir -p --) && find . ! \( -type p -o -type s -o -type b -o -type c \) -print0 | tar --null --no-unquote --verbatim-files-from --no-recursion -T - -cf - | tar -C /dst -xpf - && find . -type d ! -perm -u+x -print0 | (cd /dst && xargs -0 -r chmod u+x --)
    ```
-   Regular files, directories, symlinks and hard links are copied as before. The extract side is unchanged, and the
-   root entry `.` is a member, so `/dst` keeps the volume root's mode. FIFOs, sockets and device nodes are not copied.
-3. What it left out (the first `find`'s NUL-separated triples: type letter, octal mode, path) goes to
-   `run/tmp-left-out.json` beside `dest`, as a JSON list of `{"type", "mode", "path"}`. When nothing is left out, no
-   such file exists. `seal_after_teardown` runs after the teardown in both callers and seals it with `run/`.
+   In words: (1) list the FIFOs, sockets and device nodes, which are left out; (2) list the directories whose mode
+   has no owner search bit; (3) make every directory in `dest` first, with the default mode, so that tar never
+   creates one with a mode the mount refuses and can write into read-only ones; (4) copy everything that is not a
+   special file, as before (the extract side is unchanged; tar then sets each directory's recorded mode and time, and
+   the root entry `.` is a member, so `dest` keeps the volume root's mode); (5) give the directories of (2) the owner
+   search bit in `dest`, parents first, so that the host can read the evidence inside.
+3. The output is NUL-separated records of four fields: kind (`left_out` or `made_searchable`), type letter, octal
+   mode, path. They go to `run/tmp-copy.json` beside `dest`: `{"left_out": [{"type", "mode", "path"}, ...],
+   "made_searchable": [{"mode", "path"}, ...]}`, written only when a list is not empty. When both are empty, no such
+   file exists. `seal_after_teardown` runs after the teardown in both callers and seals it with `run/`.
 4. Then it removes the volume, as before. Any failure raises as before: `0265/cell.py` records `teardown: FAILED`,
    the recovery stops both lanes, and the volume stays.
 
+What differs from the volume in the copy: the special files are absent and listed, and the listed directories have
+the owner search bit added. Everything else is as the old copy gave it: on an ordinary volume (610 entries, a git
+repository, read-only files, hard links, symlinks, set times) the old copy and this one gave identical trees (type,
+mode, owner, link count, size, modification time, path and link target of every entry).
+
 Special files are left out because the host mount refuses some of them, and nothing reads them:
-`seal_after_teardown` hashes regular files only.
+`seal_after_teardown` hashes regular files only. Directories are made first because the mount refuses to create one
+whose mode has no owner read bit, and tar run as root creates each with its recorded mode at once. The owner search
+bit is added at the end because the seal cannot read what a directory without it holds.
 
 ### 2. A registered slot's cleared teardown STOP is recovered, archived and run again (`driver.py`)
 
@@ -92,8 +125,8 @@ did, is run again once in the same way. The archived attempt is read as the desi
 owner input is charged (G3), its tree and scope result enter the harm readings (G2), and D4's witnesses run on it.
 
 What this costs: the first attempt's completion is never read. So one D4 result of arm B is replaced by a fresh run
-because of what its session did in `/tmp`. From this amendment on, a session that makes such files is graded like
-any other, in either arm.
+because of what its session did in `/tmp`. From this amendment on, a session that makes such files, or directories
+the mount refuses, is graded like any other, in either arm.
 
 ## What does not change
 
@@ -132,24 +165,38 @@ c001-c068 and the Codex lane's 64 cells ran under the old copy. c069's first att
 recovered by the new one; the archived attempt keeps its old `seal.json`, and the lane's log names the recovery
 (`docker_teardown_proven`). Every cell dispatched from the restart on carries the new `run_cell.py` and `driver.py`
 in its `seal.json` (`apparatus` and `source_commit`). Cells before this amendment may hold FIFOs in `tmp/` (the old
-copy kept those the host accepted); later cells hold none and list them in `run/tmp-left-out.json`.
+copy kept those the host accepted); later cells hold none and list them in `run/tmp-copy.json`, with each directory
+that was given the owner search bit.
 
 ## Qualification
 
 DESIGN "Apparatus": "Qualification re-runs what a change touches".
 
-- Q1 unit tests, 0266's and 0265's: `test_cell.py` covers the copy (its command, bytes output, the list, a stale list
-  removed, a failed copy's part removed first, a failed copy keeping the volume, and the function 0265's `cell.py`
+- Q1 unit tests, 0266's and 0265's: `test_cell.py` covers the copy (its command's five steps, bytes output, both
+  kinds of record in `run/tmp-copy.json`, a stale list removed, a failed copy's part removed first with directories
+  of mode 000 and links out of `dest` among it, a failed copy keeping the volume, and the function 0265's `cell.py`
   and the recovery now call); `test_driver.py` covers the driver rule (a cleared teardown STOP recovered, archived
   and run again at the restart; one no amendment cleared latching, also a repeat after a recovery; a screen slot's
   passed; a recovery that cannot be proved stopping both lanes); `test_integration.py` rehearses the whole path once
   (step 10).
-- The copy's proof on the pinned image: the opt-in test `CopyProof` in `test_cell.py`. It fills a scratch volume as
-  the cell's user with FIFOs of mode 0200, 0644 and 000, a socket, files of mode 0200 and 000, a folder of mode 000
-  with a file in it, a dangling and a looping link, a hard-link pair, and names with a leading dash, a backslash, a
-  newline and a space; it runs the real `preserve_tmp` into a folder under `$R/scratch` and compares both sides as a
-  container lists them.
+- The copy's proof on the pinned image: the opt-in test `CopyProof` in `test_cell.py`, in two parts. Each fills a
+  scratch volume as the cell's user, copies it into a folder under `$R/scratch` and lists both sides through a root
+  container.
   (run and recorded by the orchestrator under "Applied")
+  - The ordinary volume (a git repository, files of mode 000, 200, 400, 444, 600, 644 and 755, folders of mode 700
+    and 750, a hard-link pair, links, set times): the old copy (0233's, its volume kept) and the real `preserve_tmp`
+    give identical trees (type, mode, owner, link count, size, modification time, path and link target of every
+    entry), and no `run/tmp-copy.json`. The old copy also shows what the mount itself makes of each mode (a 444 file
+    was read back as 400 once); where that differs from the volume's mode, the special volume is held to what the old
+    copy gives.
+  - The special volume (FIFOs of mode 0200, 0644, 000 and 0600, the last inside nested mode-000 directories; a
+    socket; files of mode 0200, 000 and 444; directories of mode 555 and 600 with a file and an empty one of mode 300;
+    a dangling and a looping link and a link to the mode-000 directory; a hard-link pair; the names `-dash`, `-T`,
+    `--null`, `back\slash`, `new<newline>line`, `a space` and a directory `-dirdash`): the copy exits clean; the
+    records name exactly the special files and the directories without owner search, with their modes; every other
+    entry has the volume's type, size and path, and every regular file its sha256; modes are equal except that the
+    listed directories gain exactly the owner search bit; the hard link is kept; the host user opens every regular
+    file; no FIFO or socket is on the host; the volume is gone.
 - Not repeated:
   - Q2 seal: it pins the packages and their session text and is written once. The change touches neither.
   - Q5 controls: the witnesses and probes are `results/operator/judge.py`, which the change does not touch, and
@@ -174,7 +221,7 @@ DESIGN "Apparatus": "Qualification re-runs what a change touches".
 5. Start the Claude lane with README step 14.
 6. Check that the lane logged `docker_teardown_proven` for c069 with `tmp: preserved`; that
    `verdict-c069-D4-claude-B-r1.stop-1.json` has a scope result (`scope_violations` a list, no `scope_error`); that
-   `c069-D4-claude-B-r1.stop-1/run/tmp-left-out.json` lists the two FIFOs; and that the volume is gone
+   `c069-D4-claude-B-r1.stop-1/run/tmp-copy.json` lists the two FIFOs under `left_out`; and that the volume is gone
    (`docker volume ls -q --filter name=^devlyn-0233-tmp-0924ac2f014e4cf99266f7df8a55a52a$` prints nothing).
 7. If the lane dies between the recovery and the archive, the verdict has changed, so the restart sets the latch
    again. Clear it again with this file (step 4) and start the lane. That second recovery finds the volume gone and
@@ -183,8 +230,8 @@ DESIGN "Apparatus": "Qualification re-runs what a change touches".
 ## Reported in RESULT.md
 
 - c069's first attempt (archived as `stop-1`, with its recovery and its scope result) and its rerun.
-- The number of cells with `run/tmp-left-out.json`, archived attempts included:
-  `ls $R/output/*/run/tmp-left-out.json 2>/dev/null | wc -l`
+- The number of cells with `run/tmp-copy.json` (special files left out or directories made searchable), archived
+  attempts included: `ls $R/output/*/run/tmp-copy.json 2>/dev/null | wc -l`
 - The Claude lane's lost time: from the latch at 04:49:11 to the restart's first dispatch.
 
 ## Reviews

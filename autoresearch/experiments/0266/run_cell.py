@@ -50,36 +50,55 @@ prepare, cell_run, usage, locate, check, assess, quota = (load(n) for n in (
     'prepare', 'cell', 'record_usage', 'locate', 'check', 'assess', 'quota'))
 base = load('run_cell0222', HERE.parent / '0222/run_cell.py')
 instructions = load('instructions')
-# Amendment 2: the /tmp copy prints each FIFO, socket and device node (type, octal mode, path) and copies the rest.
-COPY_TMP = (r"set -o pipefail; cd /src && find . \( -type p -o -type s -o -type b -o -type c \) -printf '%y\0%m\0%p\0'"
+# Amendment 2: the /tmp copy. It prints a record (kind, type letter, octal mode, path) for each FIFO, socket and device
+# node, which it leaves out, and for each directory without owner search; it makes every directory in /dst first,
+# copies everything else, then gives the directories it printed owner search, parents first.
+COPY_TMP = (r"set -o pipefail; cd /src"
+            r" && find . \( -type p -o -type s -o -type b -o -type c \) -printf 'left_out\0%y\0%m\0%p\0'"
+            r" && find . -type d ! -perm -u+x -printf 'made_searchable\0%y\0%m\0%p\0'"
+            r" && find . -type d -print0 | (cd /dst && xargs -0 -r mkdir -p --)"
             r" && find . ! \( -type p -o -type s -o -type b -o -type c \) -print0"
-            r" | tar --null --no-unquote --verbatim-files-from --no-recursion -T - -cf - | tar -C /dst -xpf -")
+            r" | tar --null --no-unquote --verbatim-files-from --no-recursion -T - -cf - | tar -C /dst -xpf -"
+            r" && find . -type d ! -perm -u+x -print0 | (cd /dst && xargs -0 -r chmod u+x --)")
+
+
+def empty_folder(folder):
+    """Remove everything folder holds and keep folder: each directory is given owner read, write and search before it
+    is entered (a failed copy can leave one its owner cannot enter), and a symlink is removed, never followed."""
+    for entry in list(os.scandir(folder)):
+        if entry.is_dir(follow_symlinks=False):
+            os.chmod(entry.path, 0o700)
+            empty_folder(entry.path)
+            os.rmdir(entry.path)
+        else:
+            os.unlink(entry.path)
 
 
 def preserve_tmp(volume, dest, image):
-    """0233's preserve_tmp with one change (amendment 2): copy the cell's /tmp volume into dest, leaving out FIFOs,
-    sockets and device nodes, then remove the volume. Docker Desktop's host mount refuses some special files (a FIFO
-    whose mode denies its owner, c069), and nothing reads them: seal_after_teardown hashes regular files only. What is
-    left out is listed in run/ beside dest (tmp-left-out.json), which the seal after the teardown covers. What a failed
-    copy left in dest is removed first. On failure the volume stays for recovery and the caller records a teardown
-    failure."""
-    for entry in dest.iterdir():  # a failed copy's part, half-made FIFO nodes among it; the volume still holds it all
-        if entry.is_dir() and not entry.is_symlink():
-            shutil.rmtree(entry)
-        else:
-            entry.unlink()
+    """0233's preserve_tmp, changed by amendment 2: copy the cell's /tmp volume into dest, then remove the volume.
+    Docker Desktop's host mount refuses a FIFO whose mode lacks owner read or write (c069) and a directory whose mode
+    lacks owner read, and GNU tar run as root creates a directory with its recorded mode at once. So FIFOs, sockets and
+    device nodes are left out (nothing reads them: seal_after_teardown hashes regular files only), every directory is
+    made in dest before tar fills it and sets its mode, and a directory whose mode lacks owner search gets it, so that
+    the seal can read what is inside. Both are listed in run/tmp-copy.json beside dest, which the seal after the
+    teardown covers. What a failed copy left in dest is removed first. On failure the volume stays for recovery and
+    the caller records a teardown failure."""
+    empty_folder(dest)  # a failed copy's part: half-made FIFO nodes, directories the host user cannot enter
     listed = subprocess.run(['docker', 'run', '--rm', '--network', 'none', '--user', '0', '--mount',
                              f'type=volume,src={volume},dst=/src,readonly', '--mount', f'type=bind,src={dest},dst=/dst',
                              '--entrypoint', 'bash', image, '-c', COPY_TMP],
                             capture_output=True, check=True, timeout=600).stdout  # bytes: a name need not be UTF-8
     fields = listed.split(b'\0')
-    if fields.pop() or len(fields) % 3:
-        raise ValueError(f'the /tmp copy listed what it left out in no readable form: {listed[:200]!r}')
-    left_out = [dict(type=fields[i].decode(), mode=fields[i + 1].decode(), path=os.fsdecode(fields[i + 2]))
-                for i in range(0, len(fields), 3)]
-    record = dest.parent / 'run/tmp-left-out.json'
-    if left_out:
-        record.write_text(json.dumps(left_out, indent=2))
+    if fields.pop() or len(fields) % 4 or not set(fields[::4]) <= {b'left_out', b'made_searchable'}:
+        raise ValueError(f'the /tmp copy listed what it changed in no readable form: {listed[:200]!r}')
+    copy = dict(left_out=[], made_searchable=[])
+    for i in range(0, len(fields), 4):
+        kind, letter, mode, path = fields[i:i + 4]
+        entry = dict(mode=mode.decode(), path=os.fsdecode(path))
+        copy[kind.decode()].append(dict(type=letter.decode(), **entry) if kind == b'left_out' else entry)
+    record = dest.parent / 'run/tmp-copy.json'
+    if any(copy.values()):
+        record.write_text(json.dumps(copy, indent=2))
     else:
         record.unlink(missing_ok=True)
     cell_run.docker('volume', 'rm', volume)
