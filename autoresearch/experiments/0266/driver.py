@@ -15,6 +15,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import urllib.error
 import uuid
 
 import importlib.util
@@ -172,6 +173,7 @@ class Driver:
             self.slots = [row for row in slots if self.lane in (None, row[3])]
             self.caps = self.runtime['caps']
             self.approved_account = None
+            self.unread_until = 0.0  # amendment 1: the end of a refused read's Retry-After, in memory only
             if self.caps != {'seven_day': 95, 'five_hour': 95}:
                 raise ValueError('registration caps must be seven_day=95 and five_hour=95')
             self.state.setdefault('split_wait', {})
@@ -391,12 +393,21 @@ class Driver:
                 return False
         if not self.image() or not self.cell_disk():  # local holds first: the usage endpoint is read once per dispatch
             return False
-        try:
-            windows = counted(cell.claude_limits(self.runtime, snapshot['access_token']))
-        except (OSError, ValueError, KeyError) as exc:
-            self.event('hold', reason=f'Claude window check failed: {exc}')
-            return False
-        if 'seven_day' not in windows:  # a read without it is a failed read, never a pass
+        unread = None  # amendment 1: why no window was read (a refused read, or its Retry-After still running)
+        if time.time() < self.unread_until:
+            unread = dict(until=datetime.datetime.fromtimestamp(self.unread_until, datetime.timezone.utc).isoformat())
+        else:
+            try:
+                windows = counted(cell.claude_limits(self.runtime, snapshot['access_token']))
+            except (OSError, ValueError, KeyError) as exc:
+                if not isinstance(exc, urllib.error.HTTPError) or exc.code != 429:
+                    self.event('hold', reason=f'Claude window check failed: {exc}')
+                    return False
+                named = exc.headers.get('Retry-After', '')  # whole seconds set the deadline; anything else, none
+                unread = dict(retry_after=int(named) if named.isascii() and named.isdigit() else None)
+                if unread['retry_after'] is not None:
+                    self.unread_until = time.time() + unread['retry_after']
+        if unread is None and 'seven_day' not in windows:  # a read without it is a failed read, never a pass
             self.event('hold', reason='Claude window evidence unavailable: no seven-day window')
             return False
         waiting = self.state['split_wait'].get(slot, {}) if slot else {}
@@ -406,6 +417,14 @@ class Driver:
                        after=snapshot['account'])
             waiting = {}
         waits = waiting.get('resets', waiting)
+        if unread is not None:  # a split wait holds: its reset cannot be confirmed; anything else dispatches
+            if waiting:
+                self.event('hold', reason='awaiting split window reset: windows unread', cell=slot, waits=waits,
+                           **unread)
+                return False
+            self.event('window_unread', **unread, **({'cell': slot} if slot else {}))
+            self.approved_account = snapshot['account'].copy()
+            return True
         if waiting and any(same_window(windows.get(window, {}).get('resets'), reset) for window, reset in waits.items()):
             self.event('hold', reason='awaiting split window reset', cell=slot, waits=waits)
             return False

@@ -81,6 +81,9 @@ Operator hold: while the file `$R/operator-hold` exists, no lane starts a new ce
 already running finishes and is graded; each lane logs a `hold` with reason `operator hold` every 60 s); `rm
 $R/operator-hold` resumes dispatch, with every pre-dispatch check made again.
 
+A usage reading the endpoint refuses (HTTP 429) holds only a slot waiting on a split window's reset; any other dispatch
+goes on and the lane logs `window_unread` ([amendment-1.md](amendment-1.md)).
+
 `python3 $X/power.py` prints DESIGN's chance and power figures recomputed through `decide.py` (no model).
 `python3 $X/control.py compare <B package> <C package> <K>` repeats the package comparison on its own.
 
