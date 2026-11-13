@@ -1226,7 +1226,9 @@ os.chmod('tree/700/750', 0o750)
 os.chmod('tree/700', 0o700)
 for top, folders, names in os.walk('.', topdown=False):
     for name in folders + names:
-        os.utime(os.path.join(top, name), (1_000_000_000, 1_000_000_000), follow_symlinks=False)
+        path = os.path.join(top, name)
+        if os.lstat(path).st_uid == os.getuid():  # the volume starts with the image's /tmp, which is another user's
+            os.utime(path, (1_000_000_000, 1_000_000_000), follow_symlinks=False)
 '''
     SPECIAL = r'''
 import os, socket
