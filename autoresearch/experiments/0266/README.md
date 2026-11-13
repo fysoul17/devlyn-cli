@@ -60,7 +60,9 @@ The registered run (Stage R):
 14. Claude lane, **model**, in its own terminal: `caffeinate -dimsu python3 $X/driver.py $R/runtime-claude.json $X/cells.tsv`
 15. Codex lane, **model**, at the same time in another: `caffeinate -dimsu python3 $X/driver.py $R/runtime-codex.json $X/cells.tsv`
 16. After a latch the orchestrator has resolved in an amendment file, release it, then start the lane again with its
-    command: `python3 $X/driver.py --clear-latch <amendment> $R/runtime-<lane>.json`. A lane that was killed inside a
+    command: `python3 $X/driver.py --clear-latch <amendment> $R/runtime-<lane>.json`. A registered slot whose teardown
+    failed (`STOP teardown failed: `) is then recovered as a Docker loss is, archived and run again
+    ([amendment-2.md](amendment-2.md)). A lane that was killed inside a
     cell ran no cleanup: resolving its latch includes proving that cell's container and volume gone and removing
     `$R/scratch/credentials/<cell>` unread. After the last cell `$R/scratch/credentials` holds nothing. A screen slot's latch
     (step 11) is resolved the same way, before step 14: the screen lane, started again with its command, passes that
