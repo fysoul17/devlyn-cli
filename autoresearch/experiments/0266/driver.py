@@ -482,11 +482,14 @@ class Driver:
         amendment 2) as a normal teardown ends it: its stopped containers removed (the owner among them, unless the
         cell's own teardown had removed it already: run/started.json names the owner and the /tmp volume either way),
         then, while the volume still exists, its /tmp preserved into the cell by preserve_tmp (run_cell.py's, which
-        removes the volume), and both proven gone. Returns how /tmp ended: 'preserved' or 'volume absent'. A step that
-        fails or cannot be proved stops both lanes and leaves the volume in place."""
+        removes the volume), and both proven gone; the attempt's credential copy must be gone from scratch first.
+        Returns how /tmp ended: 'preserved' or 'volume absent'. A step that fails or cannot be proved stops both lanes
+        and leaves the volume in place."""
         try:
             started = json.loads((self.output / name / 'run/started.json').read_text())
             plan = json.loads((self.output / name / 'plan.json').read_text())
+            if (Path(self.runtime['scratch']) / 'credentials' / plan['name']).exists():  # 0265/cell.py's secret
+                raise ValueError("the attempt's credential copy is still in scratch")
             argv = started['create_argv']
             volume = started['tmp_volume']
             if (argv[0] != 'create' or argv.count('--name') != 1

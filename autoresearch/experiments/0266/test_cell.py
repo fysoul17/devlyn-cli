@@ -1289,7 +1289,7 @@ paths = ['.'] + [os.path.join(top, name) for top, folders, names in os.walk('.',
                  for name in folders + names]
 print(json.dumps({path: entry(path) for path in paths}))
 '''
-    TREE = ('type', 'mode', 'owner', 'links', 'size', 'mtime', 'target')  # what the old copy and this one keep alike
+    TREE = ('type', 'mode', 'owner', 'links', 'size', 'mtime', 'target', 'sha256')  # what both copies keep alike
 
     def docker(self, *args, timeout=120):
         return subprocess.run(['docker', *args], capture_output=True, check=True, timeout=timeout).stdout

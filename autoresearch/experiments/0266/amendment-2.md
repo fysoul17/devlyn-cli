@@ -92,30 +92,42 @@ same. `run_cell.py` defines its own `preserve_tmp(volume, dest, image)` and sets
    "made_searchable": [{"mode", "path"}, ...]}`, written only when a list is not empty. When both are empty, no such
    file exists. `seal_after_teardown` runs after the teardown in both callers and seals it with `run/`.
 4. Then it removes the volume, as before. Any failure raises as before: `0265/cell.py` records `teardown: FAILED`,
-   the recovery stops both lanes, and the volume stays.
+   and the recovery stops both lanes. A failure before the removal leaves the volume as it was; a failure of the
+   removal itself leaves the copy done and the volume in place.
 
 What differs from the volume in the copy: the special files are absent and listed, and the listed directories have
 the owner search bit added. Everything else is as the old copy gave it: on an ordinary volume (610 entries, a git
 repository, read-only files, hard links, symlinks, set times) the old copy and this one gave identical trees (type,
 mode, owner, link count, size, modification time, path and link target of every entry).
 
-Special files are left out because the host mount refuses some of them, and nothing reads them:
-`seal_after_teardown` hashes regular files only. Directories are made first because the mount refuses to create one
-whose mode has no owner read bit, and tar run as root creates each with its recorded mode at once. The owner search
-bit is added at the end because the seal cannot read what a directory without it holds.
+Special files are left out because the host mount refuses some of them. Nothing reads them, with one exception that
+changes. `seal_after_teardown` hashes regular files only. But when no receipt binds an accepted commit, the locator
+(`0265/locate.py`) copies each tree it compares (the anchor and each linked worktree) path by path as Git lists
+them, a file with `shutil.copy2`, which refuses a FIFO. So a tracked path that is a FIFO in a linked worktree under
+`/tmp` was a locator STOP under the old copy, when the mount had accepted the FIFO. Now a tracked path that is a
+special file is absent from the copy, and the locator skips it as a file the session deleted (`copy_tree`), both
+when it compares the trees and in the graded tree. No cell of the two lanes has had a `locator:` STOP: such a STOP
+latches both lanes, and neither lane's status file holds a latch but c069's or a cleared one.
+
+Directories are made first because the mount refuses to create one whose mode has no owner read bit, and tar run as
+root creates each with its recorded mode at once. The owner search bit is added at the end because the seal cannot
+read what a directory without it holds.
 
 ### 2. A registered slot's cleared teardown STOP is recovered, archived and run again (`driver.py`)
 
 A STOP whose reason starts with `teardown failed: ` on a registered slot (not a screen slot), once an amendment has
 cleared its latch, is ended as a proven Docker loss is: `recover()` proves the teardown (containers gone, the volume
-preserved by the copy and removed, both proved gone), seals the cell again and calls `stop_evidence`, which replaces
-the old `scope_error` with the attempt's tree and scope result. The attempt is archived as `.stop-N` and the slot is
-dispatched again. A recovery that cannot be proved stops both lanes and keeps the volume, as before.
+preserved by the copy and removed, both proved gone, and the attempt's credential copy already gone from scratch),
+seals the cell again and calls `stop_evidence`, which replaces the old `scope_error` with the attempt's tree and
+scope result. The attempt is archived as `.stop-N` and the slot is dispatched again. A recovery that cannot be
+proved stops both lanes and keeps the volume, as before. The rule reads a SMOKE row as it reads a registered slot;
+SMOKE ended before the screen and is not run again.
 
 Nothing else changes. A teardown STOP that no amendment cleared latches both lanes as before: there is no automatic
 redispatch, also not for a repeat on the same slot. A screen slot's cleared STOP is passed as before, and no screen
-cell is run again. A cleared STOP of any other reason on a registered slot ends its lane without a new latch, as
-before.
+cell is run again. The lane regrades or runs again some STOPs by itself, whether or not a latch was cleared: an
+assessor fault; a slot's first launch fault, memory kill or shared account fault; a Docker loss. A cleared STOP on
+a registered slot that is none of these and not a failed teardown ends its lane without a new latch, as before.
 
 ## Why the slot is run again and not graded
 
@@ -136,19 +148,24 @@ the mount refuses, is graded like any other, in either arm.
 - The screen's rule: a screen slot's cleared STOP, a failed teardown among them, is passed and reads as an unknown;
   no screen cell is run again.
 - A teardown STOP still latches both lanes and needs an amendment before its slot is recovered. A Docker loss is
-  still recovered without one.
+  still recovered without one, and its proof now also needs the attempt's credential copy already gone from scratch:
+  a copy left there stopped the rerun at its setup before, and stops the recovery now.
 - `0233/cell.py` and `0265/cell.py`.
 
 ## What can still fail
 
-Each of these is a STOP, as before: `teardown: FAILED` in a cell, or both lanes stopped with the volume kept in a
-recovery.
+Each of these is a STOP, as before: `teardown: FAILED` in a cell, or both lanes stopped in a recovery. A failure
+before the volume's removal leaves the volume as it was; a failure of the removal itself leaves the copy done and the
+volume in place.
 
 - A name the host cannot hold.
 - Two names that differ only in letter case (the host's file system ignores case).
 - A full disk.
-- The copy's 600 s timeout.
+- The copy's 600 s timeout. It ends the Docker client, not necessarily the copy container; a container still on the
+  volume makes the recovery's proof fail, which stops both lanes, as with the old copy.
 - Docker lost during the copy (a Docker loss, recovered without an amendment as before).
+
+The recovery is not safe against the lane's own death inside it (operator step 7).
 
 ## What was known of the outcomes
 
@@ -186,9 +203,9 @@ DESIGN "Apparatus": "Qualification re-runs what a change touches".
   - The ordinary volume (a git repository, files of mode 000, 200, 400, 444, 600, 644 and 755, folders of mode 700
     and 750, a hard-link pair, links, set times): the old copy (0233's, its volume kept) and the real `preserve_tmp`
     give identical trees (type, mode, owner, link count, size, modification time, path and link target of every
-    entry), and no `run/tmp-copy.json`. The old copy also shows what the mount itself makes of each mode (a 444 file
-    was read back as 400 once); where that differs from the volume's mode, the special volume is held to what the old
-    copy gives.
+    entry, and every regular file's sha256), and no `run/tmp-copy.json`. The old copy also shows what the mount
+    itself makes of each mode (a 444 file was read back as 400 once); where that differs from the volume's mode, the
+    special volume is held to what the old copy gives.
   - The special volume (FIFOs of mode 0200, 0644, 000 and 0600, the last inside nested mode-000 directories; a
     socket; files of mode 0200, 000 and 444; directories of mode 555 and 600 with a file and an empty one of mode 300;
     a dangling and a looping link and a link to the mode-000 directory; a hard-link pair; the names `-dash`, `-T`,
@@ -223,9 +240,11 @@ DESIGN "Apparatus": "Qualification re-runs what a change touches".
    `verdict-c069-D4-claude-B-r1.stop-1.json` has a scope result (`scope_violations` a list, no `scope_error`); that
    `c069-D4-claude-B-r1.stop-1/run/tmp-copy.json` lists the two FIFOs under `left_out`; and that the volume is gone
    (`docker volume ls -q --filter name=^devlyn-0233-tmp-0924ac2f014e4cf99266f7df8a55a52a$` prints nothing).
-7. If the lane dies between the recovery and the archive, the verdict has changed, so the restart sets the latch
-   again. Clear it again with this file (step 4) and start the lane. That second recovery finds the volume gone and
-   records `tmp_recovery: volume absent`; the log's first `docker_teardown_proven` says `preserved`.
+7. A lane that dies inside the recovery or before the archive is complete (between `docker_teardown_proven` and the
+   slot's next `run` event) is not started again by clearing the latch a second time: a second recovery can find a
+   snapshot the first one made and archive the attempt without a scope result, and a death between the two renames
+   leaves a verdict without its folder. That state is resolved by a further amendment. Both edges exist for a Docker
+   loss today; this amendment does not change them.
 
 ## Reported in RESULT.md
 

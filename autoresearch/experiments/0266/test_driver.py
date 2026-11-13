@@ -43,7 +43,7 @@ def runtime(root, lane):
     path = root / f'runtime-{lane or "smoke"}.json'
     path.write_text(json.dumps(dict(
         output=str(root / 'output'), lane=lane, auth=str(root / f'auth-{lane or "smoke"}'),
-        renewal_lock=str(root / 'renewal.lock'), check_lock=str(root / 'check.lock'),
+        renewal_lock=str(root / 'renewal.lock'), check_lock=str(root / 'check.lock'), scratch=str(root / 'scratch'),
         caps={'seven_day': 95, 'five_hour': 95}, image='sha256:test', image_tarball=str(root / 'image.tar'),
         renewal_command=['claude', '-p', '--tools', '', '--strict-mcp-config', '--mcp-config', '{"mcpServers":{}}',
                          'ok'])))
@@ -1218,16 +1218,19 @@ class Faults(unittest.TestCase):
                         dict(stop, teardown='CLEAN', teardown_error=lost[0]), dict(COMPLETE, teardown_error=lost[0]), None):
             self.assertFalse(driver.docker_fault(verdict), verdict)
 
-    def attempt(self, output, name, *, owner=True, volume=True, preserve=None, on_volume=True, sealed=('after', [])):
+    def attempt(self, output, name, *, owner=True, volume=True, preserve=None, on_volume=True, sealed=('after', []),
+                credential=False):
         """A slot's attempt whose teardown did not finish: its plan.json and run/started.json, and the patches of a
         fake Docker that holds its owner container (owner) and /tmp volume (volume). preserve: what preserve_tmp
-        raises (it otherwise copies the volume into the cell and removes it). Returns (the patches, Docker's calls,
-        the fakes)."""
+        raises (it otherwise copies the volume into the cell and removes it). credential: the attempt's credential
+        copy is still in scratch. Returns (the patches, Docker's calls, the fakes)."""
         container, vol, cid = 'devlyn-0231-owner', 'devlyn-0233-tmp-owner', 'a' * 64
         out = output / name
         (out / 'run').mkdir(parents=True)
         (out / 'tmp').mkdir()
-        (out / 'plan.json').write_text(json.dumps(dict(tmp=str(out / 'tmp'), image='sha256:test')))
+        (out / 'plan.json').write_text(json.dumps(dict(name=name, tmp=str(out / 'tmp'), image='sha256:test')))
+        if credential:
+            (output.parent / 'scratch/credentials' / name).mkdir(parents=True)
         (out / 'run/started.json').write_text(json.dumps({
             'create_argv': ['create', '--name', container, f'type=volume,src={vol},dst=/tmp'],
             'tmp_volume': vol, 'started_at': time.time()}))
@@ -1504,6 +1507,30 @@ class Faults(unittest.TestCase):
             latch = latched(root, 'claude')
             self.assertEqual(latch['cell'], None)
             self.assertIn('Docker teardown proof failed', latch['reason'])
+            with self.assertRaisesRegex(driver.Stopped, 'harm latch in lane claude'):
+                lane(root, 'codex').assert_active()
+
+    def test_a_recovery_with_the_credential_copy_still_in_scratch_stops_both_lanes(self):
+        """Amendment 2, violating: a teardown fails also when the credential copy cannot be removed (0265/cell.py).
+        While the attempt's copy is in scratch its teardown is not proved: both lanes stop, nothing is removed,
+        preserved or archived, and the slot is not run again."""
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            name = row('c001-')[0]
+            result, calls, fakes = self.restart(root, [row('c001-')], name, credential=True)
+            self.assertIsInstance(result, driver.Stopped)
+            self.assertIn(f"{name}: Docker teardown proof failed: the attempt's credential copy is still in scratch",
+                          str(result))
+            self.assertEqual((calls, fakes['called'], list(fakes['containers']), fakes['volumes']),
+                             ([], [], ['a' * 64], {'devlyn-0233-tmp-owner'}))
+            fakes['seal'].assert_not_called()
+            fakes['evidence'].assert_not_called()
+            self.assertTrue((root / 'scratch/credentials' / name).is_dir())
+            self.assertEqual(json.loads((root / f'output/verdict-{name}.json').read_text()), dict(TEARDOWN, cell=name))
+            self.assertFalse(list((root / 'output').glob(f'*{name}.stop-*')))
+            latch = latched(root, 'claude')
+            self.assertEqual(latch['cell'], None)
+            self.assertIn("the attempt's credential copy is still in scratch", latch['reason'])
             with self.assertRaisesRegex(driver.Stopped, 'harm latch in lane claude'):
                 lane(root, 'codex').assert_active()
 
