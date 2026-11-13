@@ -87,15 +87,16 @@ same. `run_cell.py` defines its own `preserve_tmp(volume, dest, image)` and sets
    special file, as before (the extract side is unchanged; tar then sets each directory's recorded mode and time, and
    the root entry `.` is a member, so `dest` keeps the volume root's mode); (5) give the directories of (2) the owner
    search bit in `dest`, parents first, so that the host can read the evidence inside.
-3. The output is NUL-separated records of four fields: kind (`left_out` or `made_searchable`), type letter, octal
-   mode, path. They go to `run/tmp-copy.json` beside `dest`: `{"left_out": [{"type", "mode", "path"}, ...],
-   "made_searchable": [{"mode", "path"}, ...]}`, written only when a list is not empty. When both are empty, no such
-   file exists. `seal_after_teardown` runs after the teardown in both callers and seals it with `run/`.
-4. As the host user it lists every directory of the copy. One it cannot list fails the copy: the seal (`pathlib`'s
+3. As the host user it lists every directory of the copy. One it cannot list fails the copy: the seal (`pathlib`'s
    `rglob`) would skip what such a directory holds without a failure.
+4. The container's output is NUL-separated records of four fields: kind (`left_out` or `made_searchable`), type
+   letter, octal mode, path. They go to `run/tmp-copy.json` beside `dest`: `{"left_out": [{"type", "mode", "path"},
+   ...], "made_searchable": [{"mode", "path"}, ...]}`, written only when a list is not empty. When both are empty, no
+   such file exists. `seal_after_teardown` runs after the teardown in both callers and seals it with `run/`.
 5. Then it removes the volume, as before. Any failure raises as before: `0265/cell.py` records `teardown: FAILED`,
-   and the recovery stops both lanes. A failure before the removal leaves the volume as it was; a failure of the
-   removal itself leaves the copy done and the volume in place.
+   and the recovery stops both lanes. A failure before the removal leaves the volume as it was. A failure of the
+   removal itself leaves the copy done; the volume is then still there unless the removal happened and only its
+   answer was lost (a timeout), which the recovery's proof finds out.
 
 What differs from the volume in the copy: the special files are absent and listed, and the listed directories have
 the owner search bit added. Everything else is as the old copy gave it: on an ordinary volume (610 entries, a git
@@ -116,7 +117,7 @@ root creates each with its recorded mode at once. The owner search bit is added 
 read what a directory without it holds. The search bit is the one that can be missing: when a mode is set on a
 directory that exists, the mount gives the host directory that mode with owner read and write added (measured: set to
 000 the host directory has mode 600, to 500 it has 700, to 555 it has 755), so a directory set to 100 or 300 can be
-listed on the host. The copy does not rest on that: step 4 lists every directory as the host user before the volume is
+listed on the host. The copy does not rest on that: step 3 lists every directory as the host user before the volume is
 removed, and the proof reads what directories of mode 000, 300 and 600 hold.
 
 ### 2. A registered slot's cleared teardown STOP is recovered, archived and run again (`driver.py`)
@@ -126,7 +127,7 @@ cleared its latch, is ended as a proven Docker loss is: `recover()` proves the t
 preserved by the copy and removed, both proved gone, and the attempt's credential copy already gone from scratch),
 seals the cell again and calls `stop_evidence`, which replaces the old `scope_error` with the attempt's tree and
 scope result. The attempt is archived as `.stop-N` and the slot is dispatched again. A recovery that cannot be
-proved stops both lanes and keeps the volume, as before. The rule reads a SMOKE row as it reads a registered slot;
+proved stops both lanes and removes nothing more, as before. The rule reads a SMOKE row as it reads a registered slot;
 SMOKE ended before the screen and is not run again.
 
 Nothing else changes. A teardown STOP that no amendment cleared latches both lanes as before: there is no automatic
@@ -142,8 +143,8 @@ the teardown, archives the attempt and runs the slot again. A memory kill, which
 is archived and run again too: by the lane itself and once per slot, where a failed teardown is run again only after
 an amendment has cleared its latch. The archived attempt is read as the design's rule for attempts says: its owner
 input is charged (G3), its tree and scope result enter the harm readings (G2), D4's witnesses run on it, and its final
-report is judged for a false completion with the other attempts' (`fc_judge.py` reads every archived attempt whose
-owner exited normally; c069's did).
+report can go to the false-completion judges as any attempt's whose owner exited normally (c069's did): they judge an
+attempt for which a harm witness reads true or unresolved (`fc_judge.py`).
 
 What this costs: the first attempt is not graded. Its checks and its assessment are never run, so its completion never
 enters G1. So one D4 result of arm B is replaced by a fresh run because of what its session did in `/tmp`. From this
@@ -165,8 +166,8 @@ arm.
 ## What can still fail
 
 Each of these is a STOP, as before: `teardown: FAILED` in a cell, or both lanes stopped in a recovery. A failure
-before the volume's removal leaves the volume as it was; a failure of the removal itself leaves the copy done and the
-volume in place.
+before the volume's removal leaves the volume as it was; a failure of the removal itself leaves the copy done, and
+the volume still there unless only the removal's answer was lost.
 
 - A name the host cannot hold.
 - Two names that differ only in letter case (the host's file system ignores case).
@@ -265,8 +266,46 @@ DESIGN "Apparatus": "Qualification re-runs what a change touches".
 
 ## Reviews
 
-(written by the orchestrator after the review)
+Reviewers: GPT Astra (ultra) and Grok 4.7, read-only, in parallel. Every finding was fixed or rejected with a reason.
+
+- **Pass 1 on `3809ca07`.** Astra: RUN, no CRITICAL or HIGH, nine LOWER. Grok: REVISE, one HIGH and LOWER findings.
+  - Grok's HIGH: the copy's last step adds only the owner search bit, so a directory of mode 000 would stay
+    unlistable on the host, the seal's `rglob` would skip what it holds without a failure, and the volume would be
+    removed. Its mode part was rejected on measurement: when a mode is set on a directory that exists, the mount adds
+    owner read and write on the host, and the proof (not yet run when pass 1 read it) lists and reads inside
+    directories of mode 000, 300 and 600. Its other part was taken: the copy lists every directory as the host user
+    and fails on one it cannot list, before the volume is removed.
+  - Taken from the LOWER findings: the recovery's proof also needs the attempt's credential copy gone (both
+    reviewers); `sha256` in the proof's comparison of the old and the new copy; and the text on SMOKE rows, on the
+    STOPs a lane handles by itself, on when the volume stays, on the copy container after a timeout, on the locator
+    and a tracked FIFO in a worktree under `/tmp`, on a lane that dies inside the recovery (operator step 7), on what
+    the first attempt still feeds, and on the comparison with a memory kill.
+  - Rejected: repairing `dest`'s own mode (the volume's root is root's, mode 1777, and the cell's user cannot change
+    it); a resumable recovery and a reconciliation at restart (wider than this amendment; the edges are the
+    Docker-loss recovery's own, move a reading only toward NOT_FINISHED or stop the lane, and operator step 7 names
+    them); removing the copy container after a timeout (inherited from the old copy; it ends in a stop of both lanes
+    and is named under "What can still fail"); tests of an interrupted recovery (not supported: step 7) and of a
+    restrictive `dest` (cannot occur); `str()` around `reason` in `dispatch()` (no reason that is not a string
+    reaches that call).
+- **Pass 2 on `de25ce82`**, the HIGH and the fixes only. Astra: RUN, the HIGH closed, no CRITICAL or HIGH, three
+  LOWER on wording. Grok: RUN, the HIGH closed, no CRITICAL or HIGH, the same three LOWER. All three were taken: the
+  order of steps 3 and 4 as the code runs them; a removal whose answer was lost; which attempts the false-completion
+  judges read.
+- **Tests on `de25ce82`**: the 0266 suite 288 passed, 1 skipped (the opt-in proof), 229 subtests; the 0265 suite 268
+  passed, 10 skipped. The commit after it changes this file only.
+- The proof's fill script was corrected after pass 1 had read it (`25821f43`: it set times on the files of the
+  image's own `/tmp`; three lines of the test).
 
 ## Applied
 
-(written by the orchestrator)
+- **The copy's proof** (`CopyProof`, Docker, the pinned image): passed in the task worktree on `25821f43` and on
+  `de25ce82`. On the real Docker it fails for three wrong copies, each tried once: without the step that makes the
+  directories first, without the final `chmod`, and without the filter that leaves special files out. It is run once
+  more from the run worktree before the restart (operator step 3); RESULT.md records that run.
+- **c069's volume**: the new copy was run on it once, mounted read-only, into a scratch folder that was then removed
+  (about 06:43 KST): exit 0, the two FIFOs listed as left out, 1193 entries on the host, and all 879 regular files
+  read by the host user. The volume was not changed; the recovery at the restart makes the real copy.
+- **Where the run stood**: 133 verdicts; no cell dispatched since the latch at 04:49:11; no witness, probe, harm
+  check, judge or `decide.py` run on a registered cell. c001-c068 and the 64 Codex cells ran under the old copy; every
+  cell from the restart on runs under this amendment. The restart, c069's recovery and its rerun are reported in
+  RESULT.md.
