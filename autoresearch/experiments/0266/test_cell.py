@@ -1065,10 +1065,11 @@ class PreserveTmp(unittest.TestCase):
         (out / 'tmp').mkdir()
         return out
 
-    def preserve(self, out, listing=b'', fails=None):
+    def preserve(self, out, listing=b'', fails=None, leaves=None):
         """preserve_tmp('vol', out/tmp, 'image'): the copy prints listing, or raises fails, and notes what tmp held
-        when it started; `docker volume rm` answers as Docker does. Returns (Docker's calls as (argv, keyword
-        arguments), tmp's entries at the copy, the exception raised or None)."""
+        when it started; leaves(tmp) makes what the copy leaves in tmp; `docker volume rm` answers as Docker does.
+        Returns (Docker's calls as (argv, keyword arguments), tmp's entries at the copy, the exception raised or
+        None)."""
         calls, held = [], []
 
         def docker(argv, **kwargs):
@@ -1078,6 +1079,8 @@ class PreserveTmp(unittest.TestCase):
             held.extend(sorted(p.name for p in (out / 'tmp').iterdir()))
             if fails:
                 raise fails
+            if leaves:
+                leaves(out / 'tmp')
             return subprocess.CompletedProcess(argv, 0, stdout=listing, stderr=b'')
         with mock.patch.object(run_cell.subprocess, 'run', side_effect=docker):
             try:
@@ -1085,6 +1088,25 @@ class PreserveTmp(unittest.TestCase):
             except (subprocess.SubprocessError, OSError, ValueError) as exc:
                 return calls, held, exc
         return calls, held, None
+
+    def test_a_directory_of_the_copy_that_the_host_user_cannot_list_fails_the_copy_and_keeps_the_volume(self):
+        """Violating: the copy ends clean and leaves in tmp a directory the host user cannot list; the seal (pathlib's
+        rglob) skips what it holds without a failure, and the volume is removed. Allowed: the copy fails with the
+        OSError, which the teardown records, and the volume stays."""
+        with tempfile.TemporaryDirectory() as temp:
+            out = self.cell(Path(temp))
+
+            def leaves(tmp):
+                (tmp / 'open/closed').mkdir(parents=True)
+                (tmp / 'open/closed/inside').write_text('evidence')
+                (tmp / 'open/closed').chmod(0)
+            try:
+                calls, _, error = self.preserve(out, leaves=leaves)
+            finally:
+                (out / 'tmp/open/closed').chmod(0o700)
+            self.assertIsInstance(error, PermissionError)
+            self.assertEqual([argv[:2] for argv, _ in calls], [['docker', 'run']])
+            self.assertFalse((out / 'run/tmp-copy.json').exists())
 
     def test_the_copy_leaves_special_files_out_makes_directories_first_and_then_removes_the_volume(self):
         """Violating (the old copy): `tar -cf - .` reaches every FIFO and, run as root, creates each directory with

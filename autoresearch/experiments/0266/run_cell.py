@@ -81,13 +81,17 @@ def preserve_tmp(volume, dest, image):
     device nodes are left out (nothing reads them: seal_after_teardown hashes regular files only), every directory is
     made in dest before tar fills it and sets its mode, and a directory whose mode lacks owner search gets it, so that
     the seal can read what is inside. Both are listed in run/tmp-copy.json beside dest, which the seal after the
-    teardown covers. What a failed copy left in dest is removed first. On failure the volume stays for recovery and
-    the caller records a teardown failure."""
+    teardown covers. What a failed copy left in dest is removed first, and a directory of the copy that the host user
+    cannot list fails it. On failure the volume stays for recovery and the caller records a teardown failure."""
     empty_folder(dest)  # a failed copy's part: half-made FIFO nodes, directories the host user cannot enter
     listed = subprocess.run(['docker', 'run', '--rm', '--network', 'none', '--user', '0', '--mount',
                              f'type=volume,src={volume},dst=/src,readonly', '--mount', f'type=bind,src={dest},dst=/dst',
                              '--entrypoint', 'bash', image, '-c', COPY_TMP],
                             capture_output=True, check=True, timeout=600).stdout  # bytes: a name need not be UTF-8
+    def refuse(error):
+        raise error
+    for _ in os.walk(dest, onerror=refuse):  # the seal reads dest as the host user, and pathlib's rglob skips a
+        pass  # directory it cannot list without a failure: such a directory fails the copy here, and the volume stays
     fields = listed.split(b'\0')
     if fields.pop() or len(fields) % 4 or not set(fields[::4]) <= {b'left_out', b'made_searchable'}:
         raise ValueError(f'the /tmp copy listed what it changed in no readable form: {listed[:200]!r}')

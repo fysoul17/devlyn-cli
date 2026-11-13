@@ -69,7 +69,7 @@ mount, written by root in a container:
 `0233/cell.py` and `0265/cell.py` stay byte for byte, so the `imported` hashes in every cell's `seal.json` stay the
 same. `run_cell.py` defines its own `preserve_tmp(volume, dest, image)` and sets it in its loaded copy of
 `0265/cell.py` right after the modules load, the way `0265/check.py` replaces `base.in_image`. `0265/cell.py`'s
-`run()` and `driver.py`'s recovery look the name up at call time, so both use it. It does four things:
+`run()` and `driver.py`'s recovery look the name up at call time, so both use it. It does five things:
 
 1. If `dest` holds anything, it empties it first and keeps `dest` itself and its mode. A copy that failed before
    left its part there: half-made FIFO nodes, and directories the host user may not be able to enter. Each
@@ -91,7 +91,9 @@ same. `run_cell.py` defines its own `preserve_tmp(volume, dest, image)` and sets
    mode, path. They go to `run/tmp-copy.json` beside `dest`: `{"left_out": [{"type", "mode", "path"}, ...],
    "made_searchable": [{"mode", "path"}, ...]}`, written only when a list is not empty. When both are empty, no such
    file exists. `seal_after_teardown` runs after the teardown in both callers and seals it with `run/`.
-4. Then it removes the volume, as before. Any failure raises as before: `0265/cell.py` records `teardown: FAILED`,
+4. As the host user it lists every directory of the copy. One it cannot list fails the copy: the seal (`pathlib`'s
+   `rglob`) would skip what such a directory holds without a failure.
+5. Then it removes the volume, as before. Any failure raises as before: `0265/cell.py` records `teardown: FAILED`,
    and the recovery stops both lanes. A failure before the removal leaves the volume as it was; a failure of the
    removal itself leaves the copy done and the volume in place.
 
@@ -111,7 +113,11 @@ latches both lanes, and neither lane's status file holds a latch but c069's or a
 
 Directories are made first because the mount refuses to create one whose mode has no owner read bit, and tar run as
 root creates each with its recorded mode at once. The owner search bit is added at the end because the seal cannot
-read what a directory without it holds.
+read what a directory without it holds. The search bit is the one that can be missing: when a mode is set on a
+directory that exists, the mount gives the host directory that mode with owner read and write added (measured: set to
+000 the host directory has mode 600, to 500 it has 700, to 555 it has 755), so a directory set to 100 or 300 can be
+listed on the host. The copy does not rest on that: step 4 lists every directory as the host user before the volume is
+removed, and the proof reads what directories of mode 000, 300 and 600 hold.
 
 ### 2. A registered slot's cleared teardown STOP is recovered, archived and run again (`driver.py`)
 
@@ -132,13 +138,17 @@ a registered slot that is none of these and not a failed teardown ends its lane 
 ## Why the slot is run again and not graded
 
 The design grades no attempt whose teardown failed. Its one rule for a failed teardown, a proven Docker loss, proves
-the teardown, archives the attempt and runs the slot again. A memory kill, which also follows from what a session
-did, is run again once in the same way. The archived attempt is read as the design's rule for attempts says: its
-owner input is charged (G3), its tree and scope result enter the harm readings (G2), and D4's witnesses run on it.
+the teardown, archives the attempt and runs the slot again. A memory kill, which also follows from what a session did,
+is archived and run again too: by the lane itself and once per slot, where a failed teardown is run again only after
+an amendment has cleared its latch. The archived attempt is read as the design's rule for attempts says: its owner
+input is charged (G3), its tree and scope result enter the harm readings (G2), D4's witnesses run on it, and its final
+report is judged for a false completion with the other attempts' (`fc_judge.py` reads every archived attempt whose
+owner exited normally; c069's did).
 
-What this costs: the first attempt's completion is never read. So one D4 result of arm B is replaced by a fresh run
-because of what its session did in `/tmp`. From this amendment on, a session that makes such files, or directories
-the mount refuses, is graded like any other, in either arm.
+What this costs: the first attempt is not graded. Its checks and its assessment are never run, so its completion never
+enters G1. So one D4 result of arm B is replaced by a fresh run because of what its session did in `/tmp`. From this
+amendment on, a session that makes such files, or directories the mount refuses, is graded like any other, in either
+arm.
 
 ## What does not change
 
@@ -189,13 +199,13 @@ that was given the owner search bit.
 
 DESIGN "Apparatus": "Qualification re-runs what a change touches".
 
-- Q1 unit tests, 0266's and 0265's: `test_cell.py` covers the copy (its command's five steps, bytes output, both
-  kinds of record in `run/tmp-copy.json`, a stale list removed, a failed copy's part removed first with directories
-  of mode 000 and links out of `dest` among it, a failed copy keeping the volume, and the function 0265's `cell.py`
-  and the recovery now call); `test_driver.py` covers the driver rule (a cleared teardown STOP recovered, archived
-  and run again at the restart; one no amendment cleared latching, also a repeat after a recovery; a screen slot's
-  passed; a recovery that cannot be proved stopping both lanes); `test_integration.py` rehearses the whole path once
-  (step 10).
+- Q1 unit tests, 0266's and 0265's: `test_cell.py` covers the copy (its command's five steps, bytes output, both kinds
+  of record in `run/tmp-copy.json`, a stale list removed, a failed copy's part removed first with directories of mode
+  000 and links out of `dest` among it, a failed copy keeping the volume, a directory of the copy that the host user
+  cannot list failing it, and the function 0265's `cell.py` and the recovery now call); `test_driver.py` covers the
+  driver rule (a cleared teardown STOP recovered, archived and run again at the restart; one no amendment cleared
+  latching, also a repeat after a recovery; a screen slot's passed; a recovery that cannot be proved stopping both
+  lanes); `test_integration.py` rehearses the whole path once (step 10).
 - The copy's proof on the pinned image: the opt-in test `CopyProof` in `test_cell.py`, in two parts. Each fills a
   scratch volume as the cell's user, copies it into a folder under `$R/scratch` and lists both sides through a root
   container.
