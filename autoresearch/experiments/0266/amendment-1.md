@@ -7,7 +7,10 @@ DESIGN.md and [registration.md](registration.md) are unchanged.
 
 ## What happened
 
-Times are KST on 2026-11-13, from `output/driver-claude.log` and `night/*.log` in the runtime root.
+Times are KST on 2026-11-13, from `output/driver-claude.log` and `night/*.log` in the runtime root. The app's
+readings (43%, 65%, its five-minute steps) are from the app's own board and cooldown files (`~/.devlyn/cli-usage.json`,
+`~/.devlyn/claude-active.cooldown.json`) as the orchestrator read them at those times; the runtime root does not keep
+them.
 
 - The screen lane started at 08:39:56 and wrote 8 of the 18 screen verdicts, s01 to s08, the last at 09:13:10.
 - From 09:13:10 every usage reading was refused (`Claude window check failed: HTTP Error 429: Too Many Requests`):
@@ -46,8 +49,8 @@ In `driver.py`, `ready()`:
    too, with `until` (the deadline) in place of `retry_after`, and rule 2 applies the same way. The deadline is kept
    in memory only; a header that is absent or not a whole number of seconds sets no deadline, so the next dispatch
    reads again.
-4. Everything else is as before: another HTTP status, a network error, a malformed answer and a reading without the
-   seven-day window hold and are re-read after 60 s; a reading that answers is applied exactly as before (caps, split
+4. Everything else is as before: another HTTP status, a network error, an answer that is not JSON and a reading
+   without the seven-day window hold and are re-read after 60 s; a reading that answers is applied exactly as before (caps, split
    wait, split block).
 
 ## What does not change
@@ -58,6 +61,10 @@ In `driver.py`, `ready()`:
   owner started stays a STOP and, once its latch is cleared (README step 16), reads as an unknown.
 - A shared account fault is redispatched once per slot and a repeat on the slot stays a STOP, which latches both
   lanes: a lane that starts cells unread into an exhausted window stops there, as it would after any repeated fault.
+- An assessor that meets a limit is not that fault: the cell's STOP (`assessment failed`, `assessor produced`,
+  `assessment held:`) is regraded from preserved evidence, as before, each regrade after the same readiness check.
+  Where the old rule held such a regrade while a window read 95% or more, an unread window lets it try once a minute
+  until the window resets, the default login changes or the slot's 99 archives are used, which latches the lanes.
 - The caps, every decision rule and every verdict reading.
 
 ## What was known of the outcomes
@@ -73,7 +80,8 @@ says where the run stood when the amended driver started.
 
 Each cell's `seal.json` records `source_commit` and the sha256 of every apparatus file. The cells dispatched before
 the lane's restart carry the registration commit `3691c4e9` and its `driver.py`; the cells dispatched after it carry
-the merge commit of this amendment and the amended `driver.py`.
+the merge commit of this amendment and the amended `driver.py`. A cell dispatched before the restart and regraded
+after it keeps its seal; the lane's log names such a regrade (a `regrade` event after the restart).
 
 ## Operator steps
 
@@ -89,11 +97,29 @@ the merge commit of this amendment and the amended `driver.py`.
 - The holds as before.
 - The number of `window_unread` events per lane (the Claude lane's log holds the screen too):
   `for lane in claude codex; do echo "$lane $(grep -c '"event": "window_unread"' $R/output/driver-$lane.log)"; done`
+  It counts readiness checks passed without a reading: a refused reading (`retry_after`) and a check inside a
+  refusal's `Retry-After` (`until`), before a cell's run or before a regrade. It is not a count of distinct cells, and
+  a check can still be followed by a preflight that refuses the dispatch. RESULT.md names the cells from the lane's
+  next `run` or `regrade` event after each one.
 - The operator holds of this morning.
 
 ## Reviews
 
-(written by the orchestrator after the review)
+One pass on `2b2905a9`, GPT Astra (ultra) and Grok 4.7, read-only, in parallel: Astra RUN, Grok RUN, no CRITICAL or
+HIGH. Each lower finding was fixed or rejected:
+
+- Fixed in this file: "a malformed answer" said more than the code does (an answer that is JSON but not an object
+  raises outside the hold, as it did before the amendment), so rule 4 now says "an answer that is not JSON"; the
+  assessor path under an unread window; a cell regraded after the restart keeps its seal; what the `window_unread`
+  count is and is not; where the app's readings come from.
+- Fixed in `test_driver.py`: an answer that is not JSON holds; the deadline is not kept across a restart; a regrade's
+  readiness check passes unread too; a split wait recovers after the deadline.
+- Rejected: a `Retry-After` of several hundred digits would raise outside the hold and latch the lanes (Grok). The
+  endpoint names seconds (909 and 3137 here), the failure would be a visible stop and not a wrong reading, and no
+  such answer has been seen.
+
+`driver.py` did not change after the review. The fixes were re-checked by the orchestrator against the code they
+describe.
 
 ## Applied
 

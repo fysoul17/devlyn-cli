@@ -410,6 +410,11 @@ class Guards(unittest.TestCase):
                     self.assertEqual(limits.call_count, int(ready))
                     if not ready:
                         self.assertEqual(events(root, 'claude')[-1]['reason'], 'awaiting renewal window')
+            with mock.patch.object(driver, 'credential', return_value=snapshot(1505)), \
+                    mock.patch.object(driver.cell, 'claude_limits', side_effect=[refused()]), host():
+                self.assertTrue(d.ready(1500))  # amendment 1: an assessor redo goes on unread too
+            self.assertEqual(d.approved_account, ['account', 'org'])
+            self.assertEqual(unread(root, 'claude'), [dict(retry_after=None)])
             slots = [row('c001-'), row('c002-')]
             d.lock.close()
             d = lane(root, 'claude', slots)
@@ -448,6 +453,7 @@ class Guards(unittest.TestCase):
 
     def test_no_read_while_a_refusals_retry_after_runs(self):
         # Rule 3: a Retry-After of 900 s keeps the endpoint unread until 900 s have passed (the clock is the test's).
+        # The deadline is in memory only: a lane started again inside a refusal's 900 s reads at once.
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             seal(root)
@@ -481,10 +487,20 @@ class Guards(unittest.TestCase):
             until = datetime.datetime.fromtimestamp(start + 900, datetime.timezone.utc).isoformat()
             self.assertEqual(unread(root, 'claude'), [dict(retry_after=900), dict(until=until, cell=d.slots[1][0])])
             self.assertFalse([e for e in events(root, 'claude') if e['event'] == 'hold'])
+            answers.extend([refused(retry_after='900'), WINDOWS])  # a refusal at 900 s, then the lane starts again
+            with mock.patch.object(driver, 'credential', return_value=login), \
+                    mock.patch.object(driver.cell, 'claude_limits', side_effect=limits), \
+                    mock.patch.object(driver.time, 'time', side_effect=lambda: clock['now']), host():
+                self.assertTrue(d.ready())
+                d.lock.close()
+                lane(root, 'claude').ready()  # the clock is still inside the new 900 s
+            self.assertEqual(reads[2:], [start + 900] * 2)
+            self.assertNotIn('unread_until', d.status_path.read_text())
 
     def test_a_split_wait_holds_while_the_windows_are_unread(self):
         # Rule 2: a slot waiting on a split window's reset holds on a refused read and inside its Retry-After (no read
-        # there); a wait recorded for another account is dropped as before, and the slot then dispatches unread.
+        # there); once that has run, a read that answers applies the wait as before: the same reset holds, a new one
+        # dispatches. A wait recorded for another account is dropped as before, and the slot then dispatches unread.
         slot, previous = row('c002-')[0], row('c001-')[0]
         resets = {'seven_day': '2026-11-12T00:00:00+00:00'}
         with tempfile.TemporaryDirectory() as temp:
@@ -506,8 +522,16 @@ class Guards(unittest.TestCase):
                 d.unread_until, datetime.timezone.utc).isoformat())
             self.assertEqual(unread(root, 'claude'), [])
             self.assertEqual(d.state['split_wait'][slot]['resets'], resets)
+            later = {'seven_day': {'used': 0, 'resets': '2026-11-19T00:00:00+00:00'}}
+            with mock.patch.object(driver, 'credential', return_value=snapshot(20000)), \
+                    mock.patch.object(driver.cell, 'claude_limits', side_effect=[WINDOWS, later]) as limits, \
+                    mock.patch.object(driver.time, 'time', return_value=d.unread_until), host():  # its 900 s have run
+                self.assertFalse(d.ready(slot=slot, previous=previous))  # read again: the waited reset is unchanged
+                self.assertEqual(events(root, 'claude')[-1]['reason'], 'awaiting split window reset')
+                self.assertTrue(d.ready(slot=slot, previous=previous))  # a new reset ends the wait
+            self.assertEqual(limits.call_count, 2)
             d.unread_until = 0.0
-            d.state['split_wait'][slot]['account'] = ['other', 'org']
+            d.state['split_wait'][slot] = {'account': ['other', 'org'], 'resets': resets}
             with mock.patch.object(driver, 'credential', return_value=snapshot(20000)), \
                     mock.patch.object(driver.cell, 'claude_limits', side_effect=[refused()]), host():
                 self.assertTrue(d.ready(slot=slot, previous=previous))
@@ -517,10 +541,12 @@ class Guards(unittest.TestCase):
             self.assertEqual(d.approved_account, ['account', 'org'])
 
     def test_other_read_failures_hold_and_read_again_after_60_seconds(self):
-        # Rule 4: another HTTP status (its Retry-After sets nothing), a network error and a read without the seven-day
-        # window hold as before.
+        # Rule 4: another HTTP status (its Retry-After sets nothing), a network error, an answer that is not JSON and a
+        # read without the seven-day window hold as before.
         cases = [(refused(500, retry_after='900'), 'Claude window check failed: HTTP Error 500: Internal Server Error'),
                  (urllib.error.URLError('timed out'), 'Claude window check failed: <urlopen error timed out>'),
+                 (json.JSONDecodeError('Expecting value', '<html>', 0),  # a ValueError, as json.load raises it
+                  'Claude window check failed: Expecting value: line 1 column 1 (char 0)'),
                  ({'five_hour': WINDOWS['five_hour']}, 'Claude window evidence unavailable: no seven-day window')]
         for failure, reason in cases:
             with self.subTest(reason=reason), tempfile.TemporaryDirectory() as temp:
