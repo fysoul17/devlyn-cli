@@ -14,6 +14,10 @@ Times are KST on 2026-11-13, from `output/driver-claude.log` and `night/*.log` i
   46 holds one minute apart until 09:58:46, then the operator hold from 09:59:46. The operator's back-off loop
   removed that hold at 11:19:06; the lane's next reading, at 11:19:47, came after 81 minutes without a request and
   was refused too, and the loop set the hold again at 11:19:51.
+- The block then ended early: the app's board showed an answered reading, the loop removed the hold at 11:58:19, and
+  the screen went on under the old rule (s09's verdict at 12:03:55). From 09:13:10 to 11:58:19 no cell started: 2 h
+  45 min. The board read 65% of the default login's week at 12:03, up from 43% at 09:05 with the lane idle: other
+  sessions use the same login.
 - The endpoint's `Retry-After` was 909 s at 09:58:01: the block would end at 10:13:10, one hour after the first
   refusal. It was 3137 s at 10:24:45: a new one-hour block from 10:17:02, started by the first reading after the old
   block ended. The lane was on the operator hold then. The Devlyn app reads the same login every five minutes: its
@@ -24,7 +28,7 @@ Times are KST on 2026-11-13, from `output/driver-claude.log` and `night/*.log` i
   by several Claude Code sessions at once, and Claude Code itself reads the same endpoint.
 - The gate's history: 0257 lost 6.0 h to HTTP 429 on this endpoint, and no hold came from a window itself (0265
   DESIGN "Why" item 3); 0265 had 38 such holds (24 Claude, 14 Codex) and none for a window (0265 RESULT "Holds");
-  0266 has lost over two hours and none for a window. The gate was set by
+  0266 lost the 2 h 45 min above and none for a window. The gate was set by
   [0257 amendment 2](../0257/amendment-2.md), which also says that quota faults are archived and redispatched and that
   window utilization is descriptive (`decide.py` does not use it).
 
@@ -51,31 +55,34 @@ In `driver.py`, `ready()`:
 - A limit met inside a cell is a quota fault, classified from the cell's own evidence, archived and redispatched as
   DESIGN says.
 - In the screen a cell in which an owner ran is never dispatched again, so a screen cell cut by a limit after its
-  owner started stays a STOP and, once its latch is cleared (README step 16), reads as an unknown (the app's board
-  last read 43% of the default login's week at 09:05).
+  owner started stays a STOP and, once its latch is cleared (README step 16), reads as an unknown.
+- A shared account fault is redispatched once per slot and a repeat on the slot stays a STOP, which latches both
+  lanes: a lane that starts cells unread into an exhausted window stops there, as it would after any repeated fault.
 - The caps, every decision rule and every verdict reading.
 
 ## What was known of the outcomes
 
-When this was written, 8 of the 18 screen verdicts existed; no probe had run, so no event was known; the orchestrator
-had seen the completion status of s01, s02 and s03 only (PRODUCT_INCOMPLETE, COMPLETE, PRODUCT_INCOMPLETE). Checking
-these facts read those three statuses again and nothing else of the outcomes. The change does not depend on any
-outcome and applies to every arm alike.
+When the change was decided and written (11:25), 8 of the 18 screen verdicts existed; no probe had run, so no event
+was known; the orchestrator had seen the completion status of s01, s02 and s03 only (PRODUCT_INCOMPLETE, COMPLETE,
+PRODUCT_INCOMPLETE). Checking these facts read those three statuses again and nothing else of the outcomes. While it
+was reviewed the screen went on under the old rule, and the orchestrator saw the status of s08 and s09
+(PRODUCT_INCOMPLETE, COMPLETE). The change does not depend on any outcome and applies to every arm alike. "Applied"
+says where the run stood when the amended driver started.
 
 ## Which cells ran under which rule
 
-Each cell's `seal.json` records `source_commit` and the sha256 of every apparatus file. s01 to s08 carry the
-registration commit `3691c4e9` and its `driver.py`; the cells dispatched after the lane restarts carry the merge
-commit of this amendment and the amended `driver.py`.
+Each cell's `seal.json` records `source_commit` and the sha256 of every apparatus file. The cells dispatched before
+the lane's restart carry the registration commit `3691c4e9` and its `driver.py`; the cells dispatched after it carry
+the merge commit of this amendment and the amended `driver.py`.
 
 ## Operator steps
 
-1. Stop the holding lane while no cell is running (an interrupt sets no latch).
+1. Set the operator hold (`touch $R/operator-hold`), wait until no cell is running, and stop the lane (an interrupt
+   sets no latch).
 2. Move the run worktree (`~/.local/share/nx01/0266-run`) to the merge commit of this amendment.
-3. Start the lane again with its README command (step 11). It skips s01 to s08, which have verdicts, and holds on the
-   operator hold until step 4 removes it.
-4. Stop the operator's back-off loop (`night/backoff.py`, which only set the operator hold after a refused reading)
-   and remove its hold if it set one (`rm $R/operator-hold`).
+3. Stop the operator's back-off loop (`night/backoff.py`, which only set the operator hold after a refused reading).
+4. Start the lane again with its README command. It skips the cells that have verdicts and holds on the operator
+   hold until that file is removed (`rm $R/operator-hold`).
 
 ## Reported in RESULT.md
 
@@ -87,3 +94,7 @@ commit of this amendment and the amended `driver.py`.
 ## Reviews
 
 (written by the orchestrator after the review)
+
+## Applied
+
+(written by the orchestrator when the amended driver starts)
