@@ -123,4 +123,7 @@ describe.
 
 ## Applied
 
-(written by the orchestrator when the amended driver starts)
+The amended driver starts with the registered run. The whole screen ran under the old rule: its 18 verdicts were
+complete at 12:41:45 KST, its probe and decision followed (`0266-screen:GO(K2)`, 12:42 KST), and no screen cell was
+dispatched without a reading. So when the amended driver starts, the screen's outcome is known and no cell of the
+registered run has been dispatched; every registered cell, in both arms and both lanes, runs under the amended rule.
