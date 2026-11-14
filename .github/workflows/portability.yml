@@ -284,8 +284,10 @@ jobs:
     needs: posix
     if: ${{ !cancelled() }}
     runs-on: windows-2025
-    # Setup, the 480 s package suite, the 900 s activation suite and the 2700 s loop suite, with room for the rest.
-    timeout-minutes: 90
+    # The checks' caps add up to 96 minutes (the 2700 s loop suite, the 900 s activation suite, three 480 s suites
+    # and three 240 s self-tests), and the count checks run after them: the caps' sum plus margin for setup and those
+    # checks, to be tightened from the first run's measured time.
+    timeout-minutes: 105
     steps:
       # The checkout is the test: Git for Windows refuses any tracked path Windows cannot
       # hold. The workspace root keeps the longest tracked path under MAX_PATH; the steps

@@ -4,12 +4,12 @@
 The app checks a release it installs, plans each engine's activation (for a session it starts, resumes or forks,
 and for each engine its harness sheet lists), syncs a Codex account before a session whose plan names it, reads a
 project's status and its queue, and plans the cleanup twice: a count of the checkout as it is, and the plan the owner
-reviews. Each test sends what the app sends and asserts only what the app reads: the exit status where it requires
-0, and from the last line of stdout the keys and their JSON types, the values it matches on, and the checks the app
-itself makes on a plan.
+reviews, which it then applies. Each test sends what the app sends and asserts only what the app reads: the exit
+status where it requires 0, and from the last line of stdout the keys and their JSON types, the values it matches
+on, and the checks the app itself makes on a plan.
 
-An assertion here is loosened or removed only after an app release that no longer depends on it has shipped and the
-app's supported range excludes the older builds. Adding a key to an answer never needs a change here.
+What this suite holds is preserved for the whole of devlyn-cli major 4. Adding a key to an answer never needs a
+change here.
 
 --package-root exercises an extracted release; otherwise pack this checkout. No engine, model or network.
 """
@@ -37,6 +37,7 @@ APP_ENGINES = ('claude', 'codex', 'grok', 'omp', 'antigravity', 'cursor', 'openc
 PROMPT = {'text': 'Fix the failing test', 'transport': 'argv'}
 # The values the app matches on.
 STATES = ('configured', 'partial', 'unavailable', 'disabled')
+# The fields of the checked release the app keeps, and the only ones it sends back.
 RELEASE_FIELDS = ('package', 'version', 'digest', 'root')
 
 
@@ -98,11 +99,13 @@ class AppContractTests(unittest.TestCase):
         cls.verified = subprocess.run([node, cls.package / 'bin/devlyn.js', 'release', '--verify', '--root', cls.package,
                                        '--json'], cwd=cls.package, env=cleared, stdin=subprocess.DEVNULL,
                                       capture_output=True, timeout=120)
-        cls.release = data(cls.verified)['release']
+        release = data(cls.verified).get('release')
+        if not (isinstance(release, dict) and all(isinstance(release.get(key), str) for key in RELEASE_FIELDS)):
+            raise AssertionError(f'{cls.verified.args}: no release the app reads\n{cls.verified.stdout!r}')
+        cls.release = {key: release[key] for key in RELEASE_FIELDS}
         floors = run(['node', '-p', 'JSON.stringify(require(process.argv[1]).ENGINE_CAPABILITIES)',
                       cls.package / 'bin/engines.js'])
         cls.floors = {engine: value['minimum'] for engine, value in json.loads(floors.stdout).items()}
-        cls.engines = [*APP_ENGINES, *(engine for engine in cls.floors if engine not in APP_ENGINES)]
 
     @classmethod
     def tearDownClass(cls):
@@ -124,6 +127,11 @@ class AppContractTests(unittest.TestCase):
         for key, expected in types.items():
             self.assertIn(key, value)
             self.assertIsInstance(value[key], expected, key)
+
+    def count(self, value, name):
+        """A count the app reads as an unsigned integer: an int, not a bool, and not negative."""
+        self.assertIs(type(value), int, name)
+        self.assertGreaterEqual(value, 0, name)
 
     def contexts(self, engine):
         """What the app sends to plan `engine`: from its harness sheet (fresh, with no account home or first
@@ -179,8 +187,7 @@ class AppContractTests(unittest.TestCase):
         if plan.get('release') is not None:
             self.keys(plan['release'], package=str, version=str, digest=str, root=str)
             # A Codex session's sync compares these four with the release the app checked; it ignores any other key.
-            self.assertEqual({key: plan['release'][key] for key in RELEASE_FIELDS},
-                             {key: self.release[key] for key in RELEASE_FIELDS})
+            self.assertEqual({key: plan['release'][key] for key in RELEASE_FIELDS}, self.release)
             seen.add('release')
         for arg in plan.get('engineArgs', []):
             self.assertIsInstance(arg, str)
@@ -226,13 +233,13 @@ class AppContractTests(unittest.TestCase):
             seen.add('inheritedDevlyn')
 
     def test_release_check(self):
-        # The app's check of a release it installs, and of its default at every status read.
+        # The app's check of a release it installs, and of its default at every status read; its answer is read above.
         self.assertEqual(self.verified.returncode, 0, self.verified)
-        self.keys(self.release, package=str, version=str, digest=str, root=str)
 
     def test_activation_plans(self):
+        self.assertLessEqual(set(APP_ENGINES), self.floors.keys(), 'the release no longer knows an engine the app sends')
         seen = set()
-        for engine in self.engines:
+        for engine in APP_ENGINES:
             plans = {}
             for label, context in self.contexts(engine).items():
                 with self.subTest(engine=engine, context=label):
@@ -266,6 +273,8 @@ class AppContractTests(unittest.TestCase):
         self.assertTrue(status['instructions'] and status['requirements'], status)
         for instruction in status['instructions']:
             self.keys(instruction, committed=bool, ownership=str, applicableEngines=list)
+            # The fixture commits the release's own template: the app applies a committed block only for these two.
+            self.assertIn(instruction['ownership'], ('current', 'outdated'))
             for engine in instruction['applicableEngines']:
                 self.assertIsInstance(engine, str)
         for requirement in status['requirements']:
@@ -282,8 +291,9 @@ class AppContractTests(unittest.TestCase):
         self.keys(queue, status=str, counts=dict, blockers=list, delivery=list, cleanup=list)
         self.assertEqual(queue['status'], 'OK', queue)
         counts = queue['counts']
-        self.keys(counts, pending=int, active=int, accepted=int, failed=int, blocked=int)
-        self.assertIsInstance(counts.get('legacyPending', counts.get('legacy_pending')), int, counts)
+        for key in ('pending', 'active', 'accepted', 'failed', 'blocked'):
+            self.count(counts.get(key), key)
+        self.count(counts.get('legacyPending', counts.get('legacy_pending')), 'legacyPending')
         self.assertIsInstance(queue.get('next'), (str, NONE))
         for entry in queue['blockers'] + queue['cleanup']:
             self.assertIsInstance(entry, str)
@@ -336,6 +346,46 @@ class AppContractTests(unittest.TestCase):
         self.assertTrue(reasons, review)
         for reason in reasons:
             self.keys(reason, code=str, params=dict)
+
+    def test_cleanup_apply(self):
+        # The app saves the plan the owner reviewed and applies it with its progress lines. Only an edited copy can be
+        # chosen, and the fixture has none, so the app adds no --include.
+        review = self.ask('cleanup', '--plan', '--machine', '--project', self.project, '--account-home', self.account)
+        # Applied only inside the suite's own home and project.
+        paths = [scope['root'] for scope in review['scopes']] + [item['path'] for item in self.items(review)]
+        self.assertTrue(all(Path(path).is_relative_to(self.work) for path in paths), paths)
+        # The other tests count the copies this removes.
+        for root in (self.home, self.project):
+            self.addCleanup(shutil.copytree, self.package / 'config/skills/devlyn-ideate',
+                            root / '.agents/skills/devlyn-ideate', dirs_exist_ok=True)
+        plan_file = self.work / 'cleanup-plan.json'
+        plan_file.write_text(json.dumps(review), encoding='utf-8')
+        result = self.cli('cleanup', '--apply', '--events', '--plan-file', plan_file, '--digest', review['digest'])
+        outcome = data(result)
+        self.keys(outcome, state=str, scopes=list)
+        self.assertIn(outcome['state'], ('succeeded', 'partial', 'failed'))
+        # A line before the answer reaches the app only as JSON naming an event; a scope event carries a record.
+        progress = []
+        for line in [line for line in result.stdout.decode('utf-8').splitlines() if line.strip()][:-1]:
+            try:
+                event = json.loads(line)
+            except ValueError:
+                continue
+            if isinstance(event, dict) and event.get('event') == 'scope':
+                progress.append(event.get('scope'))
+        self.assertTrue(progress and outcome['scopes'], result.stdout)
+        ids = {scope['id'] for scope in review['scopes']}
+        # Each record moves the row of its plan scope: found by scopeId, counted by state and total, and shown by its
+        # kind, a project's name, its delivery and its error.
+        for record in progress + outcome['scopes']:
+            self.keys(record, scopeId=str, kind=str, total=int, state=str)
+            self.optional(record, delivery=(dict, NONE), error=(dict, NONE))
+            self.assertIn(record['scopeId'], ids)
+            self.assertIn(record['kind'], ('machine', 'project'))
+            if record['kind'] == 'project':
+                self.keys(record, name=str)
+            self.count(record['total'], 'total')
+            self.assertIn(record['state'], ('running', 'done', 'failed', 'skipped'))
 
 
 if __name__ == '__main__':

@@ -718,7 +718,7 @@ class ActivationTests(unittest.TestCase):
 
     def write(self, file, text):
         file.parent.mkdir(parents=True, exist_ok=True)
-        file.write_text(text, encoding='utf-8')
+        file.write_text(text, encoding='utf-8', newline='\n')
         return file
 
     def test_pi_configured_plan(self):
