@@ -5,6 +5,8 @@ on:
   # 2026-10-07): publish.yml calls it on the release tag and publishes only
   # after it passes. Before tagging a release, run this workflow by workflow_dispatch
   # on the release commit, and make the tag only after that run passes.
+  # The harness suites run in a Linux container and on a hosted Mac (with the darwin helper self-tests);
+  # Windows runs the activation and app contract suites and the app's status and cleanup count natively.
   # Before merging, run the POSIX half locally: npm ci &&
   # node scripts/update-cleanup-history.js && node scripts/update-instruction-templates.js &&
   # node scripts/update-skill-history.js &&
@@ -197,16 +199,97 @@ jobs:
           if failed:
               raise SystemExit('Harness suites failed: ' + ', '.join(failed))
 
+  macos:
+    needs: posix
+    if: ${{ !cancelled() }}
+    # The platform the run-folder channels were examined on, as the runner's own user on a
+    # case-insensitive disk, and the darwin branches of the shipped helpers, which no other job runs.
+    runs-on: macos-15
+    # The step took 25 minutes on a developer's Mac, 13 of them the task-complete self-test.
+    timeout-minutes: 60
+    steps:
+      # The suites run from a full checkout of the tested SHA: they read earlier commits and release tags.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      # `shell: python` needs python on PATH, and the suites need 3.11 or later, as in the container.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      # The cleanup suite installs from this checkout, with the manifests the package carries.
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Regenerate offline manifests
+        run: |
+          node scripts/update-cleanup-history.js
+          node scripts/update-instruction-templates.js
+          node scripts/update-skill-history.js
+      - uses: actions/download-artifact@v4
+        with:
+          name: npm-package
+          path: ${{ runner.temp }}/harness/package
+      - name: Darwin self-tests and harness suites on the tested release
+        shell: python
+        run: |
+          import hashlib, json, os, pathlib, re, subprocess, sys
+          # In a temp folder others can write, such as /tmp, the run-folder tests skip: take the per-user one,
+          # as the app's own macOS seed test does.
+          os.environ['TMPDIR'] = subprocess.check_output(['getconf', 'DARWIN_USER_TEMP_DIR'], text=True).strip()
+          root = pathlib.Path(os.environ['RUNNER_TEMP']) / 'harness'
+          identity = json.loads((root / 'package/identity.json').read_text(encoding='utf-8'))
+          assert identity['source_sha'] == os.environ['GITHUB_SHA'], identity
+          assert subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode().strip() == os.environ['GITHUB_SHA']
+          tarball, = (root / 'package').glob('*.tgz')
+          assert hashlib.sha256(tarball.read_bytes()).hexdigest() == identity['sha256'][tarball.name], tarball
+          installed = root / 'installed'
+          subprocess.run(['npm', 'install', '--prefix', str(installed), '--cache', str(root / 'npm-cache'),
+                          '--offline', '--ignore-scripts', '--no-audit', '--no-fund', str(tarball)], check=True)
+          package = installed / 'node_modules/devlyn-cli'
+          made = subprocess.run(['node', str(package / 'bin/devlyn.js'), 'release', '--materialize', '--source', str(package),
+                                 '--store', str(root / 'store'), '--json'], stdout=subprocess.PIPE, check=True)
+          release = json.loads(made.stdout.decode('utf-8').strip().splitlines()[-1])['data']['release']['root']
+          print('Harness release root: ' + release, flush=True)
+          # A green leg has run what it is here for: the activation suite skips only the opt-in Codex probe, and
+          # the cleanup suite skips nothing, its case-insensitive-disk tests included.
+          skips = {'activation': 1, 'cleanup': 0}
+          failed = []
+          for label, args in (
+                  # The darwin branches of the shipped helpers: proc_pidpath, the lsof writer scan, quarantine.
+                  ('task-complete', [f'{release}/config/skills/_shared/task-complete.py', '--self-test']),
+                  ('acceptance', [f'{release}/config/skills/devlyn-ideate/scripts/acceptance.py', '--self-test']),
+                  ('release', ['scripts/test-harness-release.py', '--package-root', release]),
+                  ('activation', ['scripts/test-harness-activation.py', '--package-root', release]),
+                  ('run', ['scripts/test-harness-run.py', '--package-root', release]),
+                  ('cleanup', ['scripts/test-harness-cleanup.py']),
+                  ('app-contract', ['scripts/test-harness-app-contract.py', '--package-root', release])):
+              child = subprocess.Popen([sys.executable, *args], stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                                       stderr=subprocess.STDOUT)
+              summary = b''
+              for line in child.stdout:
+                  sys.stdout.buffer.write(line)
+                  sys.stdout.buffer.flush()
+                  if re.match(rb'(OK|FAILED)\b', line):
+                      summary = line
+              skipped = int(re.search(rb'skipped=(\d+)', summary)[1]) if b'skipped=' in summary else 0
+              if child.wait() or skipped != skips.get(label, skipped):
+                  failed.append(f'{label} (skipped={skipped})')
+          if failed:
+              raise SystemExit('Harness checks failed: ' + ', '.join(failed))
+
   windows:
     needs: posix
     if: ${{ !cancelled() }}
     runs-on: windows-2025
-    # Setup, the 480 s package suite and the 2700 s loop suite, with room for the rest.
-    timeout-minutes: 75
+    # Setup, the 480 s package suite, the 900 s activation suite and the 2700 s loop suite, with room for the rest.
+    timeout-minutes: 90
     steps:
       # The checkout is the test: Git for Windows refuses any tracked path Windows cannot
       # hold. The workspace root keeps the longest tracked path under MAX_PATH; the steps
-      # below test the npm artifact from RUNNER_TEMP, outside the repository.
+      # below test the npm artifact from RUNNER_TEMP, outside the repository, and run only
+      # the activation and app contract suites from this checkout at the tested SHA.
       - name: Check out every tracked path natively (fails on a Windows-illegal path)
         uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -229,7 +312,7 @@ jobs:
         env:
           PYTHONUTF8: '0'
         run: |
-          import codecs, ctypes, hashlib, io, json, locale, os, pathlib, shutil, subprocess, sys
+          import codecs, ctypes, hashlib, io, json, locale, os, pathlib, shutil, subprocess, sys, traceback
           root = pathlib.Path(os.environ['RUNNER_TEMP']) / 'portability'
           logs = root / 'logs'
           logs.mkdir()
@@ -304,6 +387,15 @@ jobs:
               for skill in core[1:]:
                   assert f'name: {skill}\n' in (skills / skill / 'SKILL.md').read_text(encoding='utf-8'), skill
           print('Real CLI complete-install marker and retained skill set passed', flush=True)
+          # As the app installs a release, and as the harness job tests it: plan and count from that root.
+          checked('materialize', ['node', str(package / 'bin/devlyn.js'), 'release', '--materialize', '--source',
+                  str(package), '--store', str(root / 'store'), '--json'])
+          release = pathlib.Path(json.loads((logs / 'materialize.log').read_text(encoding='utf-8')
+                                            .splitlines()[-1])['data']['release']['root'])
+          # Two suites run from this checkout, which must be the tested SHA.
+          workspace = pathlib.Path(os.environ['GITHUB_WORKSPACE'])
+          assert subprocess.check_output(['git', '-C', str(workspace), 'rev-parse', 'HEAD']).decode().strip() \
+              == os.environ['GITHUB_SHA']
 
           failed = []
           for label, command, timeout in (
@@ -312,6 +404,12 @@ jobs:
               ('portability', [sys.executable, '-X', 'utf8=0', str(driver), '--package-root', str(package)], 480),
               ('storage-client', [sys.executable, '-X', 'utf8=0', str(driver.parent / 'test-storage-client.py'),
                   '--package-root', str(package)], 480),
+              # Every engine planned natively from the release, as the app plans each pane; 15 of 77 skip here.
+              ('activation', [sys.executable, '-X', 'utf8=0', str(workspace / 'scripts/test-harness-activation.py'),
+                  '--package-root', str(release)], 900),
+              # What the app sends to a release and reads from its answers.
+              ('app-contract', [sys.executable, '-X', 'utf8=0', str(workspace / 'scripts/test-harness-app-contract.py'),
+                  '--package-root', str(release)], 480),
               ('engines-self-test', [sys.executable, '-X', 'utf8=0',
                   str(package / 'config/skills/_shared/role-config.py'), '--self-test'], 240),
               # Windows has no clone primitive here: allocation must skip warming before any lock or Cargo call.
@@ -330,6 +428,53 @@ jobs:
                   checked(label, command, timeout)
               except subprocess.CalledProcessError as error:
                   print(str(error), flush=True)
+                  failed.append(label)
+
+          # The app's calls on a Git project under a non-ASCII folder holding copies of the installed skills (proven
+          # by content, so the copies stay proven): its status, and its count while a drain runs from one copy. A
+          # process list that cannot be read keeps every copy; one that garbles the path keeps none.
+          count = root / 'count 한글'
+          count_env = dict(os.environ, USERPROFILE=str(agent_home), HOME=str(agent_home))
+
+          def ask(label, *args):
+              checked(label, ['node', str(release / 'bin/devlyn.js'), *args, '--json'], env=count_env)
+              return json.loads((logs / (label + '.log')).read_text(encoding='utf-8').splitlines()[-1])
+
+          def count_project():
+              for name in ('.agents', '.claude'):
+                  shutil.copytree(project / name, count / name)
+              checked('count-git', ['git', 'init', '-q', str(count)])
+
+          def status():
+              answer = ask('status', 'status', '--project', str(count))
+              assert answer['ok'], answer
+              missing = [need for need in answer['data']['requirements'] if need['required'] and not need['available']]
+              assert not missing, missing
+
+          def count_in_use():
+              # A drain runs its copy's scripts by absolute path.
+              sleeper = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(300)',
+                                          str(count / '.claude/skills/devlyn-ideate/scripts/queue.py')])
+              try:
+                  plan = ask('count', 'cleanup', '--plan', '--machine', '--project', str(count), '--checkout-only')
+              finally:
+                  sleeper.kill()
+                  sleeper.wait()
+              items = [item for scope in plan['data']['scopes'] if scope['kind'] == 'project' for item in scope['items']]
+              copies = {name: [item for item in items if pathlib.Path(item['path']).parent.parts[-2:] == (name, 'skills')]
+                        for name in ('.agents', '.claude')}
+              for name, found in copies.items():
+                  assert sorted(pathlib.Path(item['path']).name for item in found) == sorted(
+                      [*core, '.devlyn-install.json']), (name, items)
+              assert all(item['action'] == 'remove' and not item.get('reasons') for item in copies['.agents']), copies
+              assert all(item['action'] == 'skip' and [reason['code'] for reason in item['reasons']] == ['in-use']
+                         for item in copies['.claude']), copies
+
+          for label, check in (('count-project', count_project), ('status', status), ('count-in-use', count_in_use)):
+              try:
+                  check()
+              except Exception:
+                  traceback.print_exc()
                   failed.append(label)
           if failed:
               raise RuntimeError('Native checks failed: ' + ', '.join(failed))
