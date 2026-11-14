@@ -3095,7 +3095,7 @@ helper['cleanup_workspace'](saved, receipt, warnings=[])
 
 @unittest.skipUnless(os.name == 'nt', 'native Windows refuses to move a folder a process holds')
 class NativeRemovalTests(unittest.TestCase):
-    """The Windows removal of a merged task tree, whose move is its writer check (W1 to W12).
+    """The Windows removal of a merged task tree, whose move is its writer check (W1 to W13).
     This is a measurement: a holder that does not block the move is a finding to report, and every failure says
     what was observed."""
 
@@ -3327,6 +3327,19 @@ class NativeRemovalTests(unittest.TestCase):
         self.assertEqual(self.git('-C', self.moved, 'rev-parse', 'HEAD'), self.receipt['baseline'])
         self.cleanup()
         self.assert_removed('W12')
+
+    def test_w13_a_file_the_move_pushes_past_max_path_is_removed(self):
+        self.allocate()
+        # 252 characters at the tree's path; the move's 16 make it 268, past MAX_PATH (259 and the closing NUL).
+        folder = self.work / 'ignored'
+        deep = folder / ('x' * (251 - len(str(folder))))
+        deep.write_bytes(b'disposable output')
+        self.assertEqual((len(str(deep)), len(str(self.moved / deep.relative_to(self.work)))), (252, 268))
+        self.cleanup()
+        self.assert_removed('W13')
+        result = self.helper['completion_result'](self.receipt, self.path, 'COMPLETE')
+        print(f"W13: completion {result['status']}", flush=True)
+        self.assertEqual(result['status'], 'COMPLETE')
 
 
 @unittest.skipUnless(os.name == 'nt', 'native Windows job ownership and DWORD exit codes')

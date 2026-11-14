@@ -1478,18 +1478,19 @@ def remove_by_moving(receipt, work):
                                   "update Git, then resume")
     move_aside(work)
     gref(receipt, "worktree", "repair", str(moved))
-    gref(receipt, "worktree", "remove", str(moved))
+    # The move lengthens every path in the tree; without long paths Git for Windows cannot delete past MAX_PATH.
+    gref(receipt, "-c", "core.longpaths=true", "worktree", "remove", str(moved))
 
 
 def remove_moved(receipt, path, work, anchor):
     """Finish a Windows removal interrupted after its move, forward only, rechecking the moved tree."""
     moved = aside(work)
-    foreign = f"{moved} is not the task checkout moved from {work}; leave both, inspect them, then resume"
+    foreign = f"{moved} cannot be verified as the task checkout moved from {work}; leave both, inspect them, then resume"
     pointer = moved / ".git"
     require(path_present(pointer) and stat.S_ISREG(pointer.lstat().st_mode), foreign)
     kind, _, value = pointer.read_text(encoding="utf-8").partition(":")
     gitdir = Path(os.path.normpath(moved / value.strip()))
-    require(kind == "gitdir" and gitdir == Path(receipt["worktree_gitdir"])
+    require(kind == "gitdir" and gitdir == Path(receipt["worktree_gitdir"]) and gitdir.is_dir()
             and same_workspace_identity(workspace_identity(moved, gitdir), receipt["worktree_identity"]), foreign)
     # Until the repair, Git may list the tree at its original path only, never another registration at the moved one.
     row = registrations(receipt).get(str(moved))
@@ -1501,7 +1502,7 @@ def remove_moved(receipt, path, work, anchor):
     gref(receipt, "worktree", "repair", str(moved))
     removable(dict(receipt, worktree=str(moved)), moved)
     require(records_manifest(moved) == records, ".devlyn changed after it was copied; stop its writer and resume")
-    gref(receipt, "worktree", "remove", str(moved))
+    gref(receipt, "-c", "core.longpaths=true", "worktree", "remove", str(moved))
 
 
 def cleanup_workspace(receipt, path, *, warnings, anchor=None):
