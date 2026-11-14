@@ -3042,6 +3042,293 @@ print(payload, file=sys.stderr)
                 complete['stopped_writers'](repo)
 
 
+# Holders for the removal's move. Each gets its own arguments, then the ready and release paths (outside the tree):
+# it touches ready once it holds, keeps holding until release exists, then lets go and exits 0.
+WAIT_PY = "import pathlib, sys, time\npathlib.Path(sys.argv[1]).touch()\nwhile not pathlib.Path(sys.argv[2]).exists():\n    time.sleep(0.02)\n"
+APPEND_PY = ("import pathlib, sys, time\nwith open(sys.argv[1], 'a') as stream:\n    pathlib.Path(sys.argv[2]).touch()\n"
+             "    while not pathlib.Path(sys.argv[3]).exists():\n        stream.write('x'); stream.flush(); time.sleep(0.02)\n")
+APPEND_JS = ("const fs = require('fs'); const [file, ready, release] = process.argv.slice(1);\n"
+             "const fd = fs.openSync(file, 'a'); fs.writeFileSync(ready, '');\n"
+             "const timer = setInterval(() => { if (fs.existsSync(release)) { clearInterval(timer); fs.closeSync(fd); }"
+             " else fs.writeSync(fd, 'x'); }, 20);\n")
+HANDLE_PY = r'''import ctypes, pathlib, sys, time
+from ctypes import wintypes
+kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+kernel.CreateFileW.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD, ctypes.c_void_p, wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE]
+kernel.CreateFileW.restype = wintypes.HANDLE
+kernel.CloseHandle.argtypes = [wintypes.HANDLE]
+target, access, disposition, flags, ready, release = sys.argv[1:]
+handle = kernel.CreateFileW(target, int(access), 7, None, int(disposition), int(flags), None)  # Share read, write and delete.
+if handle in (None, ctypes.c_void_p(-1).value):
+    raise ctypes.WinError(ctypes.get_last_error())
+pathlib.Path(ready).touch()
+while not pathlib.Path(release).exists():
+    time.sleep(0.02)
+if not kernel.CloseHandle(handle):
+    raise ctypes.WinError(ctypes.get_last_error())
+'''
+# Builtins only, so no child process of the shell holds anything.
+CWD_BASH = 'cd "$1" || exit 2; : > "$2"; until [ -e "$3" ]; do read -t 0.1 _; done; exit 0'
+APPEND_BASH = 'exec 3>>"$1" || exit 2; : > "$2"; until [ -e "$3" ]; do printf x >&3; read -t 0.05 _; done; exec 3>&-; exit 0'
+# A completion killed right after the move ('move') or right after the repair ('repair').
+KILLED_PY = r'''import os, pathlib, runpy, sys
+helper, receipt, step = runpy.run_path(sys.argv[1]), pathlib.Path(sys.argv[2]), sys.argv[3]
+saved = helper['read_json'](receipt)
+if step == 'move':
+    real = os.rename
+    def rename(source, target, *args, **kwargs):
+        real(source, target, *args, **kwargs)
+        if pathlib.Path(source) == pathlib.Path(saved['worktree']):
+            os._exit(9)
+    os.rename = rename
+else:
+    real = helper['gref']
+    def gref(owner, *args):
+        output = real(owner, *args)
+        if args[:2] == ('worktree', 'repair'):
+            os._exit(9)
+        return output
+    helper['cleanup_workspace'].__globals__['gref'] = gref
+helper['cleanup_workspace'](saved, receipt, warnings=[])
+'''
+
+
+@unittest.skipUnless(os.name == 'nt', 'native Windows refuses to move a folder a process holds')
+class NativeRemovalTests(unittest.TestCase):
+    """The Windows removal of a merged task tree, whose move is its writer check (W1 to W12).
+    This is a measurement: a holder that does not block the move is a finding to report, and every failure says
+    what was observed."""
+
+    def setUp(self):
+        from unittest.mock import Mock
+        temp = tempfile.TemporaryDirectory(prefix='devlyn-removal-', ignore_cleanup_errors=True)
+        self.addCleanup(temp.cleanup)
+        self.root = Path(temp.name).resolve()
+        (self.root / 'home').mkdir()
+        env = environment()
+        env.update(HOME=str(self.root / 'home'), USERPROFILE=str(self.root / 'home'), GIT_ALLOW_PROTOCOL='file',
+                   GIT_AUTHOR_NAME='Fixture', GIT_AUTHOR_EMAIL='fixture@example.invalid',
+                   GIT_COMMITTER_NAME='Fixture', GIT_COMMITTER_EMAIL='fixture@example.invalid')
+        for patcher in (patch.dict(os.environ, env, clear=True),
+                        patch.object(shutil, 'disk_usage', return_value=Mock(total=100 * 1024**3, free=100 * 1024**3))):
+            patcher.start(); self.addCleanup(patcher.stop)
+        self.script = (PACKAGE_ROOT or ROOT) / 'config/skills/_shared/task-complete.py'
+        self.helper = runpy.run_path(str(self.script))
+        self.repo = self.root / 'repo'
+        self.git('init', '-q', '--initial-branch=main', self.repo)
+        (self.repo / '.gitignore').write_text('ignored/\n', encoding='utf-8')
+        (self.repo / 'product').write_text('baseline\n', encoding='utf-8')
+        self.git('-C', self.repo, 'add', '.')
+        self.git('-C', self.repo, 'commit', '-q', '-m', 'baseline')
+
+    def git(self, *args):
+        return run(['git', *args], env=dict(os.environ)).stdout.decode('utf-8').strip()
+
+    def allocate(self):
+        """A real allocation whose receipt is left as a merged delivery leaves it."""
+        result = self.helper['allocate'](argparse.Namespace(
+            repo=str(self.repo), task='task', branch='task/native', repository=None, base=None, remote='origin',
+            worktree=str(self.root / 'task'), local_base=self.git('-C', self.repo, 'rev-parse', 'HEAD'),
+            from_receipt=None, start=None))
+        self.path = Path(result['receipt'])
+        self.receipt = self.helper['read_json'](self.path)
+        self.receipt.update(publish_sha=self.receipt['baseline'], files={}, writers_released=True)
+        self.helper['atomic_json'](self.path, self.receipt)
+        self.work = Path(result['worktree'])
+        self.moved = self.work.with_name(self.work.name + '.devlyn-removing')
+        (self.work / 'sub').mkdir()
+        (self.work / 'ignored').mkdir()
+
+    def registered(self):
+        return set(self.helper['registrations'](self.receipt)) & {str(self.work), str(self.moved)}
+
+    def cleanup(self, **kwargs):
+        self.helper['cleanup_workspace'](self.helper['read_json'](self.path), self.path, warnings=[], **kwargs)
+
+    def assert_removed(self, label):
+        state = {'original': self.work.exists(), 'moved': self.moved.exists(), 'registered': sorted(self.registered())}
+        print(f'{label}: after the removal {json.dumps(state)}', flush=True)
+        self.assertEqual(state, {'original': False, 'moved': False, 'registered': []}, label)
+
+    def measure(self, label, argv, *, cwd, appended=None):
+        """One holder alone: the move is refused while it holds, and succeeds once it has let go."""
+        self.allocate()
+        ready, release, log = (self.root / (label + suffix) for suffix in ('.ready', '.release', '.log'))
+        with log.open('wb') as stream:
+            holder = subprocess.Popen([*map(str, argv), ready.as_posix(), release.as_posix()], cwd=cwd, env=environment(),
+                                      stdin=subprocess.PIPE, stdout=stream, stderr=subprocess.STDOUT)
+        def said():
+            return log.read_bytes().decode('utf-8', 'replace').strip()
+        try:
+            deadline = time.monotonic() + 30
+            while not ready.exists():
+                self.assertIsNone(holder.poll(), f'{label}: the holder exited {holder.returncode} before holding: {said()}')
+                self.assertLess(time.monotonic(), deadline, f'{label}: the holder never signalled that it holds: {said()}')
+                time.sleep(0.03)
+            size = appended.stat().st_size if appended else None
+            try:
+                self.helper['move_aside'](self.work)
+            except self.helper['CompletionError'] as error:
+                refusal = error
+            else:
+                self.fail(f'{label}: FINDING: the move succeeded while the holder held the tree '
+                          f'(holder alive: {holder.poll() is None}); {self.work} is now {self.moved}')
+            observed = f'{label}: move refused while held: {type(refusal).__name__}: {refusal}'
+            print(observed, flush=True)
+            self.assertIsNone(holder.poll(), f'{observed}; but the holder had exited: {said()}')
+            if appended:
+                wait_for(lambda: appended.stat().st_size > size)
+            self.assertIsInstance(refusal, self.helper['WriterActive'], observed)
+            self.assertIn('[WinError ', str(refusal), observed)
+            self.assertTrue(self.work.is_dir() and not self.moved.exists(), observed)
+        finally:
+            release.touch()
+            holder.stdin.close()
+            holder.wait(timeout=30)
+        self.assertEqual(holder.returncode, 0, f'{label}: the holder failed: {said()}')
+        try:
+            self.helper['move_aside'](self.work)
+        except self.helper['CompletionError'] as error:
+            self.fail(f'{label}: the move was still refused after the holder let go and exited: {type(error).__name__}: {error}')
+        print(f'{label}: move succeeded once the holder let go', flush=True)
+        self.assertTrue(self.moved.is_dir() and not self.work.exists(), label)
+
+    def test_w1_native_child_with_its_cwd_inside(self):
+        self.measure('W1', [sys.executable, '-c', WAIT_PY], cwd=self.root / 'task/sub')
+
+    def test_w1b_git_bash_with_its_cwd_inside(self):
+        self.measure('W1b', [shutil.which('bash'), '-c', CWD_BASH, 'holder', (self.root / 'task/sub').as_posix()], cwd=self.root)
+
+    def test_w2_python_append(self):
+        held = self.root / 'task/ignored/python.log'
+        self.measure('W2', [sys.executable, '-c', APPEND_PY, held], cwd=self.root, appended=held)
+
+    def test_w3a_node_append(self):
+        held = self.root / 'task/ignored/node.log'
+        self.measure('W3a', [shutil.which('node'), '-e', APPEND_JS, held], cwd=self.root, appended=held)
+
+    def test_w3b_file_handle_sharing_read_write_and_delete(self):
+        held = self.root / 'task/ignored/held.bin'
+        self.measure('W3b', [sys.executable, '-c', HANDLE_PY, held, 0xC0000000, 4, 0x80], cwd=self.root)
+
+    def test_w3c_handle_on_the_folder_itself_as_a_watcher_opens_it(self):
+        self.measure('W3c', [sys.executable, '-c', HANDLE_PY, self.root / 'task', 0x1, 3, 0x02000000], cwd=self.root)
+
+    def test_w3d_git_bash_append_through_a_held_descriptor(self):
+        held = self.root / 'task/ignored/bash.log'
+        self.measure('W3d', [shutil.which('bash'), '-c', APPEND_BASH, 'holder', held.as_posix()], cwd=self.root, appended=held)
+
+    def test_w4_no_holder(self):
+        self.allocate()
+        self.helper['move_aside'](self.work)
+        print(f'W4: moved with no holder: {self.moved.is_dir()}', flush=True)
+        self.assertTrue(self.moved.is_dir() and not self.work.exists())
+
+    def test_w5_removal_and_completion_of_a_free_tree(self):
+        self.allocate()
+        (self.work / 'ignored/build.bin').write_bytes(b'disposable output')
+        (self.work / '.devlyn/record.txt').write_text('kept', encoding='utf-8')
+        self.cleanup()
+        self.assert_removed('W5')
+        result = self.helper['completion_result'](self.receipt, self.path, 'COMPLETE')
+        print(f"W5: completion {result['status']}, scratch {json.dumps(result['scratch_cleanup'])}", flush=True)
+        self.assertEqual((result['status'], result['scratch_cleanup']), ('COMPLETE', {'status': 'CLEAN', 'logical_bytes_removed': 0}))
+        self.assertEqual((self.path.parent / 'records/.devlyn/record.txt').read_text(encoding='utf-8'), 'kept')
+
+    def test_w6_fsmonitor_started_by_the_checks_does_not_hold_the_removal(self):
+        self.git('-C', self.repo, 'config', 'core.fsmonitor', 'true')
+        self.addCleanup(lambda: [run(['git', '-C', path, 'fsmonitor--daemon', 'stop'], env=dict(os.environ), code=None)
+                                 for path in (self.repo, self.root / 'task') if path.exists()])
+        self.allocate()
+        self.git('-C', self.work, 'status')
+        daemon = run(['git', '-C', self.work, 'fsmonitor--daemon', 'status'], env=dict(os.environ), code=None)
+        daemon = (daemon.stdout + daemon.stderr).decode('utf-8', 'replace').strip()
+        print(f'W6: fsmonitor before the removal: {daemon}', flush=True)
+        try:
+            self.cleanup()
+        except self.helper['CompletionError'] as error:
+            self.fail(f'W6: FINDING: the removal was refused with core.fsmonitor=true: {type(error).__name__}: {error}; '
+                      f'daemon: {daemon}')
+        self.assert_removed('W6')
+
+    def killed(self, label, step):
+        self.allocate()
+        result = run([sys.executable, '-c', KILLED_PY, self.script, self.path, step], env=dict(os.environ), code=None, timeout=120)
+        state = {'exit': result.returncode, 'original': self.work.exists(), 'moved': self.moved.is_dir(),
+                 'registered': sorted(self.registered())}
+        print(f'{label}: after a kill following the {step}: {json.dumps(state)}', flush=True)
+        registered = str(self.work) if step == 'move' else str(self.moved)
+        self.assertEqual(state, {'exit': 9, 'original': False, 'moved': True, 'registered': [registered]},
+                         f'{label}: {result.stderr.decode("utf-8", "replace")}')
+        self.cleanup()
+        self.assert_removed(label)
+
+    def test_w7_a_kill_after_the_move_then_a_second_completion(self):
+        self.killed('W7', 'move')
+
+    def test_w7b_a_kill_after_the_repair_then_a_second_completion(self):
+        self.killed('W7b', 'repair')
+
+    def test_w8_a_foreign_folder_of_the_moved_name_is_refused(self):
+        self.allocate()
+        self.moved.mkdir()
+        (self.moved / 'foreign').write_text('keep', encoding='utf-8')
+        for case in ('tree in place', 'tree moved elsewhere by a person'):
+            with self.assertRaises(self.helper['CompletionError'], msg=f'W8 {case}') as raised:
+                self.cleanup()
+            print(f'W8 ({case}): refused: {raised.exception}', flush=True)
+            self.assertTrue(str(self.work) in str(raised.exception) and str(self.moved) in str(raised.exception), raised.exception)
+            self.assertEqual((self.moved / 'foreign').read_text(encoding='utf-8'), 'keep')
+            if case == 'tree in place':
+                self.assertTrue(self.work.is_dir())
+                self.work.rename(self.root / 'elsewhere')
+                (self.moved / '.git').write_text(f'gitdir: {(self.root / "foreign.git").as_posix()}\n', encoding='utf-8')
+        self.assertTrue((self.root / 'elsewhere/product').is_file())
+
+    def test_w9_a_populated_submodule_keeps_the_tree_in_place(self):
+        module = self.root / 'module'
+        self.git('init', '-q', '--initial-branch=main', module)
+        self.git('-C', module, 'commit', '-q', '--allow-empty', '-m', 'module')
+        self.git('-C', self.repo, 'submodule', 'add', '-q', module.as_posix(), 'module')
+        self.git('-C', self.repo, 'commit', '-q', '-m', 'add module')
+        self.allocate()
+        self.git('-C', self.work, 'submodule', 'update', '-q', '--init')
+        with self.assertRaisesRegex(self.helper['CompletionError'], 'submodules', msg='W9') as raised:
+            self.cleanup()
+        print(f'W9: refused: {raised.exception}', flush=True)
+        self.assertTrue((self.work / 'module/.git').exists() and not self.moved.exists())
+
+    def test_w10_a_registered_destination_whose_folder_is_absent_is_refused_before_the_move(self):
+        self.allocate()
+        self.git('-C', self.repo, 'worktree', 'add', '-q', '-b', 'other', self.moved.as_posix(), 'main')
+        shutil.rmtree(self.moved)
+        with self.assertRaises(self.helper['CompletionError'], msg='W10') as raised:
+            self.cleanup()
+        print(f'W10: refused: {raised.exception}', flush=True)
+        self.assertIn(str(self.moved), str(raised.exception))
+        self.assertTrue(self.work.is_dir() and not self.moved.exists())
+
+    def test_w11_a_record_saved_into_the_moved_tree_after_a_kill_is_copied_first(self):
+        self.allocate()
+        self.helper['move_aside'](self.work)  # The state a kill right after the move leaves.
+        (self.moved / '.devlyn/late.txt').write_text('saved after the kill', encoding='utf-8')
+        self.cleanup()
+        self.assert_removed('W11')
+        copies = [path.read_text(encoding='utf-8') for path in self.path.parent.glob('records*/.devlyn/late.txt')]
+        print(f'W11: copies of the late record: {copies}', flush=True)
+        self.assertEqual(copies, ['saved after the kill'])
+
+    def test_w12_a_moved_checkout_an_allocation_is_anchored_in_is_kept(self):
+        self.allocate()
+        self.helper['move_aside'](self.work)  # The state a kill right after the move leaves.
+        with self.assertRaisesRegex(self.helper['CompletionError'], 'anchor checkout', msg='W12') as raised:
+            self.cleanup(anchor=self.moved)
+        print(f'W12: refused: {raised.exception}', flush=True)
+        self.assertEqual(self.git('-C', self.moved, 'rev-parse', 'HEAD'), self.receipt['baseline'])
+        self.cleanup()
+        self.assert_removed('W12')
+
+
 @unittest.skipUnless(os.name == 'nt', 'native Windows job ownership and DWORD exit codes')
 class NativeOwnershipTests(unittest.TestCase):
     def setUp(self):
