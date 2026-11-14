@@ -34,7 +34,7 @@ One iteration = one **falsifiable hypothesis** that may span multiple commits an
    │ 3. ANALYZE   — raw numbers, the frozen rule's decision and a │
    │              verdict per changed component.                  │
    │                                                              │
-   │ 4. RECORD    — one line in DECISIONS.md; update HANDOFF.md.  │
+   │ 4. RECORD    — one line in DECISIONS.md.                     │
    └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -60,9 +60,9 @@ These metrics define "did this hypothesis work?". Stable across iterations.
 
 ## Current work
 
-Read [`HANDOFF.md`](HANDOFF.md), then
+Read [`DECISIONS.md`](DECISIONS.md), newest entry last, then
 [0232](iterations/0232-harness-ladder.md).
-It owns the ladder rule, the stage-1 result, the resolve retirement (§8) and the next registration.
+It owns the ladder rule, the stage-1 result and the resolve retirement (§8).
 The earlier metrics and anti-overfitting discussion in this README describe the
 historical nine-fixture loop; they do not override 0232's ladder rule
 or NORTH-STAR's current quality/time/cost priority. Do not recreate a second queue here.
@@ -86,7 +86,7 @@ autoresearch/
 ├── README.md           — this file (overview, metrics, next-hypotheses queue)
 ├── PRINCIPLES.md       — five principles + concrete operational tests
 ├── DECISIONS.md        — append-only one-line log: NNNN | ACCEPT/REVERT | desc | iter file
-├── HANDOFF.md          — what the next session needs to know to continue
+├── HANDOFF.md          — where the research record is, plus the standing rules
 ├── iterations/
 │   └── NNNN-<slug>.md  — one file per hypothesis (see playbooks/)
 ├── baselines/

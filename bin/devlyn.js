@@ -616,23 +616,46 @@ function installLocalSkill(skillName, roots, installedSkills = new Map()) {
   return true;
 }
 
-// One skill from `source` into one skill-loader directory. The copy is staged and checked first, so
-// a failed copy leaves any older copy of it in place for a plain rerun. A copy under its name
+// One skill from `source` into one skill-loader directory. The copy is staged and checked first, and
+// the older copy is moved aside into the stage before the new one is renamed in, and back if that
+// fails, so a failed copy or swap leaves the older copy in place for a plain rerun. If moving it back
+// or removing it after the swap fails, the error names where it is kept. A copy under its name
 // before the 4.0.0 rename goes only once the new one is complete.
 function installSkillInto(source, target, skillName, installedSkills) {
   const dest = path.join(target, skillName);
   const stage = fs.mkdtempSync(path.join(target, '.devlyn-skill-'));
   const stagedSkill = path.join(stage, skillName);
+  const previous = path.join(stage, 'previous');
+  let files;
+  let moved = false;
   try {
-    const files = copyRecursive(path.join(source, skillName), stagedSkill, stage);
+    files = copyRecursive(path.join(source, skillName), stagedSkill, stage);
     assertCompleteSkillInstall(source, stage, [skillName]);
-    fs.rmSync(dest, { recursive: true, force: true });
+    if (fs.lstatSync(dest, { throwIfNoEntry: false })) {
+      fs.renameSync(dest, previous);
+      moved = true;
+    }
     fs.renameSync(stagedSkill, dest);
-    installedSkills.set(dest, files.map((file) => path.join(dest, path.relative(stagedSkill, file))));
-  } finally {
-    fs.rmSync(stage, { recursive: true, force: true });
+  } catch (error) {
+    if (moved) {
+      try { fs.renameSync(previous, dest); }
+      catch (rollback) {
+        throw new AggregateError([error, rollback], `${error.message}; ${rollback.message}; the previous copy is kept at ${previous}`);
+      }
+    }
+    try { fs.rmSync(stage, { recursive: true, force: true }); }
+    catch (cleanup) {
+      throw new AggregateError([error, cleanup], `${error.message}; ${dest} is as it was, but ${stage} could not be removed: ${cleanup.message}`);
+    }
+    throw new Error(`${error.message}; ${dest} is as it was`, { cause: error });
   }
-
+  installedSkills.set(dest, files.map((file) => path.join(dest, path.relative(stagedSkill, file))));
+  try {
+    fs.rmSync(stage, { recursive: true, force: true });
+  } catch (error) {
+    const kept = fs.lstatSync(previous, { throwIfNoEntry: false }) ? `its previous copy at ${previous}` : stage;
+    throw new Error(`${dest} is installed, but ${kept} could not be removed: ${error.message}`);
+  }
 }
 
 // A 0.6.0-0.7.1 copy is one SKILL.md, the file that identifies it. A failed swap leaves
