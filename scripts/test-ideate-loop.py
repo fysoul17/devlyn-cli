@@ -2509,6 +2509,16 @@ class LoopFixture(unittest.TestCase):
         self.assertEqual(self.g("show", "refs/devlyn/captures/gc:docs/specs/gc/meta.md"), meta)
         self.assertEqual(self.tasks(self.drain())["gc.t1"]["result"], "accepted")
 
+    def test_a_withdrawn_loop_never_runs(self):
+        # Prediction (round B, D1): with loops aa and bb added, withdrawing aa takes back both of its tasks; the drain then
+        # accepts bb.t1, calls no executor for aa and reports no aa task. Before: argparse rejected withdraw (exit 2).
+        self.plan("aa", CHAIN, {"aa.t1": {"product": "greeting"}, "aa.t2": {"product": "app"}})
+        self.independent()
+        self.assertEqual(self.cli("withdraw", "--repo", self.anchor, "aa")["tasks"], ["aa.t1", "aa.t2"])
+        tasks = self.tasks(self.drain())
+        self.assertEqual(({identity: task["result"] for identity, task in tasks.items()}, self.calls("aa.t1"), self.calls("aa.t2")),
+                         ({"bb.t1": "accepted"}, 0, 0))
+
     def test_a_local_only_drain_runs_an_unpublished_auto_loop_locally(self):
         # Prediction (A): an auto loop whose tasks have not published, drained with --local-only, runs as a local loop from
         # its capture and the branch it was added on: its task, in the place of the legacy row it materializes, is accepted
@@ -4237,6 +4247,52 @@ class LoopFixture(unittest.TestCase):
                 self.queue_py = other / "config/skills/devlyn-ideate/scripts/queue.py"
                 self.cli("status", "--repo", self.anchor)
                 self.assertFalse(binding_path.exists())
+
+    def test_harness_withdraw_releases_the_binding_also_after_an_interruption(self):
+        # Prediction (round B, D1 and E6): withdrawing the only loop of a bound queue removes harness.json. A withdraw stopped
+        # after it removed the add record, or after it removed the capture ref too, leaves the binding; the retry removes
+        # what is left and the binding, reporting WITHDRAWN, or not queued once the ref is gone. Before: argparse rejected
+        # withdraw (exit 2).
+        self.harness_release()
+        binding = self.common / "devlyn-loops/harness.json"
+        self.plan("one", CHAIN[:1], {})
+        self.assertTrue(binding.exists())
+        self.assertEqual(self.cli("withdraw", "--repo", self.anchor, "one")["status"], "WITHDRAWN")
+        self.assertFalse(binding.exists())
+        for step, name, retry in (("unlink-after", "added.json", "WITHDRAWN"), ("unlink", "drain-report.md", "BLOCKED")):
+            with self.subTest(step=step):
+                self.plan("two", CHAIN[:1], {})
+                stopped = subprocess.run([sys.executable, "-c", CRASH, step, name, str(self.queue_py), "withdraw", "--repo", str(self.anchor), "two"],
+                                         env=self.env, capture_output=True)
+                self.assertEqual((stopped.returncode, binding.exists()), (9, True), stopped.stderr)
+                self.assertEqual(self.cli("withdraw", "--repo", self.anchor, "two", code=int(retry == "BLOCKED"))["status"], retry)
+                self.assertFalse(binding.exists())
+
+    def test_harness_withdraw_waits_for_another_release(self):
+        # Prediction (round B, E6): withdraw from another release than the one the queue is bound to is refused before any
+        # binding check, changing nothing: the refusal names the bound release and says withdraw waits until its queue
+        # settles, with no recovery argv and no word of draining. The bound release withdraws the loop and drops the
+        # binding; a binding then left on the settled queue is dropped by the other release, as its other commands drop it.
+        # Before: argparse rejected withdraw (exit 2).
+        release = self.harness_release()
+        self.plan("held", CHAIN[:1], {})
+        binding_path = self.common / "devlyn-loops/harness.json"
+        binding = binding_path.read_bytes()
+        bound, other = self.queue_py, self.other_release(release, "0.0.0-cli2-withdraw") / "config/skills/devlyn-ideate/scripts/queue.py"
+        self.queue_py = other
+        before = self.tree_snapshot(self.common)
+        reason = self.cli("withdraw", "--repo", self.anchor, "held", code=1)["reason"]
+        self.assertEqual(reason, f"this queue is bound to devlyn-cli {json.loads(binding)['release']['version']} at {release}; "
+                                 "withdraw waits until that release's queue settles")
+        self.assertNotIn("drain", reason.lower())
+        self.assertEqual(self.tree_snapshot(self.common), before)
+        self.queue_py = bound
+        self.assertEqual(self.cli("withdraw", "--repo", self.anchor, "held")["status"], "WITHDRAWN")
+        self.assertFalse(binding_path.exists())
+        binding_path.write_bytes(binding)
+        self.queue_py = other
+        self.assertIn("loop held is not queued", self.cli("withdraw", "--repo", self.anchor, "held", code=1)["reason"])
+        self.assertFalse(binding_path.exists())
 
     def test_harness_unbound_defaults_change_does_not_strand_a_task(self):
         # Prediction: a normal update rewrites an unbound installation's runtime-principles.md while its task's packet
