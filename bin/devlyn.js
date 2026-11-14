@@ -643,8 +643,11 @@ function installSkillInto(source, target, skillName, installedSkills) {
         throw new AggregateError([error, rollback], `${error.message}; ${rollback.message}; the previous copy is kept at ${previous}`);
       }
     }
-    fs.rmSync(stage, { recursive: true, force: true });
-    throw error;
+    try { fs.rmSync(stage, { recursive: true, force: true }); }
+    catch (cleanup) {
+      throw new AggregateError([error, cleanup], `${error.message}; ${dest} is as it was, but ${stage} could not be removed: ${cleanup.message}`);
+    }
+    throw new Error(`${error.message}; ${dest} is as it was`, { cause: error });
   }
   installedSkills.set(dest, files.map((file) => path.join(dest, path.relative(stagedSkill, file))));
   try {

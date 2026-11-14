@@ -358,7 +358,7 @@ Both reuse `solo` / `pair_critic` / `pair_consensus` as the policy vocabulary.
 ## Read order for a new session continuing this work
 
 1. **This file** — what we're optimizing (and the locked product surface).
-2. `autoresearch/HANDOFF.md` — current branch state, in-flight work, redesign migration phase.
+2. `autoresearch/HANDOFF.md` — where the research record is, the standing rules and the open owner item.
 3. `autoresearch/PRINCIPLES.md` — per-iteration doctrine.
 4. `autoresearch/DECISIONS.md` — append-only ship/revert log.
 5. Memory: `project_2_skill_harness_redesign_2026_04_30.md` — full redesign decision record.

@@ -2553,11 +2553,32 @@ install(['agents'], false);
                 root, previous, result = self.swap_fault(case, f"fs.renameSync = (from, to) => {{ if ({fails}) "
                                                          "throw new Error('injected rename failure'); return rename(from, to); };")
                 self.assertIn(b'injected rename failure', result.stderr)
+                self.assertIn(str(root / '_shared').encode(), result.stderr)
+                self.assertIn(b'is as it was', result.stderr)
                 self.assertEqual(self.tree(root / '_shared'), previous)
                 self.assertEqual(list(root.glob('.devlyn-skill-*')), [])
                 self.assertFalse((root / '.devlyn-install.json').exists())
                 self.cli('-y')
                 self.assertEqual(self.tree(root / '_shared'), self.tree(self.package / 'config/skills/_shared'))
+
+    def test_failed_swap_whose_stage_cannot_be_removed_names_both(self):
+        # On Windows one file held open in the staged copy can stop both its rename in and the stage's removal: the
+        # previous copy is back in place, and the error keeps the swap's failure and names the stage left behind.
+        root, previous, result = self.swap_fault('stage-kept', """
+let stage;  // The stage of the failed swap.
+fs.renameSync = (from, to) => {
+  if (to === dest && path.basename(from) === '_shared') { stage = path.dirname(from); throw new Error('injected rename failure'); }
+  return rename(from, to);
+};
+fs.rmSync = (file, ...rest) => {
+  if (file === stage) throw Object.assign(new Error('EBUSY: resource busy or locked (injected)'), { code: 'EBUSY' });
+  return rm(file, ...rest);
+};""")
+        self.assertEqual(self.tree(root / '_shared'), previous)
+        stages = list(root.glob('.devlyn-skill-*'))
+        self.assertEqual(len(stages), 1)
+        self.assertIn(b'injected rename failure', result.stderr)
+        self.assertIn(str(stages[0]).encode(), result.stderr)
 
     def test_failed_rollback_keeps_the_previous_copy_and_names_it(self):
         root, previous, result = self.swap_fault('rollback', "fs.renameSync = (from, to) => { "

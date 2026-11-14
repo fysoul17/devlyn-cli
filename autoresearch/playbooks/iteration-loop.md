@@ -64,8 +64,7 @@ Adapted from the editor, composer and reflector stages of
    and decision unchanged; `results.md` gives raw numbers, the decision by the
    frozen rule, per-component verdicts (rule 4) and next candidates for the
    owner.
-5. **Record** one `DECISIONS.md` line and update `HANDOFF.md` by replacing
-   superseded text, not appending to it.
+5. **Record** one `DECISIONS.md` line.
 
 ## Anti-patterns to refuse
 

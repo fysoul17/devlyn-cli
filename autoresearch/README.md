@@ -34,7 +34,7 @@ One iteration = one **falsifiable hypothesis** that may span multiple commits an
    │ 3. ANALYZE   — raw numbers, the frozen rule's decision and a │
    │              verdict per changed component.                  │
    │                                                              │
-   │ 4. RECORD    — one line in DECISIONS.md; update HANDOFF.md.  │
+   │ 4. RECORD    — one line in DECISIONS.md.                     │
    └──────────────────────────────────────────────────────────────┘
 ```
 
