@@ -680,9 +680,14 @@ not established.
   Docker-loss recovery (once, c069, under amendment 2); the new witness and G5's batch on 0266 trees. Not exercised,
   because none occurred: a launch fault, a Docker loss or memory kill in a cell, an account fault, a setup failure,
   the screen lane's pass over a cleared STOP, and a witness or probe retry on a cell's tree.
-- **Custody.** `scratch/credentials` is empty. The reports are archived at `~/.local/share/nx01/archive/reports-0266`
-  (819 MiB; the cells' work, home, harness and tmp folders are not archived), and its `decision.json` is byte-equal to
-  the live one. The runtime root `~/.local/share/nx01/0266-live` stays until the owner approves its deletion.
+- **Custody.** `scratch/credentials` is empty, no cell, witness or probe container of the run is left in any state,
+  and none of the 202 `/tmp` volumes that `run/started.json` names exists (the orchestrator's check at 18:18). The
+  reports are archived at `~/.local/share/nx01/archive/reports-0266` (819 MiB), in 0265's form: per attempt everything
+  but its work, home, harness and tmp folders, with all 202 verdicts, the grading files, the judges' records, the logs
+  and the qualification records. Added to that form: the session transcripts (`home/.claude/projects`) of the three
+  model-mismatch attempts, which amendment 3's proof reads. Its `decision.json` is byte-equal to the live one. No copy
+  is committed (DESIGN "Records" lists RESULT.md and the DECISIONS.md line; the file holds a host path). The runtime
+  root `~/.local/share/nx01/0266-live` stays until the owner approves its deletion.
 
 ## Interpretation limits
 
