@@ -1836,8 +1836,8 @@ def add(args):
 
 
 def withdraw(args):
-    """Take back a queued loop none of whose tasks has started: its add record, then its capture ref, then its folder in
-    devlyn-loops; a retry after an interruption finishes the rest. Under the drain lock, so no drain allocates it."""
+    """Take back a queued loop none of whose tasks has started: its add record, then its folder in devlyn-loops, then its
+    capture ref; a retry after an interruption finishes the rest. Under the drain lock, so no drain allocates it."""
     anchor, common = repository(args.repo)
     args.repo = anchor
     loop, notes = args.loop, []
@@ -1867,24 +1867,24 @@ def withdraw(args):
                              "tasks has started")
         if added:
             target = added.get("materialize")
-            for root in roots if target else ():
-                legacy = root / QUEUE
-                lines = [row["index"] + 1 for row in parse_queue(legacy.read_bytes() if legacy.is_file() else b"")
-                         if not row["identity"] and row["line"] == target["line"]]
+            sources = {**{root / QUEUE: (root / QUEUE).read_bytes() if (root / QUEUE).is_file() else b"" for root in roots},
+                       f"{QUEUE} on the branch {added['branch']}": show(anchor, "refs/heads/" + added["branch"], QUEUE) or b""} if target else {}
+            for legacy, data in sources.items():
+                lines = [row["index"] + 1 for row in parse_queue(data) if not row["identity"] and row["line"] == target["line"]]
                 if len(lines) >= target["occurrence"]:
                     raise LoopError(f"loop {loop} replaced line {lines[target['occurrence'] - 1]} of {legacy}, which would return as a "
                                     "pending legacy row to plan again; remove that row, then withdraw again")
             require(captured == commit, f"{ref} is {captured or 'missing'}, but the add record of {loop} names {commit}")
             added_path(common, loop).unlink()
         if commit:
+            folder = common / "devlyn-loops" / loop
+            try:
+                (folder / "drain-report.md").unlink(missing_ok=True)
+                with contextlib.suppress(FileNotFoundError):
+                    folder.rmdir()
+            except OSError as exc:
+                notes.append(f"loop folder retained: {folder}: {exc}; remove it")
             git(anchor, "update-ref", "-d", ref, commit)
-        folder = common / "devlyn-loops" / loop
-        try:
-            (folder / "drain-report.md").unlink(missing_ok=True)
-            with contextlib.suppress(FileNotFoundError):
-                folder.rmdir()
-        except OSError as exc:
-            notes.append(f"loop folder retained: {folder}: {exc}; remove it")
     try:
         release_settled_binding(anchor, common, interrupted_add=True)
     except (LoopError, OSError) as exc:
@@ -2320,8 +2320,9 @@ class QueueTests(unittest.TestCase):
 
     def test_withdraw_refuses_while_the_replaced_legacy_row_remains(self):
         """D1, E6. Prediction: a loop that replaced a legacy row cannot be withdrawn while the row is in the legacy queue of
-        the checkout it was added from or of this one, each named with its line, since the row would return to be planned
-        again; once the row is gone the loop is withdrawn. Before: argparse rejected withdraw."""
+        the checkout it was added from or of this one, or committed on the branch it was added on once that checkout is
+        gone, each named with its line, since the row would return to be planned again; such a refusal changes nothing;
+        once the row is gone the loop is withdrawn. Before: argparse rejected withdraw; then the branch case was withdrawn."""
         linked = self.root / "linked"
         git(self.anchor, "worktree", "add", "-q", "-b", "side", str(linked), env=self.env)
         row = "- [ ] Ship the fixture.\n"
@@ -2333,6 +2334,19 @@ class QueueTests(unittest.TestCase):
         (self.anchor / QUEUE).write_text(row, encoding="utf-8")
         self.assertIn(f"loop rep replaced line 1 of {self.anchor / QUEUE}", self.cli("withdraw", "rep", code=1)["reason"])
         (self.anchor / QUEUE).write_text("", encoding="utf-8")
+        (linked / QUEUE).write_text("# Intent Queue\n\n" + row, encoding="utf-8")
+        git(linked, "add", QUEUE, env=self.env)
+        git(linked, "commit", "-qm", "the legacy queue committed on side", env=self.env)
+        git(self.anchor, "worktree", "remove", "--force", str(linked), env=self.env)
+        common = Path(git(self.anchor, "rev-parse", "--path-format=absolute", "--git-common-dir"))
+
+        def state():
+            return git(self.anchor, "for-each-ref"), sorted(str(path.relative_to(common)) for path in (common / "devlyn-loops").rglob("*"))
+
+        before = state()
+        self.assertIn(f"loop rep replaced line 3 of {QUEUE} on the branch side", self.cli("withdraw", "rep", code=1)["reason"])
+        self.assertEqual(state(), before)
+        git(self.anchor, "branch", "-f", "side", "side~", env=self.env)
         self.assertEqual(self.cli("withdraw", "rep")["tasks"], ["rep.t1"])
 
     def test_a_legacy_row_is_replaced_only_by_its_one_exact_claim(self):

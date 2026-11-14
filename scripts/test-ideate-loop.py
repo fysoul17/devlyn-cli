@@ -4276,7 +4276,8 @@ class LoopFixture(unittest.TestCase):
         self.assertTrue(binding.exists())
         self.assertEqual(self.cli("withdraw", "--repo", self.anchor, "one")["status"], "WITHDRAWN")
         self.assertFalse(binding.exists())
-        for step, name, retry in (("unlink-after", "added.json", "WITHDRAWN"), ("unlink", "drain-report.md", "BLOCKED")):
+        for step, name, retry in (("unlink-after", "added.json", "WITHDRAWN"), ("unlink", "drain-report.md", "WITHDRAWN"),
+                                  ("unlink", "harness.json", "BLOCKED")):
             with self.subTest(step=step):
                 self.plan("two", CHAIN[:1], {})
                 stopped = subprocess.run([sys.executable, "-c", CRASH, step, name, str(self.queue_py), "withdraw", "--repo", str(self.anchor), "two"],
