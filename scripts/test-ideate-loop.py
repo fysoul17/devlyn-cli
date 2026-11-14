@@ -976,6 +976,8 @@ class LoopFixture(unittest.TestCase):
                 self.assertTrue(log.splitlines()[-2].endswith(" start"))
                 self.assertIn("not started:", log.splitlines()[-1])
                 self.assertEqual((self.calls("aa.t1"), self.calls("aa.t2")), (0, 0))
+                self.assertIn("aa.t1: its executor could not start (executor unavailable); the next drain retries",
+                              self.cli("status", "--repo", self.anchor)["blockers"])
         self.assertEqual(self.tasks(self.drain())["aa.t2"]["result"], "accepted")
         self.assertEqual((self.calls("aa.t1"), self.calls("aa.t2")), (1, 1))
 
@@ -2933,6 +2935,21 @@ class LoopFixture(unittest.TestCase):
         tasks = self.tasks(self.drain())
         self.assertEqual({identity: task["result"] for identity, task in tasks.items()}, {"aa.t1": "accepted", "aa.t2": "accepted", "bb.t1": "accepted"})
         self.assertEqual((self.calls("aa.t1"), self.calls("aa.t2"), self.calls("bb.t1")), (2, 1, 1))
+
+    def test_status_names_the_runs_of_an_executor_that_left_nothing(self):
+        # Prediction (round B, D2): status shows no aa.t1 line before any drain; after each drain whose executor exits 1
+        # without a submission it names that exit, the run count (run 1, then run 2) and the output folder. Before: status
+        # held no aa.t1 line after either drain.
+        self.plan("aa", [CHAIN[0]], {"aa.t1": {"product": "greeting", "exit_now": 1}})
+
+        def lines():
+            return [line for line in self.cli("status", "--repo", self.anchor)["blockers"] if line.startswith("aa.t1")]
+        self.assertEqual(lines(), [])
+        for run in (1, 2):
+            self.drain()
+            output = Path(self.receipt("aa.t1")["worktree"]) / ".devlyn/loop"
+            self.assertEqual(lines(), [f"aa.t1: its executor last exited 1 (run {run}) and left nothing to accept; the next drain runs it "
+                                       f"again (output: {output})"])
 
     @unittest.skipIf(os.name == "nt", "writer observation requires POSIX")
     def test_a_submission_blocked_only_by_infrastructure_waits_for_its_writers_and_runs_again(self):

@@ -980,12 +980,31 @@ def next_task(v, attempted):
 
 
 def annotate(v, refused):
-    """Name each task's wait: a pending task's reason from waiting(), else why this drain did not advance it."""
+    """Name each task's wait: a pending task's reason from waiting(), else why this drain did not advance it, else what an
+    active task's executor left."""
     for row in v["rows"]:
         state = v["states"].get(row["identity"])
         if state and (reason := refused.get(row["identity"]) or state["kind"] == "pending" and waiting(v, row)
-                     or recovery_barrier(v, row)):
+                     or recovery_barrier(v, row) or executor_left_nothing(state)):
             state["waiting"] = reason
+
+
+def executor_left_nothing(state):
+    """Why a runnable active task waits when its execution log ends in an exit without a submission, or in a start that
+    failed; nothing for a start, which may still be running."""
+    if state["kind"] != "active" or {"invalid", "inputs_changed"} & state.keys():
+        return None
+    directory = state["path"].parent
+    try:
+        events = [line.partition(" ")[2] for line in (directory / "executions.log").read_bytes().decode("utf-8").splitlines()]
+    except (OSError, UnicodeError):
+        return None  # Nothing ran yet, or a history the drain refuses, naming it, when it reads it.
+    if events and (code := re.fullmatch(r"exit (-?\d+) \(pid \d+\)", events[-1])) and not (directory / "submission.json").exists():
+        return (f"its executor last exited {code[1]} (run {sum(event.startswith('exit ') for event in events)}) and left nothing to "
+                f"accept; the next drain runs it again (output: {Path(state['receipt']['worktree']) / '.devlyn/loop'})")
+    if events and events[-1].startswith("not started: "):
+        return f"its executor could not start ({events[-1].removeprefix('not started: ')}); the next drain retries"
+    return None
 
 
 def frontier(v, loop):
