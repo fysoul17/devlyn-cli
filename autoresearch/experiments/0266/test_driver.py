@@ -1676,6 +1676,37 @@ class Faults(unittest.TestCase):
             self.assertFalse(list(d.output.glob(f'*{first}.stop-*')))
             self.assertEqual([e['cell'] for e in events(root, 'claude') if e['event'] == 'skip_cleared_stop'], [first])
 
+    def test_the_model_mismatch_rule_reads_each_of_its_clauses(self):
+        """Amendment 3, at the function: redispatch() on a driver whose state holds the cleared latch of the verdict
+        on file runs c090's shape again and nothing that differs from it in one clause. For every verdict run_cell.py
+        writes today another line of the driver decides first, so only this test pins these clauses."""
+        registered, screen = row('c001-'), driver.rows([str(HERE / 'screen.tsv')])[0]
+        for label, slot, stop, cleared, expected in (
+                ("c090's shape", registered, MISMATCH, True, True),
+                ('the latch not cleared', registered, MISMATCH, False, False),
+                ('teardown FAILED', registered, dict(MISMATCH, teardown='FAILED'), True, False),
+                ('identity UNVERIFIED with the same reason', registered,
+                 dict(MISMATCH, identity=dict(MISMATCH['identity'], status='UNVERIFIED')), True, False),
+                ('a reason that only starts with it', registered,
+                 dict(MISMATCH, reason=MISMATCH['reason'] + ': x'), True, False),
+                ('a screen slot whose owner did not run', screen, dict(MISMATCH, owner_ran=False), True, False)):
+            with self.subTest(label), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                name = slot[0]
+                d = lane(root, 'claude', [slot])
+                verdict = dict(stop, cell=name)
+                (d.output / f'verdict-{name}.json').write_text(json.dumps(verdict))
+                d.latch_for(name, verdict)  # as dispatch() and terminal() latched it
+                d.latch(name, 'STOP ' + verdict['reason'])
+                if cleared:
+                    amendment = root / 'amendment.md'
+                    amendment.write_text('resolved')
+                    d.clear_latch(amendment)
+                try:
+                    self.assertIs(d.redispatch(name, verdict), expected)
+                finally:
+                    d.lock.close()
+
 
 class LaneEnd(unittest.TestCase):
     """H4 (b): an exception that ends a lane sets the harm latch with its text, so the other lane stops dispatching;

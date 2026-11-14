@@ -5,7 +5,8 @@ lane never runs twice. A STOP that is not redispatched sets the harm latch, whic
 running lets it finish. So does stop(), and any other exception that ends a lane (an operator's interrupt aside): the
 latch carries its text, so the other lane stops dispatching too. A registered slot's failed teardown latches like any
 STOP; once an amendment has cleared that latch, the lane started again proves the teardown, archives the attempt and
-runs the slot again (amendment 2)."""
+runs the slot again (amendment 2); a registered slot's first model identity mismatch with its owner MATCH and a clean
+teardown, once an amendment has cleared its latch, is archived and run again with no recovery (amendment 3)."""
 import datetime
 import fcntl
 import hashlib
