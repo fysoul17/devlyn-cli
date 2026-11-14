@@ -3645,8 +3645,9 @@ class LoopFixture(unittest.TestCase):
         self.assertIn("drain again", task["reason"])
         self.assertNotIn("a person merges", task["reason"])
         data.write_text(json.dumps(dict(json.loads(data.read_text(encoding="utf-8")), merge_state="CLEAN")), encoding="utf-8")
-        task = self.tasks(self.drain(local=False))["mw.t1"]
-        self.assertEqual((task["delivery"], self.calls("mw.t1")), ("COMPLETE", 1))
+        result = self.drain(local=False)
+        task = self.tasks(result)["mw.t1"]
+        self.assertEqual((result["status"], task["delivery"], task.get("reason"), self.calls("mw.t1")), ("DRAINED", "COMPLETE", None, 1))
 
     @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
     def test_report_omits_the_branch_only_after_cleanup_deletes_it(self):
