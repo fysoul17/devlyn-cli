@@ -43,19 +43,20 @@ answers a batch of one valid item whose `qty` is 9007199254740992 (2^53, a posit
 
 ## In one paragraph
 
-The screen picked K2, added to principle 7: "Where the request does not say how new code fails on bad input, follow
-the error contract it does state, report the choice, and do not reject input the request allows." The verdict is
-NO_DETECTED_EFFECT[G1], and nothing ships. R1 detects no effect: on Claude F10 the event came in C 6 of 16 against
-B 4 of 16 (one-sided Fisher p = 0.352). G1 fails on one of its nine cells, Codex F11: COMPLETE B 4 of 8, C 0 of 8,
-where C may be at most 2 below B, while check-complete is 8 of 8 in both arms. `decide.py` prints 0.072 as that
-cell's chance of failing with no true difference. G2, G3, G4 and G5 hold. Two observations outside the registered
-reading matter most for what comes next. First, the Codex F11 failure is one assessor's ruling on one case the
-request does not name: the Astra assessor finds that a body of JSON `null` gets Express's default error response
-instead of `invalid_body`, in all 8 C trees and in the 4 B trees that keep Express's default parser; the 4 B trees
-that pass such a body to the route's own check are the 4 COMPLETE ones. Second, on Claude F11 COMPLETE rose from B 2
-to C 11 of 16 while the trees that restrict fell from 14 to 5. In each arm the Astra assessor rules incomplete exactly
-the trees that restrict, so the two counts are one observation. Of the orchestrator's predictions, P1, P5 and P7
-hold; P2, P3, P4 and P8 miss; P6 is unscored.
+The screen picked K2, added to principle 7: "Where the request does not say how new code fails on bad input, follow the
+error contract it does state, report the choice, and do not reject input the request allows." The verdict is
+NO_DETECTED_EFFECT[G1], and nothing ships. R1 reads NO_DETECTED_EFFECT: on Claude F10 the event came in C 6 of 16
+against B 4 of 16 (one-sided Fisher p = 0.352). G1 fails on one of its nine cells, Codex F11: COMPLETE B 4 of 8, C 0 of
+8, where C may be at most 2 below B, while check-complete is 8 of 8 in both arms. `decide.py` prints 0.072 as that
+cell's chance of failing with no true difference at 0265's rates. G2, G3, G4 and G5 hold. Two observations outside the
+registered reading matter most for what comes next. First, the Codex F11 failure is one assessor's ruling on one case
+the request does not name: the Astra assessor finds that a body of JSON `null` gets Express's default error response
+instead of `invalid_body`, in all 8 C trees and in the 4 B trees that keep Express's default parser; the 4 B trees that
+pass such a body to the route's own check are the 4 COMPLETE ones. Second, on Claude F11 COMPLETE is B 2 against C 11 of
+16, and the trees that restrict are B 14 against C 5. In each arm the Astra assessor rules incomplete exactly the trees
+that restrict, so the two counts are one observation; the restriction itself is measured mechanically by G5's probe. The
+records do not show that the sentence caused either difference. Of the orchestrator's predictions, P1, P5 and P7 hold;
+P2, P3, P4 and P8 miss; P6 is unscored.
 
 ## Predictions (frozen before SMOKE)
 
@@ -93,9 +94,8 @@ The orchestrator's predictions missed on P2, P3, P4 and P8:
 
 - **P2:** the screen did not select the shortest wording. K3 had 1 event of 4 and 0 of 2 F11 COMPLETE, so it was not
   eligible while K2 had 2 of 2.
-- **P3:** the sentence did not close most of the gap on Claude. The event came in 6 of 16 C cells, not at least 10,
-  and R1 did not read EFFECT.
-- **P4:** Codex did not follow the sentence on F10. The event came in 1 of 8 C cells, not at least 4.
+- **P3:** missed its condition. The event came in 6 of 16 C cells, not at least 10, and R1 did not read EFFECT.
+- **P4:** missed its threshold. On codex F10 the event came in C 1 of 8 against B 0 of 8, below the 4 of 8 it needs.
 - **P8:** the verdict is NO_DETECTED_EFFECT[G1], neither of the two verdicts its condition names.
 
 **Why P6 is UNSCORED.** `decide.py` (`predictions`, the P6 line) scores P6 only when every slot is final and every
@@ -175,8 +175,9 @@ only.**
 - **G3** HOLDS in both engines: every C record is complete, and C's sum is at most 1.10 times B's recorded sum. For
   codex, B's true sum is at least its recorded one, so the bound only widens.
 - Claude's 116 charged attempts are its 112 slots plus 4 archived attempts: c069 (B, D4) and c090, c095, c107 (C, B5).
-- Claude's difference comes from D4: input B 13,148,535 against C 8,455,892, owner seconds 9,775.2 against 4,669.2.
-  B's D4 holds c069's archived attempt and c088's hang. On F10, B5 and D3 C's input is the higher.
+- Claude's difference comes from D4: input B 13,148,535 against C 8,455,892, owner seconds 9,775.2 against 4,669.2. B's
+  D4 holds c069's archived attempt and c088's hang. On F10, B5 and D3 C's charged input is the higher; B5's holds the
+  three archived C attempts.
 
 Development cells (D3, D4, B5), per check-complete slot (CC), 0265's form (`reported.cost.*.*.development`):
 
@@ -438,13 +439,13 @@ answer; * marks a C report that gives the sentence's last clause in its own word
 | 15 | c059 | safe | 400 | no | c060 | integer | 201 | yes |
 | 16 | c064 | safe | 400 | no | c063 * | integer | 201 | yes |
 
-- **Is the gain in COMPLETE the same cells that stopped restricting? Yes, exactly.** In each arm the COMPLETE cells
-  are the cells that do not restrict, and the 19 restricting trees, and only they, use `Number.isSafeInteger`. In each
-  of them the Astra assessor makes one medium finding with G5's own value: "Number.isSafeInteger imposes an unstated
-  upper bound. The witness quantity is an exactly representable positive integer, but this validation rejects it."
-  (c008). c059, the one B tree with no parse-error handler, has a second: the `null` body of (a). So the gain of 9 in
-  COMPLETE and the drop of 9 in restricting trees are one observation counted twice. By replicate block: in 10 blocks
-  B restricts and C does not, in 4 both restrict, in 1 only C restricts (r6), in 1 neither (r10).
+- **Are the cells COMPLETE in C and not in B the cells that do not restrict? Yes, exactly.** In each arm the COMPLETE
+  cells are the cells that do not restrict, and the 19 restricting trees, and only they, use `Number.isSafeInteger`. In
+  each of them the Astra assessor makes one medium finding with G5's own value: "Number.isSafeInteger imposes an
+  unstated upper bound. The witness quantity is an exactly representable positive integer, but this validation rejects
+  it." (c008). c059, the one B tree with no parse-error handler, has a second: the `null` body of (a). So the difference
+  of 9 in COMPLETE and the difference of 9 in restricting trees are one observation counted twice. By replicate block:
+  in 10 blocks B restricts and C does not, in 4 both restrict, in 1 only C restricts (r6), in 1 neither (r10).
 - Where the restriction came from, as the reports tell it: 8 of the 19 restricting reports say the limit was added
   after the session's own reviewer raised it (B 6 of 14: c003 c011 c016 c027 c032 c035; C 2 of 5: c004 c023). The
   other 11 do not say.
@@ -452,15 +453,20 @@ answer; * marks a C report that gives the sentence's last clause in its own word
   for leaving `qty` unbounded; no B report does. 15 of 16 reports in each arm mention the limit or its absence. The two
   B trees that allow give a literal reason too ("`qty` only needs to be a positive whole number [...] There is no
   upper limit", c024), so that wording alone is not a sign of the sentence.
-- The failure path is not where Claude moved on F11: malformed JSON already gets the stated contract in B 15 of 16
+- The failure path is not where the Claude arms differ on F11: malformed JSON is answered with a JSON 400 in B 15 of 16
   trees and C 16 of 16.
-- Cause of the drop in restricting trees: 3 C reports cite the sentence's last clause, which is consistent with the
-  sentence at work in those 3. For the other 8 C trees that allow, the records show the choice, not its reason:
+- Cause of the difference in restricting trees: 3 C reports cite the sentence's last clause, which is consistent with
+  the sentence at work in those 3. For the other 8 C trees that allow, the records show the choice, not its reason:
   **not established** beyond that.
-- Read together with (a): Claude moved on rejecting allowed input, toward the sentence's last clause; Codex did not
-  restrict in either arm, and moved on a failure case the request does not name, against the sentence's first clause.
-  Both moves are the Astra assessor's rulings on cases the request is silent on; nothing here decides which assessor
-  reads the request right.
+- Read together with (a). The arm counts differ on two different behaviours: on Claude, trees that refuse the 2^53 batch
+  (B 14, C 5 of 16); on Codex, trees that leave a body of JSON `null` to the default parser (B 4, C 8 of 8). The two do
+  not have the same standing. The Claude count is measured mechanically: G5's probe posts the batch, and DESIGN, frozen
+  before the run, defines it as allowed input, so those trees restrict whatever an assessor says. The Codex case has no
+  probe and no frozen definition: it rests on the Astra assessor's reading of a request that does not name the case.
+  Both differences in COMPLETE depend on that assessor's flags. The sentence's clauses match a difference only where a
+  report cites one (the 3 Claude C reports above). The records do not show that the sentence caused either difference.
+  G5 only guards against C restricting more than B; no registered test reads C restricting less as an effect of the
+  sentence, and none compares the two engines.
 
 **(c) Claude F10: the event in 6 of 16 C cells.** From `probes.json`, the sessions and the final reports:
 
@@ -494,9 +500,9 @@ answer; * marks a C report that gives the sentence's last clause in its own word
   "error contract"; 341 of their 426 thinking parts carry no text, so the records cannot show whether a session
   weighed the sentence.
 - COMPLETE goes with the event: 9 of the 10 event cells are COMPLETE (not c005), and 2 of the 22 others (c010, c030).
-- The screen: K2 had 2 of 4 F10 events (0.5). The registered C rate, 6 of 16 (0.375), is close to it. Of K2's two
-  screen events one (s02) came after its review call, its report citing the reviewer's medium finding; the other
-  (s09) was in its first server write. None of the registered run's 10 events came after a review.
+- The screen: K2 had 2 of 4 F10 events; the registered C count is 6 of 16. Of K2's two screen events one (s02) came
+  after its review call, its report citing the reviewer's medium finding; the other (s09) was in its first server write.
+  None of the registered run's 10 events came after a review.
 - Why 10 C sessions left the case although the sentence names it: **not established.**
 
 **(d) Codex F10, the event per arm (P4):** C 1 of 8 (c148), B 0 of 8. c148's tree handles `entity.parse.failed` for
@@ -612,11 +618,12 @@ not established.
   12:41:45-13:22:38 (the screen's probe and decision, then amendment 1).
 - **Amendment 1** (PR #380, merge `d231ed6e`, 11-13 13:22). In the screen every reading of the Claude usage endpoint
   from 09:13:10 to 11:19:47 was refused with HTTP 429 (47 readings), and each refusal held the lane. Under amendment 1
-  such a refusal no longer holds a dispatch, except for a slot waiting on a split window; the lane logs
-  `window_unread` and goes on (counts and cells under Holds). The screen ran under the old rule, every registered cell
-  under the new one. The orchestrator predicted the block wrongly twice: that it would clear at about 10:13:10 (a new
-  one-hour block ran from 10:17:02), and that a reading after 81 minutes of lane silence would be answered (at
-  11:19:47 it was refused). Review: Astra RUN, Grok RUN.
+  such a refusal no longer holds a dispatch, except for a slot waiting on a split window; the lane logs `window_unread`
+  and goes on (counts and cells under Holds). The screen ran under the old rule, every registered cell under the new
+  one. The orchestrator predicted the block wrongly twice: that it would clear at about 10:13:10 (a new one-hour block
+  ran from 10:17:02), and that a reading after 81 minutes of lane silence would be answered (at 11:19:47 it was
+  refused). What it can bias: a cell can be dispatched without a confirmed reading of its window's headroom (31 such
+  dispatches); no registered verdict records a quota hit (0 of 180). Review: Astra RUN, Grok RUN.
 - **Amendment 2** (PR #381, merge `488c3378`, 11-14 07:20). At 04:49:11 the Claude lane latched on
   c069-D4-claude-B-r1: copying the cell's `/tmp` to the host failed on two FIFOs of mode 0200 the session had made,
   so the teardown was not proved. The amendment's copy leaves special files out and lists them in `run/tmp-copy.json`;
@@ -705,13 +712,18 @@ not established.
   result in G2, while the slot's completion is the rerun's. So an arm whose sessions do this more often gets a
   narrower G1 (its sessions that did not) and a higher cost. Arm C's B5 had 3 such first attempts of 8, arm B's 0 of
   8. R1 is not touched: its cells were final before amendment 3.
+- **31 dispatches started without a usage reading** (amendment 1; Claude 24, Codex 7, c022 and c024 among them, c022 an
+  R1 cell with the event). Such a cell could have started with its window near its end. No registered verdict records a
+  quota hit, and none of those cells stopped on an account fault.
 - **Slot c069's result is a rerun's** (amendment 2). Its first attempt was never graded, so its completion never
   entered G1, while its cost and harm did. One D4 result of arm B was replaced by a fresh run because of what its
   session did in `/tmp`.
-- **COMPLETE rests on two model assessors**, and where they differ, on the Astra assessor: it said incomplete in all
-  77 disagreements. On F11 the Claude assessor answers complete in 48 of 48, so every F11 difference in COMPLETE, the
-  failing G1 cell among them, is the Astra assessor's ruling on a case the request does not name. The Astra assessor
-  is the same model as the Codex owner; no reading is made of that.
+- **COMPLETE rests on two model assessors**, and where they differ, on the Astra assessor: it said incomplete in all 77
+  disagreements. On F11 the Claude assessor answers complete in 48 of 48, so every F11 difference in COMPLETE, the
+  failing G1 cell among them, depends on the Astra assessor's flag. On Codex that flag is its reading of a case the
+  request does not name and no probe posts (a body of JSON `null`). On Claude it coincides, tree for tree, with G5's
+  mechanical measurement of a refusal that DESIGN defines as restricting allowed input. The Astra assessor is the same
+  model as the Codex owner; no reading is made of that.
 - **One package version (4.3.31), one sentence (K2), five tasks** in use since 0233, one run, one image (Claude Code
   2.1.322, Codex 0.164.0), headless sessions in a Linux container through `devlyn run`, local-origin delivery only.
   F10 is the one task with headroom: a pass there would not have shown that the sentence transfers.
@@ -727,14 +739,14 @@ not established.
 
 ## What follows
 
-Nothing ships: the published 4.3.31 stays as it is. The sentence in this form is not proposed again. R1 detected no
-effect on Claude F10, and the registered rate (6 of 16) is close to the screen's (2 of 4). The next step is the
-owner's. The F11 observations raise questions, not a plan:
+Nothing ships: the published 4.3.31 stays as it is. R1 reads NO_DETECTED_EFFECT on Claude F10: the event in C 6 of 16
+against B 4 of 16 (the screen's K2: 2 of 4). Whether to measure this wording again is the owner's, as is the next step.
+The F11 observations raise questions, not a plan:
 
-- Both F11 differences are the Astra assessor's rulings on cases the request does not name (a body of JSON `null`; a
-  `qty` above 2^53 − 1), where the Claude assessor passes every tree. Is a design worth making that first fixes, by a
-  frozen witness as G5's batch does for the large `qty`, what a correct answer to such a case is, before any wording
-  is measured against it?
+- Both F11 differences in COMPLETE depend on the Astra assessor's flags, where the Claude assessor passes every tree.
+  For the large `qty` a frozen probe (G5's batch) says what a correct answer is; for a body of JSON `null` nothing does.
+  Is a design worth making that first fixes, by a frozen witness, what a correct answer to such an unnamed case is,
+  before any wording is measured against it?
 - DESIGN reads a failed guard cell as a reason to measure that cell again. Is the Codex F11 cell (COMPLETE B 4, C 0 of
   8) worth measuring again on its own?
 - Amendment 3 leaves to a later design what a Claude sub-session on another model is. Should the next design say it?
