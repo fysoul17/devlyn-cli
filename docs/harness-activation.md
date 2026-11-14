@@ -189,6 +189,8 @@ Channel reason codes: `principles-task-only`, `principles-session-start-only`, `
 `name-collision`, `config-unreadable`. New code: **`executor-unqualified`** with
 `{engine}`; none of the channel codes describes an unqualified executor.
 Existing CLI-1 release/argument/operational error codes remain unchanged.
+Within major 4, every context key and value a supported Devlyn app sends stays accepted and answers only add keys;
+`scripts/test-harness-app-contract.py` holds what the app sends and reads.
 
 The catalog names the verified release's `config/skills/_shared` absolutely. Claude's single per-run
 append file contains existing append text, immutable defaults, and this catalog. OMP/Qwen/Grok merge owner append

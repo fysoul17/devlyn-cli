@@ -11,7 +11,8 @@ on:
   # node --test scripts/test-installer-menu.cjs && bash scripts/lint-skills.sh &&
   # python3 scripts/test-ideate-loop.py && python3 scripts/test-storage-client.py &&
   # python3 scripts/test-harness-release.py && python3 scripts/test-harness-activation.py &&
-  # python3 scripts/test-harness-run.py && python3 scripts/test-harness-cleanup.py
+  # python3 scripts/test-harness-run.py && python3 scripts/test-harness-cleanup.py &&
+  # python3 scripts/test-harness-app-contract.py
   # (then restore the generated bin/*.json files)
   workflow_call:
   workflow_dispatch:
@@ -189,7 +190,8 @@ jobs:
           print('Harness release root: ' + release, flush=True)
           failed = []
           for suite, args in (('release', ['--package-root', release]), ('activation', ['--package-root', release]),
-                              ('run', ['--package-root', release]), ('cleanup', [])):
+                              ('run', ['--package-root', release]), ('cleanup', []),
+                              ('app-contract', ['--package-root', release])):
               if subprocess.run([sys.executable, f'scripts/test-harness-{suite}.py', *args], stdin=subprocess.DEVNULL).returncode:
                   failed.append(suite)
           if failed:
