@@ -2530,6 +2530,66 @@ install(['agents'], false);
         self.assertEqual(tree(root / '_shared'), tree(self.package / 'config/skills/_shared'))
         self.assertTrue((root / '.devlyn-install.json').is_file())
 
+    @staticmethod
+    def tree(folder):
+        return {p.relative_to(folder): p.read_bytes() if p.is_file() else None for p in folder.rglob('*')}
+
+    def swap_fault(self, name, script):
+        # A 4.1.0 install in a new project, updated while `script` patches fs (`dest`, `rename` and `rm` are bound).
+        self.project = self.case / name
+        root = self.project / '.agents/skills'
+        self.seed_4_1(root)
+        previous = self.tree(root / '_shared')
+        result = self.invoke(f"const dest = {json.dumps(str(root / '_shared'))}, rename = fs.renameSync, rm = fs.rmSync;\n"
+                             f"{script}\ninstall(['agents'], false);", code=None)
+        self.assertNotEqual(result.returncode, 0)
+        return root, previous, result
+
+    def test_failed_swap_leaves_the_previous_copy_for_a_plain_rerun(self):
+        # The previous copy is moved aside, not deleted, before the new one is renamed in: a failed move aside, or a
+        # failed rename in after it, leaves that copy complete in place, no stage and no marker, and a plain rerun installs.
+        for case, fails in (('rename-in', "to === dest && path.basename(from) === '_shared'"), ('move-aside', 'from === dest')):
+            with self.subTest(case=case):
+                root, previous, result = self.swap_fault(case, f"fs.renameSync = (from, to) => {{ if ({fails}) "
+                                                         "throw new Error('injected rename failure'); return rename(from, to); };")
+                self.assertIn(b'injected rename failure', result.stderr)
+                self.assertEqual(self.tree(root / '_shared'), previous)
+                self.assertEqual(list(root.glob('.devlyn-skill-*')), [])
+                self.assertFalse((root / '.devlyn-install.json').exists())
+                self.cli('-y')
+                self.assertEqual(self.tree(root / '_shared'), self.tree(self.package / 'config/skills/_shared'))
+
+    def test_failed_rollback_keeps_the_previous_copy_and_names_it(self):
+        root, previous, result = self.swap_fault('rollback', "fs.renameSync = (from, to) => { "
+                                                 "if (to === dest) throw new Error('injected rename failure'); return rename(from, to); };")
+        stages = list(root.glob('.devlyn-skill-*'))
+        self.assertEqual(len(stages), 1)
+        self.assertIn(str(stages[0] / 'previous').encode(), result.stderr)
+        self.assertEqual(self.tree(stages[0] / 'previous'), previous)
+
+    def test_failed_removal_of_the_previous_copy_leaves_the_new_copy_installed(self):
+        # On Windows a file an engine or a scanner holds open stops the removal, at once or half way through the tree.
+        # Either way the new copy is in place, the error says so and names the kept previous copy, and a plain rerun installs.
+        new = self.tree(self.package / 'config/skills/_shared')
+        for case, half in (('at-once', ''), ('half-way', "rm(path.join(old, 'task-complete.py'));")):
+            with self.subTest(case=case):
+                root, _, result = self.swap_fault(case, f"""
+let old = dest;  // Where the previous copy is.
+fs.renameSync = (from, to) => {{ rename(from, to); if (from === dest) old = to; }};
+fs.rmSync = (file, ...rest) => {{
+  if (!fs.existsSync(old) || (file !== old && file !== path.dirname(old))) return rm(file, ...rest);
+  {half}
+  throw Object.assign(new Error('EBUSY: resource busy or locked (injected)'), {{ code: 'EBUSY' }});
+}};""")
+                self.assertEqual(self.tree(root / '_shared'), new)
+                stages = list(root.glob('.devlyn-skill-*'))
+                self.assertEqual(len(stages), 1)
+                self.assertIn(b'is installed', result.stderr)
+                self.assertIn(str(stages[0] / 'previous').encode(), result.stderr)
+                self.cli('-y')
+                self.assertEqual(self.tree(root / '_shared'), new)
+                self.assertTrue((root / '.devlyn-install.json').is_file())
+
     def test_unknown_pre_4_names_removed_in_every_selected_root(self):
         spellings = ['\uf03a'] if os.name == 'nt' else [':', '\uf03a']
         for root in self.roots():
