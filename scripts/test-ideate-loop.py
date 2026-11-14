@@ -3631,6 +3631,23 @@ class LoopFixture(unittest.TestCase):
         self.assertEqual(self.calls("inv.t1"), 1)
 
     @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
+    def test_a_merge_waiting_for_required_checks_drains_again(self):
+        # Prediction (B3): with GitHub auto-merge off and required checks not passing yet (BLOCKED), a one-task loop's
+        # drain ends WAITING with delivery PENDING and a reason that says to drain again, naming no person who must merge;
+        # once the PR is CLEAN the next drain merges it with no second executor call. Before: delivery PR, "a person
+        # merges the PR".
+        _, data = self.remote(auto_allowed=False, merge_state="BLOCKED")
+        self.plan("mw", [CHAIN[0]], {"mw.t1": {"product": "greeting"}}, delivery="auto")
+        result = self.drain(local=False)
+        task = self.tasks(result)["mw.t1"]
+        self.assertEqual((result["status"], task["result"], task["delivery"]), ("WAITING", "accepted", "PENDING"))
+        self.assertIn("drain again", task["reason"])
+        self.assertNotIn("a person merges", task["reason"])
+        data.write_text(json.dumps(dict(json.loads(data.read_text(encoding="utf-8")), merge_state="CLEAN")), encoding="utf-8")
+        task = self.tasks(self.drain(local=False))["mw.t1"]
+        self.assertEqual((task["delivery"], self.calls("mw.t1")), ("COMPLETE", 1))
+
+    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
     def test_report_omits_the_branch_only_after_cleanup_deletes_it(self):
         _, data = self.remote(pending=True)
         self.plan("inv", [CHAIN[0]], {"inv.t1": {"product": "greeting"}}, delivery="auto")

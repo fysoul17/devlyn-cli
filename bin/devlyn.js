@@ -2256,7 +2256,9 @@ function cleanupDeliver(scope, items, current) {
   if (!prepared.acceptance) return cleanupUpdateCheckout(scope);
   const completed = lastJson(run(['complete', '--receipt', allocated.receipt, '--acceptance', prepared.acceptance, '--writers-stopped'], scope.root).stdout);
   const status = completed?.delivery_status || completed?.status;
-  if (status === 'COMPLETE' || status === 'MERGED') return { ...cleanupUpdateCheckout(scope), delivery: { state: 'merged', url: completed.pr || null } };
+  // A merge whose workspace or scratch the helper retained (CLEANUP_PENDING) is not a clean merge: report its resume.
+  if (status === 'COMPLETE' || status === 'MERGED') return { ...cleanupUpdateCheckout(scope), delivery: completed.status === 'CLEANUP_PENDING'
+    ? { state: 'cleanup-pending', url: completed.pr || null, resume: completed.resume } : { state: 'merged', url: completed.pr || null } };
   if (completed?.pr) return { delivery: { state: 'pr-open', url: completed.pr } };
   const reason = completed?.reason || 'delivery did not complete';
   return { error: cleanupReason(failureCode(reason), { detail: reason, ...(completed?.resume ? { resume: completed.resume } : {}) }) };

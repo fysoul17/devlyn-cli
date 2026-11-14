@@ -1429,6 +1429,8 @@ def advance(v, row, opts):
         progress(identity, f"delivery {result['status']}")
         if result.get("merge_refused"):
             return f"merge refused: {result['merge_refused']}; a person merges the PR"
+        if waits := result.get("merge_waits"):
+            return f"merge waits: PR is {waits} (required checks or reviews not passing yet); drain again once they pass, or merge it"
     return None
 
 

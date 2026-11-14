@@ -70,7 +70,8 @@ without autostash or overwriting ignored files); another branch, or a
 fast-forward Git refuses, fails the scope as `update-checkout` and is left as it is.
 
 The result is `{state: succeeded|partial|failed, scopes}`; each scope reports `state`
-(`skipped`, `done`, `failed`), `delivery` (`{state: merged|pr-open, url}`) and `error`.
+(`skipped`, `done`, `failed`), `delivery` (`{state: merged|pr-open, url}`, or `{state: cleanup-pending, url, resume}`
+when the merge landed but the helper retained its workspace or scratch) and `error`.
 `--events` streams each scope's progress as one JSON line before the result. New codes:
 `stale-plan`, `apply-failed`, `delivery-failed`, `auth-failed`, `update-checkout`,
 `requirement-missing` (`{name}`), and the skip reasons above.

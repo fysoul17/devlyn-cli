@@ -72,7 +72,9 @@ A bare intent is planned and, when your request authorizes the work, added and d
 
 Direct work edits your current checkout; run parallel sessions in separate worktrees (for example `claude -w`). Completed, verified direct requests with changes, and
 every drained task, are delivered by project policy from their own linked worktrees. A commit request stays local and a PR request stops at the PR; otherwise accepted tasks default to
-scoped commit → push → PR → merge when the repository allows it (otherwise the PR waits for a person). After the
+scoped commit → push → PR → merge when the repository allows it (otherwise the PR waits for a person; while required
+checks or reviews have not passed it stays pending, and the printed resume or GitHub's Allow auto-merge setting merges it
+once they pass, or a person merges it). After the
 PR merges, the worktree and branch its session released are cleaned; anything in use is
 kept. Set `git config --local devlyn.completionMode pr` to stop at the PR; `task-complete.py complete --mode auto|pr`
 overrides one task. Local-only/no-push instructions take precedence: nothing is pushed or merged;

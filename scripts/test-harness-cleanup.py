@@ -114,6 +114,31 @@ for (const schedule of ['head-failure', 'nothing-present', 'storage-outage', 'pi
         receipt.write_text(json.dumps({'allocation': 'managed_owned'}))
         self.run_ok(['node', '-e', body, CLI, receipt])
 
+    def test_a_merged_delivery_with_a_retained_workspace_is_not_reported_clean(self):
+        # Prediction: a merged delivery the helper reports CLEANUP_PENDING (its workspace, or only its scratch, retained)
+        # is reported as cleanup-pending with the resume command and the PR's URL; a clean COMPLETE stays merged. The
+        # checkout takes the base in both. Before: every COMPLETE delivery was {state: merged, url}, dropping the resume.
+        body = r"""
+const path = require('path'), vm = require('vm');
+const source = require('fs').readFileSync(process.argv[1], 'utf8');
+const start = source.indexOf('function cleanupDeliver('), end = source.indexOf("// The remote base's cleanup", start);
+const url = 'https://github.com/test/project/pull/1', resume = 'python3 task-complete.py complete --receipt /receipt.json --writers-stopped';
+const merged = {status:'COMPLETE', delivery_status:'COMPLETE', pr:url, resume, workspace_cleanup:null};
+for (const [completed, delivery] of [
+  [{...merged, status:'CLEANUP_PENDING', workspace_cleanup:{status:'RETAINED', reason:'active process 7 uses task files', resume}},
+   {state:'cleanup-pending', url, resume}],
+  [{...merged, status:'CLEANUP_PENDING'}, {state:'cleanup-pending', url, resume}],
+  [merged, {state:'merged', url}]]) {
+  const context = {CONFIG_SOURCE:'.', PKG:{version:'test'}, path, crypto:require('crypto'), process,
+    cleanupPython:()=>'python3', cleanupReason:(code,params)=>({code,params}), cleanupGit:()=>({status:0, stdout:'base'}),
+    spawnSync:(python,args)=>({stdout:JSON.stringify(args.includes('allocate') ? {status:'ALLOCATED', receipt:'/receipt.json'} : completed)}),
+    cleanupDeliveryCommit:()=>({acceptance:'/acceptance.json'}), cleanupUpdateCheckout:()=>({changed:true})};
+  vm.runInNewContext(source.slice(start,end) + '; result=cleanupDeliver({root:"/fixture",remote:{repository:"fixture",base:"main"}},[],{});', context);
+  if (JSON.stringify(context.result) !== JSON.stringify({changed:true, delivery})) throw Error(JSON.stringify(context.result));
+}
+"""
+        self.run_ok(['node', '-e', body, CLI])
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix="devlyn cleanup ✓ ")
         self.addCleanup(self.temp.cleanup)

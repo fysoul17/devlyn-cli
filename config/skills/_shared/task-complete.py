@@ -1794,7 +1794,7 @@ def complete(args, *, warnings=None):
             inspect_workspace(receipt)
             verify_files(Path(receipt["worktree"]), receipt["files"])
             require(remote_head(receipt, receipt["branch"]) == receipt["publish_sha"], "remote head race before merge")
-            refused = None
+            refused = waits = None
             if not pr.get("autoMergeRequest"):
                 if not info["mergeCommitAllowed"]:
                     refused = "repository disallows merge commits"
@@ -1818,9 +1818,11 @@ def complete(args, *, warnings=None):
                                 break
                             if attempt < 9:
                                 time.sleep(2)
-                        if state not in {"CLEAN", "HAS_HOOKS", "UNSTABLE"}:
+                        if state in {"BLOCKED", "UNKNOWN"}:
+                            waits = state
+                        elif state not in {"CLEAN", "HAS_HOOKS", "UNSTABLE"}:
                             refused = "pull request is not mergeable: " + state
-                    if not refused:
+                    if not refused and not waits:
                         try:
                             gh(receipt, "pr", "merge", str(pr["number"]), *auto, "--merge", "--match-head-commit", receipt["publish_sha"])
                         except CompletionError as error:
@@ -1828,8 +1830,10 @@ def complete(args, *, warnings=None):
             pr = json.loads(gh(receipt, "pr", "view", str(pr["number"]), "--json", PR_FIELDS))
             validate_pr(receipt, pr)
             if pr["state"] != "MERGED":
-                # Merge only when the repository allows it; a refused request leaves the PR for a person.
-                return dict(result("PR"), merge_refused=refused) if refused and not pr.get("autoMergeRequest") else result("PENDING")
+                # Only a refusal leaves the PR for a person; merge_waits: the resume merges once the PR is mergeable.
+                if refused and not pr.get("autoMergeRequest"):
+                    return dict(result("PR"), merge_refused=refused)
+                return dict(result("PENDING"), **({"merge_waits": waits} if waits else {}))
         if pr:
             receipt["merge"] = pr
             atomic_json(path, receipt)
@@ -4032,16 +4036,37 @@ ctypes.CDLL(None).pthread_exit(None)
         self.assertEqual(d["prs"][0]["state"], "MERGED")
         self.assertIsNone(d["prs"][0]["autoMergeRequest"])
 
-    def test_auto_disallowed_blocked_refuses_without_merge(self):
+    def test_auto_disallowed_blocked_waits_and_its_resume_merges(self):
+        # Prediction (B3): with auto-merge off, required checks or reviews not passing yet (BLOCKED) make no merge call
+        # and report PENDING with merge_waits; once the PR is CLEAN the printed resume merges it directly and cleans.
+        # Before: PR with merge_refused "not mergeable: BLOCKED", a refusal left for a person.
         self.allocate(); self.accept()
-        for state in ("BLOCKED", "BEHIND", "DIRTY", "DRAFT", "NEW_STATE"):
+        self.configure(auto_allowed=False, merge_state="BLOCKED")
+        result, _ = self.complete("--mode", "auto", "--writers-stopped")
+        self.assertEqual((result["status"], result.get("merge_waits")), ("PENDING", "BLOCKED"))
+        self.assertNotIn("merge_refused", result)
+        d = json.loads(self.data.read_text(encoding="utf-8"))
+        self.assertEqual((d.get("merge_calls", []), d["prs"][0]["state"]), ([], "OPEN"))
+        self.assertEqual(read_json(self.receipt)["delivery"], "PENDING")
+        self.configure(merge_state="CLEAN")
+        result, _ = self.cli(*shlex.split(result["resume"])[2:])
+        self.assertEqual(result["status"], "COMPLETE")
+        d = json.loads(self.data.read_text(encoding="utf-8"))
+        self.assertEqual(d["merge_calls"], [["pr", "merge", "1", "--merge", "--match-head-commit", self.sha,
+                                            "--repo", "github.com/test/project"]])
+        self.assertEqual(d["prs"][0]["state"], "MERGED")
+        self.assertFalse(self.task.exists())
+
+    def test_auto_disallowed_unmergeable_states_refuse_without_merge(self):
+        self.allocate(); self.accept()
+        for state in ("BEHIND", "DIRTY", "DRAFT", "NEW_STATE"):
             with self.subTest(state=state):
                 self.configure(auto_allowed=False, merge_state=state)
                 result, _ = self.complete("--mode", "auto")
                 self.assertEqual(result["status"], "PR")
                 self.assertIn("not mergeable: " + state, result["merge_refused"])
         d = json.loads(self.data.read_text(encoding="utf-8"))
-        self.assertEqual(d["merge_state_views"], ["BLOCKED", "BEHIND", "DIRTY", "DRAFT", "NEW_STATE"])
+        self.assertEqual(d["merge_state_views"], ["BEHIND", "DIRTY", "DRAFT", "NEW_STATE"])
         self.assertEqual(d.get("merge_calls", []), [])
         self.assertEqual(d["prs"][0]["state"], "OPEN")
         self.assertIsNone(d["prs"][0]["autoMergeRequest"])
@@ -4065,12 +4090,12 @@ ctypes.CDLL(None).pthread_exit(None)
         self.assertEqual(result["status"], "PENDING")
         self.assertEqual(json.loads(self.data.read_text(encoding="utf-8"))["auto_setting_reads"], 1)
 
-    def test_auto_disallowed_unknown_bound_refuses_without_merge(self):
+    def test_auto_disallowed_unknown_bound_waits_without_merge(self):
         self.allocate(); self.accept()
         self.configure(auto_allowed=False, merge_state="UNKNOWN")
         result, _ = self.complete("--mode", "auto")
-        self.assertEqual(result["status"], "PR")
-        self.assertIn("not mergeable: UNKNOWN", result["merge_refused"])
+        self.assertEqual((result["status"], result.get("merge_waits")), ("PENDING", "UNKNOWN"))
+        self.assertNotIn("merge_refused", result)
         d = json.loads(self.data.read_text(encoding="utf-8"))
         self.assertEqual(d["merge_state_views"], ["UNKNOWN"] * 10)
         self.assertEqual(d.get("merge_calls", []), [])
@@ -4154,8 +4179,8 @@ ctypes.CDLL(None).pthread_exit(None)
         self.assertNotIn("merge_refused", result)
         self.configure(merge_allowed=True, auto_allowed=False, pending=True)
         result, _ = self.complete("--mode", "auto")
-        self.assertEqual(result["status"], "PR")
-        self.assertIn("not mergeable: BLOCKED", result["merge_refused"])
+        self.assertEqual((result["status"], result.get("merge_waits")), ("PENDING", "BLOCKED"))
+        self.assertNotIn("merge_refused", result)
         self.assertTrue(self.task.exists())
         # Local-only cannot rewrite the delivery of a pushed PR; a local allocation keeps it (test_local_chain_*).
         result, _ = self.complete("--no-push", success=False)
