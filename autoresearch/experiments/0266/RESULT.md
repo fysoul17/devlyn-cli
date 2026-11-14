@@ -439,13 +439,13 @@ answer; * marks a C report that gives the sentence's last clause in its own word
 | 15 | c059 | safe | 400 | no | c060 | integer | 201 | yes |
 | 16 | c064 | safe | 400 | no | c063 * | integer | 201 | yes |
 
-- **Are the cells COMPLETE in C and not in B the cells that do not restrict? Yes, exactly.** In each arm the COMPLETE
-  cells are the cells that do not restrict, and the 19 restricting trees, and only they, use `Number.isSafeInteger`. In
-  each of them the Astra assessor makes one medium finding with G5's own value: "Number.isSafeInteger imposes an
-  unstated upper bound. The witness quantity is an exactly representable positive integer, but this validation rejects
-  it." (c008). c059, the one B tree with no parse-error handler, has a second: the `null` body of (a). So the difference
-  of 9 in COMPLETE and the difference of 9 in restricting trees are one observation counted twice. By replicate block:
-  in 10 blocks B restricts and C does not, in 4 both restrict, in 1 only C restricts (r6), in 1 neither (r10).
+- **In each arm, are the COMPLETE cells exactly those that do not restrict? Yes.** The 19 restricting trees, and only
+  they, use `Number.isSafeInteger`. In each of them the Astra assessor makes one medium finding with G5's own value:
+  "Number.isSafeInteger imposes an unstated upper bound. The witness quantity is an exactly representable positive
+  integer, but this validation rejects it." (c008). c059, the one B tree with no parse-error handler, has a second: the
+  `null` body of (a). So the difference of 9 in COMPLETE and the difference of 9 in restricting trees are one
+  observation counted twice. By replicate block: in 10 blocks B restricts and C does not, in 4 both restrict, in 1 only
+  C restricts (r6), in 1 neither (r10).
 - Where the restriction came from, as the reports tell it: 8 of the 19 restricting reports say the limit was added
   after the session's own reviewer raised it (B 6 of 14: c003 c011 c016 c027 c032 c035; C 2 of 5: c004 c023). The
   other 11 do not say.
@@ -453,8 +453,7 @@ answer; * marks a C report that gives the sentence's last clause in its own word
   for leaving `qty` unbounded; no B report does. 15 of 16 reports in each arm mention the limit or its absence. The two
   B trees that allow give a literal reason too ("`qty` only needs to be a positive whole number [...] There is no
   upper limit", c024), so that wording alone is not a sign of the sentence.
-- The failure path is not where the Claude arms differ on F11: malformed JSON is answered with a JSON 400 in B 15 of 16
-  trees and C 16 of 16.
+- Malformed JSON is answered with a JSON 400 in B 15 of 16 trees and C 16 of 16.
 - Cause of the difference in restricting trees: 3 C reports cite the sentence's last clause, which is consistent with
   the sentence at work in those 3. For the other 8 C trees that allow, the records show the choice, not its reason:
   **not established** beyond that.
@@ -465,8 +464,8 @@ answer; * marks a C report that gives the sentence's last clause in its own word
   probe and no frozen definition: it rests on the Astra assessor's reading of a request that does not name the case.
   Both differences in COMPLETE depend on that assessor's flags. The sentence's clauses match a difference only where a
   report cites one (the 3 Claude C reports above). The records do not show that the sentence caused either difference.
-  G5 only guards against C restricting more than B; no registered test reads C restricting less as an effect of the
-  sentence, and none compares the two engines.
+  G5 only guards against C restricting more than B by more than its margin (2 at 16 replicates, 1 at 8); no registered
+  test reads C restricting less as an effect of the sentence, and none compares the two engines.
 
 **(c) Claude F10: the event in 6 of 16 C cells.** From `probes.json`, the sessions and the final reports:
 
@@ -695,6 +694,14 @@ not established.
   model-mismatch attempts, which amendment 3's proof reads. Its `decision.json` is byte-equal to the live one. No copy
   is committed (DESIGN "Records" lists RESULT.md and the DECISIONS.md line; the file holds a host path). The runtime
   root `~/.local/share/nx01/0266-live` stays until the owner approves its deletion.
+- **Review of this result.** GPT Astra (ultra) and Grok 4.7, read-only. Pass 1 on `0f9cb229`: both REVISE; no number
+  differed from `decision.json`; the HIGH findings were four sentences that worded the two F11 arm differences as
+  effects of the sentence, put Claude's mechanically measured refusals on one footing with the unprobed `null`-body
+  case, and retired the wording ("not proposed again", the orchestrator's own phrase). All were taken with the
+  reviewers' smallest fixes, with the LOWER findings but one (the printed precision of p and of the ratios: rounded
+  figures of one record each). Pass 2 on `e59e6aae`, the fixes only: both SHIP, every HIGH closed; its three LOWER
+  wording points were taken. Before the review a checker recounted every number against the records and corrected four
+  (`2634e701`).
 
 ## Interpretation limits
 
