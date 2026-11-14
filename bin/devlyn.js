@@ -653,7 +653,8 @@ function installSkillInto(source, target, skillName, installedSkills) {
   try {
     fs.rmSync(stage, { recursive: true, force: true });
   } catch (error) {
-    throw new Error(`${dest} is installed, but ${moved ? `its previous copy at ${previous}` : stage} could not be removed: ${error.message}`);
+    const kept = fs.lstatSync(previous, { throwIfNoEntry: false }) ? `its previous copy at ${previous}` : stage;
+    throw new Error(`${dest} is installed, but ${kept} could not be removed: ${error.message}`);
   }
 }
 

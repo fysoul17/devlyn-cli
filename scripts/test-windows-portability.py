@@ -2594,7 +2594,7 @@ fs.rmSync = (file, ...rest) => {
         new = self.tree(self.package / 'config/skills/_shared')
         for case, half in (('at-once', ''), ('half-way', "rm(path.join(old, 'task-complete.py'));")):
             with self.subTest(case=case):
-                root, _, result = self.swap_fault(case, f"""
+                root, previous, result = self.swap_fault(case, f"""
 let old = dest;  // Where the previous copy is.
 fs.renameSync = (from, to) => {{ rename(from, to); if (from === dest) old = to; }};
 fs.rmSync = (file, ...rest) => {{
@@ -2607,6 +2607,10 @@ fs.rmSync = (file, ...rest) => {{
                 self.assertEqual(len(stages), 1)
                 self.assertIn(b'is installed', result.stderr)
                 self.assertIn(str(stages[0] / 'previous').encode(), result.stderr)
+                # The injected fault fired: its error is the cause, and only the file it deleted first is gone.
+                self.assertIn(b'EBUSY: resource busy or locked (injected)', result.stderr)
+                self.assertEqual(self.tree(stages[0] / 'previous'),
+                                 {p: b for p, b in previous.items() if not half or p != Path('task-complete.py')})
                 self.cli('-y')
                 self.assertEqual(self.tree(root / '_shared'), new)
                 self.assertTrue((root / '.devlyn-install.json').is_file())

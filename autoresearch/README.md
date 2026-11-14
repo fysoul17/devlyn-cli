@@ -86,7 +86,7 @@ autoresearch/
 ├── README.md           — this file (overview, metrics, next-hypotheses queue)
 ├── PRINCIPLES.md       — five principles + concrete operational tests
 ├── DECISIONS.md        — append-only one-line log: NNNN | ACCEPT/REVERT | desc | iter file
-├── HANDOFF.md          — what the next session needs to know to continue
+├── HANDOFF.md          — where the research record is, plus the standing rules
 ├── iterations/
 │   └── NNNN-<slug>.md  — one file per hypothesis (see playbooks/)
 ├── baselines/
