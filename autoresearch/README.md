@@ -60,9 +60,9 @@ These metrics define "did this hypothesis work?". Stable across iterations.
 
 ## Current work
 
-Read [`HANDOFF.md`](HANDOFF.md), then
+Read [`DECISIONS.md`](DECISIONS.md), newest entry last, then
 [0232](iterations/0232-harness-ladder.md).
-It owns the ladder rule, the stage-1 result, the resolve retirement (§8) and the next registration.
+It owns the ladder rule, the stage-1 result and the resolve retirement (§8).
 The earlier metrics and anti-overfitting discussion in this README describe the
 historical nine-fixture loop; they do not override 0232's ladder rule
 or NORTH-STAR's current quality/time/cost priority. Do not recreate a second queue here.

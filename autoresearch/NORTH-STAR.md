@@ -2,15 +2,7 @@
 
 This file is the single source of truth for the project's goal. Every other doc references this one. If a future session is uncertain about scope, contract, or direction, **read this file first** — do not infer from code, do not assume from older docs, and do not hallucinate intent.
 
-Current work: [0255 receipt runner](experiments/0255/README.md) connects unchanged
-0254 native accounting to a prospective Claude solo execution boundary while
-preserving independent execution and product gates. Codex retains its inherited
-path. Synthetic integration tests and unchanged 0253 read-only compatibility
-provide the evidence; no live owner, auth renewal, old regrade or efficacy draw
-occurred. 0252's internal loss cause and UNKNOWN whole cost remain unresolved.
-A future operational probe needs a separate frozen registration. Product wording
-and version stay unchanged. Commit, push, main merge and verified unnecessary
-resource cleanup are authorized; preserve active work, raw evidence and archives.
+Current work: [DECISIONS.md](DECISIONS.md), newest entry last.
 
 Prior delivery: PR202 delivered the 0251/0252 research below. Its accepted and
 frozen study source is 4.2.5, including PR200's comment-prefixed import correction.
@@ -37,8 +29,7 @@ pause overlapped d05's uninterrupted execution; no time is subtracted.
 [0250](experiments/0250/results/closure-v1.md) remain closed. Previous observations
 and operational smokes never count as fresh draws. Preserve failures and unknown
 costs. No global optimum or bare superiority is established. Ideate stays deferred;
-this closed study launches no automatic successor or pair escalation. See
-[HANDOFF](HANDOFF.md) for source/evidence custody and delivery.
+this closed study launches no automatic successor or pair escalation.
 
 - **0232 stage 1 closed on 2026-10-06** (§7). Native A stayed the admitted rung in both configurations. The instruction rung I was not admitted. Full resolve completed fewer cells than native at far higher cost.
 - **resolve remains retired** as a product-scope decision (0232 §8). The installed product is the principles plus the ideate/engines skills; pair is not a shipped guarantee.
