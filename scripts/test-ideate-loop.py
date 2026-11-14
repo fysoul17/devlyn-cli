@@ -3638,6 +3638,7 @@ class LoopFixture(unittest.TestCase):
         # merges the PR".
         _, data = self.remote(auto_allowed=False, merge_state="BLOCKED")
         self.plan("mw", [CHAIN[0]], {"mw.t1": {"product": "greeting"}}, delivery="auto")
+        (self.anchor / "docs/specs/queue.md").write_text("# Intent Queue\n", encoding="utf-8")
         result = self.drain(local=False)
         task = self.tasks(result)["mw.t1"]
         self.assertEqual((result["status"], task["result"], task["delivery"]), ("WAITING", "accepted", "PENDING"))
