@@ -204,16 +204,16 @@ that call. For another slot, the command's argument (`c090-B5-claude-C-r5`, on i
 When this amendment was written no registered verdict had been opened except two STOP records: c069's first attempt
 (amendment 2) and c090's, of which the fields listed under What happened were read. Of c090's `run/stdout` the
 orchestrator read event types, models, tool names, the `Agent` call's `subagent_type`, `model` and `description`, the
-init event's model, agent, skill and plugin names, the `task_*` system events, the result event's `subtype`,
-`is_error`, `num_turns`, `duration_ms` and `modelUsage` token counts, and the one `rate_limit_event`; no assistant
-text, no tool input or output otherwise, no product check, oracle or assessment result (the attempt has none). Of
-c090's folder it also read the first line of `run/stderr` (the status line), `checks.json` (the scope result),
-`snapshot.json`, `plan.json`'s model, the names of the transcript files and, by the proof command, the models and
-`isSidechain` marks of the transcript entries. The lane logs' `rc` values and the count of verdicts (153 of 176 slots
-with a final verdict, 154 with a verdict record, c090's STOP among them) were known. No probe, witness, judge or
-decision had run on a registered cell (the screen's decision and its event counts were known, as amendment 2 records,
-and the controls and the calibration, as registration.md records). The verifiers of this amendment read the same
-folder under the same limit.
+init event's model, agent, skill and plugin names, the `task_*` system events, the result event's `subtype`, `is_error`,
+`num_turns`, `duration_ms` and `modelUsage` token counts, and the one `rate_limit_event`; no assistant text, no tool
+input or output otherwise, no product check, oracle or assessment result (the attempt has none). Of c090's folder it
+also read the first line of `run/stderr` (the status line), `checks.json` (the scope result), `snapshot.json`,
+`plan.json`'s model, `usage.json` (the token counts by model), the names of the transcript files and, by the proof
+command, the models and `isSidechain` marks of the transcript entries. The lane logs' `rc` values and the count of
+verdicts (153 of 176 slots with a final verdict, 154 with a verdict record, c090's STOP among them) were known. No
+probe, witness, judge or decision had run on a registered cell (the screen's decision and its event counts were known,
+as amendment 2 records, and the controls and the calibration, as registration.md records). The verifiers of this
+amendment read the same folder under the same limit.
 
 ## Which cells ran under which rule
 
@@ -246,8 +246,40 @@ own. The rule changes no cell's run or grading, only whether a stopped slot is r
 
 ## Reviews
 
-(written by the orchestrator after the review)
+Reviewers: GPT Astra (ultra) and Grok 4.7, read-only, in parallel, and two Opus verifiers under the same limits (one
+on the driver's paths and its tests, one on the readers downstream of the archive and on this text). One pass; every
+finding was fixed or rejected with a reason.
+
+- **Pass 1 on `849f1a01`.** Astra: RUN, no CRITICAL or HIGH, five LOWER. Grok: RUN, no CRITICAL or HIGH, LOWER
+  findings. Both verifiers: RUN, no CRITICAL or HIGH, LOWER findings. Each traced the restart after the clearing, the
+  archive, the rerun's possible verdicts and what `decide.py`, `harm_check.py`, the judges and the witnesses read of
+  the archived attempt, and found the code to do what this file says.
+  - Taken: the proof was replaced (the first version said nothing when no sub-session line accounted for the other
+    model, did not compare the model the call names with the model that ran, and read neither the verdict's
+    violations, nor `modelUsage`, nor the transcripts: a verifier and Grok); a test that pins each clause of the rule
+    at `redispatch()` (the first tests left the exact reason, the status, the teardown, the clearing and the screen
+    clause undecided, because other lines of the driver decide first for every verdict `run_cell.py` writes: Astra,
+    Grok, and a verifier whose in-memory mutants showed it); the module docstring; and the text: 153 final verdicts and
+    154 records, which 22 slots are left, what the latch shows about the other attempts, the counts as stream events,
+    what the registered check reads and whom it holds to the plan's model, what `checks.json` holds, the bias
+    paragraph (what is selected, what is kept and charged), what was known of the outcomes, and where RESULT.md's list
+    comes from.
+  - Rejected: a test of an archived mismatch followed by a launch fault and of other STOP sequences (the once-per-slot
+    rule of a launch fault is unchanged and reads its own reason only; the order the new line could affect is tested);
+    a proof that passes a sub-session started by a skill or by an agent definition with its own model, or an owner
+    stream with a `<synthetic>` event (a proof that fails keeps the latch, the safe side; part 2 says so).
+- **The fixes (`d67ecb73`)** were checked by the orchestrator against the list. No CRITICAL or HIGH was open, so the
+  full review was not repeated. The proof's block equals the command and its output byte for byte; the new test
+  fails for each of five versions of `redispatch()` that lack one clause (the implementer's in-memory check).
+- **Tests**: the 0266 suite on `849f1a01`: 293 passed, 1 skipped (the opt-in copy proof), 231 subtests; on
+  `d67ecb73`: 294 passed, 1 skipped, 237 subtests. The commit after it changes this file only. 0265's suite was not
+  run: nothing it loads changed.
 
 ## Applied
 
-(written by the orchestrator)
+- **The proof** on c090 read `PROOF: PASS` (the block above; 12:26 KST). It is run once more from the run worktree
+  before the latch is cleared (operator step 1); RESULT.md records that run.
+- **Where the run stood**: 153 final verdicts and c090's STOP; no cell dispatched since the latch at 11:50:32; no
+  witness, probe, harm check, judge or `decide.py` run on a registered cell. c001-c089 and the 64 Codex cells ran
+  before this amendment; c090's rerun and every later cell run under it. The restart, c090's archive and its rerun are
+  reported in RESULT.md.
