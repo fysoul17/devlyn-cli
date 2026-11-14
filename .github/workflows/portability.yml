@@ -139,7 +139,7 @@ jobs:
     container:
       image: python:3.12-bookworm
       options: --init
-    # The four suites take about 5 minutes here (run 42753390614) and 11 to 17 on a Mac.
+    # The five suites take about 5 minutes here (run 42753390614) and 11 to 17 on a Mac.
     timeout-minutes: 30
     steps:
       - name: Trust the container checkout for this job
@@ -205,8 +205,9 @@ jobs:
     # The platform the run-folder channels were examined on, as the runner's own user on a
     # case-insensitive disk, and the darwin branches of the shipped helpers, which no other job runs.
     runs-on: macos-15
-    # The step took 25 minutes on a developer's Mac, 13 of them the task-complete self-test.
-    timeout-minutes: 60
+    # The step took 1,185 to 1,471 s on a developer's Mac (the task-complete self-test 798 s of the slower run). A
+    # hosted runner is slower: the limit is to be set from the first hosted run's measured time plus margin.
+    timeout-minutes: 120
     steps:
       # The suites run from a full checkout of the tested SHA: they read earlier commits and release tags.
       - uses: actions/checkout@v4
@@ -319,10 +320,13 @@ jobs:
           identity = json.loads((root / 'package/identity.json').read_text(encoding='utf-8'))
           with io.TextIOWrapper(io.BytesIO()) as default_text:
               default_encoding = default_text.encoding
+          # PowerShell writes count-in-use's process list in the console output code page: 0 means no console.
           observed = {'platform': sys.platform, 'python': sys.executable, 'utf8_mode': sys.flags.utf8_mode,
                       'locale': locale.getencoding(), 'default_textio': default_encoding,
                       'stdin': sys.stdin.encoding, 'stdout': sys.stdout.encoding, 'stderr': sys.stderr.encoding,
-                      'windows_acp': ctypes.windll.kernel32.GetACP(), **identity}
+                      'windows_acp': ctypes.windll.kernel32.GetACP(),
+                      'console_output_cp': ctypes.windll.kernel32.GetConsoleOutputCP(),
+                      'oem_cp': ctypes.windll.kernel32.GetOEMCP(), **identity}
           (logs / 'identity.json').write_text(json.dumps(observed, indent=2) + '\n', encoding='utf-8')
           print('Native Windows tested artifact: ' + json.dumps(observed), flush=True)
           assert sys.platform == 'win32' and sys.flags.utf8_mode == 0, observed
