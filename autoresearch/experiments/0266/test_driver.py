@@ -123,6 +123,12 @@ TEARDOWN = dict(status='STOP', teardown='FAILED', identity={'status': 'MATCH'}, 
                 scope_error='not taken: the teardown is not proved',
                 reason="teardown failed: Command '['docker', 'run', '...']' returned non-zero exit status 2. tar: "
                        './exp/tmp79kh78r5/fifo_noperm: Cannot mkfifo: Permission denied\n')
+# c090's shape (amendment 3): the owner ran the plan's model and itself started a sub-session on another; the teardown
+# was clean and nothing was graded.
+MISMATCH = dict(status='STOP', reason='model identity mismatch', teardown='CLEAN', owner_ran=True,
+                owner_status='EXITED_0', scope_violations=[], changed=['src/exports.js'],
+                identity=dict(owner='MATCH', status='MISMATCH', gaps=[], violations=[
+                    'claude owner ran claude-sonnet-5-5', 'claude session s ran claude-sonnet-5-5']))
 
 
 def cells(output, outcomes):
@@ -1369,17 +1375,21 @@ class Faults(unittest.TestCase):
                 with self.assertRaisesRegex(driver.Stopped, 'harm latch in lane claude'):
                     lane(root, 'codex').assert_active()
 
-    def restart(self, root, slots, name, *, cleared=True, outcomes=(COMPLETE,), **attempt):
-        """Amendment 2: a lane started again (run()) on a slot whose teardown STOP is on file, against a fake Docker
+    def restart(self, root, slots, name, *, cleared=True, outcomes=(COMPLETE,), stop=TEARDOWN, archived=(), **attempt):
+        """Amendments 2 and 3: a lane started again (run()) on a slot whose STOP (stop; c069's failed teardown unless
+        named) is on file, its archive holding the verdicts `archived` (stop-1, stop-2, ...), against a fake Docker
         (attempt: its state). cleared: the STOP latched both lanes and an amendment cleared that latch; otherwise the
         process died before it latched. Returns (run()'s Stopped or None, Docker's calls, the fakes)."""
         seal(root)
         first = lane(root, 'claude', slots)
         patches, calls, fakes = self.attempt(first.output, name, **attempt)
-        (first.output / f'verdict-{name}.json').write_text(json.dumps(dict(TEARDOWN, cell=name)))
+        for number, old in enumerate(archived, 1):
+            (first.output / f'verdict-{name}.stop-{number}.json').write_text(json.dumps(dict(old, cell=name)))
+        (first.output / f'verdict-{name}.json').write_text(json.dumps(dict(stop, cell=name)))
         if cleared:
-            first.latch(name, 'STOP ' + TEARDOWN['reason'])  # as terminal() latched it
-            amendment = root / 'amendment-2.md'
+            first.latch_for(name, stop)  # as dispatch() and terminal() latched it
+            first.latch(name, 'STOP ' + stop['reason'])
+            amendment = root / 'amendment.md'
             amendment.write_text('resolved')
             first.clear_latch(amendment)
         first.lock.close()
@@ -1533,6 +1543,169 @@ class Faults(unittest.TestCase):
             self.assertIn("the attempt's credential copy is still in scratch", latch['reason'])
             with self.assertRaisesRegex(driver.Stopped, 'harm latch in lane claude'):
                 lane(root, 'codex').assert_active()
+
+    def test_a_cleared_model_mismatch_stop_is_archived_and_run_again(self):
+        """Amendment 3, allowed: c090's STOP (its owner MATCH, its teardown clean), latched as `identity MISMATCH` and
+        cleared, met when the lane starts again: archived as stop-1 as it is and the slot run again, with no recovery
+        step (no Docker call, no copy, no seal, no recover); no latch. Violating: before, the lane ended there again,
+        the slot without a final verdict."""
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            name = row('c001-')[0]
+            with mock.patch.object(driver.Driver, 'recover') as recover:
+                result, calls, fakes = self.restart(root, [row('c001-')], name, stop=MISMATCH)
+            self.assertIsNone(result)
+            recover.assert_not_called()
+            self.assertEqual((calls, fakes['called']), ([], [name]))
+            for fake in ('preserve', 'seal', 'evidence'):
+                fakes[fake].assert_not_called()
+            output = root / 'output'
+            self.assertEqual(json.loads((output / f'verdict-{name}.stop-1.json').read_text()),
+                             dict(MISMATCH, cell=name))
+            self.assertTrue((output / f'{name}.stop-1/run/started.json').is_file())
+            self.assertEqual(json.loads((output / f'verdict-{name}.json').read_text())['status'], 'COMPLETE')
+            log = events(root, 'claude')
+            self.assertEqual([e['reason'] for e in log if e['event'] == 'harm_latch'], ['identity MISMATCH'])
+            self.assertEqual(log[-1]['event'], 'complete')
+            self.assertIsNone(latched(root, 'claude'))
+
+    def test_a_model_mismatch_stop_no_amendment_cleared_latches_both_lanes(self):
+        """Amendment 3, violating: a model mismatch that a cell run returns latches both lanes at once
+        (`identity MISMATCH`); so does the same STOP met at a restart with no amendment (the process died before its
+        latch), before any wait; and so does a second mismatch on a slot whose first one was run again (a new
+        verdict: no amendment cleared it). Nothing is archived but that first one."""
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            name = row('c002-')[0]
+            with self.assertRaisesRegex(driver.Stopped, 'harm latch in lane claude'):
+                self.run_lane(root, 'claude', [row('c002-')], {name: [MISMATCH]})
+            self.assertEqual(self.called, [name])
+            self.assertFalse(list((root / 'output').glob(f'*{name}.stop-*')))
+            self.assertEqual(latched(root, 'claude')['reason'], 'identity MISMATCH')
+            with self.assertRaisesRegex(driver.Stopped, 'harm latch in lane claude'):
+                lane(root, 'codex').assert_active()
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            name = row('c001-')[0]
+            result, calls, fakes = self.restart(root, [row('c001-')], name, cleared=False, stop=MISMATCH)
+            self.assertIsInstance(result, driver.Stopped)
+            fakes['ready'].assert_not_called()
+            self.assertEqual((fakes['called'], calls), ([], []))
+            self.assertFalse(list((root / 'output').glob(f'*{name}.stop-*')))
+            self.assertEqual(latched(root, 'claude')['reason'], 'identity MISMATCH')
+            with self.assertRaisesRegex(driver.Stopped, 'harm latch in lane claude'):
+                lane(root, 'codex').assert_active()
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            name = row('c001-')[0]
+            repeat = dict(MISMATCH, owner_seconds=41.0)  # a new verdict: no amendment cleared it
+            result, calls, fakes = self.restart(root, [row('c001-')], name, stop=MISMATCH, outcomes=(repeat,))
+            self.assertIsInstance(result, driver.Stopped)
+            self.assertEqual(fakes['called'], [name])
+            self.assertEqual(sorted(p.name for p in (root / 'output').glob(f'verdict-{name}.stop-*')),
+                             [f'verdict-{name}.stop-1.json'])
+            latch = latched(root, 'claude')
+            self.assertEqual((latch['cell'], latch['reason']), (name, 'identity MISMATCH'))
+
+    def test_a_cleared_model_mismatch_stop_with_one_archived_on_the_slot_ends_its_lane(self):
+        """Amendment 3, violating: once per slot. A cleared mismatch on a slot whose archive holds a mismatch already
+        stays a STOP: the lane ends at it before any wait, without a new latch, and nothing is archived or run.
+        Allowed: an archived attempt of another reason (a launch fault) does not count; the slot is run again."""
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            name = row('c001-')[0]
+            result, calls, fakes = self.restart(root, [row('c001-')], name, stop=MISMATCH, archived=(MISMATCH,))
+            self.assertIsInstance(result, driver.Stopped)
+            self.assertIn(f'{name}: STOP model identity mismatch', str(result))
+            fakes['ready'].assert_not_called()
+            self.assertEqual((calls, fakes['called']), ([], []))
+            self.assertEqual(sorted(p.name for p in (root / 'output').glob(f'*{name}.stop-*')),
+                             [f'verdict-{name}.stop-1.json'])
+            self.assertEqual(json.loads((root / f'output/verdict-{name}.json').read_text()), dict(MISMATCH, cell=name))
+            self.assertIsNone(latched(root, 'claude'))
+            lane(root, 'codex').assert_active()
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            name = row('c001-')[0]
+            result, calls, fakes = self.restart(root, [row('c001-')], name, stop=MISMATCH, archived=(LAUNCH,))
+            self.assertIsNone(result)
+            self.assertEqual((calls, fakes['called']), ([], [name]))
+            self.assertEqual(json.loads((root / f'output/verdict-{name}.stop-2.json').read_text())['reason'],
+                             MISMATCH['reason'])
+
+    def test_a_cleared_identity_stop_whose_owner_did_not_match_or_that_is_unverified_ends_its_lane(self):
+        """Amendment 3, violating: a cleared mismatch in which the owner itself ran another model (identity.owner
+        MISMATCH), and a cleared `model identity unverified`, stay STOPs: the lane ends at it before any wait, without
+        a new latch, and nothing is archived or run."""
+        for stop in (dict(MISMATCH, identity=dict(MISMATCH['identity'], owner='MISMATCH')),
+                     dict(MISMATCH, reason='model identity unverified',
+                          identity=dict(MISMATCH['identity'], status='UNVERIFIED', violations=[], gaps=['a gap']))):
+            with self.subTest(reason=stop['reason'], owner=stop['identity']['owner']), \
+                    tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                name = row('c001-')[0]
+                result, calls, fakes = self.restart(root, [row('c001-')], name, stop=stop)
+                self.assertIsInstance(result, driver.Stopped)
+                self.assertIn(f'{name}: STOP {stop["reason"]}', str(result))
+                fakes['ready'].assert_not_called()
+                self.assertEqual((calls, fakes['called']), ([], []))
+                self.assertFalse(list((root / 'output').glob(f'*{name}.stop-*')))
+                self.assertEqual(json.loads((root / f'output/verdict-{name}.json').read_text()), dict(stop, cell=name))
+                self.assertIsNone(latched(root, 'claude'))
+                lane(root, 'codex').assert_active()
+
+    def test_a_cleared_model_mismatch_stop_of_a_screen_slot_is_passed_and_not_run_again(self):
+        """Amendment 3 leaves the screen's rule (DESIGN "Stage S" rule 4): a screen slot's cleared mismatch is passed
+        and reads as an unknown; nothing is archived or run again."""
+        screen = driver.rows([str(HERE / 'screen.tsv')])[:2]
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            first, second = screen[0][0], screen[1][0]
+            seal(root)
+            d = lane(root, 'claude', screen)
+            (d.output / f'verdict-{first}.json').write_text(json.dumps(dict(MISMATCH, cell=first)))
+            stopped = (d.output / f'verdict-{first}.json').read_text()
+            d.latch_for(first, MISMATCH)
+            amendment = root / 'amendment.md'
+            amendment.write_text('resolved')
+            d.clear_latch(amendment)
+            d.lock.close()
+            d = self.run_lane(root, 'claude', screen, {second: [COMPLETE]})
+            self.assertEqual(self.called, [second])
+            self.assertEqual((d.output / f'verdict-{first}.json').read_text(), stopped)
+            self.assertFalse(list(d.output.glob(f'*{first}.stop-*')))
+            self.assertEqual([e['cell'] for e in events(root, 'claude') if e['event'] == 'skip_cleared_stop'], [first])
+
+    def test_the_model_mismatch_rule_reads_each_of_its_clauses(self):
+        """Amendment 3, at the function: redispatch() on a driver whose state holds the cleared latch of the verdict
+        on file runs c090's shape again and nothing that differs from it in one clause. For every verdict run_cell.py
+        writes today another line of the driver decides first, so only this test pins these clauses."""
+        registered, screen = row('c001-'), driver.rows([str(HERE / 'screen.tsv')])[0]
+        for label, slot, stop, cleared, expected in (
+                ("c090's shape", registered, MISMATCH, True, True),
+                ('the latch not cleared', registered, MISMATCH, False, False),
+                ('teardown FAILED', registered, dict(MISMATCH, teardown='FAILED'), True, False),
+                ('identity UNVERIFIED with the same reason', registered,
+                 dict(MISMATCH, identity=dict(MISMATCH['identity'], status='UNVERIFIED')), True, False),
+                ('a reason that only starts with it', registered,
+                 dict(MISMATCH, reason=MISMATCH['reason'] + ': x'), True, False),
+                ('a screen slot whose owner did not run', screen, dict(MISMATCH, owner_ran=False), True, False)):
+            with self.subTest(label), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                name = slot[0]
+                d = lane(root, 'claude', [slot])
+                verdict = dict(stop, cell=name)
+                (d.output / f'verdict-{name}.json').write_text(json.dumps(verdict))
+                d.latch_for(name, verdict)  # as dispatch() and terminal() latched it
+                d.latch(name, 'STOP ' + verdict['reason'])
+                if cleared:
+                    amendment = root / 'amendment.md'
+                    amendment.write_text('resolved')
+                    d.clear_latch(amendment)
+                try:
+                    self.assertIs(d.redispatch(name, verdict), expected)
+                finally:
+                    d.lock.close()
 
 
 class LaneEnd(unittest.TestCase):
