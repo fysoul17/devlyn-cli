@@ -39,6 +39,7 @@ LAUNCH_FAULT, MEMORY_KILL = 'launch fault: ', 'memory kill: '
 ACCOUNT_FAULT = 'shared account fault during execution: '  # a Codex refresh_token_reused among them (quota.py)
 ONCE = (LAUNCH_FAULT, MEMORY_KILL, ACCOUNT_FAULT)  # redispatched once per slot; a repeat on the slot stays a STOP
 TEARDOWN_FAILED = 'teardown failed: '  # amendment 2: redispatched on a registered slot once an amendment cleared it
+MODEL_MISMATCH = 'model identity mismatch'  # amendment 3: run again once per registered slot once its latch is cleared
 GIB = 2**30
 COLUMNS = ('B', 'C', 'C-K1', 'C-K2', 'C-K3')  # the schedules' arm columns (prepare.arm_package)
 OPERATOR_HOLD = 'operator-hold'  # in the runtime root: while it exists, no lane starts a new cell
@@ -458,17 +459,24 @@ class Driver:
 
     def redispatch(self, name, verdict):
         """Whether a STOP is archived and its slot run again: a proven Docker loss, the slot's first launch fault,
-        memory kill or shared account fault, and (amendment 2) a registered slot's failed teardown once an amendment
-        has cleared its latch; dispatch() proves the teardown of a Docker loss or a failed teardown first (recover).
-        Anything else, a repeat of one of those three on the slot among it and a failed teardown no amendment cleared,
-        stays a STOP, which the caller latches for both lanes. The repeat is read from the slot's archive, so it is a
-        STOP at a restart too. A screen slot is run again only when no owner ran in the STOP (DESIGN "Stage S" rule 4:
-        no screen cell is run again), and never for a failed teardown."""
+        memory kill or shared account fault, (amendment 2) a registered slot's failed teardown once an amendment has
+        cleared its latch, and (amendment 3) a registered slot's first model identity mismatch with its owner MATCH
+        and a clean teardown once an amendment has cleared its latch; dispatch() proves the teardown of a Docker loss
+        or a failed teardown first (recover). Anything else, a repeat of one of those three on the slot among it and a
+        failed teardown no amendment cleared, stays a STOP, which the caller latches for both lanes. The repeat is read
+        from the slot's archive, so it is a STOP at a restart too. A screen slot is run again only when no owner ran in
+        the STOP (DESIGN "Stage S" rule 4: no screen cell is run again), and never for a failed teardown."""
         if self.screen_slot(name) and verdict.get('owner_ran') is not False:
             return False
         reason = str(verdict.get('reason', ''))
         if reason.startswith(TEARDOWN_FAILED) and self.cleared(name) and not self.screen_slot(name):
             return True
+        if reason == MODEL_MISMATCH:
+            identity = verdict.get('identity') or {}
+            return (identity.get('status') == 'MISMATCH' and identity.get('owner') == 'MATCH'
+                    and verdict.get('teardown') == 'CLEAN' and self.cleared(name) and not self.screen_slot(name)
+                    and not any(json.loads(path.read_text()).get('reason') == MODEL_MISMATCH
+                                for path in self.output.glob(f'verdict-{name}.stop-*.json')))
         kind = next((prefix for prefix in ONCE if reason.startswith(prefix)), None)
         if kind and any(str(json.loads(path.read_text()).get('reason', '')).startswith(kind)
                         for path in self.output.glob(f'verdict-{name}.stop-*.json')):
