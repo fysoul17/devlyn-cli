@@ -201,14 +201,14 @@ publication mode pushes no task commit and opens no PR. Delivery is `COMPLETE` w
 `pr` pushes the exact accepted task ref and creates/reuses its exact repository,
 head and base PR. While OPEN, it cancels owned auto-merge, reports `PR` with its URL
 and retains the checkout. Once MERGED by any method, either mode cleans released
-resources in that call, on resume or at the next allocation. Default `auto` also requests
-a `--merge --match-head-commit <accepted SHA>` merge. Repository
-checks/reviews and merge policy remain authoritative: no admin bypass, strategy
+resources in that call, on resume or at the next allocation. Default `auto` also
+merges the accepted commit. Merge policy remains authoritative: no admin bypass, strategy
 fallback or repository setting changes. When the repository disallows merge
-commits or refuses the request, delivery reports `PR` with `merge_refused` and
+commits or refuses the merge, delivery reports `PR` with `merge_refused` and
 the PR waits for a person. Command success alone never proves merge.
 
-`PENDING` retains the workspace and reports a receipt-based resume command.
+`PENDING` retains the workspace; its receipt-based resume command merges once
+required checks or reviews pass, or a person merges it.
 `BLOCKED` names the cause and retry action; repair that condition before retrying.
 Resume reobserves Git/PR state under a per-receipt lock, reuses the original
 acceptance and performs only missing eligible effects.
