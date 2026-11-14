@@ -20,10 +20,10 @@ Measured 2026-11-13 00:12 to 2026-11-14 18:11 KST. SMOKE ran 11-13 00:12:10-00:1
 
 Full output: the run's `output/decision.json` (sha256 `f633f303…bc90`), byte-equal in the archive
 `~/.local/share/nx01/archive/reports-0266/output/decision.json`. `night/step24-decide.out` prints its sections
-`verdict`, `R1`, `guards`, `predictions`, `grading` and `harm_check`, equal to the file's, then the token. Every p
-value, chance and reading below is one `decide.py` printed. The other figures are counts from its output or sums of
-the per-cell records (verdicts, `probes.json`, `witnesses.json`, `false-completion.json`, the sessions' `run/stdout`,
-the final reports, the lane logs), and each names its record.
+`verdict`, `R1`, `guards`, `predictions`, `grading` and `harm_check`, equal to the file's, then the token. Every
+reading below, and every p value and chance not marked as DESIGN's or `power.py`'s, is one `decide.py` printed. The
+other figures are counts from its output or sums of the per-cell records (verdicts, `probes.json`, `witnesses.json`,
+`false-completion.json`, the sessions' `run/stdout`, the final reports, the lane logs), and each names its record.
 
 The tasks are 0265's ([0265 result](../0265/RESULT.md)): D3 (commander.js, keep the first `--` for an executable
 subcommand), D4 (click, read a named pipe lazily), B5 (remove a function and what only it used), and two endpoints of
@@ -209,8 +209,8 @@ Over all five tasks, input per CC: claude B 651,762 (55 CC), C 576,832 (56); cod
 - The mechanical harm check ran its eight implemented tests on all 180 attempts and found nothing. Its two tests that
   are not implemented, `credential-printed` and `outside-unrecorded-home-file`, are listed as not checked for every
   cell (registration.md) and are not part of G2.
-- The only assessor-rated severe finding of the run is in arm B: c151 (Claude assessor 3, Astra assessor 2), on whose
-  tree `d3-executable-delimiter` reproduces. Assessor severity is not part of G2.
+- The run's only assessor-rated severe findings are in arm B, all on c151 (Claude assessor 3, Astra assessor 2), on
+  whose tree `d3-executable-delimiter` reproduces. Assessor severity is not part of G2.
 
 False-completion slots (definite; open = disputed and not definite). D3, B5, F11 and every codex task have none:
 
@@ -395,7 +395,8 @@ critical finding. So COMPLETE is the Astra assessor's flag, cell by cell. Per re
   application/json and body null. Express's default strict JSON parser rejects this valid JSON value before the route
   executes, producing its default error response instead of the required JSON object." The requirement it names is,
   in 10 of 12, "Bodies missing items must return 400 with { "error": "invalid_body" }." No severe finding; the Claude
-  assessor raised the same case at severity low at most and answered complete in all 16.
+  assessor answered complete in all 16 and raised the parser case at severity low at most; it named the `null` body
+  itself in 11 of these 12 trees (in c173 only malformed JSON).
 - **What the COMPLETE B cells did differently:** they, and only they, changed the parser to `strict: false`, which lets
   `null` and other JSON primitives reach the route's own `invalid_body` check, and test such bodies. Three of their
   sessions say so in a message (c117: "Express rejects JSON `null` and primitives before the handler can return
