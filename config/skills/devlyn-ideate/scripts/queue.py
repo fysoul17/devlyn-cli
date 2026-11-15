@@ -993,8 +993,9 @@ def annotate(v, refused):
 
 def executor_left_nothing(state):
     """What an active task's executor left when its execution log ends in an exit or in a start that failed, and no
-    submission is in place; nothing for a start, which may still be running."""
-    if state["kind"] != "active" or {"invalid", "inputs_changed"} & state.keys() or (state["path"].parent / "submission.json").exists():
+    submission is in place or retired; nothing for a start, which may still be running."""
+    if (state["kind"] != "active" or {"invalid", "inputs_changed"} & state.keys() or (state["path"].parent / "submission.json").exists()
+            or any(state["path"].parent.glob("submission.retired-*.json"))):
         return None
     try:
         events = [line.partition(" ")[2] for line in state["path"].with_name("executions.log").read_bytes().decode("utf-8").splitlines()]
@@ -2477,6 +2478,25 @@ class QueueTests(unittest.TestCase):
         self.assertIn("loop rl is not queued in this repository", self.cli("withdraw", "rl", code=1)["reason"])
         self.assertEqual((sorted(path.name for path in report.parent.iterdir()), report.read_text(encoding="utf-8")),
                          (["drain-report.md"], "# Drain report — rl\n"))
+
+    def test_withdraw_reads_past_prunable_missing_and_bare_worktrees(self):
+        """D1, E6. Prediction: withdraw prints WITHDRAWN beside a registered worktree whose folder stays without its .git
+        file (Git lists it prunable) and a locked worktree whose folder is gone, and in the linked worktree of a bare clone,
+        whose bare row has no HEAD line. Without the prunable skip or the folder check, git ls-files there fails the
+        withdraw; without the HEAD check, the bare row raises KeyError."""
+        import shutil
+        prunable, gone, bare, work = self.root / "prunable", self.root / "gone", self.root / "bare.git", self.root / "work"
+        for path in (prunable, gone):
+            git(self.anchor, "worktree", "add", "-q", "--detach", str(path), env=self.env)
+        (prunable / ".git").unlink()
+        git(self.anchor, "worktree", "lock", str(gone), env=self.env)
+        shutil.rmtree(gone)
+        self.cli("add", self.meta)
+        self.assertEqual(self.cli("withdraw", "inv")["status"], "WITHDRAWN")
+        subprocess.run(["git", "clone", "-q", "--bare", str(self.anchor), str(bare)], check=True, env=self.env)
+        git(bare, "worktree", "add", "-q", str(work), "main", env=self.env)
+        self.cli("add", write_package(work, "inv", self.tasks), cwd=work)
+        self.assertEqual(self.cli("withdraw", "inv", cwd=work)["status"], "WITHDRAWN")
 
     def test_a_legacy_row_is_replaced_only_by_its_one_exact_claim(self):
         """Q. Prediction: a loop's queue file hides the legacy row whose exact text and occurrence it records, line endings

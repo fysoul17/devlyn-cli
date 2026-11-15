@@ -2968,9 +2968,10 @@ class LoopFixture(unittest.TestCase):
         # instructions offered, from an executor that exits while a child of it still holds a worktree file open, leaves
         # aa.t1 active, waiting for that writer with the submission in place and its dependent pending. Once the child has
         # ended, the next drain retires the submission without running the executor: aa.t1 waits with its cause and the
-        # retired file's path, kept under that name and named in the report, with no terminal commit. The drain after that
-        # runs the executor again and accepts the loop. Before: the first C5 commit retired the submission while the child
-        # could still write, and before C5 aa.t1 became [F] blocked-infrastructure and was never run again.
+        # retired file's path, kept under that name and named in the report, with no terminal commit, and status names no
+        # aa.t1 line. The drain after that runs the executor again and accepts the loop. Before: the first C5 commit retired
+        # the submission while the child could still write, and before C5 aa.t1 became [F] blocked-infrastructure and was
+        # never run again; then status said its executor left nothing to accept.
         infrastructure = {"kind": "blocked-infrastructure", "detail": "package registry unreachable"}
         self.plan("aa", CHAIN, {"aa.t1": {"check_only": True, "runner": False, "review": False, "blockers": [infrastructure],
                                           "linger": True}, "aa.t2": {"product": "app"}})
@@ -2997,6 +2998,7 @@ class LoopFixture(unittest.TestCase):
         self.assertEqual((tasks["aa.t1"].get("terminal"), submission.exists(), json.loads(retired.read_text(encoding="utf-8"))["blockers"],
                           self.calls("aa.t1")), (None, False, [infrastructure], 1))
         self.assertIn(reason, self.report("aa"))
+        self.assertEqual([line for line in self.cli("status", "--repo", self.anchor)["blockers"] if line.startswith("aa.t1")], [])
         self.behaviors["aa.t1"] = {"product": "greeting"}
         tasks = self.tasks(self.drain())
         self.assertEqual({identity: task["result"] for identity, task in tasks.items()}, {"aa.t1": "accepted", "aa.t2": "accepted"})
