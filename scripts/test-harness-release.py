@@ -478,8 +478,9 @@ assert.deepEqual(fs.readdirSync(path.join(store, 'devlyn-cli')), []);
             script = ("if (process.argv[2]) Object.defineProperty(process, 'platform', {value: process.argv[2]});"
                       "const rows = require(process.argv[1]).requirements();"
                       "process.stdout.write(JSON.stringify(rows.find((r) => r.name === 'git-bash')));")
+            env = {**clean, 'PATH': str(folder), **variables}
             result = run([NODE, '-e', script, self.package / 'bin/harness-status.js', platform],
-                         env={**clean, 'PATH': str(folder), **variables})
+                         env={key: value for key, value in env.items() if value is not None})
             return json.loads(result.stdout)
 
         def stub(name, body=None):
@@ -521,6 +522,17 @@ assert.deepEqual(fs.readdirSync(path.join(store, 'devlyn-cli')), []);
             self.assertEqual(probe(wrapper), row(True, version))
             self.assertEqual(probe(wrapper, BASH_ENV=str(startup)), row(True, version))
             self.assertFalse(log.exists())
+        # A bash at shell level 1 that thinks sshd started it (SSH_CLIENT set, or stdin a socket, as Node's pipes are)
+        # reads ~/.bashrc even under -p: macOS /bin/bash 3.2.57 and Ubuntu's bash 5.2.21 do. The real bash itself, as a
+        # /bin/sh wrapper would raise SHLVL and hide the case. Its `pwd` function would make the row read as Git Bash.
+        home, marker = self.case / 'bashrc home', self.case / 'bashrc.marker'
+        home.mkdir()
+        (home / '.bashrc').write_text(f"echo sourced >> '{marker}'\npwd() {{ echo 'C:/from the bashrc/'; }}\n", encoding='utf-8')
+        for level in ('0', None):
+            with self.subTest('a ~/.bashrc', SHLVL=level):
+                self.assertEqual(probe(Path(real).parent, HOME=str(home), SSH_CLIENT='192.0.2.1 50000 22', SHLVL=level),
+                                 row(False, version))
+                self.assertFalse(marker.exists())
 
     def test_status_source_repository_and_linked_worktree_identity(self):
         repo = self.init_repo(self.case / 'repo')

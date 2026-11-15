@@ -71,9 +71,10 @@ function requirements() {
     ['python', true, 'python3', ['-B', '--version']],
     ['git', true, 'git', ['--version']],
     // Git Bash is a bash whose builtin `pwd -W` (an MSYS2 patch) prints a Windows path; its version label no longer
-    // tells it from Cygwin's. -p reads no startup file. macOS and Linux bashes refuse -W, so there this row (never
-    // required) is unavailable.
-    ['git-bash', process.platform === 'win32', 'bash', ['-p', '-c', 'echo "$BASH_VERSION"; cd / && pwd -W']],
+    // tells it from Cygwin's. -p reads no BASH_ENV or ENV file; --norc no ~/.bashrc, which a bash at shell level 1
+    // otherwise reads when SSH_CLIENT is set or stdin is a socket (Node's pipes are). Long options come first. macOS
+    // and Linux bashes refuse -W, so there this row (never required) is unavailable.
+    ['git-bash', process.platform === 'win32', 'bash', ['--norc', '-p', '-c', 'echo "$BASH_VERSION"; cd / && pwd -W']],
     // gh 2.91 and later writes a telemetry device id into its state folder on every command unless this is off.
     ['gh', false, 'gh', ['--version'], { GH_TELEMETRY: 'false' }],
   ];
