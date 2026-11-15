@@ -3174,8 +3174,9 @@ for (const token of tokensOf(calls[0])) assert.ok(dirs.every((dir) => !dir.inclu
     def test_batches_stay_within_one_page_and_a_failed_lister_keeps_its_own_batch(self):
         # Prediction (I7, unit): thirty paths of about 310 bytes are split into two or more lists, none with more than 4096
         # bytes of arguments (each with its NUL), each path in exactly one, and each copy is judged in its own batch's list.
-        # A lister that exits non-zero, times out, cannot start, is refused its arguments (E2BIG) or overflows its buffer
-        # after printing the witness but before any user's row keeps every copy of its batch and only those; a path that
+        # A lister that exits non-zero, times out, cannot start, is refused its arguments (E2BIG), overflows its buffer
+        # after printing the witness but before any user's row, or exits 0 with an error (a shell that traps the timeout's
+        # signal) keeps every copy of its batch and only those; a path that
         # alone is over the bound is kept and never listed. Cannot run before the change.
         self.node(r"""
 const dirs = Array.from({ length: 30 }, (_, index) => `/w/${'a'.repeat(200)}/${String(index).padStart(2, '0')}-${'b'.repeat(100)}`);
@@ -3188,7 +3189,8 @@ assert.deepStrictEqual(calls.flatMap(pathsOf).sort(), dirs.map((dir) => dir + '/
 const error = (code) => Object.assign(Error(`spawnSync sh ${code}`), { code });
 for (const failure of [() => ({ status: 1, signal: null, stdout: Buffer.alloc(0) }), () => ({ status: null, signal: 'SIGTERM', error: error('ETIMEDOUT') }),
     () => ({ status: null, signal: null, error: error('ENOENT') }), () => ({ status: null, signal: null, error: error('E2BIG') }),
-    (...call) => ({ ...ps([])(...call), status: null, signal: 'SIGTERM', error: error('ENOBUFS') })]) {
+    (...call) => ({ ...ps([])(...call), status: null, signal: 'SIGTERM', error: error('ENOBUFS') }),
+    (...call) => ({ ...ps([])(...call), status: 0, signal: null, error: error('ETIMEDOUT') })]) {
   const listed = ps(rows);
   const ran = inUse(dirs, { list: (command, args, options, call) => (call === 2 ? failure : listed)(command, args, options) });
   const second = pathsOf(ran.calls[1]).map((name) => name.slice(0, -1));
@@ -3206,8 +3208,8 @@ assert.ok(ran.calls.every((call) => !call.args.includes(huge + '/')));
         # come back in PowerShell's own row beside the command text before it (another row holding it does not count),
         # makes the list unreadable; a copy is matched lower-cased with slashes as C:\, C:/ or /c/ and an unrelated path
         # is not. Through the lister: PowerShell carries the marker in its -Command text, the used copy is kept and the
-        # unused one offered; a row changed by a code page, or a lister that fails even after printing its own row, keeps
-        # both. Cannot run before the change.
+        # unused one offered; a row changed by a code page, or a lister that fails, or exits 0 with an error, even after
+        # printing its own row, keeps both. Cannot run before the change.
         self.node(r"""
 const marker = run('CLEANUP_LIST_MARKER').result;
 assert.ok(/[^\x00-\x7f]/.test(marker), marker);
@@ -3245,6 +3247,8 @@ const both = [unused, used].sort();
 assert.deepStrictEqual(inUse([used, unused], { platform: 'win32', list: powershell([drain], (row) => row.replace(/[^\x00-\x7f]/g, '?')) }).used, both);
 assert.deepStrictEqual(inUse([used, unused], { platform: 'win32', list: powershell([drain, `notepad ${marker}.txt`], (row) => row.replace(marker, '??')) }).used, both);
 assert.deepStrictEqual(inUse([used, unused], { platform: 'win32', list: (...call) => ({ ...powershell([])(...call), status: 1 }) }).used, both);
+const error = (code) => Object.assign(Error(`spawnSync powershell ${code}`), { code });
+assert.deepStrictEqual(inUse([used, unused], { platform: 'win32', list: (...call) => ({ ...powershell([])(...call), status: 0, error: error('ETIMEDOUT') }) }).used, both);
 assert.deepStrictEqual(inUse([used, unused], { platform: 'win32', list: powershell([`node devlyn.js cleanup --plan --project ${used}\\x`]) }).used, []);
 """)
 

@@ -1501,7 +1501,7 @@ function cleanupInUse(dirs) {
   const others = (rows) => rows.filter((row) => !row.includes(' cleanup --'));
   if (process.platform === 'win32') {
     const listing = spawnSync('powershell', ['-NoProfile', '-NonInteractive', '-Command', CLEANUP_LIST_COMMAND], options);
-    const rows = listing.status === 0 ? cleanupWindowsRows(listing.stdout.toString('latin1')) : null;
+    const rows = !listing.error && listing.status === 0 ? cleanupWindowsRows(listing.stdout.toString('latin1')) : null;
     return new Set(dirs.filter((dir) => !rows || others(rows).some((row) => cleanupWindowsNames(row, dir))));
   }
   const script = 'ps -axww -o command=; exit $?';
@@ -1523,7 +1523,7 @@ function cleanupInUse(dirs) {
     } while (new Set(tokens).size < tokens.length || tokens.some((token) => batch.some((name) => name.includes(token))));
     const listing = spawnSync('sh', ['-c', script, ...batch.flatMap((name, i) => [tokens[i], name]), tokens.at(-1)],
       { ...options, env: { ...process.env, LC_ALL: 'C' } });
-    const rows = listing.status === 0 ? listing.stdout.toString('latin1').split('\n') : [];
+    const rows = !listing.error && listing.status === 0 ? listing.stdout.toString('latin1').split('\n') : [];
     // The witness holds every token once, in order; `ps` joins arguments with one space, dropped on each side.
     const marks = (row) => tokens.map((token) => (row.split(token).length === 2 ? row.indexOf(token) : -1));
     const witnesses = rows.filter((row) => marks(row).every((mark, i, all) => mark >= 0 && (i === 0 || all[i - 1] < mark)));
