@@ -146,7 +146,7 @@ class ReleaseTests(unittest.TestCase):
             env={**environment(), 'GIT_TRACE2_EVENT': str(trace)})
         children = [json.loads(line)['argv'] for line in trace.read_text(encoding='utf-8').splitlines()
                     if '"event":"child_start"' in line]
-        self.assertEqual([argv for argv in children if 'maintenance' in argv], [])
+        self.assertEqual(children, [])
 
     def test_release_verify_is_read_only_for_valid_and_failing_release(self):
         root = self.copy()
