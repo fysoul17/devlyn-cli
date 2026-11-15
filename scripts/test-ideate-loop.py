@@ -958,7 +958,9 @@ class LoopFixture(unittest.TestCase):
         self.assertEqual((self.calls("aa.t1"), self.calls("aa.t2"), self.calls("bb.t1")), (1, 1, 1))
 
     def test_robust_02_executor_start(self):
-        # Prediction: either spawn error preserves start/not-started, permits bb, and retries aa only on a later drain.
+        # Prediction: either spawn error preserves start/not-started, permits bb, and retries aa only on a later drain. Status
+        # says the executor could not start, naming the error and nothing about the next drain, and says nothing of it once a
+        # submission is in place (round B, D2).
         self.plan("aa", CHAIN, {"aa.t1": {"product": "greeting"}, "aa.t2": {"product": "app"}})
         self.independent()
         for failure in ("FileNotFoundError", "PermissionError"):
@@ -976,8 +978,11 @@ class LoopFixture(unittest.TestCase):
                 self.assertTrue(log.splitlines()[-2].endswith(" start"))
                 self.assertIn("not started:", log.splitlines()[-1])
                 self.assertEqual((self.calls("aa.t1"), self.calls("aa.t2")), (0, 0))
-                self.assertIn("aa.t1: its executor could not start (executor unavailable); the next drain retries",
-                              self.cli("status", "--repo", self.anchor)["blockers"])
+                self.assertIn("aa.t1: its executor could not start (executor unavailable)", self.cli("status", "--repo", self.anchor)["blockers"])
+                submission = self.receipt_path("aa.t1").with_name("submission.json")
+                submission.write_text("{}", encoding="utf-8")
+                self.assertEqual([line for line in self.cli("status", "--repo", self.anchor)["blockers"] if line.startswith("aa.t1")], [])
+                submission.unlink()
         self.assertEqual(self.tasks(self.drain())["aa.t2"]["result"], "accepted")
         self.assertEqual((self.calls("aa.t1"), self.calls("aa.t2")), (1, 1))
 
@@ -2938,8 +2943,10 @@ class LoopFixture(unittest.TestCase):
 
     def test_status_names_the_runs_of_an_executor_that_left_nothing(self):
         # Prediction (round B, D2): status shows no aa.t1 line before any drain; after each drain whose executor exits 1
-        # without a submission it names that exit, the run count (run 1, then run 2) and the output folder. Before: status
-        # held no aa.t1 line after either drain.
+        # without a submission it names that exit, the run count (run 1, then run 2) and the output folder, and nothing about
+        # the next drain. It names nothing for a task whose inputs changed or that is invalid, which have their own reasons,
+        # nor once a submission is in place. Before: status held no aa.t1 line after either drain; then the line promised
+        # the next drain's run.
         self.plan("aa", [CHAIN[0]], {"aa.t1": {"product": "greeting", "exit_now": 1}})
 
         def lines():
@@ -2948,8 +2955,12 @@ class LoopFixture(unittest.TestCase):
         for run in (1, 2):
             self.drain()
             output = Path(self.receipt("aa.t1")["worktree"]) / ".devlyn/loop"
-            self.assertEqual(lines(), [f"aa.t1: its executor last exited 1 (run {run}) and left nothing to accept; the next drain runs it "
-                                       f"again (output: {output})"])
+            self.assertEqual(lines(), [f"aa.t1: its executor last exited 1 (run {run}) and left nothing to accept (output: {output})"])
+        state = self.queue["view"](self.anchor, self.common, pure=True)["states"]["aa.t1"]
+        self.assertEqual([self.queue["executor_left_nothing"]({**state, key: "its own reason"}) for key in ("inputs_changed", "invalid")],
+                         [None, None])
+        self.receipt_path("aa.t1").with_name("submission.json").write_text("{}", encoding="utf-8")
+        self.assertEqual(lines(), [])
 
     @unittest.skipIf(os.name == "nt", "writer observation requires POSIX")
     def test_a_submission_blocked_only_by_infrastructure_waits_for_its_writers_and_runs_again(self):
