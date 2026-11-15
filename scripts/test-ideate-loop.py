@@ -678,7 +678,7 @@ class LoopFixture(unittest.TestCase):
         self.assertIn("executor argv must contain {packet}", invalid["reason"])
         holder = self.hold(self.common / "devlyn-loops/drain.lock")
         locked = self.drain(code=1)
-        self.assertIn("another drain is active", locked["reason"])
+        self.assertIn("a drain or a withdraw is running in this repository", locked["reason"])
         holder.kill()
         holder.wait()
         (self.anchor / "docs/specs/queue.md").write_bytes(b"\xff")

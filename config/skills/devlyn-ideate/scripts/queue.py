@@ -160,8 +160,8 @@ def repository(path):
 
 
 @contextlib.contextmanager
-def lock(common, name, *, blocking, busy="another drain is active for this repository"):
-    """Native locks on the common Gitdir: drain.lock for a controller's lifetime, queue.lock for short mutations."""
+def lock(common, name, *, blocking, busy="a drain or a withdraw is running in this repository"):
+    """Native locks on the common Gitdir: drain.lock for a controller's lifetime or a withdraw, queue.lock for short mutations."""
     directory = common / "devlyn-loops"
     directory.mkdir(exist_ok=True)
     with contextlib.ExitStack() as stack:
@@ -2326,6 +2326,33 @@ class QueueTests(unittest.TestCase):
         self.assertIn(f"{rel} is tracked in the branch side", self.cli("withdraw", "inv", code=1)["reason"])
         self.assertEqual(state(), before)
 
+    def test_a_drain_started_during_a_withdraw_says_a_withdraw_may_hold_its_lock(self):
+        """D1. Prediction: a drain started while a withdraw, paused inside its locks, holds drain.lock is refused, its
+        reason naming a drain or a withdraw and the lock; the withdraw then finishes WITHDRAWN. Before: the reason said
+        another drain was active, though only a withdraw ran."""
+        import threading
+        from unittest import mock
+        self.cli("add", self.meta)
+        common = Path(git(self.anchor, "rev-parse", "--path-format=absolute", "--git-common-dir"))
+        inside, resume, result, real = threading.Event(), threading.Event(), {}, tracked_places
+
+        def paused(*args):
+            inside.set()
+            resume.wait(60)
+            return real(*args)
+
+        with mock.patch.dict(withdraw.__globals__, tracked_places=paused):
+            running = threading.Thread(target=lambda: result.update(withdraw(argparse.Namespace(repo=str(self.anchor), loop="inv"))))
+            running.start()
+            try:
+                self.assertTrue(inside.wait(60))
+                reason = self.cli("drain", "--", sys.executable, "-c", "pass", "{packet}", code=1)["reason"]
+            finally:
+                resume.set()
+                running.join(60)
+        self.assertEqual(reason, f"a drain or a withdraw is running in this repository ({common / 'devlyn-loops/drain.lock'})")
+        self.assertEqual(result.get("status"), "WITHDRAWN")
+
     def test_withdraw_finishes_after_an_interruption_between_its_deletions(self):
         """D1. Prediction: a withdraw interrupted after it removed the add record, before the capture ref, leaves that ref,
         which still counts as unfinished work; the retry removes it and prints WITHDRAWN with the same tasks and commit.
@@ -2513,7 +2540,7 @@ class QueueTests(unittest.TestCase):
                     else:
                         out, _ = waiter.communicate(timeout=30)
                         self.assertEqual(waiter.returncode, 1)
-                        self.assertIn("another drain is active", json.loads(out)["reason"])
+                        self.assertIn("a drain or a withdraw is running in this repository", json.loads(out)["reason"])
                         held.stdin.close()
         self.assertEqual((read_json(added_path(common, "inv"))["origin"], read_json(added_path(common, "inv"))["branch"]), (str(linked), "side"))
 
