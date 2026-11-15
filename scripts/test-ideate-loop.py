@@ -4289,9 +4289,10 @@ class LoopFixture(unittest.TestCase):
     def test_harness_withdraw_waits_for_another_release(self):
         # Prediction (round B, E6): withdraw from another release than the one the queue is bound to is refused before any
         # binding check, changing nothing: the refusal names the bound release and says withdraw waits until its queue
-        # settles, with no recovery argv and no word of draining. The bound release withdraws the loop and drops the
-        # binding; a binding then left on the settled queue is dropped by the other release, as its other commands drop it.
-        # Before: argparse rejected withdraw (exit 2).
+        # settles, with no recovery argv and no word of draining. A binding that appears after the check before the locks
+        # is refused alike by the check inside them. The bound release withdraws the loop and drops the binding; a binding
+        # then left on the settled queue is dropped by the other release, as its other commands drop it. Before: argparse
+        # rejected withdraw (exit 2); without the check inside the locks the second refusal carried a recovery argv.
         release = self.harness_release()
         self.plan("held", CHAIN[:1], {})
         binding_path = self.common / "devlyn-loops/harness.json"
@@ -4300,10 +4301,31 @@ class LoopFixture(unittest.TestCase):
         self.queue_py = other
         before = self.tree_snapshot(self.common)
         reason = self.cli("withdraw", "--repo", self.anchor, "held", code=1)["reason"]
-        self.assertEqual(reason, f"this queue is bound to devlyn-cli {json.loads(binding)['release']['version']} at {release}; "
-                                 "withdraw waits until that release's queue settles")
+        expected = (f"this queue is bound to devlyn-cli {json.loads(binding)['release']['version']} at {release}; "
+                    "withdraw waits until that release's queue settles")
+        self.assertEqual(reason, expected)
         self.assertNotIn("drain", reason.lower())
         self.assertEqual(self.tree_snapshot(self.common), before)
+        binding_path.unlink()
+        saved = self.root / "binding.json"
+        saved.write_bytes(binding)
+        rebind = ("import contextlib, pathlib, runpy, sys\n"
+                  "q = runpy.run_path(sys.argv[1])\n"
+                  "g = q['withdraw'].__globals__\n"
+                  "real, target, source = g['lock'], pathlib.Path(sys.argv[2]), pathlib.Path(sys.argv[3])\n"
+                  "@contextlib.contextmanager\n"
+                  "def lock(common, name, **kwargs):\n"
+                  "    if name == 'drain.lock':\n"
+                  "        target.write_bytes(source.read_bytes())\n"
+                  "    with real(common, name, **kwargs):\n"
+                  "        yield\n"
+                  "g['lock'] = lock\n"
+                  "sys.argv = [sys.argv[1], *sys.argv[4:]]\n"
+                  "q['shared']('platform-support')['configure_utf8']()\n"
+                  "sys.exit(q['main']())\n")
+        result = subprocess.run([sys.executable, "-c", rebind, str(other), str(binding_path), str(saved), "withdraw", "--repo", str(self.anchor), "held"],
+                                cwd=self.root, env=self.env, capture_output=True, text=True, encoding="utf-8")
+        self.assertEqual((result.returncode, json.loads(result.stdout)["reason"], binding_path.read_bytes()), (1, expected, binding), result.stderr)
         self.queue_py = bound
         self.assertEqual(self.cli("withdraw", "--repo", self.anchor, "held")["status"], "WITHDRAWN")
         self.assertFalse(binding_path.exists())

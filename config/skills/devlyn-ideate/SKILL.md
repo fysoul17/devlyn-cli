@@ -105,7 +105,7 @@ For read-only consumers, `python3 "$DEVLYN_SKILL_DIR/scripts/queue.py" inspect -
 
 ## drain
 
-`status`, `add` and `drain` write the repository's Git directory, and auto/pr delivery needs network access, so a sandboxed host runs them with escalation or full access.
+`status`, `add`, `withdraw` and `drain` write the repository's Git directory, and auto/pr delivery needs network access, so a sandboxed host runs them with escalation or full access.
 
 See [loop.md](references/loop.md) for an unclear result or `--worktree-root`. The executor is the configured route, the `.devlyn/engines.json` `executor` pin or else this CLI, checked per `_shared/engine-preflight.md`. Pass its argv after `--`. `<git dir>` is the output of `git rev-parse --path-format=absolute --git-common-dir`, where the executor commits and writes its submission; the drain fills `{worktree_git_dir}` with the task worktree's own Git directory, which Codex's sandbox keeps read-only unless that exact directory is listed:
 
