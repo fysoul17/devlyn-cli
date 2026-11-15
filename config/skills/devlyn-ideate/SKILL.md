@@ -59,7 +59,7 @@ Verify DEVLYN_SKILL_DIR/scripts/queue.py before running it. In omp, use `printf 
 | `plan <intent or absolute document path>` | Inspect, elicit what is necessary and write a validated loop package. Does not enqueue or execute. |
 | `add <intent or absolute package path>` | Plan when necessary, then capture the package and queue its tasks in dependency order. Does not execute. |
 | `status` | Reconciled pending, active, accepted and failed counts; the next runnable task; delivery and recovery blockers. |
-| `withdraw <loop-id>` | `queue.py withdraw --repo . <loop-id>` takes back a queued loop none of whose tasks has started. |
+| `withdraw <loop-id>` | `queue.py withdraw --repo . <loop-id>` takes back a queued loop none of whose tasks has started and that replaced no legacy row. |
 | `drain` | Resume or drain the queue serially under existing execution authorization. |
 | Bare intent | Plan; when the request authorizes implementation, continue through add and drain without reconfirmation. |
 | No arguments | Status. |

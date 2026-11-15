@@ -2,8 +2,8 @@
 """Ideate loop driver: package validation, the queue, locks, reconciliation and the serial drain.
 
 `check` validates a loop package, `add` captures it with its queue rows (which may
-replace one legacy row), `withdraw` takes back a loop none of whose tasks has started,
-`status` shows the reconciled queue and `drain -- <argv>` runs each
+replace one legacy row), `withdraw` takes back a queued loop none of whose tasks has
+started and that replaced no legacy row, `status` shows the reconciled queue and `drain -- <argv>` runs each
 eligible task through allocation, committed inputs, one host-supplied executor
 exchange, evidence-derived acceptance, the terminal transition and delivery.
 Protocol and commands: ../references/loop.md; formats: ../references/package-format.md.
@@ -1837,29 +1837,49 @@ def add(args):
     return added_result(anchor, added, notes)
 
 
+def registered_worktree(admin):
+    """A linked worktree as Git lists it: the folder whose .git the gitdir file of its administrative directory
+    <common>/worktrees/<id> names, as an absolute path or one relative to that directory; while that file cannot be read
+    or decoded, the directory itself."""
+    try:
+        gitdir = (admin / "gitdir").read_bytes().decode("utf-8").rstrip()
+    except (OSError, UnicodeError):
+        gitdir = ""
+    if not gitdir:
+        return f"the worktree registered at {admin}"
+    folder = gitdir.removesuffix("/.git")
+    return folder if os.path.isabs(folder) else os.path.realpath(admin / folder)
+
+
 def tracked_places(anchor, common, rel):
     """Where this repository tracks `rel`: the HEAD of each registered worktree, each local branch none has checked out,
     and the index of each registered worktree, read through its administrative directory, so also while its folder is
-    missing. A linked worktree's directory is <common>/worktrees/<id>, whose gitdir file names the folder's .git, as an
-    absolute path or one relative to that directory; Git lists the worktree by that path."""
-    worktrees = [row for raw in git(anchor, "worktree", "list", "--porcelain", "-z").split("\0\0")
+    missing, with a pathspec anchored at the top, since `git -C <common>` runs inside the work tree once core.worktree
+    names the folder that holds the Git directory. An index git cannot read refuses, naming its worktree."""
+    # A gitdir file may hold any bytes, and the listed paths only name worktrees in a refusal.
+    listing = git_run(anchor, "worktree", "list", "--porcelain", "-z").stdout.decode("utf-8", "replace")
+    worktrees = [row for raw in listing.split("\0\0")
                  if "worktree" in (row := dict(field.partition(" ")[::2] for field in raw.split("\0") if field))]
     checked_out = {row.get("branch") for row in worktrees}
     commits = {f"HEAD of {row['worktree']}": row["HEAD"] for row in worktrees if "HEAD" in row} | {
         f"the branch {ref.removeprefix('refs/heads/')}": ref
         for ref in git(anchor, "for-each-ref", "--format=%(refname)", "refs/heads/").splitlines() if ref not in checked_out}
     kinds = git(anchor, "cat-file", "--batch-check=%(objecttype)", data="".join(f"{rev}:{rel}\n" for rev in commits.values()).encode())
-    indexes = [(worktrees[0]["worktree"], common)] + [
-        (Path(os.path.realpath(admin / (admin / "gitdir").read_text(encoding="utf-8").rstrip())).parent, admin)
-        for admin in sorted((common / "worktrees").glob("*"))]
-    return [place for place, kind in zip(commits, kinds.split("\n")) if kind == "blob"] + [
-        f"the index of {path}" for path, admin in indexes if git(common, f"--git-dir={admin}", "ls-files", "--", rel)]
+    places = [place for place, kind in zip(commits, kinds.split("\n")) if kind == "blob"]
+    linked = sorted(path for path in (common / "worktrees").iterdir() if path.is_dir()) if (common / "worktrees").is_dir() else []
+    for name, admin in [(worktrees[0]["worktree"], common), *((registered_worktree(admin), admin) for admin in linked)]:
+        listed = subprocess.run(["git", "-C", str(common), f"--git-dir={admin}", "ls-files", "--", f":(top,literal){rel}"], capture_output=True)
+        require(listed.returncode == 0, f"the index of {name} cannot be read ({' '.join(listed.stderr.decode('utf-8', 'replace').split())}), "
+                                        f"so withdraw cannot tell whether {rel} is tracked there; withdraw takes back only a loop held in its capture")
+        if listed.stdout:
+            places.append(f"the index of {name}")
+    return places
 
 
 def withdraw(args):
-    """Take back a queued loop none of whose tasks has started and whose capture replaced no legacy row: its add record,
-    then its folder in devlyn-loops, then its capture ref; a retry after an interruption finishes the rest. Under the drain
-    lock, so no drain allocates it."""
+    """Take back a queued loop none of whose tasks has started and that replaced no legacy row: its add record, then its
+    folder in devlyn-loops, then its capture ref; a retry after an interruption finishes the rest. Under the drain lock,
+    so no drain allocates it."""
     anchor, common = repository(args.repo)
     args.repo = anchor
     loop, notes = args.loop, []
@@ -1878,8 +1898,7 @@ def withdraw(args):
         tasks = [row["identity"] for row in rows]
         if target:
             raise LoopError(f'loop {loop} was added in place of the {QUEUE} row "{one_line(target[1])}" (occurrence {target[0]}); '
-                            "withdrawing it would bring that row back to be planned again wherever that file still holds it; "
-                            "withdraw takes back only a loop that replaced no legacy row")
+                            "withdraw takes back only a loop that replaced no legacy row; it stays queued")
         # Without its record a loop is read from a tracked queue file (queue_view), so its rows would come back.
         places = tracked_places(anchor, common, rel)
         require(not places, f"{rel} is tracked in {', '.join(places)}, so loop {loop}'s rows would return without its add record; "
@@ -2749,7 +2768,7 @@ def main():
     inspector.add_argument("--json", action="store_true")
     remover = actions.add_parser("withdraw")
     remover.add_argument("--repo", default=".")
-    remover.add_argument("loop", help="a queued loop none of whose tasks has started")
+    remover.add_argument("loop", help="a queued loop none of whose tasks has started and that replaced no legacy row")
     actions.choices["drain"].add_argument("--worktree-root")
     actions.choices["drain"].add_argument("executor", nargs="+", help="host executor argv after --; {packet} becomes the packet path")
     args = parser.parse_args()
