@@ -2256,12 +2256,14 @@ class QueueTests(unittest.TestCase):
         """D1, E6. Prediction: each refusal leaves the add record and the drain report byte for byte, the capture ref, the
         loop's folder, HEAD and the index as they were: a task directory of either task, active, retired or moved, a dangling
         link included; a running drain or another withdraw, refused in withdraw's own words; a capture ref moved off the
-        recorded commit, naming both; and the loop's queue file tracked in HEAD here, in the index of the worktree the loop
-        was added from, in HEAD and the index of a third worktree, in the index of a locked worktree whose folder is gone
-        or holds only an empty directory, on a branch no worktree has checked out, or on the branch it was added on once
-        that worktree is gone. Before: argparse rejected withdraw; then the third worktree and the other branch were
-        withdrawn, and the busy refusal named only a drain; then the locked worktree without its folder was withdrawn, and
-        with an empty directory there git's own failure was the refusal."""
+        recorded commit, naming both; and the loop's queue file tracked in HEAD here, in the index here while core.worktree
+        names this folder, in the index of the worktree the loop was added from, in HEAD and the index of a third worktree,
+        in the index of a locked worktree whose folder is gone or holds only an empty directory, on a branch no worktree has
+        checked out, or on the branch it was added on once that worktree is gone. Before: argparse rejected withdraw; then
+        the third worktree and the other branch were withdrawn, and the busy refusal named only a drain; then the locked
+        worktree without its folder was withdrawn, and with an empty directory there git's own failure was the refusal;
+        then, with core.worktree set, the index here was read from inside the Git directory, where Git took the pathspec
+        as .git/docs/..., and the loop was withdrawn."""
         import shutil
         linked, third, gone = self.root / "linked", self.root / "third", self.root / "gone"
         git(self.anchor, "worktree", "add", "-q", "-b", "side", str(linked), env=self.env)
@@ -2310,6 +2312,14 @@ class QueueTests(unittest.TestCase):
                 gone.rmdir()
             git(self.anchor, "worktree", "prune", env=self.env)
 
+        def own_folder():  # A config that names the repository's own folder as its work tree.
+            git(self.anchor, "config", "core.worktree", str(self.anchor), env=self.env)
+            track(self.anchor)
+
+        def no_worktree_config():
+            untrack(self.anchor)
+            git(self.anchor, "config", "--unset", "core.worktree", env=self.env)
+
         cases = [("active", lambda: active.mkdir(parents=True), active.rmdir, f"inv.t1 at {active}"),
                  ("retired", lambda: retired.mkdir(parents=True), retired.rmdir, f"inv.t2 at {retired}"),
                  ("moved", lambda: moved.mkdir(parents=True), moved.rmdir, f"inv.t1 at {moved}"),
@@ -2317,6 +2327,7 @@ class QueueTests(unittest.TestCase):
                   f"{ref} is {head}, but the add record of inv names {added['commit']}"),
                  ("HEAD here", lambda: track(self.anchor, "commit"), lambda: git(self.anchor, "reset", "-q", "--hard", head),
                   f"{rel} is tracked in HEAD of {self.anchor}"),
+                 ("index here, core.worktree set", own_folder, no_worktree_config, f"{rel} is tracked in the index of {self.anchor}, so"),
                  ("index of origin", lambda: track(linked), lambda: untrack(linked), f"{rel} is tracked in the index of {linked}"),
                  ("third worktree", lambda: elsewhere("--detach"), lambda: git(self.anchor, "worktree", "remove", "--force", str(third), env=self.env),
                   f"{rel} is tracked in HEAD of {third}, the index of {third}, so"),
@@ -2394,11 +2405,13 @@ class QueueTests(unittest.TestCase):
 
     def test_withdraw_refuses_a_loop_that_replaced_a_legacy_row(self):
         """D1, E6. Prediction: a loop added with --materialize is refused, naming the row its capture replaced and that row's
-        occurrence, while the row is in the legacy queue and once no file holds it; so is the capture an add stopped
-        before its record left; each refusal leaves the add record, the capture ref, the loop's folder, HEAD and the index
-        byte for byte. A loop added without --materialize is withdrawn. Before: withdraw looked for the row only here, in
-        the checkout the loop was added from and on the branch it was added on, and withdrew the loop once those no
-        longer held it, though another worktree's legacy queue could still show the row, pending, to be planned again."""
+        occurrence and saying the loop stays queued, while the row is in the legacy queue and once no file holds it; so is
+        the capture an add stopped before its record left; each refusal leaves the add record, the capture ref, the loop's
+        folder, HEAD and the index byte for byte. A loop added without --materialize is withdrawn. Before: withdraw looked
+        for the row only here, in the checkout the loop was added from and on the branch it was added on, and withdrew the
+        loop once those no longer held it, though another worktree's legacy queue could still show the row, pending, to be
+        planned again; then the refusal said withdrawing would bring the row back, which no file holding it, or a capture
+        that never hid it, makes false."""
         from unittest import mock
         common = Path(git(self.anchor, "rev-parse", "--path-format=absolute", "--git-common-dir"))
 
@@ -2410,9 +2423,8 @@ class QueueTests(unittest.TestCase):
         def refused(loop, row):
             before = state()
             self.assertEqual(self.cli("withdraw", loop, code=1)["reason"],
-                             f'loop {loop} was added in place of the {QUEUE} row "{row}" (occurrence 1); withdrawing it would '
-                             "bring that row back to be planned again wherever that file still holds it; withdraw takes back only "
-                             "a loop that replaced no legacy row")
+                             f'loop {loop} was added in place of the {QUEUE} row "{row}" (occurrence 1); withdraw takes back only '
+                             "a loop that replaced no legacy row; it stays queued")
             self.assertEqual(state(), before)
 
         (self.anchor / QUEUE).write_text("# Intent Queue\n\n- [ ] Ship the fixture.\n- [ ] Ship the second fixture.\n", encoding="utf-8")
@@ -2503,6 +2515,59 @@ class QueueTests(unittest.TestCase):
         git(bare, "worktree", "add", "-q", str(work), "main", env=self.env)
         self.cli("add", write_package(work, "inv", self.tasks), cwd=work)
         self.assertEqual(self.cli("withdraw", "inv", cwd=work)["status"], "WITHDRAWN")
+
+    def test_withdraw_reads_each_registered_index_however_its_worktree_is_named(self):
+        """D1, E6. Prediction: beside a registered worktree whose administrative gitdir file is missing, or holds bytes that
+        are not UTF-8, a loop tracked nowhere is withdrawn, and with the loop's queue file staged in that worktree's index
+        it is refused, naming the worktree by its administrative directory; a worktree whose gitdir file holds a relative
+        path is named as `git worktree list` prints it; an index git cannot read is refused in one sentence naming its
+        worktree and git's message. No refusal changes the add record or the capture ref. Before: the missing file stopped
+        every withdraw with a bare FileNotFoundError, the bytes raised an uncaught UnicodeDecodeError, and the unreadable
+        index was refused in git's words alone."""
+        import shutil
+        common = Path(git(self.anchor, "rev-parse", "--path-format=absolute", "--git-common-dir"))
+        rel, work = loop_queue("inv"), self.root / "work"
+        admin = common / "worktrees" / work.name
+
+        def state():
+            return (git(self.anchor, "for-each-ref"), sorted((str(path.relative_to(common)), path.read_bytes() if path.is_file() else None)
+                                                             for path in (common / "devlyn-loops").rglob("*") if path.suffix != ".lock"))
+
+        def by_admin():
+            return f"the worktree registered at {admin}"
+
+        def as_listed():
+            return git(self.anchor, "worktree", "list", "--porcelain").split("\n\n")[1].splitlines()[0].removeprefix("worktree ")
+
+        for name, options, damage, named in (("gitdir missing", (), lambda: (admin / "gitdir").unlink(), by_admin),
+                                             ("gitdir not UTF-8", (), lambda: (admin / "gitdir").write_bytes(b"\xff\xfe/.git\n"), by_admin),
+                                             ("gitdir relative", ("--relative-paths",), lambda: None, as_listed)):
+            with self.subTest(case=name):
+                if git_run(self.anchor, "worktree", "add", "-q", "--detach", *options, str(work), env=self.env, ok=(0, 129)).returncode:
+                    self.skipTest("this git writes no relative gitdir file (git worktree add --relative-paths came in Git 2.48)")
+                try:
+                    damage()
+                    self.cli("add", write_package(self.anchor, "inv", self.tasks))
+                    self.assertEqual(self.cli("withdraw", "inv")["status"], "WITHDRAWN")
+                    self.cli("add", write_package(self.anchor, "inv", self.tasks))
+                    (work / rel).parent.mkdir(parents=True)
+                    (work / rel).write_text(row_line("inv.t1", "Interface") + "\n", encoding="utf-8")
+                    git(work, "add", rel, env=self.env)
+                    before = state()
+                    self.assertEqual(self.cli("withdraw", "inv", code=1)["reason"],
+                                     f"{rel} is tracked in the index of {named()}, so loop inv's rows would return without its add "
+                                     "record; withdraw takes back only a loop held in its capture")
+                    self.assertEqual(state(), before)
+                finally:
+                    shutil.rmtree(admin)
+                    shutil.rmtree(work)
+        git(self.anchor, "worktree", "add", "-q", "--detach", str(work), env=self.env)
+        (admin / "index").write_bytes(b"not an index")
+        before = state()
+        self.assertRegex(self.cli("withdraw", "inv", code=1)["reason"],
+                         rf"^the index of {re.escape(str(work))} cannot be read \(fatal: .*index.*\), so withdraw cannot tell "
+                         rf"whether {re.escape(rel)} is tracked there; withdraw takes back only a loop held in its capture$")
+        self.assertEqual(state(), before)
 
     def test_a_legacy_row_is_replaced_only_by_its_one_exact_claim(self):
         """Q. Prediction: a loop's queue file hides the legacy row whose exact text and occurrence it records, line endings
