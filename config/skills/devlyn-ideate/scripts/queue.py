@@ -1855,7 +1855,8 @@ def tracked_places(anchor, common, rel):
     """Where this repository tracks `rel`: the HEAD of each registered worktree, each local branch none has checked out,
     and the index of each registered worktree, read through its administrative directory, so also while its folder is
     missing, with a pathspec anchored at the top, since `git -C <common>` runs inside the work tree once core.worktree
-    names the folder that holds the Git directory. An index git cannot read refuses, naming its worktree."""
+    names the folder that holds the Git directory, and with the file system monitor off, which Git would start for the
+    Git directory it takes as the work tree and wait on. An index git cannot read refuses, naming its worktree."""
     # A gitdir file may hold any bytes, and the listed paths only name worktrees in a refusal.
     listing = git_run(anchor, "worktree", "list", "--porcelain", "-z").stdout.decode("utf-8", "replace")
     worktrees = [row for raw in listing.split("\0\0")
@@ -1868,7 +1869,8 @@ def tracked_places(anchor, common, rel):
     places = [place for place, kind in zip(commits, kinds.split("\n")) if kind == "blob"]
     linked = sorted(path for path in (common / "worktrees").iterdir() if path.is_dir()) if (common / "worktrees").is_dir() else []
     for name, admin in [(worktrees[0]["worktree"], common), *((registered_worktree(admin), admin) for admin in linked)]:
-        listed = subprocess.run(["git", "-C", str(common), f"--git-dir={admin}", "ls-files", "--", f":(top,literal){rel}"], capture_output=True)
+        listed = subprocess.run(["git", "-c", "core.fsmonitor=false", "-C", str(common), f"--git-dir={admin}", "ls-files", "--",
+                                 f":(top,literal){rel}"], capture_output=True)
         require(listed.returncode == 0, f"the index of {name} cannot be read ({' '.join(listed.stderr.decode('utf-8', 'replace').split())}), "
                                         f"so withdraw cannot tell whether {rel} is tracked there; withdraw takes back only a loop held in its capture")
         if listed.stdout:
@@ -2590,6 +2592,32 @@ class QueueTests(unittest.TestCase):
                          rf"^the index of {re.escape(str(work))} cannot be read \(fatal: .*index.*\), so withdraw cannot tell "
                          rf"whether {re.escape(rel)} is tracked there; withdraw takes back only a loop held in its capture$")
         self.assertEqual(state(), before)
+
+    def test_withdraw_reads_each_index_without_a_file_system_monitor(self):
+        """D1, E6. Prediction: with core.fsmonitor=true and one linked worktree, neither worktree's monitor running (as
+        after a restart), withdraw prints WITHDRAWN within 60 s. Before: Git took the Git directory as the work tree of
+        each index read, started a monitor for it and waited on it, so withdraw never returned and held its locks."""
+        import signal
+        probe = git_run(self.anchor, "fsmonitor--daemon", "status", env=self.env, ok=(0, 1, 128))
+        if probe.returncode == 128:
+            self.skipTest(f"no file system monitor here ({probe.stderr.decode('utf-8', 'replace').strip()})")
+        linked = self.root / "linked"
+        for work in (self.anchor, linked):
+            self.addCleanup(git_run, work, "fsmonitor--daemon", "stop", env=self.env, ok=(0, 128))
+        git(self.anchor, "config", "core.fsmonitor", "true", env=self.env)
+        git(self.anchor, "worktree", "add", "-q", "--detach", str(linked), env=self.env)
+        self.cli("add", self.meta)
+        for work in (self.anchor, linked):
+            git_run(work, "fsmonitor--daemon", "stop", env=self.env, ok=(0, 128))
+        running = subprocess.Popen([sys.executable, str(Path(__file__).resolve()), "withdraw", "inv"], cwd=self.anchor, env=self.env,
+                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8", start_new_session=True)
+        try:
+            out, err = running.communicate(timeout=60)
+        except subprocess.TimeoutExpired:
+            os.killpg(running.pid, signal.SIGKILL)
+            running.communicate()
+            self.fail("withdraw did not return within 60 s")
+        self.assertEqual(json.loads(out)["status"], "WITHDRAWN", out + err)
 
     def test_a_legacy_row_is_replaced_only_by_its_one_exact_claim(self):
         """Q. Prediction: a loop's queue file hides the legacy row whose exact text and occurrence it records, line endings
