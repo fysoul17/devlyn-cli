@@ -1503,6 +1503,8 @@ function cleanupInUse(dirs) {
     return new Set(dirs.filter((dir) => !rows || others(rows).some((row) => cleanupWindowsNames(row, dir))));
   }
   const script = 'ps -axww -o command=; exit $?';
+  // Another cleanup's lister shell, known by its whole row only: `sh -c <script> <token> … <token>`.
+  const lister = new RegExp('^sh -c ' + script.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ' [0-9a-f]{16} .* [0-9a-f]{16}$');
   // The shell's arguments with 16-letter tokens around the paths, each argument with its NUL.
   const size = (batch) => Buffer.byteLength(['sh', '-c', script, ...batch].join('\0')) + 1 + 17 * (batch.length + 1);
   const used = new Set();
@@ -1527,7 +1529,7 @@ function cleanupInUse(dirs) {
     const between = at ? batch.map((_, i) => witness.slice(at[i] + tokens[i].length, at[i + 1])) : [];
     const framed = between.length && between.every((text) => text.length > 2 && text.startsWith(' ') && text.endsWith(' '));
     // No lister's shell is a user: this one's (the witness) and another cleanup's beside it name every path they list.
-    const listed = others(rows.filter((row) => !row.includes(script)));
+    const listed = others(rows.filter((row) => row !== witness && !lister.test(row)));
     batch.forEach((name, i) => {
       if (!framed || listed.some((row) => row.includes(between[i].slice(1, -1)))) used.add(name);
     });

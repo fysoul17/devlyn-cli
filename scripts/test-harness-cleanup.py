@@ -2952,6 +2952,19 @@ for (const [completed, delivery] of [
                 self.assert_judged(self.plan("--project", repo)[0], used=[used], unused=[unused])
 
     @unittest.skipIf(os.name == "nt", "the fixture ps is POSIX")
+    def test_a_home_named_after_the_listers_script_keeps_its_running_copy(self):
+        # Prediction (I3, I4; review pass 1): a machine whose home is named `ps -axww -o command=; exit $?`, a valid POSIX
+        # name, keeps the machine copy a drain runs from and offers the unused sibling copy. Before this repair, every row
+        # holding the lister's script text was taken for a lister's shell, so the drain's row was left out and its running
+        # copy offered for removal.
+        home = self.root / "ps -axww -o command=; exit $?"
+        home.mkdir()
+        self.env.update(HOME=str(home), USERPROFILE=str(home))
+        used, unused = self.copies(home)
+        self.env["FIXTURE_PROCESSES"] = f"python3 {used}/devlyn-ideate/scripts/queue.py drain"
+        self.assert_judged(self.plan("--machine")[0], used=[used], unused=[unused])
+
+    @unittest.skipIf(os.name == "nt", "the fixture ps is POSIX")
     def test_rows_printed_in_escaped_bytes_are_compared_as_printed(self):
         # Prediction (I5): with a `ps` that prints every byte above 0x7f escaped, as macOS's does under the C locale, in the
         # witness row and the used row alike, the used copy is kept in every row shape, and in a row whose arguments hold
@@ -3084,8 +3097,9 @@ assert.deepStrictEqual(inUse([], { list: ps([]) }).calls, []);
         # Prediction (I2, unit): the needle is the text between two tokens in the one row that holds every token once, in
         # order, with exactly one joining space dropped on each side, so a path's own spaces stay. No such row, a token
         # missing or doubled, two such rows, tokens out of order, or text between tokens not framed by spaces: every copy
-        # of the batch is kept. A row of a cleanup command is no user, nor is the lister shell of another cleanup running
-        # at the same time, which names the same paths between its own tokens. Cannot run before the change: no such block.
+        # of the batch is kept. A row of a cleanup command is no user, nor is the witness, nor the lister shell of another
+        # cleanup running at the same time, which names the same paths between its own tokens: a whole row of the form
+        # `sh -c <script> <token> … <token>`. Any other row holding the script text is a user (a home named after it).
         self.node(r"""
 const dirs = ['/w/used', '/w/unused'], row = 'python3 /w/used/devlyn-ideate/scripts/queue.py drain';
 assert.deepStrictEqual(inUse(dirs, { list: ps([row]) }).used, ['/w/used']);
@@ -3103,6 +3117,24 @@ assert.deepStrictEqual(inUse(dirs, { list: ps(['node devlyn.js cleanup --plan --
 const rival = 'sh -c ps -axww -o command=; exit $? 0123456789abcdef /w/used/ 1123456789abcdef /w/unused/ 2123456789abcdef';
 assert.deepStrictEqual(inUse(dirs, { list: ps([rival]) }).used, []);
 assert.deepStrictEqual(inUse(dirs, { list: ps([rival, row]) }).used, ['/w/used']);
+assert.deepStrictEqual(inUse(dirs, { list: ps(['sh -c ps -axww -o command=; exit $? 0123456789abcdef /w/used/ 1123456789abcdef']) }).used, []);
+assert.deepStrictEqual(inUse(dirs, { list: ps([]) }).used, []);
+assert.deepStrictEqual(inUse(dirs, { list: ps([], { shell: (args) => ['/bin/sh', ...args].join(' ') }) }).used, []);
+// A home named after the lister's script (review pass 1): its drain is a user and the unused sibling copy is offered.
+const home = '/home/alice/ps -axww -o command=; exit $?', copies = [`${home}/.claude/skills`, `${home}/.agents/skills`];
+assert.deepStrictEqual(inUse(copies, { list: ps([`python3 ${home}/.claude/skills/devlyn-ideate/scripts/queue.py drain`]) }).used, [copies[0]]);
+// Only a whole row of a lister's shape, `sh -c <script> <token> … <token>`, is another cleanup's lister; any other row
+// that holds the script text is a user, even one that ends in a word like a token.
+for (const user of ['python3 /w/ps -axww -o command=; exit $? 0123456789abcdef /w/used/x.py 1123456789abcdef',
+    'sh -c ps -axww -o command=; exit $? /w/used/x.py 1123456789abcdef',
+    'nohup sh -c ps -axww -o command=; exit $? 0123456789abcdef /w/used/ 1123456789abcdef',
+    'bash -c ps -axww -o command=; exit $? 0123456789abcdef /w/used/ 1123456789abcdef',
+    'sh -c ps -axww -o command=; exit $? 0123456789abcdef /w/used/ 1123456789abcdef --then',
+    'sh -c ps -axww -o command=; exit $? 0123456789ABCDEF /w/used/ 1123456789abcdef',
+    'sh -c ps -axww -o command=; exit $? 0123456789abcde /w/used/ 1123456789abcdef',
+    'sh -c ps -axww -o command=; exit $?0123456789abcdef /w/used/ 1123456789abcdef']) {
+  assert.deepStrictEqual(inUse(dirs, { list: ps([user]) }).used, ['/w/used'], user);
+}
 """)
 
     def test_every_row_shape_and_renderer_is_compared_as_the_lister_printed_it(self):
