@@ -3098,9 +3098,10 @@ assert.deepStrictEqual(inUse([], { list: ps([]) }).calls, []);
         # Prediction (I2, unit): the needle is the text between two tokens in the one row that holds every token once, in
         # order, with exactly one joining space dropped on each side, so a path's own spaces stay. No such row, a token
         # missing or doubled, two such rows, tokens out of order, or text between tokens not framed by spaces: every copy
-        # of the batch is kept. A row of a cleanup command is no user, nor is the witness, nor the lister shell of another
-        # cleanup running at the same time, which names the same paths between its own tokens: a whole row of the form
-        # `sh -c <script> <token> … <token>`. Any other row holding the script text is a user (a home named after it).
+        # of the batch is kept. A row of a cleanup command is no user, nor is the witness. Every other row naming a copy is
+        # a user, whatever else it holds: a home named after the script, a shell that runs on, and the lister shell of
+        # another cleanup running at the same time, whose copies are kept while it is listed (review pass 2: no row tells
+        # it from a shell that runs on; accepted, this only keeps more, for the overlap; the next cleanup offers them).
         self.node(r"""
 const dirs = ['/w/used', '/w/unused'], row = 'python3 /w/used/devlyn-ideate/scripts/queue.py drain';
 assert.deepStrictEqual(inUse(dirs, { list: ps([row]) }).used, ['/w/used']);
@@ -3115,17 +3116,22 @@ for (const [name, shell] of [
 }
 assert.deepStrictEqual(inUse(['/w/two  spaces', '/w/two spaces'], { list: ps(['python3 /w/two  spaces/x.py']) }).used, ['/w/two  spaces']);
 assert.deepStrictEqual(inUse(dirs, { list: ps(['node devlyn.js cleanup --plan --account-home /w/used/x --json']) }).used, []);
+// A shell holding the lister's script and tokens that runs on (review pass 2): `exit` waits for the command substitution
+// in its arguments, which reads the copy for ever. Its row names the copy, so the copy is in use.
+const reader = 'sh -c ps -axww -o command=; exit $? 0123456789abcdef $(while :; do read line < /w/used/x; sleep 60; done) 1123456789abcdef';
+assert.deepStrictEqual(inUse(dirs, { list: ps([reader]) }).used, ['/w/used']);
+// Another cleanup's lister shell running at the same time is a user too (review pass 2): the copies it names are kept
+// while it is listed (accepted: this only keeps more, for the length of the overlap; the next cleanup offers them).
 const rival = 'sh -c ps -axww -o command=; exit $? 0123456789abcdef /w/used/ 1123456789abcdef /w/unused/ 2123456789abcdef';
-assert.deepStrictEqual(inUse(dirs, { list: ps([rival]) }).used, []);
-assert.deepStrictEqual(inUse(dirs, { list: ps([rival, row]) }).used, ['/w/used']);
-assert.deepStrictEqual(inUse(dirs, { list: ps(['sh -c ps -axww -o command=; exit $? 0123456789abcdef /w/used/ 1123456789abcdef']) }).used, []);
+assert.deepStrictEqual(inUse(dirs, { list: ps([rival]) }).used, [...dirs].sort());
+assert.deepStrictEqual(inUse(dirs, { list: ps([rival, row]) }).used, [...dirs].sort());
+assert.deepStrictEqual(inUse(dirs, { list: ps(['sh -c ps -axww -o command=; exit $? 0123456789abcdef /w/used/ 1123456789abcdef']) }).used, ['/w/used']);
 assert.deepStrictEqual(inUse(dirs, { list: ps([]) }).used, []);
 assert.deepStrictEqual(inUse(dirs, { list: ps([], { shell: (args) => ['/bin/sh', ...args].join(' ') }) }).used, []);
 // A home named after the lister's script (review pass 1): its drain is a user and the unused sibling copy is offered.
 const home = '/home/alice/ps -axww -o command=; exit $?', copies = [`${home}/.claude/skills`, `${home}/.agents/skills`];
 assert.deepStrictEqual(inUse(copies, { list: ps([`python3 ${home}/.claude/skills/devlyn-ideate/scripts/queue.py drain`]) }).used, [copies[0]]);
-// Only a whole row of a lister's shape, `sh -c <script> <token> … <token>`, is another cleanup's lister; any other row
-// that holds the script text is a user, even one that ends in a word like a token.
+// Any other row holding the script text and naming a copy is a user too, whatever its shape.
 for (const user of ['python3 /w/ps -axww -o command=; exit $? 0123456789abcdef /w/used/x.py 1123456789abcdef',
     'sh -c ps -axww -o command=; exit $? /w/used/x.py 1123456789abcdef',
     'nohup sh -c ps -axww -o command=; exit $? 0123456789abcdef /w/used/ 1123456789abcdef',
