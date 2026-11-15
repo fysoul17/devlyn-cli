@@ -1490,6 +1490,8 @@ def verify_delivery(receipt, path, pr):
     verify_custody(receipt, path)
     gref(receipt, "merge-base", "--is-ancestor", pr["mergeCommit"]["oid"] if pr else sha, remote_base(receipt))
     gref(receipt, "merge-base", "--is-ancestor", receipt["source_sha"], sha)
+    # The base was fetched through the remote's name, so that name must still bind the receipt's repository.
+    require(remote_url(receipt) == receipt["remote_url"], "remote changed during the delivery checks; retain resources")
 
 
 def remove_delivered(receipt, path, *, warnings=None):
@@ -3353,6 +3355,38 @@ ctypes.CDLL(None).pthread_exit(None)
         self.assertEqual((receipt.get('delivery'), receipt.get('status')), (None, None))
         self.assertNotIn('workspace_cleanup', receipt)
         self.assertTrue(self.task.exists())
+
+    def test_remote_retargeted_during_delivery_checks_blocks_with_delivery_unrecorded(self):
+        # Prediction: origin is retargeted, after the first URL check, to another repository whose base holds the accepted
+        # commit, so both ancestry checks pass against it; the URL recheck after them stops completion BLOCKED with delivery
+        # unrecorded and nothing removed. Before: the tree was removed, the deletion-time URL refusal was retained and
+        # delivery was recorded COMPLETE for the receipt's repository, whose base lacks the commit.
+        from unittest.mock import patch
+        self.allocate(); self.accept()
+        fork = self.root / "fork.git"
+        self.run_cmd(["git", "clone", "--bare", "--quiet", str(self.bare), str(fork)])
+        self.g("push", str(fork), self.sha + ":refs/heads/main", work=self.task)
+        bare = ["git", "--git-dir", str(self.bare)]
+        base = self.run_cmd([*bare, "rev-parse", "refs/heads/main"]).stdout.strip()
+        real, retargeted = repo_policy, []
+        def retarget(receipt, **kwargs):
+            if not retargeted:
+                self.g("remote", "set-url", "origin", str(fork))
+                retargeted.append(str(fork))
+            return real(receipt, **kwargs)
+        args = argparse.Namespace(receipt=str(self.receipt), acceptance=str(self.acceptance), mode=None, local_only=False, writers_stopped=True)
+        with patch.dict(os.environ, self.env), patch.dict(complete.__globals__, repo_policy=retarget):
+            with self.assertRaisesRegex(CompletionError, "remote must unambiguously identify one GitHub repository"):
+                complete(args)
+        self.assertEqual(retargeted, [str(fork)])
+        receipt = read_json(self.receipt)
+        self.assertEqual((receipt.get("delivery"), receipt.get("status")), (None, None))
+        self.assertNotIn("workspace_cleanup", receipt)
+        self.assertTrue(self.task.exists())
+        self.assertEqual(self.g("rev-parse", "task/fixture"), self.sha)
+        self.assertEqual(self.g("rev-parse", receipt["recovery_ref"]), self.sha)
+        self.assertEqual(self.run_cmd([*bare, "rev-parse", "refs/heads/main"]).stdout.strip(), base)
+        self.assertEqual(self.run_cmd([*bare, "for-each-ref", "refs/heads/task/"]).stdout, "")
 
     def test_unchanged_foreign_remote_head_retains_worktree(self):
         # Prediction: a foreign remote task head refuses completion before worktree removal.
