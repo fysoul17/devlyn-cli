@@ -205,9 +205,9 @@ jobs:
     # The platform the run-folder channels were examined on, as the runner's own user on a
     # case-insensitive disk, and the darwin branches of the shipped helpers, which no other job runs.
     runs-on: macos-15
-    # The step took 1,185 to 1,471 s on a developer's Mac (the task-complete self-test 798 s of the slower run). A
-    # hosted runner is slower: the limit is to be set from the first hosted run's measured time plus margin.
-    timeout-minutes: 120
+    # The step took 11 minutes on macos-15 (run 43664276936) and 1,185 to 1,471 s on a developer's Mac under load
+    # (the task-complete self-test 798 s of the slower run).
+    timeout-minutes: 45
     steps:
       # The suites run from a full checkout of the tested SHA: they read earlier commits and release tags.
       - uses: actions/checkout@v4
@@ -364,6 +364,25 @@ jobs:
           checked('native-python3', ['python3', '-X', 'utf8=0', '-c',
                   'import locale,sys; print(sys.executable, sys.platform, sys.flags.utf8_mode, locale.getencoding(), flush=True); assert sys.platform == "win32" and sys.flags.utf8_mode == 0'])
           checked('git-bash', [str(git_bash), '--version'])
+          # Recorded, and a refusal or a timeout is not raised here: the product's own Git Bash probe through this
+          # bash, and what this bash says it is, raw, so one run shows the cause if `status` finds no Git Bash.
+          # Output goes to files, not pipes: after a timeout a child the launcher left behind cannot hold the step.
+          probes = {}
+          for label, script in (('probe', 'echo "$BASH_VERSION"; cd / && pwd -W'),
+                                ('system', 'uname -s; cat /proc/version; echo "MSYSTEM=$MSYSTEM OSTYPE=$OSTYPE"')):
+              argv = [str(git_bash), '--norc', '-p', '-c', script]
+              captured = [logs / f'git-bash-{label}.{stream}' for stream in ('out', 'err')]
+              try:
+                  with open(captured[0], 'wb') as out, open(captured[1], 'wb') as err:
+                      answer = subprocess.run(argv, stdin=subprocess.DEVNULL, stdout=out, stderr=err, timeout=60)
+                  probes[label] = {'argv': argv, 'exit': answer.returncode,
+                                   'stdout': captured[0].read_bytes().decode('utf-8', 'backslashreplace'),
+                                   'stderr': captured[1].read_bytes().decode('utf-8', 'backslashreplace')}
+              except Exception as error:
+                  probes[label] = {'argv': argv, 'error': repr(error)}
+          observed['git_bash'] = probes
+          (logs / 'identity.json').write_text(json.dumps(observed, indent=2) + '\n', encoding='utf-8')
+          print('Native Windows Git Bash: ' + json.dumps(probes), flush=True)
           npm_cli = pathlib.Path(shutil.which('npm.cmd')).parent / 'node_modules/npm/bin/npm-cli.js'
           checked('npm-version', ['node', str(npm_cli), '--version'])
           installed = root / 'installed'

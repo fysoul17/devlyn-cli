@@ -380,7 +380,10 @@ function inspectSkills(context, release, env, config, active) {
     for (const name of SKILLS) {
       const dir = path.join(root, name);
       try {
-        if (!fs.lstatSync(dir, { throwIfNoEntry: false })) continue;
+        // A lookup through a file finds no entry: POSIX says ENOTDIR where Windows says "not found".
+        let entry;
+        try { entry = fs.lstatSync(dir, { throwIfNoEntry: false }); } catch (error) { if (error.code !== 'ENOTDIR') throw error; }
+        if (!entry) continue;
         const hash = fingerprint(dir);
         if (!hashes.has(name)) hashes.set(name, fingerprint(path.join(release.root, 'config/skills', name)));
         found.push({ name, path: path.join(dir, 'SKILL.md'), owned: hash === hashes.get(name) || (history.skills[name] || []).includes(hash) });
