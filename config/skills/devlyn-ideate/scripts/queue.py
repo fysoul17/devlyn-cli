@@ -579,12 +579,26 @@ def receipt_path(common, identity):
     return retired[-1] if retired else active
 
 
+def seen(path, *, entries=False):
+    """What withdraw sees at `path`: whether it exists, a dangling link included, or with `entries` the paths in it. Where
+    it or a folder above it is missing (ENOENT, ENOTDIR) it sees nothing; any other error refuses, naming the path, where
+    exists, is_file and glob would answer no."""
+    try:
+        found = list(path.iterdir()) if entries else [os.lstat(path)]
+    except (FileNotFoundError, NotADirectoryError):
+        found = []
+    except OSError as exc:
+        raise LoopError(f"{path} cannot be read ({exc.strerror or exc}), so withdraw cannot tell what it holds; withdraw changes "
+                        "nothing until it can") from exc
+    return found if entries else bool(found)
+
+
 def task_directories(common, identity):
     """Every receipt directory of the task, a link included: the active one, then retired, then moved, the order in which
     task-complete.py moves one, and a path once seen is kept, so a directory moving meanwhile is seen at least once."""
     root, key = common / "devlyn-completion", hashlib.sha256(branch_of(identity).encode()).hexdigest()[:24]
-    active = [root / key] if os.path.lexists(root / key) else []
-    return [*active, *root.glob(f"retired/{key}.*"), *root.glob(f"moved/{key}.*")]
+    return [*([root / key] if seen(root / key) else []),
+            *(path for folder in ("retired", "moved") for path in seen(root / folder, entries=True) if path.name.startswith(key + "."))]
 
 
 def added_path(common, loop):
@@ -1856,7 +1870,8 @@ def tracked_places(anchor, common, rel):
     and the index of each registered worktree, read through its administrative directory, so also while its folder is
     missing, with a pathspec anchored at the top, since `git -C <common>` runs inside the work tree once core.worktree
     names the folder that holds the Git directory, and with the file system monitor off, which Git would start for the
-    Git directory it takes as the work tree and wait on. An index git cannot read refuses, naming its worktree."""
+    Git directory it takes as the work tree and wait on. An administrative directory without an index is skipped; one that
+    cannot be read refuses (seen), and so does an index git cannot read, naming its worktree."""
     # A gitdir file may hold any bytes, and the listed paths only name worktrees in a refusal.
     listing = git_run(anchor, "worktree", "list", "--porcelain", "-z").stdout.decode("utf-8", "replace")
     worktrees = [row for raw in listing.split("\0\0")
@@ -1867,7 +1882,7 @@ def tracked_places(anchor, common, rel):
         for ref in git(anchor, "for-each-ref", "--format=%(refname)", "refs/heads/").splitlines() if ref not in checked_out]
     kinds = git(anchor, "cat-file", "--batch-check=%(objecttype)", data="".join(f"{rev}:{rel}\n" for _, rev in commits).encode())
     places = [place for (place, _), kind in zip(commits, kinds.split("\n")) if kind == "blob"]
-    linked = sorted(path for path in (common / "worktrees").iterdir() if (path / "index").is_file()) if (common / "worktrees").is_dir() else []
+    linked = sorted(admin for admin in seen(common / "worktrees", entries=True) if seen(admin / "index"))
     for name, admin in [(worktrees[0]["worktree"], common), *((registered_worktree(admin), admin) for admin in linked)]:
         listed = subprocess.run(["git", "-c", "core.fsmonitor=false", "-C", str(common), f"--git-dir={admin}", "ls-files", "--",
                                  f":(top,literal){rel}"], capture_output=True)
@@ -1895,6 +1910,9 @@ def withdraw(args):
         refuse_other_release(common)
         enforce_binding(common)
         added, captured = records(common).get(loop), ref_value(anchor, ref)
+        # records() lists them with glob, which skips a folder it cannot read, so this loop's own record is looked at too.
+        require(added or not seen(added_path(common, loop)), f"{common / 'devlyn-loops'} cannot be listed, so withdraw cannot read "
+                f"the add record {added_path(common, loop)}; withdraw changes nothing until it can")
         commit = added["commit"] if added else captured
         rows, target = parse_loop(show(anchor, commit, rel), loop, f"{ref}:{rel}") if commit else ([], None)
         tasks = [row["identity"] for row in rows]
@@ -2484,19 +2502,19 @@ class QueueTests(unittest.TestCase):
         added = self.cli("add", self.meta)
         common = Path(git(self.anchor, "rev-parse", "--path-format=absolute", "--git-common-dir"))
         completion, key = common / "devlyn-completion", hashlib.sha256(branch_of("inv.t1").encode()).hexdigest()[:24]
-        destination, real = completion / "moved" / f"{key}.operation", Path.glob
+        destination, real = completion / "moved" / f"{key}.operation", Path.iterdir
+        destination.parent.mkdir(parents=True)
         for start in (completion / key, completion / "retired" / f"{key}.operation"):
             with self.subTest(start=start.parent.name):
                 start.mkdir(parents=True)
 
-                def glob(path, pattern, *args, **kwargs):
-                    found = list(real(path, pattern, *args, **kwargs))
-                    if pattern.startswith("moved/") and start.exists():
-                        destination.parent.mkdir(exist_ok=True)
+                def iterdir(path):
+                    found = list(real(path))
+                    if path.name == "moved" and start.exists():
                         start.rename(destination)
-                    return found
+                    return iter(found)
 
-                with mock.patch.object(Path, "glob", glob), self.assertRaisesRegex(LoopError, re.escape(f"inv.t1 at {start}")):
+                with mock.patch.object(Path, "iterdir", iterdir), self.assertRaisesRegex(LoopError, re.escape(f"inv.t1 at {start}")):
                     withdraw(argparse.Namespace(repo=str(self.anchor), loop="inv"))
                 self.assertEqual((added_path(common, "inv").exists(), ref_value(self.anchor, "refs/devlyn/captures/inv")), (True, added["commit"]))
                 destination.rmdir()
@@ -2624,6 +2642,64 @@ class QueueTests(unittest.TestCase):
             running.communicate()
             self.fail("withdraw did not return within 60 s")
         self.assertEqual(json.loads(out)["status"], "WITHDRAWN", out + err)
+
+    def test_withdraw_refuses_while_it_cannot_read_a_place_that_may_hold_the_loop(self):
+        """D1, E6. Prediction: withdraw refuses in one sentence naming the path, and changes nothing, while it cannot read
+        the index of a linked worktree holding the staged queue file behind an administrative directory it cannot enter,
+        <common>/worktrees itself, retired/ or moved/ holding a task's directory, devlyn-completion holding the active one,
+        the loop's folder in devlyn-loops, or devlyn-loops, which the add records are listed from. Before: is_file,
+        lexists and glob each answered no on the permission error, so withdraw took back the loop, and in the last two
+        cases deleted its capture ref while its add record stayed; the unreadable worktrees folder alone was refused, in
+        the system's words."""
+        probe = self.root / "probe"
+        probe.mkdir(mode=0)
+        try:
+            os.listdir(probe)
+            self.skipTest("this process reads a folder whose mode denies it (root, or Windows)")
+        except PermissionError:
+            pass
+        finally:
+            probe.chmod(0o700)
+        common = Path(git(self.anchor, "rev-parse", "--path-format=absolute", "--git-common-dir"))
+        rel, work, completion, loops = loop_queue("inv"), self.root / "work", common / "devlyn-completion", common / "devlyn-loops"
+        key = {identity: hashlib.sha256(branch_of(identity).encode()).hexdigest()[:24] for identity in ("inv.t1", "inv.t2")}
+        git(self.anchor, "worktree", "add", "-q", "--detach", str(work), env=self.env)
+        (work / rel).parent.mkdir(parents=True)
+        (work / rel).write_text(row_line("inv.t1", "Interface") + "\n", encoding="utf-8")
+
+        def state():
+            return (git(self.anchor, "for-each-ref"), git(work, "ls-files", "-s"), sorted(
+                (str(path.relative_to(common)), path.read_bytes() if path.is_file() else None) for path in loops.rglob("*") if path.suffix != ".lock"))
+
+        def unreadable(path):
+            return f"{path} cannot be read ({os.strerror(errno.EACCES)}), so withdraw cannot tell what it holds; withdraw changes nothing until it can"
+
+        staged = (lambda: git(work, "add", rel, env=self.env), lambda: git(work, "rm", "-q", "--cached", rel, env=self.env))
+        cases = [("linked index", staged, common / "worktrees" / work.name, 0, unreadable(common / "worktrees" / work.name / "index")),
+                 ("worktrees folder", staged, common / "worktrees", 0, unreadable(common / "worktrees"))]
+        for name, folder, identity in (("retired", completion / "retired", "inv.t2"), ("moved", completion / "moved", "inv.t1"),
+                                       ("active", completion, "inv.t1")):
+            directory = completion / key[identity] if name == "active" else folder / f"{key[identity]}.operation"
+            cases.append((name, (functools.partial(directory.mkdir, parents=True), directory.rmdir), folder, 0,
+                          unreadable(directory if name == "active" else folder)))
+        cases += [("loop folder", (lambda: None, lambda: None), loops / "inv", 0, unreadable(added_path(common, "inv"))),
+                  ("add records", (lambda: None, lambda: None), loops, 0o300,
+                   f"{loops} cannot be listed, so withdraw cannot read the add record {added_path(common, 'inv')}; withdraw "
+                   "changes nothing until it can")]
+        for name, (prepare, undo), denied, mode, reason in cases:
+            with self.subTest(case=name):
+                self.cli("add", write_package(self.anchor, "inv", self.tasks))  # A retry once added: nothing changes.
+                prepare()
+                before, original = state(), denied.stat().st_mode & 0o7777
+                self.addCleanup(denied.chmod, original)  # Restored also when the case fails, so the folder can be removed.
+                denied.chmod(mode)
+                try:
+                    refusal = self.cli("withdraw", "inv", code=1)["reason"]
+                finally:  # Also when withdraw took the loop back, so the next case starts from its own state.
+                    denied.chmod(original)
+                    after = state()
+                    undo()
+                self.assertEqual((refusal, after), (reason, before))
 
     def test_withdraw_reads_the_head_of_each_worktree_whose_listed_paths_decode_alike(self):
         """D1, E6. Prediction: beside two linked worktrees whose gitdir files name folders that differ only in a byte that
