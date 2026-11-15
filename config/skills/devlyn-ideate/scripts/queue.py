@@ -2540,13 +2540,16 @@ class QueueTests(unittest.TestCase):
         are not UTF-8, a loop tracked nowhere is withdrawn, and with the loop's queue file staged in that worktree's index
         it is refused, naming the worktree by its administrative directory; a worktree whose gitdir file holds a relative
         path is named as `git worktree list` prints it; an index git cannot read is refused in one sentence naming its
-        worktree and git's message. No refusal changes the add record or the capture ref. Before: the missing file stopped
-        every withdraw with a bare FileNotFoundError, the bytes raised an uncaught UnicodeDecodeError, and the unreadable
-        index was refused in git's words alone."""
+        worktree and git's message; a file beside the administrative directories, which Git skips, is skipped too. No
+        refusal changes the add record or the capture ref. Before: the missing file stopped every withdraw with a bare
+        FileNotFoundError, the bytes raised an uncaught UnicodeDecodeError, and the unreadable index was refused in git's
+        words alone."""
         import shutil
         common = Path(git(self.anchor, "rev-parse", "--path-format=absolute", "--git-common-dir"))
         rel, work = loop_queue("inv"), self.root / "work"
         admin = common / "worktrees" / work.name
+        admin.parent.mkdir()
+        (admin.parent / ".DS_Store").write_bytes(b"")  # As a file manager leaves one.
 
         def state():
             return (git(self.anchor, "for-each-ref"), sorted((str(path.relative_to(common)), path.read_bytes() if path.is_file() else None)
