@@ -1645,6 +1645,8 @@ def cleanup_delivered(receipt, path, pr, *, warnings=None):
     try:
         remove_delivered(receipt, path, warnings=warnings)
     except (CompletionError, OSError) as error:
+        if receipt.get('status') == 'COMPLETE':
+            raise  # Every removal finished and only the final record write failed; the resume ends COMPLETE.
         managed = storage_call('managed_receipt', receipt)
         reason = manual_removal(receipt, path, error) if managed and isinstance(error, WritersUnobservable) else str(error)
         receipt['workspace_cleanup'] = {'status': 'RETAINED', 'reason': reason, 'resume': receipt_resume('complete', path, receipt)}
@@ -3177,6 +3179,27 @@ ctypes.CDLL(None).pthread_exit(None)
         self.assertEqual(self.g("branch", "--list", "task/fixture"), "")
         d = read_json(self.data)
         self.assertEqual((d["pushs"], d.get("creates", 0)), (0, 0))
+
+    def test_unchanged_failed_final_receipt_write_raises_and_resumes_to_complete(self):
+        # Prediction: every removal finished and only the final status-COMPLETE record write fails, so complete raises
+        # that error and the printed resume ends COMPLETE. Before: retained as CLEANUP_PENDING on a COMPLETE receipt,
+        # which every resume reported again.
+        from unittest.mock import patch
+        self.allocate(); self.accept(unchanged=True)
+        self.cli("accept", "--receipt", self.receipt, "--acceptance", self.acceptance)
+        real, failed = atomic_json, []
+        def final_write_fails(path, value):
+            real(path, value)
+            if value.get("status") == "COMPLETE" and "workspace_cleanup" not in value and not failed:
+                failed.append(path)
+                raise OSError(5, "fixture final receipt write failure")
+        args = argparse.Namespace(receipt=str(self.receipt), acceptance=None, mode=None, local_only=False, writers_stopped=True)
+        with patch.dict(os.environ, self.env), patch.dict(complete.__globals__, atomic_json=final_write_fails):
+            with self.assertRaises(OSError):
+                complete(args)
+        self.assertFalse(self.task.exists())
+        result, _ = self.complete("--writers-stopped", acceptance=False)
+        self.assertEqual((result["status"], result["workspace_cleanup"]), ("COMPLETE", None))
 
     def test_unchanged_writer_retention_reconciles_on_allocate(self):
         # Prediction: the next allocation retries on-base delivery once writer observation succeeds.
