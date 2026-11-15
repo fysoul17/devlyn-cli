@@ -2998,11 +2998,29 @@ class LoopFixture(unittest.TestCase):
         self.assertEqual((tasks["aa.t1"].get("terminal"), submission.exists(), json.loads(retired.read_text(encoding="utf-8"))["blockers"],
                           self.calls("aa.t1")), (None, False, [infrastructure], 1))
         self.assertIn(reason, self.report("aa"))
-        self.assertEqual([line for line in self.cli("status", "--repo", self.anchor)["blockers"] if line.startswith("aa.t1")], [])
+
+        def lines():
+            return [line for line in self.cli("status", "--repo", self.anchor)["blockers"] if line.startswith("aa.t1")]
+        self.assertEqual(lines(), [])
+        # Round B, M2. Prediction: a retired submission covers only the run that wrote it. A later run that exits without one
+        # is named with its exit and run count; a run after it whose submission is retired again is not; one that cannot
+        # start is named with its error. Before: any retired submission silenced both later lines.
+        self.behaviors["aa.t1"] = {"product": "greeting", "exit_now": 1}
+        self.drain()
+        output = Path(self.receipt("aa.t1")["worktree"]) / ".devlyn/loop"
+        self.assertEqual(lines(), [f"aa.t1: its executor last exited 1 (run 2) and left nothing to accept (output: {output})"])
+        self.behaviors["aa.t1"] = {"check_only": True, "runner": False, "review": False, "blockers": [infrastructure]}
+        self.drain()
+        self.assertEqual((lines(), submission.with_name("submission.retired-2.json").is_file()), ([], True))
+        self.fault_drain("real = subprocess.Popen\ndef spawn(argv, **kw):\n"
+                         "    if 'executor.py' in str(argv):\n"
+                         "        raise FileNotFoundError('executor unavailable')\n"
+                         "    return real(argv, **kw)\nsubprocess.Popen = spawn\n")
+        self.assertEqual(lines(), ["aa.t1: its executor could not start (executor unavailable)"])
         self.behaviors["aa.t1"] = {"product": "greeting"}
         tasks = self.tasks(self.drain())
         self.assertEqual({identity: task["result"] for identity, task in tasks.items()}, {"aa.t1": "accepted", "aa.t2": "accepted"})
-        self.assertEqual((self.calls("aa.t1"), self.calls("aa.t2"), retired.is_file()), (2, 1, True))
+        self.assertEqual((self.calls("aa.t1"), self.calls("aa.t2"), retired.is_file()), (4, 1, True))
 
     def test_where_writers_cannot_be_observed_an_infrastructure_blocker_fails_as_before(self):
         # Prediction (C5 review): where writers cannot be observed, as on native Windows, a submission blocked only by the

@@ -1006,20 +1006,26 @@ def annotate(v, refused):
 
 
 def executor_left_nothing(state):
-    """What an active task's executor left when its execution log ends in an exit or in a start that failed, and no
-    submission is in place or retired; nothing for a start, which may still be running."""
-    if (state["kind"] != "active" or {"invalid", "inputs_changed"} & state.keys() or (state["path"].parent / "submission.json").exists()
-            or any(state["path"].parent.glob("submission.retired-*.json"))):
+    """What an active task's executor left when its execution log ends in a start that failed, or in an exit while no
+    submission is in place and the drain retired none that run wrote; nothing for a start, which may still be running."""
+    if state["kind"] != "active" or {"invalid", "inputs_changed"} & state.keys() or (state["path"].parent / "submission.json").exists():
         return None
+    folder = state["path"].parent
     try:
-        events = [line.partition(" ")[2] for line in state["path"].with_name("executions.log").read_bytes().decode("utf-8").splitlines()]
-    except (OSError, UnicodeError):
+        events = [line.partition(" ")[::2] for line in (folder / "executions.log").read_bytes().decode("utf-8").splitlines()]
+        last = events[-1][1] if events else ""
+        code, starts = re.fullmatch(r"exit (-?\d+) \(pid \d+\)", last), [when for when, event in events if event == "start"]
+        # A retired submission covers the one run that wrote it, after that run's start.
+        if code and starts and any(path.stat().st_mtime >= datetime.datetime.fromisoformat(starts[-1]).timestamp()
+                                   for path in folder.glob("submission.retired-*.json")):
+            return None
+    except (OSError, UnicodeError, ValueError):
         return None  # Nothing ran yet, or a history the drain refuses, naming it, when it reads it.
-    if events and (code := re.fullmatch(r"exit (-?\d+) \(pid \d+\)", events[-1])):
-        return (f"its executor last exited {code[1]} (run {sum(event.startswith('exit ') for event in events)}) and left nothing to "
+    if code:
+        return (f"its executor last exited {code[1]} (run {sum(event.startswith('exit ') for _, event in events)}) and left nothing to "
                 f"accept (output: {Path(state['receipt']['worktree']) / '.devlyn/loop'})")
-    if events and events[-1].startswith("not started: "):
-        return f"its executor could not start ({events[-1].removeprefix('not started: ')})"
+    if last.startswith("not started: "):
+        return f"its executor could not start ({last.removeprefix('not started: ')})"
     return None
 
 
