@@ -513,13 +513,18 @@ jobs:
           console.log(rows === null ? 'lister failed' : rows.some((line) => line.includes(process.argv[1] + '\\')) ? 'yes' : 'no');
           '''
 
+          # A recorded answer can hold any character (a path, an error), and this step's stdout may be in a legacy code
+          # page that cannot encode it: it is printed in ASCII, each other character escaped.
+          def print_ascii(text):
+              print(text.encode('ascii', 'backslashreplace').decode('ascii'), flush=True)
+
           def control(used):
               try:
                   checked('control-437', ['node', '-e', control_lister, str(used)], 60)
                   answer = (logs / 'control-437.log').read_text(encoding='ascii').strip()
               except Exception as error:
                   answer = f'lister failed ({error})'
-              print("control: 4.3.31's list at 437 holds the path: " + answer, flush=True)
+              print_ascii("control: 4.3.31's list at 437 holds the path: " + answer)
 
           constrained_lister = r'''
           const fs = require('fs'), path = require('path'), vm = require('vm'), crypto = require('crypto'), child = require('child_process');
@@ -540,7 +545,7 @@ jobs:
                   answer = (logs / 'control-constrained.log').read_text(encoding='utf-8', errors='replace').strip()
               except Exception as error:
                   answer = f'failed ({error})'
-              print("control: the lister's command under ConstrainedLanguage reads rows: " + answer, flush=True)
+              print_ascii("control: the lister's command under ConstrainedLanguage reads rows: " + answer)
 
           def count_code_pages():
               for name in ('.agents', '.claude'):
@@ -553,7 +558,7 @@ jobs:
                   answer = (logs / 'new-console-cp.log').read_text(encoding='ascii', errors='replace').strip()
               except Exception as error:
                   answer = f'failed ({error})'
-              print('Native Windows new console output code page: ' + answer, flush=True)
+              print_ascii('Native Windows new console output code page: ' + answer)
               original = kernel32.GetConsoleOutputCP()
               assert original, 'this step has no console whose code page could be set'
               scopes = (('project', count, ['--project', str(count)], count_env),
