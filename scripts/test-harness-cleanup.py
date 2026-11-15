@@ -3084,7 +3084,8 @@ assert.deepStrictEqual(inUse([], { list: ps([]) }).calls, []);
         # Prediction (I2, unit): the needle is the text between two tokens in the one row that holds every token once, in
         # order, with exactly one joining space dropped on each side, so a path's own spaces stay. No such row, a token
         # missing or doubled, two such rows, tokens out of order, or text between tokens not framed by spaces: every copy
-        # of the batch is kept. A row of a cleanup command is no user. Cannot run before the change: no such block.
+        # of the batch is kept. A row of a cleanup command is no user, nor is the lister shell of another cleanup running
+        # at the same time, which names the same paths between its own tokens. Cannot run before the change: no such block.
         self.node(r"""
 const dirs = ['/w/used', '/w/unused'], row = 'python3 /w/used/devlyn-ideate/scripts/queue.py drain';
 assert.deepStrictEqual(inUse(dirs, { list: ps([row]) }).used, ['/w/used']);
@@ -3099,6 +3100,9 @@ for (const [name, shell] of [
 }
 assert.deepStrictEqual(inUse(['/w/two  spaces', '/w/two spaces'], { list: ps(['python3 /w/two  spaces/x.py']) }).used, ['/w/two  spaces']);
 assert.deepStrictEqual(inUse(dirs, { list: ps(['node devlyn.js cleanup --plan --account-home /w/used/x --json']) }).used, []);
+const rival = 'sh -c ps -axww -o command=; exit $? 0123456789abcdef /w/used/ 1123456789abcdef /w/unused/ 2123456789abcdef';
+assert.deepStrictEqual(inUse(dirs, { list: ps([rival]) }).used, []);
+assert.deepStrictEqual(inUse(dirs, { list: ps([rival, row]) }).used, ['/w/used']);
 """)
 
     def test_every_row_shape_and_renderer_is_compared_as_the_lister_printed_it(self):

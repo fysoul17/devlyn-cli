@@ -1526,7 +1526,8 @@ function cleanupInUse(dirs) {
     const [witness] = witnesses, at = witnesses.length === 1 && marks(witness);
     const between = at ? batch.map((_, i) => witness.slice(at[i] + tokens[i].length, at[i + 1])) : [];
     const framed = between.length && between.every((text) => text.length > 2 && text.startsWith(' ') && text.endsWith(' '));
-    const listed = others(rows.filter((row) => row !== witness));
+    // No lister's shell is a user: this one's (the witness) and another cleanup's beside it name every path they list.
+    const listed = others(rows.filter((row) => !row.includes(script)));
     batch.forEach((name, i) => {
       if (!framed || listed.some((row) => row.includes(between[i].slice(1, -1)))) used.add(name);
     });
