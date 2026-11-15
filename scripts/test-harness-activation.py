@@ -595,6 +595,35 @@ class ActivationTests(unittest.TestCase):
         (self.project / '.kimi-code/skills').write_text('not a directory')
         self.assertEqual(self.plan(self.context('kimi')), plan)
 
+    def test_kimi_skill_root_replaced_by_a_file_after_its_lookup_still_collides(self):
+        # Prediction: only the lookup's ENOTDIR means absent. A skill folder that existed when it was looked up, whose
+        # root then becomes a file, meets ENOTDIR in the fingerprint read (Windows: no entry): the name still collides,
+        # with the error.
+        root = self.project / '.kimi-code/skills'
+        skill = root / 'devlyn-ideate'
+        skill.mkdir(parents=True)
+        (skill / 'SKILL.md').write_text('---\nname: devlyn-ideate\ndescription: owner\n---\nOwner')
+        race = f'''const fs = require('fs'), lstat = fs.lstatSync;
+let raced = false;
+fs.lstatSync = function (file, options) {{
+  const entry = lstat.call(fs, file, options);
+  if (!raced && file === {json.dumps(str(skill))} && entry?.isDirectory() && new Error().stack.includes('inspectSkills')) {{
+    raced = true;
+    fs.rmSync({json.dumps(str(root))}, {{recursive: true}});
+    fs.writeFileSync({json.dumps(str(root))}, 'replaced by a file');
+  }}
+  return entry;
+}};'''
+        plan = self.plan_in_node(self.context('kimi'), race)
+        self.assertTrue(root.is_file())
+        self.assertEqual(plan['engineArgs'], ['--agent-file', str(self.run_dir / 'devlyn-kimi.md')])
+        reasons = plan['channels']['skills']['reasons']
+        self.assertEqual([r['code'] for r in reasons], ['name-collision', 'config-unreadable', 'skills-catalog'])
+        self.assertEqual(reasons[0]['params'], {'name': 'devlyn-ideate', 'path': str(skill / 'SKILL.md')})
+        self.assertEqual(reasons[1]['params']['path'], str(skill))
+        if os.name != 'nt':
+            self.assertIn('ENOTDIR', reasons[1]['params']['detail'])
+
     def test_kimi_native_skills_custom_home(self):
         # Prediction: KIMI_CODE_HOME replaces the default Kimi home, while OS-home .agents skills still load.
         custom = self.case / 'custom kimi home'

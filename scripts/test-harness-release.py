@@ -452,6 +452,11 @@ assert.deepEqual(fs.readdirSync(path.join(store, 'devlyn-cli')), []);
                       "  *) mkdir -p \"$HOME/.local/state/gh\" && : > \"$HOME/.local/state/gh/device-id\" ;;\nesac\n"
                       "echo 'gh version 2.103.3 (2026-11-01)'\n", encoding='utf-8')
         gh.chmod(0o755)
+        # The variable reaches gh's child only: a python3 stub records what it got and runs the real one.
+        record, python = self.case / 'python3.record', stubs / 'python3'
+        python.write_text(f"#!/bin/sh\necho \"GH_TELEMETRY=${{GH_TELEMETRY-unset}}\" >> '{record}'\n"
+                          f"exec '{shutil.which('python3')}' \"$@\"\n", encoding='utf-8')
+        python.chmod(0o755)
         home = self.case / 'home'
         home.mkdir()
         env = {**environment(), 'HOME': str(home), 'PATH': os.pathsep.join((str(stubs), os.environ['PATH']))}
@@ -459,6 +464,7 @@ assert.deepEqual(fs.readdirSync(path.join(store, 'devlyn-cli')), []);
         before = snapshot(home)
         data = self.cli('status', '--project', self.case, env=env)
         self.assertEqual(snapshot(home), before)
+        self.assertEqual(set(record.read_text(encoding='utf-8').splitlines()), {'GH_TELEMETRY=unset'})
         self.assertEqual(next(r for r in data['requirements'] if r['name'] == 'gh'),
                          {'name': 'gh', 'required': False, 'available': True, 'version': '2.103.3', 'reasons': []})
 
@@ -496,7 +502,10 @@ assert.deepEqual(fs.readdirSync(path.join(store, 'devlyn-cli')), []);
         msys = "printf '5.3.15(2)-release\\n%s\\n' '{}'\n"
         cases = [('msys', stub('msys', msys.format('C:/Program Files/Git/')), row(True, '5.3.15')),
                  ('unc', stub('unc', msys.format('//server/share/Git/')), row(True, '5.3.15')),
-                 ('digits in the path', stub('digits', msys.format('C:/Tools/Git 2.53/')), row(True, '5.3.15')),
+                 ('digits in the path', stub('digits', "echo 'PortableGit 2.56.0 ready'\n" + msys.format('C:/Tools/Git 2.53/')),
+                  row(True, '5.3.15')),
+                 ('a POSIX path last', stub('posix', msys.format('/')), row(False, '5.3.15')),
+                 ('a Windows path, exit 1', stub('exit', msys.format('C:/x/') + 'exit 1\n'), row(False, '5.3.15')),
                  ('cygwin refuses -W', stub('cygwin', "echo '5.3.15(2)-release'\n"
                                             "echo 'bash: line 1: pwd: -W: invalid option' >&2\nexit 1\n"), row(False, '5.3.15')),
                  ('wsl without a distribution', stub('wsl', "echo 'Windows Subsystem for Linux has no installed "
