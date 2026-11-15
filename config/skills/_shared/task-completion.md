@@ -236,7 +236,7 @@ affected resources. Use `git worktree lock` to keep a tree.
 A VM that shared the tree (Docker Desktop after a bind mount) can keep files open
 until it restarts; the helper names it when identifiable and retries cleanup on
 the next allocation or resume after the restart.
-On native Windows, cleanup waits while a program still uses the tree; a managed tree instead waits for removal by hand, as its reason says; scratch that holds files is retained. Do not kill unknown processes or force worktree removal to make completion pass.
+On native Windows, a tree a program has a file open in, or runs in, is kept until that program lets go; one a program only watches is removed. A managed tree instead waits for removal by hand, as its reason says; scratch that holds files is retained. Do not kill unknown processes or force worktree removal to make completion pass.
 
 The receipt directory holds byte-verified `custody/`, `manifest.json` and a guarded
 `refs/devlyn/completed/<id>` recovery ref. Check evidence is copied there

@@ -3091,13 +3091,26 @@ else:
     helper['cleanup_workspace'].__globals__['gref'] = gref
 helper['cleanup_workspace'](saved, receipt, warnings=[])
 '''
+# One step of W6 under core.fsmonitor=true: the allocation (request and result files) or the cleanup of a receipt.
+FSMONITOR_PY = r'''import argparse, json, pathlib, runpy, shutil, sys, types
+helper, step, value = runpy.run_path(sys.argv[1]), sys.argv[2], pathlib.Path(sys.argv[3])
+if step == 'allocate':
+    shutil.disk_usage = lambda path: types.SimpleNamespace(total=100 * 1024**3, free=100 * 1024**3)
+    request = argparse.Namespace(**json.loads(value.read_text(encoding='utf-8')))
+    pathlib.Path(sys.argv[4]).write_text(json.dumps(helper['allocate'](request)), encoding='utf-8')
+else:
+    helper['cleanup_workspace'](helper['read_json'](value), value, warnings=[])
+'''
 
 
 @unittest.skipUnless(os.name == 'nt', 'native Windows refuses to move a folder a process holds')
 class NativeRemovalTests(unittest.TestCase):
     """The Windows removal of a merged task tree, whose move is its writer check (W1 to W13b).
     This is a measurement: a holder that does not block the move is a finding to report, and every failure says
-    what was observed."""
+    what was observed. The rule that decides shipping (the owner's, 2026-11-15): W1, W1b, W2, W3a, W3b and W3d are each
+    refused alone, W6 passes with a daemon watching the tree, and W4 to W13b pass. A program that only watches the tree
+    folder is not a holder, so W3c is measured and printed, and passes either way while the helper's result says what
+    the move did."""
 
     def setUp(self):
         from unittest.mock import Mock
@@ -3124,12 +3137,14 @@ class NativeRemovalTests(unittest.TestCase):
     def git(self, *args):
         return run(['git', *args], env=dict(os.environ)).stdout.decode('utf-8').strip()
 
-    def allocate(self):
-        """A real allocation whose receipt is left as a merged delivery leaves it."""
-        result = self.helper['allocate'](argparse.Namespace(
-            repo=str(self.repo), task='task', branch='task/native', repository=None, base=None, remote='origin',
-            worktree=str(self.root / 'task'), local_base=self.git('-C', self.repo, 'rev-parse', 'HEAD'),
-            from_receipt=None, start=None))
+    def allocation(self):
+        return dict(repo=str(self.repo), task='task', branch='task/native', repository=None, base=None, remote='origin',
+                    worktree=str(self.root / 'task'), local_base=self.git('-C', self.repo, 'rev-parse', 'HEAD'),
+                    from_receipt=None, start=None)
+
+    def allocate(self, result=None):
+        """A real allocation (or the `result` of one made elsewhere) whose receipt is left as a merged delivery leaves it."""
+        result = result or self.helper['allocate'](argparse.Namespace(**self.allocation()))
         self.path = Path(result['receipt'])
         self.receipt = self.helper['read_json'](self.path)
         self.receipt.update(publish_sha=self.receipt['baseline'], files={}, writers_released=True)
@@ -3150,9 +3165,10 @@ class NativeRemovalTests(unittest.TestCase):
         print(f'{label}: after the removal {json.dumps(state)}', flush=True)
         self.assertEqual(state, {'original': False, 'moved': False, 'registered': []}, label)
 
-    def measure(self, label, argv, *, cwd, appended=None):
-        """One holder alone: with no holder the move succeeds, while it holds the move is refused on each of three
-        attempts a second apart, and once it has let go the move succeeds."""
+    @contextlib.contextmanager
+    def holding(self, label, argv, *, cwd):
+        """A fresh tree that moves aside and back with no holder (the control), then one holder alone: yields the holder
+        and what it said once it signals that it holds; on leaving, it lets go and must exit 0."""
         self.allocate()
         try:
             self.helper['move_aside'](self.work)
@@ -3173,6 +3189,17 @@ class NativeRemovalTests(unittest.TestCase):
                 self.assertIsNone(holder.poll(), f'{label}: the holder exited {holder.returncode} before holding: {said()}')
                 self.assertLess(time.monotonic(), deadline, f'{label}: the holder never signalled that it holds: {said()}')
                 time.sleep(0.03)
+            yield holder, said
+        finally:
+            release.touch()
+            holder.stdin.close()
+            holder.wait(timeout=30)
+        self.assertEqual(holder.returncode, 0, f'{label}: the holder failed: {said()}')
+
+    def measure(self, label, argv, *, cwd, appended=None):
+        """One holder alone: with no holder the move succeeds, while it holds the move is refused on each of three
+        attempts a second apart, and once it has let go the move succeeds."""
+        with self.holding(label, argv, cwd=cwd) as (holder, said):
             for attempt in (1, 2, 3):
                 if attempt > 1:
                     time.sleep(1)
@@ -3192,11 +3219,6 @@ class NativeRemovalTests(unittest.TestCase):
                 self.assertIsInstance(refusal, self.helper['WriterActive'], observed)
                 self.assertIn('[WinError ', str(refusal), observed)
                 self.assertTrue(self.work.is_dir() and not self.moved.exists(), observed)
-        finally:
-            release.touch()
-            holder.stdin.close()
-            holder.wait(timeout=30)
-        self.assertEqual(holder.returncode, 0, f'{label}: the holder failed: {said()}')
         try:
             self.helper['move_aside'](self.work)
         except self.helper['CompletionError'] as error:
@@ -3222,8 +3244,34 @@ class NativeRemovalTests(unittest.TestCase):
         held = self.root / 'task/ignored/held.bin'
         self.measure('W3b', [sys.executable, '-c', HANDLE_PY, held, 0xC0000000, 4, 0x80], cwd=self.root)
 
+    def delivered(self):
+        """The helper's completion of a merged delivery's workspace, with its own retention of a refused removal; the
+        delivery evidence and the ref deletions, which need the hosting service, are left out (the fixture has no remote)."""
+        scope = self.helper['cleanup_delivered'].__globals__
+        def workspace(receipt, path, *, warnings=None, anchor=None):
+            scope['cleanup_workspace'](receipt, path, warnings=[] if warnings is None else warnings, anchor=anchor)
+        receipt = self.helper['read_json'](self.path)
+        with patch.dict(scope, verify_delivery=lambda receipt, path, pr: None, remove_delivered=workspace):
+            self.helper['cleanup_delivered'](receipt, self.path, None)
+        return self.helper['completion_result'](receipt, self.path, 'COMPLETE')
+
     def test_w3c_handle_on_the_folder_itself_as_a_watcher_opens_it(self):
-        self.measure('W3c', [sys.executable, '-c', HANDLE_PY, self.root / 'task', 0x1, 3, 0x02000000], cwd=self.root)
+        # Measured, not a gate: a program that only watches the tree folder is not a holder (the owner's rule).
+        with self.holding('W3c', [sys.executable, '-c', HANDLE_PY, self.root / 'task', 0x1, 3, 0x02000000],
+                          cwd=self.root) as (holder, said):
+            result = self.delivered()
+            self.assertIsNone(holder.poll(), f'W3c: the holder exited while the removal ran: {said()}')
+        state = {'status': result['status'], 'original': self.work.exists(), 'moved': self.moved.exists(),
+                 'registered': sorted(self.registered()), 'reason': (result['workspace_cleanup'] or {}).get('reason')}
+        print(f'W3c: the removal under a folder watcher: {json.dumps(state)}', flush=True)
+        if state['status'] == 'CLEANUP_PENDING' and state['original'] and not state['moved']:
+            self.assertEqual(state['registered'], [str(self.work)], 'W3c')
+            self.assertIn(f'a program still uses {self.work}', state['reason'], 'W3c')
+            print('W3c: refused', flush=True)
+        else:
+            self.assertEqual(state, {'status': 'COMPLETE', 'original': False, 'moved': False, 'registered': [], 'reason': None},
+                             "W3c: the helper's result does not match what the move did")
+            print('W3c: not refused; the tree was removed under a folder watcher, as the rule allows', flush=True)
 
     def test_w3d_git_bash_append_through_a_held_descriptor(self):
         held = self.root / 'task/ignored/bash.log'
@@ -3246,24 +3294,44 @@ class NativeRemovalTests(unittest.TestCase):
         self.assertEqual((result['status'], result['scratch_cleanup']), ('COMPLETE', {'status': 'CLEAN', 'logical_bytes_removed': 0}))
         self.assertEqual((self.path.parent / 'records/.devlyn/record.txt').read_text(encoding='utf-8'), 'kept')
 
+    def bounded(self, step, argv):
+        """One W6 step under core.fsmonitor=true, killed after 120 s. Its output goes to a file: a pipe that a Git child
+        still waiting on the daemon held open would keep the wait from ending."""
+        log = self.root / f'W6-{step}.log'
+        with log.open('wb') as stream:
+            child = subprocess.Popen([*map(str, argv)], env=dict(os.environ), stdin=subprocess.DEVNULL, stdout=stream,
+                                     stderr=subprocess.STDOUT)
+        try:
+            child.wait(timeout=120)
+        except subprocess.TimeoutExpired:
+            child.kill()
+            child.wait(timeout=30)
+            self.fail(f'W6: the fsmonitor fixture did not finish in 120 s ({step}): '
+                      f'{log.read_bytes().decode("utf-8", "replace").strip()}')
+        return child.returncode, log.read_bytes().decode('utf-8', 'replace').strip()
+
     def test_w6_fsmonitor_started_by_the_checks_does_not_hold_the_removal(self):
+        # Each step runs in a child bounded at 120 s: on macOS an allocation was seen waiting 15 minutes on the daemon it
+        # had started, and a hang here must fail W6 rather than use the step's time limit.
         self.git('-C', self.repo, 'config', 'core.fsmonitor', 'true')
         self.addCleanup(lambda: [run(['git', '-C', path, 'fsmonitor--daemon', 'stop'], env=dict(os.environ), code=None)
                                  for path in (self.repo, self.root / 'task', self.root / 'task.devlyn-removing') if path.exists()])
-        self.allocate()
-        self.git('-C', self.work, 'status')
-        status = run(['git', '-C', self.work, 'fsmonitor--daemon', 'status'], env=dict(os.environ), code=None)
-        daemon = (status.stdout + status.stderr).decode('utf-8', 'replace').strip()
-        print(f'W6: fsmonitor before the removal (exit {status.returncode}): {daemon}', flush=True)
-        self.assertEqual(status.returncode, 0, f'W6: no fsmonitor daemon watches the tree, so W6 measures nothing: {daemon}')
-        try:
-            self.cleanup()
-        except self.helper['CompletionError'] as error:
-            self.fail(f'W6: FINDING: the removal was refused with core.fsmonitor=true: {type(error).__name__}: {error}; '
-                      f'daemon: {daemon}')
+        request, allocated = self.root / 'W6-request.json', self.root / 'W6-allocation.json'
+        request.write_text(json.dumps(self.allocation()), encoding='utf-8')
+        code, said = self.bounded('allocation', [sys.executable, '-c', FSMONITOR_PY, self.script, 'allocate', request, allocated])
+        self.assertEqual(code, 0, f'W6: the allocation failed: {said}')
+        self.allocate(json.loads(allocated.read_text(encoding='utf-8')))
+        code, said = self.bounded('status', ['git', '-C', self.work, 'status'])
+        self.assertEqual(code, 0, f'W6: git status failed: {said}')
+        code, daemon = self.bounded('daemon status', ['git', '-C', self.work, 'fsmonitor--daemon', 'status'])
+        print(f'W6: fsmonitor before the removal (exit {code}): {daemon}', flush=True)
+        self.assertEqual(code, 0, f'W6: no fsmonitor daemon watches the tree, so W6 measures nothing: {daemon}')
+        code, said = self.bounded('cleanup', [sys.executable, '-c', FSMONITOR_PY, self.script, 'cleanup', self.path])
+        if code:
+            self.fail(f'W6: FINDING: the removal was refused with core.fsmonitor=true: {said}; daemon: {daemon}')
         self.assert_removed('W6')
 
-    def killed(self, label, step, prepare=None):
+    def kill(self, label, step, prepare=None):
         self.allocate()
         if prepare:
             prepare()
@@ -3274,6 +3342,9 @@ class NativeRemovalTests(unittest.TestCase):
         registered = str(self.work) if step == 'move' else str(self.moved)
         self.assertEqual(state, {'exit': 9, 'original': False, 'moved': True, 'registered': [registered]},
                          f'{label}: {result.stderr.decode("utf-8", "replace")}')
+
+    def killed(self, label, step, prepare=None):
+        self.kill(label, step, prepare)
         self.cleanup()
         self.assert_removed(label)
 
@@ -3357,7 +3428,9 @@ class NativeRemovalTests(unittest.TestCase):
 
     def test_w13b_files_the_move_pushes_past_max_path_are_removed_after_a_kill(self):
         # A tracked and an ignored file at 252 characters at the tree's path, 268 once moved; a kill after the move, then
-        # the recovery's checks and removal run on the moved tree.
+        # the recovery's checks and removal run on the moved tree. The tracked file is changed first: the helper's own
+        # refusal of a dirty tree shows that its `git status` read that path, which it can only with long paths; once
+        # the file is restored, the tree is removed.
         name = 'y' * (251 - len(str(self.root / 'task/ignored')))
         (self.repo / 'tracked').mkdir()
         (self.repo / 'tracked' / name).write_text('tracked\n', encoding='utf-8')
@@ -3367,7 +3440,16 @@ class NativeRemovalTests(unittest.TestCase):
             (self.work / 'ignored' / name).write_bytes(b'disposable output')
             self.assertEqual([len(str(tree / folder / name)) for tree in (self.work, self.moved) for folder in ('tracked', 'ignored')],
                              [252, 252, 268, 268])
-        self.killed('W13b', 'move', deep)
+        self.kill('W13b', 'move', deep)
+        tracked = Path('\\\\?\\' + str(self.moved / 'tracked' / name))  # Past MAX_PATH whatever the system's setting.
+        saved = tracked.read_bytes()
+        tracked.write_bytes(saved + b'changed after the kill\n')
+        with self.assertRaisesRegex(self.helper['CompletionError'], 'dirty/untracked workspace', msg='W13b') as raised:
+            self.cleanup()
+        print(f'W13b: the long tracked file changed after the kill: refused: {raised.exception}', flush=True)
+        tracked.write_bytes(saved)
+        self.cleanup()
+        self.assert_removed('W13b')
         result = self.helper['completion_result'](self.receipt, self.path, 'COMPLETE')
         print(f"W13b: completion {result['status']}", flush=True)
         self.assertEqual(result['status'], 'COMPLETE')
