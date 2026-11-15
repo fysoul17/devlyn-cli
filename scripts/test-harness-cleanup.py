@@ -3091,7 +3091,7 @@ for (const [name, shell] of [
     ['two witness rows', (args) => ['sh', ...args].join(' ') + '\n' + ['sh', ...args].join(' ')],
     ['tokens out of order', (args) => ['sh', ...args.slice(0, 2), ...args.slice(2).reverse()].join(' ')],
     ['text between tokens not framed by spaces', (args) => ['sh', ...args].join('\t')]]) {
-  assert.deepStrictEqual(inUse(dirs, { list: ps([row], { shell }) }).used, dirs, name);
+  assert.deepStrictEqual(inUse(dirs, { list: ps([row], { shell }) }).used, [...dirs].sort(), name);
 }
 assert.deepStrictEqual(inUse(['/w/two  spaces', '/w/two spaces'], { list: ps(['python3 /w/two  spaces/x.py']) }).used, ['/w/two  spaces']);
 assert.deepStrictEqual(inUse(dirs, { list: ps(['node devlyn.js cleanup --plan --account-home /w/used/x --json']) }).used, []);
