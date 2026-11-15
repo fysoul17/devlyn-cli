@@ -1879,7 +1879,10 @@ def tracked_places(anchor, common, rel):
     Git directory it takes as the work tree and wait on. An administrative directory without an index is skipped; one that
     cannot be read refuses (seen), and so does an index git cannot read, naming its worktree. The HEADs and branches are
     read refusing whatever Git writes beside its answer, since it skips a ref or an object it cannot read with only a
-    warning, after each folder under refs/heads is listed, since for-each-ref skips one it cannot list without a word."""
+    warning, after each folder under refs/heads is listed, a link included, which Git follows, since for-each-ref skips
+    one it cannot list without a word. The listing goes depth first, so links that loop reach the system's own link
+    limit at once and are refused (seen); breadth first, two such links would never end, nor does Git's own listing of
+    them, which passes over a folder it cannot list."""
 
     def read(*args, **kwargs):
         result = git_run(anchor, *args, **kwargs)
@@ -1893,8 +1896,8 @@ def tracked_places(anchor, common, rel):
                  if "worktree" in (row := dict(field.partition(" ")[::2] for field in raw.split("\0") if field))]
     checked_out = {row.get("branch") for row in worktrees}
     folders = [common / "refs/heads"]  # Missing where every ref is packed or in a reftable; a ref file lists nothing.
-    for folder in folders:
-        folders += [entry for entry in seen(folder, entries=True) if not entry.is_symlink()]
+    while folders:
+        folders += seen(folders.pop(), entries=True)
     commits = [(f"HEAD of {row['worktree']}", row["HEAD"]) for row in worktrees if "HEAD" in row] + [
         (f"the branch {ref.removeprefix('refs/heads/')}", ref)
         for ref in read("for-each-ref", "--format=%(refname)", "refs/heads/").splitlines() if ref not in checked_out]
@@ -2563,9 +2566,10 @@ class QueueTests(unittest.TestCase):
     def test_withdraw_reads_past_prunable_missing_and_bare_worktrees(self):
         """D1, E6. Prediction: withdraw prints WITHDRAWN beside a registered worktree whose folder stays without its .git
         file (Git lists it prunable), a locked worktree whose folder is gone, neither index holding the loop's queue
-        file, and a dangling symbolic ref under refs/heads, which Git lists nowhere, and in the linked worktree of a bare
-        clone, whose bare row has no HEAD line and whose common Gitdir has no index. git ls-files run in either folder
-        fails; without the HEAD check the bare row raises KeyError."""
+        file, a dangling symbolic ref under refs/heads, which Git lists nowhere, and, where links are made (not Windows),
+        a link there that dangles, which Git skips, and one at a regular file holding a commit, which Git reads as a ref
+        file, and in the linked worktree of a bare clone, whose bare row has no HEAD line and whose common Gitdir has no
+        index. git ls-files run in either folder fails; without the HEAD check the bare row raises KeyError."""
         import shutil
         prunable, gone, bare, work = self.root / "prunable", self.root / "gone", self.root / "bare.git", self.root / "work"
         for path in (prunable, gone):
@@ -2574,6 +2578,10 @@ class QueueTests(unittest.TestCase):
         git(self.anchor, "worktree", "lock", str(gone), env=self.env)
         shutil.rmtree(gone)
         git(self.anchor, "symbolic-ref", "refs/heads/dangle", "refs/heads/nowhere", env=self.env)
+        if os.name != "nt":
+            (self.root / "commit").write_text(git(self.anchor, "rev-parse", "main", env=self.env) + "\n", encoding="utf-8")
+            for name, target in (("lost", self.root / "nowhere"), ("filed", self.root / "commit")):
+                (self.anchor / ".git/refs/heads" / name).symlink_to(target)
         self.cli("add", self.meta)
         self.assertEqual(self.cli("withdraw", "inv")["status"], "WITHDRAWN")
         subprocess.run(["git", "clone", "-q", "--bare", str(self.anchor), str(bare)], check=True, env=self.env)
@@ -2667,11 +2675,12 @@ class QueueTests(unittest.TestCase):
         the index of a linked worktree holding the staged queue file behind an administrative directory it cannot enter,
         <common>/worktrees itself, retired/ or moved/ holding a task's directory, devlyn-completion holding the active one,
         the loop's folder in devlyn-loops, or devlyn-loops, which the add records are listed from; and, for a branch that
-        commits the queue file, its ref file, its ref folder or its tree object, refused in Git's words or naming the
-        folder. Before: is_file, lexists and glob each answered no on the permission error, so withdraw took back the loop,
-        and in the loop folder and add records cases deleted its capture ref while its add record stayed; the unreadable
-        worktrees folder alone was refused, in the system's words; then Git skipped the branch, with only a warning for
-        the ref file and the tree object and silently for the folder, and the loop was withdrawn."""
+        commits the queue file, its ref file, its ref folder, also one reached through a link, or its tree object, refused
+        in Git's words or naming the folder. Before: is_file, lexists and glob each answered no on the permission error, so
+        withdraw took back the loop, and in the loop folder and add records cases deleted its capture ref while its add
+        record stayed; the unreadable worktrees folder alone was refused, in the system's words; then Git skipped the
+        branch, with only a warning for the ref file and the tree object and silently for the folder, and the loop was
+        withdrawn; then withdraw passed over a link, which Git follows, and took back the loop behind one."""
         probe = self.root / "probe"
         probe.mkdir(mode=0)
         try:
@@ -2724,8 +2733,12 @@ class QueueTests(unittest.TestCase):
         def git_words(command, named):  # Git's own words vary with the locale; they name the ref or the object.
             return re.compile(rf'git {command} wrote ".*{re.escape(named)}.*" while reading this repository\'s HEADs and branches, so '
                               rf"withdraw cannot tell whether {re.escape(rel)} is tracked there; withdraw changes nothing until it can")
+        outside, nest = self.root / "outside", common / "refs/heads/nest"  # A ref folder Git reaches through a link.
+        behind = (lambda: (outside.mkdir(), (outside / "held").write_text(held + "\n", encoding="utf-8"), nest.symlink_to(outside)),
+                  lambda: (nest.unlink(), (outside / "held").unlink(), outside.rmdir()))
         cases += [("branch ref file", branch("held"), common / "refs/heads/held", 0, git_words("for-each-ref", "refs/heads/held")),
-                  ("branch ref folder", branch("nest/held"), common / "refs/heads/nest", 0, unreadable(common / "refs/heads/nest")),
+                  ("branch ref folder", branch("nest/held"), nest, 0, unreadable(nest)),
+                  ("branch ref folder behind a link", behind, outside, 0, unreadable(nest)),
                   ("tree object", branch("held"), common / "objects" / tree[:2] / tree[2:], 0, git_words("cat-file", tree))]
         for name, (prepare, undo), denied, mode, reason in cases:
             with self.subTest(case=name):
