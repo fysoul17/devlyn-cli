@@ -284,10 +284,10 @@ jobs:
     needs: posix
     if: ${{ !cancelled() }}
     runs-on: windows-2025
-    # The checks' caps add up to 96 minutes (the 2700 s loop suite, the 900 s activation suite, three 480 s suites
-    # and three 240 s self-tests), and the count checks run after them: the caps' sum plus margin for setup and those
-    # checks, to be tightened from the first run's measured time.
-    timeout-minutes: 105
+    # The checks' caps add up to 103 minutes (the 2700 s loop suite, the 900 s activation and package suites, two
+    # 480 s suites and three 240 s self-tests), and the count checks run after them: the caps' sum plus margin for
+    # setup and those checks, to be tightened from the first run's measured time.
+    timeout-minutes: 112
     steps:
       # The checkout is the test: Git for Windows refuses any tracked path Windows cannot
       # hold. The workspace root keeps the longest tracked path under MAX_PATH; the steps
@@ -425,8 +425,10 @@ jobs:
           failed = []
           for label, command, timeout in (
               # The package suite took 172-229 s of 240 and outlasted it once the package carried its release (4.3.2,
-              # run 39813295135 attempt 2), so it gets 480 s.
-              ('portability', [sys.executable, '-X', 'utf8=0', str(driver), '--package-root', str(package)], 480),
+              # run 39813295135 attempt 2), so it got 480 s; its 181 tests took 180 and 185 s of that on 2026-11-15. The
+              # Windows removal measurements add fixed pauses, up to three controls per holder and four 120 s fsmonitor
+              # bounds, so it gets 900 s.
+              ('portability', [sys.executable, '-X', 'utf8=0', str(driver), '--package-root', str(package)], 900),
               ('storage-client', [sys.executable, '-X', 'utf8=0', str(driver.parent / 'test-storage-client.py'),
                   '--package-root', str(package)], 480),
               # Every engine planned natively from the release, as the app plans each pane; 15 of 77 skip here.
