@@ -157,6 +157,11 @@ for (const [completed, delivery] of [
         self.repos = []
         self.env.pop("CLAUDE_CONFIG_DIR", None)
         self.env["GIT_CONFIG_GLOBAL"] = os.devnull
+        # A commit's detached automatic maintenance would still write into .git while a test reads the tree. Appended to
+        # the inherited GIT_CONFIG_COUNT entries: the CI container's entry trusts the checkout this suite reads tags from.
+        count = int(self.env.get("GIT_CONFIG_COUNT", "0"))
+        self.env.update({"GIT_CONFIG_COUNT": str(count + 1), f"GIT_CONFIG_KEY_{count}": "maintenance.auto",
+                         f"GIT_CONFIG_VALUE_{count}": "false"})
         # These fixtures own every process using their temporary installs. Use a deterministic process
         # listing so host privacy/sandbox restrictions cannot turn every fixture into an in-use skip.
         if os.name != "nt":
