@@ -351,7 +351,9 @@ class LoopFixture(unittest.TestCase):
         self.env = {key: value for key, value in os.environ.items() if key not in {"GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR"}}
         self.env["PYTHONPATH"] = str(self.root) + os.pathsep + self.env.get("PYTHONPATH", "")
         self.env["PYTHONDONTWRITEBYTECODE"] = "1"
-        # A commit's detached automatic maintenance would still write into .git while a test reads the tree.
+        # A commit's detached automatic maintenance would still write into .git while a test reads the tree. The file too: a
+        # push's receiving side drops GIT_CONFIG_COUNT and, under this non-ASCII root on macOS, the bare's own config.
+        (self.root / "gitconfig").write_text("[maintenance]\n\tauto = false\n", encoding="utf-8")
         self.env.update(npm_config_cache=str(self.root / "npm-cache"),
                         GIT_CONFIG_NOSYSTEM="1", GIT_CONFIG_GLOBAL=str(self.root / "gitconfig"),
                         GIT_CONFIG_COUNT="1", GIT_CONFIG_KEY_0="maintenance.auto", GIT_CONFIG_VALUE_0="false",

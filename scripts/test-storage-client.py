@@ -3418,9 +3418,11 @@ class ManagedOwnerTests(unittest.TestCase):
         # Native Git only: URL routing is Git config, never a PATH launcher.
         home = self.root / 'home'
         home.mkdir()
-        # A commit's detached automatic maintenance would still write into .git while a test reads the tree.
+        # A commit's detached automatic maintenance would still write into .git while a test reads the tree. The file too:
+        # the receiving side of the push below drops GIT_CONFIG_COUNT.
+        (self.root / 'gitconfig').write_text('[maintenance]\n\tauto = false\n', encoding='utf-8')
         environment = {**os.environ, 'HOME': str(home), 'USERPROFILE': str(home),
-            'GIT_CONFIG_GLOBAL': os.devnull, 'GIT_CONFIG_NOSYSTEM': '1',
+            'GIT_CONFIG_GLOBAL': str(self.root / 'gitconfig'), 'GIT_CONFIG_NOSYSTEM': '1',
             'GIT_CONFIG_COUNT': '1', 'GIT_CONFIG_KEY_0': 'maintenance.auto', 'GIT_CONFIG_VALUE_0': 'false',
             'GIT_AUTHOR_NAME': 'Fixture', 'GIT_AUTHOR_EMAIL': 'fixture@example.invalid',
             'GIT_COMMITTER_NAME': 'Fixture', 'GIT_COMMITTER_EMAIL': 'fixture@example.invalid', 'GIT_ALLOW_PROTOCOL': 'file'}

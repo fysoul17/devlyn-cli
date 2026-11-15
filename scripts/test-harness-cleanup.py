@@ -156,7 +156,10 @@ for (const [completed, delivery] of [
         self.env["TEMP"] = str(self.snapshots)
         self.repos = []
         self.env.pop("CLAUDE_CONFIG_DIR", None)
-        self.env["GIT_CONFIG_GLOBAL"] = os.devnull
+        # A push's receiving side drops GIT_CONFIG_COUNT and, under this non-ASCII root on macOS, its repository's own
+        # config too; it still reads this file, so its detached maintenance cannot write into a bare a test reads or removes.
+        (self.root / "gitconfig").write_text("[maintenance]\n\tauto = false\n", encoding="utf-8")
+        self.env["GIT_CONFIG_GLOBAL"] = str(self.root / "gitconfig")
         # A commit's detached automatic maintenance would still write into .git while a test reads the tree. Appended to
         # the inherited GIT_CONFIG_COUNT entries: the CI container's entry trusts the checkout this suite reads tags from.
         count = int(self.env.get("GIT_CONFIG_COUNT") or 0)
