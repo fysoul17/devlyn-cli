@@ -584,16 +584,16 @@ class ActivationTests(unittest.TestCase):
         # Prediction: absent roots and non-directory roots are skipped, leaving only the release skills.
         # Observed: shared collision inspection reports ENOTDIR for a file root, requiring catalog fallback.
         # Prediction (revised): absent roots are skipped; file roots keep that explicit error fallback.
+        # Observed (native Windows, run 43664276936): there a file root plans as the absent root, since a lookup through
+        # a file finds no entry; only POSIX reported ENOTDIR, and a file cannot hold a skill on either.
+        # Prediction (revised): on every platform a file root plans as the absent root.
         plan = self.plan(self.context('kimi'))
         self.assertEqual(plan['engineArgs'], ['--agent-file', str(self.run_dir / 'devlyn-kimi.md'),
                                              '--skills-dir', str(self.package / 'config/skills')])
         self.assertEqual(plan['channels']['skills']['state'], 'configured')
         (self.project / '.kimi-code').mkdir()
         (self.project / '.kimi-code/skills').write_text('not a directory')
-        plan = self.plan(self.context('kimi'))
-        self.assertEqual(plan['engineArgs'], ['--agent-file', str(self.run_dir / 'devlyn-kimi.md')])
-        self.assertEqual(plan['channels']['skills']['mechanism'], 'absolute-catalog')
-        self.assertIn('config-unreadable', [r['code'] for r in plan['channels']['skills']['reasons']])
+        self.assertEqual(self.plan(self.context('kimi')), plan)
 
     def test_kimi_native_skills_custom_home(self):
         # Prediction: KIMI_CODE_HOME replaces the default Kimi home, while OS-home .agents skills still load.
@@ -1069,14 +1069,19 @@ process.stdout.write(JSON.stringify(JSON.parse(process.argv[2]).map(([cwd, env, 
         # (1.4.4 and 1.5.3) get the plan 4.3.29 made, whole, in every launch mode: only a first task carries the
         # principles and the catalog. Without one both channels name that version as the minimum, since updating the
         # engine is all it takes.
+        # Observed (native Windows, run 43664276936): the 12 cases without a first task name platform-unexamined, as
+        # the planner does on Windows whatever the version; the 24 with one pass.
+        # Prediction (revised): so off Windows; on Windows, without a first task, both channels are unavailable with
+        # platform-unexamined, since updating the engine would not help there.
         for engine, version in [('cursor', VERSIONS['cursor']), ('cursor', '2026.11.04-abcdef1'), ('antigravity', '1.4.4'),
                                 ('antigravity', '1.5.3')]:
+            gate = (({'detail': 'platform-unexamined'}, None) if os.name == 'nt'
+                    else ({'minimum': CHANNEL_VERSIONS[engine]}, 'engine-version-unsupported'))
             for mode in ('fresh', 'resume', 'fork'):
                 for prompt in (None, *({'text': 'Task "quotes" \\ 한국어\n끝', 'transport': transport} for transport in ('argv', 'stdin'))):
                     with self.subTest(engine=engine, version=version, mode=mode, prompt=prompt):
                         ctx = {**self.context(engine), 'version': version, 'launchMode': mode, 'initialPrompt': prompt}
-                        self.assertEqual(self.plan(ctx), self.first_task_plan(
-                            ctx, {'minimum': CHANNEL_VERSIONS[engine]}, 'engine-version-unsupported'))
+                        self.assertEqual(self.plan(ctx), self.first_task_plan(ctx, *gate))
 
     def private_run_dir(self):
         # The run-folder channels are planned only off Windows, and only where every directory from the run directory
