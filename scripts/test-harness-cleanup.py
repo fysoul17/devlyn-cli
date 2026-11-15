@@ -17,6 +17,105 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 CLI = ROOT / "bin" / "devlyn.js"
 HELPER = ROOT / "config" / "skills" / "_shared" / "task-complete.py"
+LISTER = "ps -axww -o command=; exit $?"
+
+# The suite's `ps`, as honest as a real one: it prints FIXTURE_PROCESSES's rows (one per line), FIXTURE_PS_FILLER rows of
+# filler, the row of the process that started it (a lister's shell holds its own row, as with a real `ps`) and its own,
+# each rendered as FIXTURE_PS_RENDER says: raw (bytes as they are; the default), escape (a byte above 0x7f in meta
+# notation and another unprintable byte in octal, as macOS's `ps` prints under the C locale, and a backslash doubled, as
+# vis(3) does unless told not to) or procps (`?` for each byte that is not printable ASCII). Each run appends to
+# FIXTURE_PS_LOG the arguments of the process that started it and the LC_ALL it was given.
+FAKE_PS = r'''import ctypes, json, os, struct, sys
+
+
+def arguments(pid):
+    if sys.platform != "darwin":
+        with open(f"/proc/{pid}/cmdline", "rb") as file:
+            return file.read().split(b"\0")[:-1]
+    libc = ctypes.CDLL(None, use_errno=True)
+    mib, size = (ctypes.c_int * 3)(1, 49, pid), ctypes.c_size_t(0)  # CTL_KERN, KERN_PROCARGS2
+    if libc.sysctl(mib, 3, None, ctypes.byref(size), None, 0):
+        raise OSError(ctypes.get_errno(), "sysctl")
+    buffer = ctypes.create_string_buffer(size.value)
+    if libc.sysctl(mib, 3, buffer, ctypes.byref(size), None, 0):
+        raise OSError(ctypes.get_errno(), "sysctl")
+    # argc, the executable's path and its padding, then the arguments.
+    raw = buffer.raw[:size.value]
+    return raw[4:].split(b"\0", 1)[1].lstrip(b"\0").split(b"\0")[:struct.unpack_from("i", raw)[0]]
+
+
+def render(row, mode=os.environ.get("FIXTURE_PS_RENDER", "raw")):
+    if mode == "raw":
+        return row
+    out = b""
+    for byte in row:
+        low = byte & 0x7F
+        if 0x20 <= byte < 0x7F:
+            out += b"\\\\" if mode == "escape" and byte == 0x5C else bytes([byte])
+        elif mode == "procps":
+            out += b"?"
+        elif byte > 0x7F:
+            out += b"M-" + bytes([low]) if 0x20 <= low < 0x7F else b"M^" + bytes([low ^ 0x40])
+        else:
+            out += b"\\%03o" % byte
+    return out
+
+
+parent = arguments(os.getppid())
+rows = [row for row in os.environb.get(b"FIXTURE_PROCESSES", b"").split(b"\n") if row]
+rows += [b"filler " + b"x" * 100] * int(os.environ.get("FIXTURE_PS_FILLER", "0"))
+rows += [b" ".join(parent), b" ".join([b"ps", *map(os.fsencode, sys.argv[1:])])]
+if os.environ.get("FIXTURE_PS_LOG"):
+    with open(os.environ["FIXTURE_PS_LOG"], "a", encoding="utf-8") as log:
+        log.write(json.dumps({"parent": [os.fsdecode(arg) for arg in parent], "lc_all": os.environ.get("LC_ALL")}) + "\n")
+sys.stdout.buffer.write(b"".join(render(row) + b"\n" for row in rows))
+'''
+
+# The product's process-list code (bin/devlyn.js, from its batch bound to the marker reader after it) in a context of its
+# own, where the platform, the lister and the random source are the test's. `inUse(dirs, options)` gives the dirs judged
+# in use and every lister call; `ps(rows)` and `powershell(rows)` answer as those listers print, the lister's own row
+# included.
+IN_USE = r"""
+const fs = require('fs'), path = require('path'), vm = require('vm'), crypto = require('crypto'), assert = require('assert');
+const source = fs.readFileSync(process.argv[1], 'utf8');
+const start = source.indexOf('\nconst CLEANUP_LIST_BYTES'), end = source.indexOf('\n// Markers are generated, not bundled');
+if (start < 0 || end < start) throw Error('bin/devlyn.js has no process-list block (const CLEANUP_LIST_BYTES ... cleanupInUse)');
+const block = source.slice(start, end);
+const json = (value) => JSON.parse(JSON.stringify(value));
+function run(code, { platform = 'linux', list = () => { throw Error('no lister expected'); }, random = crypto.randomBytes,
+    env = { PATH: '/usr/bin:/bin', LANG: 'ko_KR.UTF-8' } } = {}) {
+  const calls = [];
+  const context = { path: platform === 'win32' ? path.win32 : path.posix, Buffer, crypto: { randomBytes: random },
+    process: { platform, env }, spawnSync: (command, args, options) => {
+      calls.push(json({ command, args, options }));
+      return list(command, args, options, calls.length);
+    } };
+  vm.runInNewContext(block + '\nresult = JSON.stringify(' + code + ');', context);
+  return { result: JSON.parse(context.result), calls, env: json(context.process.env) };
+}
+const inUse = (dirs, options) => { const ran = run('[...cleanupInUse(' + JSON.stringify(dirs) + ')].sort()', options); return { ...ran, used: ran.result }; };
+const answer = (bytes, options) => options.encoding && options.encoding !== 'buffer' ? bytes.toString(options.encoding) : bytes;
+const render = {
+  raw: (bytes) => bytes,
+  escape: (bytes) => Buffer.concat([...bytes].map((byte) => byte === 0x5c ? Buffer.from('\\\\')
+    : byte >= 0x20 && byte < 0x7f ? Buffer.from([byte])
+    : byte > 0x7f ? Buffer.from((byte & 0x7f) >= 0x20 && (byte & 0x7f) < 0x7f ? 'M-' + String.fromCharCode(byte & 0x7f)
+      : 'M^' + String.fromCharCode((byte & 0x7f) ^ 0x40))
+    : Buffer.from('\\' + byte.toString(8).padStart(3, '0')))),
+  procps: (bytes) => Buffer.from([...bytes].map((byte) => byte >= 0x20 && byte < 0x7f ? byte : 0x3f)),
+};
+// A POSIX `ps`: the shell's own row (its arguments joined by single spaces, unless `shell` says otherwise; null: no
+// such row), the given rows and its own, each rendered `as` raw, escape or procps.
+const ps = (rows, { as = 'raw', shell = (args) => ['sh', ...args].join(' ') } = {}) => (command, args, options) => ({
+  status: 0, signal: null, stdout: answer(Buffer.concat([shell(args), ...rows, 'ps -axww -o command='].filter((row) => row !== null)
+    .map((row) => Buffer.concat([render[as](Buffer.from(row)), Buffer.from('\n')]))), options) });
+const units = (text) => Array.from({ length: text.length }, (_, index) => text.charCodeAt(index)).join(',');
+// PowerShell: its own row (its command line, which `mangle` may change as a code page would) and the given rows.
+const powershell = (rows, mangle = (row) => row) => (command, args, options) => ({ status: 0, signal: null,
+  stdout: answer(Buffer.from([mangle(['powershell.exe', ...args].join(' ')), ...rows].map(units).join('\r\n') + '\r\n'), options) });
+const tokensOf = (call) => call.args.slice(2).filter((_, index) => index % 2 === 0);
+const pathsOf = (call) => call.args.slice(3).filter((_, index) => index % 2 === 0);
+"""
 
 
 class CleanupFixture(unittest.TestCase):
@@ -171,9 +270,10 @@ for (const [completed, delivery] of [
             bins = self.root / "process-bin"
             bins.mkdir()
             ps = bins / "ps"
-            ps.write_text(f"#!{sys.executable}\nimport os\nprint(os.environ.get('FIXTURE_PROCESSES', ''))\n")
+            ps.write_text(f"#!{sys.executable}\n{FAKE_PS}", encoding="utf-8")
             ps.chmod(0o755)
             self.env["PATH"] = str(bins) + os.pathsep + self.env["PATH"]
+            self.env["FIXTURE_PS_LOG"] = str(self.root / "ps.log")
 
     def run_ok(self, argv, cwd=None, code=0, input=None):
         result = subprocess.run([str(part) for part in argv], cwd=cwd or self.root, env=self.env, capture_output=True,
@@ -193,8 +293,8 @@ for (const [completed, delivery] of [
         envelope = json.loads(result.stdout.strip().splitlines()[-1])
         return envelope["data"] if envelope["ok"] else envelope["error"]
 
-    def repo(self, name):
-        repo = self.root / name
+    def repo(self, name, parent=None):
+        repo = (parent or self.root) / name
         repo.mkdir()
         self.run_ok(["git", "init", "-q", "--initial-branch=main"], cwd=repo)
         (repo / "README.md").write_text("# project\n", encoding="utf-8")
@@ -2763,6 +2863,339 @@ for (const [completed, delivery] of [
         self.assertEqual(result["scopes"][0]["delivery"]["state"], "pr-open")
         for name in ["devlyn-ideate", "_shared", ".devlyn-install.json"]:
             self.assertTrue((repo / ".agents/skills" / name).exists(), name)
+
+    # The process list that decides "in use": a path is compared only with text the lister itself printed for that very
+    # path, in a list whose rows are all rendered the same way; where that cannot be shown, the copy is kept.
+
+    def copies(self, repo):
+        """A shipped skill copied into a project's .claude and .agents skill roots: the used root and the unused one."""
+        for name in (".claude", ".agents"):
+            shutil.copytree(ROOT / "config/skills/devlyn-engines", repo / name / "skills/devlyn-engines")
+        return repo / ".claude/skills", repo / ".agents/skills"
+
+    def assert_judged(self, plan, used=(), unused=()):
+        """Each item under a used root is kept as in use; each under an unused root is offered with no reason."""
+        items = [item for scope in plan["scopes"] for item in scope["items"]]
+        for roots, verdict in ((used, ("skip", [{"code": "in-use", "params": {}}])), (unused, ("remove", []))):
+            for root in roots:
+                found = [(item["action"], item["reasons"]) for item in items if Path(item["path"]).parent == Path(root)]
+                self.assertTrue(found, (str(root), items))
+                self.assertEqual(found, [verdict] * len(found), (str(root), items))
+
+    def listers(self):
+        """What each run of the fixture `ps` recorded: the arguments of the process that started it, and its LC_ALL."""
+        log = self.root / "ps.log"
+        return [json.loads(line) for line in log.read_text(encoding="utf-8").splitlines()] if log.exists() else []
+
+    def real_ps(self):
+        """The machine's own `ps` from here on: the fixture leaves PATH, and every locale variable leaves the environment."""
+        self.env["PATH"] = os.pathsep.join(part for part in self.env["PATH"].split(os.pathsep) if part != str(self.root / "process-bin"))
+        for name in [name for name in self.env if name in ("LANG", "LANGUAGE") or name.startswith("LC_")]:
+            del self.env[name]
+
+    def plan_while_running(self, *argv, plan=()):
+        """A plan taken while a sleeper names a copy on its command line, as a drain runs its copy's scripts."""
+        sleeper = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(300)", *argv], stdin=subprocess.DEVNULL)
+        try:
+            return self.plan(*plan)[0]
+        finally:
+            sleeper.kill()
+            sleeper.wait()
+
+    def node(self, body):
+        """Runs `body` after the IN_USE harness; it throws (and the test fails with its message) on a wrong verdict."""
+        self.run_ok(["node", "-e", IN_USE + body, CLI])
+
+    @unittest.skipIf(os.name == "nt", "the fixture ps is POSIX")
+    def test_the_list_is_taken_by_a_shell_whose_own_row_names_each_path(self):
+        # Prediction (I1): one lister for one project's two skill roots, started as `sh -c 'ps -axww -o command=; exit $?'`
+        # with a random token before, between and after the two paths (each with its separator), under LC_ALL=C; the used
+        # copy is kept and the unused one offered. Before: the CLI started `ps` itself, so the lister's parent is node.
+        repo = self.repo("lister 한글")
+        used, unused = self.copies(repo)
+        self.env["FIXTURE_PROCESSES"] = f"python3 {used}/devlyn-ideate/scripts/queue.py drain"
+        plan, _ = self.plan("--project", repo)
+        [lister] = self.listers()
+        self.assertEqual(lister["parent"][1:3], ["-c", LISTER], lister)
+        self.assertEqual(lister["lc_all"], "C")
+        tokens, paths = lister["parent"][3::2], lister["parent"][4::2]
+        self.assertEqual(sorted(paths), sorted(f"{root}/" for root in (used, unused)))
+        self.assertEqual(len(set(tokens)), len(paths) + 1, tokens)
+        for token in tokens:
+            self.assertRegex(token, r"^[0-9A-Za-z]{16,}$")
+        self.assert_judged(plan, used=[used], unused=[unused])
+
+    @unittest.skipIf(os.name == "nt", "the fixture ps is POSIX")
+    def test_a_list_longer_than_a_default_buffer_is_read_whole(self):
+        # Prediction (I1): a list of about 2.2 MB (Node's default for a child's output is 1 MiB) is read whole: the used
+        # copy is kept and the unused one offered. Before: the list overflowed, read as unreadable, and both were kept.
+        repo = self.repo("long list")
+        used, unused = self.copies(repo)
+        self.env.update(FIXTURE_PROCESSES=f"python3 {used}/devlyn-ideate/scripts/queue.py drain", FIXTURE_PS_FILLER="20000")
+        plan, _ = self.plan("--project", repo)
+        self.assert_judged(plan, used=[used], unused=[unused])
+
+    @unittest.skipIf(os.name == "nt", "the fixture ps is POSIX")
+    def test_a_used_copy_is_found_in_every_shape_a_row_names_it(self):
+        # Prediction (I3, I4): with a `ps` that prints bytes raw, the copy a row names is kept whether its path goes on into
+        # a script (`queue.py drain`), sits inside a longer argument (`--dir=`), ends the row, or is an argument of its own
+        # before another; the unused copy beside it is offered with no reason each time. Today's behaviour, kept: a needle
+        # that kept the space `ps` joins arguments with would miss the first three.
+        repo = self.repo("shapes")
+        used, unused = self.copies(repo)
+        for shape in (f"python3 {used}/devlyn-ideate/scripts/queue.py drain --repo {repo}", f"tool --dir={used}/devlyn-ideate",
+                      f"tool {used}/", f"tool {used}/ --then"):
+            with self.subTest(shape=shape):
+                self.env["FIXTURE_PROCESSES"] = shape
+                self.assert_judged(self.plan("--project", repo)[0], used=[used], unused=[unused])
+
+    @unittest.skipIf(os.name == "nt", "the fixture ps is POSIX")
+    def test_rows_printed_in_escaped_bytes_are_compared_as_printed(self):
+        # Prediction (I5): with a `ps` that prints every byte above 0x7f escaped, as macOS's does under the C locale, in the
+        # witness row and the used row alike, the used copy is kept in every row shape, and in a row whose arguments hold
+        # one invalid UTF-8 byte before the path; the unused copy is offered. Before: the list was compared with the raw
+        # path (this suite's folder holds a non-ASCII character), so the used copy was offered for removal.
+        repo = self.repo("escaped")
+        used, unused = self.copies(repo)
+        self.env["FIXTURE_PS_RENDER"] = "escape"
+        for shape in (f"python3 {used}/devlyn-ideate/scripts/queue.py drain", f"tool --dir={used}/devlyn-ideate",
+                      f"tool {used}/", f"tool {used}/ --then", f"python3 -c x \udcff {used}/devlyn-ideate/scripts/queue.py"):
+            with self.subTest(shape=shape):
+                self.env["FIXTURE_PROCESSES"] = shape
+                self.assert_judged(self.plan("--project", repo)[0], used=[used], unused=[unused])
+
+    @unittest.skipIf(os.name == "nt", "the fixture ps is POSIX")
+    def test_a_lossy_renderer_keeps_a_used_copy_and_its_unused_twin(self):
+        # Prediction (I5): procps prints `?` for each byte above 0x7f, so "twin 가" and "twin 나" (three bytes each) print
+        # alike: under it the used copy is kept and so is its twin, unused (accepted: a lossy list only ever keeps more),
+        # and each project's .agents copy is offered. A `ps` that prints bytes raw tells them apart: only the used copy is
+        # kept. Before: under procps the used copy was offered for removal.
+        first, second = self.repo("twin 가"), self.repo("twin 나")
+        (used, unused), (twin, other) = self.copies(first), self.copies(second)
+        self.env["FIXTURE_PROCESSES"] = f"python3 {used}/devlyn-ideate/scripts/queue.py drain"
+        for render, kept in (("procps", [used, twin]), ("raw", [used])):
+            with self.subTest(render=render):
+                self.env["FIXTURE_PS_RENDER"] = render
+                plan, _ = self.plan("--project", first, "--project", second)
+                self.assert_judged(plan, used=kept, unused=[root for root in (unused, twin, other) if root not in kept])
+
+    @unittest.skipIf(os.name == "nt", "the fixture ps is POSIX")
+    def test_a_path_holding_an_old_token_changes_no_verdict(self):
+        # Prediction (I6): tokens are drawn anew for each list, so a project whose path holds every token of an earlier
+        # list is judged like any other: the used copy kept, the unused one offered. Fixed tokens would occur twice in the
+        # shell's row, the list would read as unreadable and the unused copy would be kept.
+        earlier = self.repo("earlier")
+        self.copies(earlier)
+        self.plan("--project", earlier)
+        [lister] = self.listers()
+        self.assertEqual(lister["parent"][1:3], ["-c", LISTER], lister)
+        repo = self.repo("old " + " ".join(lister["parent"][3::2]))
+        used, unused = self.copies(repo)
+        self.env["FIXTURE_PROCESSES"] = f"python3 {used}/devlyn-ideate/scripts/queue.py drain"
+        self.assert_judged(self.plan("--project", repo)[0], used=[used], unused=[unused])
+
+    @unittest.skipIf(os.name == "nt", "the fixture ps is POSIX")
+    def test_more_paths_than_one_command_line_carries_are_listed_in_batches(self):
+        # Prediction (I7): twelve account homes of about 500 bytes each are more than one lister's 4096 bytes of arguments:
+        # two or more listers start, none with more than 4096 bytes of arguments, each account's path in exactly one; the
+        # copy named in the first batch and the one named in the last are kept, every other account's copy is offered.
+        # Before: one `ps` started by the CLI itself.
+        accounts = [self.root / "accounts" / ("a" * 200) / f"{index:02d}-{'b' * 200}" for index in range(12)]
+        for account in accounts:
+            shutil.copytree(ROOT / "config/skills/devlyn-engines", account / "skills/devlyn-engines")
+        used = [accounts[0] / "skills", accounts[-1] / "skills"]
+        self.env["FIXTURE_PROCESSES"] = "\n".join(f"python3 {root}/devlyn-engines/run.py" for root in used)
+        plan, _ = self.plan("--machine", *[arg for account in accounts for arg in ("--account-home", account)])
+        listers = self.listers()
+        self.assertGreaterEqual(len(listers), 2, listers)
+        for lister in listers:
+            self.assertEqual(lister["parent"][1:3], ["-c", LISTER], lister)
+            self.assertLessEqual(sum(len(os.fsencode(arg)) + 1 for arg in lister["parent"]), 4096, lister)
+        batches = [lister["parent"][4::2] for lister in listers]
+        for account in accounts:
+            self.assertEqual(sum(batch.count(f"{account}/skills/") for batch in batches), 1, account)
+        self.assertNotEqual(*[next(index for index, batch in enumerate(batches) if f"{root}/" in batch) for root in used])
+        self.assert_judged(plan, used=used, unused=[account / "skills" for account in accounts[1:-1]])
+
+    @unittest.skipIf(os.name == "nt", "the machine's ps is POSIX")
+    def test_an_ascii_path_with_a_space_a_comma_or_a_backslash_is_judged_with_no_locale(self):
+        # Prediction (I8): with the machine's own `ps` and no locale variable at all, a copy under an ASCII path, plain or
+        # holding a space, a comma or a backslash, is kept while a process names it, and the unused copy beside it is
+        # offered. Nothing of a path travels in `ps`'s format syntax. Today's behaviour, kept (macOS 26's `ps` prints a
+        # backslash as it is; a renderer that doubles it is the fixture's escape mode).
+        base = Path(tempfile.mkdtemp(prefix="devlyn-ascii-")).resolve()
+        self.addCleanup(shutil.rmtree, base)
+        self.real_ps()
+        for name in ("plain", "a space", "a,comma", "a\\backslash"):
+            with self.subTest(name=name):
+                repo = self.repo(name, parent=base)
+                used, unused = self.copies(repo)
+                plan = self.plan_while_running(f"{used}/devlyn-ideate/scripts/queue.py", "drain", plan=("--project", repo))
+                self.assert_judged(plan, used=[used], unused=[unused])
+
+    @unittest.skipIf(os.name == "nt", "the machine's ps is POSIX")
+    def test_the_machines_ps_finds_a_drain_under_a_hangul_path_whatever_the_locale(self):
+        # Prediction (I9): with the machine's own `ps`, a sleeper started from a copy under a resolved path with Hangul and
+        # a space keeps that copy, with every LANG, LANGUAGE and LC_* variable removed and with LC_ALL=C, while the unused
+        # copy in the same tree is offered; so does a sleeper whose arguments hold one invalid UTF-8 byte before the path.
+        # Before, on macOS: `ps` escapes the Hangul bytes outside a UTF-8 locale, the list was compared with the raw path,
+        # and the used copy was offered for removal.
+        self.real_ps()
+        repo = self.repo("count 한글")
+        used, unused = self.copies(repo)
+        script = f"{used}/devlyn-ideate/scripts/queue.py".encode()
+        for locale in ({}, {"LC_ALL": "C"}):
+            for argv in ((script, b"drain"), (b"\xff", script)):
+                with self.subTest(locale=locale, invalid_byte=argv[0] == b"\xff"):
+                    self.env.pop("LC_ALL", None)
+                    self.env.update(locale)
+                    plan = self.plan_while_running(*argv, plan=("--project", repo))
+                    self.assert_judged(plan, used=[used], unused=[unused])
+
+    def test_the_lister_is_one_shell_per_batch_with_tokens_under_the_c_locale(self):
+        # Prediction (I1, unit): one call for two paths: `sh -c 'ps -axww -o command=; exit $?'`, a distinct random ASCII
+        # token of 16 or more letters before, between and after the paths (each with its separator, each given once), with
+        # LC_ALL=C added to that child's environment and nothing changed in the command's own; the output read as bytes
+        # (no decoding), 64 MiB of it at most, within 20 s. Cannot run before the change: no such block.
+        self.node(r"""
+const dirs = ['/w/한 used', '/w/unused', '/w/unused'];
+const { used, calls, env } = inUse(dirs, { list: ps(['python3 /w/한 used/devlyn-ideate/scripts/queue.py drain']) });
+assert.deepStrictEqual(used, ['/w/한 used']);
+assert.strictEqual(calls.length, 1);
+const [call] = calls;
+assert.deepStrictEqual([call.command, ...call.args.slice(0, 2)], ['sh', '-c', 'ps -axww -o command=; exit $?']);
+assert.deepStrictEqual(pathsOf(call), ['/w/한 used/', '/w/unused/']);
+const tokens = tokensOf(call);
+assert.strictEqual(new Set(tokens).size, 3, tokens);
+for (const token of tokens) assert.match(token, /^[0-9A-Za-z]{16,}$/);
+assert.deepStrictEqual(call.options.env, { PATH: '/usr/bin:/bin', LANG: 'ko_KR.UTF-8', LC_ALL: 'C' });
+assert.deepStrictEqual(env, { PATH: '/usr/bin:/bin', LANG: 'ko_KR.UTF-8' });
+assert.ok([undefined, 'buffer', 'latin1'].includes(call.options.encoding), call.options.encoding);
+assert.strictEqual(call.options.maxBuffer, 64 * 1024 * 1024);
+assert.strictEqual(call.options.timeout, 20000);
+assert.deepStrictEqual(inUse([], { list: ps([]) }).calls, []);
+""")
+
+    def test_the_witness_row_decides_each_needle_or_the_batch_is_kept(self):
+        # Prediction (I2, unit): the needle is the text between two tokens in the one row that holds every token once, in
+        # order, with exactly one joining space dropped on each side, so a path's own spaces stay. No such row, a token
+        # missing or doubled, two such rows, tokens out of order, or text between tokens not framed by spaces: every copy
+        # of the batch is kept. A row of a cleanup command is no user. Cannot run before the change: no such block.
+        self.node(r"""
+const dirs = ['/w/used', '/w/unused'], row = 'python3 /w/used/devlyn-ideate/scripts/queue.py drain';
+assert.deepStrictEqual(inUse(dirs, { list: ps([row]) }).used, ['/w/used']);
+for (const [name, shell] of [
+    ['no witness row', () => null],
+    ['a token missing', (args) => ['sh', ...args.slice(0, -1)].join(' ')],
+    ['a token doubled', (args) => ['sh', ...args, args[2]].join(' ')],
+    ['two witness rows', (args) => ['sh', ...args].join(' ') + '\n' + ['sh', ...args].join(' ')],
+    ['tokens out of order', (args) => ['sh', ...args.slice(0, 2), ...args.slice(2).reverse()].join(' ')],
+    ['text between tokens not framed by spaces', (args) => ['sh', ...args].join('\t')]]) {
+  assert.deepStrictEqual(inUse(dirs, { list: ps([row], { shell }) }).used, dirs, name);
+}
+assert.deepStrictEqual(inUse(['/w/two  spaces', '/w/two spaces'], { list: ps(['python3 /w/two  spaces/x.py']) }).used, ['/w/two  spaces']);
+assert.deepStrictEqual(inUse(dirs, { list: ps(['node devlyn.js cleanup --plan --account-home /w/used/x --json']) }).used, []);
+""")
+
+    def test_every_row_shape_and_renderer_is_compared_as_the_lister_printed_it(self):
+        # Prediction (I3, I4, I5, unit): raw or escaped, the used copy under a Hangul path with a space is found where its
+        # path goes on into a script, sits inside a longer argument, ends the row, is an argument before another, or follows
+        # one invalid UTF-8 byte; the unused copy is not; a backslash the renderer doubles is learned like the rest. Under
+        # procps two paths of one skeleton share a needle and both are kept; raw tells them apart. Cannot run before the
+        # change: no such block.
+        self.node(r"""
+const dirs = ['/w/한 글/.claude/skills', '/w/한 글/.agents/skills'], [used] = dirs;
+for (const as of ['raw', 'escape', 'procps']) {
+  for (const row of [`python3 ${used}/devlyn-ideate/scripts/queue.py drain`, `tool --dir=${used}/devlyn-ideate`, `tool ${used}/`,
+      `tool ${used}/ --then`, Buffer.concat([Buffer.from('python3 -c x '), Buffer.from([0xff]), Buffer.from(` ${used}/x.py`)])]) {
+    assert.deepStrictEqual(inUse(dirs, { list: ps([row], { as }) }).used, [used], `${as}: ${row}`);
+  }
+}
+assert.deepStrictEqual(inUse(['/w/a\\b', '/w/ab'], { list: ps(['python3 /w/a\\b/x.py'], { as: 'escape' }) }).used, ['/w/a\\b']);
+const twins = ['/w/가/skills', '/w/나/skills', '/w/ab/skills'];
+assert.deepStrictEqual(inUse(twins, { list: ps(['python3 /w/가/skills/x.py'], { as: 'procps' }) }).used, ['/w/가/skills', '/w/나/skills']);
+assert.deepStrictEqual(inUse(twins, { list: ps(['python3 /w/가/skills/x.py']) }).used, ['/w/가/skills']);
+""")
+
+    def test_tokens_never_occur_in_a_path_of_their_batch(self):
+        # Prediction (I6, unit): when the random source repeats the draw that made an earlier list's tokens and a path holds
+        # those tokens, the tokens are drawn again: none occurs in a path of the batch and the verdicts are right. A product
+        # that kept the colliding token would see it twice in the shell's row and keep the unused copy. Cannot run before
+        # the change: no such block.
+        self.node(r"""
+const zerosFirst = () => { let draws = 0; return (size) => draws++ ? crypto.randomBytes(size) : Buffer.alloc(size); };
+const earlier = tokensOf(inUse(['/w/used'], { list: ps([]), random: zerosFirst() }).calls[0]);
+const dirs = ['/w/used', `/w/unused ${earlier.join(' ')}`];
+const { used, calls } = inUse(dirs, { list: ps(['python3 /w/used/x.py']), random: zerosFirst() });
+assert.deepStrictEqual(used, ['/w/used']);
+for (const token of tokensOf(calls[0])) assert.ok(dirs.every((dir) => !dir.includes(token)), token);
+""")
+
+    def test_batches_stay_within_one_page_and_a_failed_lister_keeps_its_own_batch(self):
+        # Prediction (I7, unit): thirty paths of about 310 bytes are split into two or more lists, none with more than 4096
+        # bytes of arguments (each with its NUL), each path in exactly one, and each copy is judged in its own batch's list.
+        # A lister that exits non-zero, times out, cannot start or is refused its arguments (E2BIG) keeps every copy of its
+        # batch and only those; a path that alone is over the bound is kept and never listed. Cannot run before the change.
+        self.node(r"""
+const dirs = Array.from({ length: 30 }, (_, index) => `/w/${'a'.repeat(200)}/${String(index).padStart(2, '0')}-${'b'.repeat(100)}`);
+const named = [dirs[0], dirs[29]], rows = named.map((dir) => `python3 ${dir}/x.py`);
+const { used, calls } = inUse(dirs, { list: ps(rows) });
+assert.deepStrictEqual(used, [...named].sort());
+assert.ok(calls.length >= 2, calls.length);
+for (const call of calls) assert.ok(['sh', ...call.args].reduce((sum, arg) => sum + Buffer.byteLength(arg) + 1, 0) <= 4096, call.args.length);
+assert.deepStrictEqual(calls.flatMap(pathsOf).sort(), dirs.map((dir) => dir + '/').sort());
+const error = (code) => Object.assign(Error(`spawnSync sh ${code}`), { code });
+for (const failure of [{ status: 1, signal: null, stdout: Buffer.alloc(0) }, { status: null, signal: 'SIGTERM', error: error('ETIMEDOUT') },
+    { status: null, signal: null, error: error('ENOENT') }, { status: null, signal: null, error: error('E2BIG') }]) {
+  const listed = ps(rows);
+  const ran = inUse(dirs, { list: (command, args, options, call) => call === 2 ? failure : listed(command, args, options) });
+  const second = pathsOf(ran.calls[1]).map((name) => name.slice(0, -1));
+  assert.deepStrictEqual(ran.used, [...new Set([...named, ...second])].sort(), JSON.stringify(failure));
+}
+const huge = '/w/' + 'x'.repeat(5000);
+const ran = inUse(['/w/unused', huge], { list: ps([]) });
+assert.deepStrictEqual(ran.used, [huge]);
+assert.ok(ran.calls.every((call) => !call.args.includes(huge + '/')));
+""")
+
+    def test_windows_rows_travel_as_code_units_and_match_every_spelling(self):
+        # Prediction (I10, I11, I12, unit, on every platform): a row of decimal UTF-16 code units decodes to its command
+        # line exactly (a Hangul path, a surrogate pair, an empty command line); a malformed row or a missing marker makes
+        # the list unreadable; a copy is matched lower-cased with slashes as C:\, C:/ or /c/ and an unrelated path is not.
+        # Through the lister: PowerShell carries the marker in its -Command text, the used copy is kept and the unused one
+        # offered; a row changed by a code page, or a lister that fails, keeps both. Cannot run before the change.
+        self.node(r"""
+const marker = run('CLEANUP_LIST_MARKER').result;
+assert.ok(/[^\x00-\x7f]/.test(marker), marker);
+const decode = (text) => run(`cleanupWindowsRows(${JSON.stringify(text)})`).result;
+const own = `powershell.exe -NoProfile -NonInteractive -Command x # ${marker}`;
+const rows = [own, 'python C:\\Users\\한글\\.claude\\skills\\devlyn-ideate\\scripts\\queue.py drain', 'app \u{1F600} C:\\x', '', 'last'];
+const decoded = decode(rows.map(units).join('\r\n') + '\r\n');
+assert.deepStrictEqual(decoded.slice(0, rows.length), rows);
+for (const bad of ['65,,66', '65,x', '65,', ',65', '65 ,66', '-1', '70000', '6.5']) assert.strictEqual(decode(units(own) + '\r\n' + bad), null, bad);
+assert.strictEqual(decode(units(own.replace(marker, '??')) + '\r\n' + units(rows[1])), null);
+const names = (row, dir) => run(`cleanupWindowsNames(${JSON.stringify(row)}, ${JSON.stringify(dir)})`).result;
+const used = 'C:\\Users\\한글\\.claude\\skills', unused = 'C:\\Users\\한글\\.agents\\skills';
+for (const row of [`python ${used}\\devlyn-ideate\\scripts\\queue.py drain`, 'python C:/Users/한글/.claude/skills/devlyn-ideate/scripts/queue.py',
+    'python /c/Users/한글/.claude/skills/devlyn-ideate/scripts/queue.py', 'PYTHON c:\\USERS\\한글\\.CLAUDE\\SKILLS\\x', `"${used}\\"`]) {
+  assert.strictEqual(names(row, used), true, row);
+}
+for (const row of [`python ${unused}\\x`, `python ${used}-old\\x`, 'python D:\\Users\\한글\\.claude\\skills\\x', 'python /d/Users/한글/.claude/skills/x', `python ${used}`]) {
+  assert.strictEqual(names(row, used), false, row);
+}
+const drain = `python ${used}\\devlyn-ideate\\scripts\\queue.py drain`;
+const ran = inUse([used, unused], { platform: 'win32', list: powershell([drain]) });
+assert.deepStrictEqual(ran.used, [used]);
+const [call] = ran.calls;
+assert.deepStrictEqual([call.command, ...call.args.slice(0, 3)], ['powershell', '-NoProfile', '-NonInteractive', '-Command']);
+assert.ok(call.args[3].includes(`([int[]][char[]]"$($_.CommandLine)") -join ','`) && call.args[3].includes(marker), call.args[3]);
+assert.deepStrictEqual([call.options.timeout, call.options.maxBuffer], [20000, 64 * 1024 * 1024]);
+assert.deepStrictEqual(inUse([used, unused], { platform: 'win32', list: powershell(['bash /c/Users/한글/.claude/skills/x.sh']) }).used, [used]);
+const both = [unused, used].sort();
+assert.deepStrictEqual(inUse([used, unused], { platform: 'win32', list: powershell([drain], (row) => row.replace(/[^\x00-\x7f]/g, '?')) }).used, both);
+assert.deepStrictEqual(inUse([used, unused], { platform: 'win32', list: () => ({ status: 1, signal: null, stdout: Buffer.alloc(0) }) }).used, both);
+assert.deepStrictEqual(inUse([used, unused], { platform: 'win32', list: powershell([`node devlyn.js cleanup --plan --project ${used}\\x`]) }).used, []);
+""")
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
