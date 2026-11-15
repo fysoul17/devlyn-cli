@@ -1899,8 +1899,10 @@ def withdraw(args):
         rows, target = parse_loop(show(anchor, commit, rel), loop, f"{ref}:{rel}") if commit else ([], None)
         tasks = [row["identity"] for row in rows]
         if target:
-            raise LoopError(f'loop {loop} was added in place of the {QUEUE} row "{one_line(target[1])}" (occurrence {target[0]}); '
-                            "withdraw takes back only a loop that replaced no legacy row; it stays queued")
+            claim = f'the {QUEUE} row "{one_line(target[1])}" (occurrence {target[0]})'
+            only = "withdraw takes back only a loop that replaced no legacy row"
+            raise LoopError(f"loop {loop} was added in place of {claim}; {only}; it stays queued" if added else
+                            f"the add of loop {loop} in place of {claim} stopped before its record; {only}; its capture stays at {ref}")
         # Without its record a loop is read from a tracked queue file (queue_view), so its rows would come back.
         places = tracked_places(anchor, common, rel)
         require(not places, f"{rel} is tracked in {', '.join(places)}, so loop {loop}'s rows would return without its add record; "
@@ -2426,13 +2428,14 @@ class QueueTests(unittest.TestCase):
 
     def test_withdraw_refuses_a_loop_that_replaced_a_legacy_row(self):
         """D1, E6. Prediction: a loop added with --materialize is refused, naming the row its capture replaced and that row's
-        occurrence and saying the loop stays queued, while the row is in the legacy queue and once no file holds it; so is
-        the capture an add stopped before its record left; each refusal leaves the add record, the capture ref, the loop's
-        folder, HEAD and the index byte for byte. A loop added without --materialize is withdrawn. Before: withdraw looked
-        for the row only here, in the checkout the loop was added from and on the branch it was added on, and withdrew the
-        loop once those no longer held it, though another worktree's legacy queue could still show the row, pending, to be
-        planned again; then the refusal said withdrawing would bring the row back, which no file holding it, or a capture
-        that never hid it, makes false."""
+        occurrence and saying the loop stays queued, while the row is in the legacy queue and once no file holds it; the
+        capture an add stopped before its record left is refused, saying that add stopped before its record and where its
+        capture stays; each refusal leaves the add record, the capture ref, the loop's folder, HEAD and the index byte for
+        byte. A loop added without --materialize is withdrawn. Before: withdraw looked for the row only here, in the
+        checkout the loop was added from and on the branch it was added on, and withdrew the loop once those no longer held
+        it, though another worktree's legacy queue could still show the row, pending, to be planned again; then the refusal
+        said withdrawing would bring the row back, which no file holding it, or a capture that never hid it, makes false;
+        then it said that capture's loop was added and stays queued, though status shows its row pending and no loop."""
         from unittest import mock
         common = Path(git(self.anchor, "rev-parse", "--path-format=absolute", "--git-common-dir"))
 
@@ -2441,11 +2444,14 @@ class QueueTests(unittest.TestCase):
                     sorted((str(path.relative_to(common)), path.read_bytes() if path.is_file() else None)
                            for path in (common / "devlyn-loops").rglob("*") if path.suffix != ".lock"))
 
-        def refused(loop, row):
+        def refused(loop, row, recorded=True):
+            claim = f'the {QUEUE} row "{row}" (occurrence 1)'
             before = state()
             self.assertEqual(self.cli("withdraw", loop, code=1)["reason"],
-                             f'loop {loop} was added in place of the {QUEUE} row "{row}" (occurrence 1); withdraw takes back only '
-                             "a loop that replaced no legacy row; it stays queued")
+                             f"loop {loop} was added in place of {claim}; withdraw takes back only a loop that replaced no legacy "
+                             "row; it stays queued" if recorded else
+                             f"the add of loop {loop} in place of {claim} stopped before its record; withdraw takes back only a "
+                             f"loop that replaced no legacy row; its capture stays at refs/devlyn/captures/{loop}")
             self.assertEqual(state(), before)
 
         (self.anchor / QUEUE).write_text("# Intent Queue\n\n- [ ] Ship the fixture.\n- [ ] Ship the second fixture.\n", encoding="utf-8")
@@ -2467,7 +2473,7 @@ class QueueTests(unittest.TestCase):
                 self.assertRaisesRegex(LoopError, "stopped before"):
             add(argparse.Namespace(package=str(meta), materialize=3))
         self.assertEqual((bool(ref_value(self.anchor, "refs/devlyn/captures/ref")), added_path(common, "ref").exists()), (True, False))
-        refused("ref", "- [ ] Ship the second fixture.")
+        refused("ref", "- [ ] Ship the second fixture.", recorded=False)
 
     def test_withdraw_sees_a_task_directory_that_moves_while_it_looks(self):
         """D1, E6. Prediction: a task directory that task-complete moves into moved/, from the active path or from retired/,
