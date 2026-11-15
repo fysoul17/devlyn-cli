@@ -1837,9 +1837,11 @@ def add(args):
     return added_result(anchor, added, notes)
 
 
-def tracked_places(anchor, rel):
+def tracked_places(anchor, common, rel):
     """Where this repository tracks `rel`: the HEAD of each registered worktree, each local branch none has checked out,
-    and the index of each worktree whose folder Git still reads."""
+    and the index of each registered worktree, read through its administrative directory, so also while its folder is
+    missing. A linked worktree's directory is <common>/worktrees/<id>, whose gitdir file names the folder's .git, as an
+    absolute path or one relative to that directory; Git lists the worktree by that path."""
     worktrees = [row for raw in git(anchor, "worktree", "list", "--porcelain", "-z").split("\0\0")
                  if "worktree" in (row := dict(field.partition(" ")[::2] for field in raw.split("\0") if field))]
     checked_out = {row.get("branch") for row in worktrees}
@@ -1847,9 +1849,11 @@ def tracked_places(anchor, rel):
         f"the branch {ref.removeprefix('refs/heads/')}": ref
         for ref in git(anchor, "for-each-ref", "--format=%(refname)", "refs/heads/").splitlines() if ref not in checked_out}
     kinds = git(anchor, "cat-file", "--batch-check=%(objecttype)", data="".join(f"{rev}:{rel}\n" for rev in commits.values()).encode())
+    indexes = [(worktrees[0]["worktree"], common)] + [
+        (Path(os.path.realpath(admin / (admin / "gitdir").read_text(encoding="utf-8").rstrip())).parent, admin)
+        for admin in sorted((common / "worktrees").glob("*"))]
     return [place for place, kind in zip(commits, kinds.split("\n")) if kind == "blob"] + [
-        f"the index of {row['worktree']}" for row in worktrees
-        if "prunable" not in row and Path(row["worktree"]).is_dir() and git(Path(row["worktree"]), "ls-files", "--", rel)]
+        f"the index of {path}" for path, admin in indexes if git(common, f"--git-dir={admin}", "ls-files", "--", rel)]
 
 
 def withdraw(args):
@@ -1872,7 +1876,7 @@ def withdraw(args):
         rows, target = parse_loop(show(anchor, commit, rel), loop, f"{ref}:{rel}") if commit else ([], None)
         tasks = [row["identity"] for row in rows]
         # Without its record a loop is read from a tracked queue file (queue_view), so its rows would come back.
-        places = tracked_places(anchor, rel)
+        places = tracked_places(anchor, common, rel)
         require(not places, f"{rel} is tracked in {', '.join(places)}, so loop {loop}'s rows would return without its add record; "
                             "withdraw takes back only a loop held in its capture")
         started = [f"{identity} at {path}" for identity in tasks for path in task_directories(common, identity)]
@@ -2259,10 +2263,13 @@ class QueueTests(unittest.TestCase):
         loop's folder, HEAD and the index as they were: a task directory of either task, active, retired or moved, a dangling
         link included; a running drain or another withdraw, refused in withdraw's own words; a capture ref moved off the
         recorded commit, naming both; and the loop's queue file tracked in HEAD here, in the index of the worktree the loop
-        was added from, in HEAD and the index of a third worktree, on a branch no worktree has checked out, or on the
-        branch it was added on once that worktree is gone. Before: argparse rejected withdraw; then the third worktree and
-        the other branch were withdrawn, and the busy refusal named only a drain."""
-        linked, third = self.root / "linked", self.root / "third"
+        was added from, in HEAD and the index of a third worktree, in the index of a locked worktree whose folder is gone
+        or holds only an empty directory, on a branch no worktree has checked out, or on the branch it was added on once
+        that worktree is gone. Before: argparse rejected withdraw; then the third worktree and the other branch were
+        withdrawn, and the busy refusal named only a drain; then the locked worktree without its folder was withdrawn, and
+        with an empty directory there git's own failure was the refusal."""
+        import shutil
+        linked, third, gone = self.root / "linked", self.root / "third", self.root / "gone"
         git(self.anchor, "worktree", "add", "-q", "-b", "side", str(linked), env=self.env)
         added = self.cli("add", write_package(linked, "inv", self.tasks))
         common = Path(git(self.anchor, "rev-parse", "--path-format=absolute", "--git-common-dir"))
@@ -2295,6 +2302,20 @@ class QueueTests(unittest.TestCase):
             if start != ("--detach",):
                 git(self.anchor, "worktree", "remove", "--force", str(third), env=self.env)
 
+        def offline(empty):
+            git(self.anchor, "worktree", "add", "-q", "--detach", str(gone), env=self.env)
+            track(gone)
+            git(self.anchor, "worktree", "lock", str(gone), env=self.env)
+            shutil.rmtree(gone)
+            if empty:
+                gone.mkdir()
+
+        def online():
+            git(self.anchor, "worktree", "unlock", str(gone), env=self.env)
+            if gone.exists():
+                gone.rmdir()
+            git(self.anchor, "worktree", "prune", env=self.env)
+
         cases = [("active", lambda: active.mkdir(parents=True), active.rmdir, f"inv.t1 at {active}"),
                  ("retired", lambda: retired.mkdir(parents=True), retired.rmdir, f"inv.t2 at {retired}"),
                  ("moved", lambda: moved.mkdir(parents=True), moved.rmdir, f"inv.t1 at {moved}"),
@@ -2305,6 +2326,8 @@ class QueueTests(unittest.TestCase):
                  ("index of origin", lambda: track(linked), lambda: untrack(linked), f"{rel} is tracked in the index of {linked}"),
                  ("third worktree", lambda: elsewhere("--detach"), lambda: git(self.anchor, "worktree", "remove", "--force", str(third), env=self.env),
                   f"{rel} is tracked in HEAD of {third}, the index of {third}, so"),
+                 ("offline, empty folder", lambda: offline(True), online, f"{rel} is tracked in the index of {gone}, so"),
+                 ("offline", lambda: offline(False), online, f"{rel} is tracked in the index of {gone}, so"),
                  ("other branch", lambda: elsewhere("-b", "elsewhere"), lambda: git(self.anchor, "branch", "-D", "elsewhere", env=self.env),
                   f"{rel} is tracked in the branch elsewhere, so")]
         if os.name != "nt":
@@ -2481,9 +2504,9 @@ class QueueTests(unittest.TestCase):
 
     def test_withdraw_reads_past_prunable_missing_and_bare_worktrees(self):
         """D1, E6. Prediction: withdraw prints WITHDRAWN beside a registered worktree whose folder stays without its .git
-        file (Git lists it prunable) and a locked worktree whose folder is gone, and in the linked worktree of a bare clone,
-        whose bare row has no HEAD line. Without the prunable skip or the folder check, git ls-files there fails the
-        withdraw; without the HEAD check, the bare row raises KeyError."""
+        file (Git lists it prunable) and a locked worktree whose folder is gone, neither index holding the loop's queue
+        file, and in the linked worktree of a bare clone, whose bare row has no HEAD line and whose common Gitdir has no
+        index. git ls-files run in either folder fails; without the HEAD check the bare row raises KeyError."""
         import shutil
         prunable, gone, bare, work = self.root / "prunable", self.root / "gone", self.root / "bare.git", self.root / "work"
         for path in (prunable, gone):
