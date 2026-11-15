@@ -1648,7 +1648,9 @@ def cleanup_delivered(receipt, path, pr, *, warnings=None):
         remove_delivered(receipt, path, warnings=warnings)
     except (CompletionError, OSError) as error:
         if receipt.get('status') == 'COMPLETE':
-            raise  # Every removal finished and only the final record write failed; the resume ends COMPLETE.
+            # Every workspace and ref removal finished and only the final record write failed: the resume ends COMPLETE,
+            # or CLEANUP_PENDING while a scratch cleanup retained on its own remains.
+            raise
         managed = storage_call('managed_receipt', receipt)
         reason = manual_removal(receipt, path, error) if managed and isinstance(error, WritersUnobservable) else str(error)
         receipt['workspace_cleanup'] = {'status': 'RETAINED', 'reason': reason, 'resume': receipt_resume('complete', path, receipt)}
@@ -1695,7 +1697,14 @@ def reconcile(common, allocated, anchor, *, exclude_receipts=(), warnings=None):
                 if storage_call("managed_receipt", receipt):
                     cleanup_delivered(receipt, path, pr, warnings=warnings)
                 else:
-                    cleanup(receipt, path, pr, warnings=warnings)
+                    try:
+                        cleanup(receipt, path, pr, warnings=warnings)
+                    except (CompletionError, OSError) as error:
+                        if "workspace_cleanup" in receipt:
+                            # A retained cleanup names its latest refusal, which may guard less than the first.
+                            receipt["workspace_cleanup"]["reason"] = str(error)
+                            atomic_json(path, receipt)
+                        raise
                 results.append(completion_result(receipt, path, "COMPLETE", warnings=warnings))
         except (Exception, SystemExit) as error:
             results.append({"receipt": str(path), "status": "RETAINED", "reason": str(error)})
@@ -3151,13 +3160,17 @@ ctypes.CDLL(None).pthread_exit(None)
         receipt.update(mode='managed', allocation='managed_owned', delivery='COMPLETE', writers_released=True,
                        storage={'decision': {'registration': {'fixture': True}}, 'request': {'operation_id': 'saved'}, 'result': {'closure_result': {'established_by': 'never_admitted', 'operation_id': 'saved'}}})
         atomic_json(self.receipt, receipt)
+        calls = []
         def outage(*args, **kwargs):
+            calls.append(args)
             error = CompletionError('authority offline during reconciliation')
             error.storage_error = {'code': 'storage_unavailable'}
             raise error
         with patch.dict(os.environ, self.env), patch.dict(reconcile.__globals__, managed_registration=lambda receipt, **kwargs: {}, remove_delivered=outage):
             [result] = reconcile(Path(receipt['common_gitdir']), self.receipt.with_name('other.json'), self.work)
+        self.assertEqual(len(calls), 1)
         self.assertEqual((result['status'], result['delivery_status']), ('CLEANUP_PENDING', 'COMPLETE'))
+        self.assertEqual(result['workspace_cleanup']['reason'], 'authority offline during reconciliation')
         self.assertIn('complete --receipt', result['resume'])
         self.assertTrue(self.task.exists())
 
@@ -3202,6 +3215,21 @@ ctypes.CDLL(None).pthread_exit(None)
         self.assertFalse(self.task.exists())
         result, _ = self.complete("--writers-stopped", acceptance=False)
         self.assertEqual((result["status"], result["workspace_cleanup"]), ("COMPLETE", None))
+
+    def test_unchanged_removal_os_error_is_retained_with_delivery_complete(self):
+        # Prediction: an OSError raised while the workspace is removed (the records copy) is retained like a refusal:
+        # delivery COMPLETE, CLEANUP_PENDING naming the error, tree and task ref kept. Fails if only CompletionError is retained.
+        from unittest.mock import patch
+        self.allocate(); self.accept(unchanged=True)
+        args = argparse.Namespace(receipt=str(self.receipt), acceptance=str(self.acceptance), mode=None, local_only=False, writers_stopped=True)
+        with patch.dict(os.environ, self.env), \
+                patch.object(shutil, "copytree", side_effect=OSError(errno.ENOSPC, "fixture records copy failure")):
+            result = complete(args)
+        self.assertEqual((result["status"], result["delivery_status"]), ("CLEANUP_PENDING", "COMPLETE"))
+        self.assertIn("fixture records copy failure", result["workspace_cleanup"]["reason"])
+        self.assertEqual(read_json(self.receipt)["delivery"], "COMPLETE")
+        self.assertTrue(self.task.exists())
+        self.assertEqual(self.g("rev-parse", "task/fixture"), self.sha)
 
     def test_unchanged_writer_retention_reconciles_on_allocate(self):
         # Prediction: the next allocation retries on-base delivery once writer observation succeeds.
@@ -3729,6 +3757,44 @@ ctypes.CDLL(None).pthread_exit(None)
         self.assertTrue(task.exists())
         self.assertEqual(self.g("rev-parse", "task/fixture"), self.sha)
         self.assertEqual(self.g("ls-remote", "origin", "refs/heads/task/fixture").split()[0], self.sha)
+
+    def test_reconcile_checks_delivery_evidence_before_cleanup(self):
+        # Prediction: a merged standalone receipt whose recovery ref moved gives a RETAINED reconcile row naming it, with
+        # the tree and both task refs kept. Fails if reconcile's standalone cleanup skips verify_delivery.
+        self.allocate(); self.accept()
+        self.complete("--mode", "pr", "--writers-stopped")
+        self.merge_pr()
+        receipt, task = self.receipt, self.task
+        saved = read_json(receipt)
+        self.g("update-ref", saved["recovery_ref"], saved["baseline"])
+        result = self.allocate("next")
+        self.assertEqual([(row["receipt"], row["status"]) for row in result["reconciled"]], [(str(receipt), "RETAINED")])
+        self.assertIn("recovery reachability changed", result["reconciled"][0]["reason"])
+        self.assertTrue(task.exists())
+        self.assertEqual(self.g("rev-parse", "task/fixture"), self.sha)
+        self.assertEqual(self.g("ls-remote", "origin", "refs/heads/task/fixture").split()[0], self.sha)
+
+    def test_reconcile_replaces_a_retained_reason_with_its_latest_refusal(self):
+        # Prediction: complete retains a merged delivery for a nested repository; once that is gone and the remote task
+        # branch has moved, the next allocation's reconcile removes the tree, keeps the task ref and replaces the receipt's
+        # reason with the remote-branch refusal. Before: the receipt still named the nested repository.
+        self.allocate(); self.accept()
+        clone = self.task / "ignored" / "clone"
+        self.run_cmd(["git", "init", "--initial-branch=main", str(clone)])
+        result, _ = self.complete("--mode", "auto", "--writers-stopped")
+        self.assertEqual((result["status"], result["delivery_status"]), ("CLEANUP_PENDING", "COMPLETE"))
+        self.assertIn("ignored/clone/", result["workspace_cleanup"]["reason"])
+        shutil.rmtree(clone)
+        self.g("commit", "--allow-empty", "-m", "foreign commit")
+        self.g("push", "origin", "+" + self.g("rev-parse", "HEAD") + ":refs/heads/task/fixture")
+        receipt, task = self.receipt, self.task
+        [row] = self.allocate("next")["reconciled"]
+        self.assertEqual((row["receipt"], row["status"]), (str(receipt), "RETAINED"))
+        self.assertIn("remote branch changed after merge; retain ref", row["reason"])
+        self.assertFalse(task.exists())
+        saved = read_json(receipt)["workspace_cleanup"]
+        self.assertEqual((saved["status"], saved["reason"]), ("RETAINED", row["reason"]))
+        self.assertEqual(self.g("rev-parse", "task/fixture"), self.sha)
 
     def test_reconcile_skips_open_and_unaccepted_and_retains_in_use_tree(self):
         self.allocate(); self.accept()
