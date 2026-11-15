@@ -246,6 +246,22 @@ for (const [completed, delivery] of [
         self.run_ok(["git", "remote", "add", "origin", "https://github.com/test/project.git"], cwd=repo)
         return bare
 
+    @unittest.skipIf(os.name == "nt", "fake GitHub uses POSIX wrappers")
+    def test_a_push_into_the_fake_github_bare_starts_no_automatic_maintenance(self):
+        # Prediction: the receiving side's detached maintenance would still write into the bare while a test reads or
+        # removes it. That side drops GIT_CONFIG_COUNT and, under this root on macOS, the bare's own config; it reads the file.
+        repo = self.repo("quiet-receiver")
+        self.fake_github(repo)
+        self.run_ok(["git", "commit", "-q", "--allow-empty", "-m", "traced"], cwd=repo)
+        trace = self.root / "push-trace.json"
+        self.env["GIT_TRACE2_EVENT"] = str(trace)
+        self.run_ok(["git", "push", "-q", "origin", "main"], cwd=repo)
+        events = [json.loads(line) for line in trace.read_text(encoding="utf-8").splitlines()]
+        names = {event["sid"]: event["name"] for event in events if event["event"] == "cmd_name"}
+        self.assertIn("receive-pack", names.values())
+        self.assertEqual([(names.get(event["sid"]), event["argv"]) for event in events
+                          if event["event"] == "child_start" and "maintenance" in event["argv"]], [])
+
     @staticmethod
     def actions(scope):
         return sorted((item["kind"], item["action"], Path(item["path"]).name, item["route"],
