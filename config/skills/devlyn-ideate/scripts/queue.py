@@ -1659,11 +1659,15 @@ def status_summary(v):
     row = next_task(v, set())
     annotate(v, {})
     tasks = [summary(v, r) for r in v["rows"] if r["identity"]]
+    # A task without a resume is no pending delivery, so a cleanup it retained is named here with its own resume.
+    retained = [f"{t['identity']}: {label} {t[key]}" for t in tasks if not t.get("resume")
+                for key, field, label in (("cleanup", "workspace_cleanup", "workspace cleanup"), ("scratch", "scratch_cleanup", "scratch cleanup"))
+                if ((v["states"][t["identity"]]["receipt"] or {}).get(field) or {}).get("reason")]
     return {"status": "OK", **skill_diagnostics(anchor), "counts": counts(v), "next": row["identity"] if row else None,
             "blockers": [f"{t['identity']}: {t['reason']}" for t in tasks if t.get("reason") and t["result"] in {"pending", "active", "blocked"}]
             + [f"legacy row {r['index'] + 1} needs planning: {r['text']}" for r in v["rows"] if not r["identity"] and r["mark"] == " "]
             + [f"unreadable receipt {item}" for item in v["unreadable"]],
-            "delivery": [t for t in tasks if t.get("resume")], "cleanup": v["cleanup"]}
+            "delivery": [t for t in tasks if t.get("resume")], "cleanup": v["cleanup"] + retained}
 
 
 def status(args):

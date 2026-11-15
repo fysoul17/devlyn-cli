@@ -3187,6 +3187,8 @@ class LoopFixture(unittest.TestCase):
         # Prediction: inv.t1 leaves a nested repository under an ignored path; its merged delivery settles COMPLETE with
         # the tree and task ref kept and the reason under workspace cleanup, and inv.t2 runs and delivers in the same
         # drain. Before: complete raised, so inv.t1's delivery stayed unrecorded and the drain reported it blocked.
+        # Status and inspect then name each settled task's retained workspace or scratch cleanup with its resume under
+        # cleanup. Before: neither had a pending delivery, so both reported delivery [] and cleanup [].
         self.remote(pending=False)
         self.plan("inv", CHAIN, {"inv.t1": {"product": "greeting", "nested_repository": True}, "inv.t2": {"product": "app"}},
                   delivery="auto")
@@ -3199,6 +3201,12 @@ class LoopFixture(unittest.TestCase):
         receipt = self.receipt("inv.t1")
         self.assertTrue((Path(receipt["worktree"]) / "__pycache__/nested/.git").is_dir())
         self.assertEqual(self.g("rev-parse", "refs/heads/devlyn/inv/t1"), receipt["publish_sha"])
+        scratch = {"status": "RETAINED", "reason": "fixture scratch retention", "resume": "fixture scratch resume"}
+        self.receipt_path("inv.t2").write_text(json.dumps(dict(self.receipt("inv.t2"), scratch_cleanup=scratch)), encoding="utf-8")
+        for result in (self.cli("status", "--repo", self.anchor), self.cli("inspect", "--repo", self.anchor, "--json")):
+            self.assertEqual(result["delivery"], [])
+            self.assertIn(f"inv.t1: workspace cleanup {first['cleanup']}", result["cleanup"])
+            self.assertIn("inv.t2: scratch cleanup RETAINED — fixture scratch retention; resume: fixture scratch resume", result["cleanup"])
 
     @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
     def test_prerequisite_merge_is_checked_before_allocation_and_execution(self):
