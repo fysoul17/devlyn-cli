@@ -515,6 +515,8 @@ class AcceptanceTests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name).resolve()
         self.work = self.root / "work tree"
+        # A commit's detached automatic maintenance would still write into .git while a test reads the tree.
+        (self.root / "gitconfig").write_text("[maintenance]\n\tauto = false\n", encoding="utf-8")
         env = {"GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": str(self.root / "gitconfig"), "GIT_AUTHOR_NAME": "Fixture",
                "GIT_AUTHOR_EMAIL": "fixture@example.invalid", "GIT_COMMITTER_NAME": "Fixture", "GIT_COMMITTER_EMAIL": "fixture@example.invalid"}
         self.saved = {key: os.environ.get(key) for key in env}

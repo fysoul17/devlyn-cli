@@ -1903,6 +1903,8 @@ class QueueTests(unittest.TestCase):
             "import shutil\nfrom types import SimpleNamespace\n"
             "shutil.disk_usage = lambda path: SimpleNamespace(total=100 * 1024**3, free=100 * 1024**3)\n",
             encoding="utf-8")
+        # A commit's detached automatic maintenance would still write into .git while a test reads the tree.
+        (self.root / "gitconfig").write_text("[maintenance]\n\tauto = false\n", encoding="utf-8")
         self.env = {**os.environ, "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": str(self.root / "gitconfig"),
                     "GIT_AUTHOR_NAME": "Fixture", "GIT_AUTHOR_EMAIL": "fixture@example.invalid",
                     "GIT_COMMITTER_NAME": "Fixture", "GIT_COMMITTER_EMAIL": "fixture@example.invalid"}

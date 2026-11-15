@@ -2116,6 +2116,9 @@ class CompletionTests(unittest.TestCase):
         self.bin.mkdir()
         self.data = self.root / "gh.json"
         self.data.write_text(json.dumps({"bare": str(self.bare)}), encoding="utf-8")
+        # A commit's detached automatic maintenance would still write into .git while a test reads the tree. A file, not
+        # GIT_CONFIG_COUNT: the storage suite reuses this fixture with a native helper that refuses that variable.
+        (self.root / "gitconfig").write_text("[maintenance]\n\tauto = false\n", encoding="utf-8")
         self.env = {**os.environ, "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": str(self.root / "gitconfig"),
                     "GIT_AUTHOR_NAME": "Fixture", "GIT_AUTHOR_EMAIL": "fixture@example.invalid",
                     "GIT_COMMITTER_NAME": "Fixture", "GIT_COMMITTER_EMAIL": "fixture@example.invalid",
