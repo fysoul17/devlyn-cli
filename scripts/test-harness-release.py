@@ -32,7 +32,9 @@ assert len(PREFIX.split()) <= 40 and len(PREFIX.rstrip().encode()) <= 297, 'sess
 
 def environment():
     env = {k: v for k, v in os.environ.items() if not k.startswith(('GIT_', 'DEVLYN_'))}
-    env.update(GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM='1', PYTHONDONTWRITEBYTECODE='1')
+    env.update(GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM='1', PYTHONDONTWRITEBYTECODE='1',
+               # A commit's detached automatic maintenance would still write into .git while a test reads the tree.
+               GIT_CONFIG_COUNT='1', GIT_CONFIG_KEY_0='maintenance.auto', GIT_CONFIG_VALUE_0='false')
     return env
 
 
@@ -134,6 +136,17 @@ class ReleaseTests(unittest.TestCase):
     def commit(self, root):
         run(['git', '-C', root, 'add', '.'])
         run(['git', '-C', root, 'commit', '-qm', 'fixture'])
+
+    def test_fixture_git_leaves_no_maintenance_writing_into_the_repository(self):
+        # Prediction: a commit under this suite's environment starts no automatic maintenance, whose detached child
+        # would still write into .git (objects/maintenance.lock) while a snapshot reads the case.
+        repo = self.init_repo(self.case / 'repo')
+        trace = self.case / 'trace.json'
+        run(['git', '-C', repo, 'commit', '-q', '--allow-empty', '-m', 'fixture'],
+            env={**environment(), 'GIT_TRACE2_EVENT': str(trace)})
+        children = [json.loads(line)['argv'] for line in trace.read_text(encoding='utf-8').splitlines()
+                    if '"event":"child_start"' in line]
+        self.assertEqual(children, [])
 
     def test_release_verify_is_read_only_for_valid_and_failing_release(self):
         root = self.copy()

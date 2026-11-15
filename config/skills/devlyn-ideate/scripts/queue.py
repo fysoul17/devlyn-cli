@@ -1903,6 +1903,8 @@ class QueueTests(unittest.TestCase):
             "import shutil\nfrom types import SimpleNamespace\n"
             "shutil.disk_usage = lambda path: SimpleNamespace(total=100 * 1024**3, free=100 * 1024**3)\n",
             encoding="utf-8")
+        # A commit's detached automatic maintenance would still write into .git while a test reads the tree.
+        (self.root / "gitconfig").write_text("[maintenance]\n\tauto = false\n", encoding="utf-8")
         self.env = {**os.environ, "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": str(self.root / "gitconfig"),
                     "GIT_AUTHOR_NAME": "Fixture", "GIT_AUTHOR_EMAIL": "fixture@example.invalid",
                     "GIT_COMMITTER_NAME": "Fixture", "GIT_COMMITTER_EMAIL": "fixture@example.invalid"}
@@ -1945,6 +1947,14 @@ class QueueTests(unittest.TestCase):
             self.assertIn(old, text)
             path.write_text(text.replace(old, new, 1), encoding="utf-8")
         return mutate
+
+    def test_fixture_commit_starts_no_automatic_maintenance(self):
+        # Its detached child would still write into .git while a test reads the tree or cleanup removes it.
+        trace = self.root / "trace.json"
+        subprocess.run(["git", "-C", str(self.anchor), "commit", "-q", "--allow-empty", "-m", "traced"], check=True,
+                       env={**self.env, "GIT_TRACE2_EVENT": str(trace)})
+        children = [line for line in trace.read_text(encoding="utf-8").splitlines() if '"event":"child_start"' in line]
+        self.assertEqual(children, [])
 
     def test_package_validation(self):
         self.assertEqual(self.cli("check", self.meta)["tasks"], ["inv.t1", "inv.t2"])

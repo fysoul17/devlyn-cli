@@ -706,9 +706,14 @@ class WarmTests(unittest.TestCase):
         (bin_dir / "cargo").write_text(FAKE_CARGO)
         (bin_dir / "cargo").chmod(0o755)
         self.fixture, self.log = self.root / "fixture.json", self.root / "cargo.log"
+        # A commit's detached automatic maintenance would still write into .git while a test reads the tree. Appended to
+        # the inherited GIT_CONFIG_COUNT entries, which this environment keeps.
+        count = int(os.environ.get("GIT_CONFIG_COUNT") or 0)
         self.environment = mock.patch.dict(os.environ, {
             "PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}", "FAKE_CARGO": str(self.fixture),
             "FAKE_CARGO_LOG": str(self.log), "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1",
+            "GIT_CONFIG_COUNT": str(count + 1), f"GIT_CONFIG_KEY_{count}": "maintenance.auto",
+            f"GIT_CONFIG_VALUE_{count}": "false",
             "PYTHONPATH": str(self.root) + os.pathsep + os.environ.get("PYTHONPATH", ""),
             "PYTHONDONTWRITEBYTECODE": "1",
             "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"})
@@ -748,6 +753,14 @@ class WarmTests(unittest.TestCase):
 
     def git(self, work, *args):
         return subprocess.run(["git", "-C", str(work), *args], check=True, capture_output=True, text=True).stdout
+
+    def test_fixture_commit_starts_no_automatic_maintenance(self):
+        # Its detached child would still write into .git while a test reads the tree or cleanup removes it.
+        trace = self.root / "trace.json"
+        os.environ["GIT_TRACE2_EVENT"] = str(trace)  # setUp's patch restores the environment
+        self.git(self.anchor, "commit", "-q", "--allow-empty", "-m", "traced")
+        children = [line for line in trace.read_text(encoding="utf-8").splitlines() if '"event":"child_start"' in line]
+        self.assertEqual(children, [])
 
     def write_fixture(self, **extra):
         packages = [

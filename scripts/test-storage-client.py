@@ -1504,6 +1504,9 @@ class RealAdapterTests(unittest.TestCase):
         self.repo = self.root/'repo'
         self.repo.mkdir()
         self.git('init', '-q', '-b', 'main')
+        # A commit's detached automatic maintenance would still write into .git while a test reads the tree. In the
+        # repository: the real helper refuses GIT_CONFIG_COUNT, and a plan carries no maintenance setting.
+        self.git('config', 'maintenance.auto', 'false')
         (self.repo/'.gitignore').write_text('target/\n.devlyn/\n')
         (self.repo/'Cargo.toml').write_text('[package]\nname="adapter_fixture"\nversion="0.1.0"\nedition="2021"\n')
         (self.repo/'src').mkdir()
@@ -3415,8 +3418,12 @@ class ManagedOwnerTests(unittest.TestCase):
         # Native Git only: URL routing is Git config, never a PATH launcher.
         home = self.root / 'home'
         home.mkdir()
+        # A commit's detached automatic maintenance would still write into .git while a test reads the tree. The file too:
+        # the receiving side of the push below drops GIT_CONFIG_COUNT.
+        (self.root / 'gitconfig').write_text('[maintenance]\n\tauto = false\n', encoding='utf-8')
         environment = {**os.environ, 'HOME': str(home), 'USERPROFILE': str(home),
-            'GIT_CONFIG_GLOBAL': os.devnull, 'GIT_CONFIG_NOSYSTEM': '1', 'GIT_CONFIG_COUNT': '0',
+            'GIT_CONFIG_GLOBAL': str(self.root / 'gitconfig'), 'GIT_CONFIG_NOSYSTEM': '1',
+            'GIT_CONFIG_COUNT': '1', 'GIT_CONFIG_KEY_0': 'maintenance.auto', 'GIT_CONFIG_VALUE_0': 'false',
             'GIT_AUTHOR_NAME': 'Fixture', 'GIT_AUTHOR_EMAIL': 'fixture@example.invalid',
             'GIT_COMMITTER_NAME': 'Fixture', 'GIT_COMMITTER_EMAIL': 'fixture@example.invalid', 'GIT_ALLOW_PROTOCOL': 'file'}
         for key in ('GIT_DIR', 'GIT_COMMON_DIR', 'GIT_WORK_TREE', 'GIT_INDEX_FILE'):
@@ -3439,6 +3446,15 @@ class ManagedOwnerTests(unittest.TestCase):
             remote='origin', repository=None, worktree=str(self.root / 'task'), local_base=git('rev-parse', 'HEAD'),
             from_receipt=None, start=None)
         return home, environment, git, args
+
+    def test_fixture_commit_starts_no_automatic_maintenance(self):
+        # Its detached child would still write into .git while a test reads the tree or cleanup removes it.
+        _, environment, git, _ = self.native_local_repository()
+        trace = self.root / 'trace.json'
+        environment['GIT_TRACE2_EVENT'] = str(trace)
+        git('commit', '-q', '--allow-empty', '-m', 'traced')
+        children = [line for line in trace.read_text(encoding='utf-8').splitlines() if '"event":"child_start"' in line]
+        self.assertEqual(children, [])
 
     def test_active_abandoned_allocate_retires_before_fresh_allocation(self):
         home, environment, git, args = self.native_local_repository()

@@ -41,7 +41,9 @@ CURRENT_RULES = (
 def environment():
     env = {k: v for k, v in os.environ.items() if not k.startswith(('DEVLYN_', 'CODEX_MONITORED_', 'GIT_'))
            and k not in ('CODEX_BLOCKED', 'CODEX_BIN', 'CODEX_REAL_BIN', 'PYTHONUTF8', 'PYTHONIOENCODING', 'CODEX_HOME', 'CLAUDE_CONFIG_DIR')}
-    env.update(GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM='1', PYTHONDONTWRITEBYTECODE='1')
+    env.update(GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM='1', PYTHONDONTWRITEBYTECODE='1',
+               # A commit's detached automatic maintenance would still write into .git while a test reads the tree.
+               GIT_CONFIG_COUNT='1', GIT_CONFIG_KEY_0='maintenance.auto', GIT_CONFIG_VALUE_0='false')
     return env
 
 

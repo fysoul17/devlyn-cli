@@ -2116,6 +2116,9 @@ class CompletionTests(unittest.TestCase):
         self.bin.mkdir()
         self.data = self.root / "gh.json"
         self.data.write_text(json.dumps({"bare": str(self.bare)}), encoding="utf-8")
+        # A commit's detached automatic maintenance would still write into .git while a test reads the tree. A file, not
+        # GIT_CONFIG_COUNT: the storage suite reuses this fixture with a native helper that refuses that variable.
+        (self.root / "gitconfig").write_text("[maintenance]\n\tauto = false\n", encoding="utf-8")
         self.env = {**os.environ, "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": str(self.root / "gitconfig"),
                     "GIT_AUTHOR_NAME": "Fixture", "GIT_AUTHOR_EMAIL": "fixture@example.invalid",
                     "GIT_COMMITTER_NAME": "Fixture", "GIT_COMMITTER_EMAIL": "fixture@example.invalid",
@@ -2170,6 +2173,14 @@ class CompletionTests(unittest.TestCase):
         return argparse.Namespace(repo=str(self.work), task=name, branch="task/" + name,
                                   repository="test/project", base="main", remote="origin", worktree=str(worktree),
                                   local_base=None, from_receipt=None, start=None)
+
+    def test_fixture_commit_starts_no_automatic_maintenance(self):
+        # Its detached child would still write into .git while a test reads the tree or cleanup removes it.
+        trace = self.root / "trace.json"
+        self.env["GIT_TRACE2_EVENT"] = str(trace)
+        self.g("commit", "-q", "--allow-empty", "-m", "traced")
+        children = [line for line in trace.read_text(encoding="utf-8").splitlines() if '"event":"child_start"' in line]
+        self.assertEqual(children, [])
 
     def test_allocation_marks_exclusively_created_empty_target_before_checkout(self):
         # Prediction: persisted intent precedes exclusive creation and marking; real Git then populates that directory.

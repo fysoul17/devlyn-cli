@@ -156,7 +156,15 @@ for (const [completed, delivery] of [
         self.env["TEMP"] = str(self.snapshots)
         self.repos = []
         self.env.pop("CLAUDE_CONFIG_DIR", None)
-        self.env["GIT_CONFIG_GLOBAL"] = os.devnull
+        # A push's receiving side drops GIT_CONFIG_COUNT and, under this non-ASCII root on macOS, its repository's own
+        # config too; it still reads this file, so its detached maintenance cannot write into a bare a test reads or removes.
+        (self.root / "gitconfig").write_text("[maintenance]\n\tauto = false\n", encoding="utf-8")
+        self.env["GIT_CONFIG_GLOBAL"] = str(self.root / "gitconfig")
+        # A commit's detached automatic maintenance would still write into .git while a test reads the tree. Appended to
+        # the inherited GIT_CONFIG_COUNT entries: the CI container's entry trusts the checkout this suite reads tags from.
+        count = int(self.env.get("GIT_CONFIG_COUNT") or 0)
+        self.env.update({"GIT_CONFIG_COUNT": str(count + 1), f"GIT_CONFIG_KEY_{count}": "maintenance.auto",
+                         f"GIT_CONFIG_VALUE_{count}": "false"})
         # These fixtures own every process using their temporary installs. Use a deterministic process
         # listing so host privacy/sandbox restrictions cannot turn every fixture into an in-use skip.
         if os.name != "nt":
@@ -240,6 +248,22 @@ for (const [completed, delivery] of [
         self.env.update(PATH=str(bin_dir) + os.pathsep + self.env["PATH"], FIXTURE_GH=str(data), REAL_GIT=shutil.which("git"))
         self.run_ok(["git", "remote", "add", "origin", "https://github.com/test/project.git"], cwd=repo)
         return bare
+
+    @unittest.skipIf(os.name == "nt", "fake GitHub uses POSIX wrappers")
+    def test_a_push_into_the_fake_github_bare_starts_no_automatic_maintenance(self):
+        # Prediction: the receiving side's detached maintenance would still write into the bare while a test reads or
+        # removes it. That side drops GIT_CONFIG_COUNT and, under this root on macOS, the bare's own config; it reads the file.
+        repo = self.repo("quiet-receiver")
+        self.fake_github(repo)
+        self.run_ok(["git", "commit", "-q", "--allow-empty", "-m", "traced"], cwd=repo)
+        trace = self.root / "push-trace.json"
+        self.env["GIT_TRACE2_EVENT"] = str(trace)
+        self.run_ok(["git", "push", "-q", "origin", "main"], cwd=repo)
+        events = [json.loads(line) for line in trace.read_text(encoding="utf-8").splitlines()]
+        names = {event["sid"]: event["name"] for event in events if event["event"] == "cmd_name"}
+        self.assertIn("receive-pack", names.values())
+        self.assertEqual([(names.get(event["sid"]), event["argv"]) for event in events
+                          if event["event"] == "child_start" and "maintenance" in event["argv"]], [])
 
     @staticmethod
     def actions(scope):
