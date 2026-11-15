@@ -1511,9 +1511,12 @@ def remove_moved(receipt, path, work, anchor):
     kind, _, value = pointer.read_text(encoding="utf-8").partition(":")
     gitdir = Path(os.path.normpath(moved / value.strip()))
     require(kind == "gitdir" and gitdir == Path(receipt["worktree_gitdir"]), foreign)
-    # A prune, or a Git removal that failed part way, deletes the registration that Git needs to remove the tree.
-    require(path_present(gitdir), f"{moved} is the task checkout moved from {work}, but its Git registration is gone; "
-                                  "inspect it and remove it by hand, then resume")
+    # A prune, or a Git removal that failed part way, deletes the registration that Git needs to remove the tree. Only
+    # the folder's own inode, which a rename keeps, then tells the checkout from another folder naming that Gitdir.
+    if not path_present(gitdir):
+        require(moved.stat().st_ino == receipt["worktree_identity"][0][1], foreign)
+        raise CompletionError(f"{moved} is the task checkout moved from {work}, but its Git registration is gone; "
+                              "inspect it and remove it by hand, then resume")
     require(gitdir.is_dir() and same_workspace_identity(workspace_identity(moved, gitdir), receipt["worktree_identity"]), foreign)
     # Until the repair, Git may list the tree at its original path only, never another registration at the moved one.
     row = registrations(receipt).get(str(moved.resolve()))
@@ -3960,6 +3963,25 @@ ctypes.CDLL(None).pthread_exit(None)
             self.assertEqual(sorted(moved.rglob("*")), files)
         shutil.rmtree(moved)
         self.assert_windows_removal_completed(self.complete_on_windows(), moved)
+
+    def test_windows_recovery_never_calls_a_folder_naming_the_pruned_registration_the_task_checkout(self):
+        # Prediction: the checkout moved elsewhere by a person and `git worktree prune`, then a folder at the moved name
+        # whose .git names the recorded Gitdir: refused as not verifiable as the task checkout, both folders untouched.
+        # Before: called the task checkout whose registration is gone, and the reader was told to remove it by hand.
+        moved = self.merged()
+        gitdir = read_json(self.receipt)["worktree_gitdir"]
+        elsewhere = self.task.with_name("elsewhere")
+        self.task.rename(elsewhere)
+        self.g("worktree", "prune")
+        moved.mkdir()
+        (moved / "foreign").write_text("keep", encoding="utf-8")
+        (moved / ".git").write_text(f"gitdir: {gitdir}\n", encoding="utf-8")
+        files = sorted(elsewhere.rglob("*"))
+        foreign = f"{moved} cannot be verified as the task checkout moved from {self.task}; leave both, inspect them, then resume"
+        with self.assertRaisesRegex(CompletionError, re.escape(foreign)):
+            self.complete_on_windows()
+        self.assertEqual(sorted(path.name for path in moved.iterdir()), [".git", "foreign"])
+        self.assertEqual((sorted(elsewhere.rglob("*")), (elsewhere / "product").read_text(encoding="utf-8")), (files, "accepted\n"))
 
     def test_windows_recovery_never_removes_a_moved_checkout_its_anchor_names_by_another_path(self):
         # Prediction: an anchor naming the moved checkout through a symlink is the same folder: the recovery refuses with
