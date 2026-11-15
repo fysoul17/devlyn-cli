@@ -1473,8 +1473,10 @@ const CLEANUP_LIST_BYTES = 4096;
 // Windows: each command line travels as its UTF-16 code units in decimal, which no code page changes, and this
 // marker in PowerShell's own command line must come back intact.
 const CLEANUP_LIST_MARKER = '✓한';
+const CLEANUP_LIST_COMMAND = `Get-CimInstance Win32_Process | ForEach-Object { ([int[]][char[]]"$($_.CommandLine)") -join ',' } # ${CLEANUP_LIST_MARKER}`;
 
-// A Windows list, one command line per row; null when a row is malformed or the marker did not come back.
+// A Windows list, one command line per row; null when a row is malformed or the marker did not come back in
+// PowerShell's own row beside the command text before it (Node writes each `"` of the command there as `\"`).
 function cleanupWindowsRows(text) {
   const rows = [];
   for (const line of text.split(/\r?\n/)) {
@@ -1482,7 +1484,8 @@ function cleanupWindowsRows(text) {
     if (!units.every((unit) => /^\d{1,5}$/.test(unit) && Number(unit) <= 0xffff)) return null;
     rows.push(String.fromCharCode(...units.map(Number)));
   }
-  return rows.some((row) => row.includes(CLEANUP_LIST_MARKER)) ? rows : null;
+  const own = CLEANUP_LIST_COMMAND.slice(CLEANUP_LIST_COMMAND.lastIndexOf('"') + 1);
+  return rows.some((row) => row.includes(own)) ? rows : null;
 }
 
 // A drain started from Git Bash may name a copy C:/… or /c/…: compared lower-cased, with slashes.
@@ -1497,8 +1500,7 @@ function cleanupInUse(dirs) {
   const options = { timeout: 20000, maxBuffer: 64 * 1024 * 1024 };
   const others = (rows) => rows.filter((row) => !row.includes(' cleanup --'));
   if (process.platform === 'win32') {
-    const listing = spawnSync('powershell', ['-NoProfile', '-NonInteractive', '-Command',
-      `Get-CimInstance Win32_Process | ForEach-Object { ([int[]][char[]]"$($_.CommandLine)") -join ',' } # ${CLEANUP_LIST_MARKER}`], options);
+    const listing = spawnSync('powershell', ['-NoProfile', '-NonInteractive', '-Command', CLEANUP_LIST_COMMAND], options);
     const rows = listing.status === 0 ? cleanupWindowsRows(listing.stdout.toString('latin1')) : null;
     return new Set(dirs.filter((dir) => !rows || others(rows).some((row) => cleanupWindowsNames(row, dir))));
   }

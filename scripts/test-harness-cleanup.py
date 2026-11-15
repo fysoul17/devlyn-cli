@@ -3202,21 +3202,28 @@ assert.ok(ran.calls.every((call) => !call.args.includes(huge + '/')));
 
     def test_windows_rows_travel_as_code_units_and_match_every_spelling(self):
         # Prediction (I10, I11, I12, unit, on every platform): a row of decimal UTF-16 code units decodes to its command
-        # line exactly (a Hangul path, a surrogate pair, an empty command line); a malformed row or a missing marker makes
-        # the list unreadable; a copy is matched lower-cased with slashes as C:\, C:/ or /c/ and an unrelated path is not.
-        # Through the lister: PowerShell carries the marker in its -Command text, the used copy is kept and the unused one
-        # offered; a row changed by a code page, or a lister that fails even after printing its own row, keeps both. Cannot
-        # run before the change.
+        # line exactly (a Hangul path, a surrogate pair, an empty command line); a malformed row, or a marker that did not
+        # come back in PowerShell's own row beside the command text before it (another row holding it does not count),
+        # makes the list unreadable; a copy is matched lower-cased with slashes as C:\, C:/ or /c/ and an unrelated path
+        # is not. Through the lister: PowerShell carries the marker in its -Command text, the used copy is kept and the
+        # unused one offered; a row changed by a code page, or a lister that fails even after printing its own row, keeps
+        # both. Cannot run before the change.
         self.node(r"""
 const marker = run('CLEANUP_LIST_MARKER').result;
 assert.ok(/[^\x00-\x7f]/.test(marker), marker);
 const decode = (text) => run(`cleanupWindowsRows(${JSON.stringify(text)})`).result;
-const own = `powershell.exe -NoProfile -NonInteractive -Command x # ${marker}`;
+// PowerShell's own row as Node writes its command line: the -Command text quoted, each `"` in it as `\"`.
+const [{ args: [, , , command] }] = inUse([], { platform: 'win32', list: powershell([]) }).calls;
+const own = `powershell -NoProfile -NonInteractive -Command "${command.replaceAll('"', '\\"')}"`;
 const rows = [own, 'python C:\\Users\\한글\\.claude\\skills\\devlyn-ideate\\scripts\\queue.py drain', 'app \u{1F600} C:\\x', '', 'last'];
 const decoded = decode(rows.map(units).join('\r\n') + '\r\n');
 assert.deepStrictEqual(decoded.slice(0, rows.length), rows);
 for (const bad of ['65,,66', '65,x', '65,', ',65', '65 ,66', '-1', '70000', '6.5']) assert.strictEqual(decode(units(own) + '\r\n' + bad), null, bad);
 assert.strictEqual(decode(units(own.replace(marker, '??')) + '\r\n' + units(rows[1])), null);
+// The marker counts only in PowerShell's own row, beside the command text before it; in another row it does not.
+assert.deepStrictEqual(decode(units(own) + '\r\n' + units(rows[1])), [own, rows[1]]);
+assert.strictEqual(decode(units(own.replace(marker, '??')) + '\r\n' + units(`notepad ${marker}.txt`)), null);
+assert.strictEqual(decode(units(`powershell -Command x # ${marker}`) + '\r\n' + units(rows[1])), null);
 const names = (row, dir) => run(`cleanupWindowsNames(${JSON.stringify(row)}, ${JSON.stringify(dir)})`).result;
 const used = 'C:\\Users\\한글\\.claude\\skills', unused = 'C:\\Users\\한글\\.agents\\skills';
 for (const row of [`python ${used}\\devlyn-ideate\\scripts\\queue.py drain`, 'python C:/Users/한글/.claude/skills/devlyn-ideate/scripts/queue.py',
@@ -3236,6 +3243,7 @@ assert.deepStrictEqual([call.options.timeout, call.options.maxBuffer], [20000, 6
 assert.deepStrictEqual(inUse([used, unused], { platform: 'win32', list: powershell(['bash /c/Users/한글/.claude/skills/x.sh']) }).used, [used]);
 const both = [unused, used].sort();
 assert.deepStrictEqual(inUse([used, unused], { platform: 'win32', list: powershell([drain], (row) => row.replace(/[^\x00-\x7f]/g, '?')) }).used, both);
+assert.deepStrictEqual(inUse([used, unused], { platform: 'win32', list: powershell([drain, `notepad ${marker}.txt`], (row) => row.replace(marker, '??')) }).used, both);
 assert.deepStrictEqual(inUse([used, unused], { platform: 'win32', list: (...call) => ({ ...powershell([])(...call), status: 1 }) }).used, both);
 assert.deepStrictEqual(inUse([used, unused], { platform: 'win32', list: powershell([`node devlyn.js cleanup --plan --project ${used}\\x`]) }).used, []);
 """)
