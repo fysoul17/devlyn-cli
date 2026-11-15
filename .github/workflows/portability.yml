@@ -284,9 +284,10 @@ jobs:
     needs: posix
     if: ${{ !cancelled() }}
     runs-on: windows-2025
-    # The checks' caps add up to 115 minutes (the 2700 s loop suite, the 900 s activation suite, three 480 s suites,
-    # three 240 s self-tests, eight 120 s code-page counts and three 60 s probes), and the other count checks run after
-    # them: the caps' sum plus margin for setup and those checks, to be tightened from the first run's measured time.
+    # Measured: 41 minutes on a healthy hosted run (2026-11-15, before this change's checks). Every labelled check and
+    # probe in the native step has its own cap; in the worst case the caps add up to 157 minutes before setup (the
+    # 2700 s loop suite, the 900 s activation suite, three 480 s suites, thirteen 240 s checks, eight 120 s code-page
+    # counts, five 60 s probes and controls). The limit is a backstop set from the measured time, not from that sum.
     timeout-minutes: 125
     steps:
       # The checkout is the test: Git for Windows refuses any tracked path Windows cannot
