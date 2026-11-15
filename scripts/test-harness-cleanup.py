@@ -1070,15 +1070,17 @@ for (const [completed, delivery] of [
 
     @unittest.skipIf(os.name == "nt", "process-list fixture and skill-root links require POSIX")
     def test_running_copies_are_kept_through_aliases_and_include(self):
-        # Prediction: a process naming either the original skill-root alias or a chosen modified copy
-        # keeps that copy; inclusion cannot bypass a running process or an occupied install lock.
+        # Prediction: a process naming the original skill-root alias, the folder it resolves to, or a chosen
+        # modified copy keeps that copy; inclusion cannot bypass a running process or an occupied install lock.
         repo = self.repo("running-linked")
         self.install(repo)
         (repo / ".agents/skills").rename(repo / "skills")
         (repo / ".agents/skills").symlink_to("../skills", target_is_directory=True)
-        self.env["FIXTURE_PROCESSES"] = f"python {repo}/.agents/skills/devlyn-ideate/scripts/queue.py drain"
-        plan, path = self.plan("--project", repo)
-        self.assertTrue(all(i["reasons"] == [{"code": "in-use", "params": {}}] for i in plan["scopes"][0]["items"]))
+        for spelling in ("skills", ".agents/skills"):
+            with self.subTest(spelling=spelling):
+                self.env["FIXTURE_PROCESSES"] = f"python {repo}/{spelling}/devlyn-ideate/scripts/queue.py drain"
+                plan, path = self.plan("--project", repo)
+                self.assertTrue(all(i["reasons"] == [{"code": "in-use", "params": {}}] for i in plan["scopes"][0]["items"]))
         self.assertEqual(self.apply(plan, path)["state"], "succeeded")
         edited = repo / "skills/devlyn-ideate/SKILL.md"
         edited.write_text(edited.read_text() + "\nOwner note.\n")
@@ -3038,16 +3040,18 @@ for (const [completed, delivery] of [
         # Prediction (I9): with the machine's own `ps`, a sleeper started from a copy under a resolved path with Hangul and
         # a space keeps that copy, with every LANG, LANGUAGE and LC_* variable removed and with LC_ALL=C, while the unused
         # copy in the same tree is offered; so does a sleeper whose arguments hold one invalid UTF-8 byte before the path.
-        # Before, on macOS: `ps` escapes the Hangul bytes outside a UTF-8 locale, the list was compared with the raw path,
-        # and the used copy was offered for removal.
+        # And under a UTF-8 locale, in which macOS's `ps` would print the lister's row raw and the invalid-byte row escaped
+        # if the lister were not given the C locale. Before, on macOS: `ps` escapes the Hangul bytes outside a UTF-8
+        # locale, the list was compared with the raw path, and the used copy was offered for removal.
         self.real_ps()
         repo = self.repo("count 한글")
         used, unused = self.copies(repo)
         script = f"{used}/devlyn-ideate/scripts/queue.py".encode()
-        for locale in ({}, {"LC_ALL": "C"}):
+        for locale in ({}, {"LC_ALL": "C"}, {"LANG": "ko_KR.UTF-8"}):
             for argv in ((script, b"drain"), (b"\xff", script)):
                 with self.subTest(locale=locale, invalid_byte=argv[0] == b"\xff"):
                     self.env.pop("LC_ALL", None)
+                    self.env.pop("LANG", None)
                     self.env.update(locale)
                     plan = self.plan_while_running(*argv, plan=("--project", repo))
                     self.assert_judged(plan, used=[used], unused=[unused])
@@ -3134,8 +3138,9 @@ for (const token of tokensOf(calls[0])) assert.ok(dirs.every((dir) => !dir.inclu
     def test_batches_stay_within_one_page_and_a_failed_lister_keeps_its_own_batch(self):
         # Prediction (I7, unit): thirty paths of about 310 bytes are split into two or more lists, none with more than 4096
         # bytes of arguments (each with its NUL), each path in exactly one, and each copy is judged in its own batch's list.
-        # A lister that exits non-zero, times out, cannot start or is refused its arguments (E2BIG) keeps every copy of its
-        # batch and only those; a path that alone is over the bound is kept and never listed. Cannot run before the change.
+        # A lister that exits non-zero, times out, cannot start, is refused its arguments (E2BIG) or overflows its buffer
+        # after printing the witness but before any user's row keeps every copy of its batch and only those; a path that
+        # alone is over the bound is kept and never listed. Cannot run before the change.
         self.node(r"""
 const dirs = Array.from({ length: 30 }, (_, index) => `/w/${'a'.repeat(200)}/${String(index).padStart(2, '0')}-${'b'.repeat(100)}`);
 const named = [dirs[0], dirs[29]], rows = named.map((dir) => `python3 ${dir}/x.py`);
@@ -3145,12 +3150,13 @@ assert.ok(calls.length >= 2, calls.length);
 for (const call of calls) assert.ok(['sh', ...call.args].reduce((sum, arg) => sum + Buffer.byteLength(arg) + 1, 0) <= 4096, call.args.length);
 assert.deepStrictEqual(calls.flatMap(pathsOf).sort(), dirs.map((dir) => dir + '/').sort());
 const error = (code) => Object.assign(Error(`spawnSync sh ${code}`), { code });
-for (const failure of [{ status: 1, signal: null, stdout: Buffer.alloc(0) }, { status: null, signal: 'SIGTERM', error: error('ETIMEDOUT') },
-    { status: null, signal: null, error: error('ENOENT') }, { status: null, signal: null, error: error('E2BIG') }]) {
+for (const failure of [() => ({ status: 1, signal: null, stdout: Buffer.alloc(0) }), () => ({ status: null, signal: 'SIGTERM', error: error('ETIMEDOUT') }),
+    () => ({ status: null, signal: null, error: error('ENOENT') }), () => ({ status: null, signal: null, error: error('E2BIG') }),
+    (...call) => ({ ...ps([])(...call), status: null, signal: 'SIGTERM', error: error('ENOBUFS') })]) {
   const listed = ps(rows);
-  const ran = inUse(dirs, { list: (command, args, options, call) => call === 2 ? failure : listed(command, args, options) });
+  const ran = inUse(dirs, { list: (command, args, options, call) => (call === 2 ? failure : listed)(command, args, options) });
   const second = pathsOf(ran.calls[1]).map((name) => name.slice(0, -1));
-  assert.deepStrictEqual(ran.used, [...new Set([...named, ...second])].sort(), JSON.stringify(failure));
+  assert.deepStrictEqual(ran.used, [...new Set([...named, ...second])].sort(), String(failure));
 }
 const huge = '/w/' + 'x'.repeat(5000);
 const ran = inUse(['/w/unused', huge], { list: ps([]) });
@@ -3163,7 +3169,8 @@ assert.ok(ran.calls.every((call) => !call.args.includes(huge + '/')));
         # line exactly (a Hangul path, a surrogate pair, an empty command line); a malformed row or a missing marker makes
         # the list unreadable; a copy is matched lower-cased with slashes as C:\, C:/ or /c/ and an unrelated path is not.
         # Through the lister: PowerShell carries the marker in its -Command text, the used copy is kept and the unused one
-        # offered; a row changed by a code page, or a lister that fails, keeps both. Cannot run before the change.
+        # offered; a row changed by a code page, or a lister that fails even after printing its own row, keeps both. Cannot
+        # run before the change.
         self.node(r"""
 const marker = run('CLEANUP_LIST_MARKER').result;
 assert.ok(/[^\x00-\x7f]/.test(marker), marker);
@@ -3193,7 +3200,7 @@ assert.deepStrictEqual([call.options.timeout, call.options.maxBuffer], [20000, 6
 assert.deepStrictEqual(inUse([used, unused], { platform: 'win32', list: powershell(['bash /c/Users/한글/.claude/skills/x.sh']) }).used, [used]);
 const both = [unused, used].sort();
 assert.deepStrictEqual(inUse([used, unused], { platform: 'win32', list: powershell([drain], (row) => row.replace(/[^\x00-\x7f]/g, '?')) }).used, both);
-assert.deepStrictEqual(inUse([used, unused], { platform: 'win32', list: () => ({ status: 1, signal: null, stdout: Buffer.alloc(0) }) }).used, both);
+assert.deepStrictEqual(inUse([used, unused], { platform: 'win32', list: (...call) => ({ ...powershell([])(...call), status: 1 }) }).used, both);
 assert.deepStrictEqual(inUse([used, unused], { platform: 'win32', list: powershell([`node devlyn.js cleanup --plan --project ${used}\\x`]) }).used, []);
 """)
 
