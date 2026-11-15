@@ -205,9 +205,9 @@ jobs:
     # The platform the run-folder channels were examined on, as the runner's own user on a
     # case-insensitive disk, and the darwin branches of the shipped helpers, which no other job runs.
     runs-on: macos-15
-    # The step took 1,185 to 1,471 s on a developer's Mac (the task-complete self-test 798 s of the slower run). A
-    # hosted runner is slower: the limit is to be set from the first hosted run's measured time plus margin.
-    timeout-minutes: 120
+    # The step took 11 minutes on macos-15 (run 43664276936) and 1,185 to 1,471 s on a developer's Mac under load
+    # (the task-complete self-test 798 s of the slower run).
+    timeout-minutes: 45
     steps:
       # The suites run from a full checkout of the tested SHA: they read earlier commits and release tags.
       - uses: actions/checkout@v4
