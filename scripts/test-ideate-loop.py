@@ -80,6 +80,8 @@ if behavior.get("change_after_review"):
     submission["source_sha"] = commit({"late.txt": "late change\n"}, "change after checks and review")
 if behavior.get("detach"):
     git("checkout", "-q", "--detach")
+if behavior.get("nested_repository"):  # left under an ignored path, so cleanup after merge keeps the task tree
+    subprocess.run(["git", "init", "-q", str(work / "__pycache__" / "nested")], check=True, capture_output=True)
 if behavior.get("hold"):
     flag = config_path.with_name("held")
     detach = {"creationflags": subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP} if os.name == "nt" else {"start_new_session": True}
@@ -3179,6 +3181,32 @@ class LoopFixture(unittest.TestCase):
         self.assertEqual(self.g("rev-parse", "refs/heads/devlyn/inv/t1"), receipt["publish_sha"])
         report = (self.common / "devlyn-loops/inv/drain-report.md").read_text(encoding="utf-8")
         self.assertIn("- Workspace cleanup: RETAINED — writer observation unsupported on this platform; retain workspace", report)
+
+    @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
+    def test_a_merged_delivery_whose_cleanup_is_refused_settles_and_its_dependent_runs(self):
+        # Prediction: inv.t1 leaves a nested repository under an ignored path; its merged delivery settles COMPLETE with
+        # the tree and task ref kept and the reason under workspace cleanup, and inv.t2 runs and delivers in the same
+        # drain. Before: complete raised, so inv.t1's delivery stayed unrecorded and the drain reported it blocked.
+        # Status and inspect then name each settled task's retained workspace or scratch cleanup with its resume under
+        # cleanup. Before: neither had a pending delivery, so both reported delivery [] and cleanup [].
+        self.remote(pending=False)
+        self.plan("inv", CHAIN, {"inv.t1": {"product": "greeting", "nested_repository": True}, "inv.t2": {"product": "app"}},
+                  delivery="auto")
+        tasks = self.tasks(self.drain(local=False))
+        first, second = tasks["inv.t1"], tasks["inv.t2"]
+        self.assertEqual((second["result"], second["delivery"], self.calls("inv.t2")), ("accepted", "COMPLETE", 1))
+        self.assertEqual((first["result"], first["delivery"], first.get("reason")), ("accepted", "COMPLETE", None))
+        self.assertTrue(first["cleanup"].startswith("RETAINED — nested repository or worktree inside the task tree: __pycache__/nested/"),
+                        first["cleanup"])
+        receipt = self.receipt("inv.t1")
+        self.assertTrue((Path(receipt["worktree"]) / "__pycache__/nested/.git").is_dir())
+        self.assertEqual(self.g("rev-parse", "refs/heads/devlyn/inv/t1"), receipt["publish_sha"])
+        scratch = {"status": "RETAINED", "reason": "fixture scratch retention", "resume": "fixture scratch resume"}
+        self.receipt_path("inv.t2").write_text(json.dumps(dict(self.receipt("inv.t2"), scratch_cleanup=scratch)), encoding="utf-8")
+        for result in (self.cli("status", "--repo", self.anchor), self.cli("inspect", "--repo", self.anchor, "--json")):
+            self.assertEqual(result["delivery"], [])
+            self.assertIn(f"inv.t1: workspace cleanup {first['cleanup']}", result["cleanup"])
+            self.assertIn("inv.t2: scratch cleanup RETAINED — fixture scratch retention; resume: fixture scratch resume", result["cleanup"])
 
     @unittest.skipIf(os.name == "nt", "fake gh and transport wrappers are POSIX shell scripts")
     def test_prerequisite_merge_is_checked_before_allocation_and_execution(self):
