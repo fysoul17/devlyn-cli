@@ -441,6 +441,27 @@ assert.deepEqual(fs.readdirSync(path.join(store, 'devlyn-cli')), []);
         self.assertNotIn('engines', data)
         self.assertEqual({r['name'] for r in data['requirements']}, {'node', 'python', 'git', 'git-bash', 'gh'})
 
+    @unittest.skipIf(os.name == 'nt', 'the product starts gh.exe without a shell; the purity tests above are the native proof')
+    def test_status_asks_gh_its_version_without_its_telemetry_state(self):
+        # Prediction: gh 2.91 and later creates a device id in its state folder at the start of every command unless
+        # GH_TELEMETRY is falsy; status asks gh with it off, so the home stays as it was and gh's version is read.
+        stubs = self.case / 'stubs'
+        stubs.mkdir()
+        gh = stubs / 'gh'
+        gh.write_text("#!/bin/sh\ncase \"${GH_TELEMETRY-unset}\" in\n  ''|0|false|no|disabled|off) ;;\n"
+                      "  *) mkdir -p \"$HOME/.local/state/gh\" && : > \"$HOME/.local/state/gh/device-id\" ;;\nesac\n"
+                      "echo 'gh version 2.103.3 (2026-11-01)'\n", encoding='utf-8')
+        gh.chmod(0o755)
+        home = self.case / 'home'
+        home.mkdir()
+        env = {**environment(), 'HOME': str(home), 'PATH': os.pathsep.join((str(stubs), os.environ['PATH']))}
+        env.pop('GH_TELEMETRY', None)
+        before = snapshot(home)
+        data = self.cli('status', '--project', self.case, env=env)
+        self.assertEqual(snapshot(home), before)
+        self.assertEqual(next(r for r in data['requirements'] if r['name'] == 'gh'),
+                         {'name': 'gh', 'required': False, 'available': True, 'version': '2.103.3', 'reasons': []})
+
     def test_status_source_repository_and_linked_worktree_identity(self):
         repo = self.init_repo(self.case / 'repo')
         (repo / 'package.json').write_text('{"name":"devlyn-cli"}', encoding='utf-8')

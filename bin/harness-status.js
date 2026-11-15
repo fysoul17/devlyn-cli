@@ -71,10 +71,11 @@ function requirements() {
     ['python', true, 'python3', ['-B', '--version']],
     ['git', true, 'git', ['--version']],
     ['git-bash', process.platform === 'win32', 'bash', ['--version']],
-    ['gh', false, 'gh', ['--version']],
+    // gh 2.91 and later writes a telemetry device id into its state folder on every command unless this is off.
+    ['gh', false, 'gh', ['--version'], { GH_TELEMETRY: 'false' }],
   ];
-  return [node, ...probes.map(([name, required, binary, argv]) => {
-    const result = spawnSync(binary, argv, { encoding: 'utf8', timeout: 5000, env: { ...process.env, PYTHONDONTWRITEBYTECODE: '1' } });
+  return [node, ...probes.map(([name, required, binary, argv, env]) => {
+    const result = spawnSync(binary, argv, { encoding: 'utf8', timeout: 5000, env: { ...process.env, PYTHONDONTWRITEBYTECODE: '1', ...env } });
     const output = (result.stdout || result.stderr || '').trim();
     const match = output.match(/\b(\d+)\.(\d+)(?:\.\d+)?/);
     let available = !result.error && result.status === 0 && Boolean(match);
