@@ -1463,19 +1463,78 @@ function cleanupRealParents(base, file) {
   return true;
 }
 
-let cleanupProcesses;
-// Whether a running process names `dir` on its command line (a drain started from a global copy runs
-// its queue.py and acceptance.py by absolute path). Read once per command; unreadable means unknown.
-function cleanupInUse(dir) {
-  if (cleanupProcesses === undefined) {
-    const listing = process.platform === 'win32'
-      ? spawnSync('powershell', ['-NoProfile', '-NonInteractive', '-Command',
-        'Get-CimInstance Win32_Process | ForEach-Object { $_.CommandLine }'], { encoding: 'utf8', timeout: 20000 })
-      : spawnSync('ps', ['-axww', '-o', 'command='], { encoding: 'utf8', timeout: 20000 });
-    cleanupProcesses = listing.status === 0 ? listing.stdout.split(/\r?\n/).filter((line) => line && !line.includes(' cleanup --')) : null;
+// The process list that decides whether a copy is in use (a drain started from a copy runs its queue.py and
+// acceptance.py by absolute path). A path is compared only with text the lister itself printed for that very
+// path, in a list whose rows are all rendered the same way. A list that cannot be read clears nothing.
+// POSIX: under the C locale `ps` renders each byte by itself, alike in every row, and the shell it runs from
+// holds each path between random tokens in its own row, the witness. Each shell's arguments fit one page,
+// which every kernel accepts and prints whole.
+const CLEANUP_LIST_BYTES = 4096;
+// Windows: each command line travels as its UTF-16 code units in decimal, which no code page changes, and this
+// marker in PowerShell's own command line must come back intact.
+const CLEANUP_LIST_MARKER = '✓한';
+const CLEANUP_LIST_COMMAND = `Get-CimInstance Win32_Process | ForEach-Object { ([int[]][char[]]"$($_.CommandLine)") -join ',' } # ${CLEANUP_LIST_MARKER}`;
+
+// A Windows list, one command line per row; null when a row is malformed or the marker did not come back in
+// PowerShell's own row beside the command text before it (Node writes each `"` of the command there as `\"`).
+function cleanupWindowsRows(text) {
+  const rows = [];
+  for (const line of text.split(/\r?\n/)) {
+    const units = line ? line.split(',') : [];
+    if (!units.every((unit) => /^\d{1,5}$/.test(unit) && Number(unit) <= 0xffff)) return null;
+    rows.push(String.fromCharCode(...units.map(Number)));
   }
-  // A list that cannot be read cannot clear anything: the roots stay until it can.
-  return cleanupProcesses === null || cleanupProcesses.some((line) => line.includes(dir + path.sep));
+  const own = CLEANUP_LIST_COMMAND.slice(CLEANUP_LIST_COMMAND.lastIndexOf('"') + 1);
+  return rows.some((row) => row.includes(own)) ? rows : null;
+}
+
+// A drain started from Git Bash may name a copy C:/… or /c/…: compared lower-cased, with slashes.
+function cleanupWindowsNames(row, dir) {
+  const text = row.toLowerCase().replaceAll('\\', '/');
+  const name = `${dir}\\`.toLowerCase().replaceAll('\\', '/');
+  return text.includes(name) || (/^[a-z]:\//.test(name) && text.includes(`/${name[0]}${name.slice(2)}`));
+}
+
+// Which of `dirs` a running process names on its command line.
+function cleanupInUse(dirs) {
+  const options = { timeout: 20000, maxBuffer: 64 * 1024 * 1024 };
+  const others = (rows) => rows.filter((row) => !row.includes(' cleanup --'));
+  if (process.platform === 'win32') {
+    const listing = spawnSync('powershell', ['-NoProfile', '-NonInteractive', '-Command', CLEANUP_LIST_COMMAND], options);
+    const rows = !listing.error && listing.status === 0 ? cleanupWindowsRows(listing.stdout.toString('latin1')) : null;
+    return new Set(dirs.filter((dir) => !rows || others(rows).some((row) => cleanupWindowsNames(row, dir))));
+  }
+  const script = 'ps -axww -o command=; exit $?';
+  // The shell's arguments with 16-letter tokens around the paths, each argument with its NUL.
+  const size = (batch) => Buffer.byteLength(['sh', '-c', script, ...batch].join('\0')) + 1 + 17 * (batch.length + 1);
+  const used = new Set();
+  const batches = [];
+  for (const name of new Set(dirs.map((dir) => dir + path.sep))) {
+    if (batches.length && size([...batches.at(-1), name]) <= CLEANUP_LIST_BYTES) batches.at(-1).push(name);
+    else if (size([name]) <= CLEANUP_LIST_BYTES) batches.push([name]);
+    else used.add(name);
+  }
+  for (const batch of batches) {
+    let tokens;
+    do {
+      tokens = [...batch, ''].map(() => crypto.randomBytes(8).toString('hex'));
+    } while (new Set(tokens).size < tokens.length || tokens.some((token) => batch.some((name) => name.includes(token))));
+    const listing = spawnSync('sh', ['-c', script, ...batch.flatMap((name, i) => [tokens[i], name]), tokens.at(-1)],
+      { ...options, env: { ...process.env, LC_ALL: 'C' } });
+    const rows = !listing.error && listing.status === 0 ? listing.stdout.toString('latin1').split('\n') : [];
+    // The witness holds every token once, in order; `ps` joins arguments with one space, dropped on each side.
+    const marks = (row) => tokens.map((token) => (row.split(token).length === 2 ? row.indexOf(token) : -1));
+    const witnesses = rows.filter((row) => marks(row).every((mark, i, all) => mark >= 0 && (i === 0 || all[i - 1] < mark)));
+    const [witness] = witnesses, at = witnesses.length === 1 && marks(witness);
+    const between = at ? batch.map((_, i) => witness.slice(at[i] + tokens[i].length, at[i + 1])) : [];
+    const framed = between.length && between.every((text) => text.length > 2 && text.startsWith(' ') && text.endsWith(' '));
+    // The witness alone is no user: any other row naming a path is one, another cleanup's lister shell included.
+    const listed = others(rows.filter((row) => row !== witness));
+    batch.forEach((name, i) => {
+      if (!framed || listed.some((row) => row.includes(between[i].slice(1, -1)))) used.add(name);
+    });
+  }
+  return new Set(dirs.filter((dir) => used.has(dir + path.sep)));
 }
 
 // Markers are generated, not bundled: require the exact writer format, a shipped version and
@@ -1501,7 +1560,7 @@ function cleanupMarkerOwned(file, current) {
 function cleanupSkillRoots(roots, current, callerBase = null) {
   const resolved = new Map();
   const linked = new Set();
-  const active = new Set();
+  const spellings = [];
   for (const [base, root] of roots) {
     let target = root;
     const stat = fs.lstatSync(root, { throwIfNoEntry: false });
@@ -1521,8 +1580,11 @@ function cleanupSkillRoots(roots, current, callerBase = null) {
     } else if (parents && stat?.isDirectory()) target = fs.realpathSync.native(root);
     if (!resolved.has(target)) resolved.set(target, base);
     const callerPath = (file) => callerBase ? path.join(callerBase, path.relative(base, file)) : file;
-    if (cleanupInUse(callerPath(root)) || cleanupInUse(callerPath(target))) active.add(target);
+    spellings.push([target, callerPath(root), callerPath(target)]);
   }
+  // Every path is known before the list is taken: the lister prints each of them beside the rows it is sought in.
+  const used = cleanupInUse(spellings.flatMap(([, ...names]) => names));
+  const active = new Set(spellings.filter(([, ...names]) => names.some((name) => used.has(name))).map(([target]) => target));
   return [...resolved].flatMap(([root, base]) => {
     const items = cleanupSkillRoot(base, root, current);
     const callerRoot = callerBase ? path.join(callerBase, path.relative(base, root)) : root;
