@@ -545,11 +545,15 @@ jobs:
           def count_code_pages():
               for name in ('.agents', '.claude'):
                   shutil.copytree(project / name, machine_home / name)
-              # The code page a new console gets on this image: a child given a console of its own reports it.
-              checked('new-console-cp', [sys.executable, '-c', 'import ctypes; print(ctypes.windll.kernel32.GetConsoleOutputCP())'],
-                      60, creationflags=subprocess.CREATE_NEW_CONSOLE)
-              print('Native Windows new console output code page: '
-                    + (logs / 'new-console-cp.log').read_text(encoding='ascii').strip(), flush=True)
+              # The code page a new console gets on this image: a child given a console of its own reports it. Recorded,
+              # not asserted: a runner that gives no such console fails no check.
+              try:
+                  checked('new-console-cp', [sys.executable, '-c', 'import ctypes; print(ctypes.windll.kernel32.GetConsoleOutputCP())'],
+                          60, creationflags=subprocess.CREATE_NEW_CONSOLE)
+                  answer = (logs / 'new-console-cp.log').read_text(encoding='ascii', errors='replace').strip()
+              except Exception as error:
+                  answer = f'failed ({error})'
+              print('Native Windows new console output code page: ' + answer, flush=True)
               original = kernel32.GetConsoleOutputCP()
               assert original, 'this step has no console whose code page could be set'
               scopes = (('project', count, ['--project', str(count)], count_env),
