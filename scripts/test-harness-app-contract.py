@@ -181,9 +181,9 @@ class AppContractTests(unittest.TestCase):
                 self.assertIsInstance(value[key], expected, key)
 
     def check_plan(self, plan, seen):
-        self.keys(plan, channels=dict)
-        self.optional(plan, release=(dict, NONE), engineArgs=list, envPatch=dict, prompt=(dict, NONE), files=list,
-                      machineSync=(dict, NONE))
+        # The app reads every one of these with no default: a plan without one fails the pane it was planned for.
+        self.keys(plan, channels=dict, release=(dict, NONE), engineArgs=list, envPatch=dict, prompt=(dict, NONE),
+                  files=list, machineSync=(dict, NONE))
         if plan.get('release') is not None:
             self.keys(plan['release'], package=str, version=str, digest=str, root=str)
             # A Codex session's sync compares these four with the release the app checked; it ignores any other key.
@@ -279,6 +279,7 @@ class AppContractTests(unittest.TestCase):
                 self.assertIsInstance(engine, str)
         for requirement in status['requirements']:
             self.keys(requirement, name=str, required=bool, available=bool)
+            self.assertIsInstance(requirement.get('version'), (str, NONE))
 
     def test_queue_inspect(self):
         # The queue panel reads a project's queue with the release's queue.py, strictly, and only after exit status 0.
