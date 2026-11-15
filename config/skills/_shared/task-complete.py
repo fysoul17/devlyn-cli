@@ -1451,6 +1451,24 @@ def aside(work):
     return work.with_name(work.name + ".devlyn-removing")
 
 
+@contextlib.contextmanager
+def long_paths():
+    # The move lengthens every path in the tree; Git for Windows reads and deletes past MAX_PATH only with long paths.
+    # Every Git child started in the span inherits it, after the entries the environment already has (Git 2.31).
+    count = int(os.environ.get("GIT_CONFIG_COUNT") or 0)
+    names = ("GIT_CONFIG_COUNT", f"GIT_CONFIG_KEY_{count}", f"GIT_CONFIG_VALUE_{count}")
+    saved = {name: os.environ.get(name) for name in names}
+    os.environ.update(zip(names, (str(count + 1), "core.longpaths", "true")))
+    try:
+        yield
+    finally:
+        for name, value in saved.items():
+            if value is None:
+                os.environ.pop(name, None)
+            else:
+                os.environ[name] = value
+
+
 def move_aside(work):
     # Windows refuses to rename a folder while a process holds a handle in it or below it. The Windows error stays in
     # the message: a refusal can also be an access denied for another reason.
@@ -1473,36 +1491,42 @@ def remove_by_moving(receipt, work):
                                              for p in map(Path, registrations(receipt))),
             f"{moved} exists or overlaps a registered worktree; leave it, keep {work}, inspect both, then resume")
     version = re.match(r"git version (\d+)\.(\d+)", command(["git", "--version"]))
-    if not version or (int(version[1]), int(version[2])) < (2, 29):
-        raise WritersUnobservable("removing a task checkout on Windows needs Git 2.29 or later (git worktree repair); "
-                                  "update Git, then resume")
+    if not version or (int(version[1]), int(version[2])) < (2, 31):
+        raise WritersUnobservable("removing a task checkout on Windows needs Git 2.31 or later (git worktree repair, "
+                                  "GIT_CONFIG_COUNT); update Git, then resume")
     move_aside(work)
-    gref(receipt, "worktree", "repair", str(moved))
-    # The move lengthens every path in the tree; without long paths Git for Windows cannot delete past MAX_PATH.
-    gref(receipt, "-c", "core.longpaths=true", "worktree", "remove", str(moved))
+    with long_paths():
+        gref(receipt, "worktree", "repair", str(moved))
+        gref(receipt, "worktree", "remove", str(moved))
 
 
+@long_paths()
 def remove_moved(receipt, path, work, anchor):
     """Finish a Windows removal interrupted after its move, forward only, rechecking the moved tree."""
+    require(receipt.get("writers_released"), "wait actual children, stop/yield known writers, then resume with --writers-stopped")
     moved = aside(work)
     foreign = f"{moved} cannot be verified as the task checkout moved from {work}; leave both, inspect them, then resume"
     pointer = moved / ".git"
     require(path_present(pointer) and stat.S_ISREG(pointer.lstat().st_mode), foreign)
     kind, _, value = pointer.read_text(encoding="utf-8").partition(":")
     gitdir = Path(os.path.normpath(moved / value.strip()))
-    require(kind == "gitdir" and gitdir == Path(receipt["worktree_gitdir"]) and gitdir.is_dir()
-            and same_workspace_identity(workspace_identity(moved, gitdir), receipt["worktree_identity"]), foreign)
+    require(kind == "gitdir" and gitdir == Path(receipt["worktree_gitdir"]), foreign)
+    # A prune, or a Git removal that failed part way, deletes the registration that Git needs to remove the tree.
+    require(path_present(gitdir), f"{moved} is the task checkout moved from {work}, but its Git registration is gone; "
+                                  "inspect it and remove it by hand, then resume")
+    require(gitdir.is_dir() and same_workspace_identity(workspace_identity(moved, gitdir), receipt["worktree_identity"]), foreign)
     # Until the repair, Git may list the tree at its original path only, never another registration at the moved one.
-    row = registrations(receipt).get(str(moved))
+    row = registrations(receipt).get(str(moved.resolve()))
     require(row is None or row.get("branch") == "refs/heads/" + receipt["branch"], foreign)
     verify_files(moved, receipt["files"])
     records = preserve_records(receipt, path, moved)
     outside(moved)
-    require(moved != anchor, "cannot clean the current allocation's anchor checkout: " + str(anchor))
+    require(anchor is None or not (os.path.samefile(moved, anchor) if os.path.exists(anchor) else moved == anchor),
+            "cannot clean the current allocation's anchor checkout: " + str(anchor))
     gref(receipt, "worktree", "repair", str(moved))
     removable(dict(receipt, worktree=str(moved)), moved)
     require(records_manifest(moved) == records, ".devlyn changed after it was copied; stop its writer and resume")
-    gref(receipt, "-c", "core.longpaths=true", "worktree", "remove", str(moved))
+    gref(receipt, "worktree", "remove", str(moved))
 
 
 def cleanup_workspace(receipt, path, *, warnings, anchor=None):
@@ -3719,13 +3743,13 @@ ctypes.CDLL(None).pthread_exit(None)
         self.assertFalse(self.task.exists())
         self.assertEqual(self.g("branch", "--list", "task/fixture"), "")
 
-    def merged(self):
+    def merged(self, *, released=True):
         self.allocate(); self.accept()
-        self.complete("--mode", "pr", "--writers-stopped")
+        self.complete("--mode", "pr", *(["--writers-stopped"] if released else []))
         self.merge_pr()
         return self.task.with_name(self.task.name + ".devlyn-removing")
 
-    def complete_on_windows(self, rename=None, **names):
+    def complete_on_windows(self, rename=None, *, writers_stopped=False, **names):
         # As native Windows reports itself; `rename` replaces os.rename for the task tree only.
         from unittest.mock import patch
         real = os.rename
@@ -3733,7 +3757,8 @@ ctypes.CDLL(None).pthread_exit(None)
             if rename and Path(source) == self.task:
                 return rename(source, target)
             return real(source, target, *args, **kwargs)
-        args = argparse.Namespace(receipt=str(self.receipt), acceptance=None, mode=None, local_only=False, writers_stopped=False)
+        args = argparse.Namespace(receipt=str(self.receipt), acceptance=None, mode=None, local_only=False,
+                                  writers_stopped=writers_stopped)
         with patch.object(sys, "platform", "win32"), patch.dict(os.environ, self.env), \
                 patch.object(os, "rename", tree_rename), patch.dict(complete.__globals__, names):
             return complete(args)
@@ -3756,18 +3781,18 @@ ctypes.CDLL(None).pthread_exit(None)
     def test_windows_removal_waits_while_the_move_is_refused_and_completes_once_it_succeeds(self):
         # Prediction: on win32 a merged delivery's tree is moved aside, then removed. A refused move keeps delivery
         # COMPLETE and the tree, its registration and both task branches, with the in-use reason and the Windows error;
-        # the resume then moves and removes it. A Git without `worktree repair` keeps the tree without a move, naming the
-        # version needed. stopped_writers itself stays unsupported there.
+        # the resume then moves and removes it. A Git without `worktree repair` or GIT_CONFIG_COUNT (2.30) keeps the tree
+        # without a move, naming the version needed. stopped_writers itself stays unsupported there.
         # Before: every win32 removal was retained as "writer observation unsupported", without a move.
         from unittest.mock import patch
         moved = self.merged()
         attempts = []
         run = command
         def older(argv, **kwargs):
-            return "git version 2.28.0" if argv == ["git", "--version"] else run(argv, **kwargs)
+            return "git version 2.30.0" if argv == ["git", "--version"] else run(argv, **kwargs)
         result = self.complete_on_windows(lambda source, target: attempts.append(target), command=older)
         self.assertEqual((result["status"], attempts), ("CLEANUP_PENDING", []))
-        self.assertIn("needs Git 2.29 or later", result["workspace_cleanup"]["reason"])
+        self.assertIn("needs Git 2.31 or later", result["workspace_cleanup"]["reason"])
         def held(source, target):
             attempts.append(target)
             raise PermissionError(13, "fixture: the process cannot access the file because it is being used by another process")
@@ -3875,6 +3900,126 @@ ctypes.CDLL(None).pthread_exit(None)
         self.assert_windows_removal_completed(self.complete_on_windows(), moved)
         self.assertEqual([path.read_text(encoding="utf-8") for path in self.receipt.parent.glob("records*/.devlyn/late.txt")],
                          ["saved after the kill\n"])
+
+    def test_windows_recovery_needs_the_owners_recorded_release(self):
+        # Prediction: a checkout published without --writers-stopped and renamed by hand to the moved name after the merge
+        # is refused by a completion without that flag, naming it, with its ignored output kept; with the flag it is
+        # removed. Before: the recovery removed it and its ignored output without the release.
+        moved = self.merged(released=False)
+        (self.task / "ignored").mkdir()
+        (self.task / "ignored/output").write_text("kept", encoding="utf-8")
+        self.task.rename(moved)
+        with self.assertRaisesRegex(CompletionError, "--writers-stopped"):
+            self.complete_on_windows()
+        self.assertEqual(((moved / "ignored/output").read_text(encoding="utf-8"), (moved / "product").read_text(encoding="utf-8")),
+                         ("kept", "accepted\n"))
+        self.assert_windows_removal_completed(self.complete_on_windows(writers_stopped=True), moved)
+
+    def test_windows_removal_gives_every_git_call_on_the_moved_tree_long_paths(self):
+        # Prediction: after the move, every Git call on the moved tree, in the removal and in its recovery (repair, status,
+        # ls-files, remove), has core.longpaths=true in its environment after the entries already there; calls on the
+        # tree before the move and after the removal see those entries only. Before: only `worktree remove` had it, as an
+        # argument; the recovery's status and ls-files ran without it.
+        moved = self.merged()
+        self.env.update(GIT_CONFIG_COUNT="1", GIT_CONFIG_KEY_0="fixture.kept", GIT_CONFIG_VALUE_0="yes")
+        calls = []
+        run, step = command, gref
+        def recorded(argv, **kwargs):
+            env = kwargs.get("env") or os.environ
+            calls.append((argv, {name: value for name, value in env.items() if re.fullmatch(r"GIT_CONFIG_(COUNT|KEY_\d+|VALUE_\d+)", name)}))
+            return run(argv, **kwargs)
+        def killed(receipt, *args):
+            output = step(receipt, *args)
+            if args[:2] == ("worktree", "repair"):
+                raise RuntimeError("fixture kill after the repair")
+            return output
+        with self.assertRaisesRegex(RuntimeError, "fixture kill"):
+            self.complete_on_windows(command=recorded, gref=killed)
+        self.assert_windows_removal_completed(self.complete_on_windows(command=recorded), moved)
+        kept = {"GIT_CONFIG_COUNT": "1", "GIT_CONFIG_KEY_0": "fixture.kept", "GIT_CONFIG_VALUE_0": "yes"}
+        longpaths = dict(kept, GIT_CONFIG_COUNT="2", GIT_CONFIG_KEY_1="core.longpaths", GIT_CONFIG_VALUE_1="true")
+        on_moved = [(argv, seen) for argv, seen in calls if str(moved) in argv]
+        self.assertLessEqual({"repair", "status", "ls-files", "remove"}, {word for argv, seen in on_moved for word in argv})
+        self.assertEqual([argv for argv, seen in on_moved if seen != longpaths], [])
+        self.assertEqual([argv for argv, seen in calls if (str(self.task) in argv or "push" in argv or "update-ref" in argv)
+                          and seen != kept], [])
+
+    def test_windows_recovery_of_a_moved_checkout_whose_registration_is_gone_is_left_to_a_person(self):
+        # Prediction: after a kill following the move and `git worktree prune`, every completion refuses with the sentence
+        # that the registration is gone and deletes nothing; once the folder is removed by hand the completion finishes.
+        # Before: refused as "cannot be verified as the task checkout", which is not true of it.
+        moved = self.merged()
+        self.kill_after_the_move()
+        self.g("worktree", "prune")
+        gone = (f"{moved} is the task checkout moved from {self.task}, but its Git registration is gone; "
+                "inspect it and remove it by hand, then resume")
+        files = sorted(moved.rglob("*"))
+        for attempt in range(2):
+            with self.assertRaisesRegex(CompletionError, re.escape(gone)):
+                self.complete_on_windows()
+            self.assertEqual(sorted(moved.rglob("*")), files)
+        shutil.rmtree(moved)
+        self.assert_windows_removal_completed(self.complete_on_windows(), moved)
+
+    def test_windows_recovery_never_removes_a_moved_checkout_its_anchor_names_by_another_path(self):
+        # Prediction: an anchor naming the moved checkout through a symlink is the same folder: the recovery refuses with
+        # the anchor reason and keeps it. Before: the paths were compared as strings and the checkout was removed.
+        from unittest.mock import patch
+        moved = self.merged()
+        self.kill_after_the_move()
+        link = self.root / "anchor"
+        link.symlink_to(moved, target_is_directory=True)
+        receipt = read_json(self.receipt)
+        with patch.object(sys, "platform", "win32"), patch.dict(os.environ, self.env), \
+                self.assertRaisesRegex(CompletionError, re.escape("anchor checkout: " + str(link))):
+            cleanup(receipt, self.receipt, receipt["merge"], anchor=link)
+        self.assertEqual((moved / "product").read_text(encoding="utf-8"), "accepted\n")
+
+    def test_windows_recovery_refuses_a_nested_repository_under_an_ignored_path_of_the_moved_tree(self):
+        # Prediction: a repository with uncommitted work that appears under an ignored path of the moved tree after a kill
+        # refuses the recovery ("nested repository") and its file stays. Without the moved tree's removal checks, Git's
+        # removal deletes it.
+        moved = self.merged()
+        self.kill_after_the_move()
+        nested = moved / "ignored/nested"
+        self.run_cmd(["git", "init", "--initial-branch=main", str(nested)])
+        (nested / "work.txt").write_text("uncommitted\n", encoding="utf-8")
+        with self.assertRaisesRegex(CompletionError, "nested repository"):
+            self.complete_on_windows()
+        self.assertEqual((nested / "work.txt").read_text(encoding="utf-8"), "uncommitted\n")
+
+    def test_windows_removal_refuses_a_gitlink_populated_by_a_plain_clone_before_any_move(self):
+        # Prediction: a gitlink whose path holds a repository cloned there, with nothing under the tree's Gitdir, is
+        # refused by the populated-gitlink check before any move, the tree in place. Without that check the tree is
+        # moved and Git's unforced removal refuses it at the moved name.
+        module = self.root / "module"
+        self.run_cmd(["git", "init", "--initial-branch=main", str(module)])
+        self.g("commit", "--allow-empty", "-m", "module", work=module)
+        self.g("submodule", "add", str(module), "module")
+        self.g("commit", "-m", "add module")
+        self.g("push", "origin", "main")
+        moved = self.merged()
+        self.run_cmd(["git", "clone", "--quiet", str(module), str(self.task / "module")])
+        attempts = []
+        with self.assertRaisesRegex(CompletionError, "populated submodules"):
+            self.complete_on_windows(lambda source, target: attempts.append(target))
+        self.assertEqual(attempts, [])
+        self.assertFalse(path_present(Path(read_json(self.receipt)["worktree_gitdir"]) / "modules"))
+        self.assertTrue((self.task / "module/.git").is_dir() and not os.path.lexists(moved))
+
+    def test_windows_removal_keeps_the_tree_when_its_move_fails_for_another_reason(self):
+        # Prediction: a move that fails with an OSError other than PermissionError keeps delivery COMPLETE and the tree,
+        # with "cannot move ... aside" and the error; the resume then removes it. Without that branch the raw error blocks.
+        moved = self.merged()
+        def failed(source, target):
+            raise OSError(errno.EXDEV, "fixture: not the same device")
+        result = self.complete_on_windows(failed)
+        self.assertEqual((result["status"], result["delivery_status"]), ("CLEANUP_PENDING", "COMPLETE"))
+        self.assertIn(f"cannot move {self.task} aside to remove it", result["workspace_cleanup"]["reason"])
+        self.assertIn("not the same device", result["workspace_cleanup"]["reason"])
+        self.assertTrue(self.task.is_dir() and not os.path.lexists(moved))
+        self.assertIn(str(self.task), registrations(read_json(self.receipt)))
+        self.assert_windows_removal_completed(self.complete_on_windows(), moved)
 
     def test_standalone_cleanup_checks_writers_before_reading_records(self):
         from unittest.mock import patch

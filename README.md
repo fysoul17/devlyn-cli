@@ -255,7 +255,7 @@ On native Windows, use native Node/npm and Python plus Git for Windows Bash for 
 
 Drain worktrees default to `<repo parent>/.devlyn-worktrees/<repo name>/<loop-id>/<task-id>`. On Windows, a newly created shared container is marked hidden, and each worktree disables content indexing for new children; names stay indexed and Microsoft Defender scanning is unaffected. For Defender performance, use a Dev Drive via `--worktree-root` or an administrator's exclusion for the root; see [loop options](config/skills/devlyn-ideate/references/loop.md).
 
-Windows completion preserves the workspace, owned refs and recovery receipt when writer cessation cannot be proved, even after merge; resume guidance and delivery status remain separate from product verification. The portability workflow checks out the repository on native Windows and tests the POSIX-packed npm artifact there. A POSIX pass alone does not establish Windows support: acceptance requires the passing Windows job for the exact source SHA/artifact hashes.
+Windows completion removes a merged task's workspace once no program still uses it. A workspace still in use, or a managed one, is preserved with its owned refs and recovery receipt even after merge, as is scratch that holds files; a managed workspace is removed by hand as the reason says. Resume guidance and delivery status remain separate from product verification. The portability workflow checks out the repository on native Windows and tests the POSIX-packed npm artifact there. A POSIX pass alone does not establish Windows support: acceptance requires the passing Windows job for the exact source SHA/artifact hashes.
 
 ## Contributing
 

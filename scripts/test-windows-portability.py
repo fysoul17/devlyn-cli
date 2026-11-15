@@ -3095,7 +3095,7 @@ helper['cleanup_workspace'](saved, receipt, warnings=[])
 
 @unittest.skipUnless(os.name == 'nt', 'native Windows refuses to move a folder a process holds')
 class NativeRemovalTests(unittest.TestCase):
-    """The Windows removal of a merged task tree, whose move is its writer check (W1 to W13).
+    """The Windows removal of a merged task tree, whose move is its writer check (W1 to W13b).
     This is a measurement: a holder that does not block the move is a finding to report, and every failure says
     what was observed."""
 
@@ -3151,8 +3151,16 @@ class NativeRemovalTests(unittest.TestCase):
         self.assertEqual(state, {'original': False, 'moved': False, 'registered': []}, label)
 
     def measure(self, label, argv, *, cwd, appended=None):
-        """One holder alone: the move is refused while it holds, and succeeds once it has let go."""
+        """One holder alone: with no holder the move succeeds, while it holds the move is refused on each of three
+        attempts a second apart, and once it has let go the move succeeds."""
         self.allocate()
+        try:
+            self.helper['move_aside'](self.work)
+            os.rename(self.moved, self.work)
+        except (self.helper['CompletionError'], OSError) as error:
+            self.fail(f'{label}: contaminated: the move was refused with no holder, so a refusal would not be the '
+                      f"holder's: {type(error).__name__}: {error}")
+        print(f'{label}: control: moved aside and back with no holder', flush=True)
         ready, release, log = (self.root / (label + suffix) for suffix in ('.ready', '.release', '.log'))
         with log.open('wb') as stream:
             holder = subprocess.Popen([*map(str, argv), ready.as_posix(), release.as_posix()], cwd=cwd, env=environment(),
@@ -3165,22 +3173,25 @@ class NativeRemovalTests(unittest.TestCase):
                 self.assertIsNone(holder.poll(), f'{label}: the holder exited {holder.returncode} before holding: {said()}')
                 self.assertLess(time.monotonic(), deadline, f'{label}: the holder never signalled that it holds: {said()}')
                 time.sleep(0.03)
-            size = appended.stat().st_size if appended else None
-            try:
-                self.helper['move_aside'](self.work)
-            except self.helper['CompletionError'] as error:
-                refusal = error
-            else:
-                self.fail(f'{label}: FINDING: the move succeeded while the holder held the tree '
-                          f'(holder alive: {holder.poll() is None}); {self.work} is now {self.moved}')
-            observed = f'{label}: move refused while held: {type(refusal).__name__}: {refusal}'
-            print(observed, flush=True)
-            self.assertIsNone(holder.poll(), f'{observed}; but the holder had exited: {said()}')
-            if appended:
-                wait_for(lambda: appended.stat().st_size > size)
-            self.assertIsInstance(refusal, self.helper['WriterActive'], observed)
-            self.assertIn('[WinError ', str(refusal), observed)
-            self.assertTrue(self.work.is_dir() and not self.moved.exists(), observed)
+            for attempt in (1, 2, 3):
+                if attempt > 1:
+                    time.sleep(1)
+                size = appended.stat().st_size if appended else None
+                try:
+                    self.helper['move_aside'](self.work)
+                except self.helper['CompletionError'] as error:
+                    refusal = error
+                else:
+                    self.fail(f'{label}: FINDING: attempt {attempt} of 3: the move succeeded while the holder held the tree '
+                              f'(holder alive: {holder.poll() is None}); {self.work} is now {self.moved}')
+                observed = f'{label}: attempt {attempt} of 3: move refused while held: {type(refusal).__name__}: {refusal}'
+                print(observed, flush=True)
+                self.assertIsNone(holder.poll(), f'{observed}; but the holder had exited: {said()}')
+                if appended:
+                    wait_for(lambda: appended.stat().st_size > size)
+                self.assertIsInstance(refusal, self.helper['WriterActive'], observed)
+                self.assertIn('[WinError ', str(refusal), observed)
+                self.assertTrue(self.work.is_dir() and not self.moved.exists(), observed)
         finally:
             release.touch()
             holder.stdin.close()
@@ -3238,12 +3249,13 @@ class NativeRemovalTests(unittest.TestCase):
     def test_w6_fsmonitor_started_by_the_checks_does_not_hold_the_removal(self):
         self.git('-C', self.repo, 'config', 'core.fsmonitor', 'true')
         self.addCleanup(lambda: [run(['git', '-C', path, 'fsmonitor--daemon', 'stop'], env=dict(os.environ), code=None)
-                                 for path in (self.repo, self.root / 'task') if path.exists()])
+                                 for path in (self.repo, self.root / 'task', self.root / 'task.devlyn-removing') if path.exists()])
         self.allocate()
         self.git('-C', self.work, 'status')
-        daemon = run(['git', '-C', self.work, 'fsmonitor--daemon', 'status'], env=dict(os.environ), code=None)
-        daemon = (daemon.stdout + daemon.stderr).decode('utf-8', 'replace').strip()
-        print(f'W6: fsmonitor before the removal: {daemon}', flush=True)
+        status = run(['git', '-C', self.work, 'fsmonitor--daemon', 'status'], env=dict(os.environ), code=None)
+        daemon = (status.stdout + status.stderr).decode('utf-8', 'replace').strip()
+        print(f'W6: fsmonitor before the removal (exit {status.returncode}): {daemon}', flush=True)
+        self.assertEqual(status.returncode, 0, f'W6: no fsmonitor daemon watches the tree, so W6 measures nothing: {daemon}')
         try:
             self.cleanup()
         except self.helper['CompletionError'] as error:
@@ -3251,8 +3263,10 @@ class NativeRemovalTests(unittest.TestCase):
                       f'daemon: {daemon}')
         self.assert_removed('W6')
 
-    def killed(self, label, step):
+    def killed(self, label, step, prepare=None):
         self.allocate()
+        if prepare:
+            prepare()
         result = run([sys.executable, '-c', KILLED_PY, self.script, self.path, step], env=dict(os.environ), code=None, timeout=120)
         state = {'exit': result.returncode, 'original': self.work.exists(), 'moved': self.moved.is_dir(),
                  'registered': sorted(self.registered())}
@@ -3339,6 +3353,23 @@ class NativeRemovalTests(unittest.TestCase):
         self.assert_removed('W13')
         result = self.helper['completion_result'](self.receipt, self.path, 'COMPLETE')
         print(f"W13: completion {result['status']}", flush=True)
+        self.assertEqual(result['status'], 'COMPLETE')
+
+    def test_w13b_files_the_move_pushes_past_max_path_are_removed_after_a_kill(self):
+        # A tracked and an ignored file at 252 characters at the tree's path, 268 once moved; a kill after the move, then
+        # the recovery's checks and removal run on the moved tree.
+        name = 'y' * (251 - len(str(self.root / 'task/ignored')))
+        (self.repo / 'tracked').mkdir()
+        (self.repo / 'tracked' / name).write_text('tracked\n', encoding='utf-8')
+        self.git('-C', self.repo, 'add', 'tracked')
+        self.git('-C', self.repo, 'commit', '-q', '-m', 'a long tracked path')
+        def deep():
+            (self.work / 'ignored' / name).write_bytes(b'disposable output')
+            self.assertEqual([len(str(tree / folder / name)) for tree in (self.work, self.moved) for folder in ('tracked', 'ignored')],
+                             [252, 252, 268, 268])
+        self.killed('W13b', 'move', deep)
+        result = self.helper['completion_result'](self.receipt, self.path, 'COMPLETE')
+        print(f"W13b: completion {result['status']}", flush=True)
         self.assertEqual(result['status'], 'COMPLETE')
 
 
