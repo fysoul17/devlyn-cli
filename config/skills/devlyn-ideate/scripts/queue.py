@@ -1877,16 +1877,28 @@ def tracked_places(anchor, common, rel):
     missing, with a pathspec anchored at the top, since `git -C <common>` runs inside the work tree once core.worktree
     names the folder that holds the Git directory, and with the file system monitor off, which Git would start for the
     Git directory it takes as the work tree and wait on. An administrative directory without an index is skipped; one that
-    cannot be read refuses (seen), and so does an index git cannot read, naming its worktree."""
+    cannot be read refuses (seen), and so does an index git cannot read, naming its worktree. The HEADs and branches are
+    read refusing whatever Git writes beside its answer, since it skips a ref or an object it cannot read with only a
+    warning, after each folder under refs/heads is listed, since for-each-ref skips one it cannot list without a word."""
+
+    def read(*args, **kwargs):
+        result = git_run(anchor, *args, **kwargs)
+        require(not result.stderr, f'git {args[0]} wrote "{" ".join(result.stderr.decode("utf-8", "replace").split())}" while reading '
+                f"this repository's HEADs and branches, so withdraw cannot tell whether {rel} is tracked there; withdraw changes "
+                "nothing until it can")
+        return result.stdout.decode("utf-8").strip()
     # A gitdir file may hold any bytes, and the listed paths only name worktrees in a refusal.
     listing = git_run(anchor, "worktree", "list", "--porcelain", "-z").stdout.decode("utf-8", "replace")
     worktrees = [row for raw in listing.split("\0\0")
                  if "worktree" in (row := dict(field.partition(" ")[::2] for field in raw.split("\0") if field))]
     checked_out = {row.get("branch") for row in worktrees}
+    folders = [common / "refs/heads"]  # Missing where every ref is packed or in a reftable; a ref file lists nothing.
+    for folder in folders:
+        folders += [entry for entry in seen(folder, entries=True) if not entry.is_symlink()]
     commits = [(f"HEAD of {row['worktree']}", row["HEAD"]) for row in worktrees if "HEAD" in row] + [
         (f"the branch {ref.removeprefix('refs/heads/')}", ref)
-        for ref in git(anchor, "for-each-ref", "--format=%(refname)", "refs/heads/").splitlines() if ref not in checked_out]
-    kinds = git(anchor, "cat-file", "--batch-check=%(objecttype)", data="".join(f"{rev}:{rel}\n" for _, rev in commits).encode())
+        for ref in read("for-each-ref", "--format=%(refname)", "refs/heads/").splitlines() if ref not in checked_out]
+    kinds = read("cat-file", "--batch-check=%(objecttype)", data="".join(f"{rev}:{rel}\n" for _, rev in commits).encode())
     places = [place for (place, _), kind in zip(commits, kinds.split("\n")) if kind == "blob"]
     linked = sorted(admin for admin in seen(common / "worktrees", entries=True) if seen(admin / "index"))
     for name, admin in [(worktrees[0]["worktree"], common), *((registered_worktree(admin), admin) for admin in linked)]:
@@ -2550,9 +2562,10 @@ class QueueTests(unittest.TestCase):
 
     def test_withdraw_reads_past_prunable_missing_and_bare_worktrees(self):
         """D1, E6. Prediction: withdraw prints WITHDRAWN beside a registered worktree whose folder stays without its .git
-        file (Git lists it prunable) and a locked worktree whose folder is gone, neither index holding the loop's queue
-        file, and in the linked worktree of a bare clone, whose bare row has no HEAD line and whose common Gitdir has no
-        index. git ls-files run in either folder fails; without the HEAD check the bare row raises KeyError."""
+        file (Git lists it prunable), a locked worktree whose folder is gone, neither index holding the loop's queue
+        file, and a dangling symbolic ref under refs/heads, which Git lists nowhere, and in the linked worktree of a bare
+        clone, whose bare row has no HEAD line and whose common Gitdir has no index. git ls-files run in either folder
+        fails; without the HEAD check the bare row raises KeyError."""
         import shutil
         prunable, gone, bare, work = self.root / "prunable", self.root / "gone", self.root / "bare.git", self.root / "work"
         for path in (prunable, gone):
@@ -2560,6 +2573,7 @@ class QueueTests(unittest.TestCase):
         (prunable / ".git").unlink()
         git(self.anchor, "worktree", "lock", str(gone), env=self.env)
         shutil.rmtree(gone)
+        git(self.anchor, "symbolic-ref", "refs/heads/dangle", "refs/heads/nowhere", env=self.env)
         self.cli("add", self.meta)
         self.assertEqual(self.cli("withdraw", "inv")["status"], "WITHDRAWN")
         subprocess.run(["git", "clone", "-q", "--bare", str(self.anchor), str(bare)], check=True, env=self.env)
@@ -2652,10 +2666,12 @@ class QueueTests(unittest.TestCase):
         """D1, E6. Prediction: withdraw refuses in one sentence naming the path, and changes nothing, while it cannot read
         the index of a linked worktree holding the staged queue file behind an administrative directory it cannot enter,
         <common>/worktrees itself, retired/ or moved/ holding a task's directory, devlyn-completion holding the active one,
-        the loop's folder in devlyn-loops, or devlyn-loops, which the add records are listed from. Before: is_file,
-        lexists and glob each answered no on the permission error, so withdraw took back the loop, and in the last two
-        cases deleted its capture ref while its add record stayed; the unreadable worktrees folder alone was refused, in
-        the system's words."""
+        the loop's folder in devlyn-loops, or devlyn-loops, which the add records are listed from; and, for a branch that
+        commits the queue file, its ref file, its ref folder or its tree object, refused in Git's words or naming the
+        folder. Before: is_file, lexists and glob each answered no on the permission error, so withdraw took back the loop,
+        and in the loop folder and add records cases deleted its capture ref while its add record stayed; the unreadable
+        worktrees folder alone was refused, in the system's words; then Git skipped the branch, with only a warning for
+        the ref file and the tree object and silently for the folder, and the loop was withdrawn."""
         probe = self.root / "probe"
         probe.mkdir(mode=0)
         try:
@@ -2676,6 +2692,10 @@ class QueueTests(unittest.TestCase):
             return (git(self.anchor, "for-each-ref"), git(work, "ls-files", "-s"), sorted(
                 (str(path.relative_to(common)), path.read_bytes() if path.is_file() else None) for path in loops.rglob("*") if path.suffix != ".lock"))
 
+        def restore(path, mode):  # A path its case removed since has nothing to restore.
+            with contextlib.suppress(FileNotFoundError):
+                path.chmod(mode)
+
         def unreadable(path):
             return f"{path} cannot be read ({os.strerror(errno.EACCES)}), so withdraw cannot tell what it holds; withdraw changes nothing until it can"
 
@@ -2691,12 +2711,28 @@ class QueueTests(unittest.TestCase):
                   ("add records", (lambda: None, lambda: None), loops, 0o300,
                    f"{loops} cannot be listed, so withdraw cannot read the add record {added_path(common, 'inv')}; withdraw "
                    "changes nothing until it can")]
+        # A commit no worktree has checked out holding the queue file, made in a temporary index, for a branch per case.
+        index = {**self.env, "GIT_INDEX_FILE": str(self.root / "held.index")}
+        blob = git(self.anchor, "hash-object", "-w", "--stdin", data=(row_line("inv.t1", "Interface") + "\n").encode(), env=self.env)
+        git(self.anchor, "update-index", "--add", "--cacheinfo", f"100644,{blob},{rel}", env=index)
+        tree = git(self.anchor, "write-tree", env=index)
+        held = git(self.anchor, "commit-tree", tree, "-m", "a queue file committed by hand", env=self.env)
+
+        def branch(name):
+            return lambda: git(self.anchor, "branch", name, held, env=self.env), lambda: git(self.anchor, "branch", "-q", "-D", name, env=self.env)
+
+        def git_words(command, named):  # Git's own words vary with the locale; they name the ref or the object.
+            return re.compile(rf'git {command} wrote ".*{re.escape(named)}.*" while reading this repository\'s HEADs and branches, so '
+                              rf"withdraw cannot tell whether {re.escape(rel)} is tracked there; withdraw changes nothing until it can")
+        cases += [("branch ref file", branch("held"), common / "refs/heads/held", 0, git_words("for-each-ref", "refs/heads/held")),
+                  ("branch ref folder", branch("nest/held"), common / "refs/heads/nest", 0, unreadable(common / "refs/heads/nest")),
+                  ("tree object", branch("held"), common / "objects" / tree[:2] / tree[2:], 0, git_words("cat-file", tree))]
         for name, (prepare, undo), denied, mode, reason in cases:
             with self.subTest(case=name):
                 self.cli("add", write_package(self.anchor, "inv", self.tasks))  # A retry once added: nothing changes.
                 prepare()
                 before, original = state(), denied.stat().st_mode & 0o7777
-                self.addCleanup(denied.chmod, original)  # Restored also when the case fails, so the folder can be removed.
+                self.addCleanup(restore, denied, original)  # Also when the case fails, so the folder can be removed.
                 denied.chmod(mode)
                 try:
                     refusal = self.cli("withdraw", "inv", code=1)["reason"]
@@ -2704,7 +2740,8 @@ class QueueTests(unittest.TestCase):
                     denied.chmod(original)
                     after = state()
                     undo()
-                self.assertEqual((refusal, after), (reason, before))
+                self.assertEqual(after, before)
+                (self.assertRegex if isinstance(reason, re.Pattern) else self.assertEqual)(refusal, reason)
 
     def test_withdraw_reads_the_head_of_each_worktree_whose_listed_paths_decode_alike(self):
         """D1, E6. Prediction: beside two linked worktrees whose gitdir files name folders that differ only in a byte that
