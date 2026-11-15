@@ -51,7 +51,9 @@ class ActivationTests(unittest.TestCase):
             cls.package = cls.work / 'package'
         cls.cli = cls.package / 'bin/devlyn.js'
         result = run(['node', cls.cli, 'release', '--verify', '--root', cls.package, '--json'])
-        cls.release = json.loads(result.stdout)['data']['release']
+        # A release may add fields to this answer; the app records these four and sends only them back.
+        release = json.loads(result.stdout)['data']['release']
+        cls.release = {key: release[key] for key in ('package', 'version', 'digest', 'root')}
         cls.release_before = snapshot(cls.package)
 
     @classmethod
@@ -99,7 +101,14 @@ class ActivationTests(unittest.TestCase):
         self.assertEqual(snapshot(self.case), before, 'plan wrote files')
         value = json.loads(result.stdout)
         self.assertEqual(value['ok'], code == 0)
-        return value['data' if code == 0 else 'error']
+        return self.as_read(value['data']) if code == 0 else value['error']
+
+    def as_read(self, answer):
+        # A release named in an answer or a marker, read as the app reads it: the four fields it records, whatever a
+        # release adds beside them.
+        if answer['release']:
+            answer['release'] = {key: answer['release'][key] for key in self.release}
+        return answer
 
     def sync(self, code=0, account=None):
         result = run(['node', self.cli, 'machine', 'sync', '--release-root', self.package,
@@ -1089,8 +1098,8 @@ process.stdout.write(JSON.stringify(JSON.parse(process.argv[2]).map(([cwd, env, 
         script = patch + '''
 const {planActivation} = require(process.argv[1]);
 process.stdout.write(JSON.stringify(planActivation(process.argv[2], JSON.parse(process.argv[3]))));'''
-        return json.loads(run(['node', '-e', script, self.package / 'bin/harness-activation.js', self.package,
-                               json.dumps(ctx)], env=self.env).stdout)
+        return self.as_read(json.loads(run(['node', '-e', script, self.package / 'bin/harness-activation.js', self.package,
+                                            json.dumps(ctx)], env=self.env).stdout))
 
     def test_run_folder_channels_are_not_planned_on_windows(self):
         # Prediction: on win32, where both channels are unexamined and a folder's owner cannot be read, Antigravity and
@@ -1461,7 +1470,7 @@ process.stdout.write(JSON.stringify(planActivation(process.argv[2], JSON.parse(p
         self.assertFalse(root.is_symlink())
         self.assertFalse(any(p.is_symlink() for p in root.rglob('*')))
         marker = root / '.devlyn-harness-projection.json'
-        self.assertEqual(json.loads(marker.read_bytes()), {'schemaVersion': 1, 'release': self.release, 'source': 'native/codex/plugins/devlyn'})
+        self.assertEqual(self.as_read(json.loads(marker.read_bytes())), {'schemaVersion': 1, 'release': self.release, 'source': 'native/codex/plugins/devlyn'})
         self.assertEqual(first['markerSha256'], hashlib.sha256(marker.read_bytes()).hexdigest())
 
     def test_runtime_paths_cannot_write_inside_release(self):

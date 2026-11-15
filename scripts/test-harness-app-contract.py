@@ -363,7 +363,7 @@ class AppContractTests(unittest.TestCase):
         result = self.cli('cleanup', '--apply', '--events', '--plan-file', plan_file, '--digest', review['digest'])
         outcome = data(result)
         self.keys(outcome, state=str, scopes=list)
-        self.assertIn(outcome['state'], ('succeeded', 'partial', 'failed'))
+        self.assertEqual(outcome['state'], 'succeeded', outcome)
         # A line before the answer reaches the app only as JSON naming an event; a scope event carries a record.
         progress = []
         for line in [line for line in result.stdout.decode('utf-8').splitlines() if line.strip()][:-1]:
