@@ -749,6 +749,14 @@ class WarmTests(unittest.TestCase):
     def git(self, work, *args):
         return subprocess.run(["git", "-C", str(work), *args], check=True, capture_output=True, text=True).stdout
 
+    def test_fixture_commit_starts_no_automatic_maintenance(self):
+        # Its detached child would still write into .git while a test reads the tree or cleanup removes it.
+        trace = self.root / "trace.json"
+        os.environ["GIT_TRACE2_EVENT"] = str(trace)  # setUp's patch restores the environment
+        self.git(self.anchor, "commit", "-q", "--allow-empty", "-m", "traced")
+        children = [line for line in trace.read_text(encoding="utf-8").splitlines() if '"event":"child_start"' in line]
+        self.assertEqual(children, [])
+
     def write_fixture(self, **extra):
         packages = [
             {"name": "app", "source": None, "manifest_path": str(self.work / "Cargo.toml"), "targets": [{"kind": ["lib"], "name": "LIB"}]},

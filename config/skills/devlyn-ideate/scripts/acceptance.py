@@ -543,6 +543,15 @@ class AcceptanceTests(unittest.TestCase):
         self.g("commit", "-q", "-m", message)
         return self.g("rev-parse", "HEAD")
 
+    def test_fixture_commit_starts_no_automatic_maintenance(self):
+        # Its detached child would still write into .git while a test reads the tree or cleanup removes it.
+        from unittest import mock
+        trace = self.root / "trace.json"
+        with mock.patch.dict(os.environ, GIT_TRACE2_EVENT=str(trace)):
+            self.g("commit", "-q", "--allow-empty", "-m", "traced")
+        children = [line for line in trace.read_text(encoding="utf-8").splitlines() if '"event":"child_start"' in line]
+        self.assertEqual(children, [])
+
     def inputs(self, expected=None, review=()):
         base = self.g("rev-parse", "HEAD")
         files = {"docs/specs/l/meta.md": "# meta\n", "docs/specs/l/t/spec.md": "# task R1 R2\n",

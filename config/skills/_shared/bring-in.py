@@ -415,6 +415,14 @@ class BringInTests(unittest.TestCase):
         path.write_bytes(("#!/bin/sh\n" + body).encode("utf-8"))
         path.chmod(0o755)
 
+    def test_fixture_commit_starts_no_automatic_maintenance(self):
+        # Its detached child would still write .git/objects/maintenance.lock while copytree or cleanup reads the tree.
+        trace = self.root / "trace.json"
+        self.env["GIT_TRACE2_EVENT"] = str(trace)
+        self.commit("traced", "traced\n")
+        children = [line for line in trace.read_text(encoding="utf-8").splitlines() if '"event":"child_start"' in line]
+        self.assertEqual(children, [])
+
     def test_fast_forward_and_paths_with_spaces(self):
         self.cli()
         self.assertEqual(self.g("rev-parse", "HEAD").strip(), self.target)

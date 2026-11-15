@@ -3440,6 +3440,15 @@ class ManagedOwnerTests(unittest.TestCase):
             from_receipt=None, start=None)
         return home, environment, git, args
 
+    def test_fixture_commit_starts_no_automatic_maintenance(self):
+        # Its detached child would still write into .git while a test reads the tree or cleanup removes it.
+        _, environment, git, _ = self.native_local_repository()
+        trace = self.root / 'trace.json'
+        environment['GIT_TRACE2_EVENT'] = str(trace)
+        git('commit', '-q', '--allow-empty', '-m', 'traced')
+        children = [line for line in trace.read_text(encoding='utf-8').splitlines() if '"event":"child_start"' in line]
+        self.assertEqual(children, [])
+
     def test_active_abandoned_allocate_retires_before_fresh_allocation(self):
         home, environment, git, args = self.native_local_repository()
         with patch.dict(os.environ, environment, clear=True), patch.object(shutil, 'disk_usage',

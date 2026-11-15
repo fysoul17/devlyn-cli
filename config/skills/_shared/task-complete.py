@@ -2171,6 +2171,14 @@ class CompletionTests(unittest.TestCase):
                                   repository="test/project", base="main", remote="origin", worktree=str(worktree),
                                   local_base=None, from_receipt=None, start=None)
 
+    def test_fixture_commit_starts_no_automatic_maintenance(self):
+        # Its detached child would still write into .git while a test reads the tree or cleanup removes it.
+        trace = self.root / "trace.json"
+        self.env["GIT_TRACE2_EVENT"] = str(trace)
+        self.g("commit", "-q", "--allow-empty", "-m", "traced")
+        children = [line for line in trace.read_text(encoding="utf-8").splitlines() if '"event":"child_start"' in line]
+        self.assertEqual(children, [])
+
     def test_allocation_marks_exclusively_created_empty_target_before_checkout(self):
         # Prediction: persisted intent precedes exclusive creation and marking; real Git then populates that directory.
         from unittest.mock import patch

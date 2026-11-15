@@ -1946,6 +1946,14 @@ class QueueTests(unittest.TestCase):
             path.write_text(text.replace(old, new, 1), encoding="utf-8")
         return mutate
 
+    def test_fixture_commit_starts_no_automatic_maintenance(self):
+        # Its detached child would still write into .git while a test reads the tree or cleanup removes it.
+        trace = self.root / "trace.json"
+        subprocess.run(["git", "-C", str(self.anchor), "commit", "-q", "--allow-empty", "-m", "traced"], check=True,
+                       env={**self.env, "GIT_TRACE2_EVENT": str(trace)})
+        children = [line for line in trace.read_text(encoding="utf-8").splitlines() if '"event":"child_start"' in line]
+        self.assertEqual(children, [])
+
     def test_package_validation(self):
         self.assertEqual(self.cli("check", self.meta)["tasks"], ["inv.t1", "inv.t2"])
         manifest = json.loads(JSON_FENCE_RE.search((self.anchor / "docs/specs/inv/meta.md").read_text(encoding="utf-8")).group(1))
