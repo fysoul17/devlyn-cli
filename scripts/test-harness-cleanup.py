@@ -3098,11 +3098,11 @@ assert.deepStrictEqual(inUse(dirs, { list: ps(['node devlyn.js cleanup --plan --
 """)
 
     def test_every_row_shape_and_renderer_is_compared_as_the_lister_printed_it(self):
-        # Prediction (I3, I4, I5, unit): raw or escaped, the used copy under a Hangul path with a space is found where its
-        # path goes on into a script, sits inside a longer argument, ends the row, is an argument before another, or follows
-        # one invalid UTF-8 byte; the unused copy is not; a backslash the renderer doubles is learned like the rest. Under
-        # procps two paths of one skeleton share a needle and both are kept; raw tells them apart. Cannot run before the
-        # change: no such block.
+        # Prediction (I3, I4, I5, unit): printed raw, escaped or as procps prints, the used copy under a Hangul path with a
+        # space is found where its path goes on into a script, sits inside a longer argument, ends the row, is an argument
+        # before another, or follows one invalid UTF-8 byte; the unused copy is not; a backslash the renderer doubles is
+        # learned like the rest. Under procps two paths of one skeleton share a needle and both are kept; raw tells them
+        # apart. Cannot run before the change: no such block.
         self.node(r"""
 const dirs = ['/w/한 글/.claude/skills', '/w/한 글/.agents/skills'], [used] = dirs;
 for (const as of ['raw', 'escape', 'procps']) {
