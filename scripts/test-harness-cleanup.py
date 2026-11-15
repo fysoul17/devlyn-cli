@@ -2896,13 +2896,14 @@ for (const [completed, delivery] of [
             del self.env[name]
 
     def plan_while_running(self, *argv, plan=()):
-        """A plan taken while a sleeper names a copy on its command line, as a drain runs its copy's scripts."""
-        sleeper = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(300)", *argv], stdin=subprocess.DEVNULL)
+        """A plan taken while a sleeper names a copy on its command line, as a drain runs its copy's scripts. The sleeper
+        has no lifetime of its own: it waits on its input until the plan is taken and this ends it."""
+        sleeper = subprocess.Popen([sys.executable, "-c", "import sys; sys.stdin.read()", *argv], stdin=subprocess.PIPE)
         try:
             return self.plan(*plan)[0]
         finally:
             sleeper.kill()
-            sleeper.wait()
+            sleeper.communicate()
 
     def node(self, body):
         """Runs `body` after the IN_USE harness; it throws (and the test fails with its message) on a wrong verdict."""
