@@ -678,7 +678,7 @@ class LoopFixture(unittest.TestCase):
         self.assertIn("executor argv must contain {packet}", invalid["reason"])
         holder = self.hold(self.common / "devlyn-loops/drain.lock")
         locked = self.drain(code=1)
-        self.assertIn("another drain is active", locked["reason"])
+        self.assertIn("a drain or a withdraw is running in this repository", locked["reason"])
         holder.kill()
         holder.wait()
         (self.anchor / "docs/specs/queue.md").write_bytes(b"\xff")
@@ -958,7 +958,9 @@ class LoopFixture(unittest.TestCase):
         self.assertEqual((self.calls("aa.t1"), self.calls("aa.t2"), self.calls("bb.t1")), (1, 1, 1))
 
     def test_robust_02_executor_start(self):
-        # Prediction: either spawn error preserves start/not-started, permits bb, and retries aa only on a later drain.
+        # Prediction: either spawn error preserves start/not-started, permits bb, and retries aa only on a later drain. Status
+        # says the executor could not start, naming the error and nothing about the next drain, and says nothing of it once a
+        # submission is in place (round B, D2).
         self.plan("aa", CHAIN, {"aa.t1": {"product": "greeting"}, "aa.t2": {"product": "app"}})
         self.independent()
         for failure in ("FileNotFoundError", "PermissionError"):
@@ -976,6 +978,11 @@ class LoopFixture(unittest.TestCase):
                 self.assertTrue(log.splitlines()[-2].endswith(" start"))
                 self.assertIn("not started:", log.splitlines()[-1])
                 self.assertEqual((self.calls("aa.t1"), self.calls("aa.t2")), (0, 0))
+                self.assertIn("aa.t1: its executor could not start (executor unavailable)", self.cli("status", "--repo", self.anchor)["blockers"])
+                submission = self.receipt_path("aa.t1").with_name("submission.json")
+                submission.write_text("{}", encoding="utf-8")
+                self.assertEqual([line for line in self.cli("status", "--repo", self.anchor)["blockers"] if line.startswith("aa.t1")], [])
+                submission.unlink()
         self.assertEqual(self.tasks(self.drain())["aa.t2"]["result"], "accepted")
         self.assertEqual((self.calls("aa.t1"), self.calls("aa.t2")), (1, 1))
 
@@ -2509,6 +2516,16 @@ class LoopFixture(unittest.TestCase):
         self.assertEqual(self.g("show", "refs/devlyn/captures/gc:docs/specs/gc/meta.md"), meta)
         self.assertEqual(self.tasks(self.drain())["gc.t1"]["result"], "accepted")
 
+    def test_a_withdrawn_loop_never_runs(self):
+        # Prediction (round B, D1): with loops aa and bb added, withdrawing aa takes back both of its tasks; the drain then
+        # accepts bb.t1, calls no executor for aa and reports no aa task. Before: argparse rejected withdraw (exit 2).
+        self.plan("aa", CHAIN, {"aa.t1": {"product": "greeting"}, "aa.t2": {"product": "app"}})
+        self.independent()
+        self.assertEqual(self.cli("withdraw", "--repo", self.anchor, "aa")["tasks"], ["aa.t1", "aa.t2"])
+        tasks = self.tasks(self.drain())
+        self.assertEqual(({identity: task["result"] for identity, task in tasks.items()}, self.calls("aa.t1"), self.calls("aa.t2")),
+                         ({"bb.t1": "accepted"}, 0, 0))
+
     def test_a_local_only_drain_runs_an_unpublished_auto_loop_locally(self):
         # Prediction (A): an auto loop whose tasks have not published, drained with --local-only, runs as a local loop from
         # its capture and the branch it was added on: its task, in the place of the legacy row it materializes, is accepted
@@ -2924,15 +2941,37 @@ class LoopFixture(unittest.TestCase):
         self.assertEqual({identity: task["result"] for identity, task in tasks.items()}, {"aa.t1": "accepted", "aa.t2": "accepted", "bb.t1": "accepted"})
         self.assertEqual((self.calls("aa.t1"), self.calls("aa.t2"), self.calls("bb.t1")), (2, 1, 1))
 
+    def test_status_names_the_runs_of_an_executor_that_left_nothing(self):
+        # Prediction (round B, D2): status shows no aa.t1 line before any drain; after each drain whose executor exits 1
+        # without a submission it names that exit, the run count (run 1, then run 2) and the output folder, and nothing about
+        # the next drain. It names nothing for a task whose inputs changed or that is invalid, which have their own reasons,
+        # nor once a submission is in place. Before: status held no aa.t1 line after either drain; then the line promised
+        # the next drain's run.
+        self.plan("aa", [CHAIN[0]], {"aa.t1": {"product": "greeting", "exit_now": 1}})
+
+        def lines():
+            return [line for line in self.cli("status", "--repo", self.anchor)["blockers"] if line.startswith("aa.t1")]
+        self.assertEqual(lines(), [])
+        for run in (1, 2):
+            self.drain()
+            output = Path(self.receipt("aa.t1")["worktree"]) / ".devlyn/loop"
+            self.assertEqual(lines(), [f"aa.t1: its executor last exited 1 (run {run}) and left nothing to accept (output: {output})"])
+        state = self.queue["view"](self.anchor, self.common, pure=True)["states"]["aa.t1"]
+        self.assertEqual([self.queue["executor_left_nothing"]({**state, key: "its own reason"}) for key in ("inputs_changed", "invalid")],
+                         [None, None])
+        self.receipt_path("aa.t1").with_name("submission.json").write_text("{}", encoding="utf-8")
+        self.assertEqual(lines(), [])
+
     @unittest.skipIf(os.name == "nt", "writer observation requires POSIX")
     def test_a_submission_blocked_only_by_infrastructure_waits_for_its_writers_and_runs_again(self):
         # Prediction (C5): an otherwise valid submission whose only blocker is the blocked-infrastructure kind earlier
         # instructions offered, from an executor that exits while a child of it still holds a worktree file open, leaves
         # aa.t1 active, waiting for that writer with the submission in place and its dependent pending. Once the child has
         # ended, the next drain retires the submission without running the executor: aa.t1 waits with its cause and the
-        # retired file's path, kept under that name and named in the report, with no terminal commit. The drain after that
-        # runs the executor again and accepts the loop. Before: the first C5 commit retired the submission while the child
-        # could still write, and before C5 aa.t1 became [F] blocked-infrastructure and was never run again.
+        # retired file's path, kept under that name and named in the report, with no terminal commit, and status names no
+        # aa.t1 line. The drain after that runs the executor again and accepts the loop. Before: the first C5 commit retired
+        # the submission while the child could still write, and before C5 aa.t1 became [F] blocked-infrastructure and was
+        # never run again; then status said its executor left nothing to accept.
         infrastructure = {"kind": "blocked-infrastructure", "detail": "package registry unreachable"}
         self.plan("aa", CHAIN, {"aa.t1": {"check_only": True, "runner": False, "review": False, "blockers": [infrastructure],
                                           "linger": True}, "aa.t2": {"product": "app"}})
@@ -2959,10 +2998,29 @@ class LoopFixture(unittest.TestCase):
         self.assertEqual((tasks["aa.t1"].get("terminal"), submission.exists(), json.loads(retired.read_text(encoding="utf-8"))["blockers"],
                           self.calls("aa.t1")), (None, False, [infrastructure], 1))
         self.assertIn(reason, self.report("aa"))
+
+        def lines():
+            return [line for line in self.cli("status", "--repo", self.anchor)["blockers"] if line.startswith("aa.t1")]
+        self.assertEqual(lines(), [])
+        # Round B, M2. Prediction: a retired submission covers only the run that wrote it. A later run that exits without one
+        # is named with its exit and run count; a run after it whose submission is retired again is not; one that cannot
+        # start is named with its error. Before: any retired submission silenced both later lines.
+        self.behaviors["aa.t1"] = {"product": "greeting", "exit_now": 1}
+        self.drain()
+        output = Path(self.receipt("aa.t1")["worktree"]) / ".devlyn/loop"
+        self.assertEqual(lines(), [f"aa.t1: its executor last exited 1 (run 2) and left nothing to accept (output: {output})"])
+        self.behaviors["aa.t1"] = {"check_only": True, "runner": False, "review": False, "blockers": [infrastructure]}
+        self.drain()
+        self.assertEqual((lines(), submission.with_name("submission.retired-2.json").is_file()), ([], True))
+        self.fault_drain("real = subprocess.Popen\ndef spawn(argv, **kw):\n"
+                         "    if 'executor.py' in str(argv):\n"
+                         "        raise FileNotFoundError('executor unavailable')\n"
+                         "    return real(argv, **kw)\nsubprocess.Popen = spawn\n")
+        self.assertEqual(lines(), ["aa.t1: its executor could not start (executor unavailable)"])
         self.behaviors["aa.t1"] = {"product": "greeting"}
         tasks = self.tasks(self.drain())
         self.assertEqual({identity: task["result"] for identity, task in tasks.items()}, {"aa.t1": "accepted", "aa.t2": "accepted"})
-        self.assertEqual((self.calls("aa.t1"), self.calls("aa.t2"), retired.is_file()), (2, 1, True))
+        self.assertEqual((self.calls("aa.t1"), self.calls("aa.t2"), retired.is_file()), (4, 1, True))
 
     def test_where_writers_cannot_be_observed_an_infrastructure_blocker_fails_as_before(self):
         # Prediction (C5 review): where writers cannot be observed, as on native Windows, a submission blocked only by the
@@ -4237,6 +4295,75 @@ class LoopFixture(unittest.TestCase):
                 self.queue_py = other / "config/skills/devlyn-ideate/scripts/queue.py"
                 self.cli("status", "--repo", self.anchor)
                 self.assertFalse(binding_path.exists())
+
+    def test_harness_withdraw_releases_the_binding_also_after_an_interruption(self):
+        # Prediction (round B, D1 and E6): withdrawing the only loop of a bound queue removes harness.json. A withdraw stopped
+        # after it removed the add record, or after it removed the capture ref too, leaves the binding; the retry removes
+        # what is left and the binding, reporting WITHDRAWN, or not queued once the ref is gone. Before: argparse rejected
+        # withdraw (exit 2).
+        self.harness_release()
+        binding = self.common / "devlyn-loops/harness.json"
+        self.plan("one", CHAIN[:1], {})
+        self.assertTrue(binding.exists())
+        self.assertEqual(self.cli("withdraw", "--repo", self.anchor, "one")["status"], "WITHDRAWN")
+        self.assertFalse(binding.exists())
+        for step, name, retry in (("unlink-after", "added.json", "WITHDRAWN"), ("unlink", "drain-report.md", "WITHDRAWN"),
+                                  ("unlink", "harness.json", "BLOCKED")):
+            with self.subTest(step=step):
+                self.plan("two", CHAIN[:1], {})
+                stopped = subprocess.run([sys.executable, "-c", CRASH, step, name, str(self.queue_py), "withdraw", "--repo", str(self.anchor), "two"],
+                                         env=self.env, capture_output=True)
+                self.assertEqual((stopped.returncode, binding.exists()), (9, True), stopped.stderr)
+                self.assertEqual(self.cli("withdraw", "--repo", self.anchor, "two", code=int(retry == "BLOCKED"))["status"], retry)
+                self.assertFalse(binding.exists())
+
+    def test_harness_withdraw_waits_for_another_release(self):
+        # Prediction (round B, E6): withdraw from another release than the one the queue is bound to is refused before any
+        # binding check, changing nothing: the refusal names the bound release and says withdraw waits until its queue
+        # settles, with no recovery argv and no word of draining. A binding that appears after the check before the locks
+        # is refused alike by the check inside them. The bound release withdraws the loop and drops the binding; a binding
+        # then left on the settled queue is dropped by the other release, as its other commands drop it. Before: argparse
+        # rejected withdraw (exit 2); without the check inside the locks the second refusal carried a recovery argv.
+        release = self.harness_release()
+        self.plan("held", CHAIN[:1], {})
+        binding_path = self.common / "devlyn-loops/harness.json"
+        binding = binding_path.read_bytes()
+        bound, other = self.queue_py, self.other_release(release, "0.0.0-cli2-withdraw") / "config/skills/devlyn-ideate/scripts/queue.py"
+        self.queue_py = other
+        before = self.tree_snapshot(self.common)
+        reason = self.cli("withdraw", "--repo", self.anchor, "held", code=1)["reason"]
+        expected = (f"this queue is bound to devlyn-cli {json.loads(binding)['release']['version']} at {release}; "
+                    "withdraw waits until that release's queue settles")
+        self.assertEqual(reason, expected)
+        self.assertNotIn("drain", reason.lower())
+        self.assertEqual(self.tree_snapshot(self.common), before)
+        binding_path.unlink()
+        saved = self.root / "binding.json"
+        saved.write_bytes(binding)
+        rebind = ("import contextlib, pathlib, runpy, sys\n"
+                  "q = runpy.run_path(sys.argv[1])\n"
+                  "g = q['withdraw'].__globals__\n"
+                  "real, target, source = g['lock'], pathlib.Path(sys.argv[2]), pathlib.Path(sys.argv[3])\n"
+                  "@contextlib.contextmanager\n"
+                  "def lock(common, name, **kwargs):\n"
+                  "    if name == 'drain.lock':\n"
+                  "        target.write_bytes(source.read_bytes())\n"
+                  "    with real(common, name, **kwargs):\n"
+                  "        yield\n"
+                  "g['lock'] = lock\n"
+                  "sys.argv = [sys.argv[1], *sys.argv[4:]]\n"
+                  "q['shared']('platform-support')['configure_utf8']()\n"
+                  "sys.exit(q['main']())\n")
+        result = subprocess.run([sys.executable, "-c", rebind, str(other), str(binding_path), str(saved), "withdraw", "--repo", str(self.anchor), "held"],
+                                cwd=self.root, env=self.env, capture_output=True, text=True, encoding="utf-8")
+        self.assertEqual((result.returncode, json.loads(result.stdout)["reason"], binding_path.read_bytes()), (1, expected, binding), result.stderr)
+        self.queue_py = bound
+        self.assertEqual(self.cli("withdraw", "--repo", self.anchor, "held")["status"], "WITHDRAWN")
+        self.assertFalse(binding_path.exists())
+        binding_path.write_bytes(binding)
+        self.queue_py = other
+        self.assertIn("loop held is not queued", self.cli("withdraw", "--repo", self.anchor, "held", code=1)["reason"])
+        self.assertFalse(binding_path.exists())
 
     def test_harness_unbound_defaults_change_does_not_strand_a_task(self):
         # Prediction: a normal update rewrites an unbound installation's runtime-principles.md while its task's packet

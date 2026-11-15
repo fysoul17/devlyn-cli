@@ -2,7 +2,8 @@
 """Ideate loop driver: package validation, the queue, locks, reconciliation and the serial drain.
 
 `check` validates a loop package, `add` captures it with its queue rows (which may
-replace one legacy row), `status` shows the reconciled queue and `drain -- <argv>` runs each
+replace one legacy row), `withdraw` takes back a queued loop none of whose tasks has
+started and that replaced no legacy row, `status` shows the reconciled queue and `drain -- <argv>` runs each
 eligible task through allocation, committed inputs, one host-supplied executor
 exchange, evidence-derived acceptance, the terminal transition and delivery.
 Protocol and commands: ../references/loop.md; formats: ../references/package-format.md.
@@ -159,15 +160,15 @@ def repository(path):
 
 
 @contextlib.contextmanager
-def lock(common, name, *, blocking):
-    """Native locks on the common Gitdir: drain.lock for a controller's lifetime, queue.lock for short mutations."""
+def lock(common, name, *, blocking, busy="a drain or a withdraw is running in this repository"):
+    """Native locks on the common Gitdir: drain.lock for a controller's lifetime or a withdraw, queue.lock for short mutations."""
     directory = common / "devlyn-loops"
     directory.mkdir(exist_ok=True)
     with contextlib.ExitStack() as stack:
         try:
             stack.enter_context(shared("platform-support")["file_lock"](directory / name, blocking=blocking))
         except BlockingIOError as exc:
-            raise LoopError(f"another drain is active for this repository ({directory / name})") from exc
+            raise LoopError(f"{busy} ({directory / name})") from exc
         yield
 
 
@@ -233,6 +234,19 @@ def release_settled_binding(anchor, common, *, interrupted_add=False):
             return False
         (common / "devlyn-loops/harness.json").unlink()
         return True
+
+
+def refuse_other_release(common, anchor=None):
+    """Withdraw's refusal of a queue another release bound, made before enforce_binding hands out that release's argv or
+    handoff: a release older than withdraw has none. As there, a caller outside the queue lock first drops a binding no
+    work needs."""
+    binding = harness_call("read_binding", common)
+    if not binding or (invoking := harness_call("resolve", SKILLS)) and invoking["release"] == binding["release"] or (
+            anchor is not None and release_settled_binding(anchor, common, interrupted_add=True)):
+        return
+    release = binding["release"]
+    raise LoopError(f"this queue is bound to devlyn-cli {release['version']} at {release['root']}; withdraw waits until that "
+                    "release's queue settles")
 
 
 def sections(text, path):
@@ -563,6 +577,28 @@ def receipt_path(common, identity):
         if delivered:
             return delivered[0]
     return retired[-1] if retired else active
+
+
+def seen(path, *, entries=False):
+    """What withdraw sees at `path`: whether it exists, a dangling link included, or with `entries` the paths in it. Where
+    it or a folder above it is missing (ENOENT, ENOTDIR) it sees nothing; any other error refuses, naming the path, where
+    exists, is_file and glob would answer no."""
+    try:
+        found = list(path.iterdir()) if entries else [os.lstat(path)]
+    except (FileNotFoundError, NotADirectoryError):
+        found = []
+    except OSError as exc:
+        raise LoopError(f"{path} cannot be read ({exc.strerror or exc}), so withdraw cannot tell what it holds; withdraw changes "
+                        "nothing until it can") from exc
+    return found if entries else bool(found)
+
+
+def task_directories(common, identity):
+    """Every receipt directory of the task, a link included: the active one, then retired, then moved, the order in which
+    task-complete.py moves one, and a path once seen is kept, so a directory moving meanwhile is seen at least once."""
+    root, key = common / "devlyn-completion", hashlib.sha256(branch_of(identity).encode()).hexdigest()[:24]
+    return [*([root / key] if seen(root / key) else []),
+            *(path for folder in ("retired", "moved") for path in seen(root / folder, entries=True) if path.name.startswith(key + "."))]
 
 
 def added_path(common, loop):
@@ -960,12 +996,37 @@ def next_task(v, attempted):
 
 
 def annotate(v, refused):
-    """Name each task's wait: a pending task's reason from waiting(), else why this drain did not advance it."""
+    """Name each task's wait: a pending task's reason from waiting(), else why this drain did not advance it, else what an
+    active task's executor left."""
     for row in v["rows"]:
         state = v["states"].get(row["identity"])
         if state and (reason := refused.get(row["identity"]) or state["kind"] == "pending" and waiting(v, row)
-                     or recovery_barrier(v, row)):
+                     or recovery_barrier(v, row) or executor_left_nothing(state)):
             state["waiting"] = reason
+
+
+def executor_left_nothing(state):
+    """What an active task's executor left when its execution log ends in a start that failed, or in an exit while no
+    submission is in place and the drain retired none that run wrote; nothing for a start, which may still be running."""
+    if state["kind"] != "active" or {"invalid", "inputs_changed"} & state.keys() or (state["path"].parent / "submission.json").exists():
+        return None
+    folder = state["path"].parent
+    try:
+        events = [line.partition(" ")[::2] for line in (folder / "executions.log").read_bytes().decode("utf-8").splitlines()]
+        last = events[-1][1] if events else ""
+        code, starts = re.fullmatch(r"exit (-?\d+) \(pid \d+\)", last), [when for when, event in events if event == "start"]
+        # A retired submission covers the one run that wrote it, after that run's start.
+        if code and starts and any(path.stat().st_mtime >= datetime.datetime.fromisoformat(starts[-1]).timestamp()
+                                   for path in folder.glob("submission.retired-*.json")):
+            return None
+    except (OSError, UnicodeError, ValueError):
+        return None  # Nothing ran yet, or a history the drain refuses, naming it, when it reads it.
+    if code:
+        return (f"its executor last exited {code[1]} (run {sum(event.startswith('exit ') for _, event in events)}) and left nothing to "
+                f"accept (output: {Path(state['receipt']['worktree']) / '.devlyn/loop'})")
+    if last.startswith("not started: "):
+        return f"its executor could not start ({last.removeprefix('not started: ')})"
+    return None
 
 
 def frontier(v, loop):
@@ -1796,6 +1857,121 @@ def add(args):
     return added_result(anchor, added, notes)
 
 
+def registered_worktree(admin):
+    """A linked worktree as Git lists it: the folder whose .git the gitdir file of its administrative directory
+    <common>/worktrees/<id> names, as an absolute path or one relative to that directory; while that file cannot be read
+    or decoded, the directory itself."""
+    try:
+        gitdir = (admin / "gitdir").read_bytes().decode("utf-8").rstrip()
+    except (OSError, UnicodeError):
+        gitdir = ""
+    if not gitdir:
+        return f"the worktree registered at {admin}"
+    folder = gitdir.removesuffix("/.git")
+    return folder if os.path.isabs(folder) else os.path.realpath(admin / folder)
+
+
+def tracked_places(anchor, common, rel):
+    """Where this repository tracks `rel`: the HEAD of each registered worktree, each local branch none has checked out,
+    and the index of each registered worktree, read through its administrative directory, so also while its folder is
+    missing, with a pathspec anchored at the top, since `git -C <common>` runs inside the work tree once core.worktree
+    names the folder that holds the Git directory, and with the file system monitor off, which Git would start for the
+    Git directory it takes as the work tree and wait on. An administrative directory without an index is skipped; one that
+    cannot be read refuses (seen), and so does an index git cannot read, naming its worktree. The HEADs and branches are
+    read refusing whatever Git writes beside its answer, since it skips a ref or an object it cannot read with only a
+    warning, after each folder under refs/heads is listed, a link included, which Git follows, since for-each-ref skips
+    one it cannot list without a word. The listing goes depth first, so links that loop reach the system's own link
+    limit at once and are refused (seen); breadth first, two such links would never end, nor does Git's own listing of
+    them, which passes over a folder it cannot list."""
+
+    def read(*args, **kwargs):
+        result = git_run(anchor, *args, **kwargs)
+        require(not result.stderr, f'git {args[0]} wrote "{" ".join(result.stderr.decode("utf-8", "replace").split())}" while reading '
+                f"this repository's HEADs and branches, so withdraw cannot tell whether {rel} is tracked there; withdraw changes "
+                "nothing until it can")
+        return result.stdout.decode("utf-8").strip()
+    # A gitdir file may hold any bytes, and the listed paths only name worktrees in a refusal.
+    listing = git_run(anchor, "worktree", "list", "--porcelain", "-z").stdout.decode("utf-8", "replace")
+    worktrees = [row for raw in listing.split("\0\0")
+                 if "worktree" in (row := dict(field.partition(" ")[::2] for field in raw.split("\0") if field))]
+    checked_out = {row.get("branch") for row in worktrees}
+    folders = [common / "refs/heads"]  # Missing where every ref is packed or in a reftable; a ref file lists nothing.
+    while folders:
+        folders += seen(folders.pop(), entries=True)
+    commits = [(f"HEAD of {row['worktree']}", row["HEAD"]) for row in worktrees if "HEAD" in row] + [
+        (f"the branch {ref.removeprefix('refs/heads/')}", ref)
+        for ref in read("for-each-ref", "--format=%(refname)", "refs/heads/").splitlines() if ref not in checked_out]
+    kinds = read("cat-file", "--batch-check=%(objecttype)", data="".join(f"{rev}:{rel}\n" for _, rev in commits).encode())
+    places = [place for (place, _), kind in zip(commits, kinds.split("\n")) if kind == "blob"]
+    linked = sorted(admin for admin in seen(common / "worktrees", entries=True) if seen(admin / "index"))
+    for name, admin in [(worktrees[0]["worktree"], common), *((registered_worktree(admin), admin) for admin in linked)]:
+        listed = subprocess.run(["git", "-c", "core.fsmonitor=false", "-C", str(common), f"--git-dir={admin}", "ls-files", "--",
+                                 f":(top,literal){rel}"], capture_output=True)
+        require(listed.returncode == 0, f"the index of {name} cannot be read ({' '.join(listed.stderr.decode('utf-8', 'replace').split())}), "
+                                        f"so withdraw cannot tell whether {rel} is tracked there; withdraw takes back only a loop held in its capture")
+        if listed.stdout:
+            places.append(f"the index of {name}")
+    return places
+
+
+def withdraw(args):
+    """Take back a queued loop none of whose tasks has started and that replaced no legacy row: its add record, then its
+    folder in devlyn-loops, then its capture ref; a retry after an interruption finishes the rest. Under the drain lock,
+    so no drain allocates it."""
+    anchor, common = repository(args.repo)
+    args.repo = anchor
+    loop, notes = args.loop, []
+    ref, rel = CAPTURES + loop, loop_queue(loop)
+    require(re.fullmatch(ID, loop), f"loop id must match {ID}: {loop!r}")
+    refuse_other_release(common, anchor)
+    enforce_binding(common, anchor)
+    busy = ("a drain or another withdraw is running in this repository; a loop cannot be withdrawn while a drain runs, and one "
+            "added during a drain runs in it")
+    with lock(common, "drain.lock", blocking=False, busy=busy), lock(common, "queue.lock", blocking=True):
+        refuse_other_release(common)
+        enforce_binding(common)
+        added, captured = records(common).get(loop), ref_value(anchor, ref)
+        # records() lists them with glob, which skips a folder it cannot read, so this loop's own record is looked at too.
+        require(added or not seen(added_path(common, loop)), f"{common / 'devlyn-loops'} cannot be listed, so withdraw cannot read "
+                f"the add record {added_path(common, loop)}; withdraw changes nothing until it can")
+        commit = added["commit"] if added else captured
+        rows, target = parse_loop(show(anchor, commit, rel), loop, f"{ref}:{rel}") if commit else ([], None)
+        tasks = [row["identity"] for row in rows]
+        if target:
+            claim = f'the {QUEUE} row "{one_line(target[1])}" (occurrence {target[0]})'
+            only = "withdraw takes back only a loop that replaced no legacy row"
+            raise LoopError(f"loop {loop} was added in place of {claim}; {only}; it stays queued" if added else
+                            f"the add of loop {loop} in place of {claim} stopped before its record; {only}; its capture stays at {ref}")
+        # Without its record a loop is read from a tracked queue file (queue_view), so its rows would come back.
+        places = tracked_places(anchor, common, rel)
+        require(not places, f"{rel} is tracked in {', '.join(places)}, so loop {loop}'s rows would return without its add record; "
+                            "withdraw takes back only a loop held in its capture")
+        started = [f"{identity} at {path}" for identity in tasks for path in task_directories(common, identity)]
+        require(not started, f"loop {loop} has a started task ({'; '.join(started)}); withdraw takes back only a loop none of whose "
+                             "tasks has started")
+        if added:
+            require(captured == commit, f"{ref} is {captured or 'missing'}, but the add record of {loop} names {commit}")
+            added_path(common, loop).unlink()
+        if commit:
+            folder = common / "devlyn-loops" / loop
+            try:
+                (folder / "drain-report.md").unlink(missing_ok=True)
+                with contextlib.suppress(FileNotFoundError):
+                    folder.rmdir()
+            except OSError as exc:
+                notes.append(f"loop folder retained: {folder}: {exc}; remove it")
+            git(anchor, "update-ref", "-d", ref, commit)
+    try:
+        release_settled_binding(anchor, common, interrupted_add=True)
+    except (LoopError, OSError) as exc:
+        notes.append(f"queue binding not released: {exc}; withdraw {loop} again to release it")
+    if not commit:
+        return {"status": "BLOCKED", "reason": f"loop {loop} is not queued in this repository", "cleanup": notes}
+    return {"status": "WITHDRAWN", "tasks": tasks, "commit": commit, "cleanup": notes,
+            "message": f"`git show {commit}:docs/specs/{loop}/meta.md` shows the withdrawn package until Git prunes that commit. "
+                       "Revised work is a new loop."}
+
+
 def check(args):
     anchor, _ = repository(Path(args.package).resolve().parent)
     package = package_of(anchor, args.package)
@@ -2122,6 +2298,486 @@ class QueueTests(unittest.TestCase):
         self.assertEqual((sorted(notes), all(path.exists() for path in saved)), (sorted(f"package cleanup retained: {path}: unlink denied" for path in saved), True))
         self.assertEqual((clean(common, records(common)), any(path.exists() for path in saved)), ([], False))
 
+    def test_withdraw_takes_back_a_loop_none_of_whose_tasks_started(self):
+        """D1. Prediction: withdrawing inv, added and never started, prints WITHDRAWN naming inv.t1, inv.t2 and the capture
+        commit, and removes the add record, the capture ref and the loop's folder with its drain report, keeping
+        devlyn-loops; the queue then holds no row of inv and nothing unfinished, and a second withdraw is refused as not
+        queued. Before: argparse rejected withdraw."""
+        added = self.cli("add", self.meta)
+        common = Path(git(self.anchor, "rev-parse", "--path-format=absolute", "--git-common-dir"))
+        (common / "devlyn-loops/inv/drain-report.md").write_text("# Drain report — inv\n", encoding="utf-8")
+        result = self.cli("withdraw", "inv")
+        self.assertEqual((result["status"], result["tasks"], result["commit"]), ("WITHDRAWN", ["inv.t1", "inv.t2"], added["commit"]))
+        self.assertIn(f"git show {added['commit']}:docs/specs/inv/meta.md", result["message"])
+        self.assertEqual((ref_value(self.anchor, "refs/devlyn/captures/inv"), sorted(path.name for path in (common / "devlyn-loops").iterdir())),
+                         ("", ["drain.lock", "queue.lock"]))
+        self.assertEqual((queue_view(self.anchor, records(common)), unfinished(view(self.anchor, common, pure=True))), ([], False))
+        self.assertIn("loop inv is not queued in this repository", self.cli("withdraw", "inv", code=1)["reason"])
+
+    def test_withdraw_refuses_without_changing_anything(self):
+        """D1, E6. Prediction: each refusal leaves the add record and the drain report byte for byte, the capture ref, the
+        loop's folder, HEAD and the index as they were: a task directory of either task, active, retired or moved, a dangling
+        link included; a running drain or another withdraw, refused in withdraw's own words; a capture ref moved off the
+        recorded commit, naming both; and the loop's queue file tracked in HEAD here, in the index here while core.worktree
+        names this folder, in the index of the worktree the loop was added from, in HEAD and the index of a third worktree,
+        in the index of a locked worktree whose folder is gone or holds only an empty directory, on a branch no worktree has
+        checked out, or on the branch it was added on once that worktree is gone. Before: argparse rejected withdraw; then
+        the third worktree and the other branch were withdrawn, and the busy refusal named only a drain; then the locked
+        worktree without its folder was withdrawn, and with an empty directory there git's own failure was the refusal;
+        then, with core.worktree set, the index here was read from inside the Git directory, where Git took the pathspec
+        as .git/docs/..., and the loop was withdrawn."""
+        import shutil
+        linked, third, gone = self.root / "linked", self.root / "third", self.root / "gone"
+        git(self.anchor, "worktree", "add", "-q", "-b", "side", str(linked), env=self.env)
+        added = self.cli("add", write_package(linked, "inv", self.tasks))
+        common = Path(git(self.anchor, "rev-parse", "--path-format=absolute", "--git-common-dir"))
+        (common / "devlyn-loops/inv/drain-report.md").write_text("# Drain report — inv\n", encoding="utf-8")
+        ref, rel, completion, head = "refs/devlyn/captures/inv", "docs/specs/inv/queue.md", common / "devlyn-completion", git(self.anchor, "rev-parse", "HEAD")
+        key = {identity: hashlib.sha256(branch_of(identity).encode()).hexdigest()[:24] for identity in ("inv.t1", "inv.t2")}
+        active, link = completion / key["inv.t1"], completion / key["inv.t2"]
+        retired, moved = completion / "retired" / f"{key['inv.t2']}.operation", completion / "moved" / f"{key['inv.t1']}.operation"
+
+        def state():
+            return (git(self.anchor, "for-each-ref"), git(self.anchor, "rev-parse", "HEAD"), git(self.anchor, "ls-files", "-s"),
+                    git(linked, "ls-files", "-s") if linked.exists() else None,
+                    sorted((str(path.relative_to(common)), path.read_bytes() if path.is_file() else None)
+                           for path in (common / "devlyn-loops").rglob("*") if path.suffix != ".lock"))
+
+        def track(work, *commit):
+            (work / rel).parent.mkdir(parents=True, exist_ok=True)
+            (work / rel).write_text(row_line("inv.t1", "Interface") + "\n", encoding="utf-8")
+            git(work, "add", rel, env=self.env)
+            if commit:
+                git(work, "commit", "-qm", "a queue file committed by hand", env=self.env)
+
+        def untrack(work):
+            git(work, "rm", "-q", "--cached", rel, env=self.env)
+            (work / rel).unlink()
+
+        def elsewhere(*start):
+            git(self.anchor, "worktree", "add", "-q", *start, str(third), env=self.env)
+            track(third, "commit")
+            if start != ("--detach",):
+                git(self.anchor, "worktree", "remove", "--force", str(third), env=self.env)
+
+        def offline(empty):
+            git(self.anchor, "worktree", "add", "-q", "--detach", str(gone), env=self.env)
+            track(gone)
+            git(self.anchor, "worktree", "lock", str(gone), env=self.env)
+            shutil.rmtree(gone)
+            if empty:
+                gone.mkdir()
+
+        def online():
+            git(self.anchor, "worktree", "unlock", str(gone), env=self.env)
+            if gone.exists():
+                gone.rmdir()
+            git(self.anchor, "worktree", "prune", env=self.env)
+
+        def own_folder():  # A config that names the repository's own folder as its work tree.
+            git(self.anchor, "config", "core.worktree", str(self.anchor), env=self.env)
+            track(self.anchor)
+
+        def no_worktree_config():
+            untrack(self.anchor)
+            git(self.anchor, "config", "--unset", "core.worktree", env=self.env)
+
+        cases = [("active", lambda: active.mkdir(parents=True), active.rmdir, f"inv.t1 at {active}"),
+                 ("retired", lambda: retired.mkdir(parents=True), retired.rmdir, f"inv.t2 at {retired}"),
+                 ("moved", lambda: moved.mkdir(parents=True), moved.rmdir, f"inv.t1 at {moved}"),
+                 ("ref", lambda: git(self.anchor, "update-ref", ref, head), lambda: git(self.anchor, "update-ref", ref, added["commit"]),
+                  f"{ref} is {head}, but the add record of inv names {added['commit']}"),
+                 ("HEAD here", lambda: track(self.anchor, "commit"), lambda: git(self.anchor, "reset", "-q", "--hard", head),
+                  f"{rel} is tracked in HEAD of {self.anchor}"),
+                 ("index here, core.worktree set", own_folder, no_worktree_config, f"{rel} is tracked in the index of {self.anchor}, so"),
+                 ("index of origin", lambda: track(linked), lambda: untrack(linked), f"{rel} is tracked in the index of {linked}"),
+                 ("third worktree", lambda: elsewhere("--detach"), lambda: git(self.anchor, "worktree", "remove", "--force", str(third), env=self.env),
+                  f"{rel} is tracked in HEAD of {third}, the index of {third}, so"),
+                 ("offline, empty folder", lambda: offline(True), online, f"{rel} is tracked in the index of {gone}, so"),
+                 ("offline", lambda: offline(False), online, f"{rel} is tracked in the index of {gone}, so"),
+                 ("other branch", lambda: elsewhere("-b", "elsewhere"), lambda: git(self.anchor, "branch", "-D", "elsewhere", env=self.env),
+                  f"{rel} is tracked in the branch elsewhere, so")]
+        if os.name != "nt":
+            cases.append(("link", lambda: link.symlink_to(self.root / "nowhere"), link.unlink, f"inv.t2 at {link}"))
+        for name, prepare, undo, message in cases:
+            with self.subTest(case=name):
+                prepare()
+                before = state()
+                self.assertIn(message, self.cli("withdraw", "inv", code=1)["reason"])
+                self.assertEqual(state(), before)
+                undo()
+        with lock(common, "drain.lock", blocking=True):
+            before = state()
+            self.assertIn("a drain or another withdraw is running in this repository; a loop cannot be withdrawn while a drain runs, "
+                          "and one added during a drain runs in it", self.cli("withdraw", "inv", code=1)["reason"])
+            self.assertEqual(state(), before)
+        track(linked, "commit")
+        git(self.anchor, "worktree", "remove", "--force", str(linked), env=self.env)
+        before = state()
+        self.assertIn(f"{rel} is tracked in the branch side", self.cli("withdraw", "inv", code=1)["reason"])
+        self.assertEqual(state(), before)
+
+    def test_a_drain_started_during_a_withdraw_says_a_withdraw_may_hold_its_lock(self):
+        """D1. Prediction: a drain started while a withdraw, paused inside its locks, holds drain.lock is refused, its
+        reason naming a drain or a withdraw and the lock; the withdraw then finishes WITHDRAWN. Before: the reason said
+        another drain was active, though only a withdraw ran."""
+        import threading
+        from unittest import mock
+        self.cli("add", self.meta)
+        common = Path(git(self.anchor, "rev-parse", "--path-format=absolute", "--git-common-dir"))
+        inside, resume, result, real = threading.Event(), threading.Event(), {}, tracked_places
+
+        def paused(*args):
+            inside.set()
+            resume.wait(60)
+            return real(*args)
+
+        with mock.patch.dict(withdraw.__globals__, tracked_places=paused):
+            running = threading.Thread(target=lambda: result.update(withdraw(argparse.Namespace(repo=str(self.anchor), loop="inv"))))
+            running.start()
+            try:
+                self.assertTrue(inside.wait(60))
+                reason = self.cli("drain", "--", sys.executable, "-c", "pass", "{packet}", code=1)["reason"]
+            finally:
+                resume.set()
+                running.join(60)
+        self.assertEqual(reason, f"a drain or a withdraw is running in this repository ({common / 'devlyn-loops/drain.lock'})")
+        self.assertEqual(result.get("status"), "WITHDRAWN")
+
+    def test_withdraw_finishes_after_an_interruption_between_its_deletions(self):
+        """D1. Prediction: a withdraw interrupted after it removed the add record, before the capture ref, leaves that ref,
+        which still counts as unfinished work; the retry removes it and prints WITHDRAWN with the same tasks and commit.
+        Before: there was no withdraw."""
+        from unittest import mock
+        added = self.cli("add", self.meta)
+        common, real = Path(git(self.anchor, "rev-parse", "--path-format=absolute", "--git-common-dir")), git
+
+        def interrupted(cwd, *args, **kwargs):
+            if args[:2] == ("update-ref", "-d"):
+                raise LoopError("interrupted before the capture ref")
+            return real(cwd, *args, **kwargs)
+
+        with mock.patch.dict(withdraw.__globals__, git=interrupted), self.assertRaisesRegex(LoopError, "interrupted before"):
+            withdraw(argparse.Namespace(repo=str(self.anchor), loop="inv"))
+        self.assertEqual((added_path(common, "inv").exists(), ref_value(self.anchor, "refs/devlyn/captures/inv"),
+                          unfinished(view(self.anchor, common, pure=True))), (False, added["commit"], True))
+        result = self.cli("withdraw", "inv")
+        self.assertEqual((result["status"], result["tasks"], result["commit"]), ("WITHDRAWN", ["inv.t1", "inv.t2"], added["commit"]))
+        self.assertEqual(ref_value(self.anchor, "refs/devlyn/captures/inv"), "")
+
+    def test_withdraw_refuses_a_loop_that_replaced_a_legacy_row(self):
+        """D1, E6. Prediction: a loop added with --materialize is refused, naming the row its capture replaced and that row's
+        occurrence and saying the loop stays queued, while the row is in the legacy queue and once no file holds it; the
+        capture an add stopped before its record left is refused, saying that add stopped before its record and where its
+        capture stays; each refusal leaves the add record, the capture ref, the loop's folder, HEAD and the index byte for
+        byte. A loop added without --materialize is withdrawn. Before: withdraw looked for the row only here, in the
+        checkout the loop was added from and on the branch it was added on, and withdrew the loop once those no longer held
+        it, though another worktree's legacy queue could still show the row, pending, to be planned again; then the refusal
+        said withdrawing would bring the row back, which no file holding it, or a capture that never hid it, makes false;
+        then it said that capture's loop was added and stays queued, though status shows its row pending and no loop."""
+        from unittest import mock
+        common = Path(git(self.anchor, "rev-parse", "--path-format=absolute", "--git-common-dir"))
+
+        def state():
+            return (git(self.anchor, "for-each-ref"), git(self.anchor, "rev-parse", "HEAD"), git(self.anchor, "ls-files", "-s"),
+                    sorted((str(path.relative_to(common)), path.read_bytes() if path.is_file() else None)
+                           for path in (common / "devlyn-loops").rglob("*") if path.suffix != ".lock"))
+
+        def refused(loop, row, recorded=True):
+            claim = f'the {QUEUE} row "{row}" (occurrence 1)'
+            before = state()
+            self.assertEqual(self.cli("withdraw", loop, code=1)["reason"],
+                             f"loop {loop} was added in place of {claim}; withdraw takes back only a loop that replaced no legacy "
+                             "row; it stays queued" if recorded else
+                             f"the add of loop {loop} in place of {claim} stopped before its record; withdraw takes back only a "
+                             f"loop that replaced no legacy row; its capture stays at refs/devlyn/captures/{loop}")
+            self.assertEqual(state(), before)
+
+        (self.anchor / QUEUE).write_text("# Intent Queue\n\n- [ ] Ship the fixture.\n- [ ] Ship the second fixture.\n", encoding="utf-8")
+        self.cli("add", write_package(self.anchor, "rep", self.tasks[:1], intent="User asked: Ship the fixture."), "--materialize", 3)
+        (common / "devlyn-loops/rep/drain-report.md").write_text("# Drain report — rep\n", encoding="utf-8")
+        refused("rep", "- [ ] Ship the fixture.")
+        (self.anchor / QUEUE).write_text("# Intent Queue\n\n- [ ] Ship the second fixture.\n", encoding="utf-8")
+        refused("rep", "- [ ] Ship the fixture.")
+        self.cli("add", self.meta)
+        self.assertEqual(self.cli("withdraw", "inv")["tasks"], ["inv.t1", "inv.t2"])
+        meta, real = write_package(self.anchor, "ref", self.tasks[:1], intent="User asked: Ship the second fixture."), write_json
+
+        def stopped(path, value):
+            if Path(path).name == "added.json":
+                raise LoopError("stopped before the add record")
+            real(path, value)
+
+        with mock.patch.dict(os.environ, self.env), mock.patch.dict(add.__globals__, write_json=stopped), \
+                self.assertRaisesRegex(LoopError, "stopped before"):
+            add(argparse.Namespace(package=str(meta), materialize=3))
+        self.assertEqual((bool(ref_value(self.anchor, "refs/devlyn/captures/ref")), added_path(common, "ref").exists()), (True, False))
+        refused("ref", "- [ ] Ship the second fixture.", recorded=False)
+
+    def test_withdraw_sees_a_task_directory_that_moves_while_it_looks(self):
+        """D1, E6. Prediction: a task directory that task-complete moves into moved/, from the active path or from retired/,
+        just after withdraw has listed moved/, still refuses the withdraw, naming where it was seen, and the add record and
+        the capture ref stay. Before: withdraw listed retired/ and moved/ before it looked at the active path and dropped a
+        listed path that had moved since, so it saw no directory and withdrew the loop."""
+        from unittest import mock
+        added = self.cli("add", self.meta)
+        common = Path(git(self.anchor, "rev-parse", "--path-format=absolute", "--git-common-dir"))
+        completion, key = common / "devlyn-completion", hashlib.sha256(branch_of("inv.t1").encode()).hexdigest()[:24]
+        destination, real = completion / "moved" / f"{key}.operation", Path.iterdir
+        destination.parent.mkdir(parents=True)
+        for start in (completion / key, completion / "retired" / f"{key}.operation"):
+            with self.subTest(start=start.parent.name):
+                start.mkdir(parents=True)
+
+                def iterdir(path):
+                    found = list(real(path))
+                    if path.name == "moved" and start.exists():
+                        start.rename(destination)
+                    return iter(found)
+
+                with mock.patch.object(Path, "iterdir", iterdir), self.assertRaisesRegex(LoopError, re.escape(f"inv.t1 at {start}")):
+                    withdraw(argparse.Namespace(repo=str(self.anchor), loop="inv"))
+                self.assertEqual((added_path(common, "inv").exists(), ref_value(self.anchor, "refs/devlyn/captures/inv")), (True, added["commit"]))
+                destination.rmdir()
+
+    def test_withdraw_of_a_loop_it_does_not_hold_deletes_nothing(self):
+        """D1. Prediction: a loop with no add record and no capture ref, committed only in a linked worktree, keeps its drain
+        report and its folder under the common Gitdir: withdraw from this checkout refuses, naming that worktree's HEAD and
+        index; once the worktree and its branch are gone the loop is not queued, and the report and folder still stay.
+        Before: the first withdraw said not queued, and before f02e2c60 it deleted the report and the folder."""
+        linked = self.root / "linked"
+        git(self.anchor, "worktree", "add", "-q", "-b", "side", str(linked), env=self.env)
+        write_package(linked, "rl", self.tasks[:1])
+        rel = loop_queue("rl")
+        (linked / rel).write_text(row_line("rl.t1", "Interface") + "\n", encoding="utf-8")
+        git(linked, "add", "docs/specs/rl", env=self.env)
+        git(linked, "commit", "-qm", "a loop committed without an add, as a fresh clone holds it", env=self.env)
+        report = Path(git(self.anchor, "rev-parse", "--path-format=absolute", "--git-common-dir")) / "devlyn-loops/rl/drain-report.md"
+        report.parent.mkdir(parents=True)
+        report.write_text("# Drain report — rl\n", encoding="utf-8")
+        self.assertIn(f"{rel} is tracked in HEAD of {linked}, the index of {linked}, so", self.cli("withdraw", "rl", code=1)["reason"])
+        self.assertEqual(report.read_text(encoding="utf-8"), "# Drain report — rl\n")
+        git(self.anchor, "worktree", "remove", "--force", str(linked), env=self.env)
+        git(self.anchor, "branch", "-D", "side", env=self.env)
+        self.assertIn("loop rl is not queued in this repository", self.cli("withdraw", "rl", code=1)["reason"])
+        self.assertEqual((sorted(path.name for path in report.parent.iterdir()), report.read_text(encoding="utf-8")),
+                         (["drain-report.md"], "# Drain report — rl\n"))
+
+    def test_withdraw_reads_past_prunable_missing_and_bare_worktrees(self):
+        """D1, E6. Prediction: withdraw prints WITHDRAWN beside a registered worktree whose folder stays without its .git
+        file (Git lists it prunable), a locked worktree whose folder is gone, neither index holding the loop's queue
+        file, a dangling symbolic ref under refs/heads, which Git lists nowhere, and, where links are made (not Windows),
+        a link there that dangles, which Git skips, and one at a regular file holding a commit, which Git reads as a ref
+        file, and in the linked worktree of a bare clone, whose bare row has no HEAD line and whose common Gitdir has no
+        index. git ls-files run in either folder fails; without the HEAD check the bare row raises KeyError."""
+        import shutil
+        prunable, gone, bare, work = self.root / "prunable", self.root / "gone", self.root / "bare.git", self.root / "work"
+        for path in (prunable, gone):
+            git(self.anchor, "worktree", "add", "-q", "--detach", str(path), env=self.env)
+        (prunable / ".git").unlink()
+        git(self.anchor, "worktree", "lock", str(gone), env=self.env)
+        shutil.rmtree(gone)
+        git(self.anchor, "symbolic-ref", "refs/heads/dangle", "refs/heads/nowhere", env=self.env)
+        if os.name != "nt":
+            (self.root / "commit").write_text(git(self.anchor, "rev-parse", "main", env=self.env) + "\n", encoding="utf-8")
+            for name, target in (("lost", self.root / "nowhere"), ("filed", self.root / "commit")):
+                (self.anchor / ".git/refs/heads" / name).symlink_to(target)
+        self.cli("add", self.meta)
+        self.assertEqual(self.cli("withdraw", "inv")["status"], "WITHDRAWN")
+        subprocess.run(["git", "clone", "-q", "--bare", str(self.anchor), str(bare)], check=True, env=self.env)
+        git(bare, "worktree", "add", "-q", str(work), "main", env=self.env)
+        self.cli("add", write_package(work, "inv", self.tasks), cwd=work)
+        self.assertEqual(self.cli("withdraw", "inv", cwd=work)["status"], "WITHDRAWN")
+
+    def test_withdraw_reads_each_registered_index_however_its_worktree_is_named(self):
+        """D1, E6. Prediction: beside a registered worktree whose administrative gitdir file is missing, or holds bytes that
+        are not UTF-8, a loop tracked nowhere is withdrawn, and with the loop's queue file staged in that worktree's index
+        it is refused, naming the worktree by its administrative directory; a worktree whose gitdir file holds a relative
+        path is named as `git worktree list` prints it; an index git cannot read is refused in one sentence naming its
+        worktree and git's message; a file or an empty directory beside the administrative directories, which Git skips,
+        is skipped too. No refusal changes the add record or the capture ref. Before: the missing file stopped every
+        withdraw with a bare FileNotFoundError, the bytes raised an uncaught UnicodeDecodeError, and the unreadable index
+        was refused in git's words alone; then the empty directory stopped every withdraw as an index git cannot read."""
+        import shutil
+        common = Path(git(self.anchor, "rev-parse", "--path-format=absolute", "--git-common-dir"))
+        rel, work = loop_queue("inv"), self.root / "work"
+        admin = common / "worktrees" / work.name
+        admin.parent.mkdir()
+        (admin.parent / ".DS_Store").write_bytes(b"")  # As a file manager leaves one.
+        (admin.parent / "empty").mkdir()  # Git lists no worktree for it, and git worktree prune deletes it.
+
+        def state():
+            return (git(self.anchor, "for-each-ref"), sorted((str(path.relative_to(common)), path.read_bytes() if path.is_file() else None)
+                                                             for path in (common / "devlyn-loops").rglob("*") if path.suffix != ".lock"))
+
+        def by_admin():
+            return f"the worktree registered at {admin}"
+
+        def as_listed():
+            return git(self.anchor, "worktree", "list", "--porcelain").split("\n\n")[1].splitlines()[0].removeprefix("worktree ")
+
+        for name, options, damage, named in (("gitdir missing", (), lambda: (admin / "gitdir").unlink(), by_admin),
+                                             ("gitdir not UTF-8", (), lambda: (admin / "gitdir").write_bytes(b"\xff\xfe/.git\n"), by_admin),
+                                             ("gitdir relative", ("--relative-paths",), lambda: None, as_listed)):
+            with self.subTest(case=name):
+                if git_run(self.anchor, "worktree", "add", "-q", "--detach", *options, str(work), env=self.env, ok=(0, 129)).returncode:
+                    self.skipTest("this git writes no relative gitdir file (git worktree add --relative-paths came in Git 2.48)")
+                try:
+                    damage()
+                    self.cli("add", write_package(self.anchor, "inv", self.tasks))
+                    self.assertEqual(self.cli("withdraw", "inv")["status"], "WITHDRAWN")
+                    self.cli("add", write_package(self.anchor, "inv", self.tasks))
+                    (work / rel).parent.mkdir(parents=True)
+                    (work / rel).write_text(row_line("inv.t1", "Interface") + "\n", encoding="utf-8")
+                    git(work, "add", rel, env=self.env)
+                    before = state()
+                    self.assertEqual(self.cli("withdraw", "inv", code=1)["reason"],
+                                     f"{rel} is tracked in the index of {named()}, so loop inv's rows would return without its add "
+                                     "record; withdraw takes back only a loop held in its capture")
+                    self.assertEqual(state(), before)
+                finally:
+                    shutil.rmtree(admin)
+                    shutil.rmtree(work)
+        git(self.anchor, "worktree", "add", "-q", "--detach", str(work), env=self.env)
+        (admin / "index").write_bytes(b"not an index")
+        before = state()
+        self.assertRegex(self.cli("withdraw", "inv", code=1)["reason"],
+                         rf"^the index of {re.escape(str(work))} cannot be read \(fatal: .*index.*\), so withdraw cannot tell "
+                         rf"whether {re.escape(rel)} is tracked there; withdraw takes back only a loop held in its capture$")
+        self.assertEqual(state(), before)
+
+    def test_withdraw_reads_each_index_without_a_file_system_monitor(self):
+        """D1, E6. Prediction: with core.fsmonitor=true and one linked worktree, neither worktree's monitor running (as
+        after a restart), withdraw prints WITHDRAWN within 60 s. Before: Git took the Git directory as the work tree of
+        each index read, started a monitor for it and waited on it, so withdraw never returned and held its locks. The
+        monitor is turned on after the setup, whose own checkout a starting monitor can hang. Withdraw runs as an owned
+        tree (its own POSIX session or Windows job) ended whole within seconds, its output in files no monitor holds open."""
+        probe = git_run(self.anchor, "fsmonitor--daemon", "status", env=self.env, ok=(0, 1, 128))
+        if probe.returncode == 128:
+            self.skipTest(f"no file system monitor here ({probe.stderr.decode('utf-8', 'replace').strip()})")
+        linked = self.root / "linked"
+        git(self.anchor, "worktree", "add", "-q", "--detach", str(linked), env=self.env)
+        self.cli("add", self.meta)
+        for work in (self.anchor, linked):
+            self.addCleanup(git_run, work, "fsmonitor--daemon", "stop", env=self.env, ok=(0, 128))
+        git(self.anchor, "config", "core.fsmonitor", "true", env=self.env)
+        out, err = self.root / "withdraw.out", self.root / "withdraw.err"
+        with out.open("wb") as stdout, err.open("wb") as stderr:
+            code = shared("platform-support")["run_process"]([sys.executable, str(Path(__file__).resolve()), "withdraw", "inv"],
+                                                             subprocess.DEVNULL, 60, on_timeout=None, cwd=self.anchor, env=self.env,
+                                                             stdout=stdout, stderr=stderr)
+        output = out.read_text(encoding="utf-8") + err.read_text(encoding="utf-8")
+        self.assertIsNotNone(code, f"withdraw did not return within 60 s: {output}")
+        self.assertEqual(json.loads(out.read_text(encoding="utf-8"))["status"], "WITHDRAWN", output)
+
+    def test_withdraw_refuses_while_it_cannot_read_a_place_that_may_hold_the_loop(self):
+        """D1, E6. Prediction: withdraw refuses in one sentence naming the path, and changes nothing, while it cannot read
+        the index of a linked worktree holding the staged queue file behind an administrative directory it cannot enter,
+        <common>/worktrees itself, retired/ or moved/ holding a task's directory, devlyn-completion holding the active one,
+        the loop's folder in devlyn-loops, or devlyn-loops, which the add records are listed from; and, for a branch that
+        commits the queue file, its ref file, its ref folder, also one reached through a link, or its tree object, refused
+        in Git's words or naming the folder. Before: is_file, lexists and glob each answered no on the permission error, so
+        withdraw took back the loop, and in the loop folder and add records cases deleted its capture ref while its add
+        record stayed; the unreadable worktrees folder alone was refused, in the system's words; then Git skipped the
+        branch, with only a warning for the ref file and the tree object and silently for the folder, and the loop was
+        withdrawn; then withdraw passed over a link, which Git follows, and took back the loop behind one."""
+        probe = self.root / "probe"
+        probe.mkdir(mode=0)
+        try:
+            os.listdir(probe)
+            self.skipTest("this process reads a folder whose mode denies it (root, or Windows)")
+        except PermissionError:
+            pass
+        finally:
+            probe.chmod(0o700)
+        common = Path(git(self.anchor, "rev-parse", "--path-format=absolute", "--git-common-dir"))
+        rel, work, completion, loops = loop_queue("inv"), self.root / "work", common / "devlyn-completion", common / "devlyn-loops"
+        key = {identity: hashlib.sha256(branch_of(identity).encode()).hexdigest()[:24] for identity in ("inv.t1", "inv.t2")}
+        git(self.anchor, "worktree", "add", "-q", "--detach", str(work), env=self.env)
+        (work / rel).parent.mkdir(parents=True)
+        (work / rel).write_text(row_line("inv.t1", "Interface") + "\n", encoding="utf-8")
+
+        def state():
+            return (git(self.anchor, "for-each-ref"), git(work, "ls-files", "-s"), sorted(
+                (str(path.relative_to(common)), path.read_bytes() if path.is_file() else None) for path in loops.rglob("*") if path.suffix != ".lock"))
+
+        def restore(path, mode):  # A path its case removed since has nothing to restore.
+            with contextlib.suppress(FileNotFoundError):
+                path.chmod(mode)
+
+        def unreadable(path):
+            return f"{path} cannot be read ({os.strerror(errno.EACCES)}), so withdraw cannot tell what it holds; withdraw changes nothing until it can"
+
+        staged = (lambda: git(work, "add", rel, env=self.env), lambda: git(work, "rm", "-q", "--cached", rel, env=self.env))
+        cases = [("linked index", staged, common / "worktrees" / work.name, 0, unreadable(common / "worktrees" / work.name / "index")),
+                 ("worktrees folder", staged, common / "worktrees", 0, unreadable(common / "worktrees"))]
+        for name, folder, identity in (("retired", completion / "retired", "inv.t2"), ("moved", completion / "moved", "inv.t1"),
+                                       ("active", completion, "inv.t1")):
+            directory = completion / key[identity] if name == "active" else folder / f"{key[identity]}.operation"
+            cases.append((name, (functools.partial(directory.mkdir, parents=True), directory.rmdir), folder, 0,
+                          unreadable(directory if name == "active" else folder)))
+        cases += [("loop folder", (lambda: None, lambda: None), loops / "inv", 0, unreadable(added_path(common, "inv"))),
+                  ("add records", (lambda: None, lambda: None), loops, 0o300,
+                   f"{loops} cannot be listed, so withdraw cannot read the add record {added_path(common, 'inv')}; withdraw "
+                   "changes nothing until it can")]
+        # A commit no worktree has checked out holding the queue file, made in a temporary index, for a branch per case.
+        index = {**self.env, "GIT_INDEX_FILE": str(self.root / "held.index")}
+        blob = git(self.anchor, "hash-object", "-w", "--stdin", data=(row_line("inv.t1", "Interface") + "\n").encode(), env=self.env)
+        git(self.anchor, "update-index", "--add", "--cacheinfo", f"100644,{blob},{rel}", env=index)
+        tree = git(self.anchor, "write-tree", env=index)
+        held = git(self.anchor, "commit-tree", tree, "-m", "a queue file committed by hand", env=self.env)
+
+        def branch(name):
+            return lambda: git(self.anchor, "branch", name, held, env=self.env), lambda: git(self.anchor, "branch", "-q", "-D", name, env=self.env)
+
+        def git_words(command, named):  # Git's own words vary with the locale; they name the ref or the object.
+            return re.compile(rf'git {command} wrote ".*{re.escape(named)}.*" while reading this repository\'s HEADs and branches, so '
+                              rf"withdraw cannot tell whether {re.escape(rel)} is tracked there; withdraw changes nothing until it can")
+        outside, nest = self.root / "outside", common / "refs/heads/nest"  # A ref folder Git reaches through a link.
+        behind = (lambda: (outside.mkdir(), (outside / "held").write_text(held + "\n", encoding="utf-8"), nest.symlink_to(outside)),
+                  lambda: (nest.unlink(), (outside / "held").unlink(), outside.rmdir()))
+        cases += [("branch ref file", branch("held"), common / "refs/heads/held", 0, git_words("for-each-ref", "refs/heads/held")),
+                  ("branch ref folder", branch("nest/held"), nest, 0, unreadable(nest)),
+                  ("branch ref folder behind a link", behind, outside, 0, unreadable(nest)),
+                  ("tree object", branch("held"), common / "objects" / tree[:2] / tree[2:], 0, git_words("cat-file", tree))]
+        for name, (prepare, undo), denied, mode, reason in cases:
+            with self.subTest(case=name):
+                self.cli("add", write_package(self.anchor, "inv", self.tasks))  # A retry once added: nothing changes.
+                prepare()
+                before, original = state(), denied.stat().st_mode & 0o7777
+                self.addCleanup(restore, denied, original)  # Also when the case fails, so the folder can be removed.
+                denied.chmod(mode)
+                try:
+                    refusal = self.cli("withdraw", "inv", code=1)["reason"]
+                finally:  # Also when withdraw took the loop back, so the next case starts from its own state.
+                    denied.chmod(original)
+                    after = state()
+                    undo()
+                self.assertEqual(after, before)
+                (self.assertRegex if isinstance(reason, re.Pattern) else self.assertEqual)(refusal, reason)
+
+    def test_withdraw_reads_the_head_of_each_worktree_whose_listed_paths_decode_alike(self):
+        """D1, E6. Prediction: beside two linked worktrees whose gitdir files name folders that differ only in a byte that
+        is not UTF-8, the first listed with a HEAD that tracks the loop's queue file while no index holds it, withdraw is
+        refused, naming that HEAD by the one name both paths decode to. Before: the two HEADs were kept under that one
+        name, the second's in place of the first's, and the loop was withdrawn."""
+        common = Path(git(self.anchor, "rev-parse", "--path-format=absolute", "--git-common-dir"))
+        rel = loop_queue("inv")
+        self.cli("add", self.meta)
+        for name, byte in (("first", b"\xe8"), ("second", b"\xe9")):  # Git lists linked worktrees sorted by path.
+            work = self.root / name
+            git(self.anchor, "worktree", "add", "-q", "--detach", str(work), env=self.env)
+            if name == "first":
+                (work / rel).parent.mkdir(parents=True)
+                (work / rel).write_text(row_line("inv.t1", "Interface") + "\n", encoding="utf-8")
+                git(work, "add", rel, env=self.env)
+                git(work, "commit", "-qm", "a queue file committed by hand", env=self.env)
+                git(work, "rm", "-q", "--cached", rel, env=self.env)
+            (common / "worktrees" / name / "gitdir").write_bytes(b"/x/caf" + byte + b"/.git\n")
+        self.assertEqual(self.cli("withdraw", "inv", code=1)["reason"],
+                         f"{rel} is tracked in HEAD of /x/caf�, so loop inv's rows would return without its add record; "
+                         "withdraw takes back only a loop held in its capture")
+
     def test_a_legacy_row_is_replaced_only_by_its_one_exact_claim(self):
         """Q. Prediction: a loop's queue file hides the legacy row whose exact text and occurrence it records, line endings
         aside, showing the loop's rows in its place; a claim on a missing occurrence replaces nothing, so no other row
@@ -2184,7 +2840,7 @@ class QueueTests(unittest.TestCase):
                     else:
                         out, _ = waiter.communicate(timeout=30)
                         self.assertEqual(waiter.returncode, 1)
-                        self.assertIn("another drain is active", json.loads(out)["reason"])
+                        self.assertIn("a drain or a withdraw is running in this repository", json.loads(out)["reason"])
                         held.stdin.close()
         self.assertEqual((read_json(added_path(common, "inv"))["origin"], read_json(added_path(common, "inv"))["branch"]), (str(linked), "side"))
 
@@ -2300,6 +2956,9 @@ def main():
     inspector = actions.add_parser("inspect")
     inspector.add_argument("--repo", default=".")
     inspector.add_argument("--json", action="store_true")
+    remover = actions.add_parser("withdraw")
+    remover.add_argument("--repo", default=".")
+    remover.add_argument("loop", help="a queued loop none of whose tasks has started and that replaced no legacy row")
     actions.choices["drain"].add_argument("--worktree-root")
     actions.choices["drain"].add_argument("executor", nargs="+", help="host executor argv after --; {packet} becomes the packet path")
     args = parser.parse_args()
@@ -2309,11 +2968,11 @@ def main():
             print(f"queue self-test: PASS ({result.testsRun} tests)")
         return 0 if result.wasSuccessful() else 1
     if args.action is None:
-        parser.error("check, add, status, inspect or drain is required")
+        parser.error("check, add, withdraw, status, inspect or drain is required")
     if args.action == "inspect":
         os.environ["GIT_OPTIONAL_LOCKS"] = "0"  # git diff may otherwise refresh the index even with unchanged bytes.
     try:
-        result = {"check": check, "add": add, "status": status, "drain": drain, "inspect": inspect}[args.action](args)
+        result = {"check": check, "add": add, "withdraw": withdraw, "status": status, "drain": drain, "inspect": inspect}[args.action](args)
     except (LoopError, OSError) as exc:
         result = {"status": "BLOCKED", "reason": str(exc)}
         if args.action in {"status", "drain"}:

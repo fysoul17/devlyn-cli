@@ -59,6 +59,7 @@ Verify DEVLYN_SKILL_DIR/scripts/queue.py before running it. In omp, use `printf 
 | `plan <intent or absolute document path>` | Inspect, elicit what is necessary and write a validated loop package. Does not enqueue or execute. |
 | `add <intent or absolute package path>` | Plan when necessary, then capture the package and queue its tasks in dependency order. Does not execute. |
 | `status` | Reconciled pending, active, accepted and failed counts; the next runnable task; delivery and recovery blockers. |
+| `withdraw <loop-id>` | `queue.py withdraw --repo . <loop-id>` takes back a queued loop none of whose tasks has started and that replaced no legacy row. |
 | `drain` | Resume or drain the queue serially under existing execution authorization. |
 | Bare intent | Plan; when the request authorizes implementation, continue through add and drain without reconfirmation. |
 | No arguments | Status. |
@@ -104,7 +105,7 @@ For read-only consumers, `python3 "$DEVLYN_SKILL_DIR/scripts/queue.py" inspect -
 
 ## drain
 
-`status`, `add` and `drain` write the repository's Git directory, and auto/pr delivery needs network access, so a sandboxed host runs them with escalation or full access.
+`status`, `add`, `withdraw` and `drain` write the repository's Git directory, and auto/pr delivery needs network access, so a sandboxed host runs them with escalation or full access.
 
 See [loop.md](references/loop.md) for an unclear result or `--worktree-root`. The executor is the configured route, the `.devlyn/engines.json` `executor` pin or else this CLI, checked per `_shared/engine-preflight.md`. Pass its argv after `--`. `<git dir>` is the output of `git rev-parse --path-format=absolute --git-common-dir`, where the executor commits and writes its submission; the drain fills `{worktree_git_dir}` with the task worktree's own Git directory, which Codex's sandbox keeps read-only unless that exact directory is listed:
 
@@ -113,7 +114,7 @@ See [loop.md](references/loop.md) for an unclear result or `--worktree-root`. Th
 | Claude | `claude -p "<prompt>" --dangerously-skip-permissions --add-dir "<git dir>"` (drain prepends `--settings <temporary-policy.json> --no-chrome` and any `--disallowedTools=<list>` denies after `claude`) |
 | Codex | `bash "<DEVLYN_SHARED_DIR>/codex-monitored.sh" --skip-git-repo-check -s workspace-write -c 'sandbox_workspace_write.writable_roots=["<git dir>","{worktree_git_dir}"]' -c 'sandbox_workspace_write.network_access=true' "<prompt>"` |
 
-Another engine needs an argv that starts one fresh non-interactive session able, without prompts, to edit, run commands and commit in its task worktree and to write the packet's submission file. `<prompt>` carries the absolute binding values, while `{packet}` stays literal for the drain to fill:
+`<prompt>` carries the absolute binding values, while `{packet}` stays literal for the drain to fill:
 
 ```text
 Execute the devlyn loop task packet {packet}: read its workerPrompt when present; read methodology.defaults.path when named and apply those verified defaults, with explicit user and native owner/project instructions taking precedence, except a Devlyn managed block (devlyn:instructions markers), which those defaults replace; work only in its owned worktree under the installed instructions; meet its obligations, then write its submission and any review records as <DEVLYN_SKILL_DIR>/references/executor.md specifies. Use the literal DEVLYN_SKILL_DIR and DEVLYN_SHARED_DIR bindings in workerPrompt when present; otherwise set DEVLYN_SKILL_DIR=<DEVLYN_SKILL_DIR> and DEVLYN_SHARED_DIR=<DEVLYN_SHARED_DIR> from these literal values. Never use inherited environment values. Never push, open a pull request or merge: the drain delivers.
