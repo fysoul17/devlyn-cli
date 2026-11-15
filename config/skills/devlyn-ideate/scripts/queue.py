@@ -1867,7 +1867,7 @@ def tracked_places(anchor, common, rel):
         for ref in git(anchor, "for-each-ref", "--format=%(refname)", "refs/heads/").splitlines() if ref not in checked_out}
     kinds = git(anchor, "cat-file", "--batch-check=%(objecttype)", data="".join(f"{rev}:{rel}\n" for rev in commits.values()).encode())
     places = [place for place, kind in zip(commits, kinds.split("\n")) if kind == "blob"]
-    linked = sorted(path for path in (common / "worktrees").iterdir() if path.is_dir()) if (common / "worktrees").is_dir() else []
+    linked = sorted(path for path in (common / "worktrees").iterdir() if (path / "index").is_file()) if (common / "worktrees").is_dir() else []
     for name, admin in [(worktrees[0]["worktree"], common), *((registered_worktree(admin), admin) for admin in linked)]:
         listed = subprocess.run(["git", "-c", "core.fsmonitor=false", "-C", str(common), f"--git-dir={admin}", "ls-files", "--",
                                  f":(top,literal){rel}"], capture_output=True)
@@ -2542,16 +2542,17 @@ class QueueTests(unittest.TestCase):
         are not UTF-8, a loop tracked nowhere is withdrawn, and with the loop's queue file staged in that worktree's index
         it is refused, naming the worktree by its administrative directory; a worktree whose gitdir file holds a relative
         path is named as `git worktree list` prints it; an index git cannot read is refused in one sentence naming its
-        worktree and git's message; a file beside the administrative directories, which Git skips, is skipped too. No
-        refusal changes the add record or the capture ref. Before: the missing file stopped every withdraw with a bare
-        FileNotFoundError, the bytes raised an uncaught UnicodeDecodeError, and the unreadable index was refused in git's
-        words alone."""
+        worktree and git's message; a file or an empty directory beside the administrative directories, which Git skips,
+        is skipped too. No refusal changes the add record or the capture ref. Before: the missing file stopped every
+        withdraw with a bare FileNotFoundError, the bytes raised an uncaught UnicodeDecodeError, and the unreadable index
+        was refused in git's words alone; then the empty directory stopped every withdraw as an index git cannot read."""
         import shutil
         common = Path(git(self.anchor, "rev-parse", "--path-format=absolute", "--git-common-dir"))
         rel, work = loop_queue("inv"), self.root / "work"
         admin = common / "worktrees" / work.name
         admin.parent.mkdir()
         (admin.parent / ".DS_Store").write_bytes(b"")  # As a file manager leaves one.
+        (admin.parent / "empty").mkdir()  # Git lists no worktree for it, and git worktree prune deletes it.
 
         def state():
             return (git(self.anchor, "for-each-ref"), sorted((str(path.relative_to(common)), path.read_bytes() if path.is_file() else None)
