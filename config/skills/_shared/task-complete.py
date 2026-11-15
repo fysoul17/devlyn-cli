@@ -695,6 +695,12 @@ def retained_modules(receipt):
             + str(Path(gitdir) / 'modules') + '; retain')
 
 
+def refuse_submodules(receipt, work, gitlinks):
+    retained_modules(receipt)
+    require(not any(path_present(work / relative / '.git') for relative in gitlinks),
+            'working tree contains populated submodules; preserve their source and explicitly resolve them; retain')
+
+
 def remove_managed_registration(receipt):
     retained_modules(receipt)
     require(not path_present(receipt['worktree']), 'managed tree reappeared; retain registration')
@@ -765,10 +771,7 @@ def removal_eligibility(receipt, path, *, abandonment, partial):
             require(stage == '0' and known.get(relative) == (mode, oid), 'partial checkout index changed; retain: ' + relative)
             indexed[relative] = (mode, oid)
     require(abandonment or indexed == known, 'removal index changed; retain')
-    retained_modules(receipt)
-    require(not any(mode == '160000' and path_present(work / relative / '.git')
-                        for relative, (mode, oid) in known.items()),
-            'working tree contains populated submodules; preserve their source and explicitly resolve them; retain')
+    refuse_submodules(receipt, work, [relative for relative, (mode, oid) in known.items() if mode == '160000'])
     # Git's own comparison applies eol/clean filters and gitlink semantics. A
     # private baseline index also handles an interrupted checkout's missing entries.
     with tempfile.TemporaryDirectory(prefix='.removal-index-', dir=path.parent) as temporary:
@@ -1241,7 +1244,11 @@ def removable(receipt, work):
     # native removal would delete it with its uncommitted work.
     nested = [p for p in git(work, "ls-files", "--others", "--ignored", "--exclude-standard", "-z").split("\0") if p.endswith("/")]
     require(not nested, "nested repository or worktree inside the task tree: " + ", ".join(nested) + "; retain")
-    if not storage_call('managed_receipt', receipt):
+    if storage_call('managed_receipt', receipt):
+        return
+    if sys.platform == "win32":
+        outside(work)  # The move that starts the removal is the writer check there (move_aside).
+    else:
         stopped_writers(work)
 
 
@@ -1369,6 +1376,10 @@ def clean_scratch(receipt, path, writers_stopped):
     require(scratch == scratch.resolve() and scratch.is_dir(), "owned scratch missing or redirected; retain and inspect")
     identity = workspace_identity(scratch, path.parent)
     require(same_workspace_identity(identity, receipt["scratch_identity"]), "scratch directory was replaced; retain")
+    if sys.platform == "win32" and not any(scratch.iterdir()):  # Nothing to delete, so nothing the refusals below guard.
+        receipt["scratch_cleanup"] = {"status": "CLEAN", "logical_bytes_removed": 0}
+        atomic_json(path, receipt)
+        return receipt["scratch_cleanup"]
     require(shutil.rmtree.avoids_symlink_attacks, "safe scratch removal unsupported on this platform; retain")
     require(not any(mount.is_relative_to(scratch) for mount in scratch_mounts()), "scratch contains a mounted filesystem; retain")
     stopped_writers(scratch)
@@ -1417,7 +1428,110 @@ def verify_custody(receipt, path):
     require(read_json(path.parent / 'manifest.json') == receipt['files'], 'custody manifest changed')
 
 
-def cleanup_workspace(receipt, path, *, warnings):
+def preserve_records(receipt, path, work):
+    records = records_manifest(work)
+    if records:
+        destination = path.parent / "records"
+        if os.path.lexists(destination) and records_manifest(destination) != records:
+            digest = hashlib.sha256(json.dumps(records, sort_keys=True, separators=(",", ":")).encode()).hexdigest()[:12]
+            destination = path.parent / ("records." + digest)
+        if not os.path.lexists(destination):
+            with tempfile.TemporaryDirectory(prefix=".records-", dir=path.parent) as temporary:
+                shutil.copytree(safe_path(work, ".devlyn"), Path(temporary) / ".devlyn", symlinks=True)
+                require(records_manifest(Path(temporary)) == records, ".devlyn changed while it was copied; stop its writer and resume")
+                Path(temporary).rename(destination)
+        require(records_manifest(destination) == records, f"records copy mismatch; repair and resume: {destination}")
+        if storage_call("managed_receipt", receipt):
+            receipt["storage"]["records_custody"] = {"path": str(destination), "files": records}
+            atomic_json(path, receipt)
+    return records
+
+
+def aside(work):
+    return work.with_name(work.name + ".devlyn-removing")
+
+
+@contextlib.contextmanager
+def long_paths():
+    # The move lengthens every path in the tree; Git for Windows reads and deletes past MAX_PATH only with long paths.
+    # Every Git child started in the span inherits it, after the entries the environment already has (Git 2.31).
+    count = int(os.environ.get("GIT_CONFIG_COUNT") or 0)
+    names = ("GIT_CONFIG_COUNT", f"GIT_CONFIG_KEY_{count}", f"GIT_CONFIG_VALUE_{count}")
+    saved = {name: os.environ.get(name) for name in names}
+    os.environ.update(zip(names, (str(count + 1), "core.longpaths", "true")))
+    try:
+        yield
+    finally:
+        for name, value in saved.items():
+            if value is None:
+                os.environ.pop(name, None)
+            else:
+                os.environ[name] = value
+
+
+def move_aside(work):
+    # Windows refuses to rename a folder while a process holds a handle in it or below it. The Windows error stays in
+    # the message: a refusal can also be an access denied for another reason.
+    try:
+        os.rename(work, aside(work))
+    except PermissionError as exc:
+        raise WriterActive(f"a program still uses {work} ({exc}); close it, then resume") from exc
+    except OSError as exc:
+        raise WritersUnobservable(f"cannot move {work} aside to remove it ({exc}); retain") from exc
+
+
+def remove_by_moving(receipt, work):
+    """The Windows removal of a merged or on-base tree: its move is the writer check and is never undone."""
+    moved = aside(work)
+    # Git's unforced removal would refuse these after the move, so they are refused while the tree is in place.
+    refuse_submodules(receipt, work, [item.split("\t", 1)[1] for item in
+                                      gref(receipt, "ls-tree", "-r", "-z", receipt["publish_sha"]).split("\0")
+                                      if item.startswith("160000 ")])
+    require(not path_present(moved) and all(not moved.is_relative_to(p) and not p.is_relative_to(moved)
+                                             for p in map(Path, registrations(receipt))),
+            f"{moved} exists or overlaps a registered worktree; leave it, keep {work}, inspect both, then resume")
+    version = re.match(r"git version (\d+)\.(\d+)", command(["git", "--version"]))
+    if not version or (int(version[1]), int(version[2])) < (2, 31):
+        raise WritersUnobservable("removing a task checkout on Windows needs Git 2.31 or later; update Git, then resume")
+    move_aside(work)
+    with long_paths():
+        gref(receipt, "worktree", "repair", str(moved))
+        gref(receipt, "worktree", "remove", str(moved))
+
+
+@long_paths()
+def remove_moved(receipt, path, work, anchor):
+    """Finish a Windows removal interrupted after its move, forward only, rechecking the moved tree."""
+    require(receipt.get("writers_released"), "wait actual children, stop/yield known writers, then resume with --writers-stopped")
+    moved = aside(work)
+    foreign = f"{moved} cannot be verified as the task checkout moved from {work}; leave both, inspect them, then resume"
+    pointer = moved / ".git"
+    require(path_present(pointer) and stat.S_ISREG(pointer.lstat().st_mode), foreign)
+    kind, _, value = pointer.read_text(encoding="utf-8").partition(":")
+    gitdir = Path(os.path.normpath(moved / value.strip()))
+    require(kind == "gitdir" and gitdir == Path(receipt["worktree_gitdir"]), foreign)
+    # A prune, or a Git removal that failed part way, deletes the registration that Git needs to remove the tree. Only
+    # the folder's own inode, which a rename keeps, then tells the checkout from another folder naming that Gitdir.
+    if not path_present(gitdir):
+        require(moved.stat().st_ino == receipt["worktree_identity"][0][1], foreign)
+        raise CompletionError(f"{moved} is the task checkout moved from {work}, but its Git registration is gone; "
+                              "inspect it and remove it by hand, then resume")
+    require(gitdir.is_dir() and same_workspace_identity(workspace_identity(moved, gitdir), receipt["worktree_identity"]), foreign)
+    # Until the repair, Git may list the tree at its original path only, never another registration at the moved one.
+    row = registrations(receipt).get(str(moved.resolve()))
+    require(row is None or row.get("branch") == "refs/heads/" + receipt["branch"], foreign)
+    verify_files(moved, receipt["files"])
+    records = preserve_records(receipt, path, moved)
+    outside(moved)
+    require(anchor is None or not (os.path.samefile(moved, anchor) if os.path.exists(anchor) else moved == anchor),
+            "cannot clean the current allocation's anchor checkout: " + str(anchor))
+    gref(receipt, "worktree", "repair", str(moved))
+    removable(dict(receipt, worktree=str(moved)), moved)
+    require(records_manifest(moved) == records, ".devlyn changed after it was copied; stop its writer and resume")
+    gref(receipt, "worktree", "remove", str(moved))
+
+
+def cleanup_workspace(receipt, path, *, warnings, anchor=None):
     sha = receipt["publish_sha"]
     branch_ref = "refs/heads/" + receipt["branch"]
     work = Path(receipt["worktree"])
@@ -1434,21 +1548,7 @@ def cleanup_workspace(receipt, path, *, warnings):
             partial = storage_call("managed_receipt", receipt) and "tree_removal_digest" in receipt["storage"]
             if not partial:
                 removable(receipt, work)
-            records = {} if partial else records_manifest(work)
-            if records:
-                destination = path.parent / "records"
-                if os.path.lexists(destination) and records_manifest(destination) != records:
-                    digest = hashlib.sha256(json.dumps(records, sort_keys=True, separators=(",", ":")).encode()).hexdigest()[:12]
-                    destination = path.parent / ("records." + digest)
-                if not os.path.lexists(destination):
-                    with tempfile.TemporaryDirectory(prefix=".records-", dir=path.parent) as temporary:
-                        shutil.copytree(safe_path(work, ".devlyn"), Path(temporary) / ".devlyn", symlinks=True)
-                        require(records_manifest(Path(temporary)) == records, ".devlyn changed while it was copied; stop its writer and resume")
-                        Path(temporary).rename(destination)
-                require(records_manifest(destination) == records, f"records copy mismatch; repair and resume: {destination}")
-                if storage_call("managed_receipt", receipt):
-                    receipt["storage"]["records_custody"] = {"path": str(destination), "files": records}
-                    atomic_json(path, receipt)
+            records = {} if partial else preserve_records(receipt, path, work)
             if not partial:
                 removable(receipt, work)
                 require(records_manifest(work) == records, ".devlyn changed after it was copied; stop its writer and resume")
@@ -1457,6 +1557,8 @@ def cleanup_workspace(receipt, path, *, warnings):
                 if str(work) in registrations(receipt):
                     remove_managed_registration(receipt)
                 sync_surviving_directory(Path(receipt["common_gitdir"]) / "worktrees")
+            elif sys.platform == "win32":
+                remove_by_moving(receipt, work)
             else:
                 gref(receipt, "worktree", "remove", str(work))
         else:
@@ -1467,6 +1569,8 @@ def cleanup_workspace(receipt, path, *, warnings):
                 sync_surviving_directory(work.parent)
                 sync_surviving_directory(Path(receipt["common_gitdir"]) / "worktrees")
             else:
+                if sys.platform == "win32" and path_present(aside(work)):
+                    remove_moved(receipt, path, work, anchor)
                 require(str(work) not in registrations(receipt), "missing worktree is still registered; retain")
         if storage_call("managed_receipt", receipt):
             finish_managed_removal(receipt, path, managed_registration(receipt, recovery=True))
@@ -1494,11 +1598,11 @@ def verify_delivery(receipt, path, pr):
     require(remote_url(receipt) == receipt["remote_url"], "remote changed during the delivery checks; retain resources")
 
 
-def remove_delivered(receipt, path, *, warnings=None):
+def remove_delivered(receipt, path, *, warnings=None, anchor=None):
     warnings = [] if warnings is None else warnings
     sha = receipt["publish_sha"]
     branch_ref = "refs/heads/" + receipt["branch"]
-    cleanup_workspace(receipt, path, warnings=warnings)
+    cleanup_workspace(receipt, path, warnings=warnings, anchor=anchor)
     checked_out = [p for p, row in registrations(receipt).items() if row.get("branch") == branch_ref]
     require(not checked_out, "task branch is still checked out at " + ", ".join(checked_out) + "; switch it off the task branch before cleanup")
     # Check ownership/ref identity once more immediately before each deletion.
@@ -1518,9 +1622,9 @@ def remove_delivered(receipt, path, *, warnings=None):
     atomic_json(path, receipt)
 
 
-def cleanup(receipt, path, pr, *, warnings=None):
+def cleanup(receipt, path, pr, *, warnings=None, anchor=None):
     verify_delivery(receipt, path, pr)
-    remove_delivered(receipt, path, warnings=warnings)
+    remove_delivered(receipt, path, warnings=warnings, anchor=anchor)
 
 
 def resolve_receipt(path, *, operation_id=None):
@@ -1698,7 +1802,7 @@ def reconcile(common, allocated, anchor, *, exclude_receipts=(), warnings=None):
                     cleanup_delivered(receipt, path, pr, warnings=warnings)
                 else:
                     try:
-                        cleanup(receipt, path, pr, warnings=warnings)
+                        cleanup(receipt, path, pr, warnings=warnings, anchor=anchor)
                     except (CompletionError, OSError) as error:
                         if "workspace_cleanup" in receipt:
                             # A retained cleanup names its latest refusal, which may guard less than the first.
@@ -3026,6 +3130,20 @@ ctypes.CDLL(None).pthread_exit(None)
                 clean_scratch(receipt, self.receipt, True)
         self.assertEqual((scratch / "keep").read_text(), "retained")
 
+    def test_windows_empty_scratch_is_clean_and_scratch_with_files_is_retained(self):
+        # Prediction: on win32, where safe scratch removal is unsupported, an empty scratch records CLEAN with 0 bytes and
+        # one that holds a file stays with it. Before: both refused.
+        from unittest.mock import patch
+        scratch = Path(self.allocate()["scratch"])
+        receipt = read_json(self.receipt)
+        clean = {"status": "CLEAN", "logical_bytes_removed": 0}
+        with patch.object(sys, "platform", "win32"), patch.object(shutil.rmtree, "avoids_symlink_attacks", False):
+            self.assertEqual((clean_scratch(receipt, self.receipt, True), read_json(self.receipt)["scratch_cleanup"]), (clean, clean))
+            (scratch / "build").write_bytes(b"output")
+            with self.assertRaisesRegex(CompletionError, "safe scratch removal unsupported"):
+                clean_scratch(receipt, self.receipt, True)
+        self.assertEqual((scratch / "build").read_bytes(), b"output")
+
     def test_scratch_mount_table_parsing_preserves_ambiguous_literal_paths(self):
         from unittest.mock import patch
         target = "/task/scratch/name on inside\\040literal"
@@ -3638,21 +3756,321 @@ ctypes.CDLL(None).pthread_exit(None)
         self.assertFalse(self.task.exists())
         self.assertEqual(self.g("branch", "--list", "task/fixture"), "")
 
-    def test_unobservable_writers_settle_a_merged_delivery_and_retain_the_workspace(self):
-        from unittest.mock import patch
+    def merged(self, *, released=True):
         self.allocate(); self.accept()
-        self.complete("--mode", "pr", "--writers-stopped")
+        self.complete("--mode", "pr", *(["--writers-stopped"] if released else []))
         self.merge_pr()
-        args = argparse.Namespace(receipt=str(self.receipt), acceptance=None, mode=None, local_only=False, writers_stopped=False)
-        with patch.object(sys, "platform", "win32"), patch.dict(os.environ, self.env):
-            result = complete(args)
+        return self.task.with_name(self.task.name + ".devlyn-removing")
+
+    def complete_on_windows(self, rename=None, *, writers_stopped=False, **names):
+        # As native Windows reports itself; `rename` replaces os.rename for the task tree only.
+        from unittest.mock import patch
+        real = os.rename
+        def tree_rename(source, target, *args, **kwargs):
+            if rename and Path(source) == self.task:
+                return rename(source, target)
+            return real(source, target, *args, **kwargs)
+        args = argparse.Namespace(receipt=str(self.receipt), acceptance=None, mode=None, local_only=False,
+                                  writers_stopped=writers_stopped)
+        with patch.object(sys, "platform", "win32"), patch.dict(os.environ, self.env), \
+                patch.object(os, "rename", tree_rename), patch.dict(complete.__globals__, names):
+            return complete(args)
+
+    def kill_after_the_move(self):
+        move = os.rename
+        def killed(source, target):
+            move(source, target)
+            raise RuntimeError("fixture kill after the move")
+        with self.assertRaisesRegex(RuntimeError, "fixture kill"):
+            self.complete_on_windows(killed)
+
+    def assert_windows_removal_completed(self, result, moved):
+        self.assertEqual((result["status"], result["delivery_status"], result["workspace_cleanup"]), ("COMPLETE", "COMPLETE", None))
+        self.assertFalse(os.path.lexists(self.task) or os.path.lexists(moved))
+        self.assertFalse({str(self.task), str(moved)} & set(registrations(read_json(self.receipt))))
+        self.assertEqual(self.g("branch", "--list", "task/fixture"), "")
+        self.assertEqual(self.g("ls-remote", "origin", "refs/heads/task/fixture"), "")
+
+    def assert_windows_removal_retained(self, result, reason):
+        # A refused removal of a merged delivery: delivery COMPLETE, the refusal and its resume recorded, both task refs kept.
         self.assertEqual((result["status"], result["delivery_status"]), ("CLEANUP_PENDING", "COMPLETE"))
-        self.assertIn("writer observation unsupported", result["workspace_cleanup"]["reason"])
-        receipt = json.loads(self.receipt.read_text(encoding="utf-8"))
-        self.assertEqual((receipt["delivery"], receipt.get("status")), ("COMPLETE", None))
-        self.assertTrue(self.task.exists())
-        self.assertNotEqual(self.g("branch", "--list", "task/fixture"), "")
+        self.assertIn(reason, result["workspace_cleanup"]["reason"])
+        self.assertIn("complete --receipt", result["resume"])
+        self.assertEqual(read_json(self.receipt)["delivery"], "COMPLETE")
+        self.assertEqual(self.g("rev-parse", "task/fixture"), self.sha)
         self.assertEqual(self.g("ls-remote", "origin", "refs/heads/task/fixture").split()[0], self.sha)
+
+    def test_windows_removal_waits_while_the_move_is_refused_and_completes_once_it_succeeds(self):
+        # Prediction: on win32 a merged delivery's tree is moved aside, then removed. A refused move keeps delivery
+        # COMPLETE and the tree, its registration and both task branches, with the in-use reason and the Windows error;
+        # the resume then moves and removes it. A Git without `worktree repair` or GIT_CONFIG_COUNT (2.30) keeps the tree
+        # without a move, naming the version needed. stopped_writers itself stays unsupported there.
+        # Before: every win32 removal was retained as "writer observation unsupported", without a move.
+        from unittest.mock import patch
+        moved = self.merged()
+        attempts = []
+        run = command
+        def older(argv, **kwargs):
+            return "git version 2.30.0" if argv == ["git", "--version"] else run(argv, **kwargs)
+        result = self.complete_on_windows(lambda source, target: attempts.append(target), command=older)
+        self.assertEqual((result["status"], attempts), ("CLEANUP_PENDING", []))
+        self.assertEqual(result["workspace_cleanup"]["reason"],
+                         "removing a task checkout on Windows needs Git 2.31 or later; update Git, then resume")
+        def held(source, target):
+            attempts.append(target)
+            raise PermissionError(13, "fixture: the process cannot access the file because it is being used by another process")
+        result = self.complete_on_windows(held)
+        self.assertEqual((result["status"], result["delivery_status"]), ("CLEANUP_PENDING", "COMPLETE"))
+        self.assertIn(f"a program still uses {self.task}", result["workspace_cleanup"]["reason"])
+        self.assertIn("being used by another process", result["workspace_cleanup"]["reason"])
+        self.assertEqual(attempts, [moved])
+        self.assertTrue(self.task.is_dir() and not os.path.lexists(moved))
+        self.assertIn(str(self.task), registrations(read_json(self.receipt)))
+        self.assertEqual(self.g("rev-parse", "task/fixture"), self.sha)
+        self.assertEqual(self.g("ls-remote", "origin", "refs/heads/task/fixture").split()[0], self.sha)
+        self.assert_windows_removal_completed(self.complete_on_windows(), moved)
+        with patch.object(sys, "platform", "win32"), self.assertRaisesRegex(WritersUnobservable, "unsupported on this platform"):
+            stopped_writers(self.root)
+
+    def test_windows_removal_refuses_populated_submodules_before_any_move(self):
+        # Prediction: Git's unforced removal would refuse a populated submodule after the move, so it is refused while the
+        # tree is in place: CLEANUP_PENDING with delivery COMPLETE naming the retained module repositories, never moved,
+        # nothing deleted. Before (this branch on the old base): BLOCKED with delivery unrecorded.
+        module = self.root / "module"
+        self.run_cmd(["git", "init", "--initial-branch=main", str(module)])
+        self.g("commit", "--allow-empty", "-m", "module", work=module)
+        self.g("submodule", "add", str(module), "module")
+        self.g("commit", "-m", "add module")
+        self.g("push", "origin", "main")
+        moved = self.merged()
+        self.g("submodule", "update", "--init", work=self.task)
+        attempts = []
+        self.assert_windows_removal_retained(self.complete_on_windows(lambda source, target: attempts.append(target)),
+                                             "retained populated submodules repositories block removal")
+        self.assertEqual(attempts, [])
+        self.assertTrue((self.task / "module/.git").exists() and not os.path.lexists(moved))
+
+    def test_windows_removal_refuses_a_destination_that_overlaps_a_registration_before_any_move(self):
+        # Prediction: a registration at the moved name, its folder absent, is refused as allocation refuses an overlap:
+        # CLEANUP_PENDING with delivery COMPLETE naming that path, never moved; once it is pruned the resume removes the
+        # tree. Before (this branch on the old base): BLOCKED with delivery unrecorded.
+        moved = self.merged()
+        self.g("worktree", "add", "-b", "other", str(moved), "main")
+        shutil.rmtree(moved)
+        attempts = []
+        self.assert_windows_removal_retained(self.complete_on_windows(lambda source, target: attempts.append(target)),
+                                             f"{moved} exists or overlaps a registered worktree")
+        self.assertEqual(attempts, [])
+        self.assertTrue(self.task.is_dir() and not os.path.lexists(moved))
+        self.g("worktree", "prune")
+        self.assert_windows_removal_completed(self.complete_on_windows(), moved)
+
+    def test_windows_removal_finishes_after_a_kill_following_the_move(self):
+        # Prediction: a kill after the move leaves the tree moved and still registered at its original path; the next
+        # completion repairs, checks and removes it. Before: no move happened, so no kill.
+        moved = self.merged()
+        self.kill_after_the_move()
+        self.assertTrue(moved.is_dir() and not os.path.lexists(self.task))
+        self.assertIn(str(self.task), registrations(read_json(self.receipt)))
+        self.assert_windows_removal_completed(self.complete_on_windows(), moved)
+
+    def test_windows_removal_finishes_after_a_kill_following_the_repair(self):
+        # Prediction: a kill after the repair leaves the moved tree registered at its new path only; the next completion
+        # removes it. Before: no repair ran, so no kill.
+        moved = self.merged()
+        run = gref
+        def killed(receipt, *args):
+            output = run(receipt, *args)
+            if args[:2] == ("worktree", "repair"):
+                raise RuntimeError("fixture kill after the repair")
+            return output
+        with self.assertRaisesRegex(RuntimeError, "fixture kill"):
+            self.complete_on_windows(gref=killed)
+        rows = registrations(read_json(self.receipt))
+        self.assertTrue(moved.is_dir() and str(moved) in rows and str(self.task) not in rows)
+        self.assert_windows_removal_completed(self.complete_on_windows(), moved)
+
+    def test_windows_removal_refuses_a_foreign_folder_of_the_moved_name(self):
+        # Prediction: a folder of the moved name that is not this checkout is refused with both paths named and is
+        # never touched, whether the checkout is still in place or was moved elsewhere by a person: each time
+        # CLEANUP_PENDING with delivery COMPLETE. Once the checkout is back and that folder gone, the resume removes it.
+        # Before (this branch on the old base): BLOCKED with delivery unrecorded.
+        moved = self.merged()
+        moved.mkdir()
+        (moved / "foreign").write_text("keep", encoding="utf-8")
+        attempts = []
+        self.assert_windows_removal_retained(self.complete_on_windows(lambda source, target: attempts.append(target)),
+                                             f"{moved} exists or overlaps a registered worktree; leave it, keep {self.task}")
+        self.assertEqual(attempts, [])
+        self.assertTrue(self.task.is_dir())
+        elsewhere = self.task.with_name("elsewhere")
+        self.task.rename(elsewhere)
+        (moved / ".git").write_text(f"gitdir: {self.root / 'foreign.git'}\n", encoding="utf-8")
+        self.assert_windows_removal_retained(self.complete_on_windows(),
+                                             f"{moved} cannot be verified as the task checkout moved from {self.task}")
+        self.assertEqual(sorted(path.name for path in moved.iterdir()), [".git", "foreign"])
+        self.assertTrue((elsewhere / "product").is_file())
+        shutil.rmtree(moved)
+        elsewhere.rename(self.task)
+        self.assert_windows_removal_completed(self.complete_on_windows(), moved)
+
+    def test_windows_removal_after_a_kill_never_deletes_a_record_saved_unseen(self):
+        # Prediction: a record saved into the moved tree after a kill is copied beside the receipt before removal; a
+        # symlink there refuses the removal with the tree kept (CLEANUP_PENDING, delivery COMPLETE). Before: no move
+        # happened, so no kill.
+        moved = self.merged()
+        self.kill_after_the_move()
+        link = moved / ".devlyn/link"
+        link.symlink_to("checks.txt")
+        self.assert_windows_removal_retained(self.complete_on_windows(), "symlink")
+        self.assertTrue((moved / ".devlyn/checks.txt").is_file() and link.is_symlink())
+        link.unlink()
+        (moved / ".devlyn/late.txt").write_text("saved after the kill\n", encoding="utf-8")
+        self.assert_windows_removal_completed(self.complete_on_windows(), moved)
+        self.assertEqual([path.read_text(encoding="utf-8") for path in self.receipt.parent.glob("records*/.devlyn/late.txt")],
+                         ["saved after the kill\n"])
+
+    def test_windows_recovery_needs_the_owners_recorded_release(self):
+        # Prediction: a checkout published without --writers-stopped and renamed by hand to the moved name after the merge
+        # is refused by a completion without that flag, naming it, with its ignored output kept (CLEANUP_PENDING, delivery
+        # COMPLETE); with the flag it is removed. Before: the recovery removed it and its ignored output without the release.
+        moved = self.merged(released=False)
+        (self.task / "ignored").mkdir()
+        (self.task / "ignored/output").write_text("kept", encoding="utf-8")
+        self.task.rename(moved)
+        self.assert_windows_removal_retained(self.complete_on_windows(), "resume with --writers-stopped")
+        self.assertEqual(((moved / "ignored/output").read_text(encoding="utf-8"), (moved / "product").read_text(encoding="utf-8")),
+                         ("kept", "accepted\n"))
+        self.assert_windows_removal_completed(self.complete_on_windows(writers_stopped=True), moved)
+
+    def test_windows_removal_gives_every_git_call_on_the_moved_tree_long_paths(self):
+        # Prediction: after the move, every Git call on the moved tree, in the removal (repair, remove) and in its recovery
+        # (repair, status, ls-files, remove), has core.longpaths=true in its environment after the entries already there;
+        # calls on the tree before the move and after the removal see those entries only. The removal's own `worktree
+        # remove` is recorded, then refused as Git would refuse it, so the recovery runs next. Before: only `worktree
+        # remove` had it, as an argument; the recovery's status and ls-files ran without it.
+        moved = self.merged()
+        self.env.update(GIT_CONFIG_COUNT="1", GIT_CONFIG_KEY_0="fixture.kept", GIT_CONFIG_VALUE_0="yes")
+        calls, refused = [], []
+        run = command
+        def recorded(argv, **kwargs):
+            env = kwargs.get("env") or os.environ
+            calls.append((argv, {name: value for name, value in env.items() if re.fullmatch(r"GIT_CONFIG_(COUNT|KEY_\d+|VALUE_\d+)", name)}))
+            if "remove" in argv and str(moved) in argv and not refused:
+                refused.append(len(calls))
+                raise CompletionError("fixture: Git refused the first removal")
+            return run(argv, **kwargs)
+        result = self.complete_on_windows(command=recorded)
+        self.assertEqual((result["status"], refused), ("CLEANUP_PENDING", [len(calls)]))
+        self.assertIn("fixture: Git refused the first removal", result["workspace_cleanup"]["reason"])
+        self.assertEqual([word for argv, seen in calls if str(moved) in argv for word in argv if word in {"repair", "remove"}],
+                         ["repair", "remove"])
+        self.assert_windows_removal_completed(self.complete_on_windows(command=recorded), moved)
+        kept = {"GIT_CONFIG_COUNT": "1", "GIT_CONFIG_KEY_0": "fixture.kept", "GIT_CONFIG_VALUE_0": "yes"}
+        longpaths = dict(kept, GIT_CONFIG_COUNT="2", GIT_CONFIG_KEY_1="core.longpaths", GIT_CONFIG_VALUE_1="true")
+        on_moved = [(argv, seen) for argv, seen in calls if str(moved) in argv]
+        self.assertLessEqual({"repair", "status", "ls-files", "remove"}, {word for argv, seen in on_moved for word in argv})
+        self.assertEqual([argv for argv, seen in on_moved if seen != longpaths], [])
+        self.assertEqual([argv for argv, seen in calls if (str(self.task) in argv or "push" in argv or "update-ref" in argv)
+                          and seen != kept], [])
+
+    def test_windows_recovery_of_a_moved_checkout_whose_registration_is_gone_is_left_to_a_person(self):
+        # Prediction: after a kill following the move and `git worktree prune`, every completion retains the tree with the
+        # sentence that the registration is gone (CLEANUP_PENDING, delivery COMPLETE) and deletes nothing; once the folder
+        # is removed by hand the completion finishes.
+        # Before: refused as "cannot be verified as the task checkout", which is not true of it.
+        moved = self.merged()
+        self.kill_after_the_move()
+        self.g("worktree", "prune")
+        gone = (f"{moved} is the task checkout moved from {self.task}, but its Git registration is gone; "
+                "inspect it and remove it by hand, then resume")
+        files = sorted(moved.rglob("*"))
+        for attempt in range(2):
+            self.assert_windows_removal_retained(self.complete_on_windows(), gone)
+            self.assertEqual(sorted(moved.rglob("*")), files)
+        shutil.rmtree(moved)
+        self.assert_windows_removal_completed(self.complete_on_windows(), moved)
+
+    def test_windows_recovery_never_calls_a_folder_naming_the_pruned_registration_the_task_checkout(self):
+        # Prediction: the checkout moved elsewhere by a person and `git worktree prune`, then a folder at the moved name
+        # whose .git names the recorded Gitdir: refused as not verifiable as the task checkout, both folders untouched
+        # (CLEANUP_PENDING, delivery COMPLETE).
+        # Before: called the task checkout whose registration is gone, and the reader was told to remove it by hand.
+        moved = self.merged()
+        gitdir = read_json(self.receipt)["worktree_gitdir"]
+        elsewhere = self.task.with_name("elsewhere")
+        self.task.rename(elsewhere)
+        self.g("worktree", "prune")
+        moved.mkdir()
+        (moved / "foreign").write_text("keep", encoding="utf-8")
+        (moved / ".git").write_text(f"gitdir: {gitdir}\n", encoding="utf-8")
+        files = sorted(elsewhere.rglob("*"))
+        foreign = f"{moved} cannot be verified as the task checkout moved from {self.task}; leave both, inspect them, then resume"
+        self.assert_windows_removal_retained(self.complete_on_windows(), foreign)
+        self.assertEqual(sorted(path.name for path in moved.iterdir()), [".git", "foreign"])
+        self.assertEqual((sorted(elsewhere.rglob("*")), (elsewhere / "product").read_text(encoding="utf-8")), (files, "accepted\n"))
+
+    def test_windows_recovery_never_removes_a_moved_checkout_its_anchor_names_by_another_path(self):
+        # Prediction: an anchor naming the moved checkout through a symlink is the same folder: the recovery refuses with
+        # the anchor reason and keeps it. Before: the paths were compared as strings and the checkout was removed.
+        from unittest.mock import patch
+        moved = self.merged()
+        self.kill_after_the_move()
+        link = self.root / "anchor"
+        link.symlink_to(moved, target_is_directory=True)
+        receipt = read_json(self.receipt)
+        with patch.object(sys, "platform", "win32"), patch.dict(os.environ, self.env), \
+                self.assertRaisesRegex(CompletionError, re.escape("anchor checkout: " + str(link))):
+            cleanup(receipt, self.receipt, receipt["merge"], anchor=link)
+        self.assertEqual((moved / "product").read_text(encoding="utf-8"), "accepted\n")
+
+    def test_windows_recovery_refuses_a_nested_repository_under_an_ignored_path_of_the_moved_tree(self):
+        # Prediction: a repository with uncommitted work that appears under an ignored path of the moved tree after a kill
+        # refuses the recovery ("nested repository"; CLEANUP_PENDING, delivery COMPLETE) and its file stays; once it is
+        # gone the resume removes the tree. Without the moved tree's removal checks, Git's removal deletes it.
+        moved = self.merged()
+        self.kill_after_the_move()
+        nested = moved / "ignored/nested"
+        self.run_cmd(["git", "init", "--initial-branch=main", str(nested)])
+        (nested / "work.txt").write_text("uncommitted\n", encoding="utf-8")
+        self.assert_windows_removal_retained(self.complete_on_windows(),
+                                             "nested repository or worktree inside the task tree: ignored/nested/")
+        self.assertEqual((nested / "work.txt").read_text(encoding="utf-8"), "uncommitted\n")
+        shutil.rmtree(nested)
+        self.assert_windows_removal_completed(self.complete_on_windows(), moved)
+
+    def test_windows_removal_refuses_a_gitlink_populated_by_a_plain_clone_before_any_move(self):
+        # Prediction: a gitlink whose path holds a repository cloned there, with nothing under the tree's Gitdir, is
+        # refused by the populated-gitlink check before any move, the tree in place (CLEANUP_PENDING, delivery COMPLETE).
+        # Without that check the tree is moved and Git's unforced removal refuses it at the moved name.
+        module = self.root / "module"
+        self.run_cmd(["git", "init", "--initial-branch=main", str(module)])
+        self.g("commit", "--allow-empty", "-m", "module", work=module)
+        self.g("submodule", "add", str(module), "module")
+        self.g("commit", "-m", "add module")
+        self.g("push", "origin", "main")
+        moved = self.merged()
+        self.run_cmd(["git", "clone", "--quiet", str(module), str(self.task / "module")])
+        attempts = []
+        self.assert_windows_removal_retained(self.complete_on_windows(lambda source, target: attempts.append(target)),
+                                             "working tree contains populated submodules")
+        self.assertEqual(attempts, [])
+        self.assertFalse(path_present(Path(read_json(self.receipt)["worktree_gitdir"]) / "modules"))
+        self.assertTrue((self.task / "module/.git").is_dir() and not os.path.lexists(moved))
+
+    def test_windows_removal_keeps_the_tree_when_its_move_fails_for_another_reason(self):
+        # Prediction: a move that fails with an OSError other than PermissionError keeps delivery COMPLETE and the tree,
+        # with "cannot move ... aside" and the error; the resume then removes it. Without that branch the raw error blocks.
+        moved = self.merged()
+        def failed(source, target):
+            raise OSError(errno.EXDEV, "fixture: not the same device")
+        result = self.complete_on_windows(failed)
+        self.assertEqual((result["status"], result["delivery_status"]), ("CLEANUP_PENDING", "COMPLETE"))
+        self.assertIn(f"cannot move {self.task} aside to remove it", result["workspace_cleanup"]["reason"])
+        self.assertIn("not the same device", result["workspace_cleanup"]["reason"])
+        self.assertTrue(self.task.is_dir() and not os.path.lexists(moved))
+        self.assertIn(str(self.task), registrations(read_json(self.receipt)))
+        self.assert_windows_removal_completed(self.complete_on_windows(), moved)
 
     def test_standalone_cleanup_checks_writers_before_reading_records(self):
         from unittest.mock import patch
@@ -3878,6 +4296,23 @@ ctypes.CDLL(None).pthread_exit(None)
         self.assertIn("anchor", result["reconciled"][0]["reason"])
         self.assertEqual(self.anchor_state(self.task), before)
         self.assertNotEqual(self.g("branch", "--list", "task/fixture"), "")
+        self.assertEqual(self.g("ls-remote", "origin", "refs/heads/task/fixture").split()[0], self.sha)
+
+    def test_reconcile_never_removes_a_moved_checkout_an_allocation_is_anchored_in(self):
+        # Prediction: on win32, after a kill following the move, an allocation anchored in the moved checkout retains it
+        # with the anchor reason. Before: no move happened, so no kill.
+        from unittest.mock import patch
+        moved = self.merged()
+        self.kill_after_the_move()
+        before = self.anchor_state(moved)
+        args = self.allocation_args("next", self.root / "next")
+        args.repo = str(moved)
+        with patch.object(sys, "platform", "win32"), patch.dict(os.environ, self.env):
+            result = allocate(args)
+        self.assertEqual(result["status"], "ALLOCATED")
+        self.assertEqual([row["status"] for row in result["reconciled"]], ["RETAINED"])
+        self.assertIn("anchor checkout: " + str(moved), result["reconciled"][0]["reason"])
+        self.assertEqual(self.anchor_state(moved), before)
         self.assertEqual(self.g("ls-remote", "origin", "refs/heads/task/fixture").split()[0], self.sha)
 
     def test_reconcile_reports_scratch_cleanup_pending(self):

@@ -76,6 +76,8 @@ if behavior.get("review", True):
         "requirements": [{"id": r} for r in packet["review_requirements"]] if behavior.get("malformed_review") else packet["review_requirements"]}),
         encoding="utf-8")
     submission["reviews"] = [str(review)]
+if behavior.get("scratch"):
+    (pathlib.Path(packet["scratch"]) / "build-output").write_text("disposable", encoding="utf-8")
 if behavior.get("change_after_review"):
     submission["source_sha"] = commit({"late.txt": "late change\n"}, "change after checks and review")
 if behavior.get("detach"):
@@ -103,11 +105,13 @@ if behavior.get("linger"):  # a child that outlives the executor, holding a work
         time.sleep(0.05)
 pathlib.Path(packet["submission"]).write_text(json.dumps(submission), encoding="utf-8")
 '''
-# Runs the driver where task-complete cannot observe writers, as on native Windows (a no-op there).
+# Runs the driver where task-complete cannot observe writers, as on native Windows.
 UNOBSERVABLE = ("import runpy, sys\n"
                 "queue = runpy.run_path(sys.argv[1])\n"
-                "queue['shared']('task-complete')\n"
-                "sys.platform = 'win32'\n"
+                "helper = queue['shared']('task-complete')\n"
+                "def unobservable(work):\n"
+                "    raise helper['WritersUnobservable']('writer observation unsupported on this platform; retain workspace')\n"
+                "helper['stopped_writers'] = helper['complete'].__globals__['stopped_writers'] = unobservable\n"
                 "sys.argv = sys.argv[1:]\n"
                 "queue['shared']('platform-support')['configure_utf8']()\n"
                 "sys.exit(queue['main']())\n")
@@ -3698,7 +3702,8 @@ class LoopFixture(unittest.TestCase):
         self.assertEqual((self.tasks(self.drain(local=False, repo=linked))["au.t1"]["delivery"], self.calls("au.t1")), ("COMPLETE", 1))
 
     def test_retained_scratch_reports_its_reason_and_resume(self):
-        self.plan("inv", [CHAIN[0]], {"inv.t1": {"product": "greeting"}})
+        # Scratch that holds files: natively on Windows an empty scratch is CLEAN.
+        self.plan("inv", [CHAIN[0]], {"inv.t1": {"product": "greeting", "scratch": True}})
         result = self.drain(unobservable=True)
         scratch = self.receipt("inv.t1")["scratch_cleanup"]
         self.assertEqual(scratch["status"], "RETAINED")
