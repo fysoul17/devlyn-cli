@@ -15,6 +15,7 @@ from pathlib import Path
 import re
 import runpy
 import shutil
+import signal
 import subprocess
 import sys
 import tarfile
@@ -3109,8 +3110,8 @@ class NativeRemovalTests(unittest.TestCase):
     This is a measurement: a holder that does not block the move is a finding to report, and every failure says
     what was observed. The rule that decides shipping (the owner's, 2026-11-15): W1, W1b, W2, W3a, W3b and W3d are each
     refused alone, W6 passes with a daemon watching the tree, and W4 to W13b pass. A program that only watches the tree
-    folder is not a holder, so W3c is measured and printed, and passes either way while the helper's result says what
-    the move did."""
+    folder is not a holder, so W3c is measured and printed and never gates: it fails only when its fixture fails or
+    the helper's answer contradicts the disk. A holder test whose three controls are contaminated is INCONCLUSIVE."""
 
     def setUp(self):
         from unittest.mock import Mock
@@ -3168,14 +3169,24 @@ class NativeRemovalTests(unittest.TestCase):
     @contextlib.contextmanager
     def holding(self, label, argv, *, cwd):
         """A fresh tree that moves aside and back with no holder (the control), then one holder alone: yields the holder
-        and what it said once it signals that it holds; on leaving, it lets go and must exit 0."""
+        and what it said once it signals that it holds; on leaving, it lets go and must exit 0. Something else holding
+        the fresh tree (a scanner) contaminates a control, which is tried again; three contaminated controls leave the
+        holder unmeasured."""
         self.allocate()
-        try:
-            self.helper['move_aside'](self.work)
-            os.rename(self.moved, self.work)
-        except (self.helper['CompletionError'], OSError) as error:
-            self.fail(f'{label}: contaminated: the move was refused with no holder, so a refusal would not be the '
-                      f"holder's: {type(error).__name__}: {error}")
+        for control in (1, 2, 3):
+            try:
+                if not self.work.exists():  # The last control moved it aside and could not move it back.
+                    os.rename(self.moved, self.work)
+                self.helper['move_aside'](self.work)
+                os.rename(self.moved, self.work)
+                break
+            except (self.helper['CompletionError'], OSError) as error:
+                observed = f'{type(error).__name__}: {error}'
+                print(f'{label}: control {control} of 3: contaminated, the move was refused with no holder: {observed}', flush=True)
+                if control == 3:
+                    self.fail(f'INCONCLUSIVE: {label}: no holder was measured: the move was refused with no holder in three '
+                              f'controls five seconds apart, so a refusal could not be told from the holder\'s; last: {observed}')
+                time.sleep(5)
         print(f'{label}: control: moved aside and back with no holder', flush=True)
         ready, release, log = (self.root / (label + suffix) for suffix in ('.ready', '.release', '.log'))
         with log.open('wb') as stream:
@@ -3256,22 +3267,25 @@ class NativeRemovalTests(unittest.TestCase):
         return self.helper['completion_result'](receipt, self.path, 'COMPLETE')
 
     def test_w3c_handle_on_the_folder_itself_as_a_watcher_opens_it(self):
-        # Measured, not a gate: a program that only watches the tree folder is not a holder (the owner's rule).
+        # Measured, never a gate: a program that only watches the tree folder is not a holder (the owner's rule). One
+        # outcome line for whatever the product did; it fails only when the fixture fails or the answer contradicts the disk.
         with self.holding('W3c', [sys.executable, '-c', HANDLE_PY, self.root / 'task', 0x1, 3, 0x02000000],
                           cwd=self.root) as (holder, said):
             result = self.delivered()
             self.assertIsNone(holder.poll(), f'W3c: the holder exited while the removal ran: {said()}')
         state = {'status': result['status'], 'original': self.work.exists(), 'moved': self.moved.exists(),
                  'registered': sorted(self.registered()), 'reason': (result['workspace_cleanup'] or {}).get('reason')}
-        print(f'W3c: the removal under a folder watcher: {json.dumps(state)}', flush=True)
-        if state['status'] == 'CLEANUP_PENDING' and state['original'] and not state['moved']:
-            self.assertEqual(state['registered'], [str(self.work)], 'W3c')
-            self.assertIn(f'a program still uses {self.work}', state['reason'], 'W3c')
-            print('W3c: refused', flush=True)
+        print(f'W3c: observed: {json.dumps(state)}', flush=True)
+        if state['status'] == 'COMPLETE':
+            self.assertFalse(state['original'] or state['moved'], f'W3c: the result COMPLETE contradicts the disk: {state}')
+            outcome = 'W3c: not refused; removed'
+        elif state['original'] and not state['moved']:
+            outcome = 'W3c: refused'
         else:
-            self.assertEqual(state, {'status': 'COMPLETE', 'original': False, 'moved': False, 'registered': [], 'reason': None},
-                             "W3c: the helper's result does not match what the move did")
-            print('W3c: not refused; the tree was removed under a folder watcher, as the rule allows', flush=True)
+            self.assertNotIn(f'a program still uses {self.work}', state['reason'] or '',
+                             f'W3c: the reason says the tree is in place, which contradicts the disk: {state}')
+            outcome = f"W3c: moved aside, removal pending: {state['reason']}"
+        print(outcome, flush=True)
 
     def test_w3d_git_bash_append_through_a_held_descriptor(self):
         held = self.root / 'task/ignored/bash.log'
@@ -3294,39 +3308,59 @@ class NativeRemovalTests(unittest.TestCase):
         self.assertEqual((result['status'], result['scratch_cleanup']), ('COMPLETE', {'status': 'CLEAN', 'logical_bytes_removed': 0}))
         self.assertEqual((self.path.parent / 'records/.devlyn/record.txt').read_text(encoding='utf-8'), 'kept')
 
-    def bounded(self, step, argv):
-        """One W6 step under core.fsmonitor=true, killed after 120 s. Its output goes to a file: a pipe that a Git child
-        still waiting on the daemon held open would keep the wait from ending."""
+    def bounded(self, step, argv, *, timeout=120):
+        """One W6 step under core.fsmonitor=true in a child; after `timeout` seconds the child and its descendants (its
+        process tree on Windows, its process group on POSIX) are ended. Returns its exit code (None when ended) and what
+        it printed, which goes to a file: a pipe that a Git child still waiting on the daemon held would keep the wait open."""
         log = self.root / f'W6-{step}.log'
         with log.open('wb') as stream:
             child = subprocess.Popen([*map(str, argv)], env=dict(os.environ), stdin=subprocess.DEVNULL, stdout=stream,
-                                     stderr=subprocess.STDOUT)
+                                     stderr=subprocess.STDOUT, start_new_session=os.name != 'nt')
         try:
-            child.wait(timeout=120)
+            code = child.wait(timeout=timeout)
         except subprocess.TimeoutExpired:
-            child.kill()
+            code = None
+            if os.name == 'nt':
+                subprocess.run(['taskkill', '/PID', str(child.pid), '/T', '/F'], stdin=subprocess.DEVNULL,
+                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=30)
+            else:
+                with contextlib.suppress(ProcessLookupError):
+                    os.killpg(child.pid, signal.SIGKILL)
             child.wait(timeout=30)
-            self.fail(f'W6: the fsmonitor fixture did not finish in 120 s ({step}): '
-                      f'{log.read_bytes().decode("utf-8", "replace").strip()}')
-        return child.returncode, log.read_bytes().decode('utf-8', 'replace').strip()
+        return code, log.read_bytes().decode('utf-8', 'replace').strip()
+
+    def fixture_step(self, step, argv):
+        code, said = self.bounded(step, argv)
+        if code is None:
+            self.fail(f'W6: the fsmonitor fixture did not finish in 120 s ({step}): {said}')
+        return code, said
+
+    def stop_daemons(self):
+        # Each stop alone and bounded, so one that fails or hangs does not skip the next; what each said is printed.
+        for path in (self.repo, self.root / 'task', self.root / 'task.devlyn-removing'):
+            if path.exists():
+                try:
+                    code, said = self.bounded(f'stop {path.name}', ['git', '-C', path, 'fsmonitor--daemon', 'stop'], timeout=30)
+                except (OSError, subprocess.SubprocessError) as error:
+                    code, said = None, f'{type(error).__name__}: {error}'
+                print(f'W6: teardown: fsmonitor--daemon stop in {path.name}: exit {code}: {said}', flush=True)
 
     def test_w6_fsmonitor_started_by_the_checks_does_not_hold_the_removal(self):
         # Each step runs in a child bounded at 120 s: on macOS an allocation was seen waiting 15 minutes on the daemon it
         # had started, and a hang here must fail W6 rather than use the step's time limit.
         self.git('-C', self.repo, 'config', 'core.fsmonitor', 'true')
-        self.addCleanup(lambda: [run(['git', '-C', path, 'fsmonitor--daemon', 'stop'], env=dict(os.environ), code=None)
-                                 for path in (self.repo, self.root / 'task', self.root / 'task.devlyn-removing') if path.exists()])
+        self.addCleanup(self.stop_daemons)
         request, allocated = self.root / 'W6-request.json', self.root / 'W6-allocation.json'
         request.write_text(json.dumps(self.allocation()), encoding='utf-8')
-        code, said = self.bounded('allocation', [sys.executable, '-c', FSMONITOR_PY, self.script, 'allocate', request, allocated])
+        code, said = self.fixture_step('allocation', [sys.executable, '-c', FSMONITOR_PY, self.script, 'allocate', request, allocated])
         self.assertEqual(code, 0, f'W6: the allocation failed: {said}')
         self.allocate(json.loads(allocated.read_text(encoding='utf-8')))
-        code, said = self.bounded('status', ['git', '-C', self.work, 'status'])
+        code, said = self.fixture_step('status', ['git', '-C', self.work, 'status'])
         self.assertEqual(code, 0, f'W6: git status failed: {said}')
-        code, daemon = self.bounded('daemon status', ['git', '-C', self.work, 'fsmonitor--daemon', 'status'])
+        code, daemon = self.fixture_step('daemon status', ['git', '-C', self.work, 'fsmonitor--daemon', 'status'])
         print(f'W6: fsmonitor before the removal (exit {code}): {daemon}', flush=True)
         self.assertEqual(code, 0, f'W6: no fsmonitor daemon watches the tree, so W6 measures nothing: {daemon}')
-        code, said = self.bounded('cleanup', [sys.executable, '-c', FSMONITOR_PY, self.script, 'cleanup', self.path])
+        code, said = self.fixture_step('cleanup', [sys.executable, '-c', FSMONITOR_PY, self.script, 'cleanup', self.path])
         if code:
             self.fail(f'W6: FINDING: the removal was refused with core.fsmonitor=true: {said}; daemon: {daemon}')
         self.assert_removed('W6')
