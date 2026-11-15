@@ -2628,8 +2628,8 @@ class QueueTests(unittest.TestCase):
         """D1, E6. Prediction: with core.fsmonitor=true and one linked worktree, neither worktree's monitor running (as
         after a restart), withdraw prints WITHDRAWN within 60 s. Before: Git took the Git directory as the work tree of
         each index read, started a monitor for it and waited on it, so withdraw never returned and held its locks. The
-        monitor is turned on after the setup, whose own checkout a starting monitor can hang."""
-        import signal
+        monitor is turned on after the setup, whose own checkout a starting monitor can hang. Withdraw runs as an owned
+        tree (its own POSIX session or Windows job) ended whole within seconds, its output in files no monitor holds open."""
         probe = git_run(self.anchor, "fsmonitor--daemon", "status", env=self.env, ok=(0, 1, 128))
         if probe.returncode == 128:
             self.skipTest(f"no file system monitor here ({probe.stderr.decode('utf-8', 'replace').strip()})")
@@ -2639,15 +2639,14 @@ class QueueTests(unittest.TestCase):
         for work in (self.anchor, linked):
             self.addCleanup(git_run, work, "fsmonitor--daemon", "stop", env=self.env, ok=(0, 128))
         git(self.anchor, "config", "core.fsmonitor", "true", env=self.env)
-        running = subprocess.Popen([sys.executable, str(Path(__file__).resolve()), "withdraw", "inv"], cwd=self.anchor, env=self.env,
-                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8", start_new_session=True)
-        try:
-            out, err = running.communicate(timeout=60)
-        except subprocess.TimeoutExpired:
-            os.killpg(running.pid, signal.SIGKILL)
-            running.communicate()
-            self.fail("withdraw did not return within 60 s")
-        self.assertEqual(json.loads(out)["status"], "WITHDRAWN", out + err)
+        out, err = self.root / "withdraw.out", self.root / "withdraw.err"
+        with out.open("wb") as stdout, err.open("wb") as stderr:
+            code = shared("platform-support")["run_process"]([sys.executable, str(Path(__file__).resolve()), "withdraw", "inv"],
+                                                             subprocess.DEVNULL, 60, on_timeout=None, cwd=self.anchor, env=self.env,
+                                                             stdout=stdout, stderr=stderr)
+        output = out.read_text(encoding="utf-8") + err.read_text(encoding="utf-8")
+        self.assertIsNotNone(code, f"withdraw did not return within 60 s: {output}")
+        self.assertEqual(json.loads(out.read_text(encoding="utf-8"))["status"], "WITHDRAWN", output)
 
     def test_withdraw_refuses_while_it_cannot_read_a_place_that_may_hold_the_loop(self):
         """D1, E6. Prediction: withdraw refuses in one sentence naming the path, and changes nothing, while it cannot read
