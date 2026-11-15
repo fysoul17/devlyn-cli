@@ -462,6 +462,66 @@ assert.deepEqual(fs.readdirSync(path.join(store, 'devlyn-cli')), []);
         self.assertEqual(next(r for r in data['requirements'] if r['name'] == 'gh'),
                          {'name': 'gh', 'required': False, 'available': True, 'version': '2.103.3', 'reasons': []})
 
+    @unittest.skipIf(os.name == 'nt', "the stubs are POSIX scripts; the gate's native status check is the Windows proof")
+    def test_git_bash_is_the_bash_whose_pwd_w_prints_a_windows_path(self):
+        # Prediction: Git for Windows' bash is told from Cygwin's, WSL's and any other bash by its builtin `pwd -W`,
+        # whatever its version label (2.54 and later print x86_64-pc-cygwin); the version is its $BASH_VERSION line,
+        # and no startup file of the user's runs. macOS and Linux bashes refuse -W, so there the row (never required)
+        # is unavailable.
+        clean = {key: value for key, value in environment().items() if key not in ('BASH_ENV', 'ENV')}
+
+        def row(available, version, required=True):
+            return {'name': 'git-bash', 'required': required, 'available': available, 'version': version,
+                    'reasons': [] if available else [{'code': 'requirement-unavailable', 'params': {'name': 'git-bash'}}]}
+
+        def probe(folder, platform='win32', **variables):
+            script = ("if (process.argv[2]) Object.defineProperty(process, 'platform', {value: process.argv[2]});"
+                      "const rows = require(process.argv[1]).requirements();"
+                      "process.stdout.write(JSON.stringify(rows.find((r) => r.name === 'git-bash')));")
+            result = run([NODE, '-e', script, self.package / 'bin/harness-status.js', platform],
+                         env={**clean, 'PATH': str(folder), **variables})
+            return json.loads(result.stdout)
+
+        def stub(name, body=None):
+            folder = self.case / name
+            folder.mkdir()
+            if body is not None:
+                (folder / 'bash').write_text('#!/bin/sh\n' + body, encoding='utf-8')
+                (folder / 'bash').chmod(0o755)
+            return folder
+
+        real = shutil.which('bash')
+        version = run([real, '-c', 'echo "$BASH_VERSION"'], env=clean).stdout.decode().split('(')[0]
+        msys = "printf '5.3.15(2)-release\\n%s\\n' '{}'\n"
+        cases = [('msys', stub('msys', msys.format('C:/Program Files/Git/')), row(True, '5.3.15')),
+                 ('unc', stub('unc', msys.format('//server/share/Git/')), row(True, '5.3.15')),
+                 ('digits in the path', stub('digits', msys.format('C:/Tools/Git 2.53/')), row(True, '5.3.15')),
+                 ('cygwin refuses -W', stub('cygwin', "echo '5.3.15(2)-release'\n"
+                                            "echo 'bash: line 1: pwd: -W: invalid option' >&2\nexit 1\n"), row(False, '5.3.15')),
+                 ('wsl without a distribution', stub('wsl', "echo 'Windows Subsystem for Linux has no installed "
+                                                     "distributions.'\nexit 1\n"), row(False, None)),
+                 ('no bash', stub('none'), row(False, None)),
+                 ('the real bash', Path(real).parent, row(False, version))]
+        for name, folder, expected in cases:
+            with self.subTest(name):
+                self.assertEqual(probe(folder), expected)
+        with self.subTest('the real bash on this platform'):
+            self.assertEqual(probe(Path(real).parent, ''), row(False, version, required=False))
+        with self.subTest('a startup file'):
+            log, startup = self.case / 'startup.log', self.case / 'startup.sh'
+            startup.write_text(f"echo sourced >> '{log}'\ntrap 'echo from the startup file' EXIT\n", encoding='utf-8')
+            # The control: a bash started without -p runs that file, and its trap prints after the script's output.
+            control = run([real, '-c', 'echo script'], env={**clean, 'BASH_ENV': str(startup)}).stdout.decode()
+            self.assertEqual((control, log.read_text(encoding='utf-8')), ('script\nfrom the startup file\n', 'sourced\n'))
+            log.unlink()
+            # A real bash, through the product's own arguments, whose `pwd -W` answers as Git for Windows' does.
+            wrapper = stub('wrapper', f"for arg do\n  shift\n  case $arg in *'pwd -W'*) arg=$(printf '%s\\n' \"$arg\" | "
+                                      f"'{shutil.which('sed')}' 's#pwd -W#echo \"C:/Program Files/Git/\"#') ;; esac\n"
+                                      f"  set -- \"$@\" \"$arg\"\ndone\nexec '{real}' \"$@\"\n")
+            self.assertEqual(probe(wrapper), row(True, version))
+            self.assertEqual(probe(wrapper, BASH_ENV=str(startup)), row(True, version))
+            self.assertFalse(log.exists())
+
     def test_status_source_repository_and_linked_worktree_identity(self):
         repo = self.init_repo(self.case / 'repo')
         (repo / 'package.json').write_text('{"name":"devlyn-cli"}', encoding='utf-8')

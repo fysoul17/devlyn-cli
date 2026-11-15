@@ -70,17 +70,22 @@ function requirements() {
   const probes = [
     ['python', true, 'python3', ['-B', '--version']],
     ['git', true, 'git', ['--version']],
-    ['git-bash', process.platform === 'win32', 'bash', ['--version']],
+    // Git Bash is a bash whose builtin `pwd -W` (an MSYS2 patch) prints a Windows path; its version label no longer
+    // tells it from Cygwin's. -p reads no startup file. macOS and Linux bashes refuse -W, so there this row (never
+    // required) is unavailable.
+    ['git-bash', process.platform === 'win32', 'bash', ['-p', '-c', 'echo "$BASH_VERSION"; cd / && pwd -W']],
     // gh 2.91 and later writes a telemetry device id into its state folder on every command unless this is off.
     ['gh', false, 'gh', ['--version'], { GH_TELEMETRY: 'false' }],
   ];
   return [node, ...probes.map(([name, required, binary, argv, env]) => {
     const result = spawnSync(binary, argv, { encoding: 'utf8', timeout: 5000, env: { ...process.env, PYTHONDONTWRITEBYTECODE: '1', ...env } });
     const output = (result.stdout || result.stderr || '').trim();
-    const match = output.match(/\b(\d+)\.(\d+)(?:\.\d+)?/);
-    let available = !result.error && result.status === 0 && Boolean(match);
+    const bash = name === 'git-bash';
+    // A bash's version is its $BASH_VERSION line, never digits in the path line after it.
+    const match = output.match(bash ? /^\d+\.\d+\.\d+(?=(?:\(\d+\)-\w+)?\r?$)/m : /\b(\d+)\.(\d+)(?:\.\d+)?/);
+    let available = !result.error && result.status === 0
+      && (bash ? /^(?:[A-Za-z]:\/|\/\/)/.test(output.split('\n').pop()) : Boolean(match));
     if (name === 'python' && available) available = Number(match[1]) > 3 || (Number(match[1]) === 3 && Number(match[2]) >= 11);
-    if (name === 'git-bash' && required && available) available = /mingw|msys/i.test(output);
     return { name, required, available, version: match?.[0] || null,
       reasons: available ? [] : [{ code: 'requirement-unavailable', params: { name } }] };
   })];
@@ -169,4 +174,4 @@ function statusCommand(args) {
   return status;
 }
 
-module.exports = { harnessStatus, statusCommand, repositoryIdentity, inspectInstruction };
+module.exports = { harnessStatus, statusCommand, repositoryIdentity, inspectInstruction, requirements };
