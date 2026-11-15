@@ -1857,8 +1857,9 @@ def tracked_places(anchor, common, rel):
 
 
 def withdraw(args):
-    """Take back a queued loop none of whose tasks has started: its add record, then its folder in devlyn-loops, then its
-    capture ref; a retry after an interruption finishes the rest. Under the drain lock, so no drain allocates it."""
+    """Take back a queued loop none of whose tasks has started and whose capture replaced no legacy row: its add record,
+    then its folder in devlyn-loops, then its capture ref; a retry after an interruption finishes the rest. Under the drain
+    lock, so no drain allocates it."""
     anchor, common = repository(args.repo)
     args.repo = anchor
     loop, notes = args.loop, []
@@ -1875,6 +1876,10 @@ def withdraw(args):
         commit = added["commit"] if added else captured
         rows, target = parse_loop(show(anchor, commit, rel), loop, f"{ref}:{rel}") if commit else ([], None)
         tasks = [row["identity"] for row in rows]
+        if target:
+            raise LoopError(f'loop {loop} was added in place of the {QUEUE} row "{one_line(target[1])}" (occurrence {target[0]}); '
+                            "withdrawing it would bring that row back to be planned again wherever that file still holds it; "
+                            "withdraw takes back only a loop that replaced no legacy row")
         # Without its record a loop is read from a tracked queue file (queue_view), so its rows would come back.
         places = tracked_places(anchor, common, rel)
         require(not places, f"{rel} is tracked in {', '.join(places)}, so loop {loop}'s rows would return without its add record; "
@@ -1882,17 +1887,6 @@ def withdraw(args):
         started = [f"{identity} at {path}" for identity in tasks for path in task_directories(common, identity)]
         require(not started, f"loop {loop} has a started task ({'; '.join(started)}); withdraw takes back only a loop none of whose "
                              "tasks has started")
-        if target:
-            occurrence, line = target
-            sources = {root / QUEUE: (root / QUEUE).read_bytes() if (root / QUEUE).is_file() else b""
-                       for root in dict.fromkeys((anchor, Path(added["origin"]) if added else anchor))}
-            if added:
-                sources[f"{QUEUE} on the branch {added['branch']}"] = show(anchor, "refs/heads/" + added["branch"], QUEUE) or b""
-            for legacy, data in sources.items():
-                lines = [row["index"] + 1 for row in parse_queue(data) if not row["identity"] and row["line"] == line]
-                if len(lines) >= occurrence:
-                    raise LoopError(f"loop {loop} replaced line {lines[occurrence - 1]} of {legacy}, which would return as a "
-                                    "pending legacy row to plan again; remove that row, then withdraw again")
         if added:
             require(captured == commit, f"{ref} is {captured or 'missing'}, but the add record of {loop} names {commit}")
             added_path(common, loop).unlink()
@@ -2398,45 +2392,38 @@ class QueueTests(unittest.TestCase):
         self.assertEqual((result["status"], result["tasks"], result["commit"]), ("WITHDRAWN", ["inv.t1", "inv.t2"], added["commit"]))
         self.assertEqual(ref_value(self.anchor, "refs/devlyn/captures/inv"), "")
 
-    def test_withdraw_refuses_while_the_replaced_legacy_row_remains(self):
-        """D1, E6. Prediction: a loop that replaced a legacy row cannot be withdrawn while the row is in the legacy queue of
-        the checkout it was added from or of this one, or committed on the branch it was added on once that checkout is
-        gone, each named with its line, since the row would return to be planned again; such a refusal changes nothing;
-        once the row is gone the loop is withdrawn. Before: argparse rejected withdraw; then the branch case was withdrawn."""
-        linked = self.root / "linked"
-        git(self.anchor, "worktree", "add", "-q", "-b", "side", str(linked), env=self.env)
-        row = "- [ ] Ship the fixture.\n"
-        (linked / QUEUE).parent.mkdir(parents=True)
-        (linked / QUEUE).write_text("# Intent Queue\n\n" + row, encoding="utf-8")
-        self.cli("add", write_package(linked, "rep", self.tasks[:1], intent="User asked: Ship the fixture."), "--materialize", 3)
-        self.assertIn(f"loop rep replaced line 3 of {linked / QUEUE}", self.cli("withdraw", "rep", code=1)["reason"])
-        (linked / QUEUE).write_text("# Intent Queue\n", encoding="utf-8")
-        (self.anchor / QUEUE).write_text(row, encoding="utf-8")
-        self.assertIn(f"loop rep replaced line 1 of {self.anchor / QUEUE}", self.cli("withdraw", "rep", code=1)["reason"])
-        (self.anchor / QUEUE).write_text("", encoding="utf-8")
-        (linked / QUEUE).write_text("# Intent Queue\n\n" + row, encoding="utf-8")
-        git(linked, "add", QUEUE, env=self.env)
-        git(linked, "commit", "-qm", "the legacy queue committed on side", env=self.env)
-        git(self.anchor, "worktree", "remove", "--force", str(linked), env=self.env)
+    def test_withdraw_refuses_a_loop_that_replaced_a_legacy_row(self):
+        """D1, E6. Prediction: a loop added with --materialize is refused, naming the row its capture replaced and that row's
+        occurrence, while the row is in the legacy queue and once no file holds it; so is the capture an add stopped
+        before its record left; each refusal leaves the add record, the capture ref, the loop's folder, HEAD and the index
+        byte for byte. A loop added without --materialize is withdrawn. Before: withdraw looked for the row only here, in
+        the checkout the loop was added from and on the branch it was added on, and withdrew the loop once those no
+        longer held it, though another worktree's legacy queue could still show the row, pending, to be planned again."""
+        from unittest import mock
         common = Path(git(self.anchor, "rev-parse", "--path-format=absolute", "--git-common-dir"))
 
         def state():
-            return git(self.anchor, "for-each-ref"), sorted(str(path.relative_to(common)) for path in (common / "devlyn-loops").rglob("*"))
+            return (git(self.anchor, "for-each-ref"), git(self.anchor, "rev-parse", "HEAD"), git(self.anchor, "ls-files", "-s"),
+                    sorted((str(path.relative_to(common)), path.read_bytes() if path.is_file() else None)
+                           for path in (common / "devlyn-loops").rglob("*") if path.suffix != ".lock"))
 
-        before = state()
-        self.assertIn(f"loop rep replaced line 3 of {QUEUE} on the branch side", self.cli("withdraw", "rep", code=1)["reason"])
-        self.assertEqual(state(), before)
-        git(self.anchor, "branch", "-f", "side", "side~", env=self.env)
-        self.assertEqual(self.cli("withdraw", "rep")["tasks"], ["rep.t1"])
+        def refused(loop, row):
+            before = state()
+            self.assertEqual(self.cli("withdraw", loop, code=1)["reason"],
+                             f'loop {loop} was added in place of the {QUEUE} row "{row}" (occurrence 1); withdrawing it would '
+                             "bring that row back to be planned again wherever that file still holds it; withdraw takes back only "
+                             "a loop that replaced no legacy row")
+            self.assertEqual(state(), before)
 
-    def test_withdraw_refuses_an_add_stopped_before_its_record_while_the_replaced_legacy_row_remains(self):
-        """D1, E6. Prediction: an `add --materialize 3` stopped after its capture ref, before its add record, leaves a capture
-        that replaces the legacy row; withdraw refuses, naming line 3 of this checkout's legacy queue, and keeps the ref;
-        once the row is gone it withdraws the loop. Before: with no record it skipped the legacy check and withdrew the
-        loop while the row stayed pending, to be planned and drained again."""
-        from unittest import mock
-        (self.anchor / QUEUE).write_text("# Intent Queue\n\n- [ ] Ship the fixture.\n", encoding="utf-8")
-        meta, real = write_package(self.anchor, "rep", self.tasks[:1], intent="User asked: Ship the fixture."), write_json
+        (self.anchor / QUEUE).write_text("# Intent Queue\n\n- [ ] Ship the fixture.\n- [ ] Ship the second fixture.\n", encoding="utf-8")
+        self.cli("add", write_package(self.anchor, "rep", self.tasks[:1], intent="User asked: Ship the fixture."), "--materialize", 3)
+        (common / "devlyn-loops/rep/drain-report.md").write_text("# Drain report — rep\n", encoding="utf-8")
+        refused("rep", "- [ ] Ship the fixture.")
+        (self.anchor / QUEUE).write_text("# Intent Queue\n\n- [ ] Ship the second fixture.\n", encoding="utf-8")
+        refused("rep", "- [ ] Ship the fixture.")
+        self.cli("add", self.meta)
+        self.assertEqual(self.cli("withdraw", "inv")["tasks"], ["inv.t1", "inv.t2"])
+        meta, real = write_package(self.anchor, "ref", self.tasks[:1], intent="User asked: Ship the second fixture."), write_json
 
         def stopped(path, value):
             if Path(path).name == "added.json":
@@ -2446,12 +2433,8 @@ class QueueTests(unittest.TestCase):
         with mock.patch.dict(os.environ, self.env), mock.patch.dict(add.__globals__, write_json=stopped), \
                 self.assertRaisesRegex(LoopError, "stopped before"):
             add(argparse.Namespace(package=str(meta), materialize=3))
-        common, captured = Path(git(self.anchor, "rev-parse", "--path-format=absolute", "--git-common-dir")), ref_value(self.anchor, "refs/devlyn/captures/rep")
-        self.assertEqual((bool(captured), added_path(common, "rep").exists()), (True, False))
-        self.assertIn(f"loop rep replaced line 3 of {self.anchor / QUEUE}", self.cli("withdraw", "rep", code=1)["reason"])
-        self.assertEqual(ref_value(self.anchor, "refs/devlyn/captures/rep"), captured)
-        (self.anchor / QUEUE).write_text("# Intent Queue\n", encoding="utf-8")
-        self.assertEqual(self.cli("withdraw", "rep")["tasks"], ["rep.t1"])
+        self.assertEqual((bool(ref_value(self.anchor, "refs/devlyn/captures/ref")), added_path(common, "ref").exists()), (True, False))
+        refused("ref", "- [ ] Ship the second fixture.")
 
     def test_withdraw_sees_a_task_directory_that_moves_while_it_looks(self):
         """D1, E6. Prediction: a task directory that task-complete moves into moved/, from the active path or from retired/,
