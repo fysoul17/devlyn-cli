@@ -364,17 +364,20 @@ jobs:
           checked('native-python3', ['python3', '-X', 'utf8=0', '-c',
                   'import locale,sys; print(sys.executable, sys.platform, sys.flags.utf8_mode, locale.getencoding(), flush=True); assert sys.platform == "win32" and sys.flags.utf8_mode == 0'])
           checked('git-bash', [str(git_bash), '--version'])
-          # Recorded, never failing here: the product's own Git Bash probe through this bash, and what this bash says
-          # it is, raw, so one run shows the cause if `status` finds no Git Bash.
+          # Recorded, and a refusal or a timeout is not raised here: the product's own Git Bash probe through this
+          # bash, and what this bash says it is, raw, so one run shows the cause if `status` finds no Git Bash.
+          # Output goes to files, not pipes: after a timeout a child the launcher left behind cannot hold the step.
           probes = {}
           for label, script in (('probe', 'echo "$BASH_VERSION"; cd / && pwd -W'),
                                 ('system', 'uname -s; cat /proc/version; echo "MSYSTEM=$MSYSTEM OSTYPE=$OSTYPE"')):
               argv = [str(git_bash), '--norc', '-p', '-c', script]
+              captured = [logs / f'git-bash-{label}.{stream}' for stream in ('out', 'err')]
               try:
-                  answer = subprocess.run(argv, capture_output=True, stdin=subprocess.DEVNULL, timeout=60)
+                  with open(captured[0], 'wb') as out, open(captured[1], 'wb') as err:
+                      answer = subprocess.run(argv, stdin=subprocess.DEVNULL, stdout=out, stderr=err, timeout=60)
                   probes[label] = {'argv': argv, 'exit': answer.returncode,
-                                   'stdout': answer.stdout.decode('utf-8', 'backslashreplace'),
-                                   'stderr': answer.stderr.decode('utf-8', 'backslashreplace')}
+                                   'stdout': captured[0].read_bytes().decode('utf-8', 'backslashreplace'),
+                                   'stderr': captured[1].read_bytes().decode('utf-8', 'backslashreplace')}
               except Exception as error:
                   probes[label] = {'argv': argv, 'error': repr(error)}
           observed['git_bash'] = probes
