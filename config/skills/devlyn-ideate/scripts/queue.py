@@ -1862,11 +1862,11 @@ def tracked_places(anchor, common, rel):
     worktrees = [row for raw in listing.split("\0\0")
                  if "worktree" in (row := dict(field.partition(" ")[::2] for field in raw.split("\0") if field))]
     checked_out = {row.get("branch") for row in worktrees}
-    commits = {f"HEAD of {row['worktree']}": row["HEAD"] for row in worktrees if "HEAD" in row} | {
-        f"the branch {ref.removeprefix('refs/heads/')}": ref
-        for ref in git(anchor, "for-each-ref", "--format=%(refname)", "refs/heads/").splitlines() if ref not in checked_out}
-    kinds = git(anchor, "cat-file", "--batch-check=%(objecttype)", data="".join(f"{rev}:{rel}\n" for rev in commits.values()).encode())
-    places = [place for place, kind in zip(commits, kinds.split("\n")) if kind == "blob"]
+    commits = [(f"HEAD of {row['worktree']}", row["HEAD"]) for row in worktrees if "HEAD" in row] + [
+        (f"the branch {ref.removeprefix('refs/heads/')}", ref)
+        for ref in git(anchor, "for-each-ref", "--format=%(refname)", "refs/heads/").splitlines() if ref not in checked_out]
+    kinds = git(anchor, "cat-file", "--batch-check=%(objecttype)", data="".join(f"{rev}:{rel}\n" for _, rev in commits).encode())
+    places = [place for (place, _), kind in zip(commits, kinds.split("\n")) if kind == "blob"]
     linked = sorted(path for path in (common / "worktrees").iterdir() if (path / "index").is_file()) if (common / "worktrees").is_dir() else []
     for name, admin in [(worktrees[0]["worktree"], common), *((registered_worktree(admin), admin) for admin in linked)]:
         listed = subprocess.run(["git", "-c", "core.fsmonitor=false", "-C", str(common), f"--git-dir={admin}", "ls-files", "--",
@@ -2625,6 +2625,28 @@ class QueueTests(unittest.TestCase):
             running.communicate()
             self.fail("withdraw did not return within 60 s")
         self.assertEqual(json.loads(out)["status"], "WITHDRAWN", out + err)
+
+    def test_withdraw_reads_the_head_of_each_worktree_whose_listed_paths_decode_alike(self):
+        """D1, E6. Prediction: beside two linked worktrees whose gitdir files name folders that differ only in a byte that
+        is not UTF-8, the first listed with a HEAD that tracks the loop's queue file while no index holds it, withdraw is
+        refused, naming that HEAD by the one name both paths decode to. Before: the two HEADs were kept under that one
+        name, the second's in place of the first's, and the loop was withdrawn."""
+        common = Path(git(self.anchor, "rev-parse", "--path-format=absolute", "--git-common-dir"))
+        rel = loop_queue("inv")
+        self.cli("add", self.meta)
+        for name, byte in (("first", b"\xe8"), ("second", b"\xe9")):  # Git lists linked worktrees sorted by path.
+            work = self.root / name
+            git(self.anchor, "worktree", "add", "-q", "--detach", str(work), env=self.env)
+            if name == "first":
+                (work / rel).parent.mkdir(parents=True)
+                (work / rel).write_text(row_line("inv.t1", "Interface") + "\n", encoding="utf-8")
+                git(work, "add", rel, env=self.env)
+                git(work, "commit", "-qm", "a queue file committed by hand", env=self.env)
+                git(work, "rm", "-q", "--cached", rel, env=self.env)
+            (common / "worktrees" / name / "gitdir").write_bytes(b"/x/caf" + byte + b"/.git\n")
+        self.assertEqual(self.cli("withdraw", "inv", code=1)["reason"],
+                         f"{rel} is tracked in HEAD of /x/caf�, so loop inv's rows would return without its add record; "
+                         "withdraw takes back only a loop held in its capture")
 
     def test_a_legacy_row_is_replaced_only_by_its_one_exact_claim(self):
         """Q. Prediction: a loop's queue file hides the legacy row whose exact text and occurrence it records, line endings
