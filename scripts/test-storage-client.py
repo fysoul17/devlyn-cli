@@ -3218,7 +3218,7 @@ class ReceiptLifecycleTests(unittest.TestCase):
         audit = self.helper['retire_terminal'](self.receipt, self.path)
         argv = ['task-complete.py', 'complete', '--receipt', str(audit), '--writers-stopped']
         with patch.dict(self.env, stopped_writers=lambda work: None, scratch_mounts=lambda: [],
-                        cleanup=lambda *args, **kwargs: self.fail('retired source cleanup attempted')), \
+                        remove_delivered=lambda *args, **kwargs: self.fail('retired source cleanup attempted')), \
              patch.object(sys, 'argv', argv), contextlib.redirect_stdout(io.StringIO()) as output:
             self.assertEqual(self.helper['main'](), 0)
         self.assertEqual(json.loads(output.getvalue())['status'], 'COMPLETE')

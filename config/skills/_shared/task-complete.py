@@ -1480,17 +1480,22 @@ def cleanup_workspace(receipt, path, *, warnings):
             sync_surviving_directory(Path(receipt['common_gitdir']) / 'worktrees')
 
 
-def cleanup(receipt, path, pr, *, warnings=None):
-    warnings = [] if warnings is None else warnings
+def verify_delivery(receipt, path, pr):
+    """Evidence that the accepted source is delivered, checked before anything is removed."""
     if pr is not None:
         require(pr["state"] == "MERGED" and pr.get("mergedAt") and pr.get("mergeCommit", {}).get("oid"), "actual matching merge evidence is required")
     sha = receipt["publish_sha"]
-    branch_ref = "refs/heads/" + receipt["branch"]
     # The recovery ref keeps the accepted commit reachable, so squash and
     # rebase merges need only the merge commit on base.
     verify_custody(receipt, path)
     gref(receipt, "merge-base", "--is-ancestor", pr["mergeCommit"]["oid"] if pr else sha, remote_base(receipt))
     gref(receipt, "merge-base", "--is-ancestor", receipt["source_sha"], sha)
+
+
+def remove_delivered(receipt, path, *, warnings=None):
+    warnings = [] if warnings is None else warnings
+    sha = receipt["publish_sha"]
+    branch_ref = "refs/heads/" + receipt["branch"]
     cleanup_workspace(receipt, path, warnings=warnings)
     checked_out = [p for p, row in registrations(receipt).items() if row.get("branch") == branch_ref]
     require(not checked_out, "task branch is still checked out at " + ", ".join(checked_out) + "; switch it off the task branch before cleanup")
@@ -1509,6 +1514,11 @@ def cleanup(receipt, path, pr, *, warnings=None):
     receipt.pop("workspace_cleanup", None)
     receipt["status"] = "COMPLETE"
     atomic_json(path, receipt)
+
+
+def cleanup(receipt, path, pr, *, warnings=None):
+    verify_delivery(receipt, path, pr)
+    remove_delivered(receipt, path, warnings=warnings)
 
 
 def resolve_receipt(path, *, operation_id=None):
@@ -1630,13 +1640,13 @@ def completion_result(receipt, path, status, *, warnings=None):
 
 
 def cleanup_delivered(receipt, path, pr, *, warnings=None):
+    # Missing evidence leaves delivery unrecorded; once it holds, a refused removal retains what it guards.
+    verify_delivery(receipt, path, pr)
     try:
-        cleanup(receipt, path, pr, warnings=warnings)
+        remove_delivered(receipt, path, warnings=warnings)
     except (CompletionError, OSError) as error:
-        managed_outage = storage_call('managed_receipt', receipt)
-        if not isinstance(error, (WritersUnobservable, WriterActive)) and not managed_outage:
-            raise
-        reason = manual_removal(receipt, path, error) if managed_outage and isinstance(error, WritersUnobservable) else str(error)
+        managed = storage_call('managed_receipt', receipt)
+        reason = manual_removal(receipt, path, error) if managed and isinstance(error, WritersUnobservable) else str(error)
         receipt['workspace_cleanup'] = {'status': 'RETAINED', 'reason': reason, 'resume': receipt_resume('complete', path, receipt)}
         atomic_json(path, receipt)
 
@@ -3122,7 +3132,7 @@ ctypes.CDLL(None).pthread_exit(None)
             error.storage_error = {'code': 'storage_unavailable'}
             raise error
         args = argparse.Namespace(receipt=str(self.receipt), acceptance=None, mode=None, local_only=False, writers_stopped=True)
-        with patch.dict(os.environ, self.env), patch.dict(complete.__globals__, managed_registration=lambda receipt, **kwargs: {}, cleanup=outage):
+        with patch.dict(os.environ, self.env), patch.dict(complete.__globals__, managed_registration=lambda receipt, **kwargs: {}, remove_delivered=outage):
             result = complete(args)
         self.assertEqual((result['status'], result['delivery_status']), ('CLEANUP_PENDING', 'COMPLETE'))
         self.assertIn('complete --receipt', result['resume'])
@@ -3141,7 +3151,7 @@ ctypes.CDLL(None).pthread_exit(None)
             error = CompletionError('authority offline during reconciliation')
             error.storage_error = {'code': 'storage_unavailable'}
             raise error
-        with patch.dict(os.environ, self.env), patch.dict(reconcile.__globals__, managed_registration=lambda receipt, **kwargs: {}, cleanup=outage):
+        with patch.dict(os.environ, self.env), patch.dict(reconcile.__globals__, managed_registration=lambda receipt, **kwargs: {}, remove_delivered=outage):
             [result] = reconcile(Path(receipt['common_gitdir']), self.receipt.with_name('other.json'), self.work)
         self.assertEqual((result['status'], result['delivery_status']), ('CLEANUP_PENDING', 'COMPLETE'))
         self.assertIn('complete --receipt', result['resume'])
@@ -3236,7 +3246,8 @@ ctypes.CDLL(None).pthread_exit(None)
         self.assertEqual(self.complete(acceptance=False)[0]["status"], "COMPLETE")
 
     def test_merged_foreign_remote_head_records_merge_and_retains_ref(self):
-        # Prediction: merged PRs record merge evidence and reach cleanup's remote-ref retention guard.
+        # Prediction: merged PRs record merge evidence and reach cleanup's remote-ref retention guard, which keeps both
+        # task refs and leaves the merged delivery COMPLETE (CLEANUP_PENDING). Before: BLOCKED, delivery unrecorded.
         self.allocate(); self.accept()
         self.complete("--mode", "pr")
         self.run_cmd(["gh", "pr", "merge", "1", "--merge", "--match-head-commit", self.sha,
@@ -3244,11 +3255,81 @@ ctypes.CDLL(None).pthread_exit(None)
         self.g("commit", "--allow-empty", "-m", "foreign commit")
         foreign = self.g("rev-parse", "HEAD")
         self.g("push", "origin", "+" + foreign + ":refs/heads/task/fixture")
-        result, _ = self.complete("--writers-stopped", success=False)
-        self.assertEqual(result["status"], "BLOCKED")
-        self.assertIn("remote branch changed after merge; retain ref", result["reason"])
+        result, _ = self.complete("--writers-stopped")
+        self.assertEqual((result["status"], result["delivery_status"]), ("CLEANUP_PENDING", "COMPLETE"))
+        self.assertIn("remote branch changed after merge; retain ref", result["workspace_cleanup"]["reason"])
         self.assertEqual(read_json(self.receipt)["merge"], read_json(self.data)["prs"][0])
         self.assertEqual(self.g("ls-remote", "origin", "refs/heads/task/fixture").split()[0], foreign)
+        self.assertEqual(self.g("rev-parse", "task/fixture"), self.sha)
+
+    def test_merged_task_branch_checked_out_elsewhere_keeps_both_task_refs(self):
+        # Prediction: with the task branch also checked out in another worktree, the merged delivery is COMPLETE and
+        # reports CLEANUP_PENDING naming that worktree; neither task ref is deleted. Once that worktree leaves the branch,
+        # the printed resume deletes both. Before: BLOCKED, delivery unrecorded.
+        self.allocate(); self.accept()
+        self.complete("--mode", "pr", "--writers-stopped")
+        self.merge_pr()
+        other = self.root / "other"
+        self.g("worktree", "add", "--force", str(other), "task/fixture")
+        result, _ = self.complete()
+        self.assertEqual((result["status"], result["delivery_status"]), ("CLEANUP_PENDING", "COMPLETE"))
+        self.assertIn("task branch is still checked out at " + str(other), result["workspace_cleanup"]["reason"])
+        self.assertEqual(read_json(self.receipt)["delivery"], "COMPLETE")
+        self.assertEqual(self.g("rev-parse", "task/fixture"), self.sha)
+        self.assertEqual(self.g("ls-remote", "origin", "refs/heads/task/fixture").split()[0], self.sha)
+        self.g("switch", "--detach", work=other)
+        result, _ = self.cli(*shlex.split(result["resume"])[2:])
+        self.assertEqual((result["status"], result["workspace_cleanup"]), ("COMPLETE", None))
+        self.assertFalse(self.task.exists())
+        self.assertEqual(self.g("branch", "--list", "task/fixture"), "")
+        self.assertEqual(self.g("ls-remote", "origin", "refs/heads/task/fixture"), "")
+
+    def test_delivery_evidence_failure_blocks_with_delivery_unrecorded(self):
+        # Prediction: evidence is checked before any removal, so a PR view that is not merge evidence, or a changed
+        # custody manifest, stops completion BLOCKED with delivery left at PR and nothing removed. Unchanged on origin/main;
+        # fails if the evidence checks move inside the retention boundary.
+        self.allocate(); self.accept()
+        self.assertEqual(self.complete("--mode", "pr", "--writers-stopped")[0]["status"], "PR")
+        pr = read_json(self.data)["prs"][0]
+        manifest = self.receipt.parent / "manifest.json"
+        for case, reason in (("merge evidence", "actual matching merge evidence is required"),
+                             ("custody manifest", "custody manifest changed")):
+            with self.subTest(case=case):
+                if case == "merge evidence":
+                    self.configure(prs=[dict(pr, state="MERGED", mergedAt=None, mergeCommit=None)])
+                else:
+                    self.configure(prs=[pr])
+                    self.merge_pr()
+                    manifest.write_text("{}\n", encoding="utf-8")
+                result, r = self.complete(success=False)
+                self.assertEqual((r.returncode, result["status"]), (1, "BLOCKED"))
+                self.assertIn(reason, result["reason"])
+                receipt = read_json(self.receipt)
+                self.assertEqual((receipt["delivery"], receipt.get("status")), ("PR", None))
+                self.assertNotIn("workspace_cleanup", receipt)
+                self.assertTrue(self.task.exists())
+                self.assertEqual(self.g("rev-parse", "task/fixture"), self.sha)
+                self.assertEqual(self.g("ls-remote", "origin", "refs/heads/task/fixture").split()[0], self.sha)
+
+    def test_managed_delivery_evidence_failure_raises_with_delivery_unrecorded(self):
+        # Prediction: a managed receipt's changed custody manifest also raises before any removal, delivery unrecorded.
+        # Before: retained as CLEANUP_PENDING with delivery COMPLETE.
+        from unittest.mock import patch
+        self.allocate(); self.accept(unchanged=True)
+        self.cli('accept', '--receipt', self.receipt, '--acceptance', self.acceptance)
+        receipt = read_json(self.receipt)
+        receipt.update(mode='managed', allocation='managed_owned', storage={'decision': {'registration': {'fixture': True}}, 'request': {'operation_id': 'saved'}, 'result': {
+            'closure_result': {'established_by': 'never_admitted', 'operation_id': 'saved'}}})
+        atomic_json(self.receipt, receipt)
+        (self.receipt.parent / 'manifest.json').write_text('{}\n', encoding='utf-8')
+        args = argparse.Namespace(receipt=str(self.receipt), acceptance=None, mode=None, local_only=False, writers_stopped=True)
+        with patch.dict(os.environ, self.env), patch.dict(complete.__globals__, managed_registration=lambda receipt, **kwargs: {}):
+            with self.assertRaisesRegex(CompletionError, 'custody manifest changed'):
+                complete(args)
+        receipt = read_json(self.receipt)
+        self.assertEqual((receipt.get('delivery'), receipt.get('status')), (None, None))
+        self.assertNotIn('workspace_cleanup', receipt)
+        self.assertTrue(self.task.exists())
 
     def test_unchanged_foreign_remote_head_retains_worktree(self):
         # Prediction: a foreign remote task head refuses completion before worktree removal.
@@ -3420,6 +3501,9 @@ ctypes.CDLL(None).pthread_exit(None)
 
     @unittest.skipUnless(sys.platform == "darwin" or sys.platform.startswith("linux"), "writer observation requires POSIX")
     def test_nested_repository_or_worktree_retains_tree(self):
+        # Prediction: the first call merges; a nested worktree, then a nested repository, under an ignored path leaves the
+        # merged delivery COMPLETE (CLEANUP_PENDING) naming each, with the tree, the nested work and both task refs kept;
+        # once both are gone the printed resume removes everything. Before: BLOCKED, delivery unrecorded.
         self.allocate(); self.accept()
         _, r = self.cli("allocate", "--repo", self.work, "--task", "inner", "--branch", "task/inner", "--repository", "test/project",
                         "--base", "main", "--worktree", self.task / "ignored" / "inner", success=False)
@@ -3429,17 +3513,25 @@ ctypes.CDLL(None).pthread_exit(None)
         (nested / "product").write_text("unsaved nested work\n", encoding="utf-8")
         clone = self.task / "ignored" / "clone"
         self.run_cmd(["git", "init", "--initial-branch=main", str(clone)])
-        for remove in (lambda: self.g("worktree", "remove", "--force", str(nested)), lambda: shutil.rmtree(clone)):
-            _, r = self.complete("--mode", "auto", "--writers-stopped", success=False)
-            self.assertIn("nested repository or worktree", json.loads(r.stdout)["reason"])
+        for name, remove in (("ignored/nested/", lambda: self.g("worktree", "remove", "--force", str(nested))),
+                             ("ignored/clone/", lambda: shutil.rmtree(clone))):
+            result, _ = self.complete("--mode", "auto", "--writers-stopped")
+            self.assertEqual((result["status"], result["delivery_status"]), ("CLEANUP_PENDING", "COMPLETE"))
+            self.assertIn("nested repository or worktree inside the task tree: ", result["workspace_cleanup"]["reason"])
+            self.assertIn(name, result["workspace_cleanup"]["reason"])
+            self.assertEqual(read_json(self.receipt)["delivery"], "COMPLETE")
             self.assertTrue(self.task.exists())
-            self.assertNotEqual(self.g("branch", "--list", "task/fixture"), "")
+            self.assertEqual(self.g("rev-parse", "task/fixture"), self.sha)
+            self.assertEqual(self.g("ls-remote", "origin", "refs/heads/task/fixture").split()[0], self.sha)
             if nested.exists():
                 self.assertEqual((nested / "product").read_text(encoding="utf-8"), "unsaved nested work\n")
             remove()
-        result, _ = self.complete("--mode", "auto", "--writers-stopped")
-        self.assertEqual(result["status"], "COMPLETE")
+        result, _ = self.cli(*shlex.split(result["resume"])[2:])
+        self.assertEqual((result["status"], result["workspace_cleanup"]), ("COMPLETE", None))
         self.assertFalse(self.task.exists())
+        self.assertEqual(self.g("branch", "--list", "task/fixture"), "")
+        self.assertEqual(self.g("ls-remote", "origin", "refs/heads/task/fixture"), "")
+        self.assertEqual(read_json(self.data)["merges"], 1)
 
     @unittest.skipUnless(sys.platform == "darwin" or sys.platform.startswith("linux"), "writer observation requires POSIX")
     def test_default_mode_merges_when_possible_and_cleans(self):
@@ -3745,16 +3837,17 @@ ctypes.CDLL(None).pthread_exit(None)
         other.write_bytes(b"owner data")
         link = self.task / ".devlyn/link"
         link.symlink_to(other)
-        result, _ = self.complete(success=False)
-        self.assertIn("path escapes custody", result["reason"])
+        result, _ = self.complete()
+        self.assertEqual((result["status"], result["delivery_status"]), ("CLEANUP_PENDING", "COMPLETE"))
+        self.assertIn("path escapes custody", result["workspace_cleanup"]["reason"])
         self.assertTrue(self.task.exists())
         self.assertTrue(link.is_symlink())
         self.assertEqual(other.read_bytes(), b"owner data")
         link.unlink()
         if hasattr(os, "mkfifo"):
             os.mkfifo(link)
-            result, _ = self.complete(success=False)
-            self.assertIn("regular file", result["reason"])
+            result, _ = self.complete()
+            self.assertIn("regular file", result["workspace_cleanup"]["reason"])
             self.assertTrue(self.task.exists())
             link.unlink()
         saved = self.receipt.parent / "records/.devlyn"
@@ -3821,8 +3914,9 @@ ctypes.CDLL(None).pthread_exit(None)
         extra = generation / ".devlyn/unexpected"
         extra.write_bytes(b"keep this copy\n")
         mismatch = records_manifest(generation)
-        result, _ = self.complete(success=False)
-        self.assertIn(generation.name, result["reason"])
+        result, _ = self.complete()
+        self.assertEqual((result["status"], result["delivery_status"]), ("CLEANUP_PENDING", "COMPLETE"))
+        self.assertIn(generation.name, result["workspace_cleanup"]["reason"])
         self.assertTrue(self.task.exists())
         self.assertEqual(records_manifest(generation), mismatch)
         self.assertEqual(records_manifest(saved), original)
@@ -3849,8 +3943,9 @@ ctypes.CDLL(None).pthread_exit(None)
                 (work / ".devlyn/storage-cleanup.json").write_bytes(b"{}\n")
         args = argparse.Namespace(receipt=str(self.receipt), acceptance=None, mode=None, local_only=False, writers_stopped=False)
         with patch.dict(os.environ, self.env), patch.dict(cleanup.__globals__, {"removable": changed}):
-            with self.assertRaisesRegex(CompletionError, "changed after it was copied; stop its writer and resume"):
-                complete(args)
+            result = complete(args)
+        self.assertEqual((result["status"], result["delivery_status"]), ("CLEANUP_PENDING", "COMPLETE"))
+        self.assertIn("changed after it was copied; stop its writer and resume", result["workspace_cleanup"]["reason"])
         self.assertTrue(self.task.exists())
         self.assertEqual(records_manifest(saved), original)
         final = records_manifest(self.task)
@@ -3872,8 +3967,9 @@ ctypes.CDLL(None).pthread_exit(None)
             return result
         args = argparse.Namespace(receipt=str(self.receipt), acceptance=None, mode=None, local_only=False, writers_stopped=False)
         with patch.dict(os.environ, self.env), patch.object(shutil, "copytree", changed):
-            with self.assertRaisesRegex(CompletionError, "changed while it was copied; stop its writer and resume"):
-                complete(args)
+            result = complete(args)
+        self.assertEqual((result["status"], result["delivery_status"]), ("CLEANUP_PENDING", "COMPLETE"))
+        self.assertIn("changed while it was copied; stop its writer and resume", result["workspace_cleanup"]["reason"])
         self.assertTrue(self.task.exists())
         self.assertFalse((self.receipt.parent / "records").exists())
         self.assertEqual(list(self.receipt.parent.glob(".records-*")), [])
@@ -3881,8 +3977,8 @@ ctypes.CDLL(None).pthread_exit(None)
     def test_linked_custody_and_interrupted_removal(self):
         self.allocate(); self.accept()
         self.configure(interrupt_remove=True)
-        result, r = self.complete("--writers-stopped", "--mode", "auto", success=False)
-        self.assertNotEqual(r.returncode, 0)
+        result, _ = self.complete("--writers-stopped", "--mode", "auto")
+        self.assertEqual((result["status"], result["delivery_status"]), ("CLEANUP_PENDING", "COMPLETE"))
         self.assertFalse(self.task.exists())
         saved = json.loads(self.receipt.read_text(encoding="utf-8"))
         self.assertNotIn("cleanup_started", saved)
@@ -3927,15 +4023,24 @@ ctypes.CDLL(None).pthread_exit(None)
         self.assertEqual((d["pushs"], d["creates"], d["merges"]), (1, 1, 1))
 
     def test_retains_dirty_locked_and_active_tree(self):
+        # Prediction: the first call merges; each refused removal keeps the tree and task ref and reports CLEANUP_PENDING
+        # with delivery COMPLETE, while a caller inside the tree is refused (BLOCKED) before anything. Before: all BLOCKED.
         self.allocate(); self.accept()
+        reasons = {"no-yield": "resume with --writers-stopped", "dirty": "dirty/untracked workspace",
+                   "untracked": "dirty/untracked workspace", "locked": "detached or locked"}
         for case in ("no-yield", "dirty", "untracked", "locked", "cwd"):
             path = self.task / ("product" if case == "dirty" else "unknown")
             if case in {"dirty", "untracked"}:
                 path.parent.mkdir(exist_ok=True); path.write_text("do not delete", encoding="utf-8")
             if case == "locked": self.g("worktree", "lock", str(self.task))
             with self.subTest(case=case):
-                _, r = self.complete("--mode", "auto", *([] if case == "no-yield" else ["--writers-stopped"]), cwd=self.task if case == "cwd" else None, success=False)
-                self.assertNotEqual(r.returncode, 0)
+                result, r = self.complete("--mode", "auto", *([] if case == "no-yield" else ["--writers-stopped"]), cwd=self.task if case == "cwd" else None, success=False)
+                if case == "cwd":
+                    self.assertEqual((r.returncode, result["status"]), (1, "BLOCKED"))
+                    self.assertIn("caller cwd is inside", result["reason"])
+                else:
+                    self.assertEqual((r.returncode, result["status"], result["delivery_status"]), (0, "CLEANUP_PENDING", "COMPLETE"))
+                    self.assertIn(reasons[case], result["workspace_cleanup"]["reason"])
                 self.assertTrue(self.task.exists())
                 self.assertNotEqual(self.g("branch", "--list", "task/fixture"), "")
             if case == "untracked": path.unlink()
@@ -4008,10 +4113,11 @@ ctypes.CDLL(None).pthread_exit(None)
             self.assertTrue(self.task.exists())
         finally:
             child.terminate(); child.wait(timeout=5)
-        # A foreign branch in the same registered tree never inherits ownership.
+        # A foreign branch in the same registered tree never inherits ownership; the merged delivery stays COMPLETE.
         self.g("switch", "-c", "foreign", work=self.task)
-        _, r = self.complete("--writers-stopped", success=False)
-        self.assertNotEqual(r.returncode, 0)
+        result, _ = self.complete("--writers-stopped")
+        self.assertEqual((result["status"], result["delivery_status"]), ("CLEANUP_PENDING", "COMPLETE"))
+        self.assertIn("foreign worktree branch", result["workspace_cleanup"]["reason"])
         self.assertTrue(self.task.exists())
         self.assertNotEqual(self.g("branch", "--list", "task/fixture"), "")
 
@@ -4019,8 +4125,8 @@ ctypes.CDLL(None).pthread_exit(None)
         self.allocate(); self.accept()
         race = self.g("rev-parse", "main")
         self.configure(remote_delete_race=True, race_sha=race)
-        _, r = self.complete("--writers-stopped", "--mode", "auto", success=False)
-        self.assertNotEqual(r.returncode, 0)
+        result, _ = self.complete("--writers-stopped", "--mode", "auto")
+        self.assertEqual((result["status"], result["delivery_status"]), ("CLEANUP_PENDING", "COMPLETE"))
         self.assertEqual(self.g("ls-remote", "origin", "refs/heads/task/fixture").split()[0], race)
         self.assertNotEqual(self.g("branch", "--list", "task/fixture"), "")
 
@@ -4239,8 +4345,8 @@ ctypes.CDLL(None).pthread_exit(None)
         user_file.write_text("retained user data", encoding="utf-8")
         before = self.anchor_state()
         self.configure(interrupt_delete=True)
-        _, r = self.complete(acceptance=False, success=False)
-        self.assertNotEqual(r.returncode, 0)
+        result, _ = self.complete(acceptance=False)
+        self.assertEqual((result["status"], result["delivery_status"]), ("CLEANUP_PENDING", "COMPLETE"))
         self.assertEqual(self.anchor_state(), before)
         other = self.root / "advance"
         self.run_cmd(["git", "clone", str(self.bare), str(other)])
