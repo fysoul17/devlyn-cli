@@ -497,7 +497,76 @@ jobs:
               assert all(item['action'] == 'skip' and [reason['code'] for reason in item['reasons']] == ['in-use']
                          for item in copies['.claude']), copies
 
-          for label, check in (('count-project', count_project), ('status', status), ('count-in-use', count_in_use)):
+          # The same count in a console whose output code page is not UTF-8 (this image's is 65001): 437, and 949 when the
+          # image accepts it; for the project's copies and for a machine's under a non-ASCII USERPROFILE; with a sleeper
+          # naming the used copy with backslashes, then in Git Bash's spelling. PowerShell, which the product starts in
+          # this console, writes in that code page. Beside it a control, printed and not asserted: 4.3.31's lister,
+          # decoded as 4.3.31 did, at 437 while the same sleeper runs.
+          kernel32 = ctypes.windll.kernel32
+          machine_home = root / 'home 한글'
+          control_lister = r'''
+          const listing = require('child_process').spawnSync('powershell', ['-NoProfile', '-NonInteractive', '-Command',
+            'Get-CimInstance Win32_Process | ForEach-Object { $_.CommandLine }'], { encoding: 'utf8', timeout: 20000 });
+          const rows = listing.status === 0 ? listing.stdout.split(/\r?\n/).filter((line) => line && !line.includes(' cleanup --')) : null;
+          console.log(rows === null ? 'lister failed' : rows.some((line) => line.includes(process.argv[1] + '\\')) ? 'yes' : 'no');
+          '''
+
+          def control(used):
+              try:
+                  checked('control-437', ['node', '-e', control_lister, str(used)], 60)
+                  answer = (logs / 'control-437.log').read_text(encoding='ascii').strip()
+              except Exception as error:
+                  answer = f'lister failed ({error})'
+              print("control: 4.3.31's list at 437 holds the path: " + answer, flush=True)
+
+          def count_code_pages():
+              for name in ('.agents', '.claude'):
+                  shutil.copytree(project / name, machine_home / name)
+              checked('new-console-cp', [sys.executable, '-c', 'import ctypes; print(ctypes.windll.kernel32.GetConsoleOutputCP())'],
+                      60, creationflags=subprocess.CREATE_NO_WINDOW)
+              print('Native Windows new console output code page: '
+                    + (logs / 'new-console-cp.log').read_text(encoding='ascii').strip(), flush=True)
+              original = kernel32.GetConsoleOutputCP()
+              assert original, 'this step has no console whose code page could be set'
+              scopes = (('project', count, ['--project', str(count)], count_env),
+                        ('machine', machine_home, ['--machine'], dict(os.environ, USERPROFILE=str(machine_home), HOME=str(machine_home))))
+              try:
+                  for code_page in (437, 949):
+                      if not kernel32.SetConsoleOutputCP(code_page):
+                          assert code_page != 437, 'the console refused code page 437'
+                          print(f'code page {code_page}: not accepted by this image', flush=True)
+                          continue
+                      assert kernel32.GetConsoleOutputCP() == code_page, code_page
+                      for scope, home, args, env in scopes:
+                          script = home / '.claude/skills/devlyn-ideate/scripts/queue.py'
+                          for spelling, named in (('backslash', str(script)),
+                                                  ('git-bash', '/' + script.drive[0].lower() + script.as_posix()[2:])):
+                              label = f'count-{code_page}-{scope}-{spelling}'
+                              sleeper = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(300)', named],
+                                                         stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                              try:
+                                  if (code_page, scope, spelling) == (437, 'project', 'backslash'):
+                                      control(home / '.claude' / 'skills')
+                                  checked(label, ['node', str(release / 'bin/devlyn.js'), 'cleanup', '--plan', *args, '--checkout-only',
+                                                  '--json'], 120, env=env)
+                              finally:
+                                  sleeper.kill()
+                                  sleeper.wait()
+                              plan = json.loads((logs / (label + '.log')).read_text(encoding='utf-8').splitlines()[-1])
+                              items = [item for found in plan['data']['scopes'] for item in found['items']]
+                              for name, verdict in (('.claude', ('skip', ['in-use'])), ('.agents', ('remove', []))):
+                                  copies = [item for item in items if pathlib.Path(item['path']).parent.parts[-2:] == (name, 'skills')]
+                                  assert sorted(pathlib.Path(item['path']).name for item in copies) == sorted(
+                                      [*core, '.devlyn-install.json']), (label, name, items)
+                                  assert all((item['action'], [reason['code'] for reason in item.get('reasons', [])]) == verdict
+                                             for item in copies), (label, name, copies)
+                              print(f'{label}: the used copy is kept and the unused one offered', flush=True)
+              finally:
+                  kernel32.SetConsoleOutputCP(original)
+                  assert kernel32.GetConsoleOutputCP() == original, 'the console output code page was not restored'
+
+          for label, check in (('count-project', count_project), ('status', status), ('count-in-use', count_in_use),
+                               ('count-code-pages', count_code_pages)):
               try:
                   check()
               except Exception:
