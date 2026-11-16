@@ -1,6 +1,6 @@
 ---
 name: devlyn-engines
-description: Show and pin the engine that executes devlyn implementation work. Reads and writes machine-local .devlyn/engines.json with fail-closed validation. Use when the user asks which engine is configured, wants to force a specific engine for implementation ("수동모드", "engine 고정", "use codex to implement"), or wants to clear the pin back to the default.
+description: Show and pin the engine that executes devlyn implementation work. Reads and writes machine-local .devlyn/engines.json with fail-closed validation. Use when the user asks which engine is configured, wants to force a specific engine for implementation ("수동모드", "engine 고정", "use codex to implement"), says who should review ("검토는 ...로", "always review with ..."), or wants to clear the pin back to the default.
 ---
 
 Utility front-end for the executor contract in `_shared/engine-preflight.md`. It adds no semantics of its own.
@@ -50,7 +50,7 @@ Verify DEVLYN_SHARED_DIR/role-config.py and DEVLYN_SHARED_DIR/engine-doctor.sh b
 
 ## No args — status
 
-1. Run `python3 "$DEVLYN_SHARED_DIR/role-config.py" --workdir "$PWD" --default-engine <this CLI's engine>` and print the executor's engine, source (`engines.json` pin or `default`) and availability. `inactive` lists keys earlier releases wrote for retired pipeline roles: they select nothing, and `clear` removes them. CLI presence is not authentication.
+1. Run `python3 "$DEVLYN_SHARED_DIR/role-config.py" --workdir "$PWD" --default-engine <this CLI's engine>` and print the executor's engine, source (`engines.json` pin or `default`) and availability, and the pinned reviewers with each one's read-only start line. `inactive` lists keys earlier releases wrote for retired pipeline roles: they select nothing, and `clear` removes them. CLI presence is not authentication.
 2. Run `bash "$DEVLYN_SHARED_DIR/engine-doctor.sh"` and show its availability/eligibility table.
 3. Show the subcommands below. Status never launches a model.
 
@@ -58,6 +58,7 @@ Verify DEVLYN_SHARED_DIR/role-config.py and DEVLYN_SHARED_DIR/engine-doctor.sh b
 
 - `executor <name>` — run the status command with `--set-executor <name>`. It refuses a name with no `_shared/adapters/<name>.adapter.md`, or whose adapter declares `executor: no`, and lists the valid names. An engine whose CLI is unavailable is still pinned, with a warning: pins are promises, and dispatch stops with `BLOCKED:<name>-unavailable` until installed.
 - `clear` — run the status command with `--clear`: it removes the executor pin and the inactive keys, preserves unrelated keys, and deletes an empty file.
+- `reviewers <name>...` — run the status command with `--set-reviewers <name>...`; `reviewers clear` removes them and keeps the executor pin. It refuses a name whose engine has no adapter with a `## Review` section, and a repeated name, and lists the valid engines. Use it when the user says who should review ("검토는 ...로", "always review with ...").
 - `pair` and `role` were removed with the retired pipeline roles: say so and change nothing.
 
 Pass the engine name as one structured argument, never by shell interpolation of user text. After every change, re-print the status. Never modify anything outside `.devlyn/engines.json`.

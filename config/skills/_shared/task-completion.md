@@ -224,6 +224,8 @@ Report verification, delivery and checkout reconciliation separately. A delivery
 error does not rewrite an accepted product result; unperformed verification
 must never be reported as accepted.
 
+When a pin chose who implemented or who reviewed, the report says so in one line: the names, and for a pinned reviewer that could not start, why.
+
 ## Yield and retain recoverability
 
 Cleanup requires actual matching MERGED evidence or, with no PR, the accepted commit on the fetched base; linked-tree removal also

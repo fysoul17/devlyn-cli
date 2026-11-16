@@ -2738,7 +2738,9 @@ fs.rmSync = (file, ...rest) => {{
                    lambda: module['resolve'](self.project, 'codex', available=lambda _: True),
                    lambda: module['select'](self.project, 'codex', available=lambda _: True),
                    lambda: module['edit'](self.project, 'codex'),
-                   lambda: module['edit'](self.project, None))
+                   lambda: module['edit'](self.project, None),
+                   lambda: module['edit_reviewers'](self.project, ['claude']),
+                   lambda: module['edit_reviewers'](self.project, []))
         def blocked():
             for index, action in enumerate(actions):
                 with self.subTest(action=index):
@@ -2804,6 +2806,8 @@ fs.rmSync = (file, ...rest) => {{
                 lambda: module['select'](self.project, 'claude', available=lambda _: True),
                 lambda: module['edit'](self.project, 'codex'),
                 lambda: module['edit'](self.project, None),
+                lambda: module['edit_reviewers'](self.project, ['claude']),
+                lambda: module['edit_reviewers'](self.project, []),
             )):
                 with self.subTest(target=target, action=index):
                     with self.assertRaisesRegex(ValueError, 'BLOCKED:invalid-engine-config') as caught:
@@ -2856,7 +2860,8 @@ fs.rmSync = (file, ...rest) => {{
         self.assertEqual(role('--select')['executor'], {'engine': 'claude', 'source': 'default', 'availability': 'CLI-unavailable'})
         # Pins are validated before any byte changes; clear keeps unrelated keys and drops the inactive ones.
         engines.write_bytes(legacy)
-        self.assertIn('BLOCKED:invalid-engine-config: no adapter for grok', role('--set-executor', 'grok', code=1))
+        self.assertIn('BLOCKED:invalid-engine-config: no adapter for kimi', role('--set-executor', 'kimi', code=1))
+        self.assertIn('BLOCKED:invalid-engine-config: grok is ineligible as executor', role('--set-executor', 'grok', code=1))
         self.assertEqual(engines.read_bytes(), legacy)
         role('--set-executor', 'claude', path=bins)
         self.assertEqual(json.loads(engines.read_bytes()), {**json.loads(legacy), 'executor': 'claude'})
@@ -2885,7 +2890,64 @@ fs.rmSync = (file, ...rest) => {{
                     self.assertEqual(json.loads(run(argv, env=env).stdout), status)
                     if host in ('pi', 'grok'):
                         blocked = run([*argv, '--select'], env=env, code=1)
-                        self.assertIn(f'no adapter for {host}'.encode(), blocked.stderr)
+                        reason = 'no adapter for pi' if host == 'pi' else 'grok is ineligible as executor'
+                        self.assertIn(reason.encode(), blocked.stderr)
+
+    def test_reviewer_pins_status_set_and_clear(self):
+        # Reviewers are the user's own pins beside the executor: status and selection list each with its availability
+        # and its adapter's read-only start; nothing is chosen when none is pinned, and none blocks selection.
+        script = self.package / 'config/skills/_shared/role-config.py'
+        engines = self.project / '.devlyn/engines.json'; engines.parent.mkdir()
+        bins = self.case / 'bin'; bins.mkdir()
+        for name in ('codex', 'claude'):
+            launcher = bins / (name + ('.cmd' if os.name == 'nt' else ''))
+            launcher.write_text('@echo off\r\n' if os.name == 'nt' else '#!/bin/sh\n', encoding='utf-8'); launcher.chmod(0o755)
+
+        def role(*args, host='codex', code=0):
+            env = dict(self.env, PATH=str(bins))
+            result = run([sys.executable, script, '--workdir', self.project, '--default-engine', host, *args], env=env, code=code)
+            return json.loads(result.stdout) if code == 0 else result.stderr.decode('utf-8')
+
+        legacy = b'{"executor":"codex","roles":{"worker":{"engine":"claude"}},"custom":7}\n'
+        engines.write_bytes(legacy)
+        self.assertEqual(role()['reviewers'], [])
+        self.assertEqual(role('--select')['reviewers'], [])
+        # A wrong name is refused with the engines that can review, and changes no byte.
+        for names, error in ((['omp'], 'no review section for omp; valid: claude, grok'),
+                             (['grok', 'grok'], 'reviewer named twice: grok'),
+                             (['grok/'], "not a reviewer name: 'grok/'")):
+            self.assertEqual(role('--set-reviewers', *names, code=1).strip(), 'BLOCKED:invalid-engine-config: ' + error)
+            self.assertEqual(engines.read_bytes(), legacy)
+        status = role('--set-reviewers', 'claude/model-x/high', 'grok')
+        self.assertEqual(json.loads(engines.read_bytes()), {**json.loads(legacy), 'reviewers': ['claude/model-x/high', 'grok']})
+        self.assertEqual(status['executor'], {'engine': 'codex', 'source': 'engines.json', 'availability': 'CLI-present/auth-unchecked'})
+        claude, grok = status['reviewers']
+        self.assertEqual({k: claude[k] for k in ('name', 'engine', 'model', 'effort', 'availability')},
+                         {'name': 'claude/model-x/high', 'engine': 'claude', 'model': 'model-x', 'effort': 'high',
+                          'availability': 'CLI-present/auth-unchecked'})
+        self.assertIn('`claude -p "<prompt>" --tools "Read,Glob,Grep" --strict-mcp-config --setting-sources ""`', claude['start'])
+        self.assertEqual((grok['name'], grok['model'], grok['effort'], grok['availability']), ('grok', '', '', 'CLI-unavailable'))
+        self.assertIn('grok -p "<prompt>" --tools "read_file,grep,list_dir"', grok['start'])
+        # An unavailable reviewer never blocks selection; a host with no adapter still reads the status.
+        engines.write_bytes(b'{"reviewers":["grok"]}')
+        self.assertEqual(role('--select', host='claude')['reviewers'][0]['availability'], 'CLI-unavailable')
+        status = role(host='pi')
+        self.assertEqual((status['executor']['engine'], [r['name'] for r in status['reviewers']]), ('pi', ['grok']))
+        # A pinned engine with no review section in this release is listed, never a failure.
+        engines.write_bytes(b'{"reviewers":["omp","claude"]}')
+        for args in ((), ('--select',)):
+            self.assertEqual([(r['name'], r['availability'], bool(r['start'])) for r in role(*args, host='claude')['reviewers']],
+                             [('omp', 'no-review-section', False), ('claude', 'CLI-present/auth-unchecked', True)])
+        # `clear` keeps the reviewers; clearing them keeps the executor pin and deletes a file left empty.
+        engines.write_bytes(legacy); role('--set-reviewers', 'grok')
+        role('--clear')
+        self.assertEqual(json.loads(engines.read_bytes()), {'custom': 7, 'reviewers': ['grok']})
+        engines.write_bytes(b'{"executor":"codex","reviewers":["grok"]}')
+        role('--clear-reviewers')
+        self.assertEqual(json.loads(engines.read_bytes()), {'executor': 'codex'})
+        engines.write_bytes(b'{"reviewers":["grok"]}')
+        self.assertEqual(role('--clear-reviewers')['reviewers'], [])
+        self.assertFalse(engines.exists())
 
     def test_upgrade_from_4_1_0_and_main_retires_resolve(self):
         # A 4.1.0 or main (9ecbe51c) install: resolve as a core skill, beside leftovers under its 3.x

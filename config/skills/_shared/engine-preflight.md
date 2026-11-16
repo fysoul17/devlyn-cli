@@ -16,6 +16,12 @@ A pin is a promise. When the pinned engine's CLI is unavailable, the command exi
 
 An engine is pinnable when `_shared/adapters/<name>.adapter.md` exists and does not declare `executor: no`. Adapters ship with devlyn-cli releases, and a reinstall replaces `_shared`. An adapter's `## Invocation` says how to start it. On native Windows, use native Node/npm and Python (`python3` on PATH), with Git for Windows Bash for the shipped shell wrapper.
 
+## Reviewers
+
+Pinned reviewers are the reviewers the user requires (principle 4). The status command prints them with each one's start command, taken from its adapter's `## Review` section: a fresh read-only run that is given the requirement and the change, never the working conversation. Pin them with `/devlyn-engines reviewers <name>...`; a name is an engine with a review section, optionally `engine/model` or `engine/model/effort`.
+
+A reviewer that cannot start (not installed, not signed in, out of usage, a start error) is named with its reason in the report, and the others still review. When none can start, principle 4's rule for no named reviewer applies. Never sign in, switch accounts or change settings to make a reviewer start. With no reviewers pinned, nothing here applies and no engine is chosen for the user.
+
 ## Reporting a blocked engine
 
 The final report names the selected engine, the verdict and the setup steps; it never reports a downgraded success:

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Resolve and pin the devlyn executor; no model dispatch."""
+"""Resolve and pin the devlyn executor and reviewers; no model dispatch."""
 from __future__ import annotations
 
 import runpy
@@ -50,13 +50,18 @@ def encoded(value):
     return (json.dumps(value, sort_keys=True, indent=2) + "\n").encode()
 
 
+NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]*")
+
+
 def name(value, field):
-    if not isinstance(value, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", value):
+    if not isinstance(value, str) or not NAME.fullmatch(value):
         fail(f"{field} must be a nonempty identifier")
     return value
 
 
 INELIGIBLE = re.compile(r"^executor: no\s*$", re.M)
+REVIEW = re.compile(r"^## Review$", re.M)
+SECTION = re.compile(r"^## ", re.M)
 
 
 # Named `<engine>.adapter.md`: on a case-insensitive filesystem Claude Code loads `claude.md` as nested instructions.
@@ -73,11 +78,51 @@ def adapter(engine, shared=SHARED):
     return text
 
 
+def review_start(engine, shared=SHARED):
+    """The body of the engine's adapter section `## Review`, trimmed; None when it has none."""
+    path = shared / "adapters" / f"{engine}.adapter.md"
+    if not path.is_file():
+        return None
+    text = path.read_text(encoding="utf-8")
+    heading = REVIEW.search(text)
+    if heading is None:
+        return None
+    body = text[heading.end():]
+    end = SECTION.search(body)
+    return body[:end.start() if end else len(body)].strip()
+
+
+def reviewer(entry):
+    """`engine`, `engine/model` or `engine/model/effort` as [engine, model, effort]."""
+    parts = entry.split("/") if isinstance(entry, str) else []
+    if not 1 <= len(parts) <= 3 or not all(parts) or not NAME.fullmatch(parts[0]):
+        fail(f"not a reviewer name: {entry!r}")
+    return (parts + ["", ""])[:3]
+
+
+def reviewers(entries, shared=None):
+    """Unique reviewer names; with `shared`, each engine also needs an adapter with a review section."""
+    if not isinstance(entries, list):
+        fail("reviewers must be an array of names")
+    seen = set()
+    for entry in entries:
+        engine = reviewer(entry)[0]
+        if shared is not None and review_start(engine, shared) is None:
+            valid = sorted(p.name.removesuffix(".adapter.md") for p in (shared / "adapters").glob("*.adapter.md")
+                           if REVIEW.search(p.read_text(encoding="utf-8")))
+            fail(f"no review section for {engine}; valid: {', '.join(valid)}")
+        if entry in seen:
+            fail(f"reviewer named twice: {entry}")
+        seen.add(entry)
+    return entries
+
+
 def validate(config, shared=SHARED):
     if not isinstance(config, dict):
         fail("configuration must be an object")
     if "executor" in config:
         adapter(config["executor"], shared=shared)
+    reviewers(config.get("reviewers", []))
     return config
 
 
@@ -105,15 +150,27 @@ def read_config(path, *, optional=False, shared=SHARED):
 
 
 def resolve(work, default_engine, *, available=None, shared=SHARED):
-    """The project's executor pin, else the invoking CLI; status only, never a dispatch decision."""
+    """The project's executor pin, else the invoking CLI, and the pinned reviewers; status only, never a dispatch
+    decision. No reviewer is chosen that the user did not pin."""
     config, source = read_config(Path(work) / ".devlyn/engines.json", optional=True, shared=shared)
     engine = config.get("executor", default_engine)
     # read_config validates pins; the invoking host needs no adapter to report its own default.
     name(engine, "engine")
     available = available or (lambda candidate: shutil.which(candidate) is not None)
+
+    def presence(candidate):
+        return "CLI-present/auth-unchecked" if available(candidate) else "CLI-unavailable"
+
+    pinned = []
+    for entry in config.get("reviewers", []):
+        part, model, effort = reviewer(entry)
+        # A name this release has no review section for is listed, never a failure: another release may have pinned it.
+        start = review_start(part, shared)
+        pinned.append({"name": entry, "engine": part, "model": model, "effort": effort,
+                       "availability": "no-review-section" if start is None else presence(part), "start": start or ""})
     return {"executor": {"engine": engine, "source": "engines.json" if "executor" in config else "default",
-                         "availability": "CLI-present/auth-unchecked" if available(engine) else "CLI-unavailable"},
-            "inactive": [key for key in RETIRED if key in config], "input": source}
+                         "availability": presence(engine)},
+            "reviewers": pinned, "inactive": [key for key in RETIRED if key in config], "input": source}
 
 
 def select(work, default_engine, *, available=None, shared=SHARED):
@@ -129,7 +186,7 @@ def select(work, default_engine, *, available=None, shared=SHARED):
 
 
 def edit(work, executor, shared=SHARED):
-    """Pin `executor`, or with None clear devlyn's pins; unrelated keys keep their values."""
+    """Pin `executor`, or with None clear the executor pin and the retired keys; other keys keep their values."""
     path = Path(work) / ".devlyn/engines.json"
     config, _ = read_config(path, optional=True, shared=shared)
     if executor is None:
@@ -138,6 +195,21 @@ def edit(work, executor, shared=SHARED):
     else:
         adapter(executor, shared=shared)
         config["executor"] = executor
+    write(path, config)
+
+
+def edit_reviewers(work, entries, shared=SHARED):
+    """Pin `entries` as the reviewers, or with none remove them; other keys keep their values."""
+    path = Path(work) / ".devlyn/engines.json"
+    config, _ = read_config(path, optional=True, shared=shared)
+    if reviewers(entries, shared):
+        config["reviewers"] = list(entries)
+    else:
+        config.pop("reviewers", None)
+    write(path, config)
+
+
+def write(path, config):
     path.parent.mkdir(parents=True, exist_ok=True)
     if not config:
         path.unlink(missing_ok=True)
@@ -188,7 +260,8 @@ def self_test():
         (ineligible / "adapters/codex.adapter.md").write_text("# Codex adapter\n", encoding="utf-8")
         path.write_bytes(legacy)
         # A refused name lists only the engines that can execute.
-        for engine, shared, message in (("grok", SHARED, "no adapter for grok; valid: claude, codex"),
+        for engine, shared, message in (("kimi", SHARED, "no adapter for kimi; valid: claude, codex"),
+                                        ("grok", SHARED, "grok is ineligible as executor"),
                                         ("grok", ineligible, "no adapter for grok; valid: codex"),
                                         ("judge", ineligible, "ineligible as executor"),
                                         ("../codex", SHARED, "nonempty identifier")):
@@ -221,8 +294,134 @@ def self_test():
                               capture_output=True, text=True, encoding="utf-8", env={**os.environ, "PATH": str(work / "no-binaries")})
         assert proc.returncode == 1 and proc.stderr.startswith("BLOCKED:codex-unavailable:"), proc.stderr
         assert "Traceback" not in proc.stderr and path.read_bytes() == b'{"executor":"codex"}'
-    print("PASS role-config self-test: executor pin, retired keys inactive, fail-closed selection and atomic validated writes")
+        # Of the shipped adapters, these can start a reviewer.
+        proc = subprocess.run([sys.executable, str(Path(__file__).resolve()), "--workdir", str(work), "--set-reviewers", "omp"],
+                              capture_output=True, text=True, encoding="utf-8")
+        assert proc.returncode == 1 and proc.stderr == (
+            "BLOCKED:invalid-engine-config: no review section for omp; valid: claude, grok\n"), proc.stderr
+        assert path.read_bytes() == b'{"executor":"codex"}'
+        reviewer_self_test(work, path)
+    print("PASS role-config self-test: executor pin, retired keys inactive, fail-closed selection, atomic validated writes, "
+          "and pinned reviewers listed as named, never chosen and never blocking")
     return 0
+
+
+def reviewer_self_test(work, path):
+    """Reviewer pins: existing pins keep working, no engine is chosen for the user, naming, and unavailable reviewers."""
+    team = work / "team"
+    (team / "adapters").mkdir(parents=True)
+    for engine, text in (("alpha", '## Review\n\nalpha "<prompt>"\n'),
+                         ("beta", '## Invocation\n\nbeta\n\n## Review\n\n  beta "<prompt>" -m <model>\n\n## Notes\n\nnot it\n'),
+                         ("gamma", "executor: no\n\n## Reviewing\n\nnot a review section\n"),
+                         ("delta", 'executor: no\n\n## Review\n\ndelta "<prompt>"\n')):
+        (team / f"adapters/{engine}.adapter.md").write_text(text, encoding="utf-8")
+
+    def status(available=lambda engine: True, host="alpha", dispatch=False):
+        return (select if dispatch else resolve)(work, host, available=available, shared=team)
+
+    def only(*engines):
+        return lambda engine: engine in engines
+
+    def names(value):
+        return [entry["name"] for entry in value["reviewers"]]
+
+    def refused(action, message=""):
+        before = path.read_bytes() if path.exists() else None
+        try:
+            action()
+        except ValueError as exc:
+            assert str(exc).startswith("BLOCKED:invalid-engine-config:") and str(exc).endswith(message), exc
+        else:
+            raise AssertionError(f"accepted; expected {message!r}")
+        assert (path.read_bytes() if path.exists() else None) == before
+
+    # PinsKeepWorking: a pin in use resolves as before; a file without reviewers lists none.
+    path.write_bytes(b'{"executor":"beta"}')
+    for dispatch in (False, True):
+        value = status(dispatch=dispatch)
+        assert value["executor"] == {"engine": "beta", "source": "engines.json",
+                                     "availability": "CLI-present/auth-unchecked"} and value["reviewers"] == [], value
+    # A pin is still a promise beside a pinned reviewer; the reviewer never stands in for it.
+    path.write_bytes(b'{"executor":"beta","reviewers":["alpha"]}')
+    try:
+        status(available=only("alpha"), dispatch=True)
+    except ValueError as exc:
+        assert str(exc).startswith("BLOCKED:beta-unavailable:"), exc
+    else:
+        raise AssertionError("an unavailable pinned executor was dispatched")
+    for raw in (None, b"{}"):
+        path.unlink(missing_ok=True)
+        if raw:
+            path.write_bytes(raw)
+        value = status()
+        assert (value["executor"]["engine"], value["executor"]["source"], value["reviewers"]) == ("alpha", "default", [])
+    # Setting reviewers keeps every other key; `clear` keeps the reviewers.
+    path.write_bytes(b'{"executor":"beta","roles":{"judge":"x"},"pair_judge_priority":["y"],"mine":1}')
+    edit_reviewers(work, ["alpha"], shared=team)
+    assert loads(path.read_bytes()) == {"executor": "beta", "roles": {"judge": "x"}, "pair_judge_priority": ["y"],
+                                        "mine": 1, "reviewers": ["alpha"]}
+    edit(work, None, shared=team)
+    assert loads(path.read_bytes()) == {"mine": 1, "reviewers": ["alpha"]}
+    # A host that cannot execute is still refused; a review-only adapter never executes.
+    refused(lambda: status(host="gamma", dispatch=True), "gamma is ineligible as executor")
+    refused(lambda: status(host="delta", dispatch=True), "delta is ineligible as executor")
+    refused(lambda: status(host="unknown-host", dispatch=True), "no adapter for unknown-host; valid: alpha, beta")
+    refused(lambda: edit(work, "delta", shared=team), "delta is ineligible as executor")
+
+    # NoEngineIsChosenForTheUser: nothing named, nothing chosen, with every reviewer's CLI present.
+    path.write_bytes(b'{"executor":"beta"}')
+    assert names(status()) == [] and names(status(dispatch=True)) == []
+    # Violating control: a picker that fills in another engine would choose one here.
+    def picker(value, host="alpha"):
+        return names(value) or [e for e in ("alpha", "beta", "delta") if e != host and review_start(e, team)][:1]
+    assert picker(status()) == ["beta"] and names(status()) == []
+    # Named reviewers are exactly those, in the order named, each with its model, effort and trimmed start.
+    edit_reviewers(work, ["beta/model-x/ultra", "delta"], shared=team)
+    assert status()["reviewers"] == [
+        {"name": "beta/model-x/ultra", "engine": "beta", "model": "model-x", "effort": "ultra",
+         "availability": "CLI-present/auth-unchecked", "start": 'beta "<prompt>" -m <model>'},
+        {"name": "delta", "engine": "delta", "model": "", "effort": "",
+         "availability": "CLI-present/auth-unchecked", "start": 'delta "<prompt>"'}], status()
+    # The user's own engine may be named: a fresh run of it.
+    edit_reviewers(work, ["alpha"], shared=team)
+    assert names(status(host="alpha")) == ["alpha"]
+
+    # Naming: model and effort pass through; a wrong name is refused with the valid engines; nothing moves.
+    assert reviewer("beta") == ["beta", "", ""] and reviewer("beta/model-x/ultra") == ["beta", "model-x", "ultra"]
+    path.write_bytes(b'{"executor":"beta","reviewers":["alpha"]}')
+    for bad in ("gamma", "nobody"):
+        refused(lambda: edit_reviewers(work, [bad], shared=team), f"no review section for {bad}; valid: alpha, beta, delta")
+    refused(lambda: edit_reviewers(work, ["beta", "beta"], shared=team), "reviewer named twice: beta")
+    for bad in ("beta/", "/x", "a/b/c/d", "", "../x"):
+        refused(lambda: edit_reviewers(work, [bad], shared=team), f"not a reviewer name: {bad!r}")
+    for raw in (b'{"reviewers":"alpha"}', b'{"reviewers":[1]}', b'{"reviewers":["alpha","alpha"]}', b'{"reviewers":["/x"]}'):
+        path.write_bytes(raw)
+        refused(status)
+    # Clearing the reviewers keeps the executor pin, and deletes a file left empty.
+    path.write_bytes(b'{"executor":"beta","reviewers":["alpha"]}')
+    edit_reviewers(work, [], shared=team)
+    assert loads(path.read_bytes()) == {"executor": "beta"}
+    path.write_bytes(b'{"reviewers":["alpha"]}')
+    edit_reviewers(work, [], shared=team)
+    assert not path.exists()
+
+    # Unavailable: every pinned reviewer is listed, the ones that cannot start with why; nothing blocks.
+    path.write_bytes(b'{"reviewers":["beta","delta"]}')
+    value = status(available=only("alpha", "delta"), dispatch=True)
+    assert [(r["name"], r["availability"]) for r in value["reviewers"]] == [
+        ("beta", "CLI-unavailable"), ("delta", "CLI-present/auth-unchecked")], value
+    # Violating control: a list that skipped the unavailable one would lose its name silently.
+    assert [r["name"] for r in value["reviewers"] if r["availability"] != "CLI-unavailable"] == ["delta"]
+    # None can start: each is named, and dispatch still selects the executor and claims no reviewer.
+    value = status(available=only("alpha"), dispatch=True)
+    assert value["executor"]["engine"] == "alpha" and [(r["name"], r["availability"]) for r in value["reviewers"]] == [
+        ("beta", "CLI-unavailable"), ("delta", "CLI-unavailable")], value
+    # A name with no review section in this release is listed with an empty start, never a failure.
+    path.write_bytes(b'{"executor":"beta","reviewers":["gamma/m","ghost","alpha"]}')
+    for dispatch in (False, True):
+        assert [(r["name"], r["availability"], r["start"]) for r in status(dispatch=dispatch)["reviewers"]] == [
+            ("gamma/m", "no-review-section", ""), ("ghost", "no-review-section", ""),
+            ("alpha", "CLI-present/auth-unchecked", 'alpha "<prompt>"')]
 
 
 def main():
@@ -234,12 +433,16 @@ def main():
     action.add_argument("--select", action="store_true", help="resolve for dispatch: an unavailable pinned executor fails closed")
     action.add_argument("--set-executor", metavar="ENGINE")
     action.add_argument("--clear", action="store_true", help="remove the executor pin and the inactive retired keys")
+    action.add_argument("--set-reviewers", nargs="+", metavar="NAME", help="engine, engine/model or engine/model/effort")
+    action.add_argument("--clear-reviewers", action="store_true", help="remove the reviewers; the executor pin stays")
     args = parser.parse_args()
     try:
         if args.self_test:
             return self_test()
         if args.set_executor is not None or args.clear:
             edit(args.workdir, args.set_executor)
+        elif args.set_reviewers is not None or args.clear_reviewers:
+            edit_reviewers(args.workdir, args.set_reviewers or [])
         value = (select if args.select else resolve)(args.workdir, args.default_engine)
         if args.set_executor and value["executor"]["availability"] == "CLI-unavailable":
             print(f"Pinned {args.set_executor}, which is unavailable here: dispatch stops with "

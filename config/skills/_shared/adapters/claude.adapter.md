@@ -28,3 +28,9 @@ command or script that starts Claude itself is not inspected.
 sandbox (e.g. Codex CLI's default `workspace-write`) it fails even though the
 binary resolves. A drain blocks when the executor cannot start, and a task
 whose executor exits without a submission waits for the next drain.
+
+## Review
+
+A fresh read-only run in the checkout that holds the change, given the requirement and the change, never the working conversation:
+`claude -p "<prompt>" --tools "Read,Glob,Grep" --strict-mcp-config --setting-sources ""`,
+plus `--model <model>` and `--effort <effort>` when pinned.
