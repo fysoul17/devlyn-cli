@@ -78,7 +78,7 @@ def choices(shared=SHARED):
                 continue
         except (OSError, UnicodeError):
             pass
-        unreadable.append(str(path))
+        unreadable.append(repr(str(path)))
     if unreadable:
         print(f"Adapters that cannot be read are not offered: {', '.join(unreadable)}", file=sys.stderr)
     return {"executor": sorted(e for e, text in texts.items() if not INELIGIBLE.search(text)),
@@ -530,6 +530,26 @@ def reviewer_self_test(work, path):
             pass
         else:
             raise AssertionError("an unreadable default executor adapter was dispatched")
+    # A skipped path is named as `repr` renders it: one line that encodes as strict UTF-8, the way stderr is set, even
+    # when its string holds a lone surrogate (a folder name that is not UTF-8; macOS refuses one, so the string is built
+    # here) and a newline. Violating control: the plain path string does not encode.
+    odd = Path(f"{work}/odd \udcff\nname/adapters/broken.adapter.md")
+
+    class OddFolder:
+        def __truediv__(self, name):
+            return self
+
+        def glob(self, pattern):
+            return iter([odd])
+    with contextlib.redirect_stderr(io.StringIO()) as err:
+        assert choices(OddFolder()) == {"executor": [], "reviewers": []}
+    assert len(err.getvalue().encode("utf-8").splitlines()) == 1 and "broken.adapter.md" in err.getvalue(), err.getvalue()
+    try:
+        str(odd).encode("utf-8")
+    except UnicodeEncodeError:
+        pass
+    else:
+        raise AssertionError("the plain path string encoded")
 
 
 def main():

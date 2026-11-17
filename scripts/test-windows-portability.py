@@ -3041,6 +3041,40 @@ fs.rmSync = (file, ...rest) => {{
                     error = role(*args, code=1).stderr.decode('utf-8').splitlines()[-1]
                     self.assertTrue(error.startswith('BLOCKED:invalid-engine-config:') and error.endswith(message), error)
                     self.assertEqual(engines.read_bytes(), pinned)
+        # A skipped path is named as `repr` renders it: one line that encodes as strict UTF-8, the way stderr is set,
+        # even when its string holds a lone surrogate (a folder name that is not UTF-8; macOS refuses one, so the
+        # string is built here) and a newline. Violating control: the plain path string does not encode.
+        import io
+        odd = Path(str(self.case) + '/odd \udcff\nname/adapters/broken.adapter.md')
+
+        class OddFolder:
+            def __truediv__(self, name):
+                return self
+
+            def glob(self, pattern):
+                return iter([odd])
+        with contextlib.redirect_stderr(io.StringIO()) as err:
+            self.assertEqual(runpy.run_path(str(shared / 'role-config.py'))['choices'](OddFolder()), {'executor': [], 'reviewers': []})
+        self.assertEqual(len(err.getvalue().encode('utf-8').splitlines()), 1, err.getvalue())
+        self.assertIn('broken.adapter.md', err.getvalue())
+        with self.assertRaises(UnicodeEncodeError):
+            str(odd).encode('utf-8')
+        # Where the file system takes such a folder name, the helper itself runs beneath one.
+        with self.subTest(real_folder=True):
+            folder = self.case / 'odd \udcff\nname'
+            try:
+                folder.mkdir()
+            except OSError as exc:
+                self.skipTest(f'this file system refuses the folder name: {exc}')
+            shutil.copytree(shared, folder / '_shared')
+            engines.write_bytes(b'{"executor":"codex"}')
+            for args in ((), ('--select',)):
+                result = run([sys.executable, folder / '_shared/role-config.py', '--workdir', self.project,
+                              '--default-engine', 'codex', *args], env=dict(self.env, PATH=str(bins)))
+                self.assertEqual(json.loads(result.stdout)['executor']['engine'], 'codex')
+                stderr = result.stderr.decode('utf-8')
+                self.assertEqual(len(stderr.splitlines()), 1, stderr)
+                self.assertIn('broken.adapter.md', stderr); self.assertIn('folder.adapter.md', stderr)
 
     def test_upgrade_from_4_1_0_and_main_retires_resolve(self):
         # A 4.1.0 or main (9ecbe51c) install: resolve as a core skill, beside leftovers under its 3.x
