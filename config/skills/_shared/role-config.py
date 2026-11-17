@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import runpy
 import argparse
+import contextlib
 import hashlib
+import io
 import json
 import os
 from pathlib import Path
@@ -66,9 +68,19 @@ SECTION = re.compile(r"^## ", re.M)
 
 def choices(shared=SHARED):
     """The engines that may be pinned: as executor, each adapter that does not declare `executor: no`; as reviewer,
-    each adapter with a `## Review` section."""
-    texts = {p.name.removesuffix(".adapter.md"): p.read_text(encoding="utf-8")
-             for p in (shared / "adapters").glob("*.adapter.md")}
+    each adapter with a `## Review` section. An adapter that cannot be read as text is no choice and is named on
+    stderr; the selected executor's own adapter is still validated by `adapter`."""
+    texts, unreadable = {}, []
+    for path in sorted((shared / "adapters").glob("*.adapter.md")):
+        try:
+            if path.is_file():
+                texts[path.name.removesuffix(".adapter.md")] = path.read_text(encoding="utf-8")
+                continue
+        except (OSError, UnicodeError):
+            pass
+        unreadable.append(str(path))
+    if unreadable:
+        print(f"Adapters that cannot be read are not offered: {', '.join(unreadable)}", file=sys.stderr)
     return {"executor": sorted(e for e, text in texts.items() if not INELIGIBLE.search(text)),
             "reviewers": sorted(e for e, text in texts.items() if REVIEW.search(text))}
 
@@ -482,6 +494,42 @@ def reviewer_self_test(work, path):
     (team / "adapters/epsilon.adapter.md").write_text("## Review\n\nepsilon\n", encoding="utf-8")
     assert status()["choices"] == {"executor": ["alpha", "beta", "epsilon"],
                                    "reviewers": ["alpha", "beta", "delta", "epsilon"]}
+
+    # An adapter that cannot be read as text (not UTF-8, or a folder named like one) is no choice and is named on
+    # stderr; status and dispatch still return a healthy executor, pinned or not. Violating control: each raises when
+    # read, as the first version of `choices` read every adapter. The selected executor's own one is still refused.
+    (team / "adapters/broken.adapter.md").write_bytes(b"## Review\n\n\xff\n")
+    (team / "adapters/folder.adapter.md").mkdir()
+    for raw, engine in ((None, "alpha"), (b'{"executor":"beta"}', "beta")):
+        path.unlink(missing_ok=True)
+        if raw:
+            path.write_bytes(raw)
+        for dispatch in (False, True):
+            with contextlib.redirect_stderr(io.StringIO()) as err:
+                value = status(dispatch=dispatch)
+            assert value["executor"]["engine"] == engine and value["choices"] == {
+                "executor": ["alpha", "beta", "epsilon"], "reviewers": ["alpha", "beta", "delta", "epsilon"]}, value
+            assert err.getvalue().count("\n") == 1 and "broken.adapter.md" in err.getvalue() \
+                and "folder.adapter.md" in err.getvalue(), err.getvalue()
+    for unreadable in ("broken", "folder"):
+        try:
+            (team / f"adapters/{unreadable}.adapter.md").read_text(encoding="utf-8")
+        except (OSError, UnicodeError):
+            continue
+        raise AssertionError(f"{unreadable} was read")
+    with contextlib.redirect_stderr(io.StringIO()):
+        for engine, message in (("broken", "invalid start byte"), ("folder", "no adapter for folder; valid: alpha, beta, epsilon")):
+            path.write_bytes(json.dumps({"executor": engine}).encode())
+            for dispatch in (False, True):
+                refused(lambda: status(dispatch=dispatch), message)
+        path.unlink()
+        refused(lambda: status(host="folder", dispatch=True), "no adapter for folder; valid: alpha, beta, epsilon")
+        try:
+            status(host="broken", dispatch=True)
+        except UnicodeError:
+            pass
+        else:
+            raise AssertionError("an unreadable default executor adapter was dispatched")
 
 
 def main():

@@ -3000,6 +3000,48 @@ fs.rmSync = (file, ...rest) => {{
         self.assertEqual(role('--clear-reviewers')['reviewers'], [])
         self.assertFalse(engines.exists())
 
+    def test_unreadable_sibling_adapter_is_no_choice_and_blocks_no_executor(self):
+        # An adapter that cannot be read as text (not UTF-8, or a folder named like one) is no choice and is named on
+        # stderr; status and dispatch still return a healthy executor, pinned or not. Violating control: each raises
+        # when read, as the first version of `choices` read every adapter. The pinned executor's own one is refused.
+        shared = self.case / '_shared'
+        shutil.copytree(self.package / 'config/skills/_shared', shared, ignore=shutil.ignore_patterns('__pycache__'))
+        (shared / 'adapters/broken.adapter.md').write_bytes(b'## Review\n\n\xff\n')
+        (shared / 'adapters/folder.adapter.md').mkdir()
+        engines = self.project / '.devlyn/engines.json'; engines.parent.mkdir()
+        bins = self.case / 'bin'; bins.mkdir()
+        launcher = bins / ('codex' + ('.cmd' if os.name == 'nt' else ''))
+        launcher.write_text('@echo off\r\n' if os.name == 'nt' else '#!/bin/sh\n', encoding='utf-8'); launcher.chmod(0o755)
+
+        def role(*args, code=0):
+            return run([sys.executable, shared / 'role-config.py', '--workdir', self.project, '--default-engine', 'codex', *args],
+                       env=dict(self.env, PATH=str(bins)), code=code)
+
+        for raw in (None, b'{"executor":"codex"}'):
+            if raw:
+                engines.write_bytes(raw)
+            for args in ((), ('--select',)):
+                with self.subTest(file=raw, args=args):
+                    result = role(*args)
+                    status = json.loads(result.stdout)
+                    self.assertEqual(status['executor'], {'engine': 'codex', 'source': 'engines.json' if raw else 'default',
+                                                          'availability': 'CLI-present/auth-unchecked'})
+                    self.assertEqual(status['choices'], {'executor': ['claude', 'codex'], 'reviewers': ['claude', 'codex', 'grok']})
+                    stderr = result.stderr.decode('utf-8')
+                    self.assertEqual(len(stderr.splitlines()), 1, stderr)
+                    self.assertIn('broken.adapter.md', stderr); self.assertIn('folder.adapter.md', stderr)
+        for unreadable in ('broken', 'folder'):
+            with self.assertRaises((OSError, UnicodeError)):
+                (shared / f'adapters/{unreadable}.adapter.md').read_text(encoding='utf-8')
+        for engine, message in (('broken', 'invalid start byte'), ('folder', 'no adapter for folder; valid: claude, codex')):
+            pinned = json.dumps({'executor': engine}).encode()
+            engines.write_bytes(pinned)
+            for args in ((), ('--select',)):
+                with self.subTest(engine=engine, args=args):
+                    error = role(*args, code=1).stderr.decode('utf-8').splitlines()[-1]
+                    self.assertTrue(error.startswith('BLOCKED:invalid-engine-config:') and error.endswith(message), error)
+                    self.assertEqual(engines.read_bytes(), pinned)
+
     def test_upgrade_from_4_1_0_and_main_retires_resolve(self):
         # A 4.1.0 or main (9ecbe51c) install: resolve as a core skill, beside leftovers under its 3.x
         # name and npm's U+F03A extraction alias; resolve-only helpers in _shared; the retired Stop
