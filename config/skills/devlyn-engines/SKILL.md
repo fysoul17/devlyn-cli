@@ -58,7 +58,7 @@ Verify DEVLYN_SHARED_DIR/role-config.py and DEVLYN_SHARED_DIR/engine-doctor.sh b
 
 - `executor <name>` — run the status command with `--set-executor <name>`. It refuses a name with no `_shared/adapters/<name>.adapter.md`, or whose adapter declares `executor: no`, and lists the valid names. An engine whose CLI is unavailable is still pinned, with a warning: pins are promises, and dispatch stops with `BLOCKED:<name>-unavailable` until installed.
 - `clear` — run the status command with `--clear`: it removes the executor pin and the inactive keys, preserves unrelated keys, and deletes an empty file.
-- `reviewers <name>...` — run the status command with `--set-reviewers <name>...`; `reviewers clear` removes them and keeps the executor pin. It refuses a name whose engine has no adapter with a `## Review` section, and a repeated name, and lists the valid engines. Use it when the user says who should review ("검토는 ...로", "always review with ...").
+- `reviewers <name>...` — run the status command with `--set-reviewers <name>...`; `reviewers clear` runs it with `--clear-reviewers`: it removes them and keeps the executor pin. It refuses a name whose engine has no adapter with a `## Review` section, and a repeated name, and lists the valid engines. Use it when the user says who should review ("검토는 ...로", "always review with ...").
 - `pair` and `role` were removed with the retired pipeline roles: say so and change nothing.
 
 Pass the engine name as one structured argument, never by shell interpolation of user text. After every change, re-print the status. Never modify anything outside `.devlyn/engines.json`.

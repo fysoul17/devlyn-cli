@@ -2913,11 +2913,26 @@ fs.rmSync = (file, ...rest) => {{
         self.assertEqual(role()['reviewers'], [])
         self.assertEqual(role('--select')['reviewers'], [])
         # A wrong name is refused with the engines that can review, and changes no byte.
-        for names, error in ((['omp'], 'no review section for omp; valid: claude, grok'),
+        for names, error in ((['omp'], 'no review section for omp; valid: claude, codex, grok'),
                              (['grok', 'grok'], 'reviewer named twice: grok'),
                              (['grok/'], "not a reviewer name: 'grok/'")):
             self.assertEqual(role('--set-reviewers', *names, code=1).strip(), 'BLOCKED:invalid-engine-config: ' + error)
             self.assertEqual(engines.read_bytes(), legacy)
+        # No part of a name can carry shell text, set or read from a file the repository ships: a session pastes model
+        # and effort into a start line. Allowed control: dots, digits, underscores and hyphens.
+        for name in ('claude/x";touch y;"', 'claude/m odel', 'claude/$(id)', 'claude/model/`id`', 'claude/a;b'):
+            error = 'BLOCKED:invalid-engine-config: not a reviewer name: ' + repr(name)
+            self.assertEqual(role('--set-reviewers', name, code=1).strip(), error)
+            self.assertEqual(engines.read_bytes(), legacy)
+            hostile = json.dumps({'executor': 'codex', 'reviewers': [name]}).encode()
+            engines.write_bytes(hostile)
+            for args in ((), ('--select',)):
+                self.assertEqual(role(*args, code=1).strip(), error)
+            self.assertEqual(engines.read_bytes(), hostile)
+            engines.write_bytes(legacy)
+        self.assertEqual([(r['model'], r['effort']) for r in role('--set-reviewers', 'codex/model-4.7_x/ultra')['reviewers']],
+                         [('model-4.7_x', 'ultra')])
+        engines.write_bytes(legacy)
         status = role('--set-reviewers', 'claude/model-x/high', 'grok')
         self.assertEqual(json.loads(engines.read_bytes()), {**json.loads(legacy), 'reviewers': ['claude/model-x/high', 'grok']})
         self.assertEqual(status['executor'], {'engine': 'codex', 'source': 'engines.json', 'availability': 'CLI-present/auth-unchecked'})

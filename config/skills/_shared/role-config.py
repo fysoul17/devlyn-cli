@@ -93,9 +93,10 @@ def review_start(engine, shared=SHARED):
 
 
 def reviewer(entry):
-    """`engine`, `engine/model` or `engine/model/effort` as [engine, model, effort]."""
+    """`engine`, `engine/model` or `engine/model/effort` as [engine, model, effort]. Every part obeys the name rule:
+    a session pastes model and effort into a start line, and the file may come from the repository."""
     parts = entry.split("/") if isinstance(entry, str) else []
-    if not 1 <= len(parts) <= 3 or not all(parts) or not NAME.fullmatch(parts[0]):
+    if not 1 <= len(parts) <= 3 or not all(NAME.fullmatch(part) for part in parts):
         fail(f"not a reviewer name: {entry!r}")
     return (parts + ["", ""])[:3]
 
@@ -298,7 +299,7 @@ def self_test():
         proc = subprocess.run([sys.executable, str(Path(__file__).resolve()), "--workdir", str(work), "--set-reviewers", "omp"],
                               capture_output=True, text=True, encoding="utf-8")
         assert proc.returncode == 1 and proc.stderr == (
-            "BLOCKED:invalid-engine-config: no review section for omp; valid: claude, grok\n"), proc.stderr
+            "BLOCKED:invalid-engine-config: no review section for omp; valid: claude, codex, grok\n"), proc.stderr
         assert path.read_bytes() == b'{"executor":"codex"}'
         reviewer_self_test(work, path)
     print("PASS role-config self-test: executor pin, retired keys inactive, fail-closed selection, atomic validated writes, "
@@ -397,6 +398,17 @@ def reviewer_self_test(work, path):
     for raw in (b'{"reviewers":"alpha"}', b'{"reviewers":[1]}', b'{"reviewers":["alpha","alpha"]}', b'{"reviewers":["/x"]}'):
         path.write_bytes(raw)
         refused(status)
+    # No part can carry shell text, whether set or read from a file the repository ships: a session pastes model and
+    # effort into a start line. Allowed control: dots, digits, underscores and hyphens.
+    path.write_bytes(b'{"executor":"beta"}')
+    for bad in ('beta/x";touch y;"', "beta/m odel", "beta/$(id)", "beta/model/`id`", "beta/a;b"):
+        refused(lambda: edit_reviewers(work, [bad], shared=team), f"not a reviewer name: {bad!r}")
+        path.write_bytes(json.dumps({"reviewers": [bad]}).encode())
+        for dispatch in (False, True):
+            refused(lambda: status(dispatch=dispatch), f"not a reviewer name: {bad!r}")
+        path.write_bytes(b'{"executor":"beta"}')
+    edit_reviewers(work, ["beta/model-4.7_x/ultra"], shared=team)
+    assert [(r["model"], r["effort"]) for r in status()["reviewers"]] == [("model-4.7_x", "ultra")]
     # Clearing the reviewers keeps the executor pin, and deletes a file left empty.
     path.write_bytes(b'{"executor":"beta","reviewers":["alpha"]}')
     edit_reviewers(work, [], shared=team)
