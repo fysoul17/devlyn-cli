@@ -42,9 +42,10 @@ check_executor() {
 
 check_review() {
   # $1 = adapter file path. An adapter that can start a read-only reviewer
-  # has a line that is exactly `## Review`.
+  # has a line that is exactly `## Review` (a CRLF line end counts, as it
+  # does for role-config.py).
   [ -f "$1" ] || { printf 'n/a'; return; }
-  if grep -qx '## Review' "$1" 2>/dev/null; then printf 'yes'; else printf 'no'; fi
+  if grep -Eq $'^## Review\r?$' "$1" 2>/dev/null; then printf 'yes'; else printf 'no'; fi
 }
 
 printf '%-8s %-17s %-8s %-8s %-9s %-7s %s\n' \

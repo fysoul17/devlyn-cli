@@ -29,4 +29,4 @@ A fresh read-only run, given the requirement and the change, never the working c
 `bash "$DEVLYN_SHARED_DIR/codex-monitored.sh" -C <repo> -s read-only --ignore-rules "<prompt>"`, with stdout to a
 file, plus `-m <model>` and `-c 'model_reasoning_effort="<effort>"'` when pinned; a long prompt as
 `DEVLYN_CODEX_PROMPT_FILE=<file>` (outside the checkout: its transport record is written beside it) with the sole
-argument `-`. The run cannot change the checkout, and the user's own configuration (hooks, connected tools) still applies.
+argument `-`. The user's own configuration (hooks, connected tools) still applies.

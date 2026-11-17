@@ -422,8 +422,6 @@ def reviewer_self_test(work, path):
     value = status(available=only("alpha", "delta"), dispatch=True)
     assert [(r["name"], r["availability"]) for r in value["reviewers"]] == [
         ("beta", "CLI-unavailable"), ("delta", "CLI-present/auth-unchecked")], value
-    # Violating control: a list that skipped the unavailable one would lose its name silently.
-    assert [r["name"] for r in value["reviewers"] if r["availability"] != "CLI-unavailable"] == ["delta"]
     # None can start: each is named, and dispatch still selects the executor and claims no reviewer.
     value = status(available=only("alpha"), dispatch=True)
     assert value["executor"]["engine"] == "alpha" and [(r["name"], r["availability"]) for r in value["reviewers"]] == [
