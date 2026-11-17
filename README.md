@@ -92,6 +92,8 @@ The orchestrator is the CLI you opened (Claude Code, Codex, omp, Pi or Grok); th
 
 `/devlyn-engines` with no arguments shows the executor and the engines detected on this machine; `executor <name>` pins one and `clear` removes the pin. A pin is a promise: an unavailable pinned engine stops dispatch with `BLOCKED:<engine>-unavailable`, and a name with no executor-eligible `_shared/adapters/<name>.adapter.md` stops with `BLOCKED:invalid-engine-config`. Adapters ship with devlyn-cli releases; a reinstall replaces `_shared`.
 
+Reviewers sit beside it: `reviewers <name>...` stores the reviewers you require under `reviewers` in the same file, each an engine whose adapter has a `## Review` section, optionally as `engine/model` or `engine/model/effort`, and `reviewers clear` removes them. Sessions read them before a review and start each with the read-only line the status prints; one that cannot start is named in the report with its reason. Nothing is chosen for you: with no reviewers pinned, no engine is picked to review. Like the executor pin, they hold for this checkout only.
+
 Unattended children disable owner-desktop and account drivers: every monitored
 Codex child and every `claude` drain executor (including `.exe`/`.cmd`/`.bat`)
 uses a launch-only policy. Wrapped Claude launches (such as `env … claude` or

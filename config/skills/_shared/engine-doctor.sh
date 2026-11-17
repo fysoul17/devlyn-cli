@@ -11,13 +11,14 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
 ADAPTERS_DIR="$SCRIPT_DIR/adapters"
 
-TARGETS=(claude codex omp pi)
-KINDS=(cli-engine cli-engine cli-engine orchestrator-only)
-BINARIES=(claude codex omp "")
+TARGETS=(claude codex omp grok pi)
+KINDS=(cli-engine cli-engine cli-engine cli-engine orchestrator-only)
+BINARIES=(claude codex omp grok "")
 INSTALL_HINTS=(
   "see https://docs.anthropic.com/en/docs/claude-code"
   "npm install -g @openai/codex"
   "brew install can1357/tap/omp"
+  "see https://x.ai/cli"
   ""
 )
 
@@ -39,8 +40,16 @@ check_executor() {
   if grep -q '^executor: no' "$1" 2>/dev/null; then printf 'no'; else printf 'yes'; fi
 }
 
-printf '%-8s %-17s %-8s %-8s %-9s %s\n' \
-  'target' 'kind' 'binary' 'adapter' 'executor' 'note'
+check_review() {
+  # $1 = adapter file path. An adapter that can start a read-only reviewer
+  # has a line that is exactly `## Review` (a CRLF line end counts, as it
+  # does for role-config.py).
+  [ -f "$1" ] || { printf 'n/a'; return; }
+  if grep -Eq $'^## Review\r?$' "$1" 2>/dev/null; then printf 'yes'; else printf 'no'; fi
+}
+
+printf '%-8s %-17s %-8s %-8s %-9s %-7s %s\n' \
+  'target' 'kind' 'binary' 'adapter' 'executor' 'review' 'note'
 
 for i in "${!TARGETS[@]}"; do
   target="${TARGETS[$i]}"
@@ -48,6 +57,7 @@ for i in "${!TARGETS[@]}"; do
   binary="$(check_binary "${BINARIES[$i]}")"
   adapter="$(check_adapter "$target")"
   executor="$(check_executor "$ADAPTERS_DIR/$target.adapter.md")"
+  review="$(check_review "$ADAPTERS_DIR/$target.adapter.md")"
 
   note='-'
   case "$kind" in
@@ -65,6 +75,6 @@ for i in "${!TARGETS[@]}"; do
       ;;
   esac
 
-  printf '%-8s %-17s %-8s %-8s %-9s %s\n' \
-    "$target" "$kind" "$binary" "$adapter" "$executor" "$note"
+  printf '%-8s %-17s %-8s %-8s %-9s %-7s %s\n' \
+    "$target" "$kind" "$binary" "$adapter" "$executor" "$review" "$note"
 done
