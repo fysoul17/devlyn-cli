@@ -2848,7 +2848,17 @@ fs.rmSync = (file, ...rest) => {{
         status = role(path=bins)
         self.assertEqual(status['executor'], {'engine': 'codex', 'source': 'engines.json', 'availability': 'CLI-present/auth-unchecked'})
         self.assertEqual(status['inactive'], ['pair_judge_priority', 'roles'])
-        self.assertEqual(role('--select', path=bins)['executor']['engine'], 'codex')
+        # A pin file's status is as before with one more key: who each role may pin, from the shipped adapters.
+        # Violating controls: the status as before lacks that key; an adapter alone is no choice (omp has one).
+        before = {'executor': {'engine': 'codex', 'source': 'engines.json', 'availability': 'CLI-present/auth-unchecked'},
+                  'reviewers': [], 'inactive': ['pair_judge_priority', 'roles'],
+                  'input': {'path': str(engines.resolve()), 'sha256': hashlib.sha256(legacy).hexdigest()}}
+        self.assertEqual(status, {**before, 'choices': {'executor': ['claude', 'codex'], 'reviewers': ['claude', 'codex', 'grok']}})
+        self.assertNotEqual(status, before)
+        self.assertEqual(role('--select', path=bins), status)
+        every = sorted(p.name.removesuffix('.adapter.md') for p in (self.package / 'config/skills/_shared/adapters').glob('*.adapter.md'))
+        self.assertEqual(every, ['claude', 'codex', 'grok', 'omp'])
+        self.assertNotIn(every, status['choices'].values())
         self.assertEqual(engines.read_bytes(), legacy)
         # Unavailable: status reports it; dispatch selection fails visibly and substitutes nothing.
         self.assertEqual(role()['executor']['availability'], 'CLI-unavailable')
@@ -2869,6 +2879,20 @@ fs.rmSync = (file, ...rest) => {{
         self.assertEqual(json.loads(engines.read_bytes()), {'custom': 7})
         engines.write_bytes(b'{"executor":"codex"}')
         role('--clear')
+        self.assertFalse(engines.exists())
+        # Clearing the executor alone keeps the retired keys, the reviewers and other keys, and deletes a file left
+        # empty. Violating control: `--clear` on the same file also removes the retired keys.
+        pinned = {**json.loads(legacy), 'reviewers': ['grok']}
+        engines.write_text(json.dumps(pinned), encoding='utf-8')
+        status = role('--clear-executor')
+        self.assertEqual(json.loads(engines.read_bytes()), {key: value for key, value in pinned.items() if key != 'executor'})
+        self.assertEqual((status['executor']['source'], status['inactive'], [r['name'] for r in status['reviewers']]),
+                         ('default', ['pair_judge_priority', 'roles'], ['grok']))
+        engines.write_text(json.dumps(pinned), encoding='utf-8')
+        role('--clear')
+        self.assertEqual(json.loads(engines.read_bytes()), {'custom': 7, 'reviewers': ['grok']})
+        engines.write_bytes(b'{"executor":"codex"}')
+        role('--clear-executor')
         self.assertFalse(engines.exists())
 
     def test_executor_clear_reports_the_host_default_on_every_host(self):
@@ -2953,6 +2977,18 @@ fs.rmSync = (file, ...rest) => {{
         for args in ((), ('--select',)):
             self.assertEqual([(r['name'], r['availability'], bool(r['start'])) for r in role(*args, host='claude')['reviewers']],
                              [('omp', 'no-review-section', False), ('claude', 'CLI-present/auth-unchecked', True)])
+        # Such a stored name never blocks removing or adding another name; the same name given new is refused, and so
+        # is a name given twice. Violating control: once removed, omp is new again and refused.
+        self.assertEqual([r['name'] for r in role('--set-reviewers', 'omp')['reviewers']], ['omp'])
+        self.assertEqual([r['name'] for r in role('--set-reviewers', 'omp', 'grok')['reviewers']], ['omp', 'grok'])
+        for names, error in ((['omp/model-x'], 'no review section for omp; valid: claude, codex, grok'),
+                             (['omp', 'omp'], 'reviewer named twice: omp')):
+            self.assertEqual(role('--set-reviewers', *names, code=1).strip(), 'BLOCKED:invalid-engine-config: ' + error)
+            self.assertEqual(json.loads(engines.read_bytes()), {'reviewers': ['omp', 'grok']})
+        self.assertEqual([r['name'] for r in role('--set-reviewers', 'grok')['reviewers']], ['grok'])
+        self.assertEqual(role('--set-reviewers', 'grok', 'omp', code=1).strip(),
+                         'BLOCKED:invalid-engine-config: no review section for omp; valid: claude, codex, grok')
+        self.assertEqual(json.loads(engines.read_bytes()), {'reviewers': ['grok']})
         # `clear` keeps the reviewers; clearing them keeps the executor pin and deletes a file left empty.
         engines.write_bytes(legacy); role('--set-reviewers', 'grok')
         role('--clear')
