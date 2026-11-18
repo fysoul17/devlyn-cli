@@ -2853,11 +2853,11 @@ fs.rmSync = (file, ...rest) => {{
         before = {'executor': {'engine': 'codex', 'source': 'engines.json', 'availability': 'CLI-present/auth-unchecked'},
                   'reviewers': [], 'inactive': ['pair_judge_priority', 'roles'],
                   'input': {'path': str(engines.resolve()), 'sha256': hashlib.sha256(legacy).hexdigest()}}
-        self.assertEqual(status, {**before, 'choices': {'executor': ['claude', 'codex'], 'reviewers': ['claude', 'codex', 'grok']}})
+        self.assertEqual(status, {**before, 'choices': {'executor': ['claude', 'codex'], 'reviewers': ['claude', 'codex', 'cursor', 'grok']}})
         self.assertNotEqual(status, before)
         self.assertEqual(role('--select', path=bins), status)
         every = sorted(p.name.removesuffix('.adapter.md') for p in (self.package / 'config/skills/_shared/adapters').glob('*.adapter.md'))
-        self.assertEqual(every, ['claude', 'codex', 'grok', 'omp'])
+        self.assertEqual(every, ['claude', 'codex', 'cursor', 'grok', 'omp'])
         self.assertNotIn(every, status['choices'].values())
         self.assertEqual(engines.read_bytes(), legacy)
         # Unavailable: status reports it; dispatch selection fails visibly and substitutes nothing.
@@ -2927,8 +2927,8 @@ fs.rmSync = (file, ...rest) => {{
             launcher = bins / (name + ('.cmd' if os.name == 'nt' else ''))
             launcher.write_text('@echo off\r\n' if os.name == 'nt' else '#!/bin/sh\n', encoding='utf-8'); launcher.chmod(0o755)
 
-        def role(*args, host='codex', code=0):
-            env = dict(self.env, PATH=str(bins))
+        def role(*args, host='codex', code=0, path=None):
+            env = dict(self.env, PATH=str(path or bins))
             result = run([sys.executable, script, '--workdir', self.project, '--default-engine', host, *args], env=env, code=code)
             return json.loads(result.stdout) if code == 0 else result.stderr.decode('utf-8')
 
@@ -2937,7 +2937,7 @@ fs.rmSync = (file, ...rest) => {{
         self.assertEqual(role()['reviewers'], [])
         self.assertEqual(role('--select')['reviewers'], [])
         # A wrong name is refused with the engines that can review, and changes no byte.
-        for names, error in ((['omp'], 'no review section for omp; valid: claude, codex, grok'),
+        for names, error in ((['omp'], 'no review section for omp; valid: claude, codex, cursor, grok'),
                              (['grok', 'grok'], 'reviewer named twice: grok'),
                              (['grok/'], "not a reviewer name: 'grok/'")):
             self.assertEqual(role('--set-reviewers', *names, code=1).strip(), 'BLOCKED:invalid-engine-config: ' + error)
@@ -2981,13 +2981,13 @@ fs.rmSync = (file, ...rest) => {{
         # is a name given twice. Violating control: once removed, omp is new again and refused.
         self.assertEqual([r['name'] for r in role('--set-reviewers', 'omp')['reviewers']], ['omp'])
         self.assertEqual([r['name'] for r in role('--set-reviewers', 'omp', 'grok')['reviewers']], ['omp', 'grok'])
-        for names, error in ((['omp/model-x'], 'no review section for omp; valid: claude, codex, grok'),
+        for names, error in ((['omp/model-x'], 'no review section for omp; valid: claude, codex, cursor, grok'),
                              (['omp', 'omp'], 'reviewer named twice: omp')):
             self.assertEqual(role('--set-reviewers', *names, code=1).strip(), 'BLOCKED:invalid-engine-config: ' + error)
             self.assertEqual(json.loads(engines.read_bytes()), {'reviewers': ['omp', 'grok']})
         self.assertEqual([r['name'] for r in role('--set-reviewers', 'grok')['reviewers']], ['grok'])
         self.assertEqual(role('--set-reviewers', 'grok', 'omp', code=1).strip(),
-                         'BLOCKED:invalid-engine-config: no review section for omp; valid: claude, codex, grok')
+                         'BLOCKED:invalid-engine-config: no review section for omp; valid: claude, codex, cursor, grok')
         self.assertEqual(json.loads(engines.read_bytes()), {'reviewers': ['grok']})
         # `clear` keeps the reviewers; clearing them keeps the executor pin and deletes a file left empty.
         engines.write_bytes(legacy); role('--set-reviewers', 'grok')
@@ -2999,6 +2999,37 @@ fs.rmSync = (file, ...rest) => {{
         engines.write_bytes(b'{"reviewers":["grok"]}')
         self.assertEqual(role('--clear-reviewers')['reviewers'], [])
         self.assertFalse(engines.exists())
+        # Cursor reviews with no model and no effort: it can be set and its start is printed; a new name carrying a
+        # model or effort is refused with the plain form, and an exact stored one is kept. The three engines whose
+        # sections take both still accept them. Violating control: the refused names obey the name rule (a file
+        # holding them reads fine), so only cursor's section refuses them.
+        cursor, = role('--set-reviewers', 'cursor')['reviewers']
+        self.assertEqual((cursor['name'], cursor['model'], cursor['effort']), ('cursor', '', ''))
+        self.assertIn('`cursor-agent -p "<prompt>" --mode ask --sandbox enabled`', cursor['start'])
+        # A pinned reviewer is present when the program its review starts is on PATH: cursor's adapter names
+        # `cursor-agent`; grok's names none, so grok is checked by its engine's name. Violating control: only the
+        # editor's `cursor` launcher on PATH.
+        engines.write_bytes(b'{"reviewers":["cursor","grok"]}')
+        for names, expected in ((('cursor-agent', 'grok'), ['CLI-present/auth-unchecked'] * 2),
+                                (('cursor',), ['CLI-unavailable'] * 2),
+                                (('cursor-agent',), ['CLI-present/auth-unchecked', 'CLI-unavailable'])):
+            folder = self.case / ('only-' + '-'.join(names)); folder.mkdir()
+            for name in names:
+                launcher = folder / (name + ('.cmd' if os.name == 'nt' else ''))
+                launcher.write_text('@echo off\r\n' if os.name == 'nt' else '#!/bin/sh\n', encoding='utf-8'); launcher.chmod(0o755)
+            with self.subTest(path=names):
+                self.assertEqual([r['availability'] for r in role(path=folder)['reviewers']], expected)
+        for name in ('cursor/some-model', 'cursor/some-model/high'):
+            engines.write_bytes(b'{"reviewers":["cursor"]}')
+            self.assertEqual(role('--set-reviewers', 'cursor', name, code=1).strip(),
+                             "BLOCKED:invalid-engine-config: cursor's review takes no model; name it cursor")
+            self.assertEqual(engines.read_bytes(), b'{"reviewers":["cursor"]}')
+            engines.write_bytes(json.dumps({'reviewers': [name]}).encode())
+            self.assertEqual([r['name'] for r in role()['reviewers']], [name])
+            self.assertEqual([r['name'] for r in role('--set-reviewers', name, 'grok')['reviewers']], [name, 'grok'])
+        status = role('--set-reviewers', 'claude/model-x/high', 'codex/model-y/low', 'grok/model-z/max')
+        self.assertEqual([(r['engine'], r['model'], r['effort']) for r in status['reviewers']],
+                         [('claude', 'model-x', 'high'), ('codex', 'model-y', 'low'), ('grok', 'model-z', 'max')])
 
     def test_unreadable_sibling_adapter_is_no_choice_and_blocks_no_executor(self):
         # An adapter that cannot be read as text (not UTF-8, or a folder named like one) is no choice and is named on
@@ -3026,7 +3057,7 @@ fs.rmSync = (file, ...rest) => {{
                     status = json.loads(result.stdout)
                     self.assertEqual(status['executor'], {'engine': 'codex', 'source': 'engines.json' if raw else 'default',
                                                           'availability': 'CLI-present/auth-unchecked'})
-                    self.assertEqual(status['choices'], {'executor': ['claude', 'codex'], 'reviewers': ['claude', 'codex', 'grok']})
+                    self.assertEqual(status['choices'], {'executor': ['claude', 'codex'], 'reviewers': ['claude', 'codex', 'cursor', 'grok']})
                     stderr = result.stderr.decode('utf-8')
                     self.assertEqual(len(stderr.splitlines()), 1, stderr)
                     self.assertIn('broken.adapter.md', stderr); self.assertIn('folder.adapter.md', stderr)
