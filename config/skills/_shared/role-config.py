@@ -62,6 +62,7 @@ def name(value, field):
 
 
 INELIGIBLE = re.compile(r"^executor: no\s*$", re.M)
+COMMAND = re.compile(r"^command: ([A-Za-z0-9][A-Za-z0-9_.-]*)\s*$", re.M)
 REVIEW = re.compile(r"^## Review$", re.M)
 SECTION = re.compile(r"^## ", re.M)
 
@@ -109,6 +110,14 @@ def review_start(engine, shared=SHARED):
     body = text[heading.end():]
     end = SECTION.search(body)
     return body[:end.start() if end else len(body)].strip()
+
+
+def review_command(engine, shared=SHARED):
+    """The program the engine's review starts: its adapter's header line `command: <program>`, else the engine's name."""
+    text = (shared / "adapters" / f"{engine}.adapter.md").read_text(encoding="utf-8")
+    end = SECTION.search(text)
+    match = COMMAND.search(text[:end.start() if end else len(text)])
+    return match.group(1) if match else engine
 
 
 def reviewer(entry):
@@ -191,7 +200,8 @@ def resolve(work, default_engine, *, available=None, shared=SHARED):
         # A name this release has no review section for is listed, never a failure: another release may have pinned it.
         start = review_start(part, shared)
         pinned.append({"name": entry, "engine": part, "model": model, "effort": effort,
-                       "availability": "no-review-section" if start is None else presence(part), "start": start or ""})
+                       "availability": "no-review-section" if start is None else presence(review_command(part, shared)),
+                       "start": start or ""})
     return {"executor": {"engine": engine, "source": "engines.json" if "executor" in config else "default",
                          "availability": presence(engine)},
             "reviewers": pinned, "inactive": [key for key in RETIRED if key in config], "input": source,
@@ -344,6 +354,14 @@ def self_test():
         edit_reviewers(work, ["cursor"])
         assert [(r["name"], r["start"].splitlines()[1]) for r in resolve(work, "claude", available=here)["reviewers"]] == [
             ("cursor", '`cursor-agent -p "<prompt>" --mode ask --sandbox enabled`.')]
+        # A pinned reviewer is present when the program its review starts is: cursor's adapter names `cursor-agent`;
+        # grok's names none, so grok is checked by its engine's name. Violating control: only the editor's `cursor`.
+        edit_reviewers(work, ["cursor", "grok"])
+        for present, expected in ((("cursor-agent", "grok"), ["CLI-present/auth-unchecked"] * 2),
+                                  (("cursor",), ["CLI-unavailable"] * 2),
+                                  (("cursor-agent",), ["CLI-present/auth-unchecked", "CLI-unavailable"])):
+            value = resolve(work, "claude", available=lambda candidate: candidate in present)
+            assert [r["availability"] for r in value["reviewers"]] == expected, (present, value["reviewers"])
         for bad in ("cursor/some-model", "cursor/some-model/high"):
             assert reviewer(bad)[0] == "cursor"
             path.write_bytes(b'{"reviewers":["cursor"]}')
@@ -528,7 +546,11 @@ def reviewer_self_test(work, path):
     # A new name's model is accepted only when its engine's section has `<model>`, its effort only with `<effort>`;
     # the refusal names the plain form, and a name stored exactly as given is kept. alpha has neither placeholder, zeta
     # only `<model>`, beta both. Violating control: each refused name obeys the name rule.
-    (team / "adapters/zeta.adapter.md").write_text('## Review\n\nzeta "<prompt>" -m <model>\n', encoding="utf-8")
+    (team / "adapters/zeta.adapter.md").write_text('## Review\n\nzeta "<prompt>" -m <model>\ncommand: not-the-header\n',
+                                                  encoding="utf-8")
+    # The program a review starts is named only on a header line (cursor's names `cursor-agent`); a line in a
+    # section never names it, so zeta's review starts `zeta`.
+    assert (review_command("cursor"), review_command("zeta", team)) == ("cursor-agent", "zeta")
     path.write_bytes(b'{"reviewers":["alpha/model-x"]}')
     for bad, message in ((["alpha/model-y"], "alpha's review takes no model; name it alpha"),
                          (["alpha/model-y/high"], "alpha's review takes no model; name it alpha"),

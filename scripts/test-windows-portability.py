@@ -2927,8 +2927,8 @@ fs.rmSync = (file, ...rest) => {{
             launcher = bins / (name + ('.cmd' if os.name == 'nt' else ''))
             launcher.write_text('@echo off\r\n' if os.name == 'nt' else '#!/bin/sh\n', encoding='utf-8'); launcher.chmod(0o755)
 
-        def role(*args, host='codex', code=0):
-            env = dict(self.env, PATH=str(bins))
+        def role(*args, host='codex', code=0, path=None):
+            env = dict(self.env, PATH=str(path or bins))
             result = run([sys.executable, script, '--workdir', self.project, '--default-engine', host, *args], env=env, code=code)
             return json.loads(result.stdout) if code == 0 else result.stderr.decode('utf-8')
 
@@ -3006,6 +3006,19 @@ fs.rmSync = (file, ...rest) => {{
         cursor, = role('--set-reviewers', 'cursor')['reviewers']
         self.assertEqual((cursor['name'], cursor['model'], cursor['effort']), ('cursor', '', ''))
         self.assertIn('`cursor-agent -p "<prompt>" --mode ask --sandbox enabled`', cursor['start'])
+        # A pinned reviewer is present when the program its review starts is on PATH: cursor's adapter names
+        # `cursor-agent`; grok's names none, so grok is checked by its engine's name. Violating control: only the
+        # editor's `cursor` launcher on PATH.
+        engines.write_bytes(b'{"reviewers":["cursor","grok"]}')
+        for names, expected in ((('cursor-agent', 'grok'), ['CLI-present/auth-unchecked'] * 2),
+                                (('cursor',), ['CLI-unavailable'] * 2),
+                                (('cursor-agent',), ['CLI-present/auth-unchecked', 'CLI-unavailable'])):
+            folder = self.case / ('only-' + '-'.join(names)); folder.mkdir()
+            for name in names:
+                launcher = folder / (name + ('.cmd' if os.name == 'nt' else ''))
+                launcher.write_text('@echo off\r\n' if os.name == 'nt' else '#!/bin/sh\n', encoding='utf-8'); launcher.chmod(0o755)
+            with self.subTest(path=names):
+                self.assertEqual([r['availability'] for r in role(path=folder)['reviewers']], expected)
         for name in ('cursor/some-model', 'cursor/some-model/high'):
             engines.write_bytes(b'{"reviewers":["cursor"]}')
             self.assertEqual(role('--set-reviewers', 'cursor', name, code=1).strip(),
