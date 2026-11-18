@@ -11,14 +11,15 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
 ADAPTERS_DIR="$SCRIPT_DIR/adapters"
 
-TARGETS=(claude codex omp grok pi)
-KINDS=(cli-engine cli-engine cli-engine cli-engine orchestrator-only)
-BINARIES=(claude codex omp grok "")
+TARGETS=(claude codex omp grok cursor pi)
+KINDS=(cli-engine cli-engine cli-engine cli-engine cli-engine orchestrator-only)
+BINARIES=(claude codex omp grok cursor-agent "")
 INSTALL_HINTS=(
   "see https://docs.anthropic.com/en/docs/claude-code"
   "npm install -g @openai/codex"
   "brew install can1357/tap/omp"
   "see https://x.ai/cli"
+  "curl https://cursor.com/install -fsS | bash"
   ""
 )
 
