@@ -48,6 +48,11 @@ def environment():
     return env
 
 
+def builds(engine, source, availability='CLI-present/auth-unchecked', model='', effort=''):
+    """role-config's answer to who builds."""
+    return {'engine': engine, 'model': model, 'effort': effort, 'source': source, 'availability': availability}
+
+
 def run(argv, *, cwd=None, env=None, code=0, timeout=40):
     proc = subprocess.run([str(arg) for arg in argv], cwd=cwd, env=env or environment(),
                           stdin=subprocess.DEVNULL, capture_output=True, timeout=timeout)
@@ -146,6 +151,13 @@ m._compile(source + '\\n' + process.argv[3], filename);
         self.project = self.case / 'project'; self.project.mkdir()
         self.home = self.case / 'agent-home'; self.home.mkdir()
         self.env = environment(); self.env['DEVLYN_TEST_HOME'] = str(self.home)
+
+    def own_home(self):
+        """This case's home folder for the rest of the test, in this process too: role-config reads the user's own
+        file under it, never the developer's."""
+        patcher = patch.dict(os.environ, HOME=str(self.home), USERPROFILE=str(self.home))
+        patcher.start(); self.addCleanup(patcher.stop)
+        self.env.update(HOME=str(self.home), USERPROFILE=str(self.home))
 
     def invoke(self, body, package=None, code=0):
         self.env.update(HOME=str(self.home), USERPROFILE=str(self.home))
@@ -2730,6 +2742,7 @@ fs.rmSync = (file, ...rest) => {{
     def test_role_configuration_filesystem_errors(self):
         import errno
         import io
+        self.own_home()
         module = runpy.run_path(str(self.package / 'config/skills/_shared/role-config.py'))
         folder = self.project / '.devlyn'; folder.mkdir()
         path = folder / 'engines.json'
@@ -2768,6 +2781,7 @@ fs.rmSync = (file, ...rest) => {{
         self.assertEqual(sorted(p.name for p in folder.iterdir()), ['engines.json'])
 
     def test_role_configuration_missing_error_checks_ancestors(self):
+        self.own_home()
         module = runpy.run_path(str(self.package / 'config/skills/_shared/role-config.py'))
         for nested in (False, True):
             with self.subTest(nested=nested):
@@ -2793,6 +2807,7 @@ fs.rmSync = (file, ...rest) => {{
 
     @unittest.skipIf(os.name == 'nt', 'symlink creation requires native Windows privileges')
     def test_role_configuration_links_preserve_entries_and_bindings(self):
+        self.own_home()
         module = runpy.run_path(str(self.package / 'config/skills/_shared/role-config.py'))
         folder = self.project / '.devlyn'; folder.mkdir()
         path = folder / 'engines.json'
@@ -2831,6 +2846,7 @@ fs.rmSync = (file, ...rest) => {{
         # The executor is the one engine setting. A pin binds; keys earlier releases wrote for the
         # retired pipeline roles stay as written and are reported inactive; an unavailable pin is
         # reported by status and stops dispatch selection.
+        self.own_home()
         script = self.package / 'config/skills/_shared/role-config.py'
         engines = self.project / '.devlyn/engines.json'; engines.parent.mkdir()
         bins = self.case / 'bin'; bins.mkdir()
@@ -2846,15 +2862,21 @@ fs.rmSync = (file, ...rest) => {{
         legacy = b'{"executor":"codex","pair_judge_priority":["claude"],"roles":{"worker":{"engine":"claude","model":"x"}},"custom":7}\n'
         engines.write_bytes(legacy)
         status = role(path=bins)
-        self.assertEqual(status['executor'], {'engine': 'codex', 'source': 'engines.json', 'availability': 'CLI-present/auth-unchecked'})
+        self.assertEqual(status['executor'], builds('codex', 'engines.json'))
         self.assertEqual(status['inactive'], ['pair_judge_priority', 'roles'])
-        # A pin file's status is as before with one more key: who each role may pin, from the shipped adapters.
-        # Violating controls: the status as before lacks that key; an adapter alone is no choice (omp has one).
-        before = {'executor': {'engine': 'codex', 'source': 'engines.json', 'availability': 'CLI-present/auth-unchecked'},
-                  'reviewers': [], 'inactive': ['pair_judge_priority', 'roles'],
-                  'input': {'path': str(engines.resolve()), 'sha256': hashlib.sha256(legacy).hexdigest()}}
-        self.assertEqual(status, {**before, 'choices': {'executor': ['claude', 'codex'], 'reviewers': ['claude', 'codex', 'cursor', 'grok']}})
-        self.assertNotEqual(status, before)
+        # A pin file's status holds what releases before the user's file printed (who builds, the checkout's own
+        # reviewers, who each role may pin from the shipped adapters), and beside it who reviews here, what each file
+        # stores and which engines take a model or an effort. Violating control: an adapter alone is no choice (omp
+        # has one).
+        both = ['model', 'effort']
+        self.assertEqual(status, {
+            'executor': builds('codex', 'engines.json'), 'reviewers': [], 'review_with': [],
+            'stored': {'project': {'executor': 'codex'}, 'user': {}},
+            'inactive': ['pair_judge_priority', 'roles'],
+            'input': {'path': str(engines.resolve()), 'sha256': hashlib.sha256(legacy).hexdigest()},
+            'choices': {'executor': ['claude', 'codex'], 'reviewers': ['claude', 'codex', 'cursor', 'grok']},
+            'takes': {'executor': {'claude': both, 'codex': both},
+                      'reviewers': {'claude': both, 'codex': both, 'cursor': [], 'grok': both}}})
         self.assertEqual(role('--select', path=bins), status)
         every = sorted(p.name.removesuffix('.adapter.md') for p in (self.package / 'config/skills/_shared/adapters').glob('*.adapter.md'))
         self.assertEqual(every, ['claude', 'codex', 'cursor', 'grok', 'omp'])
@@ -2867,7 +2889,7 @@ fs.rmSync = (file, ...rest) => {{
         self.assertNotIn('Traceback', error)
         # A worker profile is never an executor pin; the invoking CLI is reported, never blocked.
         engines.write_bytes(b'{"roles":{"worker":{"engine":"codex"}}}')
-        self.assertEqual(role('--select')['executor'], {'engine': 'claude', 'source': 'default', 'availability': 'CLI-unavailable'})
+        self.assertEqual(role('--select')['executor'], builds('claude', 'default', 'CLI-unavailable'))
         # Pins are validated before any byte changes; clear keeps unrelated keys and drops the inactive ones.
         engines.write_bytes(legacy)
         self.assertIn('BLOCKED:invalid-engine-config: no adapter for kimi', role('--set-executor', 'kimi', code=1))
@@ -2896,6 +2918,7 @@ fs.rmSync = (file, ...rest) => {{
         self.assertFalse(engines.exists())
 
     def test_executor_clear_reports_the_host_default_on_every_host(self):
+        self.own_home()
         script = self.package / 'config/skills/_shared/role-config.py'
         engines = self.project / '.devlyn/engines.json'; engines.parent.mkdir()
         for host in ('pi', 'grok', 'claude', 'codex', 'omp'):
@@ -2909,7 +2932,7 @@ fs.rmSync = (file, ...rest) => {{
                     self.assertEqual(engines.exists(), bool(keep))
                     self.assertEqual(cleared.returncode, 0, cleared.stderr.decode('utf-8'))
                     status = json.loads(cleared.stdout)
-                    self.assertEqual(status['executor'], {'engine': host, 'source': 'default', 'availability': 'CLI-unavailable'})
+                    self.assertEqual(status['executor'], builds(host, 'default', 'CLI-unavailable'))
                     self.assertEqual(status['inactive'], [])
                     self.assertEqual(json.loads(run(argv, env=env).stdout), status)
                     if host in ('pi', 'grok'):
@@ -2920,6 +2943,7 @@ fs.rmSync = (file, ...rest) => {{
     def test_reviewer_pins_status_set_and_clear(self):
         # Reviewers are the user's own pins beside the executor: status and selection list each with its availability
         # and its adapter's read-only start; nothing is chosen when none is pinned, and none blocks selection.
+        self.own_home()
         script = self.package / 'config/skills/_shared/role-config.py'
         engines = self.project / '.devlyn/engines.json'; engines.parent.mkdir()
         bins = self.case / 'bin'; bins.mkdir()
@@ -2959,7 +2983,7 @@ fs.rmSync = (file, ...rest) => {{
         engines.write_bytes(legacy)
         status = role('--set-reviewers', 'claude/model-x/high', 'grok')
         self.assertEqual(json.loads(engines.read_bytes()), {**json.loads(legacy), 'reviewers': ['claude/model-x/high', 'grok']})
-        self.assertEqual(status['executor'], {'engine': 'codex', 'source': 'engines.json', 'availability': 'CLI-present/auth-unchecked'})
+        self.assertEqual(status['executor'], builds('codex', 'engines.json'))
         claude, grok = status['reviewers']
         self.assertEqual({k: claude[k] for k in ('name', 'engine', 'model', 'effort', 'availability')},
                          {'name': 'claude/model-x/high', 'engine': 'claude', 'model': 'model-x', 'effort': 'high',
@@ -3031,10 +3055,95 @@ fs.rmSync = (file, ...rest) => {{
         self.assertEqual([(r['engine'], r['model'], r['effort']) for r in status['reviewers']],
                          [('claude', 'model-x', 'high'), ('codex', 'model-y', 'low'), ('grok', 'model-z', 'max')])
 
+    def test_the_users_own_pins_fill_what_a_checkout_does_not_pin(self):
+        # The user's own file under the home folder holds who builds and who reviews in every project; per role a
+        # checkout's own pin wins. Only that file takes a model for who builds. An app released before it reads
+        # `reviewers` as the checkout's own list, so its next click never copies the user's reviewers into the checkout.
+        self.own_home()
+        script = self.package / 'config/skills/_shared/role-config.py'
+        engines = self.project / '.devlyn/engines.json'
+        mine = self.home / '.devlyn/engine-defaults.json'
+        bins = self.case / 'bin'; bins.mkdir()
+        for name in ('codex', 'claude', 'grok'):
+            launcher = bins / (name + ('.cmd' if os.name == 'nt' else ''))
+            launcher.write_text('@echo off\r\n' if os.name == 'nt' else '#!/bin/sh\n', encoding='utf-8'); launcher.chmod(0o755)
+
+        def role(*args, code=0, path=None):
+            result = run([sys.executable, script, '--workdir', self.project, '--default-engine', 'claude', *args],
+                         env=dict(self.env, PATH=str(path or bins)), code=code)
+            return json.loads(result.stdout) if code == 0 else result.stderr.decode('utf-8')
+
+        def names(rows):
+            return [(row['name'], row.get('source')) for row in rows]
+
+        # Nothing stored: a clear creates nothing, in the checkout or under the home folder.
+        for args in (('--clear-roles',), ('--clear-executor',), ('--clear-reviewers',), ('--user', '--clear-roles')):
+            self.assertEqual(role(*args)['executor'], builds('claude', 'default'))
+        self.assertFalse(engines.parent.exists()); self.assertFalse(mine.parent.exists())
+        # For every project: a model and an effort for who builds, and the reviewers. The checkout is not written.
+        status = role('--user', '--set-executor', 'codex/model-4.7_x/high')
+        self.assertEqual(status['executor'], builds('codex', 'user', model='model-4.7_x', effort='high'))
+        status = role('--user', '--set-reviewers', 'grok', 'claude/model-x')
+        self.assertEqual(names(status['review_with']), [('grok', 'user'), ('claude/model-x', 'user')])
+        self.assertEqual(status['reviewers'], [])
+        self.assertEqual(status['stored'], {'project': {}, 'user': {'executor': 'codex/model-4.7_x/high',
+                                                                     'reviewers': ['grok', 'claude/model-x']}})
+        self.assertEqual(json.loads(mine.read_bytes()), status['stored']['user'])
+        self.assertEqual(sorted(p.name for p in mine.parent.iterdir()), ['engine-defaults.json', 'engine-defaults.json.lock'])
+        self.assertFalse(engines.parent.exists())
+        self.assertEqual(role('--select'), status)
+        # One project names an engine alone, which a release before this one reads; refused names change no byte.
+        raw = mine.read_bytes()
+        for args, error in ((('--set-executor', 'codex/model-x'), "one project names an engine only: 'codex/model-x'"),
+                            (('--user', '--set-executor', 'grok'), 'grok is ineligible as executor'),
+                            (('--user', '--set-executor', 'codex/$(id)'), "not an executor name: 'codex/$(id)'"),
+                            (('--user', '--set-executor', 'kimi/model-x'), 'no adapter for kimi; valid: claude, codex')):
+            self.assertIn('BLOCKED:invalid-engine-config: ' + error, role(*args, code=1))
+            self.assertEqual(mine.read_bytes(), raw); self.assertFalse(engines.parent.exists())
+        # Per role the checkout's own pin wins and the user's fills the rest; an empty list is no list.
+        status = role('--set-executor', 'claude')
+        self.assertEqual(status['executor'], builds('claude', 'engines.json'))
+        self.assertEqual(names(status['review_with']), [('grok', 'user'), ('claude/model-x', 'user')])
+        engines.write_bytes(b'{"executor":"claude","reviewers":[]}')
+        self.assertEqual(names(role()['review_with']), [('grok', 'user'), ('claude/model-x', 'user')])
+        # An app from before the user's file: who builds is stored when its source is the checkout's, `reviewers` is
+        # the checkout's own. Its click that adds codex writes what it showed plus codex.
+        engines.unlink()
+        status = role()
+        shown = (status['executor']['engine'] if status['executor']['source'] == 'engines.json' else None,
+                 [row['name'] for row in status['reviewers']])
+        self.assertEqual(shown, (None, []))
+        status = role('--set-reviewers', *shown[1], 'codex')
+        self.assertEqual(json.loads(engines.read_bytes()), {'reviewers': ['codex']})
+        self.assertEqual(names(status['review_with']), [('codex', 'engines.json')])
+        self.assertEqual(json.loads(mine.read_bytes())['reviewers'], ['grok', 'claude/model-x'])
+        # One write gives the checkout back to the choice for every project and keeps its other keys.
+        engines.write_bytes(b'{"executor":"claude","reviewers":["codex"],"roles":{},"custom":7}')
+        status = role('--clear-roles')
+        self.assertEqual(json.loads(engines.read_bytes()), {'roles': {}, 'custom': 7})
+        self.assertEqual((status['executor']['source'], names(status['review_with'])),
+                         ('user', [('grok', 'user'), ('claude/model-x', 'user')]))
+        # A pin is a promise from the user's file too; a name another release stored there is shown, never a failure
+        # to read, and only dispatch stops.
+        self.assertTrue(role('--select', path=self.case / 'no-binaries', code=1).startswith('BLOCKED:codex-unavailable:'))
+        mine.write_bytes(b'{"executor":"kimi/model-x","reviewers":["omp"]}')
+        status = role()
+        self.assertEqual(status['executor'], builds('kimi', 'user', 'unsupported', model='model-x'))
+        self.assertEqual([(row['name'], row['availability']) for row in status['review_with']], [('omp', 'no-review-section')])
+        self.assertIn('BLOCKED:invalid-engine-config: no adapter for kimi', role('--select', code=1))
+        self.assertEqual(role('--user', '--set-executor', 'claude')['executor'], builds('claude', 'user'))
+        # Both files are read and checked before any byte changes.
+        engines.write_bytes(b'{"executor":"codex"}')
+        mine.write_bytes(b'{"executor":"codex/$(id)"}')
+        self.assertIn("not an executor name: 'codex/$(id)'", role('--set-reviewers', 'grok', code=1))
+        self.assertEqual(engines.read_bytes(), b'{"executor":"codex"}')
+        self.assertIn('--user goes with a change', role('--user', code=2))
+
     def test_unreadable_sibling_adapter_is_no_choice_and_blocks_no_executor(self):
         # An adapter that cannot be read as text (not UTF-8, or a folder named like one) is no choice and is named on
         # stderr; status and dispatch still return a healthy executor, pinned or not. Violating control: each raises
         # when read, as the first version of `choices` read every adapter. The pinned executor's own one is refused.
+        self.own_home()
         shared = self.case / '_shared'
         shutil.copytree(self.package / 'config/skills/_shared', shared, ignore=shutil.ignore_patterns('__pycache__'))
         (shared / 'adapters/broken.adapter.md').write_bytes(b'## Review\n\n\xff\n')
@@ -3055,8 +3164,7 @@ fs.rmSync = (file, ...rest) => {{
                 with self.subTest(file=raw, args=args):
                     result = role(*args)
                     status = json.loads(result.stdout)
-                    self.assertEqual(status['executor'], {'engine': 'codex', 'source': 'engines.json' if raw else 'default',
-                                                          'availability': 'CLI-present/auth-unchecked'})
+                    self.assertEqual(status['executor'], builds('codex', 'engines.json' if raw else 'default'))
                     self.assertEqual(status['choices'], {'executor': ['claude', 'codex'], 'reviewers': ['claude', 'codex', 'cursor', 'grok']})
                     stderr = result.stderr.decode('utf-8')
                     self.assertEqual(len(stderr.splitlines()), 1, stderr)

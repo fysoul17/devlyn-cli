@@ -1279,7 +1279,8 @@ def ensure_packet(v, row, path, receipt):
         bound_skills = Path(binding["release"]["root"]) / "config/skills"
         packet["runner"][1] = str(bound_skills / "devlyn-ideate/scripts/acceptance.py")
         prompt = path.parent / "worker-prompt.md"
-        body = (f"Execute task packet {packet_path}. Work only in {worktree} on its owned branch.\n"
+        body = (f"Execute task packet {packet_path}: you were started to implement it, so you are its executor. "
+                f"Work only in {worktree} on its owned branch.\n"
                 f"Read {binding['defaults']['path']} and apply it as defaults; explicit user and native owner/project instructions win, except a Devlyn managed block (devlyn:instructions markers), which these defaults replace.\n"
                 f"Set DEVLYN_SKILL_DIR={bound_skills / 'devlyn-ideate'} and DEVLYN_SHARED_DIR={bound_skills / '_shared'}.\n"
                 f"Follow {bound_skills / 'devlyn-ideate/references/executor.md'}: meet the packet obligations and write "
@@ -1298,7 +1299,7 @@ def record(log, event):
         os.fsync(stream.fileno())
 
 
-def ensure_submission(identity, packet_path, packet, executor):
+def ensure_submission(identity, packet_path, packet, executor, checkout=None):
     """Run the executor once unless its submission exists; returns a drain-recorded failure reason, else None. An
     executor that exits without writing its submission raises Waiting: the task stays active and the next drain runs it
     again.
@@ -1355,6 +1356,11 @@ def ensure_submission(identity, packet_path, packet, executor):
                                          "invoke claude directly as argv[0]")
             # Files, never a pipe: a wrapper such as codex-monitored.sh refuses a piped stdout; stdin is empty, never the driver's.
             with (output / "executor.stdout").open("ab") as stdout, (output / "executor.stderr").open("ab") as stderr:
+                if checkout is not None:
+                    # Who builds and who reviews is pinned for the checkout this drain runs in; the task's own
+                    # worktree holds no pin. Written beside the packet at every start, as a later drain may run in
+                    # another checkout, and never into a prompt: a prompt is kept, and its placeholders are filled in.
+                    acceptance()["atomic_write"](Path(packet_path).with_name("drain-checkout"), str(checkout).encode("utf-8"))
                 child = subprocess.Popen(shared("platform-support")["native_argv"](argv, cwd=worktree), cwd=worktree, stdin=subprocess.DEVNULL,
                                          stdout=stdout, stderr=stderr, env=env)
         except (OSError, ValueError) as exc:
@@ -1466,7 +1472,7 @@ def advance(v, row, opts):
             require_merged(v, row, receipt["baseline"], allocated=True)
         packet_path, packet = ensure_packet(v, row, path, receipt)
         state["phase"] = "executor"
-        failure = failure or ensure_submission(identity, packet_path, packet, opts.executor)
+        failure = failure or ensure_submission(identity, packet_path, packet, opts.executor, checkout=v["anchor"])
         state["phase"] = "acceptance"
         try:
             result = acceptance()["accept"](packet_path, packet["submission"], failure)

@@ -302,6 +302,28 @@ else:
                 self.assertFalse((self.root / "calls.jsonl").exists())
                 self.assertIn("not started:", (self.root / "executions.log").read_text().splitlines()[-1])
 
+    def test_each_start_records_the_checkout_its_drain_runs_in(self):
+        # Prediction: every start writes the checkout its drain runs in beside the packet, whole and as it is (a
+        # folder named with a placeholder the drain fills in argv, `{packet}`, included); a later start from another
+        # checkout replaces it; and the status asked with the packet reads that checkout's pins. Violating controls:
+        # carried in the prompt, the folder's name would have the packet's path written into it; written once, a
+        # retry would keep the first drain's checkout.
+        fn = self.queue["ensure_submission"]
+        packet = self.root / "packet.json"
+        packet.write_text(json.dumps(self.packet), encoding="utf-8")
+        for name, reviewer in (("linked-{packet}", "claude"), ("other", "codex")):
+            checkout = self.root / name
+            (checkout / ".devlyn").mkdir(parents=True)
+            (checkout / ".devlyn/engines.json").write_text(json.dumps({"reviewers": [reviewer]}), encoding="utf-8")
+            with self.subTest(checkout=name):
+                with mock.patch.dict(os.environ, self.env, clear=True), mock.patch.dict(fn.__globals__, {"harness_call": lambda *a: None}):
+                    with self.assertRaisesRegex(self.queue["LoopError"], "executor exited 0 without a submission"):
+                        fn("fixture.t01", packet, self.packet, [sys.executable, "-c", "pass", str(checkout)], checkout=checkout)
+                self.assertEqual((self.root / "drain-checkout").read_text(encoding="utf-8"), str(checkout))
+                status = subprocess.run([sys.executable, str(LoopFixture.skills / "_shared/role-config.py"), "--packet", str(packet)],
+                                        cwd=self.root, env=self.env, capture_output=True, text=True, encoding="utf-8")
+                self.assertEqual([entry["name"] for entry in json.loads(status.stdout)["review_with"]], [reviewer], status.stderr)
+
     def test_claude_refuses_failed_malformed_lists_and_sticky_plugins(self):
         for key, mode, reason in (("LIST_MODE", "fail", "plugin discovery failed"),
                                   ("LIST_MODE", "malformed", "malformed Claude plugin list"),
@@ -4490,6 +4512,13 @@ class LoopFixture(unittest.TestCase):
         self.cli("drain", "--repo", self.anchor, "--local-only", "--", str(self.root / "absent"), "{packet}")
         prompt = self.receipt_path("projected.t1").with_name("worker-prompt.md")
         original = prompt.read_bytes()
+        # The worker is told it is its task's executor: its worktree holds no pin of its own, so under a pin for
+        # every project that names another engine it would otherwise hand the work on. The prompt names no checkout:
+        # it is kept and used again by a later drain, which may run in another checkout; each run is given the
+        # checkout its drain runs in as a value of its own (`test_each_run_is_given_the_checkout_its_drain_runs_in`).
+        text = original.decode("utf-8")
+        self.assertIn("you were started to implement it, so you are its executor", text)
+        self.assertNotIn("review_with", text)
         prompt.write_text("changed", encoding="utf-8")
         result = self.drain()
         self.assertIn("worker prompt changed", self.tasks(result)["projected.t1"]["reason"])
