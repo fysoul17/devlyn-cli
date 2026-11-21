@@ -1773,14 +1773,15 @@ def reconcile(common, allocated, anchor, *, exclude_receipts=(), warnings=None):
             retired = path.parent.parent.name == 'retired'
             if retired and receipt.get('delivery') != 'COMPLETE':
                 continue
-            if receipt.get("allocation") not in ("owned", "managed_owned") or not receipt.get("acceptance") or receipt.get("local_only") or not (receipt.get("pr_number") or receipt.get("delivery") == "COMPLETE"):
+            # A failed result is never a delivery, even one an earlier helper published.
+            if receipt.get("allocation") not in ("owned", "managed_owned") or not receipt.get("acceptance") or receipt["acceptance"].get("verdict") == "FAILED" or receipt.get("local_only") or not (receipt.get("pr_number") or receipt.get("delivery") == "COMPLETE"):
                 continue
             if (retired or receipt.get("status") == "COMPLETE") and (not receipt.get("writers_released") or "scratch_identity" not in receipt or receipt.get("scratch_cleanup", {}).get("status") == "CLEAN"):
                 continue
             with locked_receipt(path, blocking=False) as receipt:
                 if retired and receipt.get('delivery') != 'COMPLETE':
                     continue
-                if not receipt.get("acceptance") or receipt.get("local_only") or not (receipt.get("pr_number") or receipt.get("delivery") == "COMPLETE"):
+                if not receipt.get("acceptance") or receipt["acceptance"].get("verdict") == "FAILED" or receipt.get("local_only") or not (receipt.get("pr_number") or receipt.get("delivery") == "COMPLETE"):
                     continue
                 if retired or receipt.get("status") == "COMPLETE":
                     if receipt.get("writers_released") and "scratch_identity" in receipt and receipt.get("scratch_cleanup", {}).get("status") != "CLEAN":
@@ -1852,7 +1853,7 @@ def complete(args, *, warnings=None):
                 if not receipt.get("acceptance"):
                     inspect_workspace(dict(receipt, publish_sha=ref_sha(receipt, "refs/heads/"+receipt["branch"])))
                 bind_acceptance(receipt, path, args.acceptance)
-            return result("LOCAL_ONLY")
+            return result("FAILED" if (receipt.get("acceptance") or {}).get("verdict") == "FAILED" else "LOCAL_ONLY")
         mode = policy(receipt, args.mode or receipt.get("mode_override"))
         if args.mode:
             receipt["mode_override"] = args.mode
@@ -1872,6 +1873,8 @@ def complete(args, *, warnings=None):
             current = dict(receipt, publish_sha=ref_sha(receipt, "refs/heads/"+receipt["branch"]))
             inspect_workspace(current)
         bind_acceptance(receipt, path, args.acceptance)
+        if receipt["acceptance"].get("verdict") == "FAILED":
+            return result("FAILED")
         info = repo_policy(receipt)
         if receipt.get("pr_number"):
             pr = json.loads(gh(receipt, "pr", "view", str(receipt["pr_number"]), "--json", PR_FIELDS))
@@ -3545,6 +3548,30 @@ ctypes.CDLL(None).pthread_exit(None)
         self.assertEqual(self.run_cmd([*bare, "rev-parse", "refs/heads/main"]).stdout.strip(), base)
         self.assertEqual(self.run_cmd([*bare, "for-each-ref", "refs/heads/task/"]).stdout, "")
 
+    def test_first_failed_loop_result_is_never_published(self):
+        # Prediction: a first `complete --acceptance <loop result, verdict FAILED>` on a clean commit ahead of base returns
+        # FAILED in modes pr and auto and with --local-only; nothing reaches the bound repository, the fake GitHub holds no
+        # PR, and the receipt records product and delivery FAILED and nothing pushed. Before: pr opened a PR, auto merged it
+        # (COMPLETE) and --local-only recorded LOCAL_ONLY.
+        for name, flags in (("pr", ["--mode", "pr"]), ("auto", ["--mode", "auto"]), ("local", ["--local-only"])):
+            with self.subTest(name=name):
+                self.allocate(name)
+                (self.task / "product").write_text(name + "\n", encoding="utf-8")
+                self.g("add", "product", work=self.task)
+                self.g("commit", "-m", "failed product", work=self.task)
+                sha = self.g("rev-parse", "HEAD", work=self.task)
+                (self.task / ".devlyn").mkdir(exist_ok=True)
+                (self.task / ".devlyn/checks.txt").write_text("fixture check did not pass\n", encoding="utf-8")
+                self.acceptance = self.task / ".devlyn/acceptance.json"
+                self.acceptance.write_text(json.dumps({"kind": "loop", "task": name, "source_sha": sha, "verdict": "FAILED",
+                    "reasons": ["failed: fixture check did not pass"], "evidence": [".devlyn/checks.txt"]}), encoding="utf-8")
+                result, _ = self.complete("--writers-stopped", *flags)
+                receipt = read_json(Path(result["receipt"]))
+                self.assertEqual((result["status"], receipt["product"], receipt["delivery"], receipt.get("pushed")),
+                                 ("FAILED", "FAILED", "FAILED", None))
+                self.assertEqual(self.run_cmd(["git", "--git-dir", str(self.bare), "for-each-ref", "refs/heads/task/"]).stdout, "")
+                self.assertEqual(json.loads(self.data.read_text(encoding="utf-8")).get("prs", []), [])
+
     def test_unchanged_foreign_remote_head_retains_worktree(self):
         # Prediction: a foreign remote task head refuses completion before worktree removal.
         self.allocate(); self.accept(unchanged=True)
@@ -4172,6 +4199,26 @@ ctypes.CDLL(None).pthread_exit(None)
         current = json.loads(self.data.read_text())
         self.assertEqual((current["pushs"], current["creates"], current["merges"], current.get("disables", 0)),
                          (server["pushs"], server["creates"], server["merges"], server.get("disables", 0)))
+
+    def test_reconcile_skips_a_published_failed_result(self):
+        # Prediction: a receipt shaped as an earlier helper left a published FAILED loop result (verdict FAILED bound,
+        # product FAILED, pushed, a pr_number whose PR has merged) is skipped when another task's remote allocation
+        # reconciles: its delivery is not COMPLETE, its tree and branch still exist, and the new allocation succeeds.
+        # Before: reconcile removed the tree and branch and recorded delivery COMPLETE beside product FAILED.
+        self.allocate(); self.accept()
+        result, _ = self.complete("--mode", "pr", "--writers-stopped")
+        self.assertEqual(result["status"], "PR")
+        path, task = self.receipt, self.task
+        receipt = read_json(path)
+        receipt.update(acceptance={"kind": "loop", "task": "fixture", "source_sha": self.sha, "verdict": "FAILED",
+                                   "evidence": [".devlyn/checks.txt"]}, product="FAILED")
+        atomic_json(path, receipt)
+        self.merge_pr()
+        result = self.allocate("next")
+        self.assertEqual((result["status"], result["reconciled"]), ("ALLOCATED", []))
+        self.assertNotEqual(read_json(path).get("delivery"), "COMPLETE")
+        self.assertTrue(task.exists())
+        self.assertEqual(self.g("rev-parse", "task/fixture"), self.sha)
 
     def test_reconcile_checks_repo_policy_before_cleanup(self):
         self.allocate(); self.accept()

@@ -296,7 +296,7 @@ def guard_results(packet, expected, source):
         results.append({"rule": f"forbidden_patterns/{index}", "subject": pattern["description"], "passed": not matched,
                         "blocking": pattern["severity"] == "disqualifier"})
     for path in expected.get("required_files", []):
-        present = git(work, "cat-file", "-e", f"{source}:{path}", ok=(0, 1, 128)).returncode == 0
+        present = git(work, "cat-file", "-t", f"{source}:{path}", ok=(0, 1, 128)).stdout == b"blob\n"  # A directory is a tree.
         results.append({"rule": "required_files", "subject": path, "passed": present, "blocking": True})
     for path in expected.get("forbidden_files", []):
         results.append({"rule": "forbidden_files", "subject": path, "passed": path not in changed, "blocking": True})
@@ -1468,6 +1468,18 @@ class AcceptanceTests(unittest.TestCase):
         self.assertNotIn("warn only", " ".join(result["reasons"]))
         blocked = self.submit(source, blockers=[{"kind": "needs-review", "detail": "Which store wins?"}])
         self.assertEqual((blocked["verdict"], blocked["reasons"], blocked["commands"]), ("FAILED", ["needs-review: Which store wins?"], []))
+
+    def test_required_file_is_a_committed_file_not_a_directory(self):
+        # Prediction: with required_files naming report.md and notes.md, a source that commits report.md as a directory
+        # and notes.md as a file fails the required_files guard for report.md only. Before: the directory satisfied it.
+        self.inputs({"verification_commands": self.commands, "required_files": ["report.md", "notes.md"]})
+        self.write("report.md/part.md", "part\n")
+        self.write("notes.md", "notes\n")
+        source = self.product()
+        result = self.submit(source)
+        self.assertEqual([(g["subject"], g["passed"]) for g in result["guards"] if g["rule"] == "required_files"],
+                         [("report.md", False), ("notes.md", True)])
+        self.assertEqual(result["verdict"], "FAILED")
 
     def test_max_deps_added_counts_the_names_the_root_package_json_gains(self):
         """P4-3. Prediction: under the default limit 0 with a passing check, one dependency added to a one-line
