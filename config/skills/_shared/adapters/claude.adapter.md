@@ -5,7 +5,8 @@
 A Claude executor starts as
 `claude -p "<prompt>" --dangerously-skip-permissions --add-dir "<common git dir>"`,
 where `<common git dir>` is `git rev-parse --path-format=absolute --git-common-dir`:
-a linked task worktree commits there.
+a linked task worktree commits there; plus `--model <model>` and `--effort <effort>`
+when the pin names them. Its prompt says it was started to implement: such a run is the executor and never hands the implementation on.
 
 For drain children, `queue.py` adds `--no-chrome` and a temporary `--settings`
 file (0600), sets `ENABLE_CLAUDEAI_MCP_SERVERS=false`, disables plugin sync and
@@ -34,3 +35,4 @@ whose executor exits without a submission waits for the next drain.
 A fresh read-only run in the checkout that holds the change, given the requirement and the change, never the working conversation:
 `claude -p "<prompt>" --tools "Read,Glob,Grep" --strict-mcp-config --setting-sources ""`,
 plus `--model <model>` and `--effort <effort>` when pinned.
+`<prompt>` is passed as one literal argument: the shell must not evaluate anything in it.

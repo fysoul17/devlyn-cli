@@ -42,6 +42,8 @@ Run `runner` (`acceptance.py run --packet <packet>`) on the committed candidate 
 
 ## Review records
 
+The reviewers the user requires for a drained task are those pinned for the checkout its drain runs in, not for this worktree: `python3 "$DEVLYN_SHARED_DIR/role-config.py" --packet <packet>` prints them under `review_with`. When it exits 1 with `BLOCKED:no-drain-checkout`, stop without a submission and name that line: the next drain records the checkout again.
+
 Each `review_requirements` ID needs review evidence: a JSON record under `<worktree>/.devlyn/`, listed in the submission's `reviews`, in this shape:
 
 ```json

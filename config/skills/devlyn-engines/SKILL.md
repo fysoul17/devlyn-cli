@@ -1,6 +1,6 @@
 ---
 name: devlyn-engines
-description: Show and pin the engine that executes devlyn implementation work. Reads and writes machine-local .devlyn/engines.json with fail-closed validation. Use when the user asks which engine is configured, wants to force a specific engine for implementation ("수동모드", "engine 고정", "use codex to implement"), says who should review ("검토는 ...로", "always review with ..."), or wants to clear the pin back to the default.
+description: Show and pin who builds and who reviews devlyn work. Reads and writes machine-local .devlyn/engines.json, and the user's ~/.devlyn/engine-defaults.json for every project, with fail-closed validation. Use when the user asks which engine is configured, wants to force a specific engine or model for implementation ("수동모드", "engine 고정", "use codex to implement"), says who should review ("검토는 ...로", "always review with ..."), says it for every project ("모든 프로젝트에서 ..."), or wants to clear a pin back to the default.
 ---
 
 Utility front-end for the executor contract in `_shared/engine-preflight.md`. It adds no semantics of its own.
@@ -50,7 +50,7 @@ Verify DEVLYN_SHARED_DIR/role-config.py and DEVLYN_SHARED_DIR/engine-doctor.sh b
 
 ## No args — status
 
-1. Run `python3 "$DEVLYN_SHARED_DIR/role-config.py" --workdir "$PWD" --default-engine <this CLI's engine>` and print the executor's engine, source (`engines.json` pin or `default`) and availability, and the pinned reviewers with each one's read-only start line. `inactive` lists keys earlier releases wrote for retired pipeline roles: they select nothing, and `clear` removes them. CLI presence is not authentication.
+1. Run `python3 "$DEVLYN_SHARED_DIR/role-config.py" --workdir "$PWD" --default-engine <this CLI's engine>` and print the executor's engine, model and effort, its source (`engines.json`: this project's pin; `user`: the user's pin for every project; `default`) and availability, and the reviewers under `review_with`, each with its source and read-only start line. `stored` shows what each of the two files holds. `inactive` lists keys earlier releases wrote for retired pipeline roles: they select nothing, and `clear` removes them. CLI presence is not authentication.
 2. Run `bash "$DEVLYN_SHARED_DIR/engine-doctor.sh"` and show its availability/eligibility table.
 3. Show the subcommands below. Status never launches a model.
 
@@ -61,4 +61,6 @@ Verify DEVLYN_SHARED_DIR/role-config.py and DEVLYN_SHARED_DIR/engine-doctor.sh b
 - `reviewers <name>...` — run the status command with `--set-reviewers <name>...`; `reviewers clear` runs it with `--clear-reviewers`: it removes them and keeps the executor pin. It refuses a new name whose engine has no adapter with a `## Review` section, and a repeated name, and lists the valid engines. Use it when the user says who should review ("검토는 ...로", "always review with ...").
 - `pair` and `role` were removed with the retired pipeline roles: say so and change nothing.
 
-Pass the engine name as one structured argument, never by shell interpolation of user text. After every change, re-print the status. Never modify anything outside `.devlyn/engines.json`.
+- For every project — only when the user says so in words ("for every project", "in all projects", "모든 프로젝트"), add `--user` to the same command: it then writes the user's `~/.devlyn/engine-defaults.json`, which every project reads for a role its own file does not pin. There `executor` may also be `engine/model` or `engine/model/effort`; one project names an engine alone, and a model said for one project is refused with that reason. "Always" alone is this project, and so is a request that names this project, whatever else it says about every project. Where a sandbox keeps the home folder read-only that write is refused: ask for the access it needs, never write the file another way.
+
+A name starts with a letter or a digit: anything else is not a name, and is refused before a command is built. Pass each name as one structured argument, never by shell interpolation of user text. After every change, re-print the status and say which was written (this project, or every project) and who builds and reviews here now. Never modify anything outside those two files.

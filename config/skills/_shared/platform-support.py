@@ -43,35 +43,41 @@ def open_stdin(path):
 
 
 @contextlib.contextmanager
+def handle_lock(handle, path, *, blocking=False):
+    """Hold the lock on an open file for the block; `path` names it in a refusal."""
+    if os.name == "nt":
+        import msvcrt
+        while True:
+            handle.seek(0)
+            try:
+                msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+                break
+            except OSError as exc:
+                # CRT maps ERROR_LOCK_VIOLATION to EACCES (winerror may be absent).
+                contended = exc.errno == errno.EACCES and getattr(exc, "winerror", None) in (None, 33)
+                if not contended:
+                    raise
+                if not blocking:
+                    raise BlockingIOError(errno.EAGAIN, "lock occupied", str(path)) from exc
+                time.sleep(0.05)
+        try:
+            yield
+        finally:
+            handle.seek(0)
+            msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+    else:
+        import fcntl
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX | (0 if blocking else fcntl.LOCK_NB))
+        try:
+            yield
+        finally:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+
+
+@contextlib.contextmanager
 def file_lock(path, *, blocking=False):
-    with Path(path).open("a+b") as handle:
-        if os.name == "nt":
-            import msvcrt
-            while True:
-                handle.seek(0)
-                try:
-                    msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
-                    break
-                except OSError as exc:
-                    # CRT maps ERROR_LOCK_VIOLATION to EACCES (winerror may be absent).
-                    contended = exc.errno == errno.EACCES and getattr(exc, "winerror", None) in (None, 33)
-                    if not contended:
-                        raise
-                    if not blocking:
-                        raise BlockingIOError(errno.EAGAIN, "lock occupied", str(path)) from exc
-                    time.sleep(0.05)
-            try:
-                yield
-            finally:
-                handle.seek(0)
-                msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
-        else:
-            import fcntl
-            fcntl.flock(handle.fileno(), fcntl.LOCK_EX | (0 if blocking else fcntl.LOCK_NB))
-            try:
-                yield
-            finally:
-                fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+    with Path(path).open("a+b") as handle, handle_lock(handle, path, blocking=blocking):
+        yield
 
 
 SHIM_NODE = re.compile(r'IF EXIST "%(?:~dp0|dp0%)\\node\.exe"')
