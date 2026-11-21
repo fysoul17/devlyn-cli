@@ -1204,9 +1204,18 @@ def user_self_test(work, path):
     task.mkdir(), packet.parent.mkdir()
     packet.write_bytes(b"{}")
     record = packet.with_name("drain-checkout")
+    # A dispatch checks only that the pinned executor's CLI is on PATH; it never runs it. The runs below get a PATH of
+    # one folder that holds an empty `codex` (and `codex.exe`, which Windows finds through PATHEXT), so the case reads
+    # the same whatever is installed here. Prediction: the whole self-test exits 0 with no engine CLI on PATH and with
+    # them on PATH; before this it exited 1 without codex (BLOCKED:codex-unavailable at the --select pass).
+    clis = work / "engine CLIs"
+    clis.mkdir()
+    for program in ("codex", "codex.exe"):
+        (clis / program).touch()
+        (clis / program).chmod(0o755)
     def asked(*args, code=0):
         proc = subprocess.run([sys.executable, str(Path(__file__).resolve()), "--workdir", str(task), *args],
-                              capture_output=True, text=True, encoding="utf-8")
+                              capture_output=True, text=True, encoding="utf-8", env={**os.environ, "PATH": str(clis)})
         assert proc.returncode == code, (proc.returncode, proc.stderr)
         return loads(proc.stdout.encode()) if code == 0 else proc.stderr
     record.write_text(str(work), encoding="utf-8")
