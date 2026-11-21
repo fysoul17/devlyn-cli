@@ -575,12 +575,16 @@ assert.deepEqual(fs.readdirSync(path.join(store, 'devlyn-cli')), []);
         repo = self.init_repo(self.case / 'repo')
         agents = repo / 'AGENTS.md'
         original = (self.package / 'harness/AGENTS.md').read_bytes()
+        # Prediction: the suite passes 27 of 27; if a rewording removes this text from the managed block, the mutation
+        # changes nothing and the test fails with this message alone, before any status is compared.
+        edited = original.replace(b'1. **No workaround**', b'1. **A workaround**', 1)
+        if edited == original:
+            self.fail("the 'modified' case no longer edits the managed block: pick text it holds")
         agents.write_bytes(b'\xef\xbb\xbf' + original.replace(b'\n', b'\r\n'))
         self.commit(repo)
         data = self.cli('status', '--project', repo)['instructions'][0]
         self.assertEqual((data['ownership'], data['committed']), ('current', True))
-        for content, expected in [(original + b'local edit\n', 'current'),
-                                  (original.replace(b'Without a pin', b'With a pin'), 'modified'),
+        for content, expected in [(original + b'local edit\n', 'current'), (edited, 'modified'),
                                   (original + original, 'modified'), (b'# Owner rules\n', 'unowned'),
                                   (b'```md\n' + original + b'```\n', 'unowned')]:
             agents.write_bytes(content)
